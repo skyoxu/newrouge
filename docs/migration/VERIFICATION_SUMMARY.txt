@@ -52,7 +52,7 @@ CI/CD 集成
 功能对照验证
 ================================================================================
 
-原项目功能（LegacyProject）→ 迁移后功能（godotgame）对标：
+原项目功能（LegacyProject）→ 迁移后功能（newrouge）对标：
 
 菜单 UI:          LegacyUIFramework + Tailwind → Godot Control    无差异
 游戏场景:        Legacy2DEngine 3 → Godot Scene Tree          等功能
@@ -157,7 +157,7 @@ SHOULD（建议）:
   3. 创建临时项目做 PoC
 
 本周末:
-  4. 初始化目标 Godot 项目（C:\buildgame\godotgame）
+  4. 初始化目标 Godot 项目（C:\buildgame\newrouge）
   5. 运行 GUT 安装脚本
   6. 创建最小化 MainScene / GameScene
   7. 运行第一个冒烟测试

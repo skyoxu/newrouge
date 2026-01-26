@@ -12,7 +12,7 @@
   - `./scripts/ci/quality_gate.ps1 -GodotBin "$env:GODOT_BIN" -WithExport -PerfP95Ms 20`
   - Steps：dotnet tests → GdUnit4 tests → headless smoke → export → EXE smoke → perf budget（可选）
 - Artifacts
-  - EXE：`build/Game.exe`
+  - EXE：`build/NewRouge.exe`
   - Logs：`logs/ci/YYYYMMDD-HHMMSS/**`
 - Release Notes（模板）
   - 生成：`./scripts/ci/generate_release_notes.ps1 -Output docs/release/RELEASE_NOTES-<date>.md`

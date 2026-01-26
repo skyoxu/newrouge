@@ -30,7 +30,7 @@
 ## B2：版本元数据与构建信息注入
 
 - 现状：
-  - 当前导出流程只生成 `build/Game.exe` + `.pck` 与导出日志/summary.json，未对 EXE 内嵌版本信息或生成统一的 `build-info.json`；
+  - 当前导出流程只生成 `build/NewRouge.exe` + `.pck` 与导出日志/summary.json，未对 EXE 内嵌版本信息或生成统一的 `build-info.json`；
   - Phase‑17 文档中提到“版本号（git tag）、Build Number（CI run ID）、Commit SHA、Build Timestamp”等元数据由构建脚本注入。
 - 蓝图目标：
   - 为发布产物建立一份统一的版本信息：
@@ -70,7 +70,7 @@
   - Phase‑17 文档中提到使用 PowerShell SignTool 集成实现 Windows 代码签名，但仓库中尚未引入证书/签名脚本。
 - 蓝图目标：
   - 为带签名要求的项目提供一条可配置的签名步骤：
-    - 使用 SignTool 对 `build/Game.exe` （以及安装包，如存在）进行签名；
+    - 使用 SignTool 对 `build/NewRouge.exe` （以及安装包，如存在）进行签名；
     - 通过环境变量提供证书路径/密码，而非硬编码；
     - 在导出 summary 或 Release 说明中记录签名状态。
 - 建议实现方式：
@@ -83,7 +83,7 @@
 ## B5：导出预设与多配置支持
 
 - 现状：
-  - 模板当前主要依赖单一 “Windows Desktop” 导出预设，输出 `build/Game.exe`；
+  - 模板当前主要依赖单一 “Windows Desktop” 导出预设，输出 `build/NewRouge.exe`；
   - Phase‑17 文档中提到 Debug/Release 多配置、带/不带 Demo 的多种导出场景，但尚未在 export_presets.cfg 与脚本中实现完整支持。
 - 蓝图目标：
   - 提供多种导出配置以适应不同场景：

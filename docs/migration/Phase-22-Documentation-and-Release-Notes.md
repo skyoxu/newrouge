@@ -26,7 +26,7 @@
 - 缺少用户手册与运维文档
 - 文档搜索与导航困难
 
-### 新版(godotgame)文档机遇与挑战
+### 新版(newrouge)文档机遇与挑战
 
 **机遇**:
 - Phase 1-21 提供完整的迁移历史追溯
@@ -174,7 +174,7 @@
 ### 2.4 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── docs/
 │   ├── migration/                              # 迁移文档(已存在)
 │   │   ├── MIGRATION_INDEX.md                 # 总索引
@@ -459,17 +459,17 @@ class ReleaseNotesGenerator:
         """
         now = datetime.utcnow().strftime("%Y-%m-%d")
 
-        release_notes = f"""# Release Notes: godotgame v{version}
+        release_notes = f"""# Release Notes: newrouge v{version}
 
 > 发布日期: {now}
-> 项目: LegacyProject → godotgame 迁移
+> 项目: LegacyProject → newrouge 迁移
 > 类型: 完整技术栈替换(LegacyDesktopShell + Legacy2DEngine → Godot 4.5 + C#)
 
 ---
 
 ## 版本摘要
 
-**godotgame v{version}** 是 LegacyProject 项目的完整重写版本,采用 Godot 4.5 游戏引擎 + C# (.NET 8) 技术栈替代原有的 LegacyDesktopShell + Legacy2DEngine 3 + LegacyUIFramework 19 架构。本次迁移历经 22 个阶段,累计 52-80 人天开发工作量,完成了功能对标、性能优化与质量保障。
+**newrouge v{version}** 是 LegacyProject 项目的完整重写版本,采用 Godot 4.5 游戏引擎 + C# (.NET 8) 技术栈替代原有的 LegacyDesktopShell + Legacy2DEngine 3 + LegacyUIFramework 19 架构。本次迁移历经 22 个阶段,累计 52-80 人天开发工作量,完成了功能对标、性能优化与质量保障。
 
 ### 核心成果
 
@@ -509,7 +509,7 @@ class ReleaseNotesGenerator:
 
 ### 核心游戏流程
 
-| 功能模块 | LegacyProject | godotgame | 状态 |
+| 功能模块 | LegacyProject | newrouge | 状态 |
 |---------|---------|-----------|------|
 | 主菜单与设置 | LegacyUIFramework 组件 | Godot Control | [OK] 对标完成 |
 | 游戏场景初始化 | Legacy2DEngine Scene | Godot Scene Tree | [OK] 对标完成 |
@@ -523,7 +523,7 @@ class ReleaseNotesGenerator:
 
 ### UI/UX 一致性
 
-| UI 组件 | LegacyProject | godotgame | 状态 |
+| UI 组件 | LegacyProject | newrouge | 状态 |
 |--------|---------|-----------|------|
 | 主菜单 | LegacyUIFramework 组件 | Godot Control 场景 | [OK] 对标完成 |
 | 设置面板 | 标签页面板 | Godot 面板 UI | [OK] 对标完成 |
@@ -537,7 +537,7 @@ class ReleaseNotesGenerator:
 
 ### 性能指标对比
 
-| 指标 | LegacyProject 基线 | godotgame v{version} | 改进幅度 |
+| 指标 | LegacyProject 基线 | newrouge v{version} | 改进幅度 |
 |-----|--------------|---------------------|---------|
 | **启动时间 P95** | 2.5s | <2.0s | ↓{performance_data['startup_improvement']:.1f}% |
 | **游戏帧时间 P95** | 16.67ms | <14ms | ↓{performance_data['frame_time_improvement']:.1f}% |
@@ -658,9 +658,9 @@ class ReleaseNotesGenerator:
 
 ### 全新安装
 
-1. 从 [GitHub Releases](https://github.com/yourrepo/releases/tag/v{version}) 下载 `godotgame-{version}.exe`
+1. 从 [GitHub Releases](https://github.com/yourrepo/releases/tag/v{version}) 下载 `newrouge-{version}.exe`
 2. 解压到任意目录
-3. 运行 `godotgame-{version}.exe`
+3. 运行 `newrouge-{version}.exe`
 4. 首次启动会自动创建配置文件与数据库
 
 ### 从 LegacyProject 升级
@@ -671,10 +671,10 @@ class ReleaseNotesGenerator:
    NodePkg run export-data
    ```
 
-2. **安装 godotgame**:按照上述"全新安装"步骤
+2. **安装 newrouge**:按照上述"全新安装"步骤
 
 3. **数据导入**(可选):导入 LegacyProject 的游戏进度
-   - 启动 godotgame
+   - 启动 newrouge
    - 进入"设置" → "数据迁移"
    - 选择 LegacyProject 导出的数据文件
    - 点击"导入"
@@ -1259,17 +1259,17 @@ if __name__ == "__main__":
 **模板内容**:
 
 ```markdown
-# Release Notes: godotgame v${VERSION}
+# Release Notes: newrouge v${VERSION}
 
 > 发布日期: ${DATE}
-> 项目: LegacyProject → godotgame 迁移
+> 项目: LegacyProject → newrouge 迁移
 > 类型: ${RELEASE_TYPE}
 
 ---
 
 ## 版本摘要
 
-**godotgame v${VERSION}** 是 LegacyProject 项目的${SUMMARY_DESCRIPTION}。
+**newrouge v${VERSION}** 是 LegacyProject 项目的${SUMMARY_DESCRIPTION}。
 
 ### 核心成果
 
@@ -1295,7 +1295,7 @@ ${FEATURE_DESCRIPTION_2}
 
 ## 功能对标
 
-| 功能模块 | LegacyProject | godotgame | 状态 |
+| 功能模块 | LegacyProject | newrouge | 状态 |
 |---------|---------|-----------|------|
 | ${MODULE_1} | ${OLD_IMPL_1} | ${NEW_IMPL_1} | ${STATUS_1} |
 | ${MODULE_2} | ${OLD_IMPL_2} | ${NEW_IMPL_2} | ${STATUS_2} |
@@ -1304,7 +1304,7 @@ ${FEATURE_DESCRIPTION_2}
 
 ## 性能改进
 
-| 指标 | LegacyProject 基线 | godotgame v${VERSION} | 改进幅度 |
+| 指标 | LegacyProject 基线 | newrouge v${VERSION} | 改进幅度 |
 |-----|--------------|---------------------|---------|
 | **${METRIC_1}** | ${OLD_VALUE_1} | ${NEW_VALUE_1} | ${IMPROVEMENT_1} |
 | **${METRIC_2}** | ${OLD_VALUE_2} | ${NEW_VALUE_2} | ${IMPROVEMENT_2} |

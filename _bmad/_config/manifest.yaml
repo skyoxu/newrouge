@@ -1,0 +1,20 @@
+agentCustomizations:
+  _config\agents\core-bmad-master.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-architect.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-designer.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-dev.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-qa.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-scrum-master.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmgd-game-solo-dev.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-analyst.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-architect.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-dev.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-pm.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-quick-flow-solo-dev.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-sm.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-tea.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-tech-writer.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmm-ux-designer.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmb-agent-builder.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmb-module-builder.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce
+  _config\agents\bmb-workflow-builder.customize.yaml: ac27b5f333e1b8f8397f53b063724e187713fa681b571f42eec00eb58dfd61ce

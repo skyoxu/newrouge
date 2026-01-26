@@ -225,9 +225,9 @@ public partial class SqliteDataStore : Node, ISqlDatabase
         try
         {
             var v = ProjectSettings.GetSetting("application/config/name");
-            return v.VariantType == Variant.Type.Nil ? "GodotGame" : v.AsString();
+            return v.VariantType == Variant.Type.Nil ? "newrouge" : v.AsString();
         }
-        catch { return "GodotGame"; }
+        catch { return "newrouge"; }
     }
 
     private static void EnsureParentDir(string absPath)

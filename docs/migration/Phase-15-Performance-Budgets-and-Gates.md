@@ -16,7 +16,7 @@
 - **LegacyE2ERunner E2E**：性能数据基于浏览器事件，准确性有限
 - **缺乏基准**：无历史对标，难以判断性能劣化
 
-### 新版（godotgame）性能机遇与挑战
+### 新版（newrouge）性能机遇与挑战
 **机遇**：
 - Godot Engine 内置 Profiler，帧时间精确到微秒
 - Headless 模式下无 GUI 开销，性能数据更真实
@@ -61,7 +61,7 @@
 
 ### 2.2 Godot+C# 变体（当前模板实现）
 
-> 本节描述的是 **当前 godotgame 模板已经落地的性能采集与门禁实现**。上面的 KPI 与后文 Game.Core/PerformanceTracker 蓝图视为长期目标，尚未全部在本仓库中实现，对应增强统一收敛到 Phase-15 Backlog。
+> 本节描述的是 **当前 newrouge 模板已经落地的性能采集与门禁实现**。上面的 KPI 与后文 Game.Core/PerformanceTracker 蓝图视为长期目标，尚未全部在本仓库中实现，对应增强统一收敛到 Phase-15 Backlog。
 
 - Autoload 性能采集器：
   - `PerformanceTracker="res://Game.Godot/Scripts/Perf/PerformanceTracker.cs"` 已在 `project.godot` 配置为 Autoload；
@@ -135,7 +135,7 @@
 ### 3.2 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── src/
 │   ├── Game.Core/
 │   │   └── Performance/
@@ -840,7 +840,7 @@ jobs:
 
 ## 附录 A：性能指标对标表
 
-| 指标 | LegacyProject（LegacyDesktopShell） | godotgame（Godot） | 对标情况 |
+| 指标 | LegacyProject（LegacyDesktopShell） | newrouge（Godot） | 对标情况 |
 |-----|-------------------|------------------|---------|
 | 启动时间 | ~2.5-3.0s | ≤3.0s | [OK] 持平 |
 | 菜单 FPS | 60fps (16.67ms) | ≤14ms P95 | [OK] 改进 |

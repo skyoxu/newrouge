@@ -24,7 +24,7 @@
 - 无主动监控告警
 - 版本回滚链不清晰（用户可能回滚到更旧的有问题版本）
 
-### 新版（godotgame）回滚机遇与挑战
+### 新版（newrouge）回滚机遇与挑战
 
 **机遇**：
 - Phase 16 提供 Release Health API（实时 Crash-Free Sessions 查询）
@@ -56,12 +56,12 @@
 
 ### 2.0 Godot+C# 变体（当前模板状态）
 
-> 本节描述的是 **当前 godotgame 模板在“回滚与监控”方面的实际能力**。上文中的自动化回滚流程（Sentry Release Health 轮询、标记 revoked、ReleaseManager.cs 等）仍处于蓝图阶段，对应工作统一收敛到 Phase-19 Backlog。
+> 本节描述的是 **当前 newrouge 模板在“回滚与监控”方面的实际能力**。上文中的自动化回滚流程（Sentry Release Health 轮询、标记 revoked、ReleaseManager.cs 等）仍处于蓝图阶段，对应工作统一收敛到 Phase-19 Backlog。
 
 - 现有能力：
   - 质量门禁与导出：
     - 通过 `scripts/ci/quality_gate.ps1` + `scripts/python/quality_gates.py` 跑 dotnet/GdUnit4/selfcheck/encoding，以及可选的导出与 EXE 冒烟（见 Phase‑17）。
-    - `scripts/ci/export_windows.ps1` + `scripts/ci/smoke_exe.ps1` 已可在本地/CI 中产出并基本验证 `build/Game.exe`。
+    - `scripts/ci/export_windows.ps1` + `scripts/ci/smoke_exe.ps1` 已可在本地/CI 中产出并基本验证 `build/NewRouge.exe`。
   - 发布工作流：
     - `.github/workflows/windows-release.yml` 提供手动触发的 Windows Release 流程：下载 Godot、导出 EXE、上传构建产物为 Artifact；
     - Release Notes 可通过 `scripts/ci/generate_release_notes.ps1` + `docs/release/RELEASE_NOTES_TEMPLATE.md` 脚手架生成。
@@ -185,7 +185,7 @@ IF v1.5.0 is revoked:
 ### 2.5 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── src/
 │   ├── Game.Core/
 │   │   └── Release/
@@ -455,7 +455,7 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release to monitor (e.g., godotgame@1.0.0)'
+        description: 'Release to monitor (e.g., newrouge@1.0.0)'
         required: false
       environment:
         description: 'Environment'
@@ -485,7 +485,7 @@ jobs:
         id: health
         run: |
           python scripts/monitor_release_health.py \
-            --release "${{ github.event.inputs.release_version || 'godotgame@latest' }}" \
+            --release "${{ github.event.inputs.release_version || 'newrouge@latest' }}" \
             --environment "${{ github.event.inputs.environment || 'production' }}" \
             --output health-report.json
 
@@ -873,7 +873,7 @@ public partial class ExampleTest
 ```bash
 # 1. 本地模拟回滚检查
 python scripts/monitor_release_health.py \
-  --release godotgame@1.0.0 \
+  --release newrouge@1.0.0 \
   --environment production \
   --simulate-crash-drop
 
@@ -886,13 +886,13 @@ python scripts/monitor_release_health.py \
 # 3. 检查回滚安全性
 python scripts/trigger_rollback.py \
   --analyze \
-  --release godotgame@1.0.0 \
-  --candidate godotgame@0.9.5
+  --release newrouge@1.0.0 \
+  --candidate newrouge@0.9.5
 
 # 4. 执行回滚（本地模拟）
 python scripts/trigger_rollback.py \
   --revoke \
-  --release godotgame@1.0.0 \
+  --release newrouge@1.0.0 \
   --dry-run
 ```
 

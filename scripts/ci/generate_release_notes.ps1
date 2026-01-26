@@ -27,8 +27,8 @@ $lines += "## Known Issues"
 $lines += "- ..."
 $lines += ""
 $lines += "## Artifacts"
-$lines += "- EXE: build/Game.exe"
-$lines += "- Logs: logs/ci/YYYYMMDD-HHMMSS/**"
+$lines += "- EXE: build/NewRouge.exe"
+$lines += "- Logs: logs/ci/<YYYY-MM-DD>/**"
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
 Set-Content -Path $Output -Encoding UTF8 -Value $lines

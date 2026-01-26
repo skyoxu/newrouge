@@ -22,7 +22,7 @@ last_generated: 2025-12-16
 
 - 导出依赖：安装 Godot Export Templates（Windows Desktop）。
 - 导出产物：
-  - `build/Game.exe`（以及可选的 `build/Game.pck`）
+  - `build/NewRouge.exe`（以及可选的 `build/Game.pck`）
 - 推荐入口：
   - 手动导出：`docs/release/WINDOWS_MANUAL_RELEASE.md`
   - 脚本导出：`scripts/ci/export_windows.ps1`

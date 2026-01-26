@@ -1,4 +1,4 @@
-﻿name: Windows Export Slim
+name: Windows Export Slim
 
 on:
   workflow_dispatch: {}
@@ -104,15 +104,15 @@ jobs:
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
           & "$env:GODOT_BIN" --headless --path . --quit
           & "$env:GODOT_BIN" --headless --path . --build-solutions --verbose --quit
-          dotnet restore GodotGame.csproj
-          dotnet build GodotGame.csproj -c Release -v minimal
+          dotnet restore NewRouge.csproj
+          dotnet build NewRouge.csproj -c Release -v minimal
 
       - name: Export Windows EXE
         if: always()
         shell: pwsh
         run: |
           $env:Path = "$HOME\.dotnet;" + $env:Path
-          ./scripts/ci/export_windows.ps1 -GodotBin "$env:GODOT_BIN" -Preset "Windows Desktop" -Output build/Game.exe
+          ./scripts/ci/export_windows.ps1 -GodotBin "$env:GODOT_BIN" -Preset "Windows Desktop" -Output build/NewRouge.exe
 
 
       - name: Print export log tail (always)
@@ -138,7 +138,7 @@ jobs:
         with:
           name: windows-export-slim
           path: |
-            build/Game.exe
+            build/NewRouge.exe
             logs/ci/**
 
 

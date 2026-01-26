@@ -16,7 +16,7 @@ public partial class EventBusAdapter : Node, IEventBus
     private readonly List<Func<DomainEvent, Task>> _handlers = new();
     private readonly object _gate = new();
 
-    public Task PublishAsync(DomainEvent evt)
+    public async Task PublishAsync(DomainEvent evt)
     {
         // Emit Godot signal for scene-level listeners
         var dataJson = evt.Data is string s ? (string.IsNullOrWhiteSpace(s) ? "{}" : s)
@@ -26,13 +26,22 @@ public partial class EventBusAdapter : Node, IEventBus
         // Notify in-process subscribers
         List<Func<DomainEvent, Task>> snapshot;
         lock (_gate) snapshot = _handlers.ToList();
-        return Task.WhenAll(snapshot.Select(h => SafeInvoke(h, evt)));
+
+        // Determinism-first: invoke handlers in a stable order and do not swallow exceptions silently.
+        // A handler failure must not crash the bus, but it must be logged for debugging/auditability.
+        foreach (var handler in snapshot)
+            await SafeInvoke(handler, evt);
     }
 
     private static async Task SafeInvoke(Func<DomainEvent, Task> h, DomainEvent evt)
     {
         try { await h(evt); }
-        catch { /* ignore to keep bus stable */ }
+        catch (Exception ex)
+        {
+            var id = string.IsNullOrWhiteSpace(evt.Id) ? "<missing-id>" : evt.Id;
+            var type = string.IsNullOrWhiteSpace(evt.Type) ? "<missing-type>" : evt.Type;
+            GD.PushWarning($"[EventBus] handler failed (type={type}, id={id}): {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     public IDisposable Subscribe(Func<DomainEvent, Task> handler)

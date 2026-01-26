@@ -27,7 +27,11 @@ public partial class SecurityAudit : Node
             var info = new
             {
                 ts = DateTime.UtcNow.ToString("O"),
-                event_type = "SECURITY_BASELINE",
+                area = "security",
+                action = "security.baseline",
+                reason = "startup",
+                target = "security.baseline",
+                caller = "SecurityAudit._Ready",
                 app = GetAppNameSafe(),
                 godot = Engine.GetVersionInfo()["string"].ToString(),
                 db_backend = System.Environment.GetEnvironmentVariable("GODOT_DB_BACKEND") ?? "default",
@@ -51,9 +55,9 @@ public partial class SecurityAudit : Node
         try
         {
             var v = ProjectSettings.GetSetting("application/config/name");
-            return v.VariantType == Variant.Type.Nil ? "GodotGame" : v.AsString();
+            return v.VariantType == Variant.Type.Nil ? "newrouge" : v.AsString();
         }
-        catch { return "GodotGame"; }
+        catch { return "newrouge"; }
     }
 }
 

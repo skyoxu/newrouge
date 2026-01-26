@@ -71,7 +71,7 @@ py -3 scripts/sc/acceptance_check.py --task-id 10 --perf-p95-ms 20
 
 ### 5.6 `build`（硬门禁）
 
-- 运行：`py -3 scripts/sc/build.py GodotGame.csproj --type dev`
+- 运行：`py -3 scripts/sc/build.py NewRouge.csproj --type dev`
 - 以 `-warnaserror` 方式构建，确保编译告警不被忽略
 
 ### 5.7 `security`（软门禁）

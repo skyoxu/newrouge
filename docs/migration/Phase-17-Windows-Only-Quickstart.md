@@ -11,14 +11,14 @@
   - `"$env:GODOT_BIN" --path . --scene "res://Game.Godot/Scenes/Main.tscn"`
 
 ## 2) 导出 Windows 可执行
-- 预设：`export_presets.cfg` 已包含 “Windows Desktop”，输出 `build/Game.exe`
+- 预设：`export_presets.cfg` 已包含 “Windows Desktop”，输出 `build/NewRouge.exe`
 - 命令：
   - `./scripts/ci/export_windows.ps1 -GodotBin "$env:GODOT_BIN" -Output build\Game.exe`
 - 模板：需在 Godot Editor 安装 Windows Export Templates（Editor → Export → Manage Export Templates）
 
 ## 3) CI（GitHub Actions / Windows）
 - 工作流：`.github/workflows/windows-ci.yml`
-- 步骤概览：安装 .NET → 下载 Godot .NET → 运行 GdUnit4 → 导出 .exe → 上传 `build/Game.exe` 与 `logs/ci/**`
+- 步骤概览：安装 .NET → 下载 Godot .NET → 运行 GdUnit4 → 导出 .exe → 上传 `build/NewRouge.exe` 与 `logs/ci/**`
 - 轻量导出流（可选）：`.github/workflows/windows-export-slim.yml`
 
 ## 4) 路径与注意事项

@@ -9,13 +9,13 @@
 
 ## 目标
 
-将 LegacyProject 的 better-sqlite3 数据库迁移到 godotgame 的 godot-sqlite，建立类型安全的仓储层和迁移系统。
+将 LegacyProject 的 better-sqlite3 数据库迁移到 newrouge 的 godot-sqlite，建立类型安全的仓储层和迁移系统。
 
 ---
 
 ## 技术栈对比
 
-| 功能 | LegacyProject (Node.js) | godotgame (Godot) |
+| 功能 | LegacyProject (Node.js) | newrouge (Godot) |
 |-----|-------------------|------------------|
 | 库 | better-sqlite3 | godot-sqlite (GDNative) |
 | 初始化 | `new Database('game.db')` | `SQLite.new() + open_db()` |
@@ -69,7 +69,7 @@ CREATE TABLE schema_version (
 );
 ```
 
-### 目标 Schema (godotgame)
+### 目标 Schema (newrouge)
 
 保持相同结构，但添加：
 

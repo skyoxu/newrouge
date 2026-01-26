@@ -81,7 +81,7 @@ if __name__ == '__main__':
 运行示例（Windows）：
 
 ```
-py -3 scripts/install_gut.py C:\buildgame\godotgame
+py -3 scripts/install_gut.py C:\buildgame\newrouge
 ```
 
 ### 11.2.2 项目配置
@@ -292,7 +292,7 @@ public class GodotTimeAdapterTests
 
 ```powershell
 param(
-    [string]$ProjectRoot = "C:\buildgame\godotgame",
+    [string]$ProjectRoot = "C:\buildgame\newrouge",
     [switch]$Headless = $true,
     [string]$TestFilter = ""
 )
@@ -339,7 +339,7 @@ exit $lastExitCode
 
 ```powershell
 param(
-    [string]$ProjectRoot = "C:\buildgame\godotgame",
+    [string]$ProjectRoot = "C:\buildgame\newrouge",
     [string]$Configuration = "Debug"
 )
 

@@ -33,7 +33,7 @@ supersedes: []
 
 ## Context
 
-本模板的运行时代码从 LegacyProject（LegacyDesktopShell + LegacyUIFramework + SQLite + Node 脚本）迁移到 godotgame（Godot 4.5 + C#）。原有 ADR‑0006 主要描述了 Node 侧 SQLite+WAL 策略，与当前 Godot 变体的实现存在以下差异：
+本模板的运行时代码从 LegacyProject（LegacyDesktopShell + LegacyUIFramework + SQLite + Node 脚本）迁移到 newrouge（Godot 4.5 + C#）。原有 ADR‑0006 主要描述了 Node 侧 SQLite+WAL 策略，与当前 Godot 变体的实现存在以下差异：
 
 - **平台差异**：现为 Windows-only，运行在 Godot 4.5 .NET runtime 上，不再依赖 Node/LegacyDesktopShell 环境。
 - **后端差异**：DB 访问通过 C# 适配器（`SqliteDataStore` + 具体仓储），测试中统一使用 `Microsoft.Data.Sqlite` 作为 managed provider；godot-sqlite 作为可选 GDExtension，而不是唯一实现。

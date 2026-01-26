@@ -19,7 +19,7 @@
 # scripts/install-gdunit4.ps1
 
 param(
-    [string]$ProjectRoot = "C:\buildgame\godotgame"
+    [string]$ProjectRoot = "C:\buildgame\newrouge"
 )
 
 Write-Host "安装 GdUnit4..." -ForegroundColor Green
@@ -892,7 +892,7 @@ Game.Godot/Tests/
 
 ```powershell
 param(
-    [string]$ProjectRoot = "C:\buildgame\godotgame",
+    [string]$ProjectRoot = "C:\buildgame\newrouge",
     [switch]$OpenReport = $false,
     [string]$TestFilter = "*",
     [switch]$Headless = $false

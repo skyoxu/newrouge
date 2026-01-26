@@ -64,7 +64,7 @@ def extract_tokens_from_prd_name(name: str) -> List[str]:
     # split by '-' and ignore very short/common tokens
     raw_tokens = stem.replace("_", "-").split("-")
     tokens: List[str] = []
-    stop = {"and", "the", "for", "with", "godot", "csharp", "newguild", "vitegame"}
+    stop = {"and", "the", "for", "with", "godot", "csharp", "newrouge"}
     for tok in raw_tokens:
         tok = tok.strip().lower()
         if not tok:

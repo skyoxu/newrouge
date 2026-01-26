@@ -9,7 +9,7 @@
 
 ## 目标
 
-将 LegacyProject 的 CloudEvents 事件系统迁移到 godotgame 的 Godot Signals，建立类型安全的信号架构与跨场景通信模式。
+将 LegacyProject 的 CloudEvents 事件系统迁移到 newrouge 的 Godot Signals，建立类型安全的信号架构与跨场景通信模式。
 
 ---
 
@@ -96,7 +96,7 @@
 
 
 
-| 功能 | LegacyProject (CloudEvents) | godotgame (Godot Signals) |
+| 功能 | LegacyProject (CloudEvents) | newrouge (Godot Signals) |
 |-----|----------------------|--------------------------|
 | 事件定义 | TypeScript 接口 + CloudEvent<T> | C# [Signal] delegate |
 | 事件发射 | eventBus.publish() | EmitSignal() |
@@ -414,7 +414,7 @@ eventBus.subscribe('app.game.coin.collected', (event) => {
 });
 ```
 
-**Godot Signals (godotgame)**:
+**Godot Signals (newrouge)**:
 
 ```csharp
 // Game.Godot/Scripts/Coin.cs
@@ -503,7 +503,7 @@ eventBus.publish(createEnemyDefeatedEvent({
 }));
 ```
 
-**Godot Signals (godotgame)**:
+**Godot Signals (newrouge)**:
 
 ```csharp
 // Game.Godot/Scripts/EnemyRewards.cs
@@ -618,7 +618,7 @@ globalEventBus.subscribe('app.game.state.changed', (event) => {
 });
 ```
 
-**Godot EventBus Autoload (godotgame)**:
+**Godot EventBus Autoload (newrouge)**:
 
 ```csharp
 // Game.Godot/Autoloads/EventBus.cs

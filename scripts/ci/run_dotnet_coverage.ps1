@@ -21,8 +21,9 @@ Write-Host "dotnet test (coverage) finished with exit code $exitCode"
 $reports = Get-ChildItem -Recurse -Filter "coverage.$Format.xml" -ErrorAction SilentlyContinue
 if (-not $reports) { $reports = Get-ChildItem -Recurse -Filter "coverage.$Format*" -ErrorAction SilentlyContinue }
 if ($reports) {
+  $day = Get-Date -Format 'yyyy-MM-dd'
   $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $dest = Join-Path $PSScriptRoot ("../../logs/ci/$ts/dotnet-coverage")
+  $dest = Join-Path $PSScriptRoot ("../../logs/ci/$day/dotnet-coverage/$ts")
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   foreach($r in $reports){ Copy-Item $r.FullName $dest -Force }
   Write-Host "Coverage reports copied to $dest"

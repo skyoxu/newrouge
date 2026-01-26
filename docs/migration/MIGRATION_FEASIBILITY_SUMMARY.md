@@ -12,7 +12,7 @@
 
 ### 整体评估
 
-【通过】LegacyProject → godotgame 技术栈迁移在架构、代码、工具、测试等全维度通过可行性验证
+【通过】LegacyProject → newrouge 技术栈迁移在架构、代码、工具、测试等全维度通过可行性验证
 
 **关键指标**:
 
@@ -243,7 +243,7 @@ Week 12:   完整功能迁移 + 性能达标
 
 ### 完整性验证
 
-| 功能模块 | LegacyProject (原) | godotgame (新) | 迁移状态 | 验证 |
+| 功能模块 | LegacyProject (原) | newrouge (新) | 迁移状态 | 验证 |
 |---------|-------------|------------|--------|------|
 | 菜单 UI | LegacyUIFramework + Tailwind | Godot Control | 迁移中 | 等功能 |
 | 游戏场景 | Legacy2DEngine 3 | Godot Scene Tree | 等待中 | 等功能 |
@@ -473,7 +473,7 @@ Start → Phase 1-3 (环境)
 ---
 
 > **最终结论**  
-> LegacyProject → godotgame 技术栈迁移已在架构、代码、工具、测试等全维度通过可行性验证。  
+> LegacyProject → newrouge 技术栈迁移已在架构、代码、工具、测试等全维度通过可行性验证。  
 > Phase 1-12 文档与代码示例可作为实施参考；Phase 13-14 已生产就绪。  
 > **推荐立即启动迁移，预期 70-90 天完成全部工作。**
 

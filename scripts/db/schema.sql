@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
     description TEXT
 );
 
--- Extensions in godotgame
+-- Extensions in newrouge
 CREATE TABLE IF NOT EXISTS achievements (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

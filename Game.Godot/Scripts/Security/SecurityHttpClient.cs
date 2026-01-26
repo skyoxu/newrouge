@@ -66,13 +66,32 @@ public partial class SecurityHttpClient : Node
     {
         try
         {
-            var entry = new { ts = DateTime.UtcNow.ToString("O"), event_type = eventType, url = resource, reason, source = nameof(SecurityHttpClient) };
+            var action = string.Equals(eventType, "HTTP_ALLOWED", StringComparison.OrdinalIgnoreCase)
+                ? "security.http.allowed"
+                : "security.http.blocked";
+
+            var entry = new
+            {
+                ts = DateTime.UtcNow.ToString("O"),
+                area = "security",
+                action,
+                reason = eventType,
+                target = resource,
+                caller = $"{nameof(SecurityHttpClient)}.{nameof(Validate)}",
+                url = resource,
+                detail = reason,
+                source = nameof(SecurityHttpClient),
+            };
+
             var line = JsonSerializer.Serialize(entry) + System.Environment.NewLine;
             var dir = ProjectSettings.GlobalizePath("user://logs/security");
             Directory.CreateDirectory(dir);
-            File.AppendAllText(System.IO.Path.Combine(dir, "audit-http.jsonl"), line);
+            File.AppendAllText(System.IO.Path.Combine(dir, "security-audit.jsonl"), line);
         }
-        catch { /* ignore audit failures */ }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"[SecurityHttpClient] audit write failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 }
 

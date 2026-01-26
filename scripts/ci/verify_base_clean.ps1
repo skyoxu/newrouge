@@ -7,8 +7,9 @@ $ErrorActionPreference = 'Stop'
 function Ensure-Dir([string]$p){ if(-not (Test-Path $p)){ New-Item -ItemType Directory -Force -Path $p | Out-Null } }
 
 $root = (Resolve-Path $RepoRoot).Path
+$day = Get-Date -Format 'yyyy-MM-dd'
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$logDir = Join-Path $root ("logs/ci/$ts/base-clean")
+$logDir = Join-Path $root ("logs/ci/$day/base-clean/$ts")
 Ensure-Dir $logDir
 $report = Join-Path $logDir 'summary.json'
 

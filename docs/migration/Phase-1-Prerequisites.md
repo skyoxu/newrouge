@@ -291,7 +291,7 @@ LegacyProject/                      # 保持现有结构不变
 │   │   └── ...
 │   └── adr/                   # 将新增 ADR-0018~0022
 │
-godotgame/                     # 新建：Godot 项目根目录
+newrouge/                     # 新建：Godot 项目根目录
 ├── project.godot              # Godot 项目配置
 ├── Game.Core/                 # C# 纯逻辑库
 │   ├── Game.Core.csproj
@@ -311,10 +311,10 @@ godotgame/                     # 新建：Godot 项目根目录
 
 **执行步骤**:
 ```powershell
-# 在 LegacyProject 同级创建 godotgame
+# 在 LegacyProject 同级创建 newrouge
 cd C:\buildgame
-mkdir godotgame
-cd godotgame
+mkdir newrouge
+cd newrouge
 
 # 初始化 Git（暂不关联远程仓库）
 git init
@@ -478,7 +478,7 @@ git config --global i18n.logoutputencoding utf-8
 - [ ] dotnet test 可运行 xUnit 测试
 - [ ] Godot Export Templates 可导出 Windows .exe
 - [ ] Git 分支 `migration/godot-csharp` 已创建
-- [ ] 目录结构 `godotgame/` 已初始化
+- [ ] 目录结构 `newrouge/` 已初始化
 
 ---
 

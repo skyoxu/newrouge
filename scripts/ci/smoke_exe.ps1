@@ -10,8 +10,9 @@ if (-not (Test-Path $ExePath)) {
   Write-Error "Executable not found: $ExePath"
 }
 
+$day = Get-Date -Format 'yyyy-MM-dd'
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$dest = Join-Path $PSScriptRoot ("../../logs/ci/$ts/smoke")
+$dest = Join-Path $PSScriptRoot ("../../logs/ci/$day/smoke/$ts")
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $log = Join-Path $dest 'exe.log'
 $logOut = Join-Path $dest 'exe.out.log'

@@ -22,8 +22,9 @@ Write-Host "dotnet test finished with exit code $exitCode"
 if ($CollectTrx) {
   $trx = Get-ChildItem -Recurse -Filter TestResults.trx -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($trx) {
+    $day = Get-Date -Format 'yyyy-MM-dd'
     $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $dest = Join-Path $PSScriptRoot ("../../logs/ci/$ts/dotnet-tests")
+    $dest = Join-Path $PSScriptRoot ("../../logs/ci/$day/dotnet-tests/$ts")
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
     Copy-Item $trx.FullName $dest -Force
     Write-Host "TRX copied to $dest"

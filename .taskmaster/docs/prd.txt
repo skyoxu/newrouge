@@ -1,0 +1,273 @@
+NewRouge v1 - Taskmaster PRD Input (Derived)
+
+Owner: skyo
+Last Updated: 2026-01-25
+Encoding: UTF-8
+
+IMPORTANT
+1) This file is a DERIVED INPUT for Taskmaster. It is not the SSoT.
+2) Canonical SSoT lives in docs/** (PRD/GDD/ADR/Overlay) and project-context.md.
+3) If any conflicts exist, follow:
+   - ADRs under docs/adr/ (Accepted > Proposed)
+   - docs/prd/SSOT-LOCKS-NEWROUGE-V1.md (v1 hard locks)
+   - docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md (M1 acceptance anchor)
+
+SSoT References (do not rebuild into tasks; use as validation anchors)
+- PRD: docs/prd/PRD-NEWROUGE-GAME-0001.md
+- GDD: docs/gdd/GDD-NEWROUGE-V1.md
+- v1 Locks: docs/prd/SSOT-LOCKS-NEWROUGE-V1.md
+- M1 Overlay Index: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md
+- M1 Acceptance Checklist: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md
+- ADR-0032 (Save/Resume determinism): docs/adr/ADR-0032-save-resume-determinism.md (Status: Proposed; treated as design target for M1)
+- ADR-0033 (Card identity/forms): docs/adr/ADR-0033-card-identity-and-forms.md (Status: Accepted)
+- Content ID standard: _bmad-output/content-id-standard.md
+- Content registry (SSoT): _bmad-output/content-registry.md
+- Card IDs: docs/prd/CARD-ID-CATALOG-NEWROUGE-V1.md
+- Relic IDs: docs/prd/RELIC-ID-CATALOG-NEWROUGE-V1.md
+
+Project Summary
+- Game: single-player card-building roguelike (run-based), 3 Acts branching map
+- Session length: ~60 minutes per run (target)
+- Platform: Windows-only, Godot 4.5.1 .NET locked
+- Core promise: allow quit/resume but no "quit-retry to reroll outcomes"
+
+Design Gates (SSoT in docs; summarized here to prevent task drift)
+- Design Gate 01 (Combat Loop Spec) v0 hard rules:
+  - Turn phases: StartOfTurn -> Draw -> Main -> EndOfTurn
+  - Default draw: 4 per turn; first turn also draws 4 (no special bonus draw rule)
+  - Energy: resets to 3 at start of each turn unless modified by effects; max_energy hard cap = 99 (avoid overflow)
+  - EndOfTurn order: EndOfTurn.Triggers -> Discard non-retained -> Cleanup
+    - Effects on retained cards that happen "at end of turn / before next turn" execute in EndOfTurn.Triggers (must not advance RNG)
+  - Exhaust pile exists in M1; cards with exhaust flag go to exhaust; retrieval only via explicit card/relic effects
+  - Enemy AI is deterministic; UI intent/hover does not advance RNG
+  - Mid-combat quit/resume restores combat initial state (no mid-state saves, no re-draw/re-shuffle)
+  - Safety valve: if target becomes invalid at release time, cancel play (return to hand, no energy spent, no discard/exhaust)
+  - Combat end cleanup uses a whitelist: preserve relic passives, run modifiers, map effects, permanent card instance modifiers; clear other combat-only statuses (rage clears)
+  - Stability fuse: if cards played in a single turn reaches 100, force end the player turn and execute normal EndOfTurn sequence (stability only, not a balance lever)
+  - M1 must demonstrate: darkness cost HP loss + gain curse; retained-card cost modifier relic/rule; permanent card instance modification event (inherited across upgrades/forms)
+
+- Design Gate 02 (Card Model Spec) v0 hard rules:
+  - Save unit is card instance with instance_id; multiple instances may share the same card_id
+  - Four forms live under one card_id definition (Base/U1A/U1B/Ultimate); display name stays the same; text changes by form (ADR-0033)
+  - Upgrade state stored as upgrade_tier (0|1|2) + upgrade_route (null|a|b); form is derived
+  - Rarity enums: Common / Uncommon / Rare / Epic
+  - Permanent card instance modifiers: single-run "one-time modification" (consumed on confirm), then that instance is no longer eligible for further modification
+  - Modifier whitelist v0: cost_delta, exhaust_flag, add_status_on_play (self OR enemy), targeting_override(single->all, strict whitelist), innate
+  - Ultimate default: exhaust=true (can be overridden by instance exhaust_flag)
+  - Hand cap is always 10 and cannot be changed by any effect
+  - Innate: appears in hand at each combat first turn (can exceed draw=4 but respects hand cap); overflow is resolved by instance_id ascending
+  - OverplayTax (difficulty>=10): once per turn when cards played exceeds N=12, apply cost+1 and cost floor=1 for rest of turn INCLUDING the triggering (N+1th) card (affects future draws/generations; not dispellable; expires end of turn)
+
+- Design Gate 03 (Resolution Pipeline Spec) v0 hard rules:
+  - PlayCard pipeline: Validate -> ComputeCost -> PayCost -> BeforePlayTriggers -> ResolveEffect -> AfterPlayTriggers -> MoveCard -> DeathCheck
+  - Target invalid safety valve happens at Validate: cancel play (return to hand, no cost paid, no card-play count increment, no discard/exhaust)
+  - Card-play count increments immediately after PayCost; includes auto-play/duplicate plays (prevents OverplayTax bypass)
+  - AOE resolves targets by combatant_id ascending (stable, no screen position/random ordering)
+  - Multi-hit resolves per hit with DeathCheck; if target dies mid-sequence, remaining hits are canceled (no retarget)
+  - Trigger ordering at same timing: player-side first (relic_id -> status_id -> instance_id, stable_id lexicographic), then enemy-side (combatant_id ascending, stable_id lexicographic)
+  - OverplayTax timing: activates before ComputeCost of the (N+1th) play, so the triggering card is also taxed
+  - Stability fuse: when cards played in a single turn reaches 100, finish resolving the current card then force end the player turn (cannot be prevented/delayed)
+  - Victory -> reward generation/lock -> autosave -> reward UI (prevents quit-retry reroll)
+
+- Design Gate 04 (Status & Modifier Spec) v0 hard rules:
+  - Status categories: Buff / Debuff / RuleModifier (RuleModifier is not dispellable)
+  - Minimal fields for replay/debug: status_id, stacks, duration_turns (nullable), source_id, expires_timing (owner_end_of_turn_cleanup)
+  - Stacking is per-status table (default rules must be defined); all statuses have a cap
+  - Duration decay happens at the status owner's EndOfTurn.Cleanup; natural expiry is NOT dispel
+  - Dispel rules: only Debuff can be dispelled; Strength is never dispellable even if negative
+  - status.weak: attacker damage multiplier = 75% (floor 50%); duration stacks by addition (duration += N)
+  - status.vulnerable: target damage multiplier = 150% (cap 200%); duration stacks by addition (duration += N)
+  - status.strength: each point adds +3 damage; stacks may be negative; if negative it recovers by +1 at each owner EndOfTurn.Cleanup; positive strength offsets negative by addition
+  - status.bloodbeat (RuleModifier): after each PayCost (card play), deal fixed 1 damage to player (blockable; not modified by Strength/Weak); combat-only; not stackable
+
+- Design Gate 05 (Offer/Shop/Event Determinism Spec) v0 hard rules:
+  - Offer locking uses a unified snapshot structure: stable_ids[] + display_order[] + provenance + rng_stream + locked_at_save_point
+  - stable_ids[] stores content stable IDs (card.*, relic.*, event.*), never translation keys
+  - display_order[] is locked (same set AND same order on quit/resume)
+  - provenance minimum: source_type, source_id, act, floor, node_id, difficulty, rng_stream, stream_pos
+  - Save points:
+    - Reward: generate+lock offers, then autosave BEFORE showing reward UI
+    - Shop: lock inventory+prices and write run state on shop entry
+    - Event: lock options and write run state on event entry; any choice including skip/leave is written immediately
+  - UI must not advance RNG (hover, inspect, paging, sorting, open/close panels, switching upgrade routes inside event)
+  - RNG streams are split per system (run/combat/event/loot/shop/offer at minimum) and recorded in snapshots
+  - Skip does not advance RNG; snapshot is retained for audit/replay; skip is persisted immediately but does not provide a "go back and pick" player affordance
+  - Resume anchors:
+    - Reward autosave -> resume returns to reward screen with same snapshot
+    - Shop -> resume returns to shop with consistent stock/prices/gold/purchased flags
+    - Event -> if crashed during result display, resume enters the post-choice result state
+  - If snapshot data missing/invalid -> block Continue with a clear prompt and next-step action
+
+- Design Gate 06 (Enemy Intent & AI Determinism Spec) v0 hard rules:
+  - Enemy intent is generated and locked at enemy turn start (visible to player) and must not change until enemy actions resolve
+  - Intent is persisted into run state (or at minimum combat rng_stream + stream_pos is persisted to replay intent consistently)
+  - Multi-enemy action order is combatant_id ascending (stable)
+  - Randomness is allowed but must come from combat RNG stream and be fixed at lock time
+  - Action selection may use weighted/ruled choice (RNG allowed) but is fixed once locked
+  - UI intent inspection/hover/details must not advance RNG
+  - Intent does not automatically recompute from player actions unless an explicit "rewrite intent" effect exists (must be persisted for replay)
+  - M1 should demonstrate at least one enemy with clear intent text and effect range (explainability)
+
+- Design Gate 07 (Run State Schema & Migration Gate) v0 hard rules:
+  - Run save includes schema_version (int) and increments on any structural change
+  - v1 strategy: no automatic migration; incompatible versions or migration failures block Continue with clear prompt
+  - Validation failures (missing/invalid fields, hash mismatch) block Continue and provide a "New Run overwrite confirmation" path
+  - Audit log JSONL minimum fields: ts, action, reason, target, caller, run_id, schema_version (written under logs/**)
+  - Locked snapshots (offer/shop/event/intent) include snapshot_id (stable string) for audit/reference
+  - Run state includes run_id and seed (internal; not required to expose to player)
+  - Continue overwrite confirmation is a modal with default focus Cancel (no text entry required)
+  - Save points are modeled as save_point_id values (e.g., node_pre_enter, combat_start, reward_open, shop_enter, event_enter, event_choice_committed)
+
+M1 Scope (Warrior Vertical Slice Only)
+Goal: deliver the smallest playable loop that can be verified, logged, and used to drive future tasks.
+
+Included
+1) MainMenu flow:
+   - New Run overwrite confirmation (default focus is Cancel)
+   - Select difficulty (numbers-only emphasis; not hard-bound to talent tree)
+   - Select character: Warrior
+2) Act 1 minimal map flow:
+   - Node types must exist and be reachable: Combat, Event, Shop, Rest
+3) Rewards:
+   - At least one post-combat "choose 1 of 3 cards" reward screen
+   - Reward screen appearance writes autosave
+   - Skipping reward is allowed and must not reroll or advance RNG
+4) Rest upgrade:
+   - Upgrade is one of multiple Rest options
+   - If upgrade chosen: free upgrade 1 card
+   - U1 upgrade must choose Route A or Route B (irreversible)
+5) Shop:
+   - Shop must not provide upgrades at any time
+   - Shop UI/copy must not imply upgrades exist
+   - Shop stock and prices are locked on entry; quit/continue must not refresh shop inventory
+   - Each shop card/relic is a single stock item and cannot be purchased repeatedly; quit/continue restores the entry stock + purchased flags
+6) Quit/Resume determinism verification (minimum):
+   - On reward screen: quit -> continue -> the same 3 offers in the same order
+   - In combat: quit -> continue -> returns to combat initial state (no mid-combat checkpoint)
+7) Event (dark cost):
+   - At least one event includes non-gold "dark cost" choices and clearly explained results
+   - M1 must demonstrate two cost types: HP loss and gaining a curse card
+   - Event choice must be persisted immediately into run state (no quit-retry to reroll branches/results)
+
+Excluded (M1)
+- Full 3 Acts
+- Full content counts (40 events, 20 relics, 30 cards per hero)
+- Full 10 difficulty curve
+- Full shared talent tree content (a minimal placeholder is allowed but must not mislead)
+
+Hard Rules (v1)
+1) Card identity and forms (ADR-0033, Accepted)
+   - card_id is stable and does NOT change across forms
+   - Forms: Base, U1.RouteA, U1.RouteB, Ultimate
+   - Form change keeps instance-attached modifiers (from events/relics/etc.)
+   - Reward may drop an already-upgraded (U1) card; the route (A/B) is selected by loot RNG and MUST be clearly labeled in UI
+   - Route naming is not required; route identification must be conveyed without relying on route names
+2) Upgrades (v1)
+   - Upgrades only happen at Rest or special events
+   - Shop never upgrades
+   - U1 is a binary route choice, irreversible
+   - Special events may allow route switching for already-upgraded cards; unlimited switching inside the event; confirm on leaving the event
+   - Ultimate is rare (epic event/boss etc.), irreversible, cannot switch routes, overrides U1 form ability but keeps instance modifiers
+3) Localization
+   - All visible UI text must be sourced from Game.Godot/Translations
+   - No hard-coded visible text in scripts
+   - Card visual encoding for M1:
+     - Rarity tier is shown via a fixed-position marker (4 tiers)
+     - Card name color indicates form: Base, Upgrade A, Upgrade B, Ultimate
+
+4) Drop pools and rarity (v1 structure, M1 skeleton)
+   - Each Act has 5 distinct card drop pools: normal, elite, boss, shop, event
+   - Rarity tiers are unified into 4 levels; the earlier "elite-grade card" concept is merged into these tiers
+4) Logs and evidence
+   - All evidence must be written under logs/** (repo policy)
+
+M1 Content IDs (seed set for tasks)
+Note: These are stable IDs. Names/descriptions must come from Translations keys derived from IDs.
+
+Warrior starter deck (10)
+- card.warrior.cleave
+- card.warrior.guard
+- card.warrior.rage_surge
+- card.warrior.bloodrush
+- card.warrior.taunt
+- card.warrior.shield_wall
+- card.warrior.overpower
+- card.warrior.battlecry
+- card.warrior.crush
+- card.warrior.relentless
+
+Relics (M1 seed set)
+- relic.ashen_hourglass
+- relic.obsidian_mirror
+- relic.blood_oath
+- relic.rusted_compass
+- relic.twilight_coin
+
+Curse cards (M1 seed set, separate pool)
+- card.curse.blood_debt
+- card.curse.chains_of_regret
+
+Planned Test References (anchors for task generation)
+Taskmaster should generate tasks that result in these files existing and passing.
+- Game.Core.Tests/Determinism/OfferLockingTests.cs
+- Game.Core.Tests/Save/SaveResumeBoundaryTests.cs
+- Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs
+- Tests.Godot/Smoke/ContinueGateTests.gd
+
+Acceptance Criteria (convert into task acceptance items)
+AC-1 Documentation anchors exist
+- M1 overlay index exists: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md
+- M1 acceptance checklist exists: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md
+
+AC-2 M1 playable loop reachable
+- MainMenu -> New Run -> difficulty -> Warrior -> Map
+- Map includes reachable nodes: Combat, Event, Shop, Rest
+
+AC-3 Reward offer locking
+- On first display, a 3-card offer is locked (stable IDs + display order + provenance)
+- Quit and Continue returns to the same offer set in the same order
+- Reward screen appearance writes autosave
+- Skipping reward is allowed and must not reroll or advance RNG
+
+AC-4 Combat resume boundary
+- Enter combat saves initial combat state
+- Quit and Continue returns to initial combat state, never a mid-combat state
+- Combat baseline: start-of-turn energy resets to 3 by default (unless modified by cards/relics), per-turn draw = 4
+
+AC-5 Rest upgrade rules
+- Rest offers an upgrade option; if chosen, upgrades 1 card for free
+- U1 requires Route A/B choice and is irreversible after confirmation
+
+AC-6 Shop "no upgrade" compliance
+- Shop has no upgrade functionality
+- Shop copy contains no upgrade-related language
+- Shop inventory lock: stock and prices lock on entry; quit/continue does not refresh shop stock
+- Shop purchase consistency: single stock items cannot be re-bought; quit/continue restores entry stock + purchased flags
+
+AC-7 Card identity/forms
+- Upgrading a card changes form but not card_id
+- Ultimate can be applied to a Base or U1 card and overrides U1 form ability but keeps instance modifiers
+- Reward drops of upgraded cards clearly label the route (A/B)
+- Card UI encoding: rarity marker + name color indicates form (no route naming required)
+
+AC-8 Localization compliance
+- Critical screens (MainMenu/Map/Reward/Shop/Rest/Upgrade/Continue) read visible text from Translations
+
+AC-9 Event dark cost (M1)
+- At least one event includes non-gold dark cost choices
+- M1 demonstration includes both: HP loss and gaining a curse card
+- Event results are clearly explained and can be recorded for audit/replay purposes
+- Event persistence: choice is written immediately to run state (no branch reroll on quit/continue)
+
+AC-10 Curses (M1)
+- Curse cards use a separate namespace/pool: card.curse.<slug>
+- Curses cannot be upgraded (single form only)
+- M1 provides curse removal via: shop service, event, and rest option (choose-one)
+
+Taskmaster Generation Guidance (recommended)
+1) Split tasks by layers:
+   - Game.Core logic (offer locking, card identity/forms, save boundary) with xUnit tests
+   - Game.Godot UI flow (menus, map, reward screen, shop, rest/upgrade) with headless smoke
+2) Each task must reference at least one Accepted ADR (for any code change), and point back to:
+   - docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md
+3) Do not add cloud sync or multi-slot saves in v1.

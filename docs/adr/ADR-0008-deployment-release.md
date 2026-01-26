@@ -7,9 +7,9 @@ deciders: [架构团队, DevOps团队]
 archRefs: [CH07, CH10]
 verification:
   - path: .github/workflows/windows-release.yml
-    assert: Manual workflow exports build/Game.exe and uploads logs/ci/**
+    assert: Manual workflow exports build/NewRouge.exe and uploads logs/ci/**
   - path: .github/workflows/windows-release-tag.yml
-    assert: Tag workflow attaches build/Game.exe to GitHub Release
+    assert: Tag workflow attaches build/NewRouge.exe to GitHub Release
   - path: scripts/ci/export_windows.ps1
     assert: Exports Windows Desktop preset and writes export logs under logs/ci/**
 tech-tags: [release, windows, godot, export, github-actions]
@@ -33,7 +33,7 @@ supersedes: []
 
 ### 2) 产物与工件
 
-- 导出产物：`build/Game.exe`（Windows Desktop）
+- 导出产物：`build/NewRouge.exe`（Windows Desktop）
 - 日志/工件：`logs/ci/**`（包含导出日志、门禁摘要等）
 
 ### 3) Release Health（软门禁取证）

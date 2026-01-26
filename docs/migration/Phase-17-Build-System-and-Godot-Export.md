@@ -40,7 +40,7 @@
 
 
 
-### 新版（godotgame）构建机遇与挑战
+### 新版（newrouge）构建机遇与挑战
 
 
 
@@ -96,7 +96,7 @@
 
 ### 2.0 Godot+C# 变体（当前模板实现）
 
-> 本节描述的是 **当前 godotgame 模板已经落地的构建/导出能力**。下文所述的 `scripts/build_windows.py`、独立 Release 工作流等仍处于蓝图阶段，对应增强统一收敛到 Phase-17 Backlog。
+> 本节描述的是 **当前 newrouge 模板已经落地的构建/导出能力**。下文所述的 `scripts/build_windows.py`、独立 Release 工作流等仍处于蓝图阶段，对应增强统一收敛到 Phase-17 Backlog。
 
 - 依赖与前置：
   - 环境变量：`GODOT_BIN` 指向 Godot .NET（mono）可执行文件路径（例如 `C:\Godot\Godot_v4.5.1-stable_mono_win64.exe`）。
@@ -104,7 +104,7 @@
 
 - 导出脚本（当前 SSoT）：
   - `scripts/ci/export_windows.ps1`：
-    - 参数：`-GodotBin`（必需）、`-Preset`（默认 `Windows Desktop`）、`-Output`（默认 `build/Game.exe`）。
+    - 参数：`-GodotBin`（必需）、`-Preset`（默认 `Windows Desktop`）、`-Output`（默认 `build/NewRouge.exe`）。
     - 行为：
       - 预先调用 `--build-solutions`（如未检测到现有 `.sln`）以构建 C#；
       - 根据 `export_presets.cfg` 解析实际导出预设名称（解决 “Invalid export preset name”）；
@@ -123,7 +123,7 @@
 - CI 集成（Windows）：
   - `.github/workflows/windows-ci.yml` / `windows-quality-gate.yml`：
     - 通过 `scripts/ci/quality_gate.ps1` 作为统一入口；
-    - 在需要导出时传入 `-WithExport`，内部调用 `export_windows.ps1` 导出 `build/Game.exe` 并可选运行 `smoke_exe.ps1`；
+    - 在需要导出时传入 `-WithExport`，内部调用 `export_windows.ps1` 导出 `build/NewRouge.exe` 并可选运行 `smoke_exe.ps1`；
     - 导出日志与产物统一收集到 `logs/ci/<date>/export/` 与 `build/` 目录。
 
 > 说明：
@@ -202,7 +202,7 @@
 
 ```
 
-godotgame/
+newrouge/
 
 ├── src/
 
@@ -242,11 +242,11 @@ godotgame/
 
 ├── dist/                                     * 本地构建输出目录
 
-│   ├── godotgame-1.0.0.exe
+│   ├── newrouge-1.0.0.exe
 
-│   ├── godotgame-1.0.0.pck
+│   ├── newrouge-1.0.0.pck
 
-│   ├── godotgame-1.0.0-SHA256.txt
+│   ├── newrouge-1.0.0-SHA256.txt
 
 │   └── build-metadata.json
 
@@ -318,7 +318,7 @@ include_filter=""
 
 exclude_filter=""
 
-export_path="dist/godotgame-1.0.0.exe"
+export_path="dist/newrouge-1.0.0.exe"
 
 encryption_include_filters=""
 
@@ -346,7 +346,7 @@ application/trademarks=""
 
 application/company_name="Anthropic"
 
-application/product_name="GodotGame"
+application/product_name="NewRouge"
 
 application/product_version="1.0.0"
 
@@ -478,7 +478,7 @@ include_filter=""
 
 exclude_filter=""
 
-export_path="dist/godotgame-1.0.0-debug.exe"
+export_path="dist/newrouge-1.0.0-debug.exe"
 
 encryption_include_filters=""
 
@@ -504,7 +504,7 @@ application/copyright="2025"
 
 application/company_name="Anthropic"
 
-application/product_name="GodotGame"
+application/product_name="NewRouge"
 
 application/product_version="1.0.0-debug"
 
@@ -746,7 +746,7 @@ class GodotBuildDriver:
 
         if self.dist_dir.exists():
 
-            for file in self.dist_dir.glob("godotgame-*"):
+            for file in self.dist_dir.glob("newrouge-*"):
 
                 file.unlink()
 
@@ -764,7 +764,7 @@ class GodotBuildDriver:
 
         preset_name = "Windows Desktop" if self.build_config == "release" else "Windows Desktop (Debug)"
 
-        exe_name = f"godotgame-1.0.0{'-debug' if self.build_config == 'debug' else ''}.exe"
+        exe_name = f"newrouge-1.0.0{'-debug' if self.build_config == 'debug' else ''}.exe"
 
         exe_path = self.dist_dir / exe_name
 
@@ -1332,7 +1332,7 @@ jobs:
 
           python scripts/build_windows.py release
 
-          Get-Item dist/godotgame-*.exe | ForEach-Object {
+          Get-Item dist/newrouge-*.exe | ForEach-Object {
 
             Write-Host "Built: $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
 
@@ -1398,9 +1398,9 @@ jobs:
 
           files: |
 
-            dist/godotgame-*.exe
+            dist/newrouge-*.exe
 
-            dist/godotgame-*-SHA256.txt
+            dist/newrouge-*-SHA256.txt
 
             dist/build-metadata.json
 
@@ -1420,9 +1420,9 @@ jobs:
 
             ### Files
 
-            - `godotgame-*.exe` - Windows Desktop executable
+            - `newrouge-*.exe` - Windows Desktop executable
 
-            - `godotgame-*-SHA256.txt` - File integrity checksum
+            - `newrouge-*-SHA256.txt` - File integrity checksum
 
             - `build-metadata.json` - Build configuration metadata
 
@@ -1430,7 +1430,7 @@ jobs:
 
             ### Installation
 
-            Extract and run `godotgame-1.0.0.exe`. No installation required.
+            Extract and run `newrouge-1.0.0.exe`. No installation required.
 
 
 
@@ -1594,7 +1594,7 @@ namespace Game.Core.Version
 
         public static string UserAgent =>
 
-            $"godotgame/{SemanticVersion} ({GitTag})";
+            $"newrouge/{SemanticVersion} ({GitTag})";
 
     }
 
@@ -1702,7 +1702,7 @@ def inject_version_info(project_root: Path, commit_sha: str, git_tag: str, build
 
 NodePkg run build:exe:debug
 
-# 输出：dist/godotgame-1.0.0-debug.exe
+# 输出：dist/newrouge-1.0.0-debug.exe
 
 
 
@@ -1710,7 +1710,7 @@ NodePkg run build:exe:debug
 
 NodePkg run build:exe
 
-# 输出：dist/godotgame-1.0.0.exe, dist/build-metadata.json, dist/godotgame-*-SHA256.txt
+# 输出：dist/newrouge-1.0.0.exe, dist/build-metadata.json, dist/newrouge-*-SHA256.txt
 
 
 
@@ -2037,7 +2037,7 @@ NodePkg run build:exe
 import subprocess, pathlib
 project = pathlib.Path('Game.Godot')
 export_preset = 'Windows Desktop'
-output = pathlib.Path('dist')/ 'godotgame.exe'
+output = pathlib.Path('dist')/ 'newrouge.exe'
 output.parent.mkdir(parents=True, exist_ok=True)
 
 # 导出可执行文件
@@ -2096,7 +2096,7 @@ if __name__ == '__main__':
 
 用法：
 ```
-py -3 scripts/sign_executable.py --file dist\godotgame.exe --thumbprint <CERT_SHA1>
+py -3 scripts/sign_executable.py --file dist\newrouge.exe --thumbprint <CERT_SHA1>
 ```
 
 说明：

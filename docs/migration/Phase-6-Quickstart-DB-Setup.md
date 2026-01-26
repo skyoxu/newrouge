@@ -15,7 +15,7 @@
 - Autoload：不强制；建议由场景入口或服务定位器按需创建并保持存活。
 
 ## 注意 / Notes
-- 本方案为 Windows-only；保持与 Editor 的 .NET 版本一致（例如 `GodotGame.csproj` 目标 SDK 与 Godot 4.5 .NET 对齐）。
+- 本方案为 Windows-only；保持与 Editor 的 .NET 版本一致（例如 `NewRouge.csproj` 目标 SDK 与 Godot 4.5 .NET 对齐）。
 - 若未安装插件，适配器会抛出 `NotSupportedException`，属于预期的占位保护。
 
 ## 导出注意事项 / Export Notes

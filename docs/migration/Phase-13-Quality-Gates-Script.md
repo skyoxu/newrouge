@@ -16,7 +16,7 @@
 - ESLint + Prettier 自动化
 - GitHub Actions 单一工作流
 
-### 新版（godotgame）质量挑战
+### 新版（newrouge）质量挑战
 - **双轨测试架构**：xUnit（C#）+ GdUnit4（GDScript）
 - **两种编程语言**：代码重复率检测难度增加
 - **Headless 执行**：无 GUI 反馈，必须依赖日志和报告
@@ -54,7 +54,7 @@
 
 ### 2.2 Godot+C# 变体（当前模板实现）
 
-> 本节描述的是 **当前 godotgame 模板已经落地的质量门禁实现**，用于对齐脚本/CI 的真实行为。上面的 10 项门禁表视为长期蓝图，尚未全部在本仓库中实现，对应增强统一收敛到 Phase-13 Backlog。
+> 本节描述的是 **当前 newrouge 模板已经落地的质量门禁实现**，用于对齐脚本/CI 的真实行为。上面的 10 项门禁表视为长期蓝图，尚未全部在本仓库中实现，对应增强统一收敛到 Phase-13 Backlog。
 
 - 统一入口（Python）：
   - `scripts/python/quality_gates.py` 提供单一入口：
@@ -143,7 +143,7 @@
 ### 3.2 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── scripts/
 │   ├── guard.ps1                  # PowerShell 主入口脚本
 │   ├── python/
@@ -215,7 +215,7 @@ public class LayeringTests
 ```bash
 # 1) 开始分析（示例）
 dotnet sonarscanner begin \
-  /k:"godotgame" /d:sonar.host.url="%SONAR_HOST_URL%" \
+  /k:"newrouge" /d:sonar.host.url="%SONAR_HOST_URL%" \
   /d:sonar.login="%SONAR_TOKEN%" \
   /d:sonar.cs.opencover.reportsPaths="logs/ci/xunit-coverage.xml"
 
@@ -311,7 +311,7 @@ def collect_user_reports(project_name: str, date_str: str, dest_dir: Path) -> No
             shutil.copy2(f, dest_dir / f.name)
 
 # 用法示例：
-# collect_user_reports(project_name='godotgame', date_str=datetime.now().strftime('%Y-%m-%d'), dest_dir=Path('logs')/'e2e'/datetime.now().strftime('%Y-%m-%d'))
+# collect_user_reports(project_name='newrouge', date_str=datetime.now().strftime('%Y-%m-%d'), dest_dir=Path('logs')/'e2e'/datetime.now().strftime('%Y-%m-%d'))
 ```
 
 说明（Windows 路径映射）：

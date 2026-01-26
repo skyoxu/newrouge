@@ -1,7 +1,7 @@
-﻿param(
+param(
   [string]$GodotBin = $env:GODOT_BIN,
   [string]$Preset = 'Windows Desktop',
-  [string]$Output = 'build/Game.exe'
+  [string]$Output = 'build/NewRouge.exe'
 )
 
  $ErrorActionPreference = 'Stop'
@@ -20,8 +20,9 @@ if (Get-Command dotnet -ErrorAction SilentlyContinue) {
 }
 
 # Prepare log dirs: stage outside res:// to avoid packing logs; finalize to repo logs
+$day = Get-Date -Format 'yyyy-MM-dd'
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$finalDest = Join-Path $PSScriptRoot ("../../logs/ci/$ts/export")
+$finalDest = Join-Path $PSScriptRoot ("../../logs/ci/$day/export/$ts")
 $dest = Join-Path ([System.IO.Path]::GetTempPath()) ("godot_export_" + $ts)
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $glog = Join-Path $dest 'godot_export.log'
@@ -154,7 +155,7 @@ function Invoke-Export([string]$mode) {
 }
 
 # Skip --build-solutions when a solution is already present to reduce flakiness in CI
-$sln = Join-Path $ProjectDir 'GodotGame.sln'
+$sln = Join-Path $ProjectDir 'NewRouge.sln'
 if (Test-Path $sln) {
   Add-Content -Encoding UTF8 -Path $glog -Value "Solution detected at $sln, skipping --build-solutions."
 } else {

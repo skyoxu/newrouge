@@ -121,11 +121,10 @@ docs/
 ### 默认 ADR 映射（可扩展）
 
 - **ADR-0001-tech-stack**：技术栈选型
-- **ADR-0002-legacy-desktop-shell-security-baseline**：旧桌面壳安全基线（历史；已被 ADR-0019 替代）
 - **ADR-0019-godot-security-baseline**：Godot 安全基线（当前有效）
 - **ADR-0003-observability-release-health**：可观测性和发布健康 (Sentry, 崩溃率阈值, 结构化日志)
 - **ADR-0004-event-bus-and-contracts**：事件总线和契约 (CloudEvents, 类型定义, 端口适配)
-- **ADR-0005-quality-gates**：质量门禁 (覆盖率, ESLint, 性能阈值, Bundle大小)
+- **ADR-0005-quality-gates**：质量门禁 (覆盖率, 性能阈值, 构建/导出/冒烟)
 - **ADR-0006-data-storage**：数据存储 (SQLite, 数据模型, 备份策略)
 - **ADR-0007-ports-adapters**：端口适配器 (架构模式, 依赖注入, 接口设计)
 - **ADR-0008-deployment-release**：部署发布 (CI/CD, 分阶段发布, 回滚策略)
@@ -150,11 +149,11 @@ docs/
 
 ### PR 模板要求（最少需要在 `.github/PULL_REQUEST_TEMPLATE.md` 勾选）
 
-- [ ] 更新/新增 `src/shared/contracts/**` 的接口/类型/事件
-- [ ] 更新/新增 `tests/unit/**`与 `tests/e2e/**`
+- [ ] 更新/新增 `Game.Core/**`，并补齐 `Game.Core.Tests/**`（xUnit）
+- [ ] 如涉及引擎层：更新/新增 `Game.Godot/**` 与 `Tests.Godot/**`（GdUnit4/Smoke）
 - [ ] 涉及 PRD：Front‑Matter 的 `Test-Refs` 指向相应用例。
 - [ ] 变更口径/阈值/契约：已新增或 _Supersede_ 对应 ADR 并在 PR 描述中引用。
-- [ ] 附上 **E2E 可玩度冒烟** 的运行链接/截图
+- [ ] 附上 **Headless/EXE 冒烟** 的关键日志/截图（`logs/**`）
 - [ ] 附上 **Sonar Quality Gate** 结果链接（新代码绿灯）
 - [ ] 附上 **Sentry Release** 链接（用于回溯本次崩溃/错误）
 
@@ -166,7 +165,7 @@ docs/
 - 需要新增 ADR 时，自动生成 `docs/adr/ADR-xxxx-<slug>.md` 的 _Proposed_ 草案并提示审阅。
 
 > **备注**：本 Rulebook 与项目中的脚本/模板、Base/Overlay 结构**强关联**。请保持这些文件存在且更新：  
-> `scripts/scan_electron_safety.mjs` · `scripts/quality_gates.mjs` · `scripts/verify_base_clean.mjs` · `.github/PULL_REQUEST_TEMPLATE.md` · `docs/architecture/base/08-功能纵切-template.md`。
+> `scripts/python/quality_gates.py` · `scripts/ci/verify_base_clean.ps1` · `.github/PULL_REQUEST_TEMPLATE.md` · `docs/architecture/base/08-功能纵切-template.md`。
 
 ---
 
@@ -237,7 +236,7 @@ This template comes pre-configured with the following technology stack:
 2. **08 章（功能纵切）只放在 overlays**：
    - base 仅保留 `08-功能纵切-template.md` 模板与写作约束；**禁止**在 base 写任何具体模块内容。
    - 08 章**引用** 01/02/03 的口径，**禁止复制阈值/策略**到 08 章正文。事件命名规则：
-     `\${DOMAIN_PREFIX}.<entity>.<action>`；接口/DTO 统一落盘到 `src/shared/contracts/**`。
+      `\${DOMAIN_PREFIX}.<entity>.<action>`；事件/DTO/契约统一落盘到 `Game.Core\\Contracts/**`（必要时同步补充 `docs/contracts/**` 的说明）。
 3. Use **only**: `@architecture_base.index`, `@prd_chunks.index`, `@shards/flattened-prd.xml`, `@shards/flattened-adr.xml` for overlay‑related work. Do **not** rescan `docs/` or rebuild flattened XML.
 4. Overlays: write to `docs/architecture/overlays/<PRD-ID>/08/`. 08章只写**功能纵切**（实体/事件/SLI/门禁/验收/测试占位）；跨切面规则仍在 Base/ADR。
 
@@ -522,8 +521,8 @@ This template comes pre-configured with the following technology stack:
   - 产出：见 6.3（release-health.json）
 - package（Windows 导出）
   - 准备 export templates 缓存（Godot 4.5）
-  - 导出发布：godot.exe --headless --export-release "Windows Desktop" build/Game.exe
-  - 产出：build/Game.exe、build/Game.pck；导出日志见 6.3（export.log）
+  - 导出发布：godot.exe --headless --export-release "Windows Desktop" build/NewRouge.exe
+  - 产出：build/NewRouge.exe、build/NewRouge.pck；导出日志见 6.3（export.log）
   - 仅在前置门禁全绿时运行
 - dotnet：actions/setup-dotnet（.NET 8）
 - 缓存建议：
@@ -535,7 +534,7 @@ This template comes pre-configured with the following technology stack:
 - E2E（headless）：py -3 scripts/python/godot_tests.py --headless --suite smoke,security,perf
 - 任务/回链：py -3 scripts/python/task_links_validate.py
 - 发布健康：py -3 scripts/python/release_health_gate.py --project <sentry_project> --env <env>
-- 导出：godot.exe --headless --export-release "Windows Desktop" build/Game.exe
+- 导出：godot.exe --headless --export-release "Windows Desktop" build/NewRouge.exe
 
 **分支保护与开关**
 - 受保护分支启用 Required checks：godot-e2e、dotnet-unit、task-links-validate、release-health（可加 superclaude-review）

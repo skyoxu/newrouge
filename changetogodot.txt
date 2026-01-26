@@ -28,7 +28,7 @@
       - 可观测性/发布健康
           - Sentry Godot SDK：在 Autoload 场景最早初始化，启用 Release+Sessions；沿用“24h Crash‑Free ≥ 99.5%”的门禁，CI 读取 Sentry API 计算。
       - 出包与缓存
-          - Windows 出包：godot.exe --headless --export-release "Windows Desktop" build/Game.exe；配置 export_presets.cfg 并在 CI 缓存 export templates。
+          - Windows 出包：godot.exe --headless --export-release "Windows Desktop" build/NewRouge.exe；配置 export_presets.cfg 并在 CI 缓存 export templates。
       - 统一入口（保留 guard:ci 思路，用 Python 包装）
           - scripts/python/quality_gates.py 统一调度 gdlint/gdformat/GUT/jscpd/Sonar；日志输出到 logs/ci/YYYY-MM-DD/。
 
@@ -91,7 +91,7 @@
   - [下一步] CI 雏形（Windows）
       - Python 入口：scripts/python/quality_gates.py（logs/ci/*）
       - 安装/缓存 Godot 4.5 + export templates
-      - 出包：godot.exe --headless --export-release "Windows Desktop" build/Game.exe
+      - 出包：godot.exe --headless --export-release "Windows Desktop" build/NewRouge.exe
       - 测试：godot.exe --headless --run-tests（GUT），写 JUnit/XML+JSON
       - Sonar 扫描：C# 用 SonarScanner for MSBuild；GDScript 用自定义规则+通用度量
   - [随后] 安全/性能烟测

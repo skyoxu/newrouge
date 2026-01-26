@@ -33,8 +33,9 @@ def _run_smoke(godot_bin: str, project: str, scene: str, timeout_sec: int, mode:
         print(f"[smoke_headless] GODOT_BIN not found: {godot_bin}", file=sys.stderr)
         return 1
 
+    day = _dt.date.today().strftime("%Y-%m-%d")
     ts = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    dest = Path("logs") / "ci" / ts / "smoke"
+    dest = Path("logs") / "ci" / day / "smoke" / ts
     dest.mkdir(parents=True, exist_ok=True)
 
     out_path = dest / "headless.out.log"

@@ -9,13 +9,13 @@
 
 ## 目标
 
-将 LegacyProject 的 Jest + TypeScript 单元测试迁移到 godotgame 的 xUnit + C# 单元测试，建立类型安全的测试套件与 AI-first 覆盖率门禁。
+将 LegacyProject 的 Jest + TypeScript 单元测试迁移到 newrouge 的 xUnit + C# 单元测试，建立类型安全的测试套件与 AI-first 覆盖率门禁。
 
 ---
 
 ## 技术栈对比
 
-| 功能 | LegacyProject (Node.js) | godotgame (.NET 8) |
+| 功能 | LegacyProject (Node.js) | newrouge (.NET 8) |
 |-----|-------------------|-------------------|
 | 测试框架 | Jest 29 | xUnit 2.x |
 | 断言库 | Jest expect() | FluentAssertions |
@@ -136,7 +136,7 @@ describe('Player', () => {
 
 ## xUnit 测试结构
 
-### 等价 xUnit 测试 (godotgame)
+### 等价 xUnit 测试 (newrouge)
 
 ```csharp
 // Game.Core.Tests/Domain/Entities/PlayerTests.cs
@@ -857,42 +857,12 @@ reportgenerator \
 
 ### 覆盖率门禁脚本
 
-```javascript
-// scripts/quality_gates.mjs
+```powershell
+# 推荐：统一门禁入口（会运行 dotnet build/test，并按当前门禁配置执行覆盖率检查）
+pwsh ./scripts/ci/quality_gate.ps1 -GodotBin "$env:GODOT_BIN"
 
-import { readFileSync } from 'fs';
-import { parseStringPromise } from 'xml2js';
-
-const COVERAGE_LINE_THRESHOLD = 90;
-const COVERAGE_BRANCH_THRESHOLD = 85;
-
-async function checkCoverage() {
-  const coverageXml = readFileSync('./TestResults/coverage.cobertura.xml', 'utf-8');
-  const coverage = await parseStringPromise(coverageXml);
-
-  const lineRate = parseFloat(coverage.coverage.$['line-rate']) * 100;
-  const branchRate = parseFloat(coverage.coverage.$['branch-rate']) * 100;
-
-  console.log(`Line Coverage: ${lineRate.toFixed(2)}%`);
-  console.log(`Branch Coverage: ${branchRate.toFixed(2)}%`);
-
-  if (lineRate < COVERAGE_LINE_THRESHOLD) {
-    console.error(`FAIL Line coverage ${lineRate.toFixed(2)}% is below threshold ${COVERAGE_LINE_THRESHOLD}%`);
-    process.exit(1);
-  }
-
-  if (branchRate < COVERAGE_BRANCH_THRESHOLD) {
-    console.error(`FAIL Branch coverage ${branchRate.toFixed(2)}% is below threshold ${COVERAGE_BRANCH_THRESHOLD}%`);
-    process.exit(1);
-  }
-
-  console.log('Coverage thresholds met');
-}
-
-checkCoverage().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+# 或仅跑单元测试（带覆盖率采集）
+dotnet test Game.Core.Tests/Game.Core.Tests.csproj --collect:"XPlat Code Coverage"
 ```
 
 ---
@@ -1512,7 +1482,7 @@ jobs:
             -reporttypes:Html;Cobertura
 
       - name: Check coverage thresholds
-        run: node scripts/quality_gates.mjs
+        run: pwsh ./scripts/ci/quality_gate.ps1 -GodotBin "${{ env.GODOT_BIN }}"
 
       - name: Upload coverage report
         if: always()
@@ -1534,7 +1504,7 @@ jobs:
         with:
           files: ./TestResults/**/coverage.cobertura.xml
           flags: unittests
-          name: codecov-godotgame
+          name: codecov-newrouge
 ```
 
 ---

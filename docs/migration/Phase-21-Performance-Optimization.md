@@ -25,7 +25,7 @@
 - Legacy2DEngine 场景切换：首次场景加载 ~800ms（纹理解压 + WebGL 初始化）
 - SQLite 查询：复杂查询（JOIN）可能超过 50ms 阈值
 
-### 新版（godotgame）性能机遇与挑战
+### 新版（newrouge）性能机遇与挑战
 
 **机遇**：
 - Godot 4.5 原生性能：无 LegacyDesktopShell 容器开销，轻量级运行时（.NET 8）
@@ -162,7 +162,7 @@
 ### 2.4 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── src/
 │   ├── Game.Core/
 │   │   └── Performance/

@@ -23,7 +23,7 @@
 - Crash-Free Sessions ≥ 99.5%（发布门禁）
 - Error Rate ≤ 0.1%（告警阈值）
 
-### 新版（godotgame）可观测性机遇与挑战
+### 新版（newrouge）可观测性机遇与挑战
 
 **机遇**：
 - Godot 4.5 官方支持 Sentry SDK（Native C#）
@@ -124,7 +124,7 @@
 
 ### 2.3 Godot+C# 变体（当前模板实现）
 
-> 本节描述的是 **当前 godotgame 模板已落地的可观测性与审计能力**。上文和后文中涉及的 Observability.cs、Sentry SDK、Release Health Gate 仍处于蓝图阶段，对应工作全部登记在 Phase-16 Backlog 中。
+> 本节描述的是 **当前 newrouge 模板已落地的可观测性与审计能力**。上文和后文中涉及的 Observability.cs、Sentry SDK、Release Health Gate 仍处于蓝图阶段，对应工作全部登记在 Phase-16 Backlog 中。
 
 - 日志与审计现状：
   - C# 领域日志接口：`Game.Core/Ports/ILogger.cs`；
@@ -190,7 +190,7 @@
 ### 3.2 目录结构
 
 ```
-godotgame/
+newrouge/
 ├── src/
 │   ├── Game.Core/
 │   │   ├── Observability/
@@ -267,7 +267,7 @@ namespace Game.Core.Observability
                 // 基本配置
                 options.Dsn = _config.SentryDsn;
                 options.Environment = _config.Environment; // "dev" | "staging" | "prod"
-                options.Release = _config.Release; // e.g., "godotgame@1.0.0+build.123"
+                options.Release = _config.Release; // e.g., "newrouge@1.0.0+build.123"
 
                 // 会话追踪（Release Health）
                 options.AutoSessionTracking = true;
@@ -453,7 +453,7 @@ namespace Game.Core.Observability
     {
         public string SentryDsn { get; set; }
         public string Environment { get; set; } // "dev" | "staging" | "prod"
-        public string Release { get; set; } // e.g., "godotgame@1.0.0+build.123"
+        public string Release { get; set; } // e.g., "newrouge@1.0.0+build.123"
 
         // 采样率（0.0-1.0）
         public double SessionSampleRate { get; set; } = 1.0; // Dev: 1.0, Prod: 0.1
@@ -475,7 +475,7 @@ namespace Game.Core.Observability
 {
   "dsn": "https://examplePublicKey@o0.ingest.sentry.io/0",
   "environment": "dev",
-  "release": "godotgame@0.1.0+local",
+  "release": "newrouge@0.1.0+local",
   "sessionSampleRate": 1.0,
   "tracesSampleRate": 0.1,
   "breadcrumbs": true
@@ -886,9 +886,9 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version to check (e.g., godotgame@1.0.0)'
+        description: 'Release version to check (e.g., newrouge@1.0.0)'
         required: true
-        default: 'godotgame@1.0.0'
+        default: 'newrouge@1.0.0'
       environment:
         description: 'Sentry environment'
         required: true
@@ -958,7 +958,7 @@ jobs:
 
 {
   "scripts": {
-    "test:observability": "python scripts/release_health_gate.py --release godotgame@dev --environment dev",
+    "test:observability": "python scripts/release_health_gate.py --release newrouge@dev --environment dev",
     "observability:flush": "dotnet test src/Game.Core.Tests/Observability.Tests.cs",
     "sentry:sourcemaps": "python scripts/upload_sourcemaps.py",
     "release:create": "python scripts/generate_release_metadata.py --version $npm_package_version"
@@ -1238,9 +1238,9 @@ options.BeforeSend = (sentryEvent, hint) =>
 # 1. 创建 Sentry 账户（https://sentry.io）
 # 2. 创建 Organization: godot-game
 # 3. 创建 Projects:
-#    - godotgame-dev (environment: dev)
-#    - godotgame-staging (environment: staging)
-#    - godotgame-prod (environment: production)
+#    - newrouge-dev (environment: dev)
+#    - newrouge-staging (environment: staging)
+#    - newrouge-prod (environment: production)
 
 # 4. 获取 DSN（每个项目）
 # Example: https://key@sentry.io/projectid
@@ -1250,7 +1250,7 @@ options.BeforeSend = (sentryEvent, hint) =>
 
 # 6. 保存为 GitHub Secrets:
 export SENTRY_ORG=godot-game
-export SENTRY_PROJECT=godotgame-prod
+export SENTRY_PROJECT=newrouge-prod
 export SENTRY_AUTH_TOKEN=<token>
 ```
 

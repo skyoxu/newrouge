@@ -782,7 +782,7 @@ public void LogGameEvent(string eventType, object data)
     var cloudEvent = new CloudEvent
     {
         Type = eventType,
-        Source = new Uri("app://godotgame"),
+        Source = new Uri("app://newrouge"),
         Data = JsonSerializer.Serialize(data),
         Time = DateTimeOffset.UtcNow
     };

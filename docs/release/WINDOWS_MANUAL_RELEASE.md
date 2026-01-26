@@ -11,7 +11,7 @@
 2) 点击 “Run workflow”。无需参数（默认使用 Godot 4.5.1‑mono）。
 3) 等待 Job 完成（约 1–3 分钟，视机器与网络）。
 4) 在工作流页面底部 “Artifacts” 下载 `windows-release` 压缩包：
-   - 含导出产物：`build/Game.exe`
+   - 含导出产物：`build/NewRouge.exe`
    - 含日志：`logs/ci/YYYYMMDD-HHMMSS/**`
 
 ## 验证 / Verify

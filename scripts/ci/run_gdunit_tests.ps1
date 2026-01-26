@@ -45,9 +45,10 @@ try {
 $exitCode = $LASTEXITCODE
 Write-Host "GdUnit4 finished with exit code $exitCode"
 
-# Collect reports to logs/ci/<timestamp>/gdunit4-reports
+# Collect reports to logs/ci/<YYYY-MM-DD>/gdunit4-reports/<timestamp>
+$day = Get-Date -Format 'yyyy-MM-dd'
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-$dest = Join-Path $PSScriptRoot ("../../logs/ci/$ts/gdunit4-reports")
+$dest = Join-Path $PSScriptRoot ("../../logs/ci/$day/gdunit4-reports/$ts")
 $reports = Join-Path $PSScriptRoot ("../../$ProjectPath/reports")
 if (Test-Path $reports) {
   New-Item -ItemType Directory -Force -Path $dest | Out-Null

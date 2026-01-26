@@ -171,8 +171,7 @@ overlays 只做引用：
 
 1) 口径文档（引用型）：
    - `docs/adr/ADR-0004-event-bus-and-contracts.md`
-   - `docs/architecture/overlays/<PRD-ID>/08/08-Contracts-CloudEvent.md`（示例见 `PRD-Guild-Manager`）
-   - `docs/architecture/overlays/<PRD-ID>/08/08-Contracts-CloudEvents-Core.md`（示例见 `PRD-Guild-Manager`）
+   - `docs/architecture/overlays/<PRD-ID>/08/08-Feature-Slice-<slice>.md`（示例见 `PRD-NEWROUGE-GAME-0001`）
 2) 契约自检（脚本生成报告，用于开工前对齐，非 SSoT）：
    - `py -3 scripts/python/check_domain_contracts.py`（输出到 `logs/ci/<YYYY-MM-DD>/domain-contracts-check/summary.json`）
    - `py -3 scripts/python/generate_contracts_catalog.py --prd-id <PRD-ID>`（输出到 `logs/ci/<YYYY-MM-DD>/contracts-catalog/`；说明见 `docs/workflows/contracts-catalog-guide.md`）
@@ -180,6 +179,11 @@ overlays 只做引用：
    - `py -3 scripts/python/validate_contracts.py`
    - `py -3 scripts/python/task_links_validate.py`
    - `py -3 scripts/python/validate_task_overlays.py`
+
+本仓库当前提供的最小可读示例（用于快速对齐格式与验收表达，不复制阈值/策略）：
+- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
+- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
+- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
 
 ## 5. 任务视图如何引用 overlays（强制绑定规则）
 

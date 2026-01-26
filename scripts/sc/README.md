@@ -68,7 +68,7 @@
 py -3 scripts/sc/analyze.py --format report
 
 # 构建（warn as error）
-py -3 scripts/sc/build.py GodotGame.csproj --type dev --clean
+py -3 scripts/sc/build.py NewRouge.csproj --type dev --clean
 
 # TDD 门禁编排
 py -3 scripts/sc/build.py tdd --stage red --generate-red-test

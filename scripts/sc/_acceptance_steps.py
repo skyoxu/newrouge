@@ -260,7 +260,7 @@ def step_build_warnaserror(out_dir: Path) -> StepResult:
     return run_and_capture(
         out_dir,
         name="dotnet-build-warnaserror",
-        cmd=["py", "-3", "scripts/sc/build.py", "GodotGame.csproj", "--type", "dev"],
+        cmd=["py", "-3", "scripts/sc/build.py", "NewRouge.csproj", "--type", "dev"],
         timeout_sec=1_800,
     )
 
