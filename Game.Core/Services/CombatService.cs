@@ -1,5 +1,6 @@
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
+using System.Text.Json;
 
 namespace Game.Core.Services;
 
@@ -21,11 +22,12 @@ public class CombatService
     {
         // Placeholder for future type-based mitigation; for now apply raw amount
         player.TakeDamage(damage.EffectiveAmount);
+        var payload = JsonSerializer.Serialize(new { amount = damage.EffectiveAmount, type = damage.Type.ToString(), critical = damage.IsCritical });
         _ = _bus?.PublishAsync(new Contracts.DomainEvent(
             Type: "player.damaged",
             Source: nameof(CombatService),
-            Data: new { amount = damage.EffectiveAmount, type = damage.Type.ToString(), critical = damage.IsCritical },
-            Timestamp: DateTime.UtcNow,
+            DataJson: payload,
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"dmg-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }
@@ -53,11 +55,12 @@ public class CombatService
     {
         var final = CalculateDamage(damage, config);
         player.TakeDamage(final);
+        var payload = JsonSerializer.Serialize(new { amount = final, type = damage.Type.ToString(), critical = damage.IsCritical });
         _ = _bus?.PublishAsync(new Contracts.DomainEvent(
             Type: "player.damaged",
             Source: nameof(CombatService),
-            Data: new { amount = final, type = damage.Type.ToString(), critical = damage.IsCritical },
-            Timestamp: DateTime.UtcNow,
+            DataJson: payload,
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"dmg-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }

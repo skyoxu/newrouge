@@ -32,8 +32,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.state.manager.updated",
             Source: nameof(GameStateManager),
-            Data: new { state, config },
-            Timestamp: DateTime.UtcNow,
+            DataJson: JsonSerializer.Serialize(new { state, config }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"state-update-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }
@@ -74,8 +74,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.save.created",
             Source: nameof(GameStateManager),
-            Data: new { saveId },
-            Timestamp: now,
+            DataJson: JsonSerializer.Serialize(new { saveId }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"save-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
 
@@ -95,8 +95,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.save.loaded",
             Source: nameof(GameStateManager),
-            Data: new { saveId },
-            Timestamp: DateTime.UtcNow,
+            DataJson: JsonSerializer.Serialize(new { saveId }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"load-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
 
@@ -111,8 +111,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.save.deleted",
             Source: nameof(GameStateManager),
-            Data: new { saveId },
-            Timestamp: DateTime.UtcNow,
+            DataJson: JsonSerializer.Serialize(new { saveId }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"delete-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }
@@ -138,8 +138,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.autosave.enabled",
             Source: nameof(GameStateManager),
-            Data: new { interval = _options.AutoSaveInterval.TotalMilliseconds },
-            Timestamp: DateTime.UtcNow,
+            DataJson: JsonSerializer.Serialize(new { interval = _options.AutoSaveInterval.TotalMilliseconds }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"autosave-enable-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }
@@ -151,8 +151,8 @@ public class GameStateManager
         Publish(new DomainEvent(
             Type: "game.autosave.disabled",
             Source: nameof(GameStateManager),
-            Data: new { },
-            Timestamp: DateTime.UtcNow,
+            DataJson: JsonSerializer.Serialize(new { }),
+            Timestamp: DateTimeOffset.UtcNow,
             Id: $"autosave-disable-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
     }
@@ -166,8 +166,8 @@ public class GameStateManager
             Publish(new DomainEvent(
                 Type: "game.autosave.completed",
                 Source: nameof(GameStateManager),
-                Data: new { interval = _options.AutoSaveInterval.TotalMilliseconds },
-                Timestamp: DateTime.UtcNow,
+                DataJson: JsonSerializer.Serialize(new { interval = _options.AutoSaveInterval.TotalMilliseconds }),
+                Timestamp: DateTimeOffset.UtcNow,
                 Id: $"autosave-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
             ));
         }

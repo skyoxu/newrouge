@@ -7,10 +7,10 @@ encoding: UTF-8
 purpose: "将 ADR-0032 从 Proposed 推进到 Accepted 的缺口清单（用于 Taskmaster 拆解任务）"
 ---
 
-# ADR-0032（存档/退出重进/确定性）Proposed → Accepted 缺口清单
+# ADR-0032（存档/退出重进/确定性）M1 Gate-0 实现缺口清单
 
-你现在的最大风险不是“写得不够”，而是 **ADR-0032 仍是 Proposed**：这意味着后续任何人都能在实现/内容压力下把口径悄悄改回去。  
-这份清单的目标：把“成为 Accepted 的门槛”拆成可执行、可验收、可取证的条目，直接喂给 Taskmaster 做任务分解。
+你现在的最大风险不是“写得不够”，而是 **实现与取证没有被任务化并固化到门禁里**：这会让“退出重进不刷结果”的口径在后续改动中悄悄漂移。  
+这份清单的目标：把 ADR-0032 的“Implementation Acceptance Criteria（M1 Gate-0）”拆成可执行、可验收、可取证的条目，直接喂给 Taskmaster 做任务分解。
 
 权威来源：`docs/adr/ADR-0032-save-resume-determinism.md`
 
@@ -91,4 +91,3 @@ purpose: "将 ADR-0032 从 Proposed 推进到 Accepted 的缺口清单（用于 
 3) Continue gate：校验/迁移失败阻断 + UX 提示 + 审计  
 4) Audit pipeline：user:// 审计写入 + CI 归档到 logs/ci + 字段校验  
 5) Test-Refs 对齐：PRD Test-Refs 指向真实文件；禁止重命名已引用路径  
-

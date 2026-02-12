@@ -19,8 +19,7 @@ public partial class EventBusAdapter : Node, IEventBus
     public async Task PublishAsync(DomainEvent evt)
     {
         // Emit Godot signal for scene-level listeners
-        var dataJson = evt.Data is string s ? (string.IsNullOrWhiteSpace(s) ? "{}" : s)
-                                            : System.Text.Json.JsonSerializer.Serialize(evt.Data);
+        var dataJson = string.IsNullOrWhiteSpace(evt.DataJson) ? "{}" : evt.DataJson;
         EmitSignal(SignalName.DomainEventEmitted, evt.Type, evt.Source, dataJson, evt.Id, evt.SpecVersion, evt.DataContentType, evt.Timestamp.ToString("o"));
 
         // Notify in-process subscribers
@@ -53,7 +52,7 @@ public partial class EventBusAdapter : Node, IEventBus
     // Simple publish for GDScript tests without needing DomainEvent construction
     public void PublishSimple(string type, string source, string data_json)
     {
-        var evt = new DomainEvent(type, source, data_json, DateTime.UtcNow, Guid.NewGuid().ToString("N"));
+        var evt = new DomainEvent(type, source, data_json, DateTimeOffset.UtcNow, Guid.NewGuid().ToString("N"));
         _ = PublishAsync(evt);
     }
 

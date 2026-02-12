@@ -427,6 +427,8 @@ This template comes pre-configured with the following technology stack:
   - 单元测试（.NET）：py -3 scripts/python/run_dotnet.py --project tests/dotnet --coverage（产出见 6.3）
   - 引擎冒烟（GUT）：py -3 scripts/python/run_gut.py --godot "%GODOT_BIN%" --project "%GODOT_PROJECT%" --tests tests/gut（产出见 6.3）
   - 性能烟测：py -3 scripts/python/perf_smoke.py --scene res://scenes/Main.tscn --samples 30 --threshold 200（产出见 6.3）
+  - 门禁聚合：`py -3 scripts/python/run_gate_bundle.py --mode hard|soft|all --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+  - **硬规则**：新增 Python 门禁时，必须先接入 `scripts/python/run_gate_bundle.py`（按 hard/soft 正确分组），再允许修改 `.github/workflows/*.yml`；禁止在 workflow 里直接新增绕过聚合入口的单点门禁命令。
 - **质量阈值与门禁**
   - 复杂度：roslyn analyzers + dotnet-format（圈复杂度平均 ≤ 5，单文件 ≤ 10）
   - 依赖守卫：循环依赖脚本化扫描（可选 NDepend 报告；CI 只做 fail/ok 判定）

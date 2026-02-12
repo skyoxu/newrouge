@@ -1,0 +1,2480 @@
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-bundle/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "index": ".taskmaster/docs/prd_parts.index",
+  "parts": [
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/00-taskmaster-directives.md",
+      "title": "Taskmaster directives",
+      "sha256": "8553e1aa6bec7eba892663d2c2504f2a9a2b4abca89ec2b980c939866799f738",
+      "bytes": 1187
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/10-project-context.md",
+      "title": "project-context.md",
+      "sha256": "a0085545011d5ecbaeae4bcaccc44222702d9867172a70eba02f58f23f8c2bed",
+      "bytes": 19291
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/20-prd.md",
+      "title": "docs/prd/PRD-NEWROUGE-GAME-0001.md",
+      "sha256": "e28eaa0dabc95e5469238d04fd85b38be24b94534181a5f88c2769074c1c00f8",
+      "bytes": 17548
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/30-gdd.md",
+      "title": "docs/gdd/GDD-NEWROUGE-V1.md",
+      "sha256": "b685d694554ccb35af1b0d37bde888eeb522c3f45de49d4d9cee3c8a9f179778",
+      "bytes": 44944
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/40-ssot-locks.md",
+      "title": "docs/prd/SSOT-LOCKS-NEWROUGE-V1.md",
+      "sha256": "264c1ec35a81fd0addbf0f1fa6c22ac047a5251a06974292145a1e1533d54574",
+      "bytes": 10960
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/50-mechanics-edge-cases.md",
+      "title": "docs/prd/MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1.md",
+      "sha256": "68a0cb0ce4d8a3aa1183b985b039242533d9de010b194062a24f8306babcd1fd",
+      "bytes": 12271
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md",
+      "title": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "sha256": "1968c33f103445802b5d03c6a22c3c0cd9aa74f6593a45294f720bf51e48051d",
+      "bytes": 8300
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/70-adr-0032.md",
+      "title": "docs/adr/ADR-0032-save-resume-determinism.md",
+      "sha256": "ea9e22053cc68d9f12c5d627b4fec8958efd216ada25066bce610ee94121efa4",
+      "bytes": 5881
+    },
+    {
+      "schema": "taskmaster-prd-part/v1",
+      "generated_at_utc": "2026-01-29T12:44:47+00:00",
+      "rel_path": ".taskmaster/docs/prd_parts/71-adr-0033.md",
+      "title": "docs/adr/ADR-0033-card-identity-and-forms.md",
+      "sha256": "36beb5d605a81725f45f97b9174472287d583906beb2bb7d6dbfe9eb46feac9b",
+      "bytes": 5216
+    }
+  ],
+  "bundle_sha256": "83d2a09d848449e8538c341c1bf80b3206916a03cf37417ad2f50af587adc7fc",
+  "bundle_bytes": 130485,
+  "bundle_output": ".taskmaster/docs/prd.bundle.txt"
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/00-taskmaster-directives.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/00-taskmaster-directives.md",
+  "title": "Taskmaster directives",
+  "sha256": "8553e1aa6bec7eba892663d2c2504f2a9a2b4abca89ec2b980c939866799f738",
+  "bytes": 1187
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+# Taskmaster 指令（M1 任务生成约束）
+
+你正在基于 NewRouge 的 SSoT 文档生成 M1（仅 Warrior）任务。
+
+## 生成范围（硬约束）
+- 仅生成 M1（Warrior 可玩纵切）相关任务。
+- 必须包含：难度选择 UI（全局设置、局内不可变），Act 结构模块化（可扩展，不硬编码成 3 Act 死规则）。
+- 不生成：三角色完整实现、云同步、多槽存档、出网/后端等 v1 非目标。
+
+## 任务结构（强制）
+- 任务按泳道拆分：Game.Core / Game.Godot / Tests / Docs&QA。
+- 每个任务必须引用至少 1 条 Accepted ADR（若无则视为拆分失败）。
+- 每个任务必须回链到：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md` 的对应条目。
+
+## 复杂度要求（强制）
+- 在任务描述中给出 `Complexity:`（1-10）。
+- 平均复杂度 <= 6；单任务最大复杂度 <= 8。
+- 如出现 >8，必须继续拆分该任务，直到满足约束。
+
+## 特别提醒（Gate-0）
+- ADR-0032（Save/Resume determinism）已是 Accepted，作为 M1 Gate-0：与存档/确定性相关的任务必须优先拆分并显式标注验收与取证（logs/**）。
+===== END PART: .taskmaster/docs/prd_parts/00-taskmaster-directives.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/10-project-context.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/10-project-context.md",
+  "title": "project-context.md",
+  "sha256": "a0085545011d5ecbaeae4bcaccc44222702d9867172a70eba02f58f23f8c2bed",
+  "bytes": 19291
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+project_name: newrouge
+user_name: skyo
+date: "2026-01-23"
+sources:
+  - AGENTS.md
+  - docs/testing-framework.md
+  - docs/prd/PRD-NEWROUGE-GAME-0001.md
+  - _bmad-output/gdd.md
+  - _bmad-output/epics.md
+  - _bmad-output/content-id-standard.md
+  - _bmad-output/content-registry.md
+  - _bmad-output/audit-artifact-pipeline.md
+  - project.godot
+  - docs/adr/ADR-0032-save-resume-determinism.md
+adr_refs:
+  - ADR-0001-tech-stack
+  - ADR-0003-observability-release-health
+  - ADR-0004-event-bus-and-contracts
+  - ADR-0005-quality-gates
+  - ADR-0007-ports-adapters
+  - ADR-0010-internationalization
+  - ADR-0011-windows-only-platform-and-ci
+  - ADR-0015-performance-budgets-and-gates
+  - ADR-0019-godot-security-baseline
+  - ADR-0020-contract-location-standardization
+  - ADR-0025-godot-test-strategy
+  - ADR-0030-core-threading-model
+  - ADR-0031-build-reproducibility-and-version-pinning
+  - ADR-0032-save-resume-determinism
+sections_completed:
+  - technology_stack
+  - technology_stack_versions
+  - engine_rules
+  - repo_rules
+  - architecture_boundaries
+  - testing_and_gates
+  - security_baseline
+  - logging_and_artifacts
+  - performance_rules
+  - code_organization
+  - localization_and_content_pipeline
+  - platform_build_rules
+  - dont_miss_rules
+  - gameplay_invariants
+status: complete
+optimized_for_llm: true
+rule_count: 175
+section_count: 12
+---
+
+# project-context.md（AI 协作戒律）
+
+这份文件是 AI 在本仓库写代码/测试/脚本时必须遵守的“硬口径”，目标是减少多代理协作时的口径漂移与返工。
+
+---
+
+## 1) 绝对约束（违反即视为缺陷）
+
+- 只支持 Windows（见 ADR-0011-windows-only-platform-and-ci）
+- 只用 UTF-8 编码处理中文；仓库文本统一 `charset=utf-8`（见 `.editorconfig`）
+- 禁止 Emoji 字符（输出与提交内容均不使用）
+- 文档正文用中文；代码/脚本/测试文件只用英文（含注释与日志打印）
+- 日志与取证统一写入 `logs/**`（不要散落到其他目录）
+- 仅防御安全；拒绝任何可被滥用的进攻性实现
+- 除非明确要求，不引入新第三方库/插件（先复用现有依赖与脚本）
+- 不写占位 TODO；要么完整实现并可运行，要么明确拒绝并说明阻塞条件
+
+---
+
+## 2) 技术栈与版本（从仓库实物发现）
+
+- 引擎：Godot 4.5.1 .NET（锁死；见 ADR-0031）
+- 渲染：Forward Plus（见 `project.godot` `config/features`）
+- 语言与运行时：C# / .NET 8（`net8.0`，`Nullable=enable`）
+- 数据库：SQLite（`Microsoft.Data.Sqlite`，`SQLitePCLRaw.bundle_e_sqlite3`）
+- 单元测试：xUnit + FluentAssertions + coverlet.collector（见 `Game.Core.Tests/Game.Core.Tests.csproj`）
+
+### 2.1 版本锁定与可复现（硬规则；SSoT：ADR-0031）
+
+- Godot .NET：锁死 4.5.1；`GODOT_BIN` 必须使用 4.5.1 的 console 版二进制；export templates 必须匹配 4.5.1
+- .NET：目标 `net8.0`；不使用 `global.json`
+- NuGet：必须启用并提交 `packages.lock.json`（`RestorePackagesWithLockFile=true`）；若 lock 缺失视为阻塞前置条件，需 `dotnet restore .\\NewRouge.sln` 生成
+- 取证：门禁必须写 `logs/ci/<YYYY-MM-DD>/env-evidence/`（Godot/DotNet/Python 版本、`GODOT_BIN` 路径与 sha256）
+- SQLite：v1 保持当前 provider/bundling 不变；任何变更必须先写 ADR 并补齐 headless 冒烟与 `logs/**` 取证
+
+---
+
+## 3) 目录边界与分层（不要越界）
+
+- `Game.Core/**`：纯 C# 领域层，禁止引用 Godot API（可被 xUnit 毫秒级测试）
+- `Game.Godot/**`：适配层与引擎层，只在这里调用 Godot API；通过接口把依赖注入 Core（见 ADR-0007-ports-adapters）
+- `Game.Core/Contracts/**`：契约与事件 SSoT（见 ADR-0020-contract-location-standardization）
+- `Game.Core.Tests/**`：xUnit 单测（领域规则与状态机优先）
+- `Tests.Godot/**`：GdUnit4/冒烟等引擎侧测试
+
+如果需要引入“事件/契约”，统一遵循 ADR-0004-event-bus-and-contracts，并将 DTO/事件类型落盘到 `Game.Core/Contracts/**`，不要在文档里复制粘贴源码。
+
+---
+
+## 4) Godot 运行时约定（从 `project.godot` 发现）
+
+- 主场景：`res://Game.Godot/Scenes/Main.tscn`
+- Autoload（全局单例）已定义：`EventBus`、`DataStore`、`Logger`、`SecurityAudit`、`PerformanceTracker`、`SentryClient`、`FeatureFlags`、`CompositionRoot` 等
+- 原则：只把“不可避免的引擎胶水”留在 Autoload；领域规则仍在 `Game.Core/**`
+
+### 4.1 引擎硬规则（Godot + C#，失败模式防护）
+
+#### 生命周期与装配
+- 禁止在字段初始化/构造函数中访问 `/root/*` Autoload 或场景节点；只允许在 `_Ready()`（或更晚）做依赖获取与连线
+- 依赖 Autoload（如 `CompositionRoot`、`EventBus`）必须做存在性校验；缺失时必须 fail-fast（日志 + 禁用功能/退出），禁止静默吞错
+- `CompositionRoot` 是装配唯一入口：场景脚本只做 UI/信号路由与胶水，不在 Scene 内自行 new 领域服务
+
+#### Signals 与契约
+- 场景内通信用本地 Signals；跨场景/全局事件统一走 `EventBus`（ADR-0004）
+- 新增事件/DTO 必须落盘到 `Game.Core/Contracts/**`（ADR-0020）；引擎层只引用，不复制实现
+- 订阅必须可回收：重复进入场景会触发重复订阅的地方，必须在 `_ExitTree()`/Dispose 断开信号或解除订阅，避免重复响应与泄漏
+
+#### Headless 可测性（GdUnit4）
+- 禁止依赖真实 `InputEvent` 完成关键流程（headless 不可靠）；关键路径必须提供可调用的公开方法（如 `ShowPanel()`、`StartRun()`）或可直接 `emit_signal` 的入口
+- 等待异步/装配只允许有上限的帧轮询（常规 <=60 帧，复杂 <=120 帧）；超过上限视为失败，禁止无限等待
+
+#### 线程边界
+- `Game.Core/**` 默认线程封闭（ADR-0030）；跨线程传递必须使用不可变 DTO/快照
+- 后台线程不得触碰 Godot 对象/SceneTree；应用结果必须回到主线程并走受控入口（Adapters/调度器）
+
+#### 安全基线（默认拒绝）
+- 文件路径只允许 `res://`（只读）与 `user://`（读写）；拒绝绝对路径与越权路径；失败必须审计落盘 `logs/**`（ADR-0019）
+- 网络/外链：只允许 HTTPS + 白名单；`GD_OFFLINE_MODE=1` 必须拒绝出网并审计（ADR-0019）
+- 禁止运行期动态加载外部程序集/脚本；`OS.execute` 默认禁用或仅开发态启用且强审计（ADR-0019）
+
+#### 反模式（出现即要求重构）
+- 禁止在 Node/Scene 内实现领域规则（战斗结算、卡牌效果、掉落权重等）：必须下沉到 `Game.Core/**` 并用 xUnit 覆盖
+- 禁止用静态全局状态绕过装配（不可测、不可控）
+- 禁止在文档中复制契约/阈值源码：必须引用 ADR/Base/Contracts 作为单一口径
+
+---
+
+## 5) 测试与质量门禁（必须先绿后动）
+
+- TDD 优先：先写 `Game.Core.Tests/**` 失败测试，再写 `Game.Core/**` 实现
+- 禁止为了推进而跳过/禁用测试（见 ADR-0005-quality-gates）
+- 引擎侧验证用 GdUnit4（headless 友好），只覆盖场景树/信号/装配关键路径
+- Windows 命令统一使用：
+  - 单测：`dotnet test --collect:\"XPlat Code Coverage\"`
+  - 一键门禁：`py -3 scripts/python/quality_gates.py all ...`
+- 所有测试与审计产物写入 `logs/**`（见 `docs/testing-framework.md` 与 `AGENTS.md`）
+
+---
+
+## 6) 安全基线（只做防御，默认拒绝）
+
+遵循 ADR-0019-godot-security-baseline：
+- 文件路径：只允许 `res://`（只读）与 `user://`（读写）；拒绝绝对路径与越权路径
+- 外链与网络：只允许 HTTPS；主机白名单；`GD_OFFLINE_MODE=1` 时拒绝出网并审计
+- `OS.execute` 默认禁用（或仅开发态开启并强审计）
+- 审计输出写入 `logs/**`（例如 `logs/ci/<date>/security-audit.jsonl`）
+
+---
+
+## 7) 可观测性与性能（不要复制阈值，引用口径）
+
+- 可观测性：按 ADR-0003-observability-release-health 与 `docs/architecture/base/03-observability-sentry-logging-v2.md`
+- 性能预算：按 ADR-0015-performance-budgets-and-gates 与 `docs/architecture/base/09-performance-and-capacity-v2.md`
+- 原则：文档与实现里不要硬编码阈值数字；引用 ADR/Base 作为单一口径
+
+### 7.1 帧预算与关键路径（默认面向 60fps）
+
+- 目标帧率与预算口径以 ADR-0015 为准；任何“帧预算/首屏/卡顿阈值”的数字只允许出现在 ADR/Base/门禁脚本里
+- 热路径定义：战斗回合推进、卡牌 UI 列表渲染/布局、特效/音频触发、地图节点生成与渲染
+- 关键路径的实现必须可被性能烟测覆盖（见 `scripts/python/perf_smoke.py`；产物写 `logs/perf/**`）
+
+### 7.2 Hot Path 规则（Godot + C#）
+
+- 禁止在 `_Process()` / `_PhysicsProcess()` 中做可避免的分配与反射：避免 LINQ、字符串拼接、临时集合、频繁 `new`
+- 节点查找要缓存：`GetNode()`/`GetTree()`/`GetNodesInGroup()` 在热路径内必须避免频繁调用；使用 `NodePath`/引用缓存
+- UI 更新要“批量化”：同一帧内多次刷新/重排要合并；列表/卡牌视图优先复用实例（池化或复用容器子节点）
+- 事件风暴要限流：`EventBus` 上高频事件需要聚合或采样，避免每帧广播大量 payload（参考 ADR-0004）
+
+### 7.3 内存与资源加载（避免抖动）
+
+- 资源加载分层：启动/场景切换阶段做预加载；战斗热路径禁止同步加载大资源（贴图/音频/场景）
+- 大对象复用：卡牌 UI、弹幕/特效节点、临时提示等高频对象优先采用对象池或复用策略
+- 长会话泄漏防护：订阅/Signal 绑定必须可回收（见 4.1）；长期运行（60 分钟）仍需保持稳定内存曲线
+### 7.4 取证要求（可观测性 + 性能）
+
+- 性能相关回归必须附带 `logs/perf/**` 摘要与关键场景说明；若触及预算口径，先更新 ADR-0015（或新增 Supersede ADR）
+
+---
+
+## 8) 玩法不变量（实现必须对齐 PRD）
+
+SSoT：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+
+- 单局结构：3 Act 分叉路线图；目标时长约 60 分钟
+- 战斗能量：每回合基础能量 `X=3`
+- 初始套牌：10 张（7 普通 + 2 优良 + 1 精英）
+- 角色：3 个
+  - 战士：怒气为可叠加状态 Buff（不是第二属性条）
+  - 刺客：擅长施加多种 Debuff，并在合适时机兑现收益
+  - 德鲁伊：持久 Buff + 姿态切换触发定点爆发；切换必须有成本
+- 卡牌：每角色 30 张基础卡（不含升级版本）；v1 有卡牌升级系统（U1 二选一路线 + Ultimate 终极形态）
+- 遗物：首发 20 个
+- 事件：首发 40 个；同一局内事件不重复
+- 元系统：共享天赋树，可无条件重置；天赋树与 10 档难度不强绑定
+- 难度：10 档，首发以数值调整为主
+- 存档：节点前存档；进入战斗后自动保存“战斗初始状态”；不允许战斗中退出续打
+
+当上述不变量改变时，必须先更新 PRD（并补齐对应测试/取证），再改实现。
+
+---
+
+## 9) 代码组织与内容管线（新增必须遵守）
+
+### 9.1 命名空间与身份统一（新增代码硬规则）
+
+- 新增 C# 代码命名空间一律使用 `NewRouge.*`；禁止新增 `Game.*`
+- 允许短期保留既有 `Game.*`，但后续只能“一次性全量迁移”，禁止长期混用
+
+### 9.2 场景/脚本命名与绑定（Godot）
+
+- `.tscn` 统一 PascalCase + 类型后缀（从新增开始强制）：`*Screen.tscn`、`*Panel.tscn`、`*Menu.tscn`、`*Hud.tscn`、`*View.tscn`
+- 一个场景一个同名脚本：`X.tscn` ↔ `X.cs`；禁止“一个脚本服务多个不相干场景”
+
+### 9.3 Assets vs Resources（目录边界）
+
+- `Game.Godot/Assets/**`：源素材（`.png/.svg/.wav/.ogg/.ttf/.otf` 等）
+- `Game.Godot/Resources/**`：数据/配置型 Godot Resource（`.tres/.res`）
+- `Game.Godot/Scenes/**`：只放 `.tscn`
+- `Game.Godot/Scripts/**`：只放 `.cs`
+
+### 9.4 Translations（UI 文案与叙事文本）
+
+- SSoT：`Game.Godot/Translations/**`（格式默认 `csv`；初期语言默认 `en` + `zh-CN`；口径见 ADR-0010）
+- 脚本里禁止硬编码“可见文本”（UI/叙事/奖励文案等）；仅允许 debug 日志/异常消息/审计 reason 使用英文硬编码（非 UI 可见）
+- Key 命名：点分层 + 强制域前缀：`ui.*`、`card.*`、`relic.*`、`event.*`、`meta.*`、`enemy.*`、`status.*`
+- 占位符：使用 `{name}` 命名占位符；禁止对翻译字符串使用 `string.Format`（必须使用“命名占位符替换”约定实现）
+- Key 生命周期：发布后视为稳定 ID；允许改名/删除，但必须提供迁移映射并写入 `logs/ci/**` 取证；未使用 key 初期按 CI warning 处理
+
+### 9.5 事件结构与文本解耦（可测试）
+
+- 事件结构（触发条件/权重/奖励表/分支）放 `Game.Godot/Resources/**`
+- 事件文本（标题/描述/选项）只放 `Game.Godot/Translations/**`
+- 抽样抑制逻辑（同局不重复/冷却）必须在 `Game.Core/**`（可 xUnit 单测）
+- 内容稳定 ID：点分层（例如 `event.act1.bandits`、`card.warrior.strike`）
+- 稳定 ID 语法：全小写 ASCII；用 `.` 分层；slug 仅允许 `[a-z0-9_]+`；禁止空格/中文；一旦发布不得重命名（只允许新增并通过迁移/别名兼容）
+- Events 目录默认：`Game.Godot/Resources/Events/Common/**` + `Act1/**` + `Act2/**` + `Act3/**`
+- 文本 key 与事件 ID 强绑定：事件 ID `act1.bandits` 对应 `event.act1.bandits.title/desc/opt.*`
+
+### 9.6 测试对齐（强制映射）
+
+- `Game.Core/<Area>/Foo.cs` → `Game.Core.Tests/<Area>/FooTests.cs`
+- 新增 Core 类型必须有对应单测；仅纯 DTO 允许例外
+
+### 9.7 导出与归档命名
+
+- 导出产物名：`NewRouge.exe` / `NewRouge.pck`
+- 稳定 slug：`newrouge`
+
+---
+
+## 10) 平台与构建（Windows-only，门禁入口）
+
+### 10.1 平台与引擎版本（硬规则）
+
+- 只支持 Windows（ADR-0011）
+- Godot .NET 必须锁死 `4.5.1`，`GODOT_BIN` 必须指向 4.5.1 console 版二进制（ADR-0031）
+- export templates 必须匹配 `4.5.1`（不提交到仓库；由本机/CI 预装并在门禁中取证）
+
+### 10.2 环境变量（最小集）
+
+- 必需：`GODOT_BIN`
+- 建议：`GODOT_PROJECT`（仓库根目录，避免 CWD 漂移）
+- CI 安全默认：`GD_SECURE_MODE=1`、`SECURITY_TEST_MODE=1`（`GD_OFFLINE_MODE=1` 时必须拒绝出网并审计）
+
+### 10.3 门禁入口（Python 为唯一口径）
+
+- 唯一口径命令（Windows）：
+  - `py -3 scripts/python/quality_gates.py all --godot-bin \"%GODOT_BIN%\" --solution Game.sln --configuration Debug --build-solutions`
+- PowerShell 包装器（可选，内部仍调用 Python）：
+  - `powershell -ExecutionPolicy Bypass -File scripts/ci/quality_gate.ps1 -GodotBin $env:GODOT_BIN`
+
+### 10.4 可复现硬前置（失败即阻塞）
+
+- 必须安装 .NET 8 SDK（未安装视为门禁失败）
+- 必须提交并保持最新的 `packages.lock.json`（缺失视为阻塞前置条件）：
+  - `packages.lock.json`（仓库根，`NewRouge.csproj`）
+  - `Game.Core.Tests/packages.lock.json`
+  - `Tests.Godot/packages.lock.json`
+- 生成方式：`dotnet restore .\\NewRouge.sln`
+
+### 10.5 取证与日志（SSoT）
+
+- 门禁必须写入 `logs/ci/<YYYY-MM-DD>/env-evidence/**` 与 `logs/ci/<YYYY-MM-DD>/prereqs/**`（Python 入口负责）
+- 其他 CI 工件也必须落在 `logs/ci/<YYYY-MM-DD>/**`（禁止写到 `logs/ci/<timestamp>/...`）
+
+---
+
+## 11) 关键防踩坑规则（Don’t-Miss，违反即视为缺陷）
+
+- v1 必须提供“卡牌升级系统”（仅休整或事件升级；商店任何时候都不提供升级服务）：
+  - 休整节点：升级是“多选一”选项之一；若选择升级，则免费升级 1 张卡牌
+  - 常规升级（U1）：每次升级必须在 Route A / Route B 二选一；选择不可逆
+  - 特殊事件：允许对已 U1 的卡牌免费更换升级路线；事件内可无限次切换，离开事件时以最终选择为准
+  - 终极形态（Ultimate）：每张卡 1 个终极形态；仅史诗事件/关卡 Boss 等稀有机会获取；可从未升级卡直接进阶；不可逆；不可再升级、不可再换路线
+  - 升级是显式玩家输入，不得引入额外 RNG；禁止“通过 UI 操作推进 RNG”
+
+### 11.1 存档：粒度、限制、版本化（硬规则）
+
+- 存档/继续游戏/确定性反刷随机的口径以 ADR-0032 为准；任何变更必须先写 ADR 并补齐测试与 `logs/**` 取证
+- 运行时审计写入 `user://logs/security/security-audit.jsonl`，自动化测试/门禁结束时（成功或失败）必须归档到仓库：`logs/ci/<YYYY-MM-DD>/security/security-audit.jsonl`（无证据 = 不可复现；详见 `_bmad-output/audit-artifact-pipeline.md`）
+- 存档粒度（玩法硬约束）：
+  - 节点前：只保存“节点入口前状态”
+  - 进战斗：只保存“战斗初始状态”
+  - 战斗中：禁止保存中间态；禁止通过任何方式恢复到战斗中（包括自动备份、崩溃恢复、临时文件）
+- 存档必须版本化：使用整型递增 `schema_version`（`1,2,3...`），并支持向后迁移（迁移必须幂等）
+- 迁移取证必须落盘：`logs/ci/<YYYY-MM-DD>/save-migrations/<timestamp>/summary.json`
+
+### 11.2 RNG：确定性与可回放（硬规则）
+
+- 必须强制确定性：同一 `seed` + 同一输入序列 = 同一结果（用于复现与禁“退出重进”口径的取证）
+- RNG 按系统拆分（禁止全局单一 RNG）：`run_rng`、`combat_rng`、`loot_rng`、`event_rng`（从 run seed 派生）
+- 抽样与冷却逻辑的 SSoT 必须在 `Game.Core/**`（可 xUnit 单测）；Godot 只负责展示/资源加载
+
+### 11.3 事件池：同局去重与跨局抑制（硬规则）
+
+- 同局不重复的边界：事件“定义 ID”不重复（而非事件类型粗粒度去重）
+- 跨局重复抑制策略：组合策略（权重衰减 + 硬冷却窗口），具体参数只在 ADR/Base/门禁中定义
+
+### 11.4 安全开关：CI 默认（硬规则）
+
+- CI 默认强制：`GD_SECURE_MODE=1`、`SECURITY_TEST_MODE=1`、`GD_OFFLINE_MODE=1`
+- `GD_OFFLINE_MODE=1` 下必须拒绝所有出网并审计（审计产物写 `logs/**`，口径见 ADR-0019）
+
+---
+
+## 12) 使用与维护（面向 AI 与人类）
+
+### 12.1 给 AI 的规则
+
+- 写任何代码/脚本/测试前先读本文件；冲突时优先选择更保守、更可审计的方案
+- 任何会落地为代码/测试的改动必须引用至少 1 条 `Accepted` ADR；若改变口径/阈值/契约/安全策略，先新增或 Supersede ADR
+- 日志/取证一律写入 `logs/**`，并遵循 `logs/ci/<YYYY-MM-DD>/**` 的目录规范
+
+### 12.2 给人类的维护准则
+
+- 保持精炼：只保留“容易踩坑且必须一致”的规则，删除显而易见或过时内容
+- 技术栈/版本/门禁口径变化时，先更新 ADR，再同步更新本文件
+- 任何新增的跨切面约束（安全/可观测性/门禁/契约/存档）都必须被门禁脚本与取证目录验证
+
+---
+
+## 13) 内容登记（SSoT）
+
+- 内容稳定 ID 与翻译 key 必须登记到 `_bmad-output/content-registry.md`（新增前登记，发布后不得重命名）
+- `translation_key_prefix` 必须与 `content_id` 一致，避免 key 漂移与漏配
+===== END PART: .taskmaster/docs/prd_parts/10-project-context.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/20-prd.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/20-prd.md",
+  "title": "docs/prd/PRD-NEWROUGE-GAME-0001.md",
+  "sha256": "e28eaa0dabc95e5469238d04fd85b38be24b94534181a5f88c2769074c1c00f8",
+  "bytes": 17548
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+Story-ID: PRD-NEWROUGE-GAME-0001
+Title: 黑暗卡牌肉鸽（3角色+天赋树）
+Status: Draft
+ADR-Refs:
+  - ADR-0003-observability-release-health
+  - ADR-0005-quality-gates
+  - ADR-0011-windows-only-platform-and-ci
+  - ADR-0015-performance-budgets-and-gates
+  - ADR-0019-godot-security-baseline
+  - ADR-0025-godot-test-strategy
+  - ADR-0033-card-identity-and-forms
+Chapter-Refs:
+  - docs/architecture/base/01-introduction-and-goals-v2.md
+  - docs/architecture/base/02-security-baseline-godot-v2.md
+  - docs/architecture/base/03-observability-sentry-logging-v2.md
+  - docs/architecture/base/07-dev-build-and-gates-v2.md
+  - docs/architecture/base/09-performance-and-capacity-v2.md
+Test-Refs:
+  - Game.Core.Tests/Determinism/OfferLockingTests.cs # planned
+  - Game.Core.Tests/Save/SaveResumeBoundaryTests.cs # planned
+  - Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs # planned
+  - Tests.Godot/Smoke/ContinueGateTests.gd # planned
+---
+
+# PRD-NEWROUGE-GAME-0001：黑暗卡牌肉鸽（3角色+天赋树）
+
+## 0. 范围与止损（必须先读）
+
+### 0.0 关联规格（v1）
+为避免口径漂移，本 PRD 不重复“跨文档硬口径”，统一引用以下 SSoT：
+- v1 GDD（工作版）：`docs/gdd/GDD-NEWROUGE-V1.md`
+  - M1（Warrior）任务粒度口径：`docs/gdd/GDD-NEWROUGE-V1.md`（章节：8–13）
+- v1 设计锁定表（SSoT）：`docs/prd/SSOT-LOCKS-NEWROUGE-V1.md`
+- 事件 ID 与优先级：`docs/prd/EVENT-ID-CATALOG-NEWROUGE-V1.md`
+- 卡牌 ID 目录：`docs/prd/CARD-ID-CATALOG-NEWROUGE-V1.md`
+- 遗物 ID 目录：`docs/prd/RELIC-ID-CATALOG-NEWROUGE-V1.md`
+- 内容强度边界与组合禁区：`docs/prd/CONTENT-POWER-BOUNDS-AND-COMBO-RULES-NEWROUGE-V1.md`
+- 内容作者单一入口：`docs/prd/CONTENT-AUTHORING-ENTRY-NEWROUGE-V1.md`
+- 内容制作验收清单：`docs/prd/CONTENT-REVIEW-CHECKLIST-NEWROUGE-V1.md`
+- 机制边界与反例 SSOT：`docs/prd/MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1.md`
+- 玩家可解释反馈输出规格：`docs/prd/PLAYER-FEEDBACK-EXPLAINABILITY-NEWROUGE-V1.md`
+- 平衡与内容回归基线：`docs/prd/BALANCE-REGRESSION-BASELINE-NEWROUGE-V1.md`
+- 逐屏玩家体验规格：`docs/prd/SCREEN-BY-SCREEN-PLAYER-SPECS-NEWROUGE-V1.md`
+- 叙事与文案风格指南：`docs/prd/NARRATIVE-AND-COPY-STYLE-GUIDE-NEWROUGE-V1.md`
+- 术语与按钮文案表：`docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md`
+- 文案禁用语境清单：`docs/prd/COPY-FORBIDDEN-WORDS-QA-CHECKLIST-NEWROUGE-V1.md`
+- 玩家困惑点追踪表：`docs/prd/PLAYER-CONFUSION-FIX-TRACKER-NEWROUGE-V1.md`
+- 60 分钟试玩脚本：`docs/prd/PLAYTEST-SCRIPT-60MIN-NEWROUGE-V1.md`
+- 试玩问题分级与回填指引：`docs/prd/PLAYTEST-ISSUE-GRADING-AND-REVISION-GUIDE-NEWROUGE-V1.md`
+- 存档/退出重进/确定性：`docs/adr/ADR-0032-save-resume-determinism.md`
+- 卡牌身份与形态（Base/U1A/U1B/Ultimate）：`docs/adr/ADR-0033-card-identity-and-forms.md`
+- M1 纵切（Warrior）Overlay 08 索引：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
+- M1 纵切验收清单：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
+
+### 0.1 产品定位（避免“复刻”）
+本项目目标是制作一款“受经典单人卡牌肉鸽启发”的原创游戏：以回合制战斗与牌组构筑为核心，3 Act 路线推进，单局 60 分钟左右；通过 3 名机制差异明显的角色与共享天赋树元系统驱动长线可玩性。
+
+### 0.2 法律与差异化止损
+本 PRD 明确约束：
+- 不复用任何现有作品的世界观、角色设定、文本、地图结构命名、视觉/音频资产。
+- 不以“完全一致”为设计目标；以“同品类体验 + 新机制与元系统”为目标。
+- 任何疑似“直接映射”的内容（章节命名、事件文本、遗物/卡牌效果表述）必须在评审时替换为原创设计。
+
+---
+
+## 1. 目标与非目标
+
+### 1.1 目标（首发包）
+- 提供可完整通关的 3 Act 单局闭环（平均 60 分钟）。
+- 提供 3 个角色（战士/刺客/德鲁伊），每个角色有独立机制与至少 3 条可行构筑方向。
+- 每角色 30 张基础卡（不含升级版本）；v1 提供卡牌升级系统（仅在休整节点或特定事件中升级；商店任何时候都不提供升级服务）。
+- 遗物系统首发 20 个遗物。
+- 事件系统首发 40 个事件（同一局内不重复；跨局允许重复但需有重复抑制策略）。
+- 元系统为共享天赋树：可无条件重置，鼓励玩家尝试流派；天赋影响“规则与权重”，而不是单纯堆数值。
+- 难度体系 10 档（影响敌人与奖励曲线）。
+
+### 1.2 非目标（首发不做）
+- 多人、联机、PVP。
+- 内置 Mod 编辑器与创意工坊集成。
+- 关卡编辑器与用户生成内容管线。
+- 跨平台（Windows-only）。
+
+---
+
+## 2. 平台与技术约束（引用 ADR）
+
+- 运行平台：Windows-only（见 ADR-0011-windows-only-platform-and-ci）。
+- 引擎：Godot 4.5 + C#/.NET 8（见 ADR-0001-tech-stack）。
+- 性能目标：60fps 体验优先；性能预算与门禁见 ADR-0015-performance-budgets-and-gates 与 `docs/architecture/base/09-performance-and-capacity-v2.md`。
+- 质量门禁：覆盖率与 CI 门禁见 ADR-0005-quality-gates 与 `docs/architecture/base/07-dev-build-and-gates-v2.md`。
+- 可观测性：Sentry Release/Sessions 与日志口径见 ADR-0003-observability-release-health 与 `docs/architecture/base/03-observability-sentry-logging-v2.md`。
+- 安全基线：资源、文件、网络、权限口径见 ADR-0019-godot-security-baseline 与 `docs/architecture/base/02-security-baseline-godot-v2.md`。
+
+---
+
+## 3. 体验支柱（Pillars）
+
+1) 构筑表达：同角色至少 3 条可行流派，且流派之间的“发动机卡/遗物”不同。
+2) 代价与抉择：强力手段伴随黑暗代价（自伤、诅咒、腐化、资源透支等），可通过构筑转化或对冲。
+3) 机制差异：三角色不是“换皮卡池”，而是规则层差异（资源、节奏、收益来源不同）。
+4) 长线策略：共享天赋树改变卡池/事件/奖励权重或规则，促使玩家实验，而不是把游戏推成纯数值碾压。
+
+---
+
+## 4. 核心循环（Run Loop）
+
+### 4.1 单局流程
+1. 选择角色
+2. 应用天赋树效果（开局规则/权重/解锁）
+3. 进入 Act 1 分叉地图
+4. 节点推进：战斗/精英/事件/商店/休整
+5. 每节点结算：奖励三选一（卡牌为主）+ 资源（金币/药剂类资源可选）+ 遗物（特定节点）
+6. Act Boss
+7. 进入下一 Act
+8. 通关或死亡
+9. 结算：获得天赋点/解锁资源，进入下一局
+
+### 4.2 失败与回收
+- 死亡即本局结束，不提供“战斗中回滚”。
+- 失败回收必须存在：至少以“天赋点/解锁”形式提供长线进展，避免纯挫败。
+
+---
+
+## 5. 战斗系统（回合制）
+
+### 5.1 基本规则
+- 回合制、玩家先手（可被特定敌人/难度修改）。
+- 能量：每回合基础能量 `X = 3`。
+- 抽牌：每回合抽牌 5 张（可被卡牌/遗物/天赋改变）。
+- 手牌上限：10 张（超出则弃置到弃牌堆）。
+- 牌堆：抽牌堆/弃牌堆/消耗堆（消耗堆默认不可回收，除非被特定效果拉回）。
+
+### 5.2 伤害与状态
+- 允许叠加的状态分两类：数值型（可叠层）与规则型（开关/姿态）。
+- 必须有统一的“状态优先级/叠加/刷新”规则，以避免“同一状态被多系统定义”。
+
+---
+
+## 6. 角色设计（3 角色）
+
+### 6.1 战士（怒气作为状态 Buff）
+定位：稳健推进、以怒气驱动爆发窗口与防御反击。
+
+机制要点：
+- 怒气不是第二条资源槽，而是可叠加的状态 Buff（例如 `Rage` 层数）。
+- 默认衰减规则：回合结束衰减一定层数（具体数值由平衡表定义）。
+- 怒气的用途：提升伤害/护甲效率；部分卡牌“消耗怒气”换取高额效果，形成窗口管理。
+
+构筑方向（首发目标）：
+- 怒气爆发：堆叠怒气后在窗口内连打。
+- 反击防御：以格挡与反击触发收益。
+- 流血压制：持续伤害与处决。
+
+### 6.2 刺客（Debuff 专家）
+定位：擅长给敌人施加多种 Debuff，并围绕 Debuff 形成控制窗口与爆发回合。
+
+机制要点（更正：强调“Debuff 工具箱”而非单一放大器）：
+- 核心能力是“快速铺设多种 Debuff + 在合适时机兑现收益”，包括伤害、控制与资源回流。
+- 允许存在刺客专属的“兑现机制”（可选但推荐，以避免只剩堆层数）：
+  - `Exploit`（利用）：当目标带有满足条件的 Debuff（例如：Debuff 种类 ≥ N，或某关键 Debuff ≥ M 层）时触发额外收益（爆发伤害/回能/抽牌）。
+  - `Consume`（消耗）：消耗部分 Debuff 层数换取短期爆发或稳定收益。
+- 目标：刺客强度主要来自“Debuff 组合与时机”，而不是纯数值叠层。
+
+构筑方向（首发目标）：
+- 毒化与结算：叠加毒类 Debuff，择机结算。
+- 破甲连击：制造脆弱窗口并连击。
+- 控制循环：减速/失明/封印等，换取稳定推进。
+
+### 6.3 德鲁伊（持久 Buff + 姿态切换爆发）
+定位：长期增益的“形态管理者”，通过姿态切换制造定点爆发。
+
+机制要点：
+- 存在多个姿态（例如 3 个）：每个姿态提供持久 Buff（规则型或数值型）。
+- 切换姿态会触发一次“定点爆发”效果（伤害/群体控制/治疗或护甲）。
+- 关键约束：姿态切换必须有成本（卡牌、冷却或资源），避免无限切换。
+
+构筑方向（首发目标）：
+- 形态循环：围绕切换收益构筑。
+- 持久堆叠：强化持久 Buff 并以延迟爆发收割。
+- 召唤/自然法术：以持续物或法术联动（可选，取决于实现成本）。
+
+---
+
+## 7. 卡牌系统
+
+### 7.1 卡池规模
+- 每角色 30 张基础卡（不含升级版本；升级为同一张卡的升级态）。
+- 所有卡牌/遗物/事件必须有“内容稳定 ID”；语法与命名空间见 `project-context.md` 与 `_bmad-output/content-id-standard.md`。
+- 每角色初始套牌 10 张：
+  - 7 张普通
+  - 2 张优良
+  - 1 张精英
+  - 说明：这里的“普通/优良/精英”指卡牌稀有度层级（与“升级态”不是一回事）；“精英”建议作为每角色的 signature 起始卡，形成角色差异化起点。
+
+### 7.2 稀有度
+稀有度：普通 / 优良 / 精英 / 稀有 / 传说。
+
+### 7.3 获取方式（首发默认）
+- 主要来源：战斗奖励三选一。
+- 次要来源：商店购买、事件奖励、精英与 Boss 奖励（可包含遗物与高稀有卡牌）。
+
+### 7.4 卡牌升级系统（v1 必须做）
+
+v1 的卡牌升级系统定义为“同一张卡的升级态”（常见记号可在 UI 显示为 `+`，但实现/数据侧不强制该符号）：
+
+- 升级发生在休整节点（为主），且属于玩家显式输入（升级哪张卡），不依赖 RNG。
+- 休整节点的升级是“多选一”选项之一（例如：恢复体力 / 升级 / 其他）；若选择升级，则**免费**升级 1 张卡牌。
+- 可选：部分事件提供“以代价换升级”的分支（代价可为生命/金币/诅咒/后续惩罚等），但必须保持确定性（退出重进不刷结果）。
+- v1 约束（止损）：
+  - 常规升级（U1）为**二选一**路线（Route A / Route B），玩家选择其一并**不可逆**。
+  - 特殊事件允许对已 U1 的卡牌**免费更换升级路线**：事件内可对身上已升级的卡牌反复切换路线（不限次数），离开事件时以最终选择为准。
+  - 每张卡最多 1 次常规升级（U1）+ 1 次终极进阶（Ultimate），且终极形态不可再升级、不可再换路线。
+  - 升级优先增加“策略空间”而非纯数值膨胀（例如：减费、增强数值、单体→群体、触发条件变化、额外抽牌/保留/联动）。
+  - 升级必须可预览（升级前后差异在 UI 清晰展示）。
+
+### 7.6 终极形态（Ultimate）
+
+所有卡牌都有一个终极形态（Ultimate）：
+
+- 不通过常规休整升级获取，必须通过史诗事件、关卡 Boss 等稀有场合提供的“终极进阶机会”获得。
+- 卡牌无需先进行常规升级即可直接进阶终极形态（不可逆）。
+- 终极形态不可再升级、不可再换路线。
+
+### 7.5 关键词与可读性
+- 每角色首发关键词建议控制在 6–10 个（含共享关键词）。
+- 关键词必须有统一解释入口（UI 词条、提示、教程）。
+
+---
+
+## 8. 遗物系统（20 个）
+
+### 8.1 数量与分布
+- 首发遗物总数：20。
+- 获取：精英/Boss/事件/商店。
+- 遗物设计要求：至少一半为“改变规则/权重/构筑方向”的遗物，避免全是简单加数值。
+
+### 8.2 与角色机制联动
+- 遗物可按“标签”与角色机制联动（怒气/Debuff/姿态），但避免把强度锁死在单角色专属遗物上，以免共享天赋树导致某角色更依赖运气。
+
+---
+
+## 9. 地图与节点（分叉路线图）
+
+### 9.1 地图结构
+- 每个 Act 为分叉路线图。
+- 节点类型：普通战斗/精英/事件/商店/休整/Boss。
+
+### 9.2 单局节奏目标
+- 单局 60 分钟目标要求：Act 内节点数与战斗时长必须受控。
+- 建议首发默认：每 Act 12–16 个节点 + 1 个 Boss（精确数值由试玩迭代决定）。
+
+---
+
+## 10. 事件系统（40 个）
+
+### 10.1 数量与重复策略
+- 首发事件数：40。
+- 同一局内：事件不重复。
+- 跨局：允许重复，但需要重复抑制策略（例如优先未见事件、对刚出现的事件降低权重）。
+
+### 10.2 事件结构要求
+每个事件必须定义：
+- 触发前置（Act/节点/状态/遗物/天赋）
+- 至少 2 个选择项
+- 每个选择项的代价与收益（必须符合黑暗主题的“代价感”）
+- 对构筑的影响方向（帮助/诱惑/风险）
+
+---
+
+## 11. 元系统：共享天赋树（可无条件重置）
+
+### 11.1 核心规则
+- 共享一棵天赋树，所有角色共用。
+- 可无条件重置（鼓励实验）。
+
+### 11.2 天赋节点类型（首发必须覆盖）
+1) 解锁类：解锁卡牌/遗物/事件进入池。
+2) 规则类：改变奖励三选一出现权重、商店规则、事件权重、开局规则。
+3) 风险类：强力效果伴随代价（契合黑暗主题）。
+
+### 11.3 天赋点获取（首发建议）
+- 天赋点来自局后结算，主要与“通关进度/击败关键节点（精英、Boss）/事件选择”等相关。
+- 更正：天赋树与 10 档难度不做强绑定；难度档位以“数值挑战曲线”为主，不作为天赋点的核心来源。
+- 目标：玩家在 3–8 局内能明显解锁/重塑一条构筑方向，而不是几十局才有变化。
+
+---
+
+## 12. 难度体系（10 档）
+
+### 12.1 目标
+- 10 档难度用于延长寿命与提供挑战曲线。
+- 更正：难度体系首发以“数值调整”为主（敌方生命/伤害/奖励曲线等）；避免引入过多规则变化导致学习成本与调参成本爆炸。
+
+### 12.2 建议影响维度（首发）
+- 敌方：生命/伤害/精英出现概率（可选：少量行为参数微调，但不引入新规则）。
+- 经济：奖励金币、商店价格、奖励质量。
+- 风险：事件代价更高或更不可预测（需谨慎，避免变成随机惩罚）。
+
+---
+
+## 13. 存档与回退规则
+
+### 13.1 存档点
+- 节点前存档（进入节点前）。
+- 进入战斗后，自动保存“战斗初始状态”。
+
+### 13.2 禁止与允许
+- 不允许“战斗中退出后原地续打”。
+- 允许由于异常退出而从“战斗初始状态”恢复（等价于重开该场战斗的初始局面）。
+
+---
+
+## 14. 经济与商店（首发建议）
+
+- 资源：金币（基础），用于商店购买卡牌/遗物/服务（移除/转换等）。
+- 商店需要提供至少 2 种“改善牌组质量”的服务：移除基础卡、转换/重铸（商店不提供升级服务）。
+- 商店与事件需要对“黑暗代价”有表达空间：以代价换取强力遗物或稀有卡牌。
+
+---
+
+## 15. 成功标准（验收）
+
+- 内容验收：3 Act 可通关；3 角色完整；每角色 30 基础卡；20 遗物；40 事件；10 难度档位；共享天赋树可重置。
+- 体验验收：单局目标 60 分钟（允许 45–75 分钟区间，具体以测试数据为准）。
+- 机制验收：每角色至少 3 条可行构筑方向；天赋树能明显改变玩家决策（不是纯数值堆叠）。
+- 稳定性验收：遵循质量门禁与可观测性口径（引用 ADR 与 Base 文档）。
+
+---
+
+## 16. 里程碑（交付导向）
+
+- M1：完整闭环验证（1 角色 + 1 Act + 最小卡/遗物/事件 + 存档规则落地）
+- M2：3 Act 结构完整（Boss、地图、节点类型齐全）
+- M3：3 角色机制齐全 + 各自 30 基础卡
+- M4：20 遗物 + 40 事件 + 共享天赋树完整（含重置）
+- M5：10 难度档位 + 平衡与体验打磨（节奏、可读性、爆表治理）
+
+---
+
+## 17. 风险清单（必须正视）
+
+1) 平衡风险：三角色机制差异大 + 天赋树共享，容易出现某角色“吃天赋/吃运气”的结构性劣势。
+2) 内容产能风险：40 事件与 90 张角色卡（不含升级）会吞噬大量设计与测试时间。
+3) 可读性风险：Debuff/姿态系统叠加后，若 UI 不清晰会直接劝退。
+4) 反复挑战风险：禁止战斗中续打会增加挫败感；必须用失败回收与节奏控制对冲。
+===== END PART: .taskmaster/docs/prd_parts/20-prd.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/30-gdd.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/30-gdd.md",
+  "title": "docs/gdd/GDD-NEWROUGE-V1.md",
+  "sha256": "b685d694554ccb35af1b0d37bde888eeb522c3f45de49d4d9cee3c8a9f179778",
+  "bytes": 44944
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+GDD-ID: GDD-NEWROUGE-V1
+Title: NewRouge v1 Game Design Document（工作版）
+Status: Draft
+Owner: skyo
+Last Updated: 2026-01-25
+Encoding: UTF-8
+Applies-To:
+  - docs/prd/PRD-NEWROUGE-GAME-0001.md
+ADR-Refs:
+  - ADR-0011-windows-only-platform-and-ci
+  - ADR-0019-godot-security-baseline
+  - ADR-0025-godot-test-strategy
+  - ADR-0032-save-resume-determinism
+  - ADR-0033-card-identity-and-forms
+---
+
+# NewRouge v1 GDD（工作版）
+
+说明：
+- 本文件是“设计工作文档”，用于把玩法口径与体验节奏写清楚，便于后续用 Taskmaster 拆解任务与验收。
+- **不复制跨切面阈值/策略**：安全、可观测性、质量门禁等以 Base 与 Accepted ADR 为准；本文件只在需要处引用。
+
+关联 SSoT（避免口径漂移）：
+- PRD 主入口：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+- v1 锁定表：`docs/prd/SSOT-LOCKS-NEWROUGE-V1.md`
+- M1 Overlay 08（验收锚点）：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
+- 升级/形态身份口径：`docs/adr/ADR-0033-card-identity-and-forms.md`
+- 存档/确定性口径：`docs/adr/ADR-0032-save-resume-determinism.md`
+- 内容稳定 ID 规范：`_bmad-output/content-id-standard.md`
+- 内容登记表（SSoT）：`_bmad-output/content-registry.md`
+- Taskmaster 输入（派生，不是 SSoT）：`.taskmaster/docs/prd.txt`
+
+---
+
+## 1) 执行摘要
+
+NewRouge 是一款“黑暗主题”的单人卡牌构筑 roguelike：玩家在 3 Act 分叉地图中推进，节点由战斗/精英/事件/商店/休整组成，通过奖励三选一逐步构筑牌组与遗物引擎，目标是在单局约 60 分钟内完成通关或在失败中积累长线进展。
+
+首发包含 3 个机制差异明显的角色：
+- 战士：怒气作为“状态型 buff”而非第二资源条；围绕怒气叠加/消耗与强攻窗口。
+- 刺客：擅长给敌人叠加多种 debuff，并围绕 debuff 的增幅/引爆构筑。
+- 德鲁伊：姿态/状态的持久 buff 与切换后的定点爆发；强调时机与切换成本。
+
+元系统为共享天赋树：可无条件重置，鼓励玩家反复试验流派；难度体系 10 档以数值曲线为主，不与天赋树强绑定。
+
+---
+
+## 2) 体验支柱（Pillars）
+
+1) 构筑表达：同角色至少 3 条可行流派，且发动机卡/遗物不同，不是“同一套换皮”。
+2) 代价与抉择：强力收益伴随黑暗代价；选择要能解释、能复盘、能承担后果。
+3) 可读性优先：复杂性来自系统组合，而非信息不透明；关键状态与代价必须可见、可解释。
+4) 玩家信任：允许退出重进但不刷结果；确定性与单槽 Continue 的边界必须清晰。
+
+---
+
+## 3) 核心循环（Core Loop）
+
+主循环（单局）：
+1) 主菜单：新局/继续 → 选择难度与角色
+2) 地图推进：在分叉路线中选择节点
+3) 节点内容：战斗/事件/商店/休整
+4) 奖励三选一：卡牌/遗物/资源/服务机会
+5) 牌组与引擎演化：通过卡牌、遗物、升级与事件结果塑造流派
+6) Boss/关底结算：通关或失败，结算天赋点等元进度
+
+---
+
+## 4) 规模与首发范围（v1）
+
+- 3 Act 分叉地图；单局目标 60 分钟（允许 45–75 分钟区间，具体以试玩数据校准）
+- 3 角色：战士/刺客/德鲁伊
+- 每角色 30 张基础卡（不含升级形态）
+- 遗物：20
+- 事件：40（同局不重复）
+- 难度：10 档（数值曲线为主）
+- 天赋树：共享、可无条件重置
+
+---
+
+## 5) 卡牌升级系统（v1）
+
+权威口径：`docs/adr/ADR-0033-card-identity-and-forms.md`
+
+玩家可感知规则（面向体验表述）：
+- 商店任何时候都不能升级。
+- 休整节点：升级是多选一选项之一；选择升级则免费升级 1 张卡牌；升级必须二选一（Route A/B），不可逆。
+- 特殊事件：允许对已升级（U1）的卡牌在事件内免费换路线，事件内不限次数切换；离开事件时二次确认，以最终选择为准。
+- 终极形态（Ultimate）：稀有机会获取；可从未升级卡直接进阶；不可逆；不可再升级；不可再换路线。
+
+一致性要求（面向实现/验收）：
+- 形态不改变 `card_id`；形态切换时继承实例附着效果（事件/遗物加持等）。
+- 奖励三选一可“概率出现已升级卡”，其路线由掉落 RNG 决定且 UI 明确标注。
+
+---
+
+## 6) 存档与确定性（v1）
+
+权威口径：`docs/adr/ADR-0032-save-resume-determinism.md`
+
+玩家可感知规则（面向体验表述）：
+- 允许退出重进，但不会因为退出重进导致事件及结果不同（不刷结果）。
+- 单槽 Continue：主菜单仅提供一个“继续游戏”入口；新开一局覆盖旧记录需要二次确认。
+- 节点前存档；进入战斗保存战斗初始状态；战斗中不保存中间态；战斗退出重进只能回到战斗初始状态。
+
+---
+
+## 7) 设计推进建议（无可试玩版本阶段）
+
+当前阶段最容易返工的不是“想法”，而是“口径漂移”。建议按以下顺序推进：
+1) 先冻结高风险硬口径（存档确定性、升级/形态、商店无升级语境）
+2) 再做 60 分钟节奏与逐屏体验规格
+3) 最后进入内容量产（卡牌/遗物/事件）并用 ID 目录与登记表防止漂移
+
+---
+
+## 7.1 设计门（Design Gates）：任务拆解前的冻结口径（v1）
+
+说明：
+- 设计门的目标不是“写更多文档”，而是把最容易返工的关键口径冻结成可验收条款，避免后续 Taskmaster 拆任务后反复推倒。
+- 设计门输出会同步到：本 GDD、M1 Overlay 验收清单、以及 `.taskmaster/docs/prd.txt`（派生输入）。
+
+本版本计划 5 个设计门：
+1) 设计门01：Combat Loop Spec（战斗回合与资源）
+2) 设计门02：Card Model Spec（卡牌数据模型与实例）
+3) 设计门03：Resolution Pipeline Spec（结算顺序与触发器）
+4) 设计门04：Status & Modifier Spec（状态/修饰器叠加与持续）
+5) 设计门05：Offer/Shop/Event Determinism Spec（三选一/商店/事件确定性）
+
+### 设计门01：Combat Loop Spec（v0）
+
+目标：冻结战斗回合结构、抽牌/能量、目标选择、弃牌/保留、消耗堆与战斗结束清理规则，并明确确定性边界。
+
+硬口径（v0，已确认）：
+- 回合阶段：`StartOfTurn → Draw → Main → EndOfTurn`。
+- 抽牌：每回合默认抽牌=4；首回合也抽 4（无额外首回合抽牌规则）。
+- 能量：每回合开始重置为 3（除非被效果修改）；存在 `max_energy`，硬上限=99；`current_energy` 建议同样硬截断到 99（避免溢出不一致）。
+- 目标选择（鼠标优先）：悬停敌方即选中；仅 1 个敌人时始终选中该敌；我方目标始终选中；拖拽卡牌到目标头上松开即对该目标使用。
+- 回合结束手牌：默认全部弃到弃牌堆（除非标记“保留”或其他规则明确改变去向）。
+- EndOfTurn 顺序：`EndOfTurn.Triggers → Discard non-retained → Cleanup`。
+  - 说明：对“保留牌在回合结束或下回合开始前起作用”的效果（如增减费）归入 `EndOfTurn.Triggers`，且不推进 RNG。
+- 抽牌堆耗尽：抽牌时若抽牌堆为空，则洗弃牌堆进抽牌堆并继续抽（确定性）。
+- 消耗堆（Exhaust）：M1 即存在；带“消耗标志”的卡打出后进入消耗堆；允许通过明确写在卡牌/遗物效果中的能力回收消耗堆（默认不回收）。
+- 敌方行动与意图：敌方行动确定性；查看/悬停意图等 UI 行为不推进 RNG。
+- 战斗中退出重进：必须恢复到战斗初始状态（包含初始手牌、抽牌堆、弃牌堆、消耗堆、敌方与玩家状态等）；不允许重新抽/重排。
+- 目标不可选止损阀：当松开瞬间目标已死亡/不可选时，取消出牌并回手；不消耗能量；不进入弃牌/消耗堆（避免误操作与确定性争议）。
+- 战斗结束清理：采用“白名单保留”，不在白名单内的战斗内状态全部清空（怒气也清空）。
+  - 白名单类别（v0，已确认）：
+    - `relic_passives`：遗物被动（run 级来源，跨战斗持续生效）
+    - `permanent_card_instance_modifiers`：卡牌实例永久加持/改造（跨战斗、跨升级形态继承）
+    - `run_modifiers`：本局规则修正/难度修正（跨战斗持续生效）
+    - `map_effects`：地图/路线/Act 效果（按其定义的持续域生效）
+- 回合内防卡死保险丝（v0，已确认）：单回合出牌达到 100 张时，强制中止玩家回合，并按 `EndOfTurn.Triggers → Discard non-retained → Cleanup` 正常结算；该规则属于稳定性止损，不作为平衡手段。
+
+M1 必须演示（用于验收与后续测试钩子）：
+- 事件黑暗代价：HP loss（事件选择立刻写入 run 状态）
+- 事件黑暗代价：获得诅咒卡（`card.curse.*`；不可升级；并提供移除入口）
+- 遗物/规则：保留牌在 `EndOfTurn.Triggers` 生效的费用修饰（例如下回合费用 -1，min 0）
+- 事件：对“某一张卡牌实例”的永久改造（例如费用 -1 或 伤害 +2），升级/终极形态继承（对齐 ADR-0033）
+
+确定性补充条款（与 ADR-0032 对齐）：
+- “输入序列”粒度：仅关键选择（出牌与结束回合）推进决定性状态；出牌必须包含目标信息；UI 悬停/查看详情等不推进 RNG。
+
+---
+
+### 设计门02：Card Model Spec（v0）
+
+目标：冻结“卡牌定义 vs 卡牌实例”的数据边界、四形态承载方式、实例永久修饰器白名单、诅咒卡特殊规则，以及与确定性/存档相关的最小字段。
+
+硬口径（v0，已确认）：
+- 基本单位：卡牌以“实例”为存档单位；每张牌拥有 `instance_id`（同一 `card_id` 可有多张实例共存）。
+- `card_id` 与显示名：四形态下显示名不变；描述随形态变化；形态区分依赖颜色/标识（对齐 ADR-0033）。
+- 四形态承载：同一 `card_id` 的定义内包含 4 形态参数（Base/U1A/U1B/Ultimate），而不是拆成多个定义条目。
+- 升级字段：存档仅保存 `upgrade_tier: 0|1|2` + `upgrade_route: null|a|b`；形态 `form` 由 tier/route 推导（避免自相矛盾坏档）。
+  - 校验：若发现 `upgrade_tier=2` 且 `upgrade_route != null`，必须阻断 Continue 并提示（对齐 Continue Gate 口径）。
+- 稀有度命名（内部/数据）：`Common / Uncommon / Rare / Epic`（对应 普通/优良/精良/史诗）。
+
+卡牌实例永久修饰器（permanent_card_instance_modifiers，v0）：
+- 单局改造限制（v1 锁定）：同一 run 内仅允许 1 次“永久改造”机会；仅在“确认改造”时消耗；被改造过的卡实例会标记，后续改造入口中不可再选。
+- 继承范围：仅继承“卡实例永久修饰器”；战斗内临时 buff/debuff 不继承（跨战斗清空）。
+- v0 白名单（最小可执行集合）：
+  - `cost_delta`：费用增减（最终费用下限默认=0；若被其他规则抬高下限，以后者为准）
+  - `exhaust_flag`：是否进入消耗堆（覆盖或补充形态定义，见下条）
+  - `add_status_on_play`：出牌时施加状态（目标为 self 或 enemy 二选一；同一修饰器实例不得同时影响敌我）
+  - `targeting_override`：单体 → 全体（严格白名单：仅允许少数卡牌支持；避免组合爆炸）
+  - `innate`：每场战斗首回合进入手牌（不推进 RNG；见“首回合发牌规则”）
+
+Ultimate 与消耗：
+- 默认口径：所有 Ultimate 形态的卡默认带 `exhaust=true`（可被实例修饰器 `exhaust_flag=false` 改变）。
+
+首回合发牌与上限（v0）：
+- 抽牌：每回合默认抽牌=4（首回合同样）。
+- 手牌上限：永远是 10，且不被任何因素改变（硬锁定）。
+- `innate` 行为：首回合先将 `innate=true` 的卡实例加入手牌（可使首回合手牌数量超过 4），但不得超过手牌上限 10。
+  - 若 `innate` 数量导致溢出：按 `instance_id` 升序保留前 10 张，其余不进入手牌。
+
+费用计算的层级提示（v0，避免口径漂移；结算顺序在设计门03 进一步冻结）：
+- 建议顺序：形态定义的基础费用 → 实例永久修饰器（例如 `cost_delta`）→ 本回合/本节点临时效果 → 难度/规则类“下限抬高”（例如 `OverplayTax`）。
+
+高难度刷牌刹车（OverplayTax，v0，已确认）：
+- 启用：难度 >= 10。
+- 触发：本回合出牌数首次超过 N（N=12）时触发一次；**触发当下的那张牌（第 N+1 张）也受该规则影响**。
+- 效果：本回合内所有卡牌费用 +1，且最低费用=1；对本回合后续抽到/生成到手的牌同样生效；不可驱散；回合结束自然失效。
+
+验收钩子（用于后续测试/复盘）：
+- `instance_id` 是决定性排序键：用于 `innate` 溢出裁剪、以及任何需要稳定排序的 UI/发牌流程（不依赖 RNG）。
+- 状态施加优先级（示例口径）：先结算“形态定义的状态效果”，再结算“实例修饰器 add_status_on_play”；同名状态按层数相加（状态上限/刷新策略在设计门04 冻结）。
+
+---
+
+### 设计门03：Resolution Pipeline Spec（v0）
+
+目标：把“出牌 → 触发器 → 伤害/格挡/状态 → 死亡 → 奖励/存档点”的结算顺序写死，并指定稳定排序键，避免后续出现“看起来像不确定性/像刷结果”的争议。
+
+单次出牌（PlayCard）结算管线（v0）：
+1) `Validate`：检查卡牌可用性与目标合法性。
+   - 目标失效止损阀：在 `Validate` 阶段触发；若目标已死亡/不可选，则取消出牌并回手；不消耗能量；不计入出牌数；不进入弃牌/消耗堆。
+2) `ComputeCost`：计算最终费用（层级见设计门02；注意 `OverplayTax` 的费用下限抬高）。
+3) `PayCost`：扣除能量/资源后，立即将“本回合出牌数” +1。
+   - 计数范围：包含自动出牌/复制出牌等一切通过 PlayCard 管线结算的出牌行为（避免绕过 `OverplayTax`）。
+4) `BeforePlay Triggers`：结算“出牌前”触发器（按稳定顺序）。
+5) `Resolve Card Effect`：结算卡牌效果（可能包含多段：伤害/格挡/施加状态/抽弃牌/生成牌/回收等）。
+   - 多段伤害（multi-hit）：每段结算后立即执行 `DeathCheck`；若目标在中途死亡，则剩余段取消（不溢出/不改打其他目标）。
+   - 多目标/全体（AOE）：按 `combatant_id` 升序逐个结算目标（稳定排序，不使用屏幕位置/随机）。
+6) `AfterPlay Triggers`：结算“出牌后”触发器（按稳定顺序）。
+7) `MoveCard`：将卡牌实例移入最终去向（弃牌/消耗/保留/其他），以“最终标记”为准（Ultimate 默认消耗，可被实例修饰器覆盖）。
+8) `DeathCheck`：收尾死亡判定、战斗结束判定、以及进入奖励/退出战斗流程的前置条件。
+
+伤害结算（v0，口径冻结）：
+- 强度（`status.strength`）是“加法项”：每点 Strength 使造成的伤害 +3（可为负）。
+- 输出乘区（Attacker Multiplier）：由攻击者的输出类状态决定（例如 `status.weak`）。
+  - 默认 100%；`status.weak` 典型为 75%；输出乘区下限=50%。
+- 受击乘区（Target Multiplier）：由目标的受击类状态决定（例如 `status.vulnerable`）。
+  - 默认 100%；`status.vulnerable` 典型为 150%；受击乘区上限=200%。
+- 计算建议（v0，按一次伤害实例计算，multi-hit 每段各算一次）：
+  1) `raw = base_damage + (strength * 3)`
+  2) `raw = floor(raw * attacker_mult)`（受下限约束）
+  3) `raw = floor(raw * target_mult)`（受上限约束）
+  4) `final_damage = max(0, raw)`（不得出现负伤害）
+  5) 进入格挡/护甲结算（若有）：伤害先消耗护甲/格挡，剩余才扣血
+- 例外：固定伤害（例如 `status.bloodbeat`）不受 Strength/Weak/Vulnerable 等乘区影响，但仍可被护甲/格挡吸收。
+
+触发器稳定排序（同一时刻多触发，v0）：
+- 总序：先玩家侧，再敌人侧。
+- 玩家侧内部序：遗物（`relic_id`）→ 状态（`status_id`）→ 卡牌实例触发（`instance_id`），各自按 `stable_id` 字典序排序。
+- 敌人侧内部序：按 `combatant_id` 升序；同一敌人内按 `stable_id` 字典序。
+
+稳定键（v0）：
+- `combatant_id`：战斗开始按生成顺序分配的递增 id；退出重进恢复必须保持一致（不得用随机/GUID 破坏复盘）。
+- `stable_id`：对遗物用 `relic_id`，对状态用 `status_id`，对卡牌实例触发用 `instance_id`（统一按字典序排序）。
+
+`OverplayTax` 的结算时机（难度 >= 10，N=12，v0）：
+- 触发规则：当本回合“将要打出的牌”使出牌数从 N → N+1 时，`OverplayTax` 在该张牌 `ComputeCost` 前生效；因此**第 N+1 张牌也吃到加税与最低费用=1**。
+
+回合内稳定性止损（v0）：
+- 单回合出牌达到 100 张：当前牌照常结算完毕后，强制结束玩家回合，进入 `EndOfTurn.Triggers → Discard non-retained → Cleanup`。
+- 该止损规则不得被任何效果阻止/延后（稳定性用途，不作为平衡手段）。
+
+奖励与 autosave（v0，确定性）：
+- `Victory` 判定成立 → 生成并锁定奖励候选集与顺序 → 写入 autosave → 展示奖励界面。
+
+---
+
+### 设计门04：Status & Modifier Spec（v0）
+
+目标：冻结状态（Status）与修饰器（Modifier）的类型、字段、叠加/刷新、衰减/到期、驱散边界、以及确定性排序键，避免出现“同一输入序列结果不一致/像刷随机”的争议。
+
+#### 4.1 类型与字段（v0）
+
+状态类型（v0）：
+- `Buff`：正向状态（允许出现 `stacks < 0` 的“反向数值”，但不改变其“不可驱散”的边界，见下文）
+- `Debuff`：负向状态（可被驱散）
+- `RuleModifier`：规则类状态（不可驱散；用于表达难度/Boss/特殊机制）
+
+最小字段（用于存档/复盘；v0）：
+- `status_id`：稳定 id（建议命名：`status.<slug>`，全小写 ASCII）
+- `stacks`：整数（可正可负，语义由状态定义决定）
+- `duration_turns`：可选（null=常驻；否则为剩余回合数）
+- `source_id`：来源稳定 id（例如 `relic.*` / `enemy.*` / `event.*` / `card.*`）
+- `expires_timing`：到期时机（v0 建议：`owner_end_of_turn_cleanup`）
+
+#### 4.2 叠加/刷新与上限（v0）
+
+默认策略：按状态表逐个定义（`3.C`）。
+
+上限（v0）：
+- 所有状态必须有上限（可以很高，但必须存在），以避免“无限叠加”导致系统级失控与不可解释。
+
+关键状态口径（v0，已确认）：
+- `status.weak`（虚弱）：输出乘区典型为 75%（伤害 -25%），持续 N 回合；重复施加时 `duration_turns += N`（累加）；输出乘区下限=50%。
+- `status.strength`（力量）：每点 Strength 使“造成的伤害”+3；允许 `stacks` 为负。
+  - 驱散边界：Strength 永远不可驱散（即使为负）。
+  - 负值恢复机制（两条同时成立，v0）：
+    - 回合恢复：当 `stacks < 0` 时，在“持有者回合结束 Cleanup”使其 `stacks += 1`（例如 -3 → -2）。
+    - 数值对冲：任何获得 Strength 的效果与当前 `stacks` 相加（例如 -3 + 2 → -1）。
+- `status.vulnerable`（易伤/破甲）：受击乘区典型为 150%（受击增伤），持续 N 回合；受击乘区上限=200%（防止叠加失控）。
+- `status.vulnerable`（易伤/破甲）：受击乘区典型为 150%（受击增伤），持续 N 回合；重复施加时 `duration_turns += N`（累加）；受击乘区上限=200%（防止叠加失控）。
+
+#### 4.3 衰减/到期时机（v0）
+
+建议选择（v0）：在 `EndOfTurn.Cleanup` 处理衰减/到期（对齐设计门01 的回合结构）。
+- 规则：对“有回合数”的状态，按“持有者回合结束 Cleanup”衰减（玩家身上的 `status.weak` 在玩家回合结束衰减；敌人身上的 `status.weak` 在敌人回合结束衰减）。
+- 自然失效不等于驱散：回合结束自然失效属于生命周期，不视为驱散。
+
+#### 4.4 驱散（v0）
+
+规则（v0）：
+- 只允许驱散 `Debuff`。
+- `RuleModifier` 永不可驱散（例如 `OverplayTax` 属于规则类）。
+- `status.strength` 永不可驱散（即使为负）。
+
+#### 4.5 UI 显示与可解释性（v0）
+
+最低显示要求（v0）：
+- 名称 + 图标 + 层数（stacks）+ 持续回合（若有）+ 来源（简写）。
+- 可见文本必须来自 `Game.Godot/Translations`，脚本里禁止硬编码可见文本（对齐项目硬口径）。
+
+#### 4.6 M1 必须出现的 3 个状态（v0，示例集合）
+
+状态 id（英文）建议：
+- `status.strength`：力量（Buff；允许负值；不可驱散；负值每回合 +1 恢复；每点 +3 伤害）
+- `status.weak`：虚弱（Debuff；伤害 -25%；duration 累加）
+- `status.bloodbeat`：Bloodbeat（RuleModifier；每打出一张牌对玩家造成 1 点固定伤害；可被护甲格挡；不受 Strength/Weak 等修饰；战斗内常驻；不可叠加）
+
+`status.bloodbeat` 细则（v0）：
+- 作用域：战斗内常驻，战斗结束清除。
+- 触发：每次 `PayCost` 成功后触发一次（与出牌计数一致，避免绕过）。
+- 不可叠加：多来源同时施加时取最高强度（v0=固定 1）。
+
+验收钩子（用于后续测试/复盘）：
+- `status_id` 与 `source_id` 必须是稳定字符串，供 `stable_id` 排序使用（对齐设计门03）。
+- 关键反例：同一输入序列下，仅因“状态衰减时机/叠加规则”不同导致输出漂移，视为缺陷。
+
+---
+
+### 设计门05：Offer/Shop/Event Determinism Spec（v0）
+
+目标：冻结 Offer locking（候选集锁定）的统一结构、写盘点、RNG 流拆分、以及 Reward/Shop/Event 在退出重进下的可复盘一致性，避免出现“可刷结果”的语境与实际漏洞。
+
+#### 5.1 Offer locking 统一结构（v0）
+
+统一结构（v0，已确认）：
+- `stable_ids[]`：候选项的内容稳定 ID（例如 `card.*` / `relic.*` / `event.*` 等），不得使用文案 key 代替。
+- `display_order[]`：展示顺序；必须锁定（退出重进后候选集与顺序一致）。
+- `provenance`：来源信息（用于复盘与审计，见下）。
+- `rng_stream`：本次候选集生成所使用的 RNG stream 名（对齐 ADR-0032 的“RNG 流拆分”口径）。
+- `locked_at_save_point`：锁定发生的存档点标识（用于 Continue Gate 与恢复定位）。
+
+`provenance` 最小字段（v0，已确认）：
+- `source_type`、`source_id`、`act`、`floor`、`node_id`、`difficulty`、`rng_stream`、`stream_pos`
+
+#### 5.2 写盘点（v0）
+
+写盘策略（v0，已确认）：
+- Reward：奖励界面首次出现时生成并锁定候选集与顺序，并立刻写入 autosave（对齐既有口径）。
+- Shop：进入商店即锁定“库存 + 价格”，并写入 run 状态（避免崩溃/强退被误解为可刷商店）。
+- Event：进入事件生成选项后即锁定并写入 run 状态；事件选项一旦选择（包括“跳过/离开”），立刻写入 run 状态。
+
+#### 5.3 UI 与 RNG（v0）
+
+硬规则（v0，已确认）：
+- 纯 UI 行为不得推进 RNG：查看卡牌详情/翻页/排序/悬停/打开关闭面板/在事件内来回切换升级路线等均不推进 RNG。
+- 按系统拆分 RNG streams（v0，已确认）：至少区分 `run/combat/event/loot/shop/offer`（命名可调整，但必须可区分）。
+
+#### 5.4 跳过与可复盘（v0）
+
+跳过（Skip）规则（v0，已确认）：
+- 跳过本身不推进 RNG，且候选集快照保留在存档中用于审计/复盘。
+- 跳过属于“选择”，必须立刻写入 run 状态；但不对玩家提供“返回重选”入口（避免误解为可回退）。
+
+#### 5.5 退出重进恢复点（v0，反例写死）
+
+恢复点（v0，已确认）：
+- Reward：界面已出现并写 autosave，但玩家未选择强退 → Continue 回到 Reward 界面（同候选集、同顺序）。
+- Shop：进入商店已锁库存/价格并写入 run 状态；购买 1 件后强退 → Continue 回到商店界面，库存/金币/已购标记一致。
+- Event：事件进入已锁定选项并写入 run 状态；选项点击即写入结果；若强退发生在结果展示中 → Continue 进入“已选择后的结果展示/结算后状态”。
+
+失败策略（v0，已确认）：
+- 若锁定数据缺失或校验失败：必须阻断 Continue 并提示，并提供明确下一步动作（例如返回主菜单、开始新局）。
+
+---
+
+### 设计门06：Enemy Intent & AI Determinism Spec（v0）
+
+目标：冻结敌方意图（Intent）与 AI 行为的确定性边界，确保同一 seed + 同一输入序列下，敌方意图与行为一致；并避免 UI 查看行为推进 RNG。
+
+硬口径（v0，已确认）：
+- Intent 生成与锁定：在敌方回合开始生成并锁定（对玩家可见），到敌方行动时保持不变。
+- Intent 写入：Intent 必须写入 run 状态（或至少写入 `rng_stream + stream_pos` 以满足复盘一致性）。
+- 多敌人行动顺序：按 `combatant_id` 升序行动（稳定键）。
+- 随机性边界：允许随机，但必须来自 `combat` RNG stream，并在锁定点固定（退出重进不改变）。
+- 选择策略：敌方多个动作可用“权重/规则选择（可用 RNG）”，但一旦锁定就固定。
+- UI 不推进 RNG：查看意图/悬停/打开详情面板等行为绝不推进 RNG。
+- 意图交互：默认意图不因玩家当回合行为自动重算；仅当存在明确“打断/改写意图”的效果时才改变，并必须写入状态以可复盘。
+- M1 演示：至少 1 个敌人展示明确意图文本与效果范围（用于可解释性验收）。
+
+---
+
+### 设计门07：Run State Schema & Migration Gate（v0）
+
+目标：冻结 run 存档 schema 的版本化、校验失败的 Continue Gate 行为、审计日志最小字段、以及统一的 `save_point_id` 建模，以便排障与保证确定性承诺不被“带病运行”破坏。
+
+硬口径（v0，已确认）：
+- 存档版本：run 存档必须包含 `schema_version`（int）；任意结构变更必须递增版本号。
+- 迁移策略（v1 止损）：默认不自动迁移；版本不兼容或迁移失败 → 必须阻断 Continue 并提示（先止损，避免隐蔽坏档）。
+- 校验失败：缺字段/字段非法/哈希不一致等校验失败 → 必须阻断 Continue 并提示，并提供“新开一局覆盖确认”入口。
+- 审计日志（JSONL，机器读）：最小字段包含 `ts, action, reason, target, caller, run_id, schema_version`；统一写入 `logs/**`。
+- 快照统一 id：为 Offer/Shop/Event/Intent 等锁定快照统一增加 `snapshot_id`（稳定字符串），便于审计与引用。
+- 复盘锚点：run 状态必须包含 `run_id` 与 `seed`（内部存在即可，不要求对玩家暴露）。
+- Continue 覆盖确认：二次确认弹窗 + 默认焦点=取消即可（不要求输入文字/长按）。
+- 写盘点建模：存档必须记录 `save_point_id`（例如 `node_pre_enter`, `combat_start`, `reward_open`, `shop_enter`, `event_enter`, `event_choice_committed`），用于恢复定位与审计。
+
+---
+
+## 8) M1（Warrior）纵切：范围、边界与交付口径
+
+权威验收锚点（SSoT）：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
+
+### 8.1 M1 的目标（只做能验证的最小闭环）
+
+M1 要证明的不是“内容量”，而是这几条高风险口径在真实交互下能成立：
+
+- 从主菜单开始能进入一局 run，并推进多个节点，不出现卡死/误导。
+- 战斗后奖励三选一存在，且“退出重进不刷候选集与顺序”可被验证。
+- 休整节点存在升级入口（U1 二选一不可逆），且商店严格无升级语境。
+- 战斗退出重进回到战斗初始状态（不保存中间态）。
+- 卡牌身份与形态：升级不换 `card_id`，U1/Ultimate 形态规则一致（ADR-0033）。
+
+### 8.2 M1 的范围（Included）
+
+- 角色：Warrior
+- 地图：Act 1 的最小可推进地图（允许先小规模，但必须包含并可达：Combat、Event、Shop、Rest）
+- 牌组：战士起始牌组 10 张（见第 11 节）
+- 奖励：至少 1 次战斗后“卡牌三选一”
+- 存档/Continue：单槽 Continue 的 UI 与边界可观察、可解释、可验证
+- 本地化口径：关键屏的可见文本全部来自 Translations
+
+### 8.3 M1 的非目标（Excluded）
+
+- 3 Act 全通关结构
+- 全量内容规模（40 事件、20 遗物、每角色 30 张基础卡）
+- 10 难度完整曲线（M1 允许先提供有限档位，但不得误导为“天赋树强绑定”）
+- 天赋树完整内容（M1 允许占位入口，但必须避免暗示为“强绑定难度/强制刷点”）
+- 数值平衡达标（M1 只要求可玩与确定性；数值用试玩迭代校准）
+
+---
+
+## 9) M1 关键屏幕与玩家路径（按可验收粒度描述）
+
+本节目标：把“关键屏幕”描述到能直接拆成任务与验收的粒度（不写实现，不冻结数值）。
+
+### 9.1 MainMenu（主菜单）
+
+必须有：
+- New Run
+- Continue（单槽；当无有效 autosave 时不可用或不可点击）
+
+New Run 覆盖确认（关键风险）：
+- 覆盖确认必须二次确认
+- 默认焦点必须是“取消”（避免误操作）
+- 文案必须明确“不可撤销”（不使用模糊语境）
+
+最小交互（M1）：
+- 入口状态：
+  - 若存在有效 autosave：Continue 可用；否则 Continue 不可用（灰置或隐藏，但不得误导）。
+- New Run：
+  - 若存在有效 autosave：必须弹出覆盖确认。
+  - 若不存在 autosave：允许直接进入难度选择。
+- Quit：退出游戏（若有覆盖确认/未保存提示，不得引入“多槽存档/云同步”暗示）。
+
+错误/阻断（M1）：
+- Continue 被阻断的原因必须可解释且不可忽略（例如：坏档/迁移失败/不兼容）。
+- 阻断后必须给出“下一步动作”提示（例如：返回主菜单、开始新局），不得卡死在不可操作状态。
+
+### 9.2 Difficulty Select（难度选择）
+
+口径：
+- 难度 10 档是 v1 目标，但 M1 阶段只要求“难度入口存在且不误导”
+- 说明倾向“数值挑战为主”，不得暗示“难度与天赋树强绑定”
+
+最小交互（M1）：
+- 默认难度有明确推荐（例如“建议从 1 开始”），但不得将推荐描述为“唯一正确玩法”。
+- 每档难度的说明必须明确“主要影响数值曲线”（避免引入规则级差异的误解）。
+
+### 9.3 Character Select（角色选择）
+
+M1 只开放 Warrior（其余角色可隐藏或标记为未解锁，但不得误导为可选）。
+
+最小交互（M1）：
+- Warrior 选中后，至少展示 3 行“机制摘要”（怒气是状态 buff、强攻窗口、代价与爆发）。
+- 其余角色若展示：必须明确“未开放/未解锁”，且不诱导玩家以为点击能进入。
+
+### 9.4 Map（路线图）
+
+M1 最小要求：
+- 玩家能在地图上选择并进入至少 4 类节点：Combat、Event、Shop、Rest
+- 地图可先做小图（例如 6–10 节点），但必须至少有一次“分叉选择”来验证路线图的可读性
+
+最小交互（M1）：
+- 节点必须可被点击选择，并能进入对应屏幕。
+- 进入节点前必须满足“节点前存档”的口径（见 10.3）。
+- 节点类型必须可读（节点图标/文字其一即可），并能与术语表一致。
+
+### 9.5 Combat（战斗）
+
+M1 最小要求：
+- 能完成至少 1 场战斗（胜负判定存在）
+- 战斗中退出重进：Continue 回到战斗初始状态（不保存中间态）
+
+最小交互（M1）：
+- 回合推进与结束回合按钮存在（或等价输入）。
+- 能打出卡牌并产生可见反馈（伤害/格挡/状态）。
+- 战斗结束后必须进入奖励三选一（至少一次）。
+
+战斗基础规则（M1，作为任务拆解口径，不冻结数值平衡）：
+- 采用类杀戮尖塔的基础规则：抽牌堆/手牌/弃牌堆/消耗（若有）等基础结构存在。
+- 初始每回合能量：3（默认每回合重置为 3，除非受到卡牌/遗物/状态影响）
+- 每回合默认抽牌：4
+
+错误/阻断（M1）：
+- 若因异常退出导致恢复：必须回到“战斗初始状态”，不得出现“从中途继续”的语境。
+
+### 9.6 Reward（战斗后奖励：卡牌三选一）
+
+M1 最小要求：
+- 至少 1 次出现“卡牌三选一”
+- 候选集锁定：退出到主菜单或强退后 Continue，候选项与顺序完全一致（允许重新选择，但不得重抽）
+- 若候选中包含 U1 形态：必须明确标注路线 A/B（掉落路线由 loot RNG 决定，ADR-0033）
+
+最小交互（M1）：
+- 玩家可以在 3 张卡中选择 1 张获得。
+- 玩家可以放弃：必须明确“放弃不会刷新候选”，且放弃本身不得推进 RNG；放弃后不得重新生成候选集。
+- 展示信息至少包含：
+  - 卡名（Translations）
+  - 简短描述（Translations）
+  - 若为 U1：Route A/B 标注（Translations + UI 标记）
+  - 形态标识：名称颜色区分 Base/U1A/U1B/Ultimate（见第 12 节）
+
+存档与确定性（M1）：
+- 奖励三选一界面首次出现时，必须写入 autosave（用于退出重进后仍可回到同一候选集与顺序）。
+
+错误/阻断（M1）：
+- 若候选集数据缺失/损坏：必须阻断继续并提示（不能 silent fail 或随机补齐），避免破坏确定性口径。
+
+### 9.7 Shop（商店）
+
+硬规则（v1）：
+- 商店任何时候都不提供升级
+- 商店 UI/文案不得出现升级语境（参考禁用语境清单）
+
+M1 建议的最小服务（不强制但有利于闭环）：
+- 移除卡牌（Deck thinning）
+- 重铸/转换（把一张卡变为另一张卡）
+
+最小交互（M1）：
+- 购买卡牌/遗物（二选一都可，但至少要有“消费→获得”的可观察闭环）。
+- 至少一个“改善牌组”的服务入口（移除或重铸其一即可）。
+
+确定性要求（M1）：
+- 进入商店时必须锁定库存与价格（退出重进后不刷新、不重抽、不推进 RNG）。
+- 商店库存应被视为一种“候选集”（与 Reward 的候选集锁定原则一致），以避免退出重进刷商店。
+- 每件卡牌/遗物是单一库存：不可重复购买；退出重进后应恢复到“进入商店时的库存 + 已购买记录”的一致状态。
+
+错误/阻断（M1）：
+- 金币不足等常见失败必须有明确提示（不允许无反馈点击）。
+
+### 9.8 Rest（休整）
+
+硬规则（v1）：
+- 休整节点必须提供“升级”作为多选一选项之一
+- 如果选择升级：免费升级 1 张卡牌
+- U1 升级必须 Route A/B 二选一，不可逆
+
+最小交互（M1）：
+- 休整选项至少包含：升级（免费升级 1 张）+ 恢复 + 移除诅咒（多选一）。
+- 进入升级流程后：
+  - 先选卡牌（从牌组中）
+  - 再选路线（A/B）
+  - 最后确认（确认后不可逆）
+
+错误/阻断（M1）：
+- 若玩家试图离开升级界面且未确认：必须明确提示“未确认不会生效”，避免误解为已升级。
+- 一旦确认升级：必须明确提示“不可逆”，且不得再提供回退入口。
+
+### 9.9 Event（事件）
+
+M1 最小要求：
+- 至少 1 个事件节点可触发，并提供至少 2 个选项与可解释的结果反馈。
+- 必须至少体现 1 次“黑暗代价”（不只是金币交易）。
+
+模块化要求（M1，面向后续扩展能力）：
+- 事件定义需要支持“代价 + 收益”的结构化表达（至少能覆盖上述黑暗代价示例中的一种）。
+- 事件结果必须可被记录与解释（便于玩家理解与后续取证/回放），不得只靠隐式数值变化。
+
+M1 示范（你已确认：做 2 个代价类型，便于扩展与验收）：
+- 黑暗代价示范 A：HP loss（牺牲当前生命或等价资源）
+- 黑暗代价示范 B：获得诅咒卡（向牌组添加一张代价型卡牌）
+
+确定性要求（M1）：
+- 事件选项一旦选择，必须立刻写入 run 状态（防止退出重进在事件内刷分支/刷结果）。
+
+---
+
+## 10) M1 的系统口径（只冻结结构，不冻结数值）
+
+### 10.1 Warrior：怒气是“状态型 buff”，不是第二资源条
+
+最低可交付定义（M1）：
+- 怒气是一个可显示的状态（stack/层数或强度），存在于战斗中。
+- 怒气可以被卡牌或事件影响（获得/消耗/转化等）。
+- 至少有 2 张起始牌能明确体现“怒气存在且会影响决策”（例如：一张产生怒气；一张在有怒气时更强或消耗怒气换爆发）。
+
+边界口径（M1）：
+- 怒气只在战斗内存在。
+- 回合结束：不衰减也不清空（持续到战斗结束）。
+- 战斗结束：清空（不跨战斗保留）。
+
+说明（止损）：
+- M1 不冻结具体数值（层数上限、衰减方式、倍率等），但必须保持“确定性”：同一 seed + 同一输入序列应得到一致结果（与 ADR-0032 对齐）。
+
+### 10.2 奖励候选集锁定（Offer locking，M1 必须可测）
+
+M1 要求（对齐 ADR-0032 的验收门槛）：
+- 三选一首次展示给玩家时，必须锁定：
+  - 候选稳定标识（建议：`offer_item_id` 或稳定 tuple）
+  - 展示顺序（display order）
+  - 来源信息（provenance：来自战斗/事件/商店等）
+- 退出重进不得重抽/重滚候选集
+
+字段口径建议（用于任务拆解，不是实现约束）：
+- `offer_id`：稳定且唯一（同一 run 内不重复），用于审计与复现定位
+- `offer_source`：`combat_reward | event_reward | shop_offer | other`
+- `offer_context`：
+  - `run_id`（或等价）
+  - `act`、`node_id`、`node_type`
+  - `rng_stream`（例如 `loot_rng`）
+- `items[]`（按 display order 存储，避免“集合无序”导致漂移）：
+  - `item_kind`：`card | relic | resource`
+  - `stable_id`：例如 `card.warrior.cleave` / `relic.blood_oath`
+  - `card_form`：`base | u1 | ultimate`（若 item_kind=card）
+  - `card_route`：`a | b | null`（若 card_form=u1）
+  - `ui_label_hint`：仅用于 UI 标注（例如路线 A/B），不得改变候选集本身
+- `locked_at`：锁定时刻（便于取证）
+
+验收要点（防踩坑）：
+- UI 打开/关闭、hover、排序、翻页等纯 UI 行为不得推进 RNG，不得重建 items[]。
+- 锁定后允许玩家重新选择，但不得出现“重抽/刷新”入口或暗示。
+- 若支持“跳过奖励”：跳过也必须保持确定性（不刷新、不重建、不推进 RNG）。
+- 奖励三选一界面首次出现时，必须写入 autosave（与第 9.6 对齐）。
+  - 选择/跳过后的额外 autosave：不作为 M1 硬要求，跟随整体存档框架即可（避免为了文档口径引入不必要的写盘频率）。
+
+### 10.3 退出重进与存档边界（M1 必须可测）
+
+M1 要求（对齐 ADR-0032 的关键条款）：
+- 节点前存档
+- 进入战斗保存战斗初始状态
+- 战斗中绝不保存中间态
+- 任意战斗中断后 Continue 只能回到战斗初始状态
+
+### 10.4 升级与形态（ADR-0033，Accepted）
+
+M1 要求（必须保持一致）：
+- 升级不改变 `card_id`
+- 形态：Base、U1.RouteA、U1.RouteB、Ultimate
+- Ultimate 可从 Base 或 U1 进阶；进阶覆盖 U1 形态能力，但继承实例附着效果
+
+### 10.5 掉落池与稀有度（v1 结构口径，M1 先落骨架）
+
+目标：避免“强度分层”“投放来源”“Act 节奏”三者混乱，导致内容量产后不可控。
+
+口径（你已确认）：
+- 每个 Act 拆分 5 类掉落卡池（互相独立，可重叠但需要显式定义）：
+  1) 普通怪物掉落池
+  2) 精英怪物掉落池
+  3) Boss 掉落池
+  4) 商店卡池
+  5) 事件卡池
+- 稀有度分层统一为 4 档：普通/优良/精良/史诗。
+- 早先的“精英级别卡”并入上述 4 档稀有度体系（不再作为单独稀有度维度存在）。
+
+M1 最小要求（只落骨架，不冻结比例/权重）：
+- Act 1 至少定义上述 5 类卡池的“占位集合”，并在日志/取证中能识别“候选来自哪一类卡池”。
+- 诅咒卡（Curse）为独立池：不可升级（单形态），可由事件注入，并应提供移除途径（商店/事件/休整）。
+
+---
+
+## 11) M1 内容清单（稳定 ID，用于任务拆解与回归）
+
+说明：
+- 以下清单用于“最小纵切可交付”，不代表 v1 最终内容量。
+- 任何新增/改名必须先更新 `_bmad-output/content-registry.md`（SSoT）。
+
+### 11.1 Warrior 起始牌组（10）
+
+说明：以下为“设计意图标签”，用于把实现与测试对齐到同一个心理模型（不冻结数值）。
+
+| card_id | role | tags | intent (non-numeric) |
+|---|---|---|---|
+| card.warrior.cleave | damage | rage,aoe | 群体向输出入口；在怒气窗口更强或更具收益 |
+| card.warrior.guard | defense | rage,defense | 防御入口；与怒气维持/转化形成取舍 |
+| card.warrior.rage_surge | setup | rage,engine | 主要怒气来源/加速器；为爆发回合做铺垫 |
+| card.warrior.bloodrush | burst | rage,risk,finisher | 黑暗代价表达：以代价换爆发；与怒气消耗或阈值联动 |
+| card.warrior.taunt | control | control,defense | 节奏控制入口；降低被集火/降低风险（不锁具体实现） |
+| card.warrior.shield_wall | sustain | defense,engine | 防御引擎位；帮助跨回合存活与积累窗口 |
+| card.warrior.overpower | finisher | rage,finisher | 明确的终结位；消耗怒气或依赖怒气达成强效果 |
+| card.warrior.battlecry | engine | engine,draw | 牌组循环/抽牌/临时增益入口；支撑“强攻窗口”形成 |
+| card.warrior.crush | damage | rage,single_target | 单体重击位；与怒气或标记形成收益 |
+| card.warrior.relentless | archetype | engine,rage | 起始牌组稀有锚点：定义 M1 的基础流派方向（偏持续引擎而非纯数值） |
+
+### 11.2 遗物（M1 seed set）
+
+- `relic.ashen_hourglass`
+- `relic.obsidian_mirror`
+- `relic.blood_oath`
+- `relic.rusted_compass`
+- `relic.twilight_coin`
+
+---
+
+## 12) M1 文案与本地化（Translations）最小要求
+
+硬规则：
+- 所有可见文本必须来自 `Game.Godot/Translations`（脚本禁止硬编码可见文本）。
+
+M1 建议最小覆盖的屏幕：
+- MainMenu（New Run / Continue / Quit）
+- Overwrite Confirm（覆盖确认）
+- Difficulty Select
+- Character Select
+- Map（节点类型标签）
+- Combat（基础提示：回合、结束回合等）
+- Reward（卡牌三选一、升级路线 A/B 标注）
+- Shop（服务名称，不得出现升级语境）
+- Rest（升级、不可逆提示）
+
+写作约束（避免误导与返工）：
+- “商店升级”相关词在商店语境中禁止出现（以禁用语境清单为准）。
+- 对不可逆选择必须用明确短句表达（不使用模糊措辞）。
+
+M1 UI 表达约定（可见但不依赖“路线命名”）：
+- 稀有度（普通/优良/精良/史诗）使用卡牌固定位置的标记表达（不与名称颜色混用）。
+- 卡牌名称颜色用于区分形态：Base、Upgrade A、Upgrade B、Ultimate。
+- 建议（可访问性）：除颜色外，同步提供非颜色标识（例如 A/B 字母、Ultimate 图标），避免仅靠颜色导致误读。
+
+参考（SSoT）：
+- 术语与按钮文案表：`docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md`
+- 禁用语境清单：`docs/prd/COPY-FORBIDDEN-WORDS-QA-CHECKLIST-NEWROUGE-V1.md`
+
+关键文案点（M1 必须覆盖语义，不锁具体句子）：
+- 覆盖确认：必须包含“不可撤销”的明示语义
+- U1 升级：必须包含“二选一”“选择后不可逆”的明示语义
+- Ultimate：必须包含“不可逆”“不可再升级”“不可换路线”的明示语义
+- Continue 边界：必须明确“继续将回到战斗初始状态”（若发生战斗中断恢复）
+- 商店：不得出现“升级/强化/升星/进阶/改造”等升级语境
+
+---
+
+## 13) 与任务拆解的对齐方式（让 Taskmaster 不漏抓）
+
+关键结论：
+- Taskmaster 不应依赖“跟随链接”来理解验收口径；因此 `.taskmaster/docs/prd.txt` 已把 M1 关键条款内联。
+- M1 的验收锚点以 Overlay 08 的验收清单为准：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
+
+建议拆解方式（不写实现，只写结构）：
+- Core（Game.Core）：候选集锁定、存档边界、卡牌身份/形态（均需 xUnit 可验证）
+- Godot（Game.Godot）：MainMenu/Map/Reward/Shop/Rest/Upgrade 的 UI 流与可见文本来源
+- Tests：按 planned Test-Refs 对齐（先保证路径稳定，再逐步补齐覆盖）
+===== END PART: .taskmaster/docs/prd_parts/30-gdd.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/40-ssot-locks.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/40-ssot-locks.md",
+  "title": "docs/prd/SSOT-LOCKS-NEWROUGE-V1.md",
+  "sha256": "264c1ec35a81fd0addbf0f1fa6c22ac047a5251a06974292145a1e1533d54574",
+  "bytes": 10960
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+SPEC-ID: SSOT-LOCKS-NEWROUGE-V1
+Title: NewRouge v1 设计锁定表（SSoT）
+Status: Draft
+Owner: skyo
+Last Updated: 2026-01-23
+Encoding: UTF-8
+Applies-To:
+  - docs/prd/PRD-NEWROUGE-GAME-0001.md
+---
+
+# NewRouge v1 设计锁定表（SSoT）
+
+用途：把 NewRouge v1 中“不能漂移”的关键口径统一收口，作为跨 PRD/GDD/ADR/Context 的单一事实来源（SSoT），避免：
+
+- 研发/策划/QA 各自记忆造成口径漂移
+- UI/文案暗示不存在或被禁止的系统（例如“商店升级”“战斗中断点续打”“退出重进刷结果”）
+- 内容扩展（卡牌/事件/遗物/天赋）悄悄破坏确定性、可解释性与可复现
+
+约束声明：
+- 本文档只做文档规格，不做任何代码实现/dev 操作。
+- 若出现冲突：以本文档为最终口径，并必须回补到“来源”文档中（否则视为口径不一致缺陷）。
+
+权威引用（来源入口）：
+- PRD：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+- GDD：`docs/gdd/GDD-NEWROUGE-V1.md`
+- 项目硬口径：`project-context.md`
+- 存档/确定性：`docs/adr/ADR-0032-save-resume-determinism.md`
+- 内容稳定 ID：`_bmad-output/content-id-standard.md`
+- 内容登记表：`_bmad-output/content-registry.md`
+
+---
+
+## 1) 适用范围
+
+- 版本范围：v1（首发）
+- 渠道与平台：Steam（Windows-only）
+- 游戏类型：单人卡牌构筑 roguelike（结构标签：roguelike；主类型：card-game）
+- 本锁定表仅覆盖“卡牌肉鸽主线”（`PRD-NEWROUGE-GAME-0001`），不覆盖任何历史示例 PRD。
+
+---
+
+## 2) 锁定项总表（v1）
+
+> 结构：锁定项 → 口径（硬规则）→ 来源（权威入口）。  
+> 备注：阈值/参数若属于 Base/ADR 的口径，不在此复制，只引用其来源。
+
+### 2.1 平台与技术栈
+
+1) 平台锁定（Windows-only）
+- 锁定：只支持 Windows；不做 macOS/Linux/主机/移动端。
+- 来源：`project-context.md`；ADR-0011
+
+2) 引擎锁定（Godot 4.5.1 .NET）
+- 锁定：Godot 4.5.1 .NET 锁死；v1 不升级 Godot。
+- 来源：`project-context.md`；ADR-0031
+
+3) 语言与运行时锁定
+- 锁定：C# / .NET 8（`net8.0`）；Nullable 开启。
+- 来源：`project-context.md`；ADR-0001
+
+4) 依赖锁定与可复现
+- 锁定：必须启用并提交 `packages.lock.json`（缺失视为阻塞前置条件）。
+- 来源：`project-context.md`；ADR-0031
+
+### 2.2 玩法结构与规模
+
+5) 结构锁定（3 Act + 单局 60 分钟）
+- 锁定：3 Act 分叉路线图；单局目标约 60 分钟。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`_bmad-output/gdd.md`
+
+6) 角色锁定（3 角色）
+- 锁定：3 角色：战士/刺客/德鲁伊。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`_bmad-output/gdd.md`
+
+7) 角色机制口径锁定（高层）
+- 锁定：战士“怒气”是状态类 buff（不是第二属性条）；刺客擅长给敌人叠加多种 debuff；德鲁伊通过“状态持久 buff + 切换状态定点爆发”形成差异。
+- 来源：`_bmad-output/gdd.md`
+
+8) 卡牌规模锁定
+- 锁定：每角色 30 张基础卡（不含升级版本）。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+
+9) 事件规模锁定
+- 锁定：v1 事件总量 40；同一 run 内事件不重复。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`project-context.md`
+
+10) 遗物规模锁定
+- 锁定：v1 仅遗物系统；首发遗物数量 20。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+
+11) 难度锁定
+- 锁定：10 档难度；以数值挑战为主；与天赋树不做强绑定。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`_bmad-output/gdd.md`
+
+12) 天赋树锁定（共享 + 可重置）
+- 锁定：所有角色共享同一棵天赋树；可无条件重置，鼓励试流派。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`_bmad-output/gdd.md`
+
+补充锁定（战斗规则，v1）：
+- 锁定：手牌上限永远是 10，且不被任何因素改变。
+- 锁定：回合内稳定性止损——单回合出牌达到 100 张时，强制中止玩家回合，并按正常 EndOfTurn 结算（稳定性用途，不作为平衡手段）。
+- 锁定：高难度刷牌刹车 `OverplayTax`（难度 >= 10）：当本回合出牌数首次超过 N（N=12）时触发一次；**触发当下的那张牌（第 N+1 张）也受该规则影响**；本回合内所有卡牌费用 +1，且最低费用=1；影响本回合后续抽到/生成到手的牌；不可驱散；回合结束自然失效。
+- 锁定：结算顺序与触发器排序必须确定性：AOE 按 `combatant_id` 升序；多段伤害每段后 `DeathCheck`；同一时刻触发器按稳定键（`stable_id`）排序。
+- 锁定：状态系统最小口径：`Debuff` 可驱散；`RuleModifier` 不可驱散；`status.strength` 不可驱散且允许负值；`status.weak` duration 累加；有回合数的状态按“持有者回合结束 Cleanup”衰减。
+- 来源：`docs/gdd/GDD-NEWROUGE-V1.md`（Design Gate 01/02/03）
+
+补充锁定（伤害乘区，v1）：
+- 锁定：输出乘区（Attacker Multiplier）与受击乘区（Target Multiplier）分离，分别用于 `status.weak` 与 `status.vulnerable`。
+- 锁定：`status.weak` 输出乘区典型为 75%，下限=50%；`status.vulnerable` 受击乘区典型为 150%，上限=200%，duration 累加（`duration_turns += N`）。
+- 锁定：固定伤害（例如 `status.bloodbeat`）不受 Strength/Weak/Vulnerable 等乘区影响，但可被护甲/格挡吸收。
+- 来源：`docs/gdd/GDD-NEWROUGE-V1.md`（Design Gate 03/04）
+
+### 2.3 存档、退出重进与确定性（高风险冻结）
+
+13) 允许退出重进，但不刷结果
+- 锁定：允许退出重进；读取唯一 Continue（单槽 autosave）；退出重进不会改变事件候选集与结果空间（同一输入序列保持确定性）。
+- 来源：ADR-0032；`project-context.md`
+
+14) 存档粒度锁定
+- 锁定：节点前存档；进入战斗后保存“战斗初始状态”；战斗中绝不保存中间态；战斗中退出重进回到战斗初始状态。
+- 来源：ADR-0032；`project-context.md`
+
+15) 三选一候选集锁定（Offer locking）
+- 锁定：首次生成即落盘 `stable_ids[] + display_order[] + provenance`；退出重进后候选集与顺序不变；允许重新选择但禁止重抽/重滚。
+- 来源：ADR-0032
+
+15.1) Offer/Shop/Event 锁定结构与写盘点（v1）
+- 锁定：Offer locking 统一结构补充字段：`rng_stream` 与 `locked_at_save_point`；`provenance` 最小字段必须包含 `source_type/source_id/act/floor/node_id/difficulty/rng_stream/stream_pos`。
+- 锁定：Reward/Shop/Event 的写盘点必须提前锁定并落盘（Reward 界面出现前 autosave；Shop 进入即锁库存+价格；Event 进入即锁选项，选择/跳过立刻写入）。
+- 锁定：UI 行为不得推进 RNG；按系统拆分 RNG streams（至少 run/combat/event/loot/shop/offer）。
+- 来源：`docs/gdd/GDD-NEWROUGE-V1.md`（Design Gate 05）；ADR-0032
+
+16) RNG 流拆分锁定
+- 锁定：按系统拆分 RNG streams（run/combat/event/loot…）；UI 行为不得推进 RNG。
+- 来源：ADR-0032；`project-context.md`
+
+17) 坏档/迁移失败的阻断策略
+- 锁定：迁移失败或校验失败必须阻断 Continue 并提示；不得“带病运行”。
+- 来源：ADR-0032
+
+### 2.4 文案与本地化（禁止硬编码可见文本）
+
+18) 可见文本不得硬编码
+- 锁定：所有 UI 可见文案必须走 `Game.Godot/Translations`；脚本里禁止硬编码可见文本。
+- 来源：`project-context.md`；ADR-0010；`_bmad-output/content-id-standard.md`
+
+19) 翻译 key 派生锁定
+- 锁定：翻译 key 必须由内容稳定 ID 派生；不得自造漂移 key。
+- 来源：`_bmad-output/content-id-standard.md`
+
+### 2.5 卡牌升级系统（v1 必做，且强冻结）
+
+20) 商店永不提供升级
+- 锁定：商店任何时候都不能升级；商店仅提供购买/移除/转换等非升级服务（具体服务可变，但“升级=禁止”不可变）。
+- 来源：`docs/prd/PRD-NEWROUGE-GAME-0001.md`；`project-context.md`
+
+21) 休整节点的免费升级
+- 锁定：休整节点是多选一选项之一；若选择“升级”，则免费升级 1 张卡牌。
+- 来源：`project-context.md`；`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+
+22) 常规升级 U1（二选一，不可逆）
+- 锁定：所有卡牌的常规升级为 Route A/B 二选一；选择不可逆。
+- 来源：`project-context.md`；`_bmad-output/content-id-standard.md`
+
+23) 特殊事件：允许对已 U1 的卡免费换路线
+- 锁定：特殊事件可对已升级（U1）的卡免费改路线；事件内可无限次切换；离开事件时以最终选择为准；该过程不得引入额外 RNG。
+- 来源：`project-context.md`；ADR-0032（UI 不推进 RNG）
+
+24) 终极形态 Ultimate（稀有机会，不可逆）
+- 锁定：每张卡都有 1 个终极形态；仅史诗事件/关卡 Boss 等稀有机会获得；卡牌无需先 U1 即可直接进阶 Ultimate；不可逆；不可再升级；不可换路线。
+- 来源：`project-context.md`；`_bmad-output/content-id-standard.md`
+
+25) 升级状态的最小存档字段
+- 锁定：卡牌实例必须以 `upgrade_tier: 0|1|2` + `upgrade_route: null|a|b` 表示升级态；tier=2 时 route 必须为 null。
+- 来源：`_bmad-output/content-id-standard.md`
+
+### 2.6 事件系统（同局去重 + 跨局抑制）
+
+26) 同局不重复的边界
+- 锁定：同一 run 内事件“定义 ID”不重复（按 `event.<scope>.<slug>` 判定），不得用“事件类型粗粒度”偷换去重边界。
+- 来源：`project-context.md`
+
+27) 跨局重复抑制策略（存在但参数不在此复制）
+- 锁定：跨局允许重复，但必须有“重复抑制”策略（例如：权重衰减 + 硬冷却窗口）；具体参数只能放在 ADR/Base/门禁脚本中，不在本文复制。
+- 来源：`project-context.md`；ADR-0015（门禁口径）
+
+---
+
+## 3) 变更治理（v1）
+
+规则：
+1) 若要改动任何锁定项，必须同时完成：
+   - 更新本文档（本 SSOT）
+   - 更新所有“来源”入口文档
+   - 若改动涉及：安全/确定性/存档/门禁阈值/契约：必须新增或 Supersede 相应 ADR，并补齐 Test-Refs 与 `logs/**` 取证
+
+2) 若仅新增内容（卡牌/遗物/事件/天赋）：
+   - 不得破坏锁定项（尤其是：确定性、存档边界、商店不升级、可见文本不硬编码）
+   - 必须先登记内容稳定 ID：`_bmad-output/content-registry.md`（硬门禁：未登记视为 Stop-Ship，拒绝合入/拒绝引用）
+   - 登记时必须同时满足：
+     - `translation_key_prefix` 必须等于 `content_id`（防 key 漂移）
+     - 若新增 `event.*`：必须同步对齐 `docs/prd/EVENT-ID-CATALOG-NEWROUGE-V1.md`（避免 event_id 漂移/重复破坏“同局不重复”）
+   - 内容制作与验收的唯一入口：
+     - `docs/prd/CONTENT-AUTHORING-ENTRY-NEWROUGE-V1.md`
+     - `docs/prd/CONTENT-REVIEW-CHECKLIST-NEWROUGE-V1.md`
+===== END PART: .taskmaster/docs/prd_parts/40-ssot-locks.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/50-mechanics-edge-cases.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/50-mechanics-edge-cases.md",
+  "title": "docs/prd/MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1.md",
+  "sha256": "68a0cb0ce4d8a3aa1183b985b039242533d9de010b194062a24f8306babcd1fd",
+  "bytes": 12271
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+SPEC-ID: MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1
+Title: NewRouge v1 机制边界条件与反例 SSOT
+Status: Draft
+Owner: skyo
+Last Updated: 2026-01-23
+Encoding: UTF-8
+Applies-To:
+  - docs/prd/PRD-NEWROUGE-GAME-0001.md
+---
+
+# NewRouge v1 机制边界条件与反例 SSOT
+
+用途：把最容易出现歧义/返工的“边界条件”集中写死，供策划/QA/研发统一对齐。本文不新增系统，只收敛口径与验收反例。
+
+范围：v1（单人卡牌 roguelike；允许随机但必须可复现；允许退出重进但不刷结果；单槽 autosave；战斗中不存中间态）。
+
+权威引用：
+- v1 锁定表（SSoT）：`docs/prd/SSOT-LOCKS-NEWROUGE-V1.md`
+- 存档/确定性：`docs/adr/ADR-0032-save-resume-determinism.md`
+- 内容稳定 ID 与升级态字段：`_bmad-output/content-id-standard.md`
+- 项目硬口径（Translations、日志、门禁）：`project-context.md`
+
+---
+
+## 1) 存档边界（必须一致）
+
+1.1 节点前存档
+- 进入“节点”之前保存入口前状态；进入节点后不再更新到下一节点完成。
+
+1.2 战斗存档
+- 进入战斗后保存“战斗初始状态”。
+- 战斗过程中绝不保存任何中间态。
+
+反例（出现任意一条即视为口径破坏）：
+- 战斗中出现“继续本回合/继续到中途”的恢复语境
+- 崩溃恢复回到“战斗中间态”
+
+---
+
+## 2) 退出重进与确定性（反刷随机）
+
+2.1 定义
+- “退出重进不刷结果”= 同一存档点 + 同一输入序列 → 同一结果（允许玩家做不同选择导致不同结果，但不允许通过重启重抽）。
+
+2.2 三选一/多选一候选集锁定（Offer locking）
+- 首次生成即落盘：`stable_ids[] + display_order[] + provenance`
+- 退出重进候选集与顺序完全一致（含顺序）
+- 允许重新选择，但不得重抽/重滚
+
+2.3 UI 不推进 RNG
+- 纯 UI 行为（切卡、查看详情、在事件内来回切换升级路线）不得推进 RNG。
+
+反例：
+- 退出重进后，同一节点的三选一候选集变了
+- 仅通过“打开/关闭面板/切换标签页”改变了下一次掉落候选
+
+---
+
+## 3) 事件同局不重复（边界写死）
+
+3.1 同局不重复的判定对象
+- 按事件“定义 ID”（`event.<scope>.<slug>`）去重，不得用“事件类型”偷换边界。
+
+反例：
+- 同一 run 里出现两次相同 event_id（即使选项不同也不允许）
+
+---
+
+## 4) 卡牌升级系统（边界写死）
+
+4.1 商店升级（禁止）
+- 商店任何时候都不提供升级服务。
+
+4.2 U1（二选一，不可逆）
+- 升级时必须在 Route A/B 二选一，选择不可逆（离开升级入口后不可撤销）。
+
+4.3 特殊事件：路线重选
+- 事件内允许无限次切换路线；离开事件时以最终选择为准；该过程不得推进 RNG。
+
+4.4 Ultimate（终极形态）
+- 每张卡 1 个终极形态；可从未升级卡直接进阶；不可逆；不可再升级；不可换路线。
+
+4.5 存档字段（最小口径）
+- `upgrade_tier: 0|1|2`；`upgrade_route: null|a|b`（tier=2 时必须为 null）
+
+反例：
+- 出现“U1 可反悔/可撤销”的 UI/文案
+- Ultimate 后还能再升或还能换路线
+- 用新 card_id 表达升级（导致存档与翻译漂移）
+
+---
+
+## 4.6 手牌上限与首回合发牌（边界写死）
+
+4.6.1 手牌上限
+- 手牌上限永远是 10，且不被任何因素改变。
+
+4.6.2 首回合 `innate`（第一回合在手牌）
+- `innate` 卡牌实例在“每场战斗首回合”进入手牌（不推进 RNG）。
+- `innate` 可使首回合手牌数量超过“每回合默认抽牌数=4”，但不得超过手牌上限 10。
+- 若因 `innate` 导致手牌溢出：按 `instance_id` 升序保留前 10 张，其余不进入手牌。
+
+反例：
+- 仅因 UI 查看/悬停导致 `innate` 进入顺序漂移
+- `innate` 溢出裁剪使用 RNG 或不稳定排序
+
+---
+
+## 4.7 回合内止损与高难度刷牌刹车（边界写死）
+
+4.7.1 稳定性止损：单回合出牌 100 张
+- 单回合出牌达到 100 张时，强制中止玩家回合，并按正常 EndOfTurn 顺序结算。
+- 该规则属于稳定性止损，不作为平衡手段。
+
+4.7.2 高难度刷牌刹车：`OverplayTax`（难度 >= 10）
+- 当本回合出牌数首次超过 N（N=12）时触发一次；**触发当下的那张牌（第 N+1 张）也受该规则影响**。
+- 本回合内所有卡牌费用 +1，且最低费用=1；影响本回合后续抽到/生成到手的牌。
+- 不可驱散；回合结束自然失效。
+
+反例：
+- `OverplayTax` 被驱散导致可刷无穷回合
+- `OverplayTax` 不影响本回合后续生成牌（导致规则可被绕过）
+
+---
+
+## 4.8 结算顺序与触发器确定性（边界写死）
+
+4.8.1 单次出牌（PlayCard）管线（最小口径）
+- `Validate → ComputeCost → PayCost → BeforePlayTriggers → ResolveEffect → AfterPlayTriggers → MoveCard → DeathCheck`
+- 目标不可选止损阀：在 `Validate` 阶段触发；失败则取消出牌并回手；不耗能量；不计出牌数；不进入弃牌/消耗堆。
+
+4.8.2 计数与绕过（OverplayTax/止损）
+- 出牌计数在 `PayCost` 成功后立刻 +1。
+- 自动出牌/复制出牌等同样计入出牌数（避免绕过 `OverplayTax`）。
+
+4.8.3 多目标与多段（稳定排序）
+- AOE/多目标结算：按 `combatant_id` 升序逐个结算（不得用屏幕位置/随机）。
+- 多段伤害：每段后立即 `DeathCheck`；若目标中途死亡，剩余段取消（不得转移到其他目标）。
+
+4.8.4 触发器排序（同一时刻多触发）
+- 总序：先玩家侧，再敌人侧。
+- 玩家侧内部：遗物（`relic_id`）→ 状态（`status_id`）→ 卡牌实例触发（`instance_id`），各自按 `stable_id` 字典序。
+- 敌人侧内部：按 `combatant_id` 升序；同一敌人内按 `stable_id` 字典序。
+
+反例：
+- 同一场战斗同一输入序列下，仅因“触发器顺序漂移”导致不同结果
+- AOE 目标顺序不稳定导致“像刷随机”的争议
+
+---
+
+## 4.9 状态系统（Status）边界（边界写死）
+
+4.9.1 状态分类（最小集合）
+- Buff / Debuff / RuleModifier（规则类，不可驱散）。
+
+4.9.2 最小字段（用于复盘与坏档阻断）
+- `status_id`（建议：`status.<slug>`）
+- `stacks`（可正可负）
+- `duration_turns`（可空）
+- `source_id`（稳定 id，例如 `relic.*` / `enemy.*` / `card.*`）
+- `expires_timing`（建议：`owner_end_of_turn_cleanup`）
+
+4.9.3 衰减/到期（统一口径）
+- 有回合数的状态按“持有者回合结束 Cleanup”衰减/到期。
+- 自然失效不等于驱散：回合结束自然失效属于生命周期，不视为驱散。
+
+4.9.4 驱散边界（强冻结）
+- 只允许驱散 `Debuff`。
+- `RuleModifier` 永不可驱散（例如 `OverplayTax`）。
+- `status.strength` 永不可驱散（即使为负）。
+
+4.9.5 标杆状态（用于 v1 统一对齐）
+- `status.weak`：输出乘区典型为 75%（伤害 -25%）；持续 N 回合；重复施加时 `duration_turns += N`（累加）；输出乘区下限=50%。
+- `status.vulnerable`：受击乘区典型为 150%（受击增伤）；持续 N 回合；重复施加时 `duration_turns += N`（累加）；受击乘区上限=200%。
+- `status.strength`：每点 Strength 使“造成的伤害”+3；允许为负；当 `stacks < 0` 时在持有者回合结束 Cleanup 使 `stacks += 1`（例如 -3 → -2）；获得 Strength 与当前值相加实现对冲（例如 -3 + 2 → -1）；不可驱散。
+- `status.bloodbeat`（规则类）：每次出牌 `PayCost` 成功后触发，对玩家造成 1 点固定伤害（可被护甲格挡；不受 Strength/Weak/Vulnerable 等修饰）；战斗内常驻；不可叠加。
+
+反例：
+- 负 Strength 可被驱散导致“弱化类效果没有成本”
+- `status.weak` 的持续计算在玩家/敌人回合结束混用，导致复盘不一致
+- `status.bloodbeat` 可叠加或被驱散，导致强度与口径失控
+
+---
+
+## 4.10 Offer/Shop/Event 确定性（边界写死）
+
+4.10.1 Offer locking（候选集锁定）统一结构
+- 统一结构：`stable_ids[] + display_order[] + provenance + rng_stream + locked_at_save_point`
+- `stable_ids[]` 必须是内容稳定 ID（`card.*` / `relic.*` / `event.*`），不得使用文案 key 代替。
+- `display_order[]` 必须锁定：退出重进候选集与顺序都必须一致。
+
+`provenance` 最小字段：
+- `source_type`、`source_id`、`act`、`floor`、`node_id`、`difficulty`、`rng_stream`、`stream_pos`
+
+4.10.2 写盘点（避免“崩溃像刷结果”）
+- Reward：奖励界面首次出现时锁定候选集与顺序，并写 autosave，然后再展示界面。
+- Shop：进入商店即锁定“库存 + 价格”并写入 run 状态。
+- Event：进入事件生成选项后即锁定并写入 run 状态；事件选项一旦选择（含跳过/离开），立刻写入 run 状态。
+
+4.10.3 UI 不推进 RNG（强冻结）
+- 查看详情/翻页/排序/悬停/打开关闭面板/事件内来回切换升级路线等均不得推进 RNG。
+
+4.10.4 退出重进恢复点（写死）
+- Reward：界面已出现并写 autosave，但未选择强退 → Continue 回到 Reward 界面（同候选集同顺序）。
+- Shop：进入已锁库存/价格；购买后强退 → Continue 回到商店界面，库存/金币/已购标记一致。
+- Event：进入已锁选项；选择立刻写入结果；若强退发生在结果展示中 → Continue 进入“已选择后的结果展示/结算后状态”。
+
+4.10.5 错误处理（Continue Gate）
+- 若锁定数据缺失/校验失败：必须阻断 Continue 并提示；必须提供明确下一步动作（例如返回主菜单、开始新局）。
+
+反例：
+- 退出重进后同一奖励候选集顺序变化
+- 商店价格未锁导致退出重进可刷折扣/涨价
+- UI 行为推进 RNG 导致“打开面板影响掉落”
+
+---
+
+## 4.11 敌方意图与 AI 确定性（边界写死）
+
+4.11.1 Intent 锁定时机
+- 敌方回合开始生成并锁定 Intent（对玩家可见），到敌方行动时保持不变。
+- Intent 必须写入 run 状态（或至少写入 `combat` RNG stream 的 `stream_pos` 以保证退出重进一致）。
+
+4.11.2 行动顺序与稳定键
+- 多敌人行动顺序按 `combatant_id` 升序（稳定键）。
+
+4.11.3 随机性边界
+- 允许随机，但必须来自 `combat` RNG stream，且在锁定点固定；退出重进不得改变。
+- UI 查看意图/悬停/详情等行为不得推进 RNG。
+
+4.11.4 意图改写边界
+- 默认 Intent 不因玩家当回合行为自动重算；仅当存在明确“改写意图”的效果时才改变，并必须写入状态以可复盘。
+
+反例：
+- 退出重进后敌方意图变化（像刷随机）
+- 仅查看意图导致下一次掉落/敌方行为改变（UI 推进 RNG）
+
+---
+
+## 4.12 Run 存档版本化与 Continue Gate（边界写死）
+
+4.12.1 `schema_version`
+- run 存档必须包含 `schema_version`（int）；任意结构变更必须递增版本号。
+
+4.12.2 v1 迁移策略（止损）
+- 默认不自动迁移；版本不兼容或迁移失败必须阻断 Continue 并提示。
+
+4.12.3 校验失败（坏档）
+- 缺字段/字段非法/哈希不一致等校验失败必须阻断 Continue，并提供明确下一步动作（例如返回主菜单、开始新局覆盖确认）。
+
+4.12.4 审计日志（JSONL）
+- 最小字段：`ts, action, reason, target, caller, run_id, schema_version`；统一写入 `logs/**`。
+
+4.12.5 保存点建模
+- 存档必须记录 `save_point_id`（例如 `node_pre_enter`, `combat_start`, `reward_open`, `shop_enter`, `event_enter`, `event_choice_committed`），用于恢复定位与审计。
+
+反例：
+- 无 `schema_version` 导致无法判断兼容性
+- 迁移失败仍继续运行导致更隐蔽数据损坏
+
+---
+
+## 5) 不允许的“玩法漏洞语境”（文案/UX）
+
+以下语境一旦出现在 UI/文案/提示中，视为高风险缺陷（会诱导玩家试图刷结果）：
+- “退出重进可以换结果”
+- “战斗中途可继续”
+- “商店可以升级”
+
+---
+
+## 6) 错误处理（Continue Gate）
+
+6.1 坏档/迁移失败
+- 必须阻断 Continue 并提示（不得“继续尝试加载”导致更大损坏）。
+
+反例：
+- 迁移失败仍进入游戏，然后出现更隐蔽的数据损坏
+===== END PART: .taskmaster/docs/prd_parts/50-mechanics-edge-cases.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md",
+  "title": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+  "sha256": "1968c33f103445802b5d03c6a22c3c0cd9aa74f6593a45294f720bf51e48051d",
+  "bytes": 8300
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+---
+PRD-ID: PRD-NEWROUGE-GAME-0001
+Title: 08 功能纵切验收清单（M1：Warrior）
+Status: Draft
+ADR-Refs:
+  - ADR-0005-quality-gates
+  - ADR-0010-internationalization
+  - ADR-0011-windows-only-platform-and-ci
+  - ADR-0019-godot-security-baseline
+  - ADR-0020-contract-location-standardization
+  - ADR-0025-godot-test-strategy
+  - ADR-0033-card-identity-and-forms
+Test-Refs:
+  - Game.Core.Tests/Determinism/OfferLockingTests.cs # planned
+  - Game.Core.Tests/Save/SaveResumeBoundaryTests.cs # planned
+  - Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs # planned
+  - Tests.Godot/Smoke/ContinueGateTests.gd # planned
+---
+
+# 08 功能纵切验收清单（M1：Warrior）
+
+范围：只验收 M1 最小可玩闭环，不验收 v1 全量内容。
+
+参考：
+- 纵切说明：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
+- PRD：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
+- GDD：`docs/gdd/GDD-NEWROUGE-V1.md`
+
+证据归档（统一写入 `logs/**`）：
+- 约定目录：`logs/ci/<YYYY-MM-DD>/`
+
+---
+
+## 一、文档完整性验收
+
+- [ ] `_index.md` 存在且可导航：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
+- [ ] 纵切文档存在：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
+- [ ] 本清单具备 Front-Matter 且字段齐全：`PRD-ID/Title/Status/ADR-Refs/Test-Refs`
+- [ ] PRD 的 “关联规格（v1）”包含本纵切入口（避免验收锚点漂移）
+
+## 二、架构设计验收
+
+### 2.1 M1 体验闭环（Warrior）
+
+- [ ] MainMenu → New Run（覆盖确认默认取消）→ 选择难度 → 选择 Warrior → 进入地图
+- [ ] Map（Act 1）至少可进入：战斗、事件、商店、休整
+- [ ] 战斗后奖励：至少 1 次“卡牌三选一”
+- [ ] 战斗基础规则（M1）：能量默认每回合重置为 3（除非卡牌/遗物影响）；每回合默认抽牌=4
+- [ ] 战斗回合结构（M1，Design Gate 01）：`StartOfTurn → Draw → Main → EndOfTurn`
+- [ ] EndOfTurn 顺序（M1，Design Gate 01）：`EndOfTurn.Triggers → Discard non-retained → Cleanup`（保留牌相关效果可在 Triggers 阶段生效）
+- [ ] 能量上限（M1，Design Gate 01）：存在 `max_energy` 且硬上限=99（实现需避免溢出导致的恢复/复盘不一致）
+- [ ] 休整升级：升级是多选一选项之一；选择升级则免费升级 1 张卡；U1 必须 Route A/B 二选一且不可逆
+- [ ] 商店：任何时候不提供升级（UI/文案不得出现升级语境）
+- [ ] 商店库存：进入商店时锁定库存与价格；退出重进不刷新（避免刷商店）
+- [ ] 事件：至少 1 次体现“黑暗代价”（包含 HP loss 与 获得诅咒卡 两类示范），且结果可解释/可复盘
+
+### 2.2 关键口径冻结点（高风险）
+
+- [ ] 卡牌身份与形态：同一 `card_id` 四形态（Base/U1A/U1B/Ultimate），不因升级更换 ID（ADR-0033）
+- [ ] U1 → Ultimate：允许进阶，进阶覆盖 U1 形态能力，但继承实例附着效果（ADR-0033）
+- [ ] 奖励三选一出现 U1 卡时：RouteA/RouteB 由掉落 RNG 决定且 UI 明确标注（ADR-0033）
+- [ ] 退出重进：三选一候选集与顺序不变；战斗中断回到战斗初始状态（与 ADR-0032 对齐）
+- [ ] 跳过奖励：允许跳过，但跳过不刷新候选集、不重抽、不推进 RNG（确定性）
+- [ ] 奖励界面出现即写 autosave：退出重进后仍能回到同一候选集与顺序
+- [ ] 商店购买一致性：单一库存不可重复购买；退出重进恢复“进入商店时的库存 + 已购买记录”
+- [ ] 事件写入：事件选项一旦选择，立刻写入 run 状态（退出重进不刷分支/结果）
+- [ ] 目标不可选止损阀（M1，Design Gate 01）：当松开瞬间目标已死亡/不可选时，取消出牌并回手；不耗能量；不进入弃牌/消耗堆（避免误操作与确定性争议）
+- [ ] 结算顺序确定性（Design Gate 03）：AOE 按 `combatant_id` 升序；多段伤害每段后 `DeathCheck` 且目标死亡后剩余段取消；同一时刻触发器使用稳定键（`stable_id`）排序（先玩家侧后敌人侧）
+- [ ] 自动出牌/复制出牌计入出牌数（Design Gate 03）：避免绕过 `OverplayTax` 与稳定性止损
+- [ ] 回合内稳定性止损（Design Gate 01/03）：单回合出牌达到 100 张时，当前牌结算完后强制结束玩家回合并进入 EndOfTurn（不得被阻止/延后）
+- [ ] 若实现难度 >= 10（M1 允许有限档位）：`OverplayTax`（N=12）触发一次且**第 N+1 张牌也吃到加税**；本回合费用 +1 且最低=1；影响本回合后续抽到/生成牌；不可驱散；回合结束自然失效
+- [ ] 状态系统口径（Design Gate 04）：`Debuff` 可驱散；`RuleModifier` 不可驱散；`status.strength` 不可驱散且允许负值；`status.weak` duration 累加；状态回合数按“持有者回合结束 Cleanup”衰减
+- [ ] `status.bloodbeat`（Design Gate 04）：每次出牌 `PayCost` 成功后对玩家造成 1 点固定伤害（可被护甲格挡；不受 Strength/Weak 修饰）；战斗内常驻；不可叠加
+- [ ] 伤害乘区口径（Design Gate 03/04）：`status.weak` 影响输出乘区（典型 75%，下限 50%）；`status.vulnerable` 影响受击乘区（典型 150%，上限 200%）；固定伤害不吃乘区但可被护甲/格挡吸收
+- [ ] Offer locking 统一结构（Design Gate 05）：候选集快照包含 `stable_ids[] + display_order[] + provenance + rng_stream + locked_at_save_point`，且 `stable_ids[]` 为内容稳定 ID（非文案 key）
+- [ ] Reward 写盘点（Design Gate 05）：生成并锁定 reward 后写 autosave，再展示界面；强退后 Continue 回到 Reward 界面（同候选集同顺序）
+- [ ] Shop 写盘点（Design Gate 05）：进入商店即锁定库存+价格并写入 run 状态；购买后强退 Continue 回到商店且库存/价格/金币/已购标记一致
+- [ ] Event 写盘点（Design Gate 05）：进入事件生成选项后即锁定并写入 run 状态；选择/跳过立刻写入；强退在结果展示中 Continue 进入“已选择后的结果展示/结算后状态”
+- [ ] UI 不推进 RNG（Design Gate 05）：查看详情/翻页/排序/悬停/开关面板/事件内切换升级路线等不得推进 RNG（避免“打开面板影响掉落”）
+- [ ] 敌方意图锁定（Design Gate 06）：敌方回合开始锁定 Intent；退出重进意图一致；查看意图/详情不推进 RNG
+- [ ] 多敌人行动顺序（Design Gate 06）：按 `combatant_id` 升序（稳定键）
+- [ ] Run schema 版本化（Design Gate 07）：run 存档包含 `schema_version`；版本不兼容/校验失败阻断 Continue 并提示；存档包含 `save_point_id`
+
+### 2.3 本地化与可见文本
+
+- [ ] 可见文本不硬编码：关键屏（MainMenu/Reward/Shop/Rest/Upgrade/Continue）文本来自 `Game.Godot/Translations`
+- [ ] 卡牌显示约定（M1）：稀有度使用固定位置标记；卡牌名称颜色区分 Base/U1A/U1B/Ultimate（不依赖路线命名）
+- [ ] 掉落池口径（Act 结构）：普通怪/精英怪/Boss/商店/事件 5 类卡池可区分（M1 可先落骨架）
+- [ ] 诅咒卡口径：`card.curse.<slug>` 独立池、不可升级（单形态）；存在至少一种移除入口（M1 要求：商店/事件/休整均有入口）
+
+## 三、代码实现验收
+
+说明：本清单的“代码实现”项用于 Taskmaster 拆任务时作为 Done 标准；M1 前允许处于 planned 状态。
+
+- [ ] `Game.Core/Contracts/**` 存在卡牌形态/升级路线相关契约（不依赖 Godot）
+- [ ] `Game.Core/**` 存在候选集锁定的核心逻辑（可被 xUnit 验证）
+- [ ] `Game.Godot/**` 关键屏具备最小可用 UI：MainMenu/Map/Reward/Shop/Rest/Upgrade
+- [ ] Continue Gate：坏档/迁移失败会阻断 Continue 并提示（错误不静默）
+
+## 四、测试框架验收
+
+- [ ] xUnit：至少 1 个用例覆盖“候选集锁定不漂移”（Core）
+- [ ] xUnit：至少 1 个用例覆盖“卡牌身份与形态（升级不换 card_id、继承附着效果）”（Core）
+- [ ] Headless 冒烟：至少 1 个用例覆盖“Continue Gate 关键路径”（Godot）
+- [ ] 证据归档：测试与冒烟产物写入 `logs/**`（路径口径以仓库规则为准）
+===== END PART: .taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/70-adr-0032.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/70-adr-0032.md",
+  "title": "docs/adr/ADR-0032-save-resume-determinism.md",
+  "sha256": "ea9e22053cc68d9f12c5d627b4fec8958efd216ada25066bce610ee94121efa4",
+  "bytes": 5881
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+# ADR-0032: Save/Resume Policy and Deterministic Outcomes
+
+- Status: Accepted
+- Context:
+  - NewRouge 是单人卡牌构筑的 run-based 游戏，设计目标包含“决策重量”与“玩家信任”。
+  - 玩家必须允许中断与继续（手动退出、崩溃、断电），但不允许通过退出重进来“刷随机结果”。
+  - 游戏必须可复现以支持 QA 与公平性：同一存档点 + 同一输入序列产生同一结果。
+  - 本决策会影响：存档结构（schema）、RNG 设计、事件/奖励生成、主菜单入口、迁移策略与取证日志。
+- Decision:
+  1) 单槽自动存档（Single autosave slot）
+     - 游戏仅维护一个系统自动保存记录。
+     - 主菜单提供唯一入口 Continue Game，用于读取该自动存档。
+     - 新开一局允许覆盖旧自动存档，但必须二次确认，且覆盖不可撤销。
+  2) 战斗保存边界（Combat save boundary）
+     - 进入战斗时保存“战斗初始状态”。
+     - 战斗过程中绝不保存任何中间态（不设置战斗检查点）。
+     - 任意战斗中断（手动退出、崩溃、断电）后继续游戏，都只能回到战斗初始状态。
+  3) 确定性契约与“结果不变”的严格定义（Determinism contract）
+     - “退出重进不会导致事件及结果不同”被严格定义为：
+       - 不重抽不重滚：退出重进不得触发任何重抽或重滚。
+       - 确定性：同一 seed + 同一输入序列 = 同一结果。
+       - 玩家操作不同可以导致不同结果（不锁死为同一个结局）。
+     - 对事件奖励等“三选一”场景，退出重进后的候选项集合必须保持不变：
+       - 允许重新选择，但候选项集合固定不变。
+  4) 版本升级与迁移门禁（Upgrade and migration gate）
+     - 继续游戏要求存档迁移成功（迁移必须幂等）。
+     - 若迁移失败，必须阻止 Continue Game 并提示错误，避免损坏扩大。
+     - 迁移取证必须写入 `logs/ci/<YYYY-MM-DD>/save-migrations/<timestamp>/summary.json`。
+- Consequences:
+  - Pros:
+    - 玩家信任更高：允许中断与继续，不需要惩罚性“禁止退出”。
+    - 公平性更强：退出重进无法用于刷奖励候选项。
+    - 可复现性更强：QA 可基于相同 seed 与输入序列复现问题。
+  - Cons / Risks:
+    - 进度损失是预期行为：战斗中断后回到战斗初始状态。
+    - 单槽覆盖存在误操作风险：需要明确 UI 提示与二次确认。
+    - 确定性提高实现复杂度：需要严格定义存档点、输入序列与 RNG 流拆分。
+  - Implementation Acceptance Criteria（M1 Gate-0 的实现门槛）:
+    1) 存档边界实现到位：
+       - 节点前存档 + 进入战斗保存“战斗初始状态”。
+       - 战斗中绝不保存中间态。
+       - 战斗中断继续只能回到战斗初始状态。
+    2) “三选一”锁定到位（候选集固定）：
+       - 首次生成即落盘 `stable_ids[] + display_order[] + provenance`。
+       - 退出重进后候选集与顺序完全一致（含顺序）。
+       - 允许重新选择，但不得重抽/重滚。
+    3) 确定性边界到位（Scope）：
+       - 纯 UI 行为不得推进 RNG、不得改变候选集。
+       - 同一存档点 + 同一输入序列可复现。
+       - RNG streams 拆分（run/combat/event/loot）并在存档边界持久化必要状态。
+    4) 原子写与坏档处置到位：
+       - autosave 写入原子化；失败保留上一份 autosave。
+       - Continue 读档完整性校验；损坏/不兼容必须阻断 Continue 并提示。
+    5) 迁移门禁到位：
+       - 迁移幂等；失败不得写回；失败必须阻断 Continue 并提示。
+       - 迁移取证写入 `logs/ci/<YYYY-MM-DD>/save-migrations/<timestamp>/summary.json`。
+    6) 审计取证到位：
+       - 关键动作写入 `user://logs/security/security-audit.jsonl`（JSONL，一行一个 JSON）。
+       - 字段至少包含 `{ts, area, action, reason, target, caller}`，用于复现与客服排障闭环。
+    7) 自动化验证到位（最小集）：
+       - 至少 1 个 xUnit 用例覆盖“候选集锁定不漂移”的核心逻辑（Core 层）。
+       - 至少 1 个 headless 冒烟覆盖“Continue 被阻断（坏档/迁移失败）”路径（Godot 层/Runner 任选）。
+       - 测试文件必须采用稳定命名并可被 PRD 的 `Test-Refs` 引用（允许后续按需追加更多用例，但不得重命名已引用的用例路径）。
+
+    8) Test-Refs（用于 PRD/GDD 回链；M1 Gate-0 必须补齐为真实文件）：
+       - `Game.Core.Tests/Determinism/OfferLockingTests.cs`
+       - `Game.Core.Tests/Save/SaveResumeBoundaryTests.cs`
+       - `Tests.Godot/Smoke/ContinueGateTests.gd`
+       - `Tests.Godot/Security/SaveMigrationFailureBlocksContinueTests.gd`
+
+    9) `logs/**` 证据链（M1 Gate-0 必须能稳定产出）：
+       - `logs/ci/<YYYY-MM-DD>/save-migrations/<timestamp>/summary.json`
+       - `logs/ci/<YYYY-MM-DD>/security/security-audit.jsonl`（或等价汇总文件，字段口径不变）
+
+  - Definition of Done（M1 Gate-0）:
+    - 当以上 Implementation Acceptance Criteria 满足，并且具备对应 `logs/**` 证据路径与测试引用后，M1 允许进入“实现阶段”的大规模任务推进。
+  - Required follow-ups:
+    - 必须同步更新 `project-context.md` 与 PRD 中关于 save/resume 的口径，避免文档漂移。
+    - 门禁必须能产出与该策略一致的 `logs/**` 取证。
+- Supersedes: None
+- References:
+  - `docs/prd/PRD-NEWROUGE-GAME-0001.md`
+  - `project-context.md`
+  - `docs/adr/ADR-0033-card-identity-and-forms.md`
+  - ADR-0005-quality-gates
+  - ADR-0019-godot-security-baseline
+  - ADR-0030-core-threading-model
+  - ADR-0031-build-reproducibility-and-version-pinning
+===== END PART: .taskmaster/docs/prd_parts/70-adr-0032.md =====
+
+===== BEGIN PART: .taskmaster/docs/prd_parts/71-adr-0033.md =====
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
+{
+  "schema": "taskmaster-prd-part/v1",
+  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "rel_path": ".taskmaster/docs/prd_parts/71-adr-0033.md",
+  "title": "docs/adr/ADR-0033-card-identity-and-forms.md",
+  "sha256": "36beb5d605a81725f45f97b9174472287d583906beb2bb7d6dbfe9eb46feac9b",
+  "bytes": 5216
+}
+=== TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
+
+# ADR-0033: Card Identity and Forms（同一 card_id 的四形态）
+
+- Status: Accepted
+- Date: 2026-01-25
+- Related:
+  - ADR-0032: Save/Resume Policy and Deterministic Outcomes（候选集锁定与“不刷结果”）
+  - ADR-0010: 国际化策略（Translations key 稳定性要求）
+
+## Context
+
+NewRouge v1 需要“卡牌升级系统”，并且同时满足：
+
+- 退出重进不刷结果（候选集锁定、确定性）
+- 单槽 autosave（节点前 / 进战斗初始状态；战斗中不保存中间态）
+- 内容管线稳定（content_id / translation_key 不漂移）
+
+在此背景下，如果把升级/终极形态视为“换一张新卡（新 card_id）”，会引入高风险与高返工：
+
+- 事件/遗物等加持效果到底附着在哪张卡上，规则容易漏边界
+- 存档迁移与候选集锁定复杂度上升（同一张卡的多个 id/引用关系容易漂移）
+- 平衡/统计/客服排障需要维护“身份映射表”，难以取证与复现
+
+因此需要冻结一条清晰的“身份/形态/实例”口径，作为后续实现与验收的唯一依据。
+
+## Decision
+
+### 1) `card_id` 是卡牌“身份”（Definition），在升级/终极形态下保持不变
+
+- `card_id` 表示“这是什么卡”，是内容与存档的稳定键。
+- v1 “可升级卡牌”（buildable cards）固定四种形态（同一 `card_id`）：
+  - Base（初始）
+  - U1.RouteA（升级路线 A）
+  - U1.RouteB（升级路线 B）
+  - Ultimate（终极形态）
+
+例外（v1）：
+- **诅咒卡（Curse）**是独立卡类与独立池：
+  - `card_id` 命名空间为 `card.curse.<slug>`
+  - 不可升级、无路线、无终极形态（单一形态）
+  - 其存在用于表达“黑暗代价”，并需要可被移除（商店/事件/休整服务）
+
+### 2) 卡牌“实例”与“定义”分离：加持继承绑定在实例上
+
+- 同一 run 中，玩家拥有的是“卡牌实例”（Card Instance），而非直接操作 Definition。
+- 事件/遗物/代价等对“某张卡”的加持（例如刻印、诅咒、强化、绑定）被视为实例上的附着效果：
+  - 形态切换（Base ⇄ U1A/U1B ⇄ Ultimate）时，这些实例附着效果必须被继承保留。
+  - U1 与 Ultimate 的“形态能力”属于 Definition 的不同形态表现；当 U1 进阶 Ultimate 时，U1 的形态能力被 Ultimate 覆盖。
+
+### 3) 升级规则（v1）
+
+- 升级发生位置：
+  - 仅：休整节点 + 特殊事件
+  - 商店：任何时候都不提供升级
+  - 战斗后奖励三选一：允许“概率出现已升级形态的卡牌”（即奖励直接给 U1.* 形态）
+- 休整节点升级：
+  - 休整是多选一选项之一；选择“升级”则免费升级 1 张卡
+  - 每次升级必须在 Route A / Route B 二选一；选择不可逆
+- 特殊事件换路线：
+  - 对已 U1 的卡：事件内允许免费更换升级路线，且事件内不限次数切换
+  - 离开事件时必须二次确认；以离开前确认的最终路线为准
+- Ultimate（终极形态）：
+  - 稀有机会（史诗事件 / 关卡 Boss 等）获得
+  - 可从未升级卡直接进阶 Ultimate；也允许从已 U1 的卡进阶 Ultimate
+  - 进阶后覆盖原先 U1 的形态能力；不可逆；不可再升级；不可再换路线
+
+### 4) 奖励候选集与确定性要求（与 ADR-0032 对齐）
+
+- 当战斗后奖励三选一“给出已升级卡”时：
+  - 路线（RouteA/RouteB）由 loot RNG 随机确定
+  - UI 必须明确标注路线信息（避免“看起来像随机升级效果”的误解）
+- 候选集首次展示给玩家时必须被锁定并可复现（见 ADR-0032）：
+  - 候选项需要可审计的稳定标识（例如 `offer_item_id` + `{card_id, form, route}`）
+  - 退出重进不得重抽/重滚候选项集合与顺序
+- 形态/路线属于“确定性玩家输入或确定性掉落结果”，不得引入额外随机词条或数值浮动。
+
+### 5) 诅咒卡（Curse，v1）
+
+- 诅咒卡的获得通常由事件/代价触发（而非主奖励投放）。
+- 诅咒卡必须可被移除（至少：商店服务 / 事件 / 休整选项中的一种；M1 建议三者都具备入口，便于验证与扩展）。
+
+## Consequences
+
+- 正向：
+  - 存档与迁移更简单：围绕 `card_id` + `form/route` + `instance modifiers` 建模即可
+  - 候选集锁定更可证明：候选项可用稳定 tuple 描述并落盘审计
+  - 内容与翻译 key 更稳定：减少“换 id 导致引用/统计/文案漂移”的风险
+- 代价：
+  - 必须在数据结构中显式区分 Definition 与 Instance，否则容易把“形态能力”与“实例附着效果”混在一起
+  - UI 需要显式展示形态/路线与来源（掉落/升级/事件），否则玩家会误判为随机或 Bug
+
+## Verification（可执行验收方向）
+
+- 升级与形态变更不改变 `card_id`，且实例附着效果在形态切换后仍存在。
+- 奖励三选一出现 U1 卡时，RouteA/RouteB 被明确标注，且退出重进候选集与顺序不变。
+- Ultimate 进阶覆盖 U1 形态能力，但继承实例附着效果。
+
+## References
+
+- `docs/adr/ADR-0032-save-resume-determinism.md`
+- `docs/prd/PRD-NEWROUGE-GAME-0001.md`
+- `project-context.md`
+===== END PART: .taskmaster/docs/prd_parts/71-adr-0033.md =====

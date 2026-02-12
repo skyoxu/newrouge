@@ -1,4 +1,4 @@
-﻿# Godot 4+ specific ignores
+# Godot 4+ specific ignores
 .godot/
 .serena/
 /android/
@@ -89,3 +89,27 @@ cifix*.*
 docs/workflows/contracts-catalog-prd-*.md
 docs/workflows/generated/
 docs/workflows/generated/**
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+# Editor directories and files
+.idea
+.vscode
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

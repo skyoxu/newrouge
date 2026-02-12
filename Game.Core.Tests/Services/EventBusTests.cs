@@ -18,8 +18,8 @@ public class EventBusTests
         await bus.PublishAsync(new DomainEvent(
             Type: "test.evt",
             Source: nameof(EventBusTests),
-            Data: new { ok = true },
-            Timestamp: DateTime.UtcNow,
+            DataJson: "{\"ok\":true}",
+            Timestamp: DateTimeOffset.UtcNow,
             Id: Guid.NewGuid().ToString()
         ));
 
@@ -29,8 +29,8 @@ public class EventBusTests
         await bus.PublishAsync(new DomainEvent(
             Type: "test.evt2",
             Source: nameof(EventBusTests),
-            Data: null,
-            Timestamp: DateTime.UtcNow,
+            DataJson: null,
+            Timestamp: DateTimeOffset.UtcNow,
             Id: Guid.NewGuid().ToString()
         ));
         Assert.Equal(1, called);
@@ -47,8 +47,8 @@ public class EventBusTests
         await bus.PublishAsync(new DomainEvent(
             Type: "evt",
             Source: nameof(EventBusTests),
-            Data: null,
-            Timestamp: DateTime.UtcNow,
+            DataJson: null,
+            Timestamp: DateTimeOffset.UtcNow,
             Id: Guid.NewGuid().ToString()
         ));
         Assert.Equal(1, ok);

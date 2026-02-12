@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cr4327nspeua5"
+
+[deps]
+
+files=["res://_bmad/bmb/workflows/agent/data/communication-presets.category.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.name.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.style.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.key.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.sample.translation"]
+
+source_file="res://_bmad/bmb/workflows/agent/data/communication-presets.csv"
+dest_files=["res://_bmad/bmb/workflows/agent/data/communication-presets.category.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.name.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.style.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.key.translation", "res://_bmad/bmb/workflows/agent/data/communication-presets.sample.translation"]
+
+[params]
+
+compress=true
+delimiter=0

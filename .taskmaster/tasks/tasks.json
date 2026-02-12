@@ -1,0 +1,1805 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Set up project environment and dependencies",
+        "description": "Initialize the project with Godot 4.5.1 .NET, .NET 8 SDK, and ensure packages.lock.json is present.",
+        "details": "Install Godot 4.5.1 .NET console binary, set GODOT_BIN environment variable. Ensure .NET 8 SDK is installed. Run 'dotnet restore .\\NewRouge.sln' to generate packages.lock.json if missing. Verify UTF-8 encoding and Windows-only compliance. Create logs/ directory structure for evidence. Refs: ADR-0031, ADR-0011.\n",
+        "testStrategy": "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\n",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0031",
+          "ADR-0011"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Set up project environment and dependencies.",
+        "updatedAt": null
+      },
+      {
+        "id": 2,
+        "title": "Create core project structure and namespaces",
+        "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
+        "details": "Create directories: Game.Core/, Game.Godot/, Game.Core.Tests/, Tests.Godot/. Set up C# projects with net8.0 target and Nullable enabled. Ensure Game.Core does not reference Godot API. Use NewRouge.* namespace for new code, migrate existing Game.* gradually. Refs: ADR-0021, ADR-0024.\n",
+        "testStrategy": "Validate project structure via directory listing and inspect .csproj files for correct settings. Run 'dotnet build' to ensure no compilation errors. Refs: ADR-0021, ADR-0024.\n",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0024"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Create core project structure and namespaces.",
+        "updatedAt": null
+      },
+      {
+        "id": 3,
+        "title": "Implement core contracts for card identity and forms",
+        "description": "Define contracts in Game.Core/Contracts for card identity, forms (Base, U1A, U1B, Ultimate), and upgrade fields per ADR-0033.",
+        "details": "Create interfaces/classes for CardDefinition (with card_id) and CardInstance (with instance_id, upgrade_tier, upgrade_route). Define enums for Form (Base, U1A, U1B, Ultimate) and Route (A, B). Include fields for permanent_card_instance_modifiers. Ensure tier=2 implies route=null. Refs: ADR-0033, ADR-0020.\n",
+        "testStrategy": "Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020.\n",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0033",
+          "ADR-0020"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement core contracts for card identity and forms.",
+        "updatedAt": null
+      },
+      {
+        "id": 4,
+        "title": "Implement core contracts for offer locking and deterministic outcomes",
+        "description": "Define contracts for offer locking structure, provenance, and RNG streams per ADR-0032 and Design Gate 05.",
+        "details": "Create classes for OfferLocking with fields: stable_ids[], display_order[], provenance (source_type, source_id, act, floor, node_id, difficulty, rng_stream, stream_pos), rng_stream, locked_at_save_point. Define RNG stream types (run, combat, event, loot, shop, offer). Ensure stable_ids use content stable IDs. Refs: ADR-0032.\n",
+        "testStrategy": "Write xUnit tests to validate offer locking structure and provenance fields. Test serialization/deserialization for deterministic behavior. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement core contracts for offer locking and deterministic outcomes.",
+        "updatedAt": null
+      },
+      {
+        "id": 5,
+        "title": "Implement core contracts for status and modifier system",
+        "description": "Define contracts for status types (Buff, Debuff, RuleModifier), fields, and deterministic ordering per Design Gate 04.",
+        "details": "Create Status class with fields: status_id, stacks, duration_turns, source_id, expires_timing. Define enums for StatusType and ExpiresTiming. Include methods for stacking, duration accumulation, and decay. Ensure RuleModifier and status.strength are non-dispellable. Refs: ADR-0021, ADR-0029.\n",
+        "testStrategy": "Write xUnit tests for status operations: stacking, duration handling, and dispel boundaries. Validate deterministic ordering via stable_id sorting. Refs: ADR-0021, ADR-0029.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0029"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement core contracts for status and modifier system.",
+        "updatedAt": null
+      },
+      {
+        "id": 6,
+        "title": "Implement core contracts for combat loop and resolution pipeline",
+        "description": "Define contracts for combat phases, damage calculation, and deterministic sequencing per Design Gates 01 and 03.",
+        "details": "Create classes for CombatLoop with phases: StartOfTurn, Draw, Main, EndOfTurn. Define resolution pipeline steps: Validate, ComputeCost, PayCost, BeforePlayTriggers, ResolveEffect, AfterPlayTriggers, MoveCard, DeathCheck. Implement damage calculation with Strength, Weak, Vulnerable multipliers. Include OverplayTax logic for difficulty >=10. Refs: ADR-0021, ADR-0032.\n",
+        "testStrategy": "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "1",
+            "title": "Define combat loop phases and transition guards",
+            "details": "Define StartOfTurn, Draw, Main, and EndOfTurn phase transitions with explicit preconditions and failure behavior that leaves state unchanged.",
+            "testStrategy": "Add xUnit tests for valid transitions and invalid transition rejection with unchanged state.",
+            "status": "pending",
+            "dependencies": []
+          },
+          {
+            "id": "2",
+            "title": "Specify deterministic PlayCard pipeline contract",
+            "details": "Implement and lock the step order Validate -> ComputeCost -> PayCost -> BeforePlayTriggers -> ResolveEffect -> AfterPlayTriggers -> MoveCard -> DeathCheck.",
+            "testStrategy": "Add xUnit trace-order tests asserting exact pipeline sequence for deterministic execution.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "3",
+            "title": "Implement damage multipliers and fixed-damage rules",
+            "details": "Implement Strength, Weak, and Vulnerable multipliers and preserve fixed-damage exemption from mutable multipliers as defined by contracts.",
+            "testStrategy": "Use table-driven xUnit tests to validate multiplier math and fixed-damage invariants.",
+            "status": "pending",
+            "dependencies": [
+              "2"
+            ]
+          },
+          {
+            "id": "4",
+            "title": "Add OverplayTax and ordering determinism checks",
+            "details": "Apply OverplayTax only when difficulty >= 10 and enforce deterministic ordering by combatant_id and stable_id.",
+            "testStrategy": "Add xUnit tests for difficulty threshold behavior and same-input same-output ordering.",
+            "status": "pending",
+            "dependencies": [
+              "2",
+              "3"
+            ]
+          }
+        ],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down this task with a focus on Implement core contracts for combat loop and resolution pipeline.",
+        "updatedAt": null
+      },
+      {
+        "id": 7,
+        "title": "Set up event bus and contracts location",
+        "description": "Implement event bus system and place contracts in Game.Core/Contracts per ADR-0004 and ADR-0020.",
+        "details": "Create EventBus interface in Game.Core/Contracts with publish/subscribe methods. Define event DTOs for game events (e.g., CardPlayed, CombatStarted). Ensure Godot layer references these contracts without duplication. Use composition root for dependency injection. Refs: ADR-0004, ADR-0020.\n",
+        "testStrategy": "Write xUnit tests for event publishing and subscription. Verify contracts are in correct location and not duplicated in Godot scripts. Refs: ADR-0004, ADR-0020.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0004",
+          "ADR-0020"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Set up event bus and contracts location.",
+        "updatedAt": null
+      },
+      {
+        "id": 8,
+        "title": "Implement core logic for card identity and forms",
+        "description": "Create core services for card definition, instance management, and form transitions per ADR-0033.",
+        "details": "Implement CardService with methods to get card definition by card_id, create instances, upgrade (U1 route selection), and advance to Ultimate. Ensure form transitions inherit permanent_card_instance_modifiers. Validate upgrade_tier and upgrade_route constraints. Refs: ADR-0033.\n",
+        "testStrategy": "Write xUnit tests in Game.Core.Tests/Cards for card identity, upgrade paths, and modifier inheritance. Reference ADR-0033 in test descriptions. Refs: ADR-0033.\n",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "1",
+            "title": "Implement card definition lookup by card_id",
+            "details": "Implement CardService lookup for CardDefinition by card_id with deterministic not-found failure behavior.",
+            "testStrategy": "Add xUnit tests for hit/miss lookup behavior and deterministic failure outputs.",
+            "status": "pending",
+            "dependencies": []
+          },
+          {
+            "id": "2",
+            "title": "Implement card instance creation and base form init",
+            "details": "Create CardInstance with instance_id, base form, and initialized modifier container consistent with contract fields.",
+            "testStrategy": "Add xUnit tests for instance field initialization and identity separation from card definitions.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "3",
+            "title": "Implement U1 upgrade route constraints",
+            "details": "Implement route A/B selection rules for U1 upgrades and enforce invalid route/tier combinations as hard failures.",
+            "testStrategy": "Add xUnit positive and negative tests for route constraints and tier-route invariants.",
+            "status": "pending",
+            "dependencies": [
+              "2"
+            ]
+          },
+          {
+            "id": "4",
+            "title": "Implement Ultimate transition and modifier inheritance",
+            "details": "Implement transition to Ultimate and preserve permanent_card_instance_modifiers inheritance semantics across form transitions.",
+            "testStrategy": "Add xUnit tests asserting modifier inheritance continuity and final-form transition constraints.",
+            "status": "pending",
+            "dependencies": [
+              "3"
+            ]
+          }
+        ],
+        "adrRefs": [
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down this task with a focus on Implement core logic for card identity and forms.",
+        "updatedAt": null
+      },
+      {
+        "id": 9,
+        "title": "Implement deterministic RNG stream registry",
+        "description": "Create RNG stream registry and state management for deterministic systems.",
+        "details": "Implement RNGStreamRegistry with named streams (run, combat, event, loot, shop, offer). Provide seed/state serialization and stream position tracking. Ensure UI actions do not advance RNG. Refs: ADR-0032, ADR-0021.\n",
+        "testStrategy": "xUnit tests for stream isolation, seed/state serialization, and non-advancing UI actions. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "4"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement deterministic RNG stream registry.",
+        "updatedAt": null
+      },
+      {
+        "id": 10,
+        "title": "Implement status application, stacking, and decay",
+        "description": "Create status operations: apply, stack, decay, and dispel boundaries.",
+        "details": "Implement StatusService core operations: apply status, stack rules (e.g., duration + N), decay timing at owner_end_of_turn_cleanup, and dispel only Debuffs. Refs: ADR-0021, ADR-0029.\n",
+        "testStrategy": "xUnit tests for stacking, duration decay, and dispel boundaries. Refs: ADR-0029.\n",
+        "priority": "medium",
+        "dependencies": [
+          "5"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0029"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement status application, stacking, and decay.",
+        "updatedAt": null
+      },
+      {
+        "id": 11,
+        "title": "Implement combat resolution pipeline (core)",
+        "description": "Implement card play pipeline and validation steps in core combat logic.",
+        "details": "Implement CombatService PlayCard pipeline: Validate, ComputeCost, PayCost, BeforePlay, ResolveEffect, AfterPlay, MoveCard, DeathCheck (pipeline hooks). Focus on deterministic ordering. Refs: ADR-0021, ADR-0032.\n",
+        "testStrategy": "xUnit tests for pipeline step ordering and deterministic execution with fixed inputs. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "1",
+            "title": "Implement PlayCard pipeline orchestrator skeleton",
+            "details": "Create CombatService pipeline orchestrator and wire fixed phase sequence hooks without embedding UI concerns.",
+            "testStrategy": "Add xUnit tests verifying pipeline step invocation order under nominal input.",
+            "status": "pending",
+            "dependencies": []
+          },
+          {
+            "id": "2",
+            "title": "Implement validation and cost payment gates",
+            "details": "Implement Validate, ComputeCost, and PayCost stages with fail-fast semantics that prevent downstream stage execution on failure.",
+            "testStrategy": "Add xUnit tests asserting blocked progression and unchanged state on validation or payment failure.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "3",
+            "title": "Implement resolve-effect and trigger stages",
+            "details": "Implement BeforePlay, ResolveEffect, and AfterPlay stage behavior with deterministic ordering and stable side-effect boundaries.",
+            "testStrategy": "Add xUnit tests for trigger ordering and deterministic effect resolution traces.",
+            "status": "pending",
+            "dependencies": [
+              "2"
+            ]
+          },
+          {
+            "id": "4",
+            "title": "Implement MoveCard and DeathCheck finalization",
+            "details": "Finalize pipeline with MoveCard and DeathCheck stages and guarantee same-input same-output deterministic end state.",
+            "testStrategy": "Add xUnit tests for final stage behavior and deterministic final state snapshots.",
+            "status": "pending",
+            "dependencies": [
+              "3"
+            ]
+          }
+        ],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down this task with a focus on Implement combat resolution pipeline (core).",
+        "updatedAt": null
+      },
+      {
+        "id": 12,
+        "title": "Implement save serialization and atomic write",
+        "description": "Create SaveService serialization, schema versioning, and atomic write.",
+        "details": "Implement SaveService to serialize run state (schema_version, save_point_id, offer locks) and write atomically to user://. Do not handle migration logic here. Refs: ADR-0032, ADR-0023.\n",
+        "testStrategy": "xUnit tests for serialization round-trip and atomic write behavior. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "1",
+            "title": "Define run save serialization shape",
+            "details": "Serialize schema_version, save_point_id, and offer locks into save payload and keep migration concerns out of this task scope.",
+            "testStrategy": "Add xUnit round-trip serialization tests for required fields and shape stability.",
+            "status": "pending",
+            "dependencies": []
+          },
+          {
+            "id": "2",
+            "title": "Implement atomic write commit workflow",
+            "details": "Write through a temporary file and replace target atomically to avoid partial save corruption on interruption.",
+            "testStrategy": "Add xUnit tests that verify commit behavior and no partial-file state after write failures.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "3",
+            "title": "Enforce user:// path safety boundaries",
+            "details": "Allow save writes only under user:// and reject absolute or traversal-like paths with fail-fast errors.",
+            "testStrategy": "Add xUnit tests for allowed user:// path and denied invalid path cases.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "4",
+            "title": "Add persistence error propagation and evidence fields",
+            "details": "Return contextual errors on save failure and emit required persistence evidence fields without mutating last valid save.",
+            "testStrategy": "Add xUnit tests asserting error propagation and unchanged previous save on failure path.",
+            "status": "pending",
+            "dependencies": [
+              "2",
+              "3"
+            ]
+          }
+        ],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0023"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down this task with a focus on Implement save serialization and atomic write.",
+        "updatedAt": null
+      },
+      {
+        "id": 13,
+        "title": "Set up Godot autoloads and composition root",
+        "description": "Configure Godot autoloads (EventBus, DataStore, Logger, etc.) and composition root for dependency injection per project-context.md.",
+        "details": "Create Autoload scripts in Game.Godot/Scripts for EventBus, DataStore, Logger, SecurityAudit, PerformanceTracker, SentryClient, FeatureFlags, CompositionRoot. Implement CompositionRoot to inject core services into Godot nodes. Ensure no domain logic in autoloads. Refs: ADR-0021, ADR-0022.\n",
+        "testStrategy": "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022.\n",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0022"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH02",
+          "CH05",
+          "CH07",
+          "CH09"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Set up Godot autoloads and composition root.",
+        "updatedAt": null
+      },
+      {
+        "id": 14,
+        "title": "Create main menu scene with new run and continue options",
+        "description": "Implement MainMenu.tscn with New Run, Continue (single slot), and Quit buttons per M1 requirements.",
+        "details": "Create MainMenu.tscn in Game.Godot/Scenes/ with UI buttons. Implement logic to check for valid autosave and enable/disable Continue. Add overwrite confirmation dialog with default focus on cancel. Use translations for visible text. Refs: ADR-0032, ADR-0010.\n",
+        "testStrategy": "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010.\n",
+        "priority": "high",
+        "dependencies": [
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Create main menu scene with new run and continue options.",
+        "updatedAt": null
+      },
+      {
+        "id": 15,
+        "title": "Implement difficulty selection UI",
+        "description": "Create DifficultySelect.tscn with 10 difficulty levels and descriptions per M1 requirements.",
+        "details": "Design UI with buttons or slider for 10 difficulty levels. Show descriptions indicating numerical challenge focus. Store selected difficulty globally. Use translations for text. Refs: ADR-0010, ADR-0032.\n",
+        "testStrategy": "Test UI navigation and difficulty persistence. Verify descriptions do not imply strong binding to talent tree. Refs: ADR-0010, ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "14"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement difficulty selection UI.",
+        "updatedAt": null
+      },
+      {
+        "id": 16,
+        "title": "Implement character selection UI for Warrior only",
+        "description": "Create CharacterSelect.tscn with Warrior as only selectable character and mechanism summary per M1 requirements.",
+        "details": "Display Warrior character with 3-line mechanism summary (rage as state buff, strong attack windows, cost and burst). Hide or gray out other characters with 'not open' labels. Use translations. Refs: ADR-0010.\n",
+        "testStrategy": "Verify Warrior selection works and other characters are not selectable. Check translation keys for mechanism summary. Refs: ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "15"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement character selection UI for Warrior only.",
+        "updatedAt": null
+      },
+      {
+        "id": 17,
+        "title": "Create modular Act structure for map system",
+        "description": "Implement map system with modular Act structure, not hardcoded to 3 Acts, per M1 requirements.",
+        "details": "Design MapService in Game.Core for Act and node management. Create Map.tscn in Godot with node icons for Combat, Event, Shop, Rest. Support fork selection. Save node_pre_enter state. Refs: ADR-0007, ADR-0021.\n",
+        "testStrategy": "Test map navigation and node selection. Write xUnit tests for Act structure modularity. Refs: ADR-0007, ADR-0021.\n",
+        "priority": "medium",
+        "dependencies": [
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0007",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Create modular Act structure for map system.",
+        "updatedAt": null
+      },
+      {
+        "id": 18,
+        "title": "Implement combat scene UI shell and bindings",
+        "description": "Create Combat.tscn UI layout and bind to core combat state.",
+        "details": "Build UI for hand cards, energy, draw/discard piles, and turn controls. Bind view to core state. Do not implement full turn flow here. Refs: ADR-0022, ADR-0010.\n",
+        "testStrategy": "GdUnit4 tests for UI presence and bindings to state. Refs: ADR-0025.\n",
+        "priority": "high",
+        "dependencies": [
+          "11",
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": "1",
+            "title": "Build combat HUD shell structure",
+            "details": "Create view shell for hand cards, energy, draw/discard piles, and turn controls with no embedded domain decision logic.",
+            "testStrategy": "Add GdUnit4 presence tests for required HUD nodes and visibility defaults.",
+            "status": "pending",
+            "dependencies": []
+          },
+          {
+            "id": "2",
+            "title": "Bind HUD read model to core state",
+            "details": "Bind HUD widgets to core state outputs for hand, energy, and pile counters with deterministic update mapping.",
+            "testStrategy": "Add GdUnit4 binding tests asserting UI values match core state snapshots.",
+            "status": "pending",
+            "dependencies": [
+              "1"
+            ]
+          },
+          {
+            "id": "3",
+            "title": "Implement turn-control command dispatch boundaries",
+            "details": "Route turn-control interactions to command handlers while keeping scene layer as UI shell and avoiding direct core state mutation.",
+            "testStrategy": "Add GdUnit4 interaction tests that verify dispatch events and blocked invalid actions.",
+            "status": "pending",
+            "dependencies": [
+              "2"
+            ]
+          },
+          {
+            "id": "4",
+            "title": "Add UI localization and smoke verification",
+            "details": "Ensure visible combat UI text resolves via translation keys and validate shell behavior through headless smoke-ready checks.",
+            "testStrategy": "Add GdUnit4 tests for translated label rendering and basic smoke interaction paths.",
+            "status": "pending",
+            "dependencies": [
+              "3"
+            ]
+          }
+        ],
+        "adrRefs": [
+          "ADR-0022",
+          "ADR-0010",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down this task with a focus on Implement combat scene UI shell and bindings.",
+        "updatedAt": null
+      },
+      {
+        "id": 19,
+        "title": "Implement reward scene with card three-choice-one and offer locking",
+        "description": "Create Reward.tscn with three card choices, offer locking, and deterministic display per ADR-0032.",
+        "details": "Display three cards with names, descriptions, and form indicators (Base/U1A/U1B/Ultimate). Lock offer on first show and write autosave. Allow skip without advancing RNG. Use translations for UI text. Refs: ADR-0032, ADR-0010.\n",
+        "testStrategy": "Test reward display, selection, and skip. Verify offer locking by exiting and re-entering. Write xUnit tests for offer locking logic. Refs: ADR-0032, ADR-0010.\n",
+        "priority": "high",
+        "dependencies": [
+          "13",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement reward scene with card three-choice-one and offer locking.",
+        "updatedAt": null
+      },
+      {
+        "id": 20,
+        "title": "Implement shop scene with inventory locking and no upgrade context",
+        "description": "Create Shop.tscn with purchasable items, inventory locking, and no upgrade services per M1 requirements.",
+        "details": "Display shop inventory (cards, relics) with prices. Lock inventory on entry. Implement purchase logic. Include deck improvement services (remove, reforge) but no upgrade. Use translations without upgrade context. Refs: ADR-0032, ADR-0010.\n",
+        "testStrategy": "Test shop purchases and inventory persistence on exit/re-enter. Verify UI lacks upgrade wording. Refs: ADR-0032, ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "13",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement shop scene with inventory locking and no upgrade context.",
+        "updatedAt": null
+      },
+      {
+        "id": 21,
+        "title": "Implement rest scene with free upgrade option",
+        "description": "Create Rest.tscn with options including free card upgrade per M1 requirements.",
+        "details": "Provide options: upgrade (free one card), heal, remove curse. Implement upgrade flow: select card, choose Route A/B, confirm irreversible. Use translations for irreversible warnings. Refs: ADR-0033, ADR-0010.\n",
+        "testStrategy": "Test upgrade flow and confirmation. Verify upgrade is free and irreversible. Check translation keys. Refs: ADR-0033, ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "8",
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0033",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement rest scene with free upgrade option.",
+        "updatedAt": null
+      },
+      {
+        "id": 22,
+        "title": "Implement event scene with dark cost examples",
+        "description": "Create Event.tscn with at least two options and dark cost examples (HP loss, curse card) per M1 requirements.",
+        "details": "Design event UI with title, description, and options. Implement dark costs: immediate HP loss or adding curse card to deck. Lock options on entry and write choice immediately. Use translations. Refs: ADR-0032, ADR-0010.\n",
+        "testStrategy": "Test event options and cost application. Verify choice locking on exit/re-enter. Refs: ADR-0032, ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement event scene with dark cost examples.",
+        "updatedAt": null
+      },
+      {
+        "id": 23,
+        "title": "Set up translations system with key naming conventions",
+        "description": "Configure translations in Game.Godot/Translations/ with key naming per ADR-0010 and project-context.md.",
+        "details": "Create CSV files for en and zh-CN. Define key prefixes: ui.*, card.*, relic.*, event.*, etc. Use named placeholders {name}. Ensure scripts reference keys, not hardcoded text. Refs: ADR-0010.\n",
+        "testStrategy": "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Set up translations system with key naming conventions.",
+        "updatedAt": null
+      },
+      {
+        "id": 24,
+        "title": "Implement Warrior starting deck with 10 cards",
+        "description": "Create Warrior starting deck with 10 cards as per M1 content list.",
+        "details": "Define card definitions for 10 Warrior cards (e.g., card.warrior.cleave) with base forms. Implement deck initialization service. Include tags and intents for testing. Refs: ADR-0033.\n",
+        "testStrategy": "Write xUnit tests to verify deck composition and card properties. Reference M1 content list. Refs: ADR-0033.\n",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement Warrior starting deck with 10 cards.",
+        "updatedAt": null
+      },
+      {
+        "id": 25,
+        "title": "Implement rage as state buff for Warrior",
+        "description": "Implement rage as a combat-only state buff for Warrior and integrate with status system.",
+        "details": "Define Rage as a Buff status that persists within combat and resets after combat. Implement source/stack rules, and ensure it does not decay at end of turn. Integrate with damage calculation as per combat pipeline. Refs: ADR-0033, ADR-0021.\n",
+        "testStrategy": "xUnit tests for Rage stacking, persistence across turns, and reset after combat end. Verify deterministic ordering with other statuses. Refs: ADR-0033.\n",
+        "priority": "medium",
+        "dependencies": [
+          "10",
+          "24"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0033",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement rage as state buff for Warrior.",
+        "updatedAt": null
+      },
+      {
+        "id": 26,
+        "title": "Define difficulty configuration contract and immutability",
+        "description": "Add core DifficultyConfig and run-level immutable difficulty selection (1-10).",
+        "details": "Create DifficultyConfig (difficulty_id, label_key, description_key, ruleset_id). Persist to run metadata as immutable. Expose read-only access in core. Refs: ADR-0023, ADR-0032, ADR-0021.\n",
+        "testStrategy": "xUnit tests for difficulty persistence and immutability after run start. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "12"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0023",
+          "ADR-0032",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH05",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Define difficulty configuration contract and immutability.",
+        "updatedAt": null
+      },
+      {
+        "id": 27,
+        "title": "Implement difficulty rule modifiers",
+        "description": "Map difficulty to rule modifiers (e.g., OverplayTax threshold for >=10).",
+        "details": "Implement DifficultyRuleService to resolve rule modifiers from difficulty. Enable OverplayTax for difficulty>=10 with N=12. Ensure modifiers are pure and deterministic. Refs: ADR-0032, ADR-0021.\n",
+        "testStrategy": "xUnit tests for rule resolution by difficulty and deterministic outputs. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "6",
+          "26"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement difficulty rule modifiers.",
+        "updatedAt": null
+      },
+      {
+        "id": 28,
+        "title": "Create ActConfig data model and loader",
+        "description": "Define ActConfig and load Act data from JSON for modular acts.",
+        "details": "Define ActConfig (act_id, node_graph, pools, encounters) in Game.Core. Load via System.Text.Json from data files. Ensure schema versioning. Refs: ADR-0006, ADR-0031, ADR-0021.\n",
+        "testStrategy": "xUnit tests for loading valid/invalid ActConfig and schema version checks. Refs: ADR-0006.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0006",
+          "ADR-0031",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH05",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Create ActConfig data model and loader.",
+        "updatedAt": null
+      },
+      {
+        "id": 29,
+        "title": "Implement card drop pools per Act and encounter type",
+        "description": "Add card pools by act and encounter type with rarity tiers.",
+        "details": "Define CardPool entries for normal/elite/boss/shop/event by act. Implement deterministic selection via OfferService without advancing RNG on UI. Refs: ADR-0032, ADR-0033.\n",
+        "testStrategy": "xUnit tests for pool selection determinism and rarity distribution stability. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "28",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement card drop pools per Act and encounter type.",
+        "updatedAt": null
+      },
+      {
+        "id": 30,
+        "title": "Define relic contracts and instance model",
+        "description": "Create relic definition/instance contracts in Game.Core/Contracts.",
+        "details": "Add RelicDefinition (relic_id, name_key, description_key, tags) and RelicInstance (instance_id, modifiers). Ensure contracts are in Game.Core/Contracts only. Refs: ADR-0020, ADR-0021, ADR-0010.\n",
+        "testStrategy": "xUnit tests for relic contract validity and serialization. Refs: ADR-0020.\n",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0020",
+          "ADR-0021",
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Define relic contracts and instance model.",
+        "updatedAt": null
+      },
+      {
+        "id": 31,
+        "title": "Implement 20 starting relic definitions and uniqueness checks",
+        "description": "Create 20 relic definitions with unique ids and hookable effects.",
+        "details": "Define 20 relics for M1 with stable relic_id and translation keys. Provide effect descriptors for rule modifiers (no runtime Godot deps). Refs: ADR-0010, ADR-0021.\n",
+        "testStrategy": "xUnit tests to validate unique relic_id and translation key presence. Refs: ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "30"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement 20 starting relic definitions and uniqueness checks.",
+        "updatedAt": null
+      },
+      {
+        "id": 32,
+        "title": "Implement curse cards and removal services",
+        "description": "Add curse card pool (non-upgradable) and removal flows.",
+        "details": "Create curse card definitions under card.curse.* namespace; no upgrades, single form. Implement removal via shop service, rest option, and event option. Refs: ADR-0033.\n",
+        "testStrategy": "xUnit tests for curse constraints and removal operations. Refs: ADR-0033.\n",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement curse cards and removal services.",
+        "updatedAt": null
+      },
+      {
+        "id": 33,
+        "title": "Implement deck operations service (draw/discard/exhaust/retain)",
+        "description": "Build deterministic deck operations with hand limit 10 and retain rules.",
+        "details": "Implement DeckService with draw, discard, exhaust, shuffle, retain. Enforce hand limit 10; overflow discards by instance_id order. Apply retain effects at EndOfTurn. Refs: ADR-0021, ADR-0032.\n",
+        "testStrategy": "xUnit tests for draw/discard ordering, retain behavior, and hand limit overflow. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "8",
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement deck operations service (draw/discard/exhaust/retain).",
+        "updatedAt": null
+      },
+      {
+        "id": 34,
+        "title": "Implement card targeting and drag UX",
+        "description": "Add hover/drag targeting UX in combat scene.",
+        "details": "Implement mouse hover to select enemy target; single enemy always selected. Drag card to target to play. Provide invalid target feedback. Use translation keys for prompts. Refs: ADR-0022, ADR-0010.\n",
+        "testStrategy": "GdUnit4 tests for target selection and drag-drop play flow. Refs: ADR-0025.\n",
+        "priority": "medium",
+        "dependencies": [
+          "18"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0022",
+          "ADR-0010",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement card targeting and drag UX.",
+        "updatedAt": null
+      },
+      {
+        "id": 35,
+        "title": "Implement end-of-combat resolution pipeline",
+        "description": "Finalize victory/defeat resolution and reward handoff.",
+        "details": "On victory: resolve death triggers, apply rewards, write run state, and transition to Reward scene. On defeat: end run and return to menu. Refs: ADR-0032, ADR-0029.\n",
+        "testStrategy": "xUnit tests for combat end resolution and state transitions. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "18",
+          "19",
+          "48"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0029"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement end-of-combat resolution pipeline.",
+        "updatedAt": null
+      },
+      {
+        "id": 36,
+        "title": "Implement autosave triggers per determinism policy",
+        "description": "Add autosave on combat start, reward screen open, and event choice.",
+        "details": "Write autosave at combat start (initial state), when reward UI first shows, and immediately after event choice. No extra autosave on skip. Refs: ADR-0032, ADR-0023.\n",
+        "testStrategy": "xUnit tests for autosave timing and content. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "12",
+          "19",
+          "22"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0023"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement autosave triggers per determinism policy.",
+        "updatedAt": null
+      },
+      {
+        "id": 37,
+        "title": "Single-slot continue metadata and integrity checks",
+        "description": "Add run metadata, integrity checks, and Continue gating.",
+        "details": "Store run metadata (run_id, difficulty_id, act, node_id, timestamp). On load, validate schema and integrity; if invalid, block Continue and show error. Refs: ADR-0032, ADR-0029.\n",
+        "testStrategy": "xUnit tests for metadata validation and Continue gating. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "12",
+          "14",
+          "50"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0029"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH05",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Single-slot continue metadata and integrity checks.",
+        "updatedAt": null
+      },
+      {
+        "id": 38,
+        "title": "Audit logging for determinism and security events",
+        "description": "Implement JSONL audit logging to logs/ per SSoT.",
+        "details": "Create AuditLogger writing logs/ci/<date>/security-audit.jsonl with {ts, action, reason, target, caller}. Log save/load, offer lock, and deny events. Refs: ADR-0019, ADR-0003.\n",
+        "testStrategy": "xUnit tests to verify JSONL schema and file paths. Refs: ADR-0019.\n",
+        "priority": "medium",
+        "dependencies": [
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0019",
+          "ADR-0003"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH02",
+          "CH03",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Audit logging for determinism and security events.",
+        "updatedAt": null
+      },
+      {
+        "id": 39,
+        "title": "Populate translations for M1 cards, relics, events",
+        "description": "Add translation entries for M1 content and UI text.",
+        "details": "Add en/zh-CN translation keys for cards, relics, events, and UI prompts. No visible text hardcoded. Refs: ADR-0010.\n",
+        "testStrategy": "Script or manual checks to ensure all referenced keys exist; GdUnit4 smoke. Refs: ADR-0010.\n",
+        "priority": "medium",
+        "dependencies": [
+          "23",
+          "24",
+          "31",
+          "32"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Populate translations for M1 cards, relics, events.",
+        "updatedAt": null
+      },
+      {
+        "id": 40,
+        "title": "Define Act 1 enemy data and definitions",
+        "description": "Create enemy definitions and data for Act 1 encounters.",
+        "details": "Define EnemyDefinition for normal/elite/boss with stats and intent pools. Data only; no intent selection logic. Refs: ADR-0021.\n",
+        "testStrategy": "xUnit tests for enemy data validity and deterministic ordering of definitions. Refs: ADR-0021.\n",
+        "priority": "medium",
+        "dependencies": [
+          "6",
+          "28"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH05",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Define Act 1 enemy data and definitions.",
+        "updatedAt": null
+      },
+      {
+        "id": 41,
+        "title": "Implement enemy intent display and preview UI",
+        "description": "Show enemy next intent in combat UI.",
+        "details": "Display intent icon and description for each enemy. Use translation keys and ensure intent matches resolved data. Refs: ADR-0010, ADR-0022.\n",
+        "testStrategy": "GdUnit4 tests for intent display and updates on turn start. Refs: ADR-0025.\n",
+        "priority": "medium",
+        "dependencies": [
+          "18",
+          "52"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0022",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH05",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement enemy intent display and preview UI.",
+        "updatedAt": null
+      },
+      {
+        "id": 42,
+        "title": "Map node entry gating and backtracking rules",
+        "description": "Enforce node selection lock and no backtracking.",
+        "details": "Lock node options on entry; maintain deterministic node_pre_enter state. Prevent backtracking after selection. Refs: ADR-0032.\n",
+        "testStrategy": "xUnit tests for node selection lock and deterministic node order. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "17"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Map node entry gating and backtracking rules.",
+        "updatedAt": null
+      },
+      {
+        "id": 43,
+        "title": "Run state machine with Command-only transitions",
+        "description": "Implement run state transitions via Command entries only.",
+        "details": "Define RunStateMachine and Command types to drive state changes. Enforce that all state mutations go through Command pipeline to preserve determinism. Refs: ADR-0032, ADR-0021.\n",
+        "testStrategy": "xUnit tests for command transition ordering and state invariants. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "12",
+          "17"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Run state machine with Command-only transitions.",
+        "updatedAt": null
+      },
+      {
+        "id": 44,
+        "title": "Deterministic resume integration tests (headless)",
+        "description": "Add GdUnit4 tests for save/resume determinism in reward/shop/event.",
+        "details": "Create headless GdUnit4 tests to exit/re-enter reward/shop/event and verify offer lock and choices are stable. Log artifacts to logs/e2e/<date>/ and verify JUnit/XML + audit logs. Refs: ADR-0032, ADR-0025.\n",
+        "testStrategy": "Run headless suite and verify JUnit/XML + audit logs. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "19",
+          "20",
+          "22",
+          "36"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH02",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Deterministic resume integration tests (headless).",
+        "updatedAt": null
+      },
+      {
+        "id": 45,
+        "title": "Display difficulty in HUD and run summary",
+        "description": "Show selected difficulty in HUD and run summary UI.",
+        "details": "Add HUD label for difficulty and a run summary panel. Ensure value is read-only during run. Use translation keys. Refs: ADR-0010, ADR-0023.\n",
+        "testStrategy": "GdUnit4 tests to verify HUD shows selected difficulty and does not change mid-run. Refs: ADR-0032.\n",
+        "priority": "low",
+        "dependencies": [
+          "15",
+          "26"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0023",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH10",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Display difficulty in HUD and run summary.",
+        "updatedAt": null
+      },
+      {
+        "id": 46,
+        "title": "Implement offer locking generation using RNG streams",
+        "description": "Generate and lock offer candidates using RNG streams and provenance.",
+        "details": "Implement OfferService to generate candidates, lock stable_ids/display_order, and persist provenance. Refs: ADR-0032.\n",
+        "testStrategy": "xUnit tests for offer lock determinism across reloads. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "4",
+          "9"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement offer locking generation using RNG streams.",
+        "updatedAt": null
+      },
+      {
+        "id": 47,
+        "title": "Implement status trigger ordering and fixed damage rules",
+        "description": "Add deterministic trigger ordering and fixed damage behavior.",
+        "details": "Define trigger ordering for statuses/relics and fixed damage rules (e.g., OverplayTax damage not modified). Refs: ADR-0029, ADR-0032.\n",
+        "testStrategy": "xUnit tests for trigger ordering and fixed damage invariants. Refs: ADR-0029.\n",
+        "priority": "medium",
+        "dependencies": [
+          "10"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0029",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement status trigger ordering and fixed damage rules.",
+        "updatedAt": null
+      },
+      {
+        "id": 48,
+        "title": "Implement damage calculation and AOE ordering",
+        "description": "Add damage calculation, AOE ordering, and multi-hit resolution.",
+        "details": "Implement damage calc with Strength/Weak/Vulnerable multipliers and AOE ordering by combatant_id. Refs: ADR-0021, ADR-0032.\n",
+        "testStrategy": "xUnit tests for damage calculations and multi-hit ordering. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "11",
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0021",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement damage calculation and AOE ordering.",
+        "updatedAt": null
+      },
+      {
+        "id": 49,
+        "title": "Implement stability safeguards for combat loop",
+        "description": "Add safety limits (100 cards per turn) and failure handling.",
+        "details": "Enforce 100-card-per-turn limit with hard stop; record audit entry. Handle invalid plays gracefully. Refs: ADR-0029.\n",
+        "testStrategy": "xUnit tests for hard-stop behavior and audit log entries. Refs: ADR-0029.\n",
+        "priority": "medium",
+        "dependencies": [
+          "11"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0029"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH02",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement stability safeguards for combat loop.",
+        "updatedAt": null
+      },
+      {
+        "id": 50,
+        "title": "Implement save migration validation and failure blocking",
+        "description": "Add migration checks and block Continue on invalid save.",
+        "details": "Validate schema_version and apply migrations; on failure, block Continue and surface error. Refs: ADR-0032, ADR-0023.\n",
+        "testStrategy": "xUnit tests for migration failure blocking and error paths. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "12"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0023"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement save migration validation and failure blocking.",
+        "updatedAt": null
+      },
+      {
+        "id": 51,
+        "title": "Integrate combat turn flow and persistence",
+        "description": "Wire combat turn flow to core services and save points.",
+        "details": "Integrate start-of-combat autosave, turn progression, and end-of-turn cleanup with core services. Refs: ADR-0032, ADR-0025.\n",
+        "testStrategy": "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032.\n",
+        "priority": "high",
+        "dependencies": [
+          "18",
+          "11",
+          "36"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Integrate combat turn flow and persistence.",
+        "updatedAt": null
+      },
+      {
+        "id": 52,
+        "title": "Implement enemy intent selection logic",
+        "description": "Add deterministic intent selection rules per enemy.",
+        "details": "Implement intent selection using RNG stream and combat state; enforce determinism. Refs: ADR-0032, ADR-0021.\n",
+        "testStrategy": "xUnit tests for intent selection determinism. Refs: ADR-0032.\n",
+        "priority": "medium",
+        "dependencies": [
+          "40",
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0032",
+          "ADR-0021"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 6,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement enemy intent selection logic.",
+        "updatedAt": null
+      },
+      {
+        "id": 53,
+        "title": "Headless smoke runner (Python) + strict mode",
+        "description": "Implement a Python-first headless smoke runner for Godot on Windows, matching the existing PowerShell behavior. Add an optional strict mode that requires a success marker in logs. Source: docs/migration/Phase-12-Headless-Smoke-Backlog.md (B1/B2).",
+        "details": "Story: PH12-BACKLOG-B1-B2\nADR Refs: ADR-0005, ADR-0011, ADR-0018, ADR-0024\nChapters: CH01, CH06, CH07, CH10\nTest Refs: logs/ci/<date>/smoke/headless.out.log, logs/ci/<date>/smoke/headless.err.log, logs/ci/<date>/smoke/summary.json, Tests/CI/Smoke/SmokeHeadlessRunnerCliArgsTests.cs, Tests/CI/Smoke/SmokeHeadlessRunnerArtifactsAndExitCodeTests.cs, Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd, Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd, Tests/CI/Smoke/SmokeHeadlessRunnerNonStrictPermissiveTests.cs\nAcceptance: Provide scripts/python/smoke_headless.py with --godot-bin, --scene, --timeout-sec, --project-path, and --strict. Refs: Tests/CI/Smoke/SmokeHeadlessRunnerCliArgsTests.cs; Write outputs under logs/ci/<date>/smoke/** and return non-zero on strict failures. Refs: Tests/CI/Smoke/SmokeHeadlessRunnerArtifactsAndExitCodeTests.cs; Strict mode passes only if logs contain [TEMPLATE_SMOKE_READY] or [DB] opened. Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd; Non-strict mode remains permissive to preserve template ergonomics. Refs: Tests/CI/Smoke/SmokeHeadlessRunnerNonStrictPermissiveTests.cs\nTest Strategy: Run locally on Windows against a known-good scene and verify exit code + artifacts. Run in CI headless and confirm logs are archived under logs/ci/**.\nLabels: ci, smoke, godot, python, headless\nOwner: architecture\nLayer: ci\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\n",
+        "testStrategy": "Run locally on Windows against a known-good scene and verify exit code + artifacts.\nRun in CI headless and confirm logs are archived under logs/ci/**.\n",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0005",
+          "ADR-0011",
+          "ADR-0018",
+          "ADR-0024"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Headless smoke runner (Python) + strict mode.",
+        "updatedAt": null
+      },
+      {
+        "id": 54,
+        "title": "Integrate GdUnit4 suites into quality_gates.py",
+        "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
+        "details": "Story: PH13-BACKLOG-B2\nADR Refs: ADR-0005, ADR-0011, ADR-0024\nChapters: CH06, CH07, CH10\nTest Refs: logs/ci/<date>/quality-gates/summary.json, logs/e2e/<date>/gdunit/junit.xml, Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd, Game.Core.Tests/Tasks/Task32AcceptanceTests.cs\nAcceptance: quality_gates.py exposes flags to run GdUnit4 suites and includes them in the unified decision. Refs: Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd; Adapters+Security suite is treated as hard gate; Integration/UI remains soft gate initially. Refs: Game.Core.Tests/Tasks/Task32AcceptanceTests.cs; All outputs land under logs/ci/** and logs/e2e/** with a machine-readable summary. Refs: Game.Core.Tests/Tasks/Task32AcceptanceTests.cs\nTest Strategy: Run quality_gates.py locally with and without GdUnit4 flags to verify behavior. Validate CI job consumes the summary JSON for pass/fail decisions.\nLabels: ci, quality-gates, gdunit4, headless\nOwner: architecture\nLayer: ci\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\n",
+        "testStrategy": "Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.\nValidate CI job consumes the summary JSON for pass/fail decisions.\n",
+        "priority": "high",
+        "dependencies": [
+          "53"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0005",
+          "ADR-0011",
+          "ADR-0024"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Integrate GdUnit4 suites into quality_gates.py.",
+        "updatedAt": null
+      },
+      {
+        "id": 55,
+        "title": "Coverage thresholds as configurable soft/hard gate",
+        "description": "Align xUnit coverage thresholds to the blueprint target (lines >= 90%, branches >= 85%) and allow overriding via environment variables. Provide soft/hard gate modes in scripts/python/run_dotnet.py and scripts/python/quality_gates.py.",
+        "details": "Story: PH13-BACKLOG-B1\nADR Refs: ADR-0005\nChapters: CH07\nTest Refs: logs/unit/<date>/summary.json, logs/ci/<date>/quality-gates/summary.json, Tests/CI/CoverageThresholdOverridesTests.cs, Tests/CI/CoverageGateModeSoftHardTests.cs, Tests/CI/CoverageSummaryJsonEmissionTests.cs\nAcceptance: In scripts/python/run_dotnet.py and scripts/python/quality_gates.py, the default xUnit coverage thresholds are lines>=90 and branches>=85, and the effective thresholds can be overridden via environment variables such that a run can demonstrate non-default thresholds without modifying code. Refs: Tests/CI/CoverageThresholdOverridesTests.cs; Both scripts provide a selectable soft/hard gate mode: when coverage is below the effective thresholds, soft mode completes with exit code 0 while recording a warning, and hard mode exits non-zero (failing the pipeline); when coverage meets/exceeds thresholds, both modes complete successfully with exit code 0. Refs: Tests/CI/CoverageGateModeSoftHardTests.cs; Coverage results are emitted as a single machine-readable summary JSON for CI consumption that includes (at minimum) measured line/branch coverage, the effective thresholds used (after env overrides), gate mode, and pass/fail outcome; the required summaries are present at logs/unit/<date>/summary.json and logs/ci/<date>/quality-gates/summary.json, and this work remains traceable to ADR-0005 and CH07 and the overlay docs docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md and docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-Quality-Metrics.md. Refs: Tests/CI/CoverageSummaryJsonEmissionTests.cs\nTest Strategy: Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars.\nLabels: ci, coverage, xunit\nOwner: architecture\nLayer: ci\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\n",
+        "testStrategy": "Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars.\n",
+        "priority": "high",
+        "dependencies": [
+          "54"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0005"
+        ],
+        "archRefs": [
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Coverage thresholds as configurable soft/hard gate.",
+        "updatedAt": null
+      },
+      {
+        "id": 56,
+        "title": "Audit JSONL validation + gate integration",
+        "description": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
+        "details": "Story: PH14-BACKLOG-B4A\\nADR Refs: ADR-0019, ADR-0003, ADR-0005\\nChapters: CH02, CH03, CH07\\nTest Refs: logs/ci/<date>/task-0056.json, logs/ci/<date>/security-audit.jsonl, logs/ci/<date>/audit-validate/report.json, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs\\nAcceptance: Provide scripts/python/validate_audit_logs.py to validate JSONL structure and required fields; invalid line fails with non-zero and actionable line-level reason. quality_gates.py optionally calls the validator and records executed/pass-fail result in task summary JSON; when enabled and validation fails, the gate exits non-zero.\\nTest Strategy: Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.\\nLabels: ci, security, audit, jsonl\\nOwner: architecture\\nLayer: ci\\n",
+        "testStrategy": "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "54"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0019",
+          "ADR-0003",
+          "ADR-0005"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH03",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Audit JSONL validation + gate integration.",
+        "updatedAt": null
+      },
+      {
+        "id": 57,
+        "title": "Traceability gate for ADR/Chapter/Overlay links",
+        "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
+        "details": "Story: PH14-BACKLOG-B4B\\nADR Refs: ADR-0019, ADR-0003, ADR-0005\\nChapters: CH02, CH03, CH07\\nTest Refs: logs/ci/<date>/task-0057-traceability.json, Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\\nAcceptance: Build a dedicated traceability check that validates ADR refs, chapter refs, and overlay Test-Refs consistency; any mismatch must fail gate with machine-readable diffs.\\nTest Strategy: Run traceability check on Windows with one pass sample and one fail sample.\\nLabels: ci, traceability, audit\\nOwner: architecture\\nLayer: ci\\n",
+        "testStrategy": "Run traceability check on Windows with one pass sample and one fail sample.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0019",
+          "ADR-0003",
+          "ADR-0005"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH03",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on traceability gate for ADR/Chapter/Overlay links.",
+        "updatedAt": null
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-29T14:10:45.399Z",
+      "updated": "2026-02-11T15:42:04.907443+00:00",
+      "description": "Tasks for master context",
+      "version": "",
+      "tags": [
+        "master"
+      ],
+      "taskCount": 57,
+      "completedCount": 0,
+      "lastModified": "2026-02-11T15:42:04.907455+00:00"
+    }
+  }
+}

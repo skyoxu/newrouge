@@ -1,0 +1,3630 @@
+[
+  {
+    "id": "GM-0101",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Set up project environment and dependencies",
+    "description": "Initialize the project with Godot 4.5.1 .NET, .NET 8 SDK, and ensure packages.lock.json is present.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0031",
+      "ADR-0011"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0001.json",
+      "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+      "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+      "Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
+      "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs"
+    ],
+    "acceptance": [
+      "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance. Refs: logs/ci/<date>/task-0001.json",
+      "task-0001.json must provide explicit pass/fail conclusions for Windows-only and UTF-8 compliance with traceable evidence sources; vague statements (for example, \"checked\") fail acceptance. Refs: logs/ci/<date>/task-0001.json",
+      "ACCEPTANCE_CHECKLIST.md must list all evidence paths for Task 1, and every path must resolve to an existing file under logs/ci/<YYYY-MM-DD>/env-evidence/; any broken path fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "On Windows, GODOT_BIN must be set to the absolute path of the Godot 4.5.1 .NET console executable; task-0001.json must record this absolute path and installation verification result. Missing or non-absolute path fails acceptance. Refs: logs/ci/<date>/task-0001.json",
+      "Must execute `godot --version` and `& $env:GODOT_BIN --version`; both commands must succeed and stdout must include \"4.5.1\". If either command is missing or output mismatch occurs, acceptance fails. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+      "Must persist full stdout of `godot --version` to logs/ci/<YYYY-MM-DD>/env-evidence/godot-version.txt and full stdout of `& $env:GODOT_BIN --version` to logs/ci/<YYYY-MM-DD>/env-evidence/godot-bin-version.txt; missing files fail acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+      "task-0001.json must record command, exit_code, parsed_version, and evidence_file for each Godot version command; missing any key fails acceptance. Refs: logs/ci/<date>/task-0001.json",
+      "After installing .NET 8 SDK, running `dotnet --version` must start with \"8.\"; 7.x, 9.x, empty output, or command failure fails acceptance. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+      "If packages.lock.json is missing initially, running `dotnet restore .\\NewRouge.sln` must generate it; if it already exists, it must still exist after restore. Otherwise acceptance fails. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
+      "Must create logs/ci/<YYYY-MM-DD>/env-evidence/ and store readable evidence files covering Godot version checks, dotnet version, packages.lock.json existence, Windows-only result, and UTF-8 result; any missing evidence fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+      "Acceptance artifacts must explicitly back-link ADR-0031 and ADR-0011 (for example via refs in task-0001.json and ACCEPTANCE_CHECKLIST.md); missing either ADR reference fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "UTF-8 compliance must evaluate to pass; task-0001.json must include utf8_check.result=\"pass\" with a linked evidence file. Any non-pass or missing field fails acceptance. Refs: logs/ci/<date>/task-0001.json",
+      "Windows-only is a hard gate: os_platform must be Windows, and task-0001.json must include windows_only_check.result=\"pass\" with platform evidence. Non-Windows or missing evidence fails and must stop downstream gates. Refs: Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "Must persist full stdout of `dotnet restore .\\NewRouge.sln` to logs/ci/<YYYY-MM-DD>/env-evidence/dotnet-restore.txt; missing evidence file fails acceptance. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
+      "task-0001.json must include dotnet_restore.command, dotnet_restore.exit_code, and dotnet_restore.evidence_file; missing any key fails acceptance. Refs: logs/ci/<date>/task-0001.json"
+    ],
+    "test_strategy": [
+      "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011."
+    ],
+    "taskmaster_id": 1,
+    "taskmaster_exported": true,
+    "contractRefs": []
+  },
+  {
+    "id": "GM-0102",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Create core project structure and namespaces",
+    "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0101"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0024"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs",
+      "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
+    ],
+    "acceptance": [
+      "仓库根目录存在 Game.Core/、Game.Godot/、Game.Core.Tests/、Tests.Godot/ 四个目录，可通过目录列表直接验证。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
+      "上述四个目录下各自存在对应的 .csproj 项目文件，且目标框架为 net8.0、Nullable 设置为 enable。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
+      "Game.Core 项目未引用任何 Godot 相关包或 API 依赖，且本任务新增代码的命名空间以 NewRouge. 前缀声明。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "允许现有 Game.* 与新引入的 NewRouge.* 命名空间在仓库中同时存在，不要求一次性全量重命名，且此状态下构建仍应通过。 Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "在仓库根目录执行 dotnet build 可成功完成且无编译错误输出。 Refs: Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "有可复核的目录列表与 .csproj 设置核对记录，用于证明结构与设置符合要求（记录可放在 logs/ci/<date>/task-0002-structure.txt）。 Refs: logs/ci/<date>/task-0002-structure.txt"
+    ],
+    "test_strategy": [
+      "Validate project structure via directory listing and inspect .csproj files for correct settings. Run 'dotnet build' to ensure no compilation errors. Refs: ADR-0021, ADR-0024."
+    ],
+    "taskmaster_id": 2,
+    "taskmaster_exported": true,
+    "contractRefs": []
+  },
+  {
+    "id": "GM-0103",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement core contracts for card identity and forms",
+    "description": "Define contracts in Game.Core/Contracts for card identity, forms (Base, U1A, U1B, Ultimate), and upgrade fields per ADR-0033.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0033",
+      "ADR-0020"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "在 Game.Core/Contracts 中定义 CardDefinition 与 CardInstance 契约：CardDefinition 至少包含 card_id，CardInstance 至少包含 instance_id、upgrade_tier、upgrade_route、permanent_card_instance_modifiers；并定义 Form 枚举（Base/U1A/U1B/Ultimate）与 Route 枚举（A/B）。上述契约需可被纯 .NET 测试项目直接引用并编译通过，且不得依赖任何 Godot 类型或命名空间。 Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+      "升级语义必须可被测试直接判定：当 upgrade_tier=2 时，upgrade_route 必须为 null；当 upgrade_tier 不为 2 且提供 upgrade_route 时，其值仅允许 A 或 B。对违反“tier=2 且 route 非 null”的输入，测试必须产生显式失败结果，且不能通过跳过断言、空测试、默认值回退或静默修正掩盖问题。 Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+      "在 Game.Core.Tests/Contracts 下新增或更新 xUnit 测试，覆盖契约字段定义、Form/Route 枚举成员完整性、以及 tier=2→route=null 约束的正反两类用例；并验证测试工程保持纯 .NET 依赖且未引入 Godot 依赖。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+      "Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+      "Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020."
+    ],
+    "taskmaster_id": 3,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.card.upgraded",
+      "core.card.ultimate.promoted"
+    ]
+  },
+  {
+    "id": "GM-0104",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement core contracts for offer locking and deterministic outcomes",
+    "description": "Define contracts for offer locking structure, provenance, and RNG streams per ADR-0032 and Design Gate 05.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "rng"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0004.json",
+      "Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Game.Core.Tests/Domain/RngStreamTypeTests.cs",
+      "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs"
+    ],
+    "acceptance": [
+      "代码库中可定位到 OfferLocking 与确定性结果相关契约定义，且验收记录可追溯到对应实现与测试证据，任一缺失即判定不通过。 Refs: logs/ci/<date>/task-0004.json",
+      "在 Windows 环境执行本任务验收测试时必须成功产出证据文件并写入指定日志路径；若未生成或路径不符则不通过。 Refs: logs/ci/<date>/task-0004.json",
+      "Overlay 的 Test-Refs 必须指向本任务新增或更新的测试文件路径并可被追溯验证；缺失或失效则不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "OfferLocking 契约必须提供 stable_ids、display_order、provenance、rng_stream、locked_at_save_point 五个字段，并可通过测试验证字段存在且类型可判定。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "provenance 必须提供 source_type、source_id、act、floor、node_id、difficulty、rng_stream、stream_pos 八个字段，并可验证其 rng_stream 与 OfferLocking.rng_stream 保持一致。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "必须定义 RNG 流类型集合，且可判定至少包含 run、combat、event、loot、shop、offer 六类；任一缺失即不通过。 Refs: Game.Core.Tests/Domain/RngStreamTypeTests.cs",
+      "stable_ids 必须基于内容稳定 ID；测试需证明在仅调整 display_order 的情况下 stable_ids 集合保持不变，若 stable_ids 随排序变化而改变则不通过。 Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "必须提供 xUnit 测试，验证 OfferLocking 结构完整且 provenance 字段完整可读。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "必须提供 xUnit 测试，验证序列化与反序列化前后 OfferLocking 数据一致，且同一输入可得到一致结果以支撑确定性。 Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "实现与测试中必须显式标注并引用 ADR-0032，未建立可追溯关联则不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "OfferLocking and its provenance carrier type must be implemented as compilable C# class or record class in contract layer and verifiable via reflection (type exists + IsClass true). Refs: Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Schema-only/document-only/dictionary-only representations without corresponding C# contract types are not acceptable and must fail the gate. Refs: Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Write xUnit tests to validate offer locking structure and provenance fields. Test serialization/deserialization for deterministic behavior. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 4,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.locked",
+      "core.reward.offer.presented",
+      "core.reward.offer.selected",
+      "core.reward.offer.skipped"
+    ]
+  },
+  {
+    "id": "GM-0105",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement core contracts for status and modifier system",
+    "description": "Define contracts for status types (Buff, Debuff, RuleModifier), fields, and deterministic ordering per Design Gate 04.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0029"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "status"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0005.json"
+    ],
+    "acceptance": [
+      "可通过契约定义与测试断言验证：StatusType 枚举包含 Buff、Debuff、RuleModifier，且定义 ExpiresTiming 枚举；Status 至少包含 status_id、stacks、duration_turns、source_id、expires_timing、strength 字段；执行驱散时 RuleModifier 与 status.strength 相关效果不会被移除；同一输入集合按 stable_id 排序时输出顺序恒定。 Refs: logs/ci/<date>/task-0005.json",
+      "对同一初始状态执行同一操作序列时，Status 的叠加、duration_turns 累计与衰减结果必须一致且可断言；当操作不满足生效条件时，状态保持不变，并可通过前后状态对比直接验证。 Refs: logs/ci/<date>/task-0005.json",
+      "xUnit 测试必须覆盖叠加规则、持续时长处理、驱散边界（含 RuleModifier 与 strength 不可驱散）以及 stable_id 排序确定性；任一规则被破坏时，至少一个对应测试用例失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Status 契约必须显式提供叠加、持续时长累计、衰减三个可调用方法（命名可等价）；任一方法缺失、不可访问或无法被 xUnit 直接断言即判定失败。 Refs: logs/ci/<date>/task-0005.json",
+      "ADR-0021 与 ADR-0029 必须在 task-0005.json 的 refs 与 ACCEPTANCE_CHECKLIST.md 的对应验收项中可追踪且一致；任一 ADR 缺失或映射不一致即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Status must be a C# class (record class allowed), not a struct or interface; xUnit must assert typeof(Status).IsClass == true and fail on any non-class shape. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Write xUnit tests for status operations: stacking, duration handling, and dispel boundaries. Validate deterministic ordering via stable_id sorting. Refs: ADR-0021, ADR-0029."
+    ],
+    "taskmaster_id": 5,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.applied",
+      "core.status.stacked",
+      "core.status.expired",
+      "core.status.dispelled"
+    ]
+  },
+  {
+    "id": "GM-0106",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement core contracts for combat loop and resolution pipeline",
+    "description": "Define contracts for combat phases, damage calculation, and deterministic sequencing per Design Gates 01 and 03.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0006.json",
+      "Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs"
+    ],
+    "acceptance": [
+      "交付产物必须能被检索到四类合同：CombatLoop 阶段、PlayCard 结算流水线、伤害计算规则、OverplayTax 难度阈值；缺任一类即验收失败。 Refs: logs/ci/<date>/task-0006.json",
+      "xUnit 结果必须覆盖并可追溯验证：阶段迁移、流水线顺序、伤害计算、OverplayTax 适用性与确定性排序。 Refs: logs/ci/<date>/task-0006.json",
+      "Overlay 验收清单中的本任务 Test-Refs 必须指向仓库内实际存在的测试文件，并覆盖本任务合同对应测试。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "CombatLoop 合同只允许 StartOfTurn、Draw、Main、EndOfTurn 四个阶段，出现缺失或额外阶段即判定不通过。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "PlayCard 结算必须严格按 Validate->ComputeCost->PayCost->BeforePlayTriggers->ResolveEffect->AfterPlayTriggers->MoveCard->DeathCheck 执行，任一顺序偏差、缺步或多步均失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "伤害合同必须对可变伤害应用 Strength、Weak、Vulnerable 乘子，并保证固定伤害不受这些可变乘子影响。 Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "OverplayTax 仅在 difficulty >= 10 时生效；difficulty < 10 必须不生效，且阈值两侧行为差异可被测试直接断言。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "确定性排序合同只使用 combatant_id 与 stable_id 作为排序键；同一输入重复执行时输出顺序必须一致。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "xUnit 套件至少包含四类并全部通过：阶段迁移与非法迁移拒绝、流水线顺序追踪、伤害与固定伤害规则、OverplayTax 与排序确定性。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "阶段迁移必须声明显式前置条件；前置条件不满足时必须拒绝迁移并保持战斗状态不变。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "交付与验收追溯必须明确关联 ADR-0021 与 ADR-0032，任一缺失即不满足本任务合同验收。 Refs: Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs",
+      "当 Validate 失败时，流水线必须在 Validate 立即终止，不得进入 ComputeCost 及后续步骤，并保持关键战斗状态不变。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须提供 xUnit 用例覆盖 Validate 失败分支，断言调用序列止于 Validate 且状态保持不变。 Refs: logs/ci/<date>/task-0006.json",
+      "Provide xUnit parameterized tests (Theory with InlineData or MemberData) for valid and invalid phase transitions with explicit guard expectations.",
+      "Cover boundary cases for OverplayTax (difficulty 9 and 10) and trigger-count threshold (N-1, N, N+1).",
+      "All parameterized cases must remain deterministic across repeated Windows runs.",
+      "[OBL:T6.O10] 伤害规则测试必须使用 xUnit Theory，并采用 InlineData 或 MemberData 实现表驱动覆盖。",
+      "[OBL:T6.O10] 乘子组合与固定伤害豁免至少覆盖正常值、边界值与反例输入。",
+      "[OBL:T6.O10] 伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。",
+      "[OBL:T6.O15] CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。",
+      "[OBL:T6.O15] 仅文档描述或注释声明不计为完成。",
+      "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。"
+    ],
+    "test_strategy": [
+      "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032."
+    ],
+    "taskmaster_id": 6,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.started",
+      "core.combat.card.played",
+      "core.combat.damage.resolved",
+      "core.combat.ended",
+      "core.health.updated",
+      "core.score.updated"
+    ]
+  },
+  {
+    "id": "GM-0107",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Set up event bus and contracts location",
+    "description": "Implement event bus system and place contracts in Game.Core/Contracts per ADR-0004 and ADR-0020.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0004",
+      "ADR-0020"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH04",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "event"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "Game.Core.Tests/Domain/GameEventContractsTests.cs",
+      "Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs"
+    ],
+    "acceptance": [
+      "在 Game.Core/Contracts 中提供事件总线接口，包含发布与订阅方法；该目录为唯一契约来源，Godot 层仅通过引用使用且不复制契约。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "提供 xUnit 用例覆盖事件发布与订阅的可用性，并在 Windows 上可用 `dotnet test` 通过。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md 的 Test-Refs 指向本任务新增或更新的 xUnit 用例路径。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 Game.Core/Contracts 中至少定义 CardPlayed 与 CombatStarted 两个事件 DTO，并包含可区分事件的类型常量或字段。 Refs: Game.Core.Tests/Domain/GameEventContractsTests.cs",
+      "在组合根完成 EventBus 的依赖注入配置，Godot 层通过接口获取该 EventBus 并能调用。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Godot 层发布或订阅事件时使用 Game.Core.Contracts 中的 DTO 类型，仓库内不存在 Godot 层新增的同名契约定义文件。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "可通过测试或检索证据确认：契约文件位于 Game.Core/Contracts 且 Godot 层无重复 DTO 定义。 Refs: Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs"
+    ],
+    "test_strategy": [
+      "Write xUnit tests for event publishing and subscription. Verify contracts are in correct location and not duplicated in Godot scripts. Refs: ADR-0004, ADR-0020."
+    ],
+    "taskmaster_id": 7,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.played",
+      "core.reward.offer.locked",
+      "core.autosave.written",
+      "core.guild.member.joined"
+    ]
+  },
+  {
+    "id": "GM-0108",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement core logic for card identity and forms",
+    "description": "Create core services for card definition, instance management, and form transitions per ADR-0033.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0103"
+    ],
+    "adr_refs": [
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0008.json",
+      "Game.Core.Tests/Services/CardServiceTests.cs",
+      "Game.Core.Tests/Domain/CardInstanceTests.cs",
+      "Game.Core.Tests/Domain/ValueObjects/CardIdentityTests.cs"
+    ],
+    "acceptance": [
+      "CardService 对外提供按 card_id 获取定义、创建实例、U1 升级与 Ultimate 进阶；合法输入产生可观测且可断言的形态/层级变化，非法输入返回确定性失败并保持实例状态不变。 Refs: logs/ci/<date>/task-0008.json",
+      "按 card_id 查询定义时，命中返回唯一对应的 CardDefinition，未命中产生可重复验证的确定性失败结果（同类输入得到同类失败输出）。 Refs: logs/ci/<date>/task-0008.json",
+      "创建 CardInstance 时必须初始化 instance_id、base form 与修饰符容器，并保持卡牌定义与实例身份分离（实例变更不回写定义）。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "实例在升级与 Ultimate 形态迁移后，permanent_card_instance_modifiers 按继承语义完整保留且可通过测试比对；若迁移被拒绝，修饰符与形态均保持原值。 Refs: Game.Core.Tests/Services/CardServiceTests.cs Game.Core.Tests/Domain/CardInstanceTests.cs",
+      "upgrade_tier 与 upgrade_route 必须联合校验，U1 仅接受受支持路线组合；非法 tier/route 组合触发硬失败且实例状态（形态、层级、修饰符）不发生变化。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "xUnit 测试覆盖卡牌身份、card_id 查找命中/未命中、U1 路线升级、Ultimate 进阶与修饰符继承，并在测试描述中显式引用 ADR-0033。 Refs: Game.Core.Tests/Services/CardServiceTests.cs Game.Core.Tests/Domain/ValueObjects/CardIdentityTests.cs",
+      "与本任务对应的 xUnit 用例位于 Game.Core.Tests/Cards，能够直接定位并复现上述验收断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "When a card enters Ultimate form, it must override prior U1A/U1B gameplay effect definitions and become the active form.",
+      "Ultimate transition must preserve existing permanent_card_instance_modifiers on the same card instance.",
+      "xUnit must verify card_id lookup hit and miss behavior with deterministic failure outputs.",
+      "CardDefinition and CardInstance contract fields must be non-empty and assertion-readable in tests.",
+      "xUnit must verify deterministic mapping from form transitions to visible effect description keys.",
+      "xUnit must verify route constraints and tier-route invariants for all legal and illegal inputs.",
+      "[OBL:T8.O10] 创建 CardInstance 后，实例字段必须与合同字段一一对应；缺失或额外字段均判失败。",
+      "[OBL:T8.O10] 对合同字段的默认值与类型进行可重复断言。",
+      "[OBL:T8.O10] CardInstance initialization must be explicitly validated as consistent with contract fields.",
+      "[OBL:T8.O13] xUnit 必须断言 card_id miss 的 deterministic failure outputs（错误类型与错误码固定）。",
+      "[OBL:T8.O13] 同一 miss 输入重复执行应产生同类失败输出。",
+      "[OBL:T8.O13] xUnit tests must assert deterministic failure outputs for lookup miss scenarios.",
+      "[OBL:T8.O14] xUnit 必须同时包含 route constraints 的正向通过与负向拒绝用例。",
+      "[OBL:T8.O14] 每个 tier-route invariants 违例都应触发硬失败且状态不变。",
+      "[OBL:T8.O14] xUnit tests must include both positive and negative cases for route constraints and tier-route invariants.",
+      "[OBL:T8.O15] xUnit 必须断言 Ultimate 为终态：已达 Ultimate 后再次进阶请求被拒绝。",
+      "[OBL:T8.O15] 终态拒绝时形态、层级与修饰符保持原值。",
+      "[OBL:T8.O15] xUnit tests must assert final-form transition constraints.",
+      "xUnit must verify CardInstance identity persistence across save/load and form transitions.",
+      "xUnit must verify CardDefinition lookup remains stable for the same card_id across repeated reads.",
+      "For U1 upgrades, route A and route B must map to distinct deterministic effect definitions.",
+      "Route values must be restricted to A/B; any other route input is rejected with a stable error code.",
+      "[OBL:T8.O8] U1 升级仅允许 upgrade_route=A 或 upgrade_route=B，并明确各路线可接受输入集合。",
+      "[OBL:T8.O8] 对 route A/B 分别给出可断言的通过条件与拒绝条件，拒绝时返回固定错误码。",
+      "[OBL:T8.O8] U1 升级必须显式定义并可审计 route A/B 选择规则。"
+    ],
+    "test_strategy": [
+      "Write xUnit tests in Game.Core.Tests/Cards for card identity, upgrade paths, and modifier inheritance. Reference ADR-0033 in test descriptions. Refs: ADR-0033."
+    ],
+    "taskmaster_id": 8,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.card.upgraded",
+      "core.card.ultimate.promoted"
+    ]
+  },
+  {
+    "id": "GM-0109",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement deterministic RNG stream registry",
+    "description": "Create RNG stream registry and state management for deterministic systems.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0104"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "rng"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs",
+      "Tests.Godot/tests/UI/test_hud_ui_only_actions_do_not_advance_rng.gd",
+      "Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs",
+      "Game.Core.Tests/Tasks/Task9AdrBacklinkEvidenceTests.cs"
+    ],
+    "acceptance": [
+      "实现可按名称获取并管理的确定性 RNG 流注册表，至少包含 run、combat、event、loot、shop、offer 六个命名流，并用于确定性系统中的随机取样。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "命名 RNG 流的种子、当前状态与流位置（步数）可序列化并反序列化；恢复后继续取样时，输出序列与未中断运行在相同步数的结果一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "若存在 Overlay 验收清单，其 Test-Refs 必须明确指向本任务对应的 xUnit 用例（流隔离、状态序列化/恢复、UI 不推进 RNG），用于证明与本任务语义一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在相同初始种子下，同一命名流在相同步数产生完全一致的输出序列；推进任一命名流不得改变其他命名流的后续输出（流间隔离）。 Refs: Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs",
+      "仅发生 UI 交互且不触发游戏逻辑时，任何 RNG 流均不得前进；可观测为操作前后所有流状态与位置（步数）保持不变。 Refs: Tests.Godot/tests/UI/test_hud_ui_only_actions_do_not_advance_rng.gd",
+      "将运行中状态序列化后恢复，下一次取样结果必须与未中断运行到同一步数时的结果一致，且后续序列持续一致。 Refs: Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs",
+      "xUnit 测试覆盖流隔离：推进一个命名流后，另一个命名流的状态、位置与输出保持预期不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试覆盖种子/状态序列化与恢复一致性：恢复后在相同步数的取样结果与基线运行一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试覆盖 UI 行为不推进 RNG：执行纯 UI 操作前后，所有命名流的状态与位置保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 9 acceptance must explicitly trace implementation and tests to ADR-0032 and ADR-0021; missing either ADR linkage fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Overlay acceptance checklist must include ADR back-link checks for ADR-0032 and ADR-0021 with auditable evidence paths; any missing ADR link fails acceptance. Refs: Game.Core.Tests/Tasks/Task9AdrBacklinkEvidenceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for stream isolation, seed/state serialization, and non-advancing UI actions. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 9,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.rng.stream.advanced",
+      "core.rng.stream.restored"
+    ]
+  },
+  {
+    "id": "GM-0110",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement status application, stacking, and decay",
+    "description": "Create status operations: apply, stack, decay, and dispel boundaries.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0105"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0029"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "status"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "当状态服务对目标执行应用操作时，目标状态必须新增或按既定叠加规则更新（例如持续时间 +N）；持续时间仅在 owner_end_of_turn_cleanup 触发时衰减；执行驱散时仅移除 Debuff，若目标仅有 Buff 则状态结果保持不变。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
+      "提供可失败的 xUnit 单元测试断言，覆盖叠加规则、持续时间在 owner_end_of_turn_cleanup 的衰减触发时机、以及驱散边界（Debuff 被移除且 Buff 不被移除）。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 必须包含并指向本任务相关测试文件，并可从文档追溯到任务 10 的对应测试实现。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 10 implementation and tests must explicitly trace to ADR-0021 and ADR-0029 (via refs fields, test annotations, or checklist mapping); missing either ADR reference fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Overlay acceptance entries for Task 10 must include ADR-0021 and ADR-0029 and resolve to concrete test artifacts; unresolved linkage fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for stacking, duration decay, and dispel boundaries. Refs: ADR-0029."
+    ],
+    "taskmaster_id": 10,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.applied",
+      "core.status.stacked",
+      "core.status.expired",
+      "core.status.dispelled"
+    ]
+  },
+  {
+    "id": "GM-0111",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement combat resolution pipeline (core)",
+    "description": "Implement card play pipeline and validation steps in core combat logic.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0106"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "cards",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0011.json",
+      "Game.Core.Tests/Services/CombatServiceTests.cs"
+    ],
+    "acceptance": [
+      "当出牌流程未被任何阶段中止时，CombatService.PlayCard 必须按且仅按 Validate → ComputeCost → PayCost → BeforePlay → ResolveEffect → AfterPlay → MoveCard → DeathCheck 的固定顺序执行；任一步骤乱序、缺失或重复都应导致验收失败。 Refs: logs/ci/<date>/task-0011.json",
+      "当 Validate 失败或判定为无效出牌时，流程必须立即失败并阻断后续阶段，战斗状态保持调用前一致（允许审计/日志副作用），且返回失败结果可被断言。 Refs: logs/ci/<date>/task-0011.json",
+      "提供 xUnit 用例，在固定输入下同时验证管道步骤顺序可追踪且一致，以及执行结果可复现且一致；任何非确定性都必须被用例捕获。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "ComputeCost 与 PayCost 的结果必须直接决定 ResolveEffect 的可执行性与可用资源，并在测试中通过状态或返回值差异进行明确断言。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "在最终阶段，MoveCard 必须把卡牌移动到规则指定区域，且 DeathCheck 必须产出与规则一致的单位死亡结论；两者结果都可被断言验证。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "当流程未被中止时，BeforePlay 必须恰好在 ResolveEffect 前执行一次，AfterPlay 必须恰好在 ResolveEffect 后执行一次；缺失、提前、延后或重复均视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "CombatService.PlayCard 的核心实现必须位于 Core 层（例如 Game.Core 或 Scripts/Core），且不得直接依赖 Godot API 命名空间；一旦出现直接依赖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Task 11 测试必须在纯 xUnit（不启动 Godot 引擎）环境运行，并覆盖 PlayCard 关键路径（成功、校验失败、支付失败、最终收尾）；缺少纯 .NET 运行证据或关键路径覆盖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "PlayCard pipeline order is fixed: Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck.",
+      "If PayCost fails, pipeline stops immediately; no downstream stage executes, and state mutation is limited to validated pre-check effects.",
+      "BeforePlay, ResolveEffect, and AfterPlay triggers must execute exactly once each per successful play.",
+      "xUnit must assert stage order and single-execution guarantees using deterministic call trace evidence.",
+      "PlayCard core logic must remain UI-agnostic; UI concerns stay outside the core pipeline.",
+      "BeforePlay, ResolveEffect, and AfterPlay trigger payload schema must be stable and versioned.",
+      "Task evidence must include traceability to ADR-0021 and ADR-0032.",
+      "[OBL:T11.O4] 当执行 PlayCard 时，核心管道不得读取或写入任何 UI 对象或 UI 状态。",
+      "[OBL:T11.O4] 通过静态检查或测试断言 CombatService 不依赖 UI 层类型。",
+      "[OBL:T11.O4] PlayCard 管道实现不得嵌入 UI concerns。",
+      "[OBL:T11.O6] 当 PayCost 失败时，流程必须立即返回失败并阻断 BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck。",
+      "[OBL:T11.O6] 当 PayCost 失败时，战斗状态与资源必须保持调用前一致（允许审计日志副作用）。",
+      "[OBL:T11.O6] 当 PayCost 失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。",
+      "[OBL:T11.O8] 为 BeforePlay、ResolveEffect、AfterPlay 定义允许修改的状态边界并在测试中逐项断言。",
+      "[OBL:T11.O8] 任一阶段出现越界副作用时必须判定失败。",
+      "[OBL:T11.O8] BeforePlay、ResolveEffect、AfterPlay 必须具有稳定副作用边界（可审计且不越界）。",
+      "[OBL:T11.O11] 新增 xUnit 用例分别覆盖校验失败与支付失败，断言后续阶段未被调用。",
+      "[OBL:T11.O11] 同一用例必须断言失败后状态快照不变且失败结果可断言。",
+      "[OBL:T11.O11] 必须提供 xUnit 用例断言校验失败或支付失败时的阻断推进与状态不变。",
+      "[OBL:T11.O14] 验收项需显式要求 Task11 实现与测试均回链 ADR-0021 与 ADR-0032。",
+      "[OBL:T11.O14] CI 产物需包含可机读 adr_refs 字段用于门禁校验。",
+      "[OBL:T11.O14] 实现与测试应可追溯到 ADR-0021 与 ADR-0032。"
+    ],
+    "test_strategy": [
+      "xUnit tests for pipeline step ordering and deterministic execution with fixed inputs. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 11,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.played",
+      "core.combat.damage.resolved",
+      "core.combat.ended",
+      "core.health.updated"
+    ]
+  },
+  {
+    "id": "GM-0112",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement save serialization and atomic write",
+    "description": "Create SaveService serialization, schema versioning, and atomic write.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0023"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "save"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
+      "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+    ],
+    "acceptance": [
+      "当保存成功时，SaveService 必须将 schema_version、save_point_id、offer_locks 序列化后以“临时文件写入 + 原子替换”提交到 user://，且随后读取目标文件可得到与本次写入一致的完整最新数据。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "保存写入仅允许 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且不得在目标位置产生落盘文件。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "任一持久化步骤失败时，必须向调用方传播带上下文的错误，并输出该次持久化要求的证据字段；失败后最近一次有效保存内容保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "序列化载荷结构必须稳定包含 schema_version、save_point_id、offer_locks 三项字段；读取后可逐项验证字段存在且值可解析。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "本任务不实现迁移逻辑：面对旧版本或不兼容数据时不得自动转换、升级或覆盖既有有效保存。 Refs: Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
+      "xUnit 测试必须覆盖序列化往返一致性：写入后再读取时，schema_version、save_point_id、offer_locks 的值与写入前逐项一致。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "xUnit 测试必须覆盖原子提交失败路径：提交中断或写入失败时，目标保存文件不得出现部分写入状态，且上一份有效保存仍可读取。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "xUnit must verify atomic commit behavior (write temp then replace target in a single commit step).",
+      "xUnit must verify no partial file is left when persistence fails.",
+      "xUnit must verify valid user:// relative paths are writable.",
+      "xUnit must verify absolute paths and traversal-like paths are fail-fast rejected.",
+      "xUnit must verify unsupported file extensions are rejected by validation.",
+      "xUnit must verify payloads over the configured size limit are rejected.",
+      "Add xUnit cases asserting allowlisted user:// path policy is explicit and auditable.",
+      "Add xUnit cases asserting reject paths include structured error code and context.",
+      "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。",
+      "[OBL:T12.O9] xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。",
+      "[OBL:T12.O9] 必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。",
+      "[OBL:T12.O10] xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。",
+      "[OBL:T12.O10] xUnit 测试必须覆盖提交失败路径：目标文件无部分写入状态且仍可读取上一份有效保存。",
+      "[OBL:T12.O10] 必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。",
+      "[OBL:T12.O11] xUnit 测试必须覆盖 user:// 合法相对路径写入成功。",
+      "[OBL:T12.O11] xUnit 测试必须覆盖绝对路径与 traversal-like 路径 fail-fast 拒绝且不得产生落盘文件。",
+      "[OBL:T12.O11] 必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。",
+      "[OBL:T12.O12] xUnit 测试必须断言持久化失败时向调用方传播带上下文错误并包含要求的证据字段。",
+      "[OBL:T12.O12] xUnit 测试必须断言失败后上一份有效保存内容保持不变。",
+      "[OBL:T12.O12] 必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。"
+    ],
+    "test_strategy": [
+      "xUnit tests for serialization round-trip and atomic write behavior. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 12,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.save.write.succeeded",
+      "core.save.write.failed",
+      "core.save.loaded"
+    ]
+  },
+  {
+    "id": "GM-0113",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Set up Godot autoloads and composition root",
+    "description": "Configure Godot autoloads (EventBus, DataStore, Logger, etc.) and composition root for dependency injection per project-context.md.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0101",
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0022"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH02",
+      "CH05",
+      "CH07",
+      "CH09",
+      "CH04"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "event"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0013.json"
+    ],
+    "acceptance": [
+      "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位于 Game.Godot/Scripts，并且仅承担装配/桥接职责、不含领域逻辑。 Refs: logs/ci/<date>/task-0013.json",
+      "启动 Godot 项目时无 Autoload 相关错误；CompositionRoot 能对 Godot 节点完成核心服务注入，并且可通过运行时可观测证据验证注入生效。 Refs: logs/ci/<date>/task-0013.json",
+      "提供 GdUnit4 测试用于验证组合根注入与 Autoload 装配；测试引用清单可追溯到新增测试并与之一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在验收清单中补充 ADR-0021/ADR-0022 的引用或回链项。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022."
+    ],
+    "taskmaster_id": 13,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.started",
+      "core.run.resumed",
+      "core.run.state.transitioned"
+    ]
+  },
+  {
+    "id": "GM-0114",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Create main menu scene with new run and continue options",
+    "description": "Implement MainMenu.tscn with New Run, Continue (single slot), and Quit buttons per M1 requirements.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Tests.Godot/tests/UI/test_main_menu_scene.gd",
+      "Tests.Godot/tests/Adapters/Db/test_savegame_unique_slot_per_user.gd",
+      "Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd",
+      "Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
+      "Tests.Godot/tests/UI/test_main_menu_translations.gd",
+      "Tests.Godot/tests/UI/test_main_menu_events.gd"
+    ],
+    "acceptance": [
+      "提供并通过 GdUnit4 验收用例，覆盖主菜单按钮交互流程（New Run/Continue/Quit/覆盖确认）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "提供并通过 GdUnit4 用例，验证按钮与对话框可见文本来自翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Overlay 08 的 Test-Refs 已包含本任务测试路径且可追溯。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "MainMenu.tscn 位于 Game.Godot/Scenes/，运行时可见 New Run、Continue、Quit 三个按钮。 Refs: Tests.Godot/tests/UI/test_main_menu_scene.gd",
+      "Continue 仅基于单一 autosave 槽位判定：无有效 autosave 时禁用，有效 autosave 时可用。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_unique_slot_per_user.gd",
+      "存在有效 autosave 时点击 New Run 会弹出覆盖确认对话框，默认焦点在取消；选择取消时 autosave 保持不变。 Refs: Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
+      "所有可见文本（按钮与对话框）均来自翻译资源，界面无硬编码展示文本。 Refs: Tests.Godot/tests/UI/test_main_menu_translations.gd",
+      "点击 Quit 会触发退出流程并关闭应用。 Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
+      "提供主菜单 UI 流程的手动测试记录，覆盖 New Run 覆盖确认与 Continue 有效 autosave。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "手动测试记录可审计（文件或清单）。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收项需检查 ADR-0032 与 ADR-0010 的引用或回链。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010."
+    ],
+    "taskmaster_id": 14,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.started",
+      "core.run.resumed",
+      "core.run.continue.blocked"
+    ]
+  },
+  {
+    "id": "GM-0115",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement difficulty selection UI",
+    "description": "Create DifficultySelect.tscn with 10 difficulty levels and descriptions per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0114"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "difficulty"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd",
+      "Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd"
+    ],
+    "acceptance": [
+      "在界面中提供可操作的难度选择控件，包含且仅包含 10 个难度项，并可在界面内切换当前选中项。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "每个难度项都有对应说明文本，说明聚焦数值层面的挑战强度且不暗示与天赋树强绑定；文本通过本地化/翻译资源展示。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "用户选定的难度会被全局存储，重新进入难度选择界面或相关界面时能读取并显示当前选择。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "支持键盘/鼠标或手柄输入在 10 个难度选项间导航并确认选择。 Refs: Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd",
+      "难度选择控件形态必须为按钮或滑块之一。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 UI 导航测试用例，覆盖键盘/鼠标/手柄输入的选择流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供难度持久化测试用例，验证重新进入界面后能读取并展示已选难度。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供用例验证说明文本不暗示与天赋树强绑定，且可在 UI 或本地化资源层面审计。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd"
+    ],
+    "test_strategy": [
+      "Test UI navigation and difficulty persistence. Verify descriptions do not imply strong binding to talent tree. Refs: ADR-0010, ADR-0032."
+    ],
+    "taskmaster_id": 15,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.difficulty.selected"
+    ]
+  },
+  {
+    "id": "GM-0116",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement character selection UI for Warrior only",
+    "description": "Create CharacterSelect.tscn with Warrior as only selectable character and mechanism summary per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0115"
+    ],
+    "adr_refs": [
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd",
+      "Tests.Godot/tests/UI/test_settings_locale.gd",
+      "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd"
+    ],
+    "acceptance": [
+      "在 CharacterSelect.tscn 中仅 Warrior 处于可选状态；其余角色被隐藏或置灰并显示“not open”标签，且可观察到选中状态变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "在 Windows 环境打开 CharacterSelect.tscn 时可看到 Warrior 选项，界面能加载并完成基础交互（如切换/选择）。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "Overlay 的 Test-Refs 清单包含本任务用例并保持可追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Warrior 的机制摘要显示为三行文本，语义分别覆盖：怒气作为状态增益、强力攻击窗口、代价与爆发。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd",
+      "机制摘要三行文本来自翻译键而非硬编码；切换语言后三行内容同步变化。 Refs: Tests.Godot/tests/UI/test_settings_locale.gd",
+      "除 Warrior 外其他角色不可被选中，点击或键盘操作不触发其选中状态。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd",
+      "gameplay:X: “not open”标签来自翻译键，切换语言时同步变化。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Verify Warrior selection works and other characters are not selectable. Check translation keys for mechanism summary. Refs: ADR-0010."
+    ],
+    "taskmaster_id": 16,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.character.selected"
+    ]
+  },
+  {
+    "id": "GM-0117",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Create modular Act structure for map system",
+    "description": "Implement map system with modular Act structure, not hardcoded to 3 Acts, per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0007",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "map"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
+      "Game.Core.Tests/Services/MapServiceTests.cs",
+      "Tests.Godot/tests/Scenes/Map/test_map_node_icons_presence.gd",
+      "Game.Core.Tests/Services/MapBranchSelectionTests.cs",
+      "Tests.Godot/tests/Scenes/Map/test_map_branch_selection_paths.gd",
+      "Tests.Godot/tests/Scenes/Map/test_map_node_pre_enter_state.gd",
+      "Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "Game.Core.Tests/Services/MapNavigationSelectionTests.cs",
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "acceptance": [
+      "当Act数量配置为2、4、5时，地图构建与导航初始化均成功，且不会触发由固定3个Act假设导致的失败；自动化验收中至少一个非3 Act配置通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
+      "在Windows环境下执行本任务验收时，地图初始化、节点展示与分叉选择流程均可完成；同一输入重复执行时得到一致的可观察结果，否则判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
+      "Overlay中的Test-Refs可直接定位到本任务的地图导航与Act结构测试文件；若ACCEPTANCE_CHECKLIST中的对应路径不存在或无法核对通过状态，则判定不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Game.Core提供MapService用于Act与地图节点管理；给定固定输入时可断言节点集合、连接关系或状态变化，且对应单元测试通过。 Refs: Game.Core.Tests/Services/MapServiceTests.cs",
+      "Map.tscn中可识别到Combat、Event、Shop、Rest四类节点图标或等价可识别表现；缺失任一类型即判定不通过。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_icons_presence.gd",
+      "地图支持分叉选择：在同一初始状态下选择不同分支后，可达节点集合或后续路径至少存在一处可观察差异；若无差异则判定不通过。 Refs: Game.Core.Tests/Services/MapBranchSelectionTests.cs Tests.Godot/tests/Scenes/Map/test_map_branch_selection_paths.gd",
+      "进入任一节点前会保存node_pre_enter状态；进入后可通过读取状态或测试断言确认已保存且与进入前一致，未保存或不一致即判定失败。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_pre_enter_state.gd",
+      "存在xUnit用例验证Act结构为可配置数量而非固定3个；用例能够区分满足条件时的成功与不满足条件时的失败。 Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "存在可重复执行的用例验证地图导航与节点选择行为，至少覆盖一次有效节点选择及其对应状态转移结果，并可稳定复现。 Refs: Game.Core.Tests/Services/MapNavigationSelectionTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "验收材料或变更记录中可检索到ADR-0007与ADR-0021的引用，并能对应到本任务的MapService与地图契约决策；缺失任一引用即判定不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "[OBL:T17.O8] 当在分叉节点提交非法分支ID时，系统必须拒绝本次选择，当前节点与可达节点集合保持不变。",
+      "[OBL:T17.O8] 同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。",
+      "[OBL:T17.O8] 分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。"
+    ],
+    "test_strategy": [
+      "Test map navigation and node selection. Write xUnit tests for Act structure modularity. Refs: ADR-0007, ADR-0021."
+    ],
+    "taskmaster_id": 17,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.map.node.entered",
+      "core.map.node.locked",
+      "core.map.node.selected"
+    ]
+  },
+  {
+    "id": "GM-0118",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement combat scene UI shell and bindings",
+    "description": "Create Combat.tscn UI layout and bind to core combat state.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0111",
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0022",
+      "ADR-0010",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH04"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd"
+    ],
+    "acceptance": [
+      "加载 Combat.tscn 后，场景内必须存在且默认可见用于手牌显示、能量显示、抽牌堆显示、弃牌堆显示以及回合控制（开始/结束或等价控制）的 HUD 元素，并可被自动化测试稳定定位。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "当注入核心战斗状态快照时，Combat.tscn 的 UI 显示必须与状态逐项一致：手牌列表、当前能量值、抽牌堆数量、弃牌堆数量均可被逐项断言，不得以固定占位值通过验收。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "当核心战斗状态发生变化（如手牌增减、能量变化、牌堆计数变化）时，现有 UI 必须同步反映新值；同一输入状态应产生同一显示结果，且变化可通过可观察输出或自动化断言验证。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "本场景仅负责回合控制 UI 外壳与命令派发边界：交互事件必须路由至命令处理器，场景层不得直接变更核心状态、执行规则结算或推进完整回合；在无外部流程接管或动作为无效时，状态保持不变且不得自行推进回合。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
+      "提供 GdUnit4 用例，至少覆盖 Combat.tscn 关键 UI 组件存在性与默认可见、对核心状态读取与变更同步、回合控制交互派发与无效动作阻止、可见文本通过本地化键解析，以及 headless 冒烟可执行路径。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
+      "Task 18 的验收必须包含可审计的架构边界检查并对齐 ADR-0022 与 ADR-0010（UI shell boundary、state-binding boundary、no scene-responsibility overflow）；缺失任一检查即验收失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 18 的验收必须包含可审计的测试策略检查并对齐 ADR-0025（test layering、assertion granularity、failure output quality、reproducible gates）；缺少策略证据即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd"
+    ],
+    "test_strategy": [
+      "GdUnit4 tests for UI presence and bindings to state. Refs: ADR-0025."
+    ],
+    "taskmaster_id": 18,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.started",
+      "core.combat.turn.started",
+      "core.combat.damage.resolved",
+      "core.combat.ended",
+      "core.intent.selected"
+    ]
+  },
+  {
+    "id": "GM-0119",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement reward scene with card three-choice-one and offer locking",
+    "description": "Create Reward.tscn with three card choices, offer locking, and deterministic display per ADR-0032.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0113",
+      "GM-0146"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards",
+      "reward"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0019_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "Game.Core.Tests/Services/RewardSelectionServiceTests.cs",
+      "Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs",
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Game.Core.Tests/Services/RewardOfferRngStateTests.cs",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_skip_preserves_offer.gd",
+      "Tests.Godot/tests/UI/test_reward_ui_translations.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd"
+    ],
+    "acceptance": [
+      "进入 Reward.tscn 时，界面上同时且仅显示 3 张可选卡牌，且每张卡牌都可见名称、描述与形态标识（Base/U1A/U1B/Ultimate）。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "在同一次奖励展示中，玩家最多只能确认 1 张卡牌；任意一张确认后，其余 2 张必须立即不可确认，且后续操作不会再次产生确认结果。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Game.Core.Tests/Services/RewardSelectionServiceTests.cs",
+      "首次展示该轮奖励时，系统必须锁定当前 offer 并写入自动存档；在未生成新 offer 的前提下，退出并重新进入后展示的三卡内容与顺序保持一致。 Refs: Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "执行“跳过”后 RNG 状态不得前进；在未生成新 offer 的前提下再次进入奖励界面时，仍展示同一组三卡。 Refs: Game.Core.Tests/Services/RewardOfferRngStateTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_skip_preserves_offer.gd",
+      "奖励界面所有可见文案必须来自翻译资源，界面中不得出现硬编码业务文案。 Refs: Tests.Godot/tests/UI/test_reward_ui_translations.gd",
+      "必须存在 xUnit 用例覆盖 offer 锁定逻辑，并验证退出后再次进入时仍读取并展示同一 offer。 Refs: Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs",
+      "必须存在覆盖奖励展示、单选确认与跳过流程的验证用例，并包含退出后再次进入仍保持同一 offer 的场景断言。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Task 19 implementation and test artifacts must explicitly trace to ADR-0032 and ADR-0010 (for example in refs fields, checklist mapping, or test annotations); missing either ADR id fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 19 acceptance must include an auto-checkable ADR linkage gate that verifies ADR-0032 and ADR-0010 are both present and consistent across task evidence; any mismatch fails acceptance. Refs: logs/ci/<date>/task-0019.json"
+    ],
+    "test_strategy": [
+      "Test reward display, selection, and skip. Verify offer locking by exiting and re-entering. Write xUnit tests for offer locking logic. Refs: ADR-0032, ADR-0010."
+    ],
+    "taskmaster_id": 19,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.locked",
+      "core.reward.offer.presented",
+      "core.reward.offer.selected",
+      "core.reward.offer.skipped"
+    ]
+  },
+  {
+    "id": "GM-0120",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement shop scene with inventory locking and no upgrade context",
+    "description": "Create Shop.tscn with purchasable items, inventory locking, and no upgrade services per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0113",
+      "GM-0146"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "shop"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd"
+    ],
+    "acceptance": [
+      "进入商店时必须加载 Shop.tscn，并展示可购买的卡牌与遗物及其价格；本次进入后库存与价格保持锁定，退出后再次进入时除已购买条目外，其余库存与价格与锁定时一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "在商店完成购买后，被购买条目必须立即从可购列表移除并标记为已购买/已拥有；商店提供且可执行移除与重铸服务，同时不存在任何升级/Upgrade 服务入口或按钮，UI 文案来自本地化系统且不含升级语境。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "overlays 08 的验收清单必须登记本任务 Test-Refs，且这些引用可定位到覆盖商店购买、库存锁定、无升级文案三类行为的测试项。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "进入商店后需将库存锁定状态与已购买记录写入自动存档（autosave）；退出并再次进入时展示结果必须与该持久化状态一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "必须提供测试覆盖商店购买与退出再进入后的库存持久化行为，并在验收清单中登记对应测试引用。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收必须包含测试断言：商店 UI 文本与本地化内容均不出现升级/Upgrade 字样或等价语境。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "任务测试需实际验证商店 UI 不包含任何升级/Upgrade 相关文案或入口提示。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd"
+    ],
+    "test_strategy": [
+      "Test shop purchases and inventory persistence on exit/re-enter. Verify UI lacks upgrade wording. Refs: ADR-0032, ADR-0010."
+    ],
+    "taskmaster_id": 20,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.shop.inventory.locked",
+      "core.shop.item.purchased",
+      "core.shop.curse.removed"
+    ]
+  },
+  {
+    "id": "GM-0121",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement rest scene with free upgrade option",
+    "description": "Create Rest.tscn with options including free card upgrade per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0108",
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0033",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
+      "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd"
+    ],
+    "acceptance": [
+      "进入 Rest.tscn 时，界面必须同时显示且可选择“升级（免费升级一张卡）”“治疗”“移除诅咒”三项；任一选项缺失、不可见或不可选择即判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "选择“升级”后，流程必须按“选择一张可升级卡→在 Route A 与 Route B 中二选一→进入确认步骤”推进；在确认前取消时，卡牌状态保持不变且不产生任何升级结果。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "升级确认中的不可逆提示必须通过翻译键渲染为有效文案，界面不得显示键名、占位符或异常回退文本；出现任一情况即失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "完成升级确认后不得触发任何支付流程，且不得减少任何可计量资源；若出现收费提示、支付入口或资源扣减则失败。 Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
+      "升级一经确认，在同一流程内不得撤销、回退或恢复为升级前状态；若存在可逆路径或不可逆结果不成立则失败. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
+      "升级确认后必须仅被选中的单张卡牌发生升级变化，其他卡牌状态保持不变；若出现未选中卡牌变化或多张卡牌同时变化则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "Within a single Rest scene session, free upgrade confirmation can occur at most once; after first confirmation, the upgrade entry must be disabled or blocked from re-entry. Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs",
+      "If user attempts a second upgrade flow in the same Rest session, system must reject the action and keep all card and resource states unchanged. Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Test upgrade flow and confirmation. Verify upgrade is free and irreversible. Check translation keys. Refs: ADR-0033, ADR-0010."
+    ],
+    "taskmaster_id": 21,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.rest.option.selected",
+      "core.card.upgraded"
+    ]
+  },
+  {
+    "id": "GM-0122",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement event scene with dark cost examples",
+    "description": "Create Event.tscn with at least two options and dark cost examples (HP loss, curse card) per M1 requirements.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards",
+      "event"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd"
+    ],
+    "acceptance": [
+      "Event.tscn 在进入事件时可见标题与描述，并提供至少两个可选项；这些选项中至少一个触发“立即HP损失”，至少一个触发“加入诅咒牌”，缺少任一类型即不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "每次进入事件时可选项集合即被锁定且不发生刷新/替换；玩家一旦作出选择即立即写入结果，退出后再次进入仍显示已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "事件标题、描述、选项文本均通过翻译系统提供；切换语言后三类文本应同步变化，且变化结果可被验证。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "选择“HP损失”代价选项后，当前HP必须在该次选择后立刻减少到可验证的新数值；若HP未变化则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
+      "选择“加入诅咒牌”代价选项后，牌组必须在该次选择后立刻新增对应诅咒牌且数量可验证；若牌组未新增则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "提供并可执行测试用例，覆盖事件选项与两类代价应用（HP损失、诅咒牌加入），并对结果进行可重复断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供并可执行测试用例，验证退出事件后再次进入时选项仍保持锁定且不可更改。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Test event options and cost application. Verify choice locking on exit/re-enter. Refs: ADR-0032, ADR-0010."
+    ],
+    "taskmaster_id": 22,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.event.entered",
+      "core.event.choice.committed",
+      "core.darkcost.applied"
+    ]
+  },
+  {
+    "id": "GM-0123",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Set up translations system with key naming conventions",
+    "description": "Configure translations in Game.Godot/Translations/ with key naming per ADR-0010 and project-context.md.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
+      "Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
+    ],
+    "acceptance": [
+      "在 Game.Godot/Translations/ 下存在 en 与 zh-CN 的 CSV 翻译文件，并且在 Godot 中加载后至少有一处 UI 文本通过翻译显示 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "翻译键遵循 ADR-0010 与项目约定的命名与前缀（如 ui., card., relic., event.），且界面文本未新增硬编码字符串 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "验收清单中的 Test-Refs 指向的用例覆盖翻译加载与键名规范检查 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "包含命名占位符的翻译条目使用 {name} 形式，并在界面中被实际值替换显示 Refs: Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
+      "脚本与场景引用翻译键而非直接文本，且至少覆盖主入口界面文案 Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
+      "In both en and zh-CN locales, the same UI node must assert exact text equality against expected localized values; mismatch fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "If rendered text equals the key name, missing translation placeholder, or fallback text, acceptance must fail and task status must not progress. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd"
+    ],
+    "test_strategy": [
+      "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010."
+    ],
+    "taskmaster_id": 23,
+    "taskmaster_exported": true,
+    "contractRefs": []
+  },
+  {
+    "id": "GM-0124",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement Warrior starting deck with 10 cards",
+    "description": "Create Warrior starting deck with 10 cards as per M1 content list.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0108"
+    ],
+    "adr_refs": [
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "Game.Core.Tests/Services/WarriorStartingDeckServiceTests.cs",
+      "Game.Core.Tests/Domain/WarriorCardDefinitionsTests.cs",
+      "Game.Core.Tests/Services/WarriorDeckManifestValidationTests.cs"
+    ],
+    "acceptance": [
+      "在新开局或等价初始化流程完成后，战士起始卡组包含且仅包含10张卡牌，组成与M1内容清单一致。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "定义10张战士卡牌的基础定义（包含如 card.warrior.cleave 的标识），并提供可被测试读取与断言的标签与意图字段。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "如存在本任务对应的 Overlay 验收清单，Test-Refs 应指向本任务的验收/测试用例且不包含无关条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试必须验证：卡组总数为10；每张卡的标识与核心属性与M1内容清单一致；标签与意图可被读取并断言。 Refs: Game.Core.Tests/Services/WarriorStartingDeckServiceTests.cs Game.Core.Tests/Domain/WarriorCardDefinitionsTests.cs",
+      "当M1内容清单缺失或与实现不一致时，相关测试应失败并输出差异信息，不得静默通过。 Refs: Game.Core.Tests/Services/WarriorDeckManifestValidationTests.cs",
+      "存在明确命名的起始牌组初始化服务（或同等组件），并负责构建战士起始卡组。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "实现与测试显式引用 ADR-0033 作为口径来源。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Write xUnit tests to verify deck composition and card properties. Reference M1 content list. Refs: ADR-0033."
+    ],
+    "taskmaster_id": 24,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.initialized"
+    ]
+  },
+  {
+    "id": "GM-0125",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement rage as state buff for Warrior",
+    "description": "Implement rage as a combat-only state buff for Warrior and integrate with status system.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0110",
+      "GM-0124"
+    ],
+    "adr_refs": [
+      "ADR-0033",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "combat",
+      "status"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "在战斗上下文中，战士怒气被定义为 Buff 状态；回合结束不会自然衰减，且战斗结束后怒气必须重置为 0（无怒气状态）。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "怒气仅可由既定来源产生并按既定叠层规则变化；与其他状态共同结算时，在相同输入下必须得到相同结算顺序与相同结果。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "怒气必须进入战斗伤害计算流水线：存在怒气时伤害结果应体现 Buff 影响；战斗结束并清零怒气后，相同条件下伤害结果应回到无怒气基线。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供并通过 xUnit 用例覆盖怒气叠层、跨回合保持、战斗结束清零三类行为；任一行为不满足时测试应失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单需明确对应测试文件路径与断言要点，使评审者可按路径复现并核对怒气相关结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 xUnit 用例验证怒气与其他状态的确定性结算：相同输入必须产生相同顺序与相同最终结果，不允许出现非确定性漂移。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "Task 25 acceptance must explicitly include ADR-0033 and ADR-0021 traceability; missing either ADR id fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Review gate must verify implementation and tests reference ADR-0033 and ADR-0021 consistently and audibly; inconsistent ADR mapping fails acceptance. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for Rage stacking, persistence across turns, and reset after combat end. Verify deterministic ordering with other statuses. Refs: ADR-0033."
+    ],
+    "taskmaster_id": 25,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.applied",
+      "core.status.stacked"
+    ]
+  },
+  {
+    "id": "GM-0126",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Define difficulty configuration contract and immutability",
+    "description": "Add core DifficultyConfig and run-level immutable difficulty selection (1-10).",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0102",
+      "GM-0112"
+    ],
+    "adr_refs": [
+      "ADR-0023",
+      "ADR-0032",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH05",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "difficulty"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0026_acceptance.gd"
+    ],
+    "acceptance": [
+      "核心层提供 DifficultyConfig 的只读访问，包含 difficulty_id、label_key、description_key、ruleset_id 四字段；读取任一配置时可验证字段存在且可取值。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
+      "开始一次 run 时必须选择难度（取值范围 1–10）并写入该 run 的元数据；run 开始后对难度的任何修改请求不得改变已记录值（保持原值或被明确拒绝）。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
+      "验收清单中必须记录并指向与“难度配置持久化与不可变性”相关的测试引用项。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单必须指向 xUnit 测试文件，覆盖难度写入 run 元数据的验证。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单必须指向 xUnit 测试文件，覆盖 run 开始后难度不可变（拒绝或值不变）的验证。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit tests verify difficulty is persisted into run metadata (with assertions). Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "xUnit tests verify difficulty is immutable after run start (reject or value unchanged). Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "At run start, selected DifficultyConfig fields (difficulty_id, label_key, description_key, ruleset_id) must be snapshot-persisted into run metadata. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "After run start, any mutation request to persisted difficulty fields must be rejected or leave values unchanged, proven by xUnit assertions. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "At run start, the selected DifficultyConfig snapshot must persist all four fields (difficulty_id, label_key, description_key, ruleset_id) into run metadata; missing any field fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "Acceptance tests must assert field-by-field equality between persisted run metadata and selected DifficultyConfig snapshot; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "After run start, mutation requests for these four persisted fields must be rejected and stored values must remain unchanged; any mutable field fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "Task 26 acceptance checklist must explicitly include ADR-0023, ADR-0032, and ADR-0021 trace links; missing any ADR id fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Gate validation for Task 26 must fail when ADR-0023/ADR-0032/ADR-0021 traceability is incomplete or inconsistent across checklist and task evidence outputs. Refs: logs/ci/<date>/task-0026.json"
+    ],
+    "test_strategy": [
+      "xUnit tests for difficulty persistence and immutability after run start. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 26,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.difficulty.selected"
+    ]
+  },
+  {
+    "id": "GM-0127",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement difficulty rule modifiers",
+    "description": "Map difficulty to rule modifiers (e.g., OverplayTax threshold for >=10).",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0106",
+      "GM-0126"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "map",
+      "difficulty"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs",
+      "Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs"
+    ],
+    "acceptance": [
+      "对任一给定难度值，DifficultyRuleService 必须返回与任务定义映射一致的规则修饰符集合，且可由断言直接验证映射结果。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "在 Windows 环境执行单元测试时，必须验证难度到修饰符的解析正确；同一难度重复调用应返回值相等结果以证明确定性。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 清单必须能追溯到本任务的相关测试文件，以核验难度映射与确定性要求已被测试覆盖。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "DifficultyRuleService 的输出必须仅由输入难度决定且不读取外部可变状态；同一输入在不同调用中的结果应可比较且值相等。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs",
+      "当难度>=10 时，结果必须包含 OverplayTax 且阈值 N=12；当难度<10 时，结果必须不包含 OverplayTax。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs",
+      "必须提供并通过 xUnit 用例，覆盖难度映射规则与确定性行为，且本地重复执行产生一致结论。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for rule resolution by difficulty and deterministic outputs. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 27,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.difficulty.modifier.applied"
+    ]
+  },
+  {
+    "id": "GM-0128",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Create ActConfig data model and loader",
+    "description": "Define ActConfig and load Act data from JSON for modular acts.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0006",
+      "ADR-0031",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH05",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
+      "Game.Core.Tests/Services/ActConfigLoaderTests.cs"
+    ],
+    "acceptance": [
+      "在 Game.Core 中提供 ActConfig 类型，并至少包含 act_id、node_graph、pools、encounters 四个可反序列化字段；给定包含这些字段的 Act JSON 时可映射为该配置对象。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "在 Windows 环境下，加载器可从数据文件读取并使用 System.Text.Json 反序列化为 ActConfig；当读取失败或反序列化失败时，必须返回可断言的失败结果且不返回成功配置。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 清单包含并可定位到本任务 ActConfig 加载相关测试路径，以支持验收追溯。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "ActConfig JSON 必须包含显式 schema_version 字段；当 schema_version 缺失、未知或不兼容时，加载必须失败并返回可验证错误。 Refs: Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
+      "xUnit 用例覆盖以下情形：有效 ActConfig JSON 成功加载；字段缺失、类型错误或非法 JSON 被拒绝；schema_version 不匹配被拒绝。 Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
+      "ActConfig 加载成功后，node_graph、pools、encounters 三个字段内容与输入 JSON 保持一致，不得丢失或被静默改写。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "schema_version 校验失败时返回明确且可断言的错误信息，并由 xUnit 用例进行断言。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "Task 28 acceptance must explicitly include traceability to ADR-0006, ADR-0031, and ADR-0021 in checklist or task evidence; missing any ADR id fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "An auto-check rule must validate presence and consistency of ADR-0006/ADR-0031/ADR-0021 linkage in task evidence outputs; any missing linkage fails acceptance. Refs: logs/ci/<date>/task-0028.json"
+    ],
+    "test_strategy": [
+      "xUnit tests for loading valid/invalid ActConfig and schema version checks. Refs: ADR-0006."
+    ],
+    "taskmaster_id": 28,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.act.config.loaded"
+    ]
+  },
+  {
+    "id": "GM-0129",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement card drop pools per Act and encounter type",
+    "description": "Add card pools by act and encounter type with rarity tiers.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0128",
+      "GM-0146"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
+      "Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs"
+    ],
+    "acceptance": [
+      "对每个已支持的Act与遭遇类型组合，系统都能解析到含稀有度层级的卡池定义，且行为满足任务0029验收测试断言。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "在Windows环境执行任务0029相关验收测试时，测试结果全部通过并与任务0029期望断言一致。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Overlay的Test-Refs清单已包含本任务对应测试条目，且条目与当前实现一一对应且无失配。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "每个Act均定义normal/elite/boss/shop/event五类卡池条目并包含稀有度层级；给定Act与遭遇类型时可确定唯一卡池。 Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "OfferService在UI展示卡牌选择时不得推进随机数状态；在相同种子与相同输入状态下重复调用返回完全一致的选择结果。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
+      "存在可重复通过的xUnit测试，分别验证卡池选择的确定性与稀有度分布稳定性。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs",
+      "Task 29 implementation acceptance must explicitly validate consistency with ADR-0032 and ADR-0033; missing either ADR trace fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 29 test acceptance must include explicit ADR-0032 traceability check and record pass/fail in task evidence output; missing ADR-0032 gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for pool selection determinism and rarity distribution stability. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 29,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.presented"
+    ]
+  },
+  {
+    "id": "GM-0130",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Define relic contracts and instance model",
+    "description": "Create relic definition/instance contracts in Game.Core/Contracts.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0102"
+    ],
+    "adr_refs": [
+      "ADR-0020",
+      "ADR-0021",
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "relic"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "Game.Core.Tests/Domain/RelicDefinitionTests.cs",
+      "Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
+      "Game.Core.Tests/Domain/RelicInstanceTests.cs"
+    ],
+    "acceptance": [
+      "在 Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs 中必须存在 Task 30 的 xUnit 验收用例；当 RelicDefinition 或 RelicInstance 缺少指定字段或属性，或其序列化结果与预期不一致时，测试会失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "在 Windows 环境运行该验收测试套件时应全部通过，且断言可证明 RelicDefinition 与 RelicInstance 的契约声明仅位于 Game.Core/Contracts；若在其他目录出现同名契约声明则断言失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 清单必须包含本任务测试文件路径，并且可由该路径定位到 Task 30 对应验收用例；路径缺失或无法定位即验收失败 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 Game.Core/Contracts 下必须定义名为 RelicDefinition 的契约类型，并公开 relic_id、name_key、description_key、tags 四个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicDefinitionTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
+      "在 Game.Core/Contracts 下必须定义名为 RelicInstance 的契约类型，并公开 instance_id、modifiers 两个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicInstanceTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
+      "仓库中除 Game.Core/Contracts 外不得存在 RelicDefinition 或 RelicInstance 的契约定义声明；一旦发现同名契约定义即验收失败。 Refs: Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
+      "task-0030 result JSON refs must include ADR-0020, ADR-0021, and ADR-0010; missing any ADR ref fails acceptance. Refs: logs/ci/<date>/task-0030.json",
+      "ACCEPTANCE_CHECKLIST.md must explicitly list ADR-0020, ADR-0021, and ADR-0010 and exactly match task-0030 JSON refs; any mismatch fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs must include an auditable ADR-0020 reference marker that gate scripts can parse; missing or unparsable marker fails acceptance. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for relic contract validity and serialization. Refs: ADR-0020."
+    ],
+    "taskmaster_id": 30,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted"
+    ]
+  },
+  {
+    "id": "GM-0131",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement 20 starting relic definitions and uniqueness checks",
+    "description": "Create 20 relic definitions with unique ids and hookable effects.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0130"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "relic"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "遗物定义集合必须可枚举且数量严格等于 20；每个定义必须包含稳定的 relic_id、翻译键以及用于规则修饰的效果描述，并且可在不加载 Godot 运行时的单元测试中被构造与读取；对全集执行唯一性校验时，只要出现任一重复 relic_id 即判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "在 Windows 环境执行 xUnit 时，测试必须覆盖全部 20 个遗物并验证 relic_id 全局唯一且每个遗物都存在翻译键；任一遗物不满足任一条件时，测试必须失败并输出可定位的失败信号。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "若存在对应 overlay 的验收清单文件，则其 Test-Refs 必须仅指向本任务已存在的测试文件，并可追溯到 relic_id 唯一性与翻译键存在性的验证；任一引用缺失、失效或无法追溯即判定不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 必须验证每个遗物都包含规则修饰的效果描述字段，且字段值非空或满足既定约束；同时确认该字段可在不加载 Godot 运行时的测试中被读取并断言，任一遗物不满足即测试失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "遗物定义集合必须明确限定为 M1 起始遗物集合且总数严格等于 20；若混入非 M1 遗物或以非 M1 集合替代统计则判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "验收清单必须显式回链 ADR-0010 与 ADR-0021，且能定位到对应实现与测试证据；任一 ADR 回链缺失或失效即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests to validate unique relic_id and translation key presence. Refs: ADR-0010."
+    ],
+    "taskmaster_id": 31,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted"
+    ]
+  },
+  {
+    "id": "GM-0132",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement curse cards and removal services",
+    "description": "Add curse card pool (non-upgradable) and removal flows.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0103",
+      "GM-0108"
+    ],
+    "adr_refs": [
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "运行时可发现并启用 `card.curse.*` 命名空间下的诅咒卡定义；每张诅咒卡仅有单一形态，任何升级尝试都会被拒绝且卡牌状态保持不变；非诅咒卡不会被误标记为诅咒卡。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
+      "商店服务、休息选项、事件选项三条路径均可触发诅咒移除；玩家确认后目标诅咒卡从牌组中移除，且牌组不会生成任何替换卡（牌组数量仅按移除结果减少）。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
+      "ACCEPTANCE_CHECKLIST 中与本任务相关的验收条目可定位到对应测试文件，并能覆盖“诅咒卡约束验证”与“三条移除路径验证”两类检查。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 xUnit 用例，验证诅咒卡仅有单一形态，且升级请求被拒绝并保持原卡状态不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 xUnit 用例，分别验证商店、休息、事件三条移除路径在执行后目标诅咒卡已不存在，且牌组未新增替换卡。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for curse constraints and removal operations. Refs: ADR-0033."
+    ],
+    "taskmaster_id": 32,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.curse.added",
+      "core.curse.removed",
+      "core.shop.curse.removed"
+    ]
+  },
+  {
+    "id": "GM-0133",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement deck operations service (draw/discard/exhaust/retain)",
+    "description": "Build deterministic deck operations with hand limit 10 and retain rules.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0108",
+      "GM-0106"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Game.Core.Tests/Services/DeckServiceHandLimitTests.cs"
+    ],
+    "acceptance": [
+      "DeckService 必须提供 draw/discard/exhaust/retain/shuffle 五类操作；在相同初始状态与相同输入序列下，牌堆/手牌/弃牌堆/消耗区结果必须完全一致且可复现。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "任一流程结算后若手牌数量超过 10，超出部分必须按 instance_id 升序依次移入弃牌堆，且最终手牌数量必须为 10。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "本任务的验收与测试映射必须可追溯，且至少覆盖抽牌顺序、弃牌顺序、EndOfTurn retain 规则与手牌上限溢出行为。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "draw 必须按当前抽牌堆顺序依次将卡实例加入手牌；在不触发上限溢出的情况下，手牌新增顺序与抽牌顺序一致且可被测试验证。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "discard 必须将指定卡实例从其当前区域移入弃牌堆；除该实例迁移外，其他卡实例的集合与相对顺序保持不变，若未找到指定实例则状态不变。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "exhaust 必须将指定卡实例移入消耗区；该实例在后续抽牌与弃牌循环中不得再次出现。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "EndOfTurn 必须应用 retain 规则：标记 retain 的卡实例保留在手牌，未标记实例全部从手牌移入弃牌堆。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "shuffle 只允许重排抽牌堆顺序；卡实例总数与成员不变，不得新增或丢失实例，且手牌/弃牌堆/消耗区不受影响。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "必须提供 xUnit 用例，至少验证 draw 与 discard 的顺序行为、EndOfTurn retain 行为、以及手牌上限溢出按 instance_id 处理的行为。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Services/DeckServiceHandLimitTests.cs",
+      "Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Gate evaluation must fail when ADR-0021 or ADR-0032 traceability is absent from task evidence or test mapping. Refs: logs/ci/<date>/task-0033.json"
+    ],
+    "test_strategy": [
+      "xUnit tests for draw/discard ordering, retain behavior, and hand limit overflow. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 33,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.drawn",
+      "core.deck.discarded",
+      "core.deck.exhausted",
+      "core.deck.retained",
+      "core.deck.shuffled"
+    ]
+  },
+  {
+    "id": "GM-0134",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement card targeting and drag UX",
+    "description": "Add hover/drag targeting UX in combat scene.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0118"
+    ],
+    "adr_refs": [
+      "ADR-0022",
+      "ADR-0010",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH04"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Tests.Godot/tests/UI/test_hud_invalid_target_feedback.gd"
+    ],
+    "acceptance": [
+      "战斗场景中，鼠标悬停可选中敌方目标；若仅有一个敌人，该敌人始终为当前选中；将卡牌拖拽到目标上会触发出牌尝试；目标不满足时给出明确无效目标反馈；所有提示文本均使用翻译键。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "在 Windows 环境下，悬停选中与拖拽出牌流程可重复执行且不中断，过程中可观察到目标选中与出牌尝试的状态变化。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "Overlay 的 Test-Refs 已更新并指向本任务验收与相关测试清单。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 GdUnit4 测试覆盖目标选择与拖拽出牌流程，并对无效目标反馈作出可观察断言。 Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/UI/test_hud_invalid_target_feedback.gd",
+      "当目标条件不满足时，出牌尝试被拒绝，手牌与战斗状态保持不变，并显示无效目标反馈。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "[OBL:T34.O3] 当目标满足出牌条件时，将卡牌拖拽到目标上必须成功出牌并从手牌移除对应卡牌。",
+      "[OBL:T34.O3] 成功出牌后战斗状态必须发生可观察变化（如目标生命值或状态变化），并可被测试断言。",
+      "[OBL:T34.O3] 当目标满足条件时，将卡牌拖拽到目标上必须成功出牌，而非仅触发出牌尝试。"
+    ],
+    "test_strategy": [
+      "GdUnit4 tests for target selection and drag-drop play flow. Refs: ADR-0025."
+    ],
+    "taskmaster_id": 34,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.played",
+      "core.combat.card.invalid_play_blocked"
+    ]
+  },
+  {
+    "id": "GM-0135",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement end-of-combat resolution pipeline",
+    "description": "Finalize victory/defeat resolution and reward handoff.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0118",
+      "GM-0119",
+      "GM-0148"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0029"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "combat",
+      "reward"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "Game.Core.Tests/Services/CombatServiceTests.cs"
+    ],
+    "acceptance": [
+      "胜利与失败分支都必须触发战斗结束结算，并产生可验证的状态变化；不得以空操作或无状态变化通过验收。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "在 Windows 环境下执行战斗结束结算流程应无崩溃，且可观察到状态改变或场景切换结果；不得静默失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 清单必须包含与本任务相关的测试引用，并与本验收项一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "胜利结算时必须按顺序完成：解析死亡触发、发放奖励、写入 run state、切换到 Reward 场景；缺任一步骤视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "失败结算时必须结束当前 run 并返回主菜单，且不得进入 Reward 场景。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "提供 xUnit 用例覆盖战斗结束结算与状态切换。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 35 acceptance must explicitly trace and validate ADR-0032 and ADR-0029 consistency; any conflict with either ADR fails acceptance and blocks progression. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for combat end resolution and state transitions. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 35,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.ended",
+      "core.reward.offer.presented"
+    ]
+  },
+  {
+    "id": "GM-0136",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement autosave triggers per determinism policy",
+    "description": "Add autosave on combat start, reward screen open, and event choice.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0112",
+      "GM-0119",
+      "GM-0122"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0023"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "combat",
+      "save",
+      "reward"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "当战斗进入初始状态、奖励界面首次显示、事件选择作出后，系统分别立即写入 1 次自动存档；除这三类触发外不得产生自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "玩家执行跳过/略过流程时，自动存档计数相对跳过前保持不变，不得新增任何自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "Overlay 08 验收清单中的 Test-Refs 指向本任务相关测试文件或占位，并与“战斗初始、奖励首次显示、事件选择后触发，跳过不新增”语义一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试可观测地覆盖自动存档触发时机与存档内容一致性，并验证跳过流程不产生额外自动存档。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 36 acceptance must explicitly trace implementation and tests to ADR-0032 and ADR-0023; missing either ADR linkage fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Gate check must fail when ADR-0032 or ADR-0023 back-link evidence is absent from task-0036 outputs or checklist mapping. Refs: logs/ci/<date>/task-0036.json"
+    ],
+    "test_strategy": [
+      "xUnit tests for autosave timing and content. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 36,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.autosave.written",
+      "core.event.choice.committed",
+      "core.reward.offer.locked"
+    ]
+  },
+  {
+    "id": "GM-0137",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Single-slot continue metadata and integrity checks",
+    "description": "Add run metadata, integrity checks, and Continue gating.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0112",
+      "GM-0114",
+      "GM-0150"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0029"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH05",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "单存档在成功保存后，继续加载时必须可读取运行元数据（run_id、difficulty_id、act、node_id、timestamp），且 Continue 判定逻辑使用这些元数据 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "加载时必须进行存档结构与完整性校验；若校验失败则阻止 Continue、显示错误提示，并保持既有存档内容不变 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "Overlay 验收清单中该任务的 Test-Refs 记录保持对齐且不新增引用 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 xUnit 用例覆盖元数据校验与 Continue 门禁 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "相关测试在清单中明确标注为 xUnit Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "交付物需引用 ADR-0032 与 ADR-0029 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for metadata validation and Continue gating. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 37,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.resumed",
+      "core.run.continue.blocked",
+      "core.save.loaded"
+    ]
+  },
+  {
+    "id": "GM-0138",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Audit logging for determinism and security events",
+    "description": "Implement JSONL audit logging to logs/ per SSoT.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0113"
+    ],
+    "adr_refs": [
+      "ADR-0019",
+      "ADR-0003"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH02",
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "event"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0038.json",
+      "Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
+      "Game.Core.Tests/Services/AuditLoggerEventCoverageTests.cs"
+    ],
+    "acceptance": [
+      "执行保存、加载或锁相关流程后，必须在 logs/ci/<YYYY-MM-DD>/security-audit.jsonl 生成审计文件，且路径符合 SSoT 规范。 Refs: logs/ci/<date>/task-0038.json",
+      "在 Windows 环境中可直接验证日志写入成功，且 security-audit.jsonl 每一行都可被解析为独立 JSON 对象。 Refs: logs/ci/<date>/task-0038.json",
+      "验收需提供可追溯证据（测试结果或日志文件），并能对应 JSONL 字段与路径校验结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 logs/ci/<YYYY-MM-DD>/security-audit.jsonl 中，每条审计记录必须包含 ts、action、reason、target、caller 五个字段，任一字段缺失即不通过。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
+      "日志必须至少包含保存、加载、offer lock、拒绝四类事件；触发拒绝场景时必须写入对应 deny 事件且包含 reason。 Refs: Game.Core.Tests/Services/AuditLoggerEventCoverageTests.cs",
+      "提供 xUnit 测试校验 JSONL 行结构与目标路径 logs/ci/<date>/security-audit.jsonl；字段缺失、JSON 不可解析或路径错误时测试必须失败。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
+      "提供 AuditLogger（或同等同名组件）作为审计写入入口，并由该入口生成满足上述字段与路径约束的 JSONL 记录。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 38 artifacts must explicitly trace to ADR-0019 and ADR-0003; missing either ADR reference fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests to verify JSONL schema and file paths. Refs: ADR-0019."
+    ],
+    "taskmaster_id": 38,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.audit.logged",
+      "core.autosave.written",
+      "core.reward.offer.locked",
+      "core.run.continue.blocked"
+    ]
+  },
+  {
+    "id": "GM-0139",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Populate translations for M1 cards, relics, events",
+    "description": "Add translation entries for M1 content and UI text.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0123",
+      "GM-0124",
+      "GM-0131",
+      "GM-0132"
+    ],
+    "adr_refs": [
+      "ADR-0010"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "cards",
+      "event",
+      "relic"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
+    ],
+    "acceptance": [
+      "为 M1 卡牌/遗物/事件的全部可见文本补齐 en 与 zh-CN 翻译键；资源中可检索到这些键，任一缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "所有 UI 提示/按钮/弹窗等可见文本仅通过翻译键渲染；运行时发现任一硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "PRD-NEWROUGE-GAME-0001 overlay 的 Test-Refs 指向本任务验收用例，且可追溯到翻译键存在性与冒烟检查 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "为所有 UI 提示/按钮/弹窗等可见文本补齐 en 与 zh-CN 翻译键，任一缺失即不通过 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "新增 GdUnit4 冒烟用例覆盖翻译键加载与基础 UI 渲染 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供脚本或手动检查流程，验证所有引用翻译键存在 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "所有可见文本必须通过翻译键渲染，运行时发现任一硬编码可见文本即不通过 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 39 artifacts must include explicit ADR-0010 traceability (refs/checklist/test annotation) with auditable linkage points; missing ADR-0010 linkage fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Gate must reject progression when PRD overlay or related tests lack ADR-0010 linkage evidence for Task 39. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Script or manual checks to ensure all referenced keys exist; GdUnit4 smoke. Refs: ADR-0010."
+    ],
+    "taskmaster_id": 39,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.presented",
+      "core.event.entered",
+      "core.relic.granted",
+      "core.curse.added"
+    ]
+  },
+  {
+    "id": "GM-0140",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Define Act 1 enemy data and definitions",
+    "description": "Create enemy definitions and data for Act 1 encounters.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0106",
+      "GM-0128"
+    ],
+    "adr_refs": [
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH05",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "提供 Act 1 的普通/精英/首领 EnemyDefinition 数据，包含统计属性与 intent pools；仅为数据定义，不含任何意图选择逻辑。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "xUnit 用例验证敌人数据有效且定义列表顺序确定可重复（无随机漂移），可在 Windows 环境运行通过。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "若本任务产生 overlay 文档变更，则 Test-Refs 清单与本任务测试一致且可追溯；未产生该类变更则不新增/不改动该清单。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "本任务相关改动需显式引用 ADR-0021（代码或文档均可）。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for enemy data validity and deterministic ordering of definitions. Refs: ADR-0021."
+    ],
+    "taskmaster_id": 40,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.intent.selected"
+    ]
+  },
+  {
+    "id": "GM-0141",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement enemy intent display and preview UI",
+    "description": "Show enemy next intent in combat UI.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0118",
+      "GM-0152"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0022",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH05",
+      "CH07",
+      "CH04"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0041_acceptance.gd"
+    ],
+    "acceptance": [
+      "在战斗UI中，每个敌人都显示“下一回合意图”的图标与文字描述；当回合开始触发更新后，显示内容必须与该敌人最新已解析意图数据一致，且不得继续显示上一回合旧意图。 Refs: Tests.Godot/tests/Tasks/test_task0041_acceptance.gd",
+      "意图文字必须通过翻译键渲染（非硬编码）；在Windows环境中应显示为正确本地化文本，且不得出现乱码或直接显示未解析键名。 Refs: Tests.Godot/tests/Tasks/test_task0041_acceptance.gd",
+      "验收清单中本任务对应条目需明确表达“显示敌人意图与预览UI”的语义，并可据此判定是否已覆盖“图标+描述+回合更新”三个可观察结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "使用GdUnit4提供自动化测试，至少验证“敌人意图可见且内容正确”与“回合开始后意图随已解析数据更新”两类行为；任一验证失败则本任务不通过验收。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "GdUnit4 tests for intent display and updates on turn start. Refs: ADR-0025."
+    ],
+    "taskmaster_id": 41,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.intent.selected",
+      "core.combat.turn.started"
+    ]
+  },
+  {
+    "id": "GM-0142",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Map node entry gating and backtracking rules",
+    "description": "Enforce node selection lock and no backtracking.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0117"
+    ],
+    "adr_refs": [
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "map"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0042_acceptance.gd"
+    ],
+    "acceptance": [
+      "进入节点时，节点选项会被锁定；在相同输入下，node_pre_enter 的顺序与内容保持确定性且可通过测试验证。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
+      "在已选择节点后，不允许回退或改选其他节点；相关状态保持不变且可验证。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
+      "Overlay 的 Test-Refs 已包含本任务验收用例，并与“锁定选项 + 禁止回退”的规则一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit：验证进入节点时选项被锁定，且锁定状态不可变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit：断言在相同输入下锁定状态保持一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit：相同输入下 node_pre_enter 的顺序与内容完全一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit：不同输入下，node_pre_enter 的顺序与内容按规则变化并可断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for node selection lock and deterministic node order. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 42,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.map.node.locked",
+      "core.map.node.selected",
+      "core.map.path.backtrack.blocked"
+    ]
+  },
+  {
+    "id": "GM-0143",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Run state machine with Command-only transitions",
+    "description": "Implement run state transitions via Command entries only.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0112",
+      "GM-0117"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
+      "Game.Core.Tests/State/GameStateMachineTests.cs",
+      "Game.Core.Tests/State/GameStateManagerTests.cs"
+    ],
+    "acceptance": [
+      "通过仅处理 Command 入口完成运行状态迁移的状态机已经实现，并有对应可追溯测试覆盖。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
+      "在 Windows 环境下可运行 xUnit，用例验证命令驱动的迁移顺序与状态不变式，结果可判定。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 指向本任务测试路径且可追溯。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在相同初始状态与相同 Command 顺序下处理命令，得到的运行状态序列与最终状态一致，并可由测试验证。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
+      "任何对外可观察的运行状态变更仅在处理 Command 时发生；未处理 Command 的调用保持运行状态不变。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
+      "提供可用的 RunStateMachine 与 Command 类型，仅通过 Command 入口触发迁移，并测试至少一个有效迁移与一个无效迁移的结果。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
+      "xUnit 覆盖命令迁移顺序与状态不变式，顺序错误或不变式破坏时测试应失败且可复现。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
+      "文档或测试用例中明确引用 ADR-0032 与 ADR-0021。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for command transition ordering and state invariants. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 43,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.state.transitioned"
+    ]
+  },
+  {
+    "id": "GM-0144",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Deterministic resume integration tests (headless)",
+    "description": "Add GdUnit4 tests for save/resume determinism in reward/shop/event.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0119",
+      "GM-0120",
+      "GM-0122",
+      "GM-0136"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH02",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "save",
+      "reward",
+      "shop"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
+      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Tests.Godot/tests/Integration/test_reward_shop_event_assertion_diagnostics.gd",
+      "Tests.Godot/tests/Integration/test_headless_junit_xml_artifacts.gd",
+      "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Tests.Godot/tests/Integration/test_adr_trace_markers_gate.gd"
+    ],
+    "acceptance": [
+      "提供与任务范围一致的 headless GdUnit4 集成验收用例，且用例实际覆盖 reward/shop/event 三类流程的保存/恢复确定性检查（缺一即失败）。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
+      "验收用例在 Windows headless 模式下可直接运行通过；若启动交互窗口或依赖人工输入则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
+      "Overlay 的 Test-Refs 明确记录并可追溯到本任务测试路径，且指向路径可定位对应的 headless 验收用例。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "headless GdUnit4 在 reward、shop、event 各场景执行“保存→退出→重进→恢复”，并断言恢复后 offer lock 状态与选择结果与保存前一致。 Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "reward、shop、event 三类流程各至少包含一次可观测断言（状态或事件输出）；任一断言失败时输出可定位场景与字段的失败信息。 Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/Integration/test_reward_shop_event_assertion_diagnostics.gd",
+      "headless 套件执行后在 logs/e2e/<date>/ 产出可读取的 JUnit/XML 结果文件，且至少包含本任务相关测试用例结果。 Refs: Tests.Godot/tests/Integration/test_headless_junit_xml_artifacts.gd Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "测试全程不依赖交互式窗口或人工输入，并可在 Windows headless 环境重复执行得到一致通过结果。 Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "headless 套件执行后在 logs/e2e/<date>/ 同时生成并校验 JUnit/XML 与 audit logs；任一缺失或校验失败则验收失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 44 artifacts must explicitly include traceability to ADR-0032 and ADR-0025 (for example in refs fields, test annotations, or checklist mapping); missing either ADR id fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Acceptance must fail when ADR-0032 or ADR-0025 trace markers are absent from test artifacts or checklist entries. Refs: Tests.Godot/tests/Integration/test_adr_trace_markers_gate.gd"
+    ],
+    "test_strategy": [
+      "Run headless suite and verify JUnit/XML + audit logs. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 44,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.resumed",
+      "core.reward.offer.locked",
+      "core.autosave.written"
+    ]
+  },
+  {
+    "id": "GM-0145",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Display difficulty in HUD and run summary",
+    "description": "Show selected difficulty in HUD and run summary UI.",
+    "status": "pending",
+    "priority": "P3",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0115",
+      "GM-0126"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0023",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH10",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "difficulty"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd"
+    ],
+    "acceptance": [
+      "HUD 与 Run Summary 均显示本次运行开始时选定的难度；两处文本一致、可见、可读 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "从开局到结束，难度显示值保持为开局选定值；无论流程或操作如何变化，HUD 与 Run Summary 中的值均不改变 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "HUD 与 Run Summary 的难度文本必须由翻译键获取并渲染；界面中不存在直接硬编码的难度字符串 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "新增 GdUnit4 用例，验证 HUD 显示的是开局所选难度 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "新增 GdUnit4 用例，验证运行过程中难度显示不会变化 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Run Summary 面板在结算/总结阶段存在且可见（至少一个可见节点）；可被测试定位并验证 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "GdUnit4 tests to verify HUD shows selected difficulty and does not change mid-run. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 45,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.difficulty.selected",
+      "core.combat.ended",
+      "core.score.updated"
+    ]
+  },
+  {
+    "id": "GM-0146",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement offer locking generation using RNG streams",
+    "description": "Generate and lock offer candidates using RNG streams and provenance.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0104",
+      "GM-0109"
+    ],
+    "adr_refs": [
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "rng"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "Game.Core.Tests/Services/OfferServiceTests.cs",
+      "Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
+      "Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs"
+    ],
+    "acceptance": [
+      "基于给定的 RNG 流生成 offer 候选并完成锁定，provenance 被持久化且可用于重现相同结果。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "在 Windows 环境运行 xUnit 用例可验证锁定前后结果一致性且测试可通过。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 指向本任务测试路径并能追溯到对应用例。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "OfferService 使用给定 RNG 流与输入生成可查询的候选列表，外部可观察候选数量与内容，不得出现无输出的空转。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "首次锁定后 stable_id 与 display_order 被持久化；相同输入与相同 RNG 流在重载后再次生成时保持一致。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
+      "对已锁定的 offer 再次触发生成/锁定不得更改既有 stable_id 与 display_order。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "provenance 被持久化且可查询，包含可用于一致性断言的关键信息（如 RNG 流标识与生成批次）。 Refs: Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs Game.Core.Tests/Services/OfferServiceTests.cs",
+      "xUnit 测试包含对“重载前后锁定结果一致性”的可验证断言。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for offer lock determinism across reloads. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 46,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.locked",
+      "core.reward.offer.presented"
+    ]
+  },
+  {
+    "id": "GM-0147",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement status trigger ordering and fixed damage rules",
+    "description": "Add deterministic trigger ordering and fixed damage behavior.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0110"
+    ],
+    "adr_refs": [
+      "ADR-0029",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "status"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
+      "Game.Core.Tests/Services/FixedDamageRulesTests.cs"
+    ],
+    "acceptance": [
+      "在相同战斗状态与事件输入下，状态/遗物触发顺序确定且可复现，不依赖集合遍历顺序或随机性，结算结果一致 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "固定伤害遵循规则：例如 OverplayTax 的伤害不受增伤/减伤等修饰影响；有 xUnit 用例覆盖并断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Overlay 验收清单中的相关条目与本任务语义一致，明确覆盖“触发顺序确定性”和“固定伤害不被修饰” Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "当存在多个可触发的状态/遗物时，对同一输入多次结算得到完全相同的触发序列与最终伤害值。 Refs: Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
+      "固定伤害与非固定伤害在结算上可区分：固定伤害保持原值，非固定伤害仍可被常规修饰。 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
+      "gameplay:6: 触发顺序由 xUnit 用例验证，断言排序规则与实际触发序列一致 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for trigger ordering and fixed damage invariants. Refs: ADR-0029."
+    ],
+    "taskmaster_id": 47,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.applied",
+      "core.status.expired",
+      "core.combat.fixed_damage.resolved"
+    ]
+  },
+  {
+    "id": "GM-0148",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement damage calculation and AOE ordering",
+    "description": "Add damage calculation, AOE ordering, and multi-hit resolution.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0111",
+      "GM-0106"
+    ],
+    "adr_refs": [
+      "ADR-0021",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "在给定基础伤害与 Strength/Weak/Vulnerable 状态时，最终伤害必须按乘数规则计算，并输出可由测试直接断言的确定数值。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "当同一 AOE 命中多个目标时，处理顺序必须严格按 combatant_id 升序，且顺序可通过测试观测并断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "多段命中解析必须对每一段产生可观察的执行顺序与结算结果，测试可逐段断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试必须覆盖 Strength/Weak/Vulnerable 对伤害结算的影响，并对最终输出数值进行断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试必须覆盖多段命中的结算顺序与结果，并可对顺序和结果分别断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在多段命中中，每一段伤害都必须独立应用 Strength/Weak/Vulnerable 乘数规则，逐段计算结果可被断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit 测试必须断言 AOE 处理顺序为 combatant_id 升序；对同一输入重复执行时断言结果保持稳定一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Task 48 acceptance outputs must include auditable architecture-decision trace records citing ADR-0021 and ADR-0032 as rule sources; missing either ADR source fails acceptance. Refs: logs/ci/<date>/task-0048.json",
+      "Review gate must verify damage multiplier and deterministic ordering behavior do not deviate from ADR-0021/ADR-0032 semantics; any deviation fails acceptance and blocks progression. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for damage calculations and multi-hit ordering. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 48,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.damage.resolved"
+    ]
+  },
+  {
+    "id": "GM-0149",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement stability safeguards for combat loop",
+    "description": "Add safety limits (100 cards per turn) and failure handling.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "core",
+    "depends_on": [
+      "GM-0111"
+    ],
+    "adr_refs": [
+      "ADR-0029"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH02",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "cards",
+      "combat"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "Game.Core.Tests/Services/CombatServiceTests.cs"
+    ],
+    "acceptance": [
+      "战斗循环必须具备稳定性保护：单回合出牌超过100张时触发硬上限，并具备失败处理路径以避免异常。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "在Windows环境下，硬上限与失败处理具备可观测结果，可通过状态或输出验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "验收清单中能定位到本任务相关用例索引，用于核对硬上限与失败处理结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "当单回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "触发硬停止时，必须记录可观察的审计条目，并能从审计日志中确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "对无效出牌请求，必须返回可观察的失败结果且不改变已确认状态，不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "新增xUnit用例覆盖“超过100张触发硬停止”的行为。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "新增xUnit用例断言硬停止时产生审计日志条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "实现与测试说明必须明确引用ADR-0029作为依据。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "xUnit tests for hard-stop behavior and audit log entries. Refs: ADR-0029."
+    ],
+    "taskmaster_id": 49,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.loop.hard_stopped",
+      "core.combat.card.invalid_play_blocked",
+      "core.audit.logged"
+    ]
+  },
+  {
+    "id": "GM-0150",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement save migration validation and failure blocking",
+    "description": "Add migration checks and block Continue on invalid save.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0112"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0023"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "save"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "读取存档时必须校验 schema_version；若需迁移则执行迁移；迁移成功时 Continue 可用；迁移失败时 Continue 必须保持不可用且不得进入游戏流程。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "在 Windows 环境下的 xUnit 用例需覆盖“迁移失败会阻断 Continue 且错误提示可见”的路径，并能从测试结果验证失败分支确实被阻断。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 需要指向本任务相关测试文件，以对齐验收清单。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Windows xUnit must verify schema_version migration failure blocks Continue and keeps the entry inaccessible until migration is repaired. Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "Task 50 implementation and acceptance must explicitly satisfy ADR-0032 and ADR-0023 constraints; missing either ADR traceability fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Review evidence for Task 50 must provide auditable mapping to ADR-0032 and ADR-0023 in test artifacts or checklist refs; missing mapping fails acceptance. Refs: logs/ci/<date>/task-0050.json"
+    ],
+    "test_strategy": [
+      "xUnit tests for migration failure blocking and error paths. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 50,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.save.migration.failed",
+      "core.run.continue.blocked"
+    ]
+  },
+  {
+    "id": "GM-0151",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Integrate combat turn flow and persistence",
+    "description": "Wire combat turn flow to core services and save points.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "core",
+    "depends_on": [
+      "GM-0118",
+      "GM-0111",
+      "GM-0136"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "core",
+      "combat",
+      "save"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd"
+    ],
+    "acceptance": [
+      "战斗流程从非战斗状态进入时，核心服务仅执行一次起始自动保存，并可在保存存储中观测到且仅观测到一条对应新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "每次满足前置条件的回合推进请求，必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时，本次请求返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "仅当判定达到回合结束条件时，才执行回合结束清理并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "提供GdUnit4用例，覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单必须明确列出上述回合流程与恢复行为对应的GdUnit4测试文件路径，并说明每个文件验证的覆盖范围。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "回合结束清理必须由核心服务直接执行或由其统一触发，且每次清理都应留下可检索的记录或事件用于持久化核验与流程追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "[OBL:T51.O7] 新增一条：验收清单需显式标注本任务关键行为对应 ADR-0032 与 ADR-0025。",
+      "[OBL:T51.O7] 新增一条：至少一个测试条目需说明其验证点覆盖 ADR-0025 约束。",
+      "[OBL:T51.O7] 验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。"
+    ],
+    "test_strategy": [
+      "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 51,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.turn.started",
+      "core.autosave.written",
+      "core.combat.ended"
+    ]
+  },
+  {
+    "id": "GM-0152",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement enemy intent selection logic",
+    "description": "Add deterministic intent selection rules per enemy.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0140",
+      "GM-0106"
+    ],
+    "adr_refs": [
+      "ADR-0032",
+      "ADR-0021"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH05"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0052.json"
+    ],
+    "acceptance": [
+      "在至少一组覆盖不同敌人的战斗状态样例中，意图选择必须由“该敌人的规则 + 当前战斗状态”共同决定且结果可核验；若同一敌人在不同状态下仍固定返回单一意图，则判定不通过。 Refs: logs/ci/<date>/task-0052.json",
+      "在相同敌人、相同RNG流输入、相同战斗状态条件下，重复执行意图选择的结果必须完全一致；当RNG流输入或战斗状态任一变化时，必须基于新输入重新计算，并在至少一组样例中观察到结果差异。 Refs: logs/ci/<date>/task-0052.json",
+      "已新增或更新xUnit用例，明确覆盖“同敌人+同输入结果一致”与“输入变化可触发差异”的确定性行为，并在Test-Refs清单中可追溯到对应测试文件。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "With identical enemy and combat state, changing only RNG stream input must produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: logs/ci/<date>/task-0052.json",
+      "With identical enemy and RNG stream input, changing only combat state must produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: logs/ci/<date>/task-0052.json",
+      "Task 52 acceptance must explicitly trace to ADR-0032 and ADR-0021 in implementation/test evidence; missing either ADR link fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "xUnit acceptance outputs for Task 52 must include ADR-0032 trace fields that CI can audit; missing trace fields fails acceptance. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests for intent selection determinism. Refs: ADR-0032."
+    ],
+    "taskmaster_id": 52,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.intent.selected"
+    ]
+  },
+  {
+    "id": "GM-0153",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Headless smoke runner (Python) + strict mode",
+    "description": "Implement a Python-first headless smoke runner for Godot on Windows, matching the existing PowerShell behavior. Add an optional strict mode that requires a success marker in logs. Source: docs/migration/Phase-12-Headless-Smoke-Backlog.md (B1/B2).",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0005",
+      "ADR-0011",
+      "ADR-0018",
+      "ADR-0024"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0053.json",
+      "Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs",
+      "Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs",
+      "Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
+      "Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd",
+      "Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs"
+    ],
+    "acceptance": [
+      "在 logs/ci/<date>/task-0053.json 记录本任务交付的 headless runner 与 strict 行为摘要（含参数、退出码、产物路径），用于追溯实现。 Refs: logs/ci/<date>/task-0053.json",
+      "在 Windows 环境下运行 smoke_headless.py 的命令、退出码与日志产物路径被写入 logs/ci/<date>/task-0053.json，作为 Windows-only 运行证据。 Refs: logs/ci/<date>/task-0053.json",
+      "更新 overlay 的 Test-Refs 清单，覆盖本任务相关测试并指向现有测试路径。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "提供 scripts/python/smoke_headless.py，可在 Windows 运行并支持参数 --godot-bin、--scene、--timeout-sec、--project-path、--strict；参数缺失或无效时返回非零并输出可读错误信息。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs",
+      "运行后在 logs/ci/<date>/smoke/ 下产出 headless.out.log、headless.err.log、summary.json；三者均存在且包含本次运行信息。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs",
+      "严格模式仅当日志包含 [TEMPLATE_SMOKE_READY] 或 [DB] opened 任一标记时返回 0，否则返回非零。 Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd",
+      "非严格模式允许在缺少成功标记时仍返回 0，但必须生成日志与 summary.json。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs",
+      "超时处理与退出码语义与既有 PowerShell headless runner 保持一致，可通过相同场景对比验证。 Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
+      "本地 Windows 运行已完成，并验证退出码与产物可复核。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "CI headless 已运行并确认 logs/ci/** 归档可复核。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Acceptance explicitly records ADR refs: ADR-0005/ADR-0011/ADR-0018/ADR-0024. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Acceptance explicitly records chapter alignment: CH01/CH06/CH07/CH10. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 ACCEPTANCE_CHECKLIST.md 的 Test-Refs 中逐条列出主任务 Test Refs 清单中的具体路径（含 logs/ci/<date>/smoke 与 Tests/...）。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Local Windows validation must specify and record a known-good scene path; missing known-good scene path fails acceptance. Refs: logs/ci/<date>/task-0053.json",
+      "The same acceptance record must include run command, exit code, and verification results for all three artifacts (headless.out.log, headless.err.log, summary.json) for the known-good scene run. Refs: logs/ci/<date>/task-0053.json",
+      "Overlay index file `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md` must include Task 53 back-link with strict/non-strict behavior and artifact entry points; missing entry fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "Feature slice file `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md` must include Task 53 Test-Refs and acceptance conclusion aligned with ACCEPTANCE_CHECKLIST.md; any mismatch fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
+    ],
+    "test_strategy": [
+      "Run locally on Windows against a known-good scene and verify exit code + artifacts.",
+      "Run in CI headless and confirm logs are archived under logs/ci/**."
+    ],
+    "taskmaster_id": 53,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.started",
+      "core.combat.started",
+      "core.combat.ended"
+    ]
+  },
+  {
+    "id": "GM-0154",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Integrate GdUnit4 suites into quality_gates.py",
+    "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0153"
+    ],
+    "adr_refs": [
+      "ADR-0005",
+      "ADR-0011",
+      "ADR-0024"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07",
+      "CH10",
+      "CH01"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0054.json",
+      "Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd",
+      "Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs",
+      "Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs",
+      "Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd",
+      "Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs",
+      "Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs"
+    ],
+    "acceptance": [
+      "在 Windows 环境运行 quality_gates.py 且启用 GdUnit4 参数时，必须在同次执行记录中看到被选 suite 的执行结果与门禁类型；未启用该参数时，必须将对应 suite 明确标记为未运行，并写入 logs/ci/<date>/task-0054.json。 Refs: logs/ci/<date>/task-0054.json",
+      "在 Windows/PowerShell 下，quality_gates.py 必须能解析并实际执行 GdUnit4 相关参数；脚本退出码必须与总体门禁结论一致（通过=0，失败=非0），并将结果写入 logs/ci/<date>/task-0054.json。 Refs: logs/ci/<date>/task-0054.json",
+      "Overlay 文档的 Test-Refs 必须覆盖与 GdUnit4 接线相关的验证项，且每一项都能回链到本任务描述或测试策略，避免引入与本任务无关的引用。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "quality_gates.py 必须提供参数以显式选择是否运行 GdUnit4 suites，并在结果中区分 adapters/security 与 integration/UI 两类 suites。 Refs: Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd",
+      "adapters/security suites 任一失败必须导致总体门禁失败；integration/UI suites 失败仅记录为软门禁，不阻断总体通过。 Refs: Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs",
+      "执行后必须生成单一机器可读 summary JSON，包含各 suite 状态、门禁级别与总体门禁结论，并输出到 logs/ci/<date>/quality-gates/summary.json。 Refs: Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs",
+      "GdUnit4 的 JUnit/XML 输出必须写入 logs/e2e/<date>/gdunit/junit.xml；若未生成该文件，summary 必须明确记录未生成原因。 Refs: Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd",
+      "本地分别在开启与关闭 GdUnit4 参数运行 quality_gates.py 时，summary 中 suites 状态必须可区分为已运行与未运行，不能以缺失字段代替。 Refs: Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs",
+      "CI 任务必须以 summary JSON 的总体门禁结论作为 pass/fail 判定依据，且结论变化时 CI 结果同步变化。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs",
+      "Test-Refs 列表必须包含 logs/ci/<date>/quality-gates/summary.json 与 logs/e2e/<date>/gdunit/junit.xml，且路径与实际产物一致。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Test-Refs 列表必须包含 Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd 与 Game.Core.Tests/Tasks/Task32AcceptanceTests.cs，并可对应到本任务验收项。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 ACCEPTANCE_CHECKLIST.md 中必须明确列出 ADR-0005、ADR-0011、ADR-0024 作为本任务门禁语义口径引用。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Acceptance evidence must include chapter_refs containing CH06, CH07, and CH10 in summary output; missing any chapter reference fails acceptance. Refs: logs/ci/<date>/task-0054-summary.json",
+      "ACCEPTANCE_CHECKLIST.md must include explicit CH06/CH07/CH10 back-link checks for Task 54; missing any chapter check fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Both overlay files `08/_index.md` and `08-Feature-Slice-M1-Warrior.md` must be updated with Task 54 Test-Refs and gate notes together with ACCEPTANCE_CHECKLIST.md; updating checklist alone fails acceptance. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+    ],
+    "test_strategy": [
+      "Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.",
+      "Validate CI job consumes the summary JSON for pass/fail decisions."
+    ],
+    "taskmaster_id": 54,
+    "taskmaster_exported": true,
+    "contractRefs": []
+  },
+  {
+    "id": "GM-0155",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Coverage thresholds as configurable soft/hard gate",
+    "description": "Align xUnit coverage thresholds to the blueprint target (lines >= 90%, branches >= 85%) and allow overriding via environment variables. Provide soft/hard gate modes in scripts/python/run_dotnet.py and scripts/python/quality_gates.py.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0154"
+    ],
+    "adr_refs": [
+      "ADR-0005"
+    ],
+    "chapter_refs": [
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0055.json",
+      "Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "Game.Core.Tests/Tasks/Task55CoverageGateModeSoftHardTests.cs",
+      "Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
+      "Game.Core.Tests/Tasks/Task55CoverageTraceabilityTests.cs",
+      "Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs"
+    ],
+    "acceptance": [
+      "未设置覆盖率环境变量时，run_dotnet.py 与 quality_gates.py 的有效阈值必须解析为 lines>=90 且 branches>=85，并在执行结果中可复核；任一脚本默认阈值不匹配即判定失败。 Refs: logs/ci/<date>/task-0055.json",
+      "在 Windows 执行脚本时，临时设置阈值与门禁模式环境变量后，结果必须体现非默认有效阈值，且无需修改代码即可复现；若必须改代码才能得到非默认结果则判定失败。 Refs: logs/ci/<date>/task-0055.json",
+      "overlay 的 Test-Refs 与验收条目必须同时覆盖“阈值可覆盖、soft/hard 行为、摘要产出”三项义务，并与任务语义逐项对齐；缺失任一项即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "scripts/python/run_dotnet.py 与 scripts/python/quality_gates.py 在未设置覆盖率环境变量时默认使用 lines>=90、branches>=85；设置环境变量后必须采用覆盖后的有效阈值，并可在不改代码前提下完成一次非默认阈值验证。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "两脚本必须支持 soft/hard gate 选择：覆盖率低于有效阈值时，soft 模式以退出码 0 完成且记录 warning，hard 模式以非 0 退出；覆盖率达到或超过有效阈值时，两种模式均以退出码 0 完成。 Refs: Game.Core.Tests/Tasks/Task55CoverageGateModeSoftHardTests.cs",
+      "覆盖率结果必须输出单一机器可读 JSON 摘要，至少包含实际 line/branch 覆盖率、有效阈值（环境变量覆盖后）、gate mode 与 pass/fail，并分别生成于 logs/unit/<date>/summary.json 与 logs/ci/<date>/quality-gates/summary.json。 Refs: Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
+      "产出文档或记录必须可追溯到 ADR-0005 与 CH07，且本任务验收范围仅限覆盖率阈值配置、门禁行为与摘要产出；若出现无关新增要求则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageTraceabilityTests.cs Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs",
+      "overlay 验收清单必须显式标注 ADR-0005 与 CH07 的关联，并保持条目范围与本任务一致；缺少关联或引入超范围条目即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "在 Windows 上执行 dotnet test，并通过临时环境变量验证阈值覆盖与 soft/hard 门禁行为；若结果不可复现或无法区分两种模式则判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "overlay 文档必须记录 ADR-0005 与 CH07 的可追溯信息，并覆盖 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md 与 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-Quality-Metrics.md 两处；任一缺失即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收条目必须显式列出并可审计绑定以下 Test-Refs：Tests/CI/CoverageThresholdOverridesTests.cs、Tests/CI/CoverageGateModeSoftHardTests.cs、Tests/CI/CoverageSummaryJsonEmissionTests.cs；缺失任一文件路径即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "上述三份测试必须分别覆盖“阈值可覆盖”“soft/hard 行为”“摘要 JSON 产出”，并在执行记录中可逐项核对。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "test_strategy": [
+      "Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars."
+    ],
+    "taskmaster_id": 55,
+    "taskmaster_exported": true,
+    "contractRefs": []
+  },
+  {
+    "id": "GM-0156",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Audit JSONL validation + gate integration",
+    "description": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0154"
+    ],
+    "adr_refs": [
+      "ADR-0019",
+      "ADR-0003",
+      "ADR-0005"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0056.json",
+      "logs/ci/<date>/security-audit.jsonl",
+      "logs/ci/<date>/audit-validate/report.json",
+      "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
+      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
+    ],
+    "acceptance": [
+      "Provide scripts/python/validate_audit_logs.py to validate JSONL schema and required fields; any invalid line must fail with non-zero exit code. Refs: scripts/python/validate_audit_logs.py",
+      "Validation failure output must include offending line number and actionable reason for each rejected JSONL row. Refs: logs/ci/<date>/audit-validate/report.json",
+      "quality_gates.py must optionally invoke the validator and record executed/pass_fail in task-0056 summary output. Refs: scripts/python/quality_gates.py",
+      "When audit validation is enabled and returns fail, quality_gates.py must exit non-zero and stop downstream release steps. Refs: logs/ci/<date>/task-0056.json",
+      "Provide valid/invalid JSONL fixtures and reproduce one pass and one fail run on Windows. Refs: logs/ci/<date>/audit-validate/report.json"
+    ],
+    "test_strategy": [
+      "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."
+    ],
+    "taskmaster_id": 56,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.audit.logged"
+    ]
+  },
+  {
+    "id": "GM-0157",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Traceability gate for ADR/Chapter/Overlay links",
+    "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0156"
+    ],
+    "adr_refs": [
+      "ADR-0019",
+      "ADR-0003",
+      "ADR-0005"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "traceability"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "logs/ci/<date>/task-0057-traceability.json",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs"
+    ],
+    "acceptance": [
+      "task-0057-traceability.json must record pass/fail results for ADR-0019, ADR-0003, and ADR-0005 trace checks. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "task-0057-traceability.json must record pass/fail results for chapter trace checks CH02, CH03, and CH07. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "Overlay files _index.md, 08-Feature-Slice-M1-Warrior.md, and ACCEPTANCE_CHECKLIST.md must all contain searchable T56/T57 Test-Refs entries. Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "Any ADR/chapter/overlay trace mismatch must fail the traceability gate with non-zero exit and block downstream release steps. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "Traceability output must include machine-readable missing/mismatch diff items with concrete file/key locations. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "Traceability check must run on Windows and output platform=windows in task-0057-traceability.json. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "The test strategy must execute one pass sample and one fail sample; pass must exit 0 without mismatch, fail must exit non-zero with mismatch diff. Refs: logs/ci/<date>/task-0057-traceability.json",
+      "Task57TraceabilityGateTests.cs must cover ADR/chapter/overlay checks and assertions must match task-0057-traceability.json pass/fail and diff output. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
+      "Traceability gate must run as a dedicated CI job or dedicated command; if this gate is skipped, unrecognized, or not executed, pipeline must fail before release stages. Refs: logs/ci/<date>/task-0057-traceability.json"
+    ],
+    "test_strategy": [
+      "Run traceability check on Windows with one pass sample and one fail sample."
+    ],
+    "taskmaster_id": 57,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.traceability.checked"
+    ]
+  }
+]

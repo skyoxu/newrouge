@@ -32,8 +32,16 @@ from pathlib import Path
 from typing import Any
 
 
-EVENT_TYPE_CONST_RE = re.compile(
+EVENT_TYPE_LITERAL_RE = re.compile(
     r"\bpublic\s+const\s+string\s+EventType\s*=\s*\"([^\"]+)\"\s*;",
+    re.MULTILINE,
+)
+EVENT_TYPE_SYMBOL_RE = re.compile(
+    r"\bpublic\s+const\s+string\s+EventType\s*=\s*EventTypes\.([A-Za-z_][A-Za-z0-9_]*)\s*;",
+    re.MULTILINE,
+)
+EVENT_TYPES_MEMBER_RE = re.compile(
+    r"\bpublic\s+const\s+string\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"([^\"]+)\"\s*;",
     re.MULTILINE,
 )
 DOC_DOMAIN_EVENT_RE = re.compile(r"\bDomain\s+event:\s*([a-z0-9.]+)\b", re.IGNORECASE)
@@ -72,13 +80,27 @@ def _iter_contract_files(contracts_dir: Path) -> list[Path]:
     return sorted(files)
 
 
+def _load_event_types_map(contracts_dir: Path) -> dict[str, str]:
+    """Load EventTypes constant map from Game.Core/Contracts/EventTypes.cs."""
+
+    mapping: dict[str, str] = {}
+    event_types_path = contracts_dir / "EventTypes.cs"
+    if not event_types_path.exists():
+        return mapping
+
+    text = event_types_path.read_text(encoding="utf-8", errors="ignore")
+    for symbol, value in EVENT_TYPES_MEMBER_RE.findall(text):
+        mapping[symbol] = value
+    return mapping
+
+
 def _validate_event_type(value: str, *, domain_prefix: str) -> list[str]:
     issues: list[str] = []
     s = value.strip()
     if s != value:
         issues.append("event type contains leading/trailing whitespace")
 
-    token_re = re.compile(r"^[a-z][a-z0-9]*$")
+    token_re = re.compile(r"^[a-z][a-z0-9_]*$")
     parts = s.split(".")
     if len(parts) < 3:
         issues.append("event type must have >= 3 dot-separated segments (prefix.entity.action)")
@@ -123,14 +145,35 @@ def main() -> int:
 
     findings: list[Finding] = []
     all_event_types: dict[str, list[str]] = {}
+    event_type_map = _load_event_types_map(contracts_dir)
 
     for cs in _iter_contract_files(contracts_dir):
         text = cs.read_text(encoding="utf-8", errors="ignore")
-        const_values = EVENT_TYPE_CONST_RE.findall(text)
+        literal_values = EVENT_TYPE_LITERAL_RE.findall(text)
+        symbol_values = EVENT_TYPE_SYMBOL_RE.findall(text)
         doc_values = DOC_DOMAIN_EVENT_RE.findall(text)
         doc_value = doc_values[0].strip() if doc_values else None
 
-        for event_type in const_values:
+        resolved_values: list[tuple[str, str]] = []
+        for value in literal_values:
+            resolved_values.append((value, value))
+
+        for symbol in symbol_values:
+            if symbol in event_type_map:
+                resolved_values.append((f"EventTypes.{symbol}", event_type_map[symbol]))
+            else:
+                rel = _to_posix(cs.relative_to(root))
+                findings.append(
+                    Finding(
+                        file=rel,
+                        event_type=f"EventTypes.{symbol}",
+                        ok=False,
+                        issues=[f"unresolved EventTypes symbol: {symbol}"],
+                        warnings=[],
+                    )
+                )
+
+        for source_expr, event_type in resolved_values:
             issues = _validate_event_type(event_type, domain_prefix=args.domain_prefix)
             warnings: list[str] = []
             if doc_value and doc_value.lower() != event_type.strip().lower():

@@ -1,0 +1,9 @@
+.taskmaster/docs/prd_parts/00-taskmaster-directives.md
+.taskmaster/docs/prd_parts/10-project-context.md
+.taskmaster/docs/prd_parts/20-prd.md
+.taskmaster/docs/prd_parts/30-gdd.md
+.taskmaster/docs/prd_parts/40-ssot-locks.md
+.taskmaster/docs/prd_parts/50-mechanics-edge-cases.md
+.taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md
+.taskmaster/docs/prd_parts/70-adr-0032.md
+.taskmaster/docs/prd_parts/71-adr-0033.md

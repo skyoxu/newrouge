@@ -1,6 +1,6 @@
 # ADR-0032: Save/Resume Policy and Deterministic Outcomes
 
-- Status: Proposed
+- Status: Accepted
 - Context:
   - NewRouge 是单人卡牌构筑的 run-based 游戏，设计目标包含“决策重量”与“玩家信任”。
   - 玩家必须允许中断与继续（手动退出、崩溃、断电），但不允许通过退出重进来“刷随机结果”。
@@ -35,7 +35,7 @@
     - 进度损失是预期行为：战斗中断后回到战斗初始状态。
     - 单槽覆盖存在误操作风险：需要明确 UI 提示与二次确认。
     - 确定性提高实现复杂度：需要严格定义存档点、输入序列与 RNG 流拆分。
-  - Acceptance Criteria（成为 Accepted 的门槛）:
+  - Implementation Acceptance Criteria（M1 Gate-0 的实现门槛）:
     1) 存档边界实现到位：
        - 节点前存档 + 进入战斗保存“战斗初始状态”。
        - 战斗中绝不保存中间态。
@@ -62,18 +62,18 @@
        - 至少 1 个 headless 冒烟覆盖“Continue 被阻断（坏档/迁移失败）”路径（Godot 层/Runner 任选）。
        - 测试文件必须采用稳定命名并可被 PRD 的 `Test-Refs` 引用（允许后续按需追加更多用例，但不得重命名已引用的用例路径）。
 
-    8) Test-Refs（用于 PRD/GDD 回链；在成为 Accepted 前必须补齐为真实文件）：
+    8) Test-Refs（用于 PRD/GDD 回链；M1 Gate-0 必须补齐为真实文件）：
        - `Game.Core.Tests/Determinism/OfferLockingTests.cs`
        - `Game.Core.Tests/Save/SaveResumeBoundaryTests.cs`
        - `Tests.Godot/Smoke/ContinueGateTests.gd`
        - `Tests.Godot/Security/SaveMigrationFailureBlocksContinueTests.gd`
 
-    9) `logs/**` 证据链（在成为 Accepted 前必须能稳定产出）：
+    9) `logs/**` 证据链（M1 Gate-0 必须能稳定产出）：
        - `logs/ci/<YYYY-MM-DD>/save-migrations/<timestamp>/summary.json`
        - `logs/ci/<YYYY-MM-DD>/security/security-audit.jsonl`（或等价汇总文件，字段口径不变）
 
-  - Definition of Done:
-    - 当以上 Acceptance Criteria 满足，并且具备对应 `logs/**` 证据路径与测试引用后，将本 ADR 的 Status 从 `Proposed` 更新为 `Accepted`。
+  - Definition of Done（M1 Gate-0）:
+    - 当以上 Implementation Acceptance Criteria 满足，并且具备对应 `logs/**` 证据路径与测试引用后，M1 允许进入“实现阶段”的大规模任务推进。
   - Required follow-ups:
     - 必须同步更新 `project-context.md` 与 PRD 中关于 save/resume 的口径，避免文档漂移。
     - 门禁必须能产出与该策略一致的 `logs/**` 取证。

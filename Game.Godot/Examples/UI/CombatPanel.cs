@@ -1,4 +1,5 @@
 using Godot;
+using Game.Core.Contracts;
 using Game.Godot.Adapters;
 using System.Text.Json;
 
@@ -41,7 +42,7 @@ public partial class CombatPanel : Control
 
     private void OnDomainEventEmitted(string type, string source, string dataJson, string id, string specVersion, string dataContentType, string timestampIso)
     {
-        if (type == "core.health.updated" || type == "player.health.changed")
+        if (type == EventTypes.HealthUpdated || type == "player.health.changed")
         {
             try
             {

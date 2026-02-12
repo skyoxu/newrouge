@@ -3,6 +3,7 @@ using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
 using Game.Core.Ports;
 using Game.Core.Services;
+using System.Text.Json;
 
 namespace Game.Core.Engine;
 
@@ -95,6 +96,9 @@ public class GameEngineCore
 
     private void Publish(string type, object data)
     {
-        _ = _bus?.PublishAsync(new DomainEvent(type, nameof(GameEngineCore), data, DateTime.UtcNow, Guid.NewGuid().ToString("N")));
+        var payload = JsonSerializer.Serialize(data);
+        _ = _bus?.PublishAsync(
+            new DomainEvent(type, nameof(GameEngineCore), payload, DateTimeOffset.UtcNow, Guid.NewGuid().ToString("N"))
+        );
     }
 }

@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://nvu4oans6lpo"
+
+[deps]
+
+files=["res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.when.translation", "res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.what.translation", "res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.why.translation"]
+
+source_file="res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.csv"
+dest_files=["res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.when.translation", "res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.what.translation", "res://_bmad/bmgd/workflows/3-technical/game-architecture/pattern-categories.why.translation"]
+
+[params]
+
+compress=true
+delimiter=0

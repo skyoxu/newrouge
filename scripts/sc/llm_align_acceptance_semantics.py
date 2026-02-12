@@ -23,6 +23,7 @@ from typing import Any
 
 from _taskmaster import default_paths, load_json  # type: ignore
 from _util import ci_dir, repo_root, run_cmd, today_str, write_json, write_text  # type: ignore
+from _garbled_gate import parse_task_ids_csv, render_top_hits, scan_task_text_integrity  # type: ignore
 
 from _acceptance_semantics_align import (  # noqa: E402
     MasterTaskInput,
@@ -66,6 +67,12 @@ def main() -> int:
     ap.add_argument("--align-view-descriptions-to-master", action="store_true")
     ap.add_argument("--semantic-findings-json", default="", help="Optional sc-semantic-gate-all/summary.json for hints.")
     ap.add_argument("--timeout-sec", type=int, default=240)
+    ap.add_argument(
+        "--garbled-gate",
+        default="on",
+        choices=["on", "off"],
+        help="Hard gate for garbled task/acceptance text before and after apply (default: on).",
+    )
     args = ap.parse_args()
 
     tasks_json_path, tasks_back_path, tasks_gameplay_path = default_paths()
@@ -90,6 +97,30 @@ def main() -> int:
         task_ids = sorted(master_index.keys())
 
     out_dir = ci_dir("sc-llm-align-acceptance-semantics")
+
+    garbled_gate_on = str(args.garbled_gate).strip().lower() != "off"
+    gate_task_ids = parse_task_ids_csv(str(args.task_ids).strip()) if str(args.task_ids).strip() else set()
+
+    if garbled_gate_on:
+        pre_report = scan_task_text_integrity(task_ids=gate_task_ids or None)
+        write_json(out_dir / "garbled-precheck.json", pre_report)
+        pre_summary = pre_report.get("summary") or {}
+        pre_fail = (
+            int(pre_summary.get("decode_errors") or 0) > 0
+            or int(pre_summary.get("parse_errors") or 0) > 0
+            or int(pre_summary.get("suspicious_hits") or 0) > 0
+        )
+        if pre_fail:
+            top_hits = render_top_hits(pre_report, limit=8)
+            print(
+                "SC_ALIGN_ACCEPTANCE status=fail reason=garbled_precheck "
+                f"hits={int(pre_summary.get('suspicious_hits') or 0)} out={out_dir}"
+            )
+            if top_hits:
+                print("SC_ALIGN_ACCEPTANCE garbled_top_hits:")
+                for line in top_hits:
+                    print(f" - {line}")
+            return 2
 
     # Step A (upstream governance): remove non-core / non-portable optional hints
     # from master tasks so they don't pollute acceptance semantics alignment.
@@ -220,6 +251,27 @@ def main() -> int:
     if args.apply:
         write_json(tasks_back_path, back)
         write_json(tasks_gameplay_path, gameplay)
+
+        if garbled_gate_on:
+            post_report = scan_task_text_integrity(task_ids=gate_task_ids or None)
+            write_json(out_dir / "garbled-postcheck.json", post_report)
+            post_summary = post_report.get("summary") or {}
+            post_fail = (
+                int(post_summary.get("decode_errors") or 0) > 0
+                or int(post_summary.get("parse_errors") or 0) > 0
+                or int(post_summary.get("suspicious_hits") or 0) > 0
+            )
+            if post_fail:
+                top_hits = render_top_hits(post_report, limit=8)
+                print(
+                    "SC_ALIGN_ACCEPTANCE status=fail reason=garbled_postcheck "
+                    f"hits={int(post_summary.get('suspicious_hits') or 0)} out={out_dir}"
+                )
+                if top_hits:
+                    print("SC_ALIGN_ACCEPTANCE garbled_top_hits:")
+                    for line in top_hits:
+                        print(f" - {line}")
+                return 2
 
     write_json(
         out_dir / "summary.json",

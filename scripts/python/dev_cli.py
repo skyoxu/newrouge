@@ -114,6 +114,20 @@ def cmd_run_gdunit_full(args: argparse.Namespace) -> int:
     ])
 
 
+def cmd_run_preflight(args: argparse.Namespace) -> int:
+    """Run local pre-flight checks (dotnet --info + core tests)."""
+
+    return run([
+        "py",
+        "-3",
+        "scripts/python/preflight.py",
+        "--test-project",
+        args.test_project,
+        "--configuration",
+        args.configuration,
+    ])
+
+
 def cmd_run_smoke_strict(args: argparse.Namespace) -> int:
     """Run strict headless smoke against Main scene."""
 
@@ -165,6 +179,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gf = sub.add_parser("run-gdunit-full", help="run broad GdUnit tests (Adapters+Security+Integration+UI)")
     p_gf.add_argument("--godot-bin", required=True)
     p_gf.set_defaults(func=cmd_run_gdunit_full)
+
+    # run-preflight
+    p_pf = sub.add_parser("run-preflight", help="run local pre-flight checks (dotnet --info + core tests)")
+    p_pf.add_argument("--test-project", default="Game.Core.Tests/Game.Core.Tests.csproj")
+    p_pf.add_argument("--configuration", default="Debug")
+    p_pf.set_defaults(func=cmd_run_preflight)
 
     # run-smoke-strict
     p_sm = sub.add_parser("run-smoke-strict", help="run strict headless smoke against Main scene")

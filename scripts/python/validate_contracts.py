@@ -7,12 +7,13 @@ Responsibilities:
 - Scan overlay 08 docs under docs/architecture/overlays/**/08/.
 - Extract contract paths like `Game.Core/Contracts/...cs`.
 - Check that referenced contract files exist.
-- Optionally detect contracts that are not referenced by any overlay doc.
+- Enforce required overlay docs (`08-Contracts-*.md` / `08-Feature-Slice-*.md`) contain contract refs.
+- Detect contracts that are not referenced by any overlay doc (warning surface).
 - Write a JSON report to logs/ci/<YYYY-MM-DD>/contracts-validate.json.
 
 Exit code:
 - 0 if no blocking issues are found.
-- 1 if missing contract files or docs without any contract references are detected.
+- 1 if missing contract files or required docs without any contract references are detected.
 """
 
 from __future__ import annotations
@@ -90,6 +91,11 @@ def find_all_contract_files(root: Path) -> List[str]:
     return results
 
 
+def _is_required_overlay_contract_doc(rel_doc: str) -> bool:
+    name = Path(rel_doc).name
+    return name.startswith("08-Contracts-") or name.startswith("08-Feature-Slice-")
+
+
 def build_report(root: Path) -> Dict[str, object]:
     """Build validation report for contracts and overlay docs."""
 
@@ -124,12 +130,17 @@ def build_report(root: Path) -> Dict[str, object]:
         doc for doc, contracts in doc_contracts.items() if not contracts
     ]
 
+    # Required docs that must contain contract refs.
+    required_docs_without_contracts = [
+        doc for doc in docs_without_contracts if _is_required_overlay_contract_doc(doc)
+    ]
+
     # Contracts that are present on disk but not referenced by any overlay doc
     contracts_without_docs = [
         c for c in all_contracts if c not in referenced_contracts
     ]
 
-    ok = not missing_contract_files
+    ok = not missing_contract_files and not required_docs_without_contracts
 
     return {
         "ok": ok,
@@ -138,6 +149,7 @@ def build_report(root: Path) -> Dict[str, object]:
         "all_contracts_count": len(all_contracts),
         "missing_contract_files": missing_contract_files,
         "docs_without_contracts": docs_without_contracts,
+        "required_docs_without_contracts": required_docs_without_contracts,
         "contracts_without_docs": contracts_without_docs,
     }
 

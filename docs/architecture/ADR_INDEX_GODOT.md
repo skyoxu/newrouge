@@ -29,6 +29,7 @@
 - ADR-0028: 事件用途分级（Gameplay vs UI vs Audit/Observability） — `docs/adr/ADR-0028-event-usage-tiering.md`
 - ADR-0029: 错误处理口径（Exceptions vs Try*/Result vs Fail-Fast） — `docs/adr/ADR-0029-error-handling-policy.md`
 - ADR-0030: Core 线程模型（Single-Thread Core + 明确跨线程边界） — `docs/adr/ADR-0030-core-threading-model.md`
+- ADR-0032: Save/Resume Policy and Deterministic Outcomes — `docs/adr/ADR-0032-save-resume-determinism.md`
 - ADR-0033: Card Identity and Forms（同一 card_id 的四形态） — `docs/adr/ADR-0033-card-identity-and-forms.md`
 
 ---
@@ -41,7 +42,6 @@
 - ADR-0021: C# Domain Layer Architecture — `docs/adr/ADR-0021-csharp-domain-layer-architecture.md`
 - ADR-0022: Godot Signal System and Contracts — `docs/adr/ADR-0022-godot-signal-system-and-contracts.md`
 - ADR-0031: 构建可复现性与版本锁定（Godot 4.5.1 + NuGet Lock） — `docs/adr/ADR-0031-build-reproducibility-and-version-pinning.md`
-- ADR-0032: Save/Resume Policy and Deterministic Outcomes — `docs/adr/ADR-0032-save-resume-determinism.md`
 
 ---
 

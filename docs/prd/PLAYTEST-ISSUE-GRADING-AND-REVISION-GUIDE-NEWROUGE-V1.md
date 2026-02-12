@@ -128,5 +128,5 @@ Applies-To:
 | 分级 | 分类 | 场景/屏幕 | 复现步骤（按键序列/选择） | 预期 | 实际 | 证据（截图/录屏/日志路径） | 建议回填文档 | 修订结论 |
 |---|---|---|---|---|---|---|---|---|
 | P1 | C4 文案与术语一致性 | 全局（Translations） | 文档走查：检查 `Game.Godot/Translations` 是否已有可用文本资源 | 所有可见文本可从 Translations 配置获得 | 当前仅有 `Game.Godot/Translations/README.md`（缺少实际文本资源） | `logs/ci/2026-01-25/playtest/newrouge--playtest--issues--paper-audit--2026-01-25.md` | `project-context.md`、`docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md` | 需要补齐最小 Translations 资源后再做真实试玩校验 |
-| P1 | C1 存档与确定性 | Continue/三选一 | 文档走查：确认 ADR-0032 仍为 Proposed；检查缺口清单是否存在 | 有可执行的任务分解入口 | 已生成缺口清单，但仍需任务化与实现/取证 | `.taskmaster/docs/adr-0032-gap-checklist.md` | `docs/adr/ADR-0032-save-resume-determinism.md` | 用 Taskmaster 拆任务并推进到可验收证据后再改为 Accepted |
+| P1 | C1 存档与确定性 | Continue/三选一 | 文档走查：确认 ADR-0032 已为 Accepted；检查“Implementation Acceptance Criteria（M1 Gate-0）”是否已任务化并可取证 | 有可执行的任务分解入口 | 已生成缺口清单，但仍需任务化与实现/取证 | `.taskmaster/docs/adr-0032-gap-checklist.md` | `docs/adr/ADR-0032-save-resume-determinism.md` | 用 Taskmaster 拆任务并推进到可验收证据与 `logs/**` 证据链 |
 | P2 | C4 文案禁用语境 | 文档扫描范围 | 文本扫描：全仓 `docs/**` 扫禁用词 | 禁用词仅出现在“规则/反例/清单”中 | 命中点来自规则与反例文档（预期）；另有历史 overlay/migration 文档含“刷新”等旧语境 | `logs/ci/2026-01-25/playtest/newrouge--playtest--issues--paper-audit--2026-01-25.md` | `docs/prd/COPY-FORBIDDEN-WORDS-QA-CHECKLIST-NEWROUGE-V1.md` | 建议将“玩家可见文本”扫描限定到 Translations 资源目录，避免误报与噪音 |

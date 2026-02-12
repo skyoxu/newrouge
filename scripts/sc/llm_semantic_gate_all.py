@@ -29,6 +29,7 @@ from typing import Any
 
 from _taskmaster import resolve_triplet
 from _util import ci_dir, repo_root, today_str
+from _garbled_gate import parse_task_ids_csv, render_top_hits, scan_task_text_integrity
 
 
 @dataclass(frozen=True)
@@ -251,6 +252,12 @@ def main() -> int:
     )
     ap.add_argument("--max-acceptance-items", type=int, default=12, help="Max acceptance items per view included in prompt.")
     ap.add_argument("--max-tasks", type=int, default=0, help="Limit total tasks (0=all).")
+    ap.add_argument(
+        "--garbled-gate",
+        default="on",
+        choices=["on", "off"],
+        help="Hard precheck for garbled task/acceptance text before LLM semantic audit (default: on).",
+    )
     args = ap.parse_args()
 
     batch_size = int(args.batch_size)
@@ -260,6 +267,34 @@ def main() -> int:
 
     out_dir = ci_dir("sc-semantic-gate-all")
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    garbled_gate_on = str(args.garbled_gate).strip().lower() != "off"
+    gate_task_ids = parse_task_ids_csv(str(args.task_ids).strip()) if str(args.task_ids).strip() else set()
+    if garbled_gate_on:
+        pre_report = scan_task_text_integrity(task_ids=gate_task_ids or None)
+        (out_dir / "garbled-precheck.json").write_text(
+            json.dumps(pre_report, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        pre_summary = pre_report.get("summary") or {}
+        pre_fail = (
+            int(pre_summary.get("decode_errors") or 0) > 0
+            or int(pre_summary.get("parse_errors") or 0) > 0
+            or int(pre_summary.get("suspicious_hits") or 0) > 0
+        )
+        if pre_fail:
+            top_hits = render_top_hits(pre_report, limit=8)
+            print(
+                "[sc-semantic-gate-all] ERROR: garbled precheck failed "
+                f"decode_errors={int(pre_summary.get('decode_errors') or 0)} "
+                f"parse_errors={int(pre_summary.get('parse_errors') or 0)} "
+                f"suspicious_hits={int(pre_summary.get('suspicious_hits') or 0)}"
+            )
+            if top_hits:
+                print("[sc-semantic-gate-all] top garbled hits:")
+                for line in top_hits:
+                    print(f" - {line}")
+            return 2
 
     all_ids = _load_all_task_ids()
     if str(args.task_ids or "").strip():

@@ -1,0 +1,16 @@
+{
+  "allowed_direct_scripts": [
+    "scripts/python/run_gate_bundle.py",
+    "scripts/python/ensure_gdunit_plugin.py",
+    "scripts/python/ci_pipeline.py",
+    "scripts/python/run_gdunit.py",
+    "scripts/python/check_a11y.py",
+    "scripts/python/db_schema_dump.py",
+    "scripts/python/check_sentry_secrets.py",
+    "scripts/python/run_dotnet.py"
+  ],
+  "required_bundle_workflows": [
+    ".github/workflows/windows-quality-gate.yml",
+    ".github/workflows/ci-windows.yml"
+  ]
+}

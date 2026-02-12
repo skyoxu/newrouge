@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://buusx6sjsj2u8"
+
+[deps]
+
+files=["res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.restriction.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.considerations.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.alternatives.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.notes.translation"]
+
+source_file="res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.csv"
+dest_files=["res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.restriction.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.considerations.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.alternatives.translation", "res://_bmad/bmb/workflows/workflow/data/examples/meal-prep-nutrition/data/dietary-restrictions.notes.translation"]
+
+[params]
+
+compress=true
+delimiter=0

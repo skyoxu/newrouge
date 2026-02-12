@@ -1,0 +1,13 @@
+# Default owner for all files
+* @skyoxu
+
+# CI gate governance (must be reviewed)
+/.github/workflows/*.yml @skyoxu
+/scripts/python/run_gate_bundle.py @skyoxu
+/scripts/python/check_gate_bundle_consistency.py @skyoxu
+/scripts/python/check_workflow_gate_enforcement.py @skyoxu
+/scripts/python/config/workflow-gate-allowlist.json @skyoxu
+
+# Process contracts and policy docs
+/docs/workflows/gate-bundle.md @skyoxu
+/AGENTS.md @skyoxu

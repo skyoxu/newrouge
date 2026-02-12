@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "tasks": {
+    "6": {
+      "task_id": 6,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-6/verdict.json",
+      "uncovered_count": 2,
+      "obligations": [
+        {
+          "id": "O10",
+          "text": "伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。",
+          "kind": "meta",
+          "source": "subtask:3",
+          "suggestions": [
+            "伤害规则测试必须使用 xUnit Theory，并采用 InlineData 或 MemberData 实现表驱动覆盖。",
+            "乘子组合与固定伤害豁免至少覆盖正常值、边界值与反例输入。",
+            "伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T6.O10] 伤害规则测试必须使用 xUnit Theory，并采用 InlineData 或 MemberData 实现表驱动覆盖。",
+            "[OBL:T6.O10] 乘子组合与固定伤害豁免至少覆盖正常值、边界值与反例输入。",
+            "[OBL:T6.O10] 伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。"
+          ]
+        },
+        {
+          "id": "O15",
+          "text": "CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。",
+          "kind": "core",
+          "source": "master",
+          "suggestions": [
+            "CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。",
+            "仅文档描述或注释声明不计为完成。",
+            "CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T6.O15] CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。",
+            "[OBL:T6.O15] 仅文档描述或注释声明不计为完成。",
+            "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。"
+          ]
+        }
+      ]
+    },
+    "8": {
+      "task_id": 8,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-8/verdict.json",
+      "uncovered_count": 1,
+      "obligations": [
+        {
+          "id": "O8",
+          "text": "U1 升级必须显式定义并可审计 route A/B 选择规则。",
+          "kind": "core",
+          "source": "subtask:3",
+          "suggestions": [
+            "U1 升级仅允许 upgrade_route=A 或 upgrade_route=B，并明确各路线可接受输入集合。",
+            "对 route A/B 分别给出可断言的通过条件与拒绝条件，拒绝时返回固定错误码。",
+            "U1 升级必须显式定义并可审计 route A/B 选择规则。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T8.O8] U1 升级仅允许 upgrade_route=A 或 upgrade_route=B，并明确各路线可接受输入集合。",
+            "[OBL:T8.O8] 对 route A/B 分别给出可断言的通过条件与拒绝条件，拒绝时返回固定错误码。",
+            "[OBL:T8.O8] U1 升级必须显式定义并可审计 route A/B 选择规则。"
+          ]
+        }
+      ]
+    },
+    "11": {
+      "task_id": 11,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-11/verdict.json",
+      "uncovered_count": 5,
+      "obligations": [
+        {
+          "id": "O4",
+          "text": "PlayCard 管道实现不得嵌入 UI concerns。",
+          "kind": "godot",
+          "source": "subtask:1",
+          "suggestions": [
+            "当执行 PlayCard 时，核心管道不得读取或写入任何 UI 对象或 UI 状态。",
+            "通过静态检查或测试断言 CombatService 不依赖 UI 层类型。",
+            "PlayCard 管道实现不得嵌入 UI concerns。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T11.O4] 当执行 PlayCard 时，核心管道不得读取或写入任何 UI 对象或 UI 状态。",
+            "[OBL:T11.O4] 通过静态检查或测试断言 CombatService 不依赖 UI 层类型。",
+            "[OBL:T11.O4] PlayCard 管道实现不得嵌入 UI concerns。"
+          ]
+        },
+        {
+          "id": "O6",
+          "text": "当 PayCost 失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。",
+          "kind": "core",
+          "source": "subtask:2",
+          "suggestions": [
+            "当 PayCost 失败时，流程必须立即返回失败并阻断 BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck。",
+            "当 PayCost 失败时，战斗状态与资源必须保持调用前一致（允许审计日志副作用）。",
+            "当 PayCost 失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T11.O6] 当 PayCost 失败时，流程必须立即返回失败并阻断 BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck。",
+            "[OBL:T11.O6] 当 PayCost 失败时，战斗状态与资源必须保持调用前一致（允许审计日志副作用）。",
+            "[OBL:T11.O6] 当 PayCost 失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。"
+          ]
+        },
+        {
+          "id": "O8",
+          "text": "BeforePlay、ResolveEffect、AfterPlay 必须具有稳定副作用边界（可审计且不越界）。",
+          "kind": "core",
+          "source": "subtask:3",
+          "suggestions": [
+            "为 BeforePlay、ResolveEffect、AfterPlay 定义允许修改的状态边界并在测试中逐项断言。",
+            "任一阶段出现越界副作用时必须判定失败。",
+            "BeforePlay、ResolveEffect、AfterPlay 必须具有稳定副作用边界（可审计且不越界）。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T11.O8] 为 BeforePlay、ResolveEffect、AfterPlay 定义允许修改的状态边界并在测试中逐项断言。",
+            "[OBL:T11.O8] 任一阶段出现越界副作用时必须判定失败。",
+            "[OBL:T11.O8] BeforePlay、ResolveEffect、AfterPlay 必须具有稳定副作用边界（可审计且不越界）。"
+          ]
+        },
+        {
+          "id": "O11",
+          "text": "必须提供 xUnit 用例断言校验失败或支付失败时的阻断推进与状态不变。",
+          "kind": "meta",
+          "source": "subtask:2",
+          "suggestions": [
+            "新增 xUnit 用例分别覆盖校验失败与支付失败，断言后续阶段未被调用。",
+            "同一用例必须断言失败后状态快照不变且失败结果可断言。",
+            "必须提供 xUnit 用例断言校验失败或支付失败时的阻断推进与状态不变。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T11.O11] 新增 xUnit 用例分别覆盖校验失败与支付失败，断言后续阶段未被调用。",
+            "[OBL:T11.O11] 同一用例必须断言失败后状态快照不变且失败结果可断言。",
+            "[OBL:T11.O11] 必须提供 xUnit 用例断言校验失败或支付失败时的阻断推进与状态不变。"
+          ]
+        },
+        {
+          "id": "O14",
+          "text": "实现与测试应可追溯到 ADR-0021 与 ADR-0032。",
+          "kind": "meta",
+          "source": "master",
+          "suggestions": [
+            "验收项需显式要求 Task11 实现与测试均回链 ADR-0021 与 ADR-0032。",
+            "CI 产物需包含可机读 adr_refs 字段用于门禁校验。",
+            "实现与测试应可追溯到 ADR-0021 与 ADR-0032。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T11.O14] 验收项需显式要求 Task11 实现与测试均回链 ADR-0021 与 ADR-0032。",
+            "[OBL:T11.O14] CI 产物需包含可机读 adr_refs 字段用于门禁校验。",
+            "[OBL:T11.O14] 实现与测试应可追溯到 ADR-0021 与 ADR-0032。"
+          ]
+        }
+      ]
+    },
+    "12": {
+      "task_id": 12,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-12/verdict.json",
+      "uncovered_count": 4,
+      "obligations": [
+        {
+          "id": "O9",
+          "text": "必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。",
+          "kind": "meta",
+          "source": "subtask:1",
+          "suggestions": [
+            "xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。",
+            "xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。",
+            "必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。",
+            "[OBL:T12.O9] xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。",
+            "[OBL:T12.O9] 必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。"
+          ]
+        },
+        {
+          "id": "O10",
+          "text": "必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。",
+          "kind": "meta",
+          "source": "subtask:2",
+          "suggestions": [
+            "xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。",
+            "xUnit 测试必须覆盖提交失败路径：目标文件无部分写入状态且仍可读取上一份有效保存。",
+            "必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T12.O10] xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。",
+            "[OBL:T12.O10] xUnit 测试必须覆盖提交失败路径：目标文件无部分写入状态且仍可读取上一份有效保存。",
+            "[OBL:T12.O10] 必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。"
+          ]
+        },
+        {
+          "id": "O11",
+          "text": "必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。",
+          "kind": "meta",
+          "source": "subtask:3",
+          "suggestions": [
+            "xUnit 测试必须覆盖 user:// 合法相对路径写入成功。",
+            "xUnit 测试必须覆盖绝对路径与 traversal-like 路径 fail-fast 拒绝且不得产生落盘文件。",
+            "必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T12.O11] xUnit 测试必须覆盖 user:// 合法相对路径写入成功。",
+            "[OBL:T12.O11] xUnit 测试必须覆盖绝对路径与 traversal-like 路径 fail-fast 拒绝且不得产生落盘文件。",
+            "[OBL:T12.O11] 必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。"
+          ]
+        },
+        {
+          "id": "O12",
+          "text": "必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。",
+          "kind": "meta",
+          "source": "subtask:4",
+          "suggestions": [
+            "xUnit 测试必须断言持久化失败时向调用方传播带上下文错误并包含要求的证据字段。",
+            "xUnit 测试必须断言失败后上一份有效保存内容保持不变。",
+            "必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T12.O12] xUnit 测试必须断言持久化失败时向调用方传播带上下文错误并包含要求的证据字段。",
+            "[OBL:T12.O12] xUnit 测试必须断言失败后上一份有效保存内容保持不变。",
+            "[OBL:T12.O12] 必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。"
+          ]
+        }
+      ]
+    },
+    "34": {
+      "task_id": 34,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-34/verdict.json",
+      "uncovered_count": 1,
+      "obligations": [
+        {
+          "id": "O3",
+          "text": "当目标满足条件时，将卡牌拖拽到目标上必须成功出牌，而非仅触发出牌尝试。",
+          "kind": "godot",
+          "source": "master",
+          "suggestions": [
+            "当目标满足出牌条件时，将卡牌拖拽到目标上必须成功出牌并从手牌移除对应卡牌。",
+            "成功出牌后战斗状态必须发生可观察变化（如目标生命值或状态变化），并可被测试断言。",
+            "当目标满足条件时，将卡牌拖拽到目标上必须成功出牌，而非仅触发出牌尝试。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T34.O3] 当目标满足出牌条件时，将卡牌拖拽到目标上必须成功出牌并从手牌移除对应卡牌。",
+            "[OBL:T34.O3] 成功出牌后战斗状态必须发生可观察变化（如目标生命值或状态变化），并可被测试断言。",
+            "[OBL:T34.O3] 当目标满足条件时，将卡牌拖拽到目标上必须成功出牌，而非仅触发出牌尝试。"
+          ]
+        }
+      ]
+    },
+    "51": {
+      "task_id": 51,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-51/verdict.json",
+      "uncovered_count": 1,
+      "obligations": [
+        {
+          "id": "O7",
+          "text": "验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。",
+          "kind": "meta",
+          "source": "master",
+          "suggestions": [
+            "新增一条：验收清单需显式标注本任务关键行为对应 ADR-0032 与 ADR-0025。",
+            "新增一条：至少一个测试条目需说明其验证点覆盖 ADR-0025 约束。",
+            "验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T51.O7] 新增一条：验收清单需显式标注本任务关键行为对应 ADR-0032 与 ADR-0025。",
+            "[OBL:T51.O7] 新增一条：至少一个测试条目需说明其验证点覆盖 ADR-0025 约束。",
+            "[OBL:T51.O7] 验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。"
+          ]
+        }
+      ]
+    },
+    "56": {
+      "task_id": 56,
+      "verdict_path": "",
+      "uncovered_count": 0,
+      "obligations": []
+    },
+    "17": {
+      "task_id": 17,
+      "verdict_path": "logs/ci/2026-02-11/sc-llm-obligations-task-17/verdict.json",
+      "uncovered_count": 1,
+      "obligations": [
+        {
+          "id": "O8",
+          "text": "分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。",
+          "kind": "core",
+          "source": "master",
+          "suggestions": [
+            "当在分叉节点提交非法分支ID时，系统必须拒绝本次选择，当前节点与可达节点集合保持不变。",
+            "同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。",
+            "分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。"
+          ],
+          "acceptance_lines": [
+            "[OBL:T17.O8] 当在分叉节点提交非法分支ID时，系统必须拒绝本次选择，当前节点与可达节点集合保持不变。",
+            "[OBL:T17.O8] 同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。",
+            "[OBL:T17.O8] 分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。"
+          ]
+        }
+      ]
+    },
+    "57": {
+      "task_id": 57,
+      "verdict_path": "",
+      "uncovered_count": 0,
+      "obligations": []
+    }
+  },
+  "task_ids": [
+    56,
+    57
+  ],
+  "last_sync_mode": {
+    "refresh_baseline": false,
+    "apply": false,
+    "verify": true
+  }
+}

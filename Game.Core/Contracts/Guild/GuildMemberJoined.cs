@@ -14,6 +14,6 @@ public sealed record GuildMemberJoined(
     string Role // member | admin
 )
 {
-    public const string EventType = "core.guild.member.joined";
+    public const string EventType = EventTypes.GuildMemberJoined;
 }
 

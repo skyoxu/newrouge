@@ -78,10 +78,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Forbid mirror path refs (hard)
+      - name: Hard gates bundle (Python)
         shell: pwsh
         run: |
-          py -3 scripts/python/forbid_mirror_path_refs.py --root .
+          py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json
 
       - name: Ensure GdUnit4 plugin
         shell: pwsh
@@ -264,6 +264,12 @@ jobs:
           name: ci-logs
           path: logs/ci/**
           if-no-files-found: ignore
+
+      - name: Soft gates bundle (Python)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          py -3 scripts/python/run_gate_bundle.py --mode soft --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json
 
       - name: GdUnit4 tests (Python, soft gate)
         shell: pwsh

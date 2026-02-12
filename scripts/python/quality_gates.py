@@ -117,6 +117,61 @@ def _date_stamp() -> str:
     return _dt.date.today().strftime("%Y-%m-%d")
 
 
+def _candidate_dotnet_paths() -> list[Path]:
+    exe_name = "dotnet.exe" if os.name == "nt" else "dotnet"
+    candidates: list[Path] = []
+
+    which_dotnet = shutil.which("dotnet")
+    if which_dotnet:
+        candidates.append(Path(which_dotnet))
+
+    for env_key in ("DOTNET_ROOT", "DOTNET_HOME"):
+        env_val = os.environ.get(env_key)
+        if env_val:
+            candidates.append(Path(env_val) / exe_name)
+
+    candidates.append(Path.home() / ".dotnet" / exe_name)
+
+    if os.name == "nt":
+        for env_key in ("ProgramFiles", "ProgramFiles(x86)"):
+            env_val = os.environ.get(env_key)
+            if env_val:
+                candidates.append(Path(env_val) / "dotnet" / "dotnet.exe")
+
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = os.path.normcase(os.path.normpath(str(candidate)))
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
+def _ensure_dotnet_on_path() -> Path | None:
+    for candidate in _candidate_dotnet_paths():
+        if not candidate.is_file():
+            continue
+
+        dotnet_dir = str(candidate.parent)
+        current_path = os.environ.get("PATH", "")
+        path_items = [p for p in current_path.split(os.pathsep) if p]
+        normalized = {
+            os.path.normcase(os.path.normpath(p))
+            for p in path_items
+        }
+        dotnet_dir_norm = os.path.normcase(os.path.normpath(dotnet_dir))
+        if dotnet_dir_norm not in normalized:
+            os.environ["PATH"] = dotnet_dir + os.pathsep + current_path
+
+        if os.name == "nt":
+            os.environ.setdefault("DOTNET_ROOT", dotnet_dir)
+
+        return candidate
+
+    return None
+
+
 def _ci_dir(date: str, category: str) -> Path:
     return _repo_root() / "logs" / "ci" / date / category
 
@@ -137,7 +192,13 @@ def _sha256(path: Path) -> str:
 def _run_to_file(cmd: list[str], out_path: Path) -> int:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
         combined = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
         _write_text(out_path, combined)
         return proc.returncode
@@ -146,7 +207,7 @@ def _run_to_file(cmd: list[str], out_path: Path) -> int:
         return 1
 
 
-def _write_env_evidence(date: str, godot_bin: str | None) -> None:
+def _write_env_evidence(date: str, godot_bin: str | None, dotnet_resolved: Path | None) -> None:
     d = _ci_dir(date, "env-evidence")
     d.mkdir(parents=True, exist_ok=True)
 
@@ -157,9 +218,11 @@ def _write_env_evidence(date: str, godot_bin: str | None) -> None:
     if dotnet:
         _run_to_file(["dotnet", "--info"], d / "dotnet.info.txt")
         _run_to_file(["dotnet", "--list-sdks"], d / "dotnet.list-sdks.txt")
+        _write_text(d / "dotnet.bin.txt", f"dotnet={dotnet}\nresolved={str(dotnet_resolved) if dotnet_resolved else ''}\n")
     else:
         _write_text(d / "dotnet.info.txt", "dotnet CLI not found in PATH.\n")
         _write_text(d / "dotnet.list-sdks.txt", "dotnet CLI not found in PATH.\n")
+        _write_text(d / "dotnet.bin.txt", f"resolved={str(dotnet_resolved) if dotnet_resolved else ''}\n")
 
     if godot_bin:
         gb = Path(godot_bin)
@@ -174,13 +237,13 @@ def _write_env_evidence(date: str, godot_bin: str | None) -> None:
         _write_text(d / "godot.version.txt", "GODOT_BIN is not set.\n")
 
 
-def _require_prereqs(date: str, godot_bin: str | None, require_lock_files: bool) -> bool:
+def _require_prereqs(date: str, godot_bin: str | None, require_lock_files: bool, dotnet_resolved: Path | None) -> bool:
     d = _ci_dir(date, "prereqs")
     d.mkdir(parents=True, exist_ok=True)
 
     ok = True
 
-    if not shutil.which("dotnet"):
+    if dotnet_resolved is None:
         _write_text(d / "dotnet.missing.txt", "dotnet CLI not found. Install .NET 8 SDK and re-run.\n")
         ok = False
 
@@ -243,9 +306,10 @@ def main() -> int:
 
     if args.cmd == "all":
         date = _date_stamp()
-        _write_env_evidence(date, args.godot_bin)
+        dotnet_resolved = _ensure_dotnet_on_path()
+        _write_env_evidence(date, args.godot_bin, dotnet_resolved)
 
-        prereqs_ok = _require_prereqs(date, args.godot_bin, args.require_lock_files)
+        prereqs_ok = _require_prereqs(date, args.godot_bin, args.require_lock_files, dotnet_resolved)
         if not prereqs_ok:
             return 1
 

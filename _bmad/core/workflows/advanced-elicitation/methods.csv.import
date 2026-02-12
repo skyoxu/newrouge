@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cxnmbbp5ltxop"
+
+[deps]
+
+files=["res://_bmad/core/workflows/advanced-elicitation/methods.category.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.method.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.description.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.output.translation"]
+
+source_file="res://_bmad/core/workflows/advanced-elicitation/methods.csv"
+dest_files=["res://_bmad/core/workflows/advanced-elicitation/methods.category.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.method.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.description.translation", "res://_bmad/core/workflows/advanced-elicitation/methods.output.translation"]
+
+[params]
+
+compress=true
+delimiter=0

@@ -1,0 +1,3712 @@
+{
+  "summary": {
+    "generated_at": "2026-02-12T12:25:11.532500+00:00",
+    "task_views": [
+      ".taskmaster/tasks/tasks_back.json",
+      ".taskmaster/tasks/tasks_gameplay.json"
+    ],
+    "tasks_scanned": 100,
+    "tasks_with_contract_refs": 74,
+    "contract_refs_total": 189,
+    "unique_event_refs": 59,
+    "unresolved_refs_count": 0,
+    "unresolved_refs": [],
+    "resolved_refs_without_tests_count": 0,
+    "resolved_refs_without_tests": [],
+    "event_contract_coverage": {
+      "event_types_total": 59,
+      "typed_event_contracts_total": 59
+    }
+  },
+  "tasks": [
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0001",
+      "taskmaster_id": 1,
+      "title": "Set up project environment and dependencies",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0002",
+      "taskmaster_id": 4,
+      "title": "Implement core contracts for offer locking and deterministic outcomes",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.skipped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSkippedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSkippedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0003",
+      "taskmaster_id": 5,
+      "title": "Implement core contracts for status and modifier system",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.status.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.stacked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusStackedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusStackedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.expired",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusExpiredEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusExpiredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.dispelled",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusDispelledEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusDispelledEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0004",
+      "taskmaster_id": 6,
+      "title": "Implement core contracts for combat loop and resolution pipeline",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 6,
+      "contracts": [
+        {
+          "event_type": "core.combat.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.card.played",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardPlayedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardPlayedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.health.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/HealthUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "HealthUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.score.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ScoreUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "ScoreUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0005",
+      "taskmaster_id": 12,
+      "title": "Implement save serialization and atomic write",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.save.write.succeeded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveWriteSucceededEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveWriteSucceededEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.save.write.failed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveWriteFailedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveWriteFailedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.save.loaded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveLoadedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveLoadedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0006",
+      "taskmaster_id": 13,
+      "title": "Set up Godot autoloads and composition root",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.state.transitioned",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStateTransitionedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStateTransitionedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0007",
+      "taskmaster_id": 14,
+      "title": "Create main menu scene with new run and continue options",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0008",
+      "taskmaster_id": 17,
+      "title": "Create modular Act structure for map system",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.map.node.entered",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeEnteredEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeEnteredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.node.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.node.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0009",
+      "taskmaster_id": 19,
+      "title": "Implement reward scene with card three-choice-one and offer locking",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.skipped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSkippedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSkippedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0010",
+      "taskmaster_id": 29,
+      "title": "Implement card drop pools per Act and encounter type",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0011",
+      "taskmaster_id": 30,
+      "title": "Define relic contracts and instance model",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.relic.granted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RelicGrantedEvent.cs"
+          ],
+          "contract_classes": [
+            "RelicGrantedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0012",
+      "taskmaster_id": 36,
+      "title": "Implement autosave triggers per determinism policy",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.event.choice.committed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/EventChoiceCommittedEvent.cs"
+          ],
+          "contract_classes": [
+            "EventChoiceCommittedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0013",
+      "taskmaster_id": 38,
+      "title": "Audit logging for determinism and security events",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0014",
+      "taskmaster_id": 43,
+      "title": "Run state machine with Command-only transitions",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.run.state.transitioned",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStateTransitionedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStateTransitionedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0015",
+      "taskmaster_id": 44,
+      "title": "Deterministic resume integration tests (headless)",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0016",
+      "taskmaster_id": 49,
+      "title": "Implement stability safeguards for combat loop",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.combat.loop.hard_stopped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatLoopHardStoppedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatLoopHardStoppedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.card.invalid_play_blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardInvalidPlayBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardInvalidPlayBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0017",
+      "taskmaster_id": 50,
+      "title": "Implement save migration validation and failure blocking",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.save.migration.failed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveMigrationFailedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveMigrationFailedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0018",
+      "taskmaster_id": 51,
+      "title": "Integrate combat turn flow and persistence",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.combat.turn.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatTurnStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatTurnStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0019",
+      "taskmaster_id": 52,
+      "title": "Implement enemy intent selection logic",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.intent.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/IntentSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "IntentSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0020",
+      "taskmaster_id": 53,
+      "title": "Headless smoke runner (Python) + strict mode",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0021",
+      "taskmaster_id": 54,
+      "title": "Integrate GdUnit4 suites into quality_gates.py",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0022",
+      "taskmaster_id": 55,
+      "title": "Coverage thresholds as configurable soft/hard gate",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0023",
+      "taskmaster_id": 56,
+      "title": "Audit JSONL validation + gate integration",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0043",
+      "taskmaster_id": 57,
+      "title": "Traceability gate for ADR/Chapter/Overlay links",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.traceability.checked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/TraceabilityCheckedEvent.cs"
+          ],
+          "contract_classes": [
+            "TraceabilityCheckedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0024",
+      "taskmaster_id": null,
+      "title": "External URL allowlist + safe ShellOpen adapter",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0025",
+      "taskmaster_id": null,
+      "title": "Secure file access adapter (res:// read-only, user:// read-write)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0026",
+      "taskmaster_id": null,
+      "title": "Performance budget gate integrated into quality gates",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0027",
+      "taskmaster_id": null,
+      "title": "Baseline-based performance regression comparison (optional)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0028",
+      "taskmaster_id": null,
+      "title": "Observability bootstrap (structured logs + optional Sentry init)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0029",
+      "taskmaster_id": null,
+      "title": "Release health gate script (Sentry Sessions) + CI integration",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0030",
+      "taskmaster_id": null,
+      "title": "Build/export pipeline hardening (Windows-only)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0031",
+      "taskmaster_id": null,
+      "title": "Release channel + release profile metadata (optional)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0032",
+      "taskmaster_id": null,
+      "title": "Privacy & logging guidelines docs (project-facing)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0033",
+      "taskmaster_id": null,
+      "title": "Duplication and cyclomatic complexity gate (lightweight)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0034",
+      "taskmaster_id": null,
+      "title": "Architecture tests (Core must not depend on Godot)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0035",
+      "taskmaster_id": null,
+      "title": "OS.execute guard (deny-by-default) + audit",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0036",
+      "taskmaster_id": null,
+      "title": "Signal contract validation and tests (security-sensitive)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.guild.member.joined",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Guild/GuildMemberJoined.cs"
+          ],
+          "contract_classes": [
+            "GuildMemberJoined"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0037",
+      "taskmaster_id": null,
+      "title": "Performance reports and history artifacts (project-level)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0038",
+      "taskmaster_id": null,
+      "title": "Dedicated performance gate workflow (optional)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0039",
+      "taskmaster_id": null,
+      "title": "Game.Core observability client (structured logs + PII scrubbing)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0040",
+      "taskmaster_id": null,
+      "title": "Dedicated Windows release workflow (tag/dispatch) + artifacts",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0041",
+      "taskmaster_id": null,
+      "title": "Optional code signing step (SignTool) for release artifacts",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_back.json",
+      "task_id": "NG-0042",
+      "taskmaster_id": null,
+      "title": "Export presets for multiple configurations (debug/release/demo)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0101",
+      "taskmaster_id": 1,
+      "title": "Set up project environment and dependencies",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0102",
+      "taskmaster_id": 2,
+      "title": "Create core project structure and namespaces",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0103",
+      "taskmaster_id": 3,
+      "title": "Implement core contracts for card identity and forms",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.card.upgraded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CardUpgradedEvent.cs"
+          ],
+          "contract_classes": [
+            "CardUpgradedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.card.ultimate.promoted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CardUltimatePromotedEvent.cs"
+          ],
+          "contract_classes": [
+            "CardUltimatePromotedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0104",
+      "taskmaster_id": 4,
+      "title": "Implement core contracts for offer locking and deterministic outcomes",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.skipped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSkippedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSkippedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0105",
+      "taskmaster_id": 5,
+      "title": "Implement core contracts for status and modifier system",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.status.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.stacked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusStackedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusStackedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.expired",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusExpiredEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusExpiredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.dispelled",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusDispelledEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusDispelledEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0106",
+      "taskmaster_id": 6,
+      "title": "Implement core contracts for combat loop and resolution pipeline",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 6,
+      "contracts": [
+        {
+          "event_type": "core.combat.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.card.played",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardPlayedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardPlayedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.health.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/HealthUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "HealthUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.score.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ScoreUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "ScoreUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0107",
+      "taskmaster_id": 7,
+      "title": "Set up event bus and contracts location",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.combat.card.played",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardPlayedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardPlayedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.guild.member.joined",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Guild/GuildMemberJoined.cs"
+          ],
+          "contract_classes": [
+            "GuildMemberJoined"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0108",
+      "taskmaster_id": 8,
+      "title": "Implement core logic for card identity and forms",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.card.upgraded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CardUpgradedEvent.cs"
+          ],
+          "contract_classes": [
+            "CardUpgradedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.card.ultimate.promoted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CardUltimatePromotedEvent.cs"
+          ],
+          "contract_classes": [
+            "CardUltimatePromotedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0109",
+      "taskmaster_id": 9,
+      "title": "Implement deterministic RNG stream registry",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.rng.stream.advanced",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RngStreamAdvancedEvent.cs"
+          ],
+          "contract_classes": [
+            "RngStreamAdvancedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.rng.stream.restored",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RngStreamRestoredEvent.cs"
+          ],
+          "contract_classes": [
+            "RngStreamRestoredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0110",
+      "taskmaster_id": 10,
+      "title": "Implement status application, stacking, and decay",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.status.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.stacked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusStackedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusStackedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.expired",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusExpiredEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusExpiredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.dispelled",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusDispelledEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusDispelledEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0111",
+      "taskmaster_id": 11,
+      "title": "Implement combat resolution pipeline (core)",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.combat.card.played",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardPlayedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardPlayedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.health.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/HealthUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "HealthUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0112",
+      "taskmaster_id": 12,
+      "title": "Implement save serialization and atomic write",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.save.write.succeeded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveWriteSucceededEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveWriteSucceededEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.save.write.failed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveWriteFailedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveWriteFailedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.save.loaded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveLoadedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveLoadedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0113",
+      "taskmaster_id": 13,
+      "title": "Set up Godot autoloads and composition root",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.state.transitioned",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStateTransitionedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStateTransitionedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0114",
+      "taskmaster_id": 14,
+      "title": "Create main menu scene with new run and continue options",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0115",
+      "taskmaster_id": 15,
+      "title": "Implement difficulty selection UI",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.run.difficulty.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunDifficultySelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunDifficultySelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0116",
+      "taskmaster_id": 16,
+      "title": "Implement character selection UI for Warrior only",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.run.character.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunCharacterSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunCharacterSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0117",
+      "taskmaster_id": 17,
+      "title": "Create modular Act structure for map system",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.map.node.entered",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeEnteredEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeEnteredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.node.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.node.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0118",
+      "taskmaster_id": 18,
+      "title": "Implement combat scene UI shell and bindings",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 5,
+      "contracts": [
+        {
+          "event_type": "core.combat.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.turn.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatTurnStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatTurnStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.intent.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/IntentSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "IntentSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0119",
+      "taskmaster_id": 19,
+      "title": "Implement reward scene with card three-choice-one and offer locking",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.skipped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferSkippedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferSkippedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0120",
+      "taskmaster_id": 20,
+      "title": "Implement shop scene with inventory locking and no upgrade context",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.shop.inventory.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ShopInventoryLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "ShopInventoryLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.shop.item.purchased",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ShopItemPurchasedEvent.cs"
+          ],
+          "contract_classes": [
+            "ShopItemPurchasedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.shop.curse.removed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ShopCurseRemovedEvent.cs"
+          ],
+          "contract_classes": [
+            "ShopCurseRemovedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0121",
+      "taskmaster_id": 21,
+      "title": "Implement rest scene with free upgrade option",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.rest.option.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RestOptionSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RestOptionSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.card.upgraded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CardUpgradedEvent.cs"
+          ],
+          "contract_classes": [
+            "CardUpgradedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0122",
+      "taskmaster_id": 22,
+      "title": "Implement event scene with dark cost examples",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.event.entered",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/EventEnteredEvent.cs"
+          ],
+          "contract_classes": [
+            "EventEnteredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.event.choice.committed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/EventChoiceCommittedEvent.cs"
+          ],
+          "contract_classes": [
+            "EventChoiceCommittedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.darkcost.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DarkCostAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "DarkCostAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0123",
+      "taskmaster_id": 23,
+      "title": "Set up translations system with key naming conventions",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0124",
+      "taskmaster_id": 24,
+      "title": "Implement Warrior starting deck with 10 cards",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.deck.initialized",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckInitializedEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckInitializedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0125",
+      "taskmaster_id": 25,
+      "title": "Implement rage as state buff for Warrior",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.status.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.stacked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusStackedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusStackedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0126",
+      "taskmaster_id": 26,
+      "title": "Define difficulty configuration contract and immutability",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.run.difficulty.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunDifficultySelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunDifficultySelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0127",
+      "taskmaster_id": 27,
+      "title": "Implement difficulty rule modifiers",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.difficulty.modifier.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DifficultyModifierAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "DifficultyModifierAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0128",
+      "taskmaster_id": 28,
+      "title": "Create ActConfig data model and loader",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.act.config.loaded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ActConfigLoadedEvent.cs"
+          ],
+          "contract_classes": [
+            "ActConfigLoadedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0129",
+      "taskmaster_id": 29,
+      "title": "Implement card drop pools per Act and encounter type",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0130",
+      "taskmaster_id": 30,
+      "title": "Define relic contracts and instance model",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.relic.granted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RelicGrantedEvent.cs"
+          ],
+          "contract_classes": [
+            "RelicGrantedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0131",
+      "taskmaster_id": 31,
+      "title": "Implement 20 starting relic definitions and uniqueness checks",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.relic.granted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RelicGrantedEvent.cs"
+          ],
+          "contract_classes": [
+            "RelicGrantedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0132",
+      "taskmaster_id": 32,
+      "title": "Implement curse cards and removal services",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.curse.added",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CurseAddedEvent.cs"
+          ],
+          "contract_classes": [
+            "CurseAddedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.curse.removed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CurseRemovedEvent.cs"
+          ],
+          "contract_classes": [
+            "CurseRemovedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.shop.curse.removed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ShopCurseRemovedEvent.cs"
+          ],
+          "contract_classes": [
+            "ShopCurseRemovedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0133",
+      "taskmaster_id": 33,
+      "title": "Implement deck operations service (draw/discard/exhaust/retain)",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 5,
+      "contracts": [
+        {
+          "event_type": "core.deck.drawn",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckDrawnEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckDrawnEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.deck.discarded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckDiscardedEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckDiscardedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.deck.exhausted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckExhaustedEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckExhaustedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.deck.retained",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckRetainedEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckRetainedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.deck.shuffled",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/DeckShuffledEvent.cs"
+          ],
+          "contract_classes": [
+            "DeckShuffledEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0134",
+      "taskmaster_id": 34,
+      "title": "Implement card targeting and drag UX",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.combat.card.played",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardPlayedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardPlayedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.card.invalid_play_blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardInvalidPlayBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardInvalidPlayBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0135",
+      "taskmaster_id": 35,
+      "title": "Implement end-of-combat resolution pipeline",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0136",
+      "taskmaster_id": 36,
+      "title": "Implement autosave triggers per determinism policy",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.event.choice.committed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/EventChoiceCommittedEvent.cs"
+          ],
+          "contract_classes": [
+            "EventChoiceCommittedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0137",
+      "taskmaster_id": 37,
+      "title": "Single-slot continue metadata and integrity checks",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.save.loaded",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveLoadedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveLoadedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0138",
+      "taskmaster_id": 38,
+      "title": "Audit logging for determinism and security events",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0139",
+      "taskmaster_id": 39,
+      "title": "Populate translations for M1 cards, relics, events",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 4,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.event.entered",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/EventEnteredEvent.cs"
+          ],
+          "contract_classes": [
+            "EventEnteredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.relic.granted",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RelicGrantedEvent.cs"
+          ],
+          "contract_classes": [
+            "RelicGrantedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.curse.added",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CurseAddedEvent.cs"
+          ],
+          "contract_classes": [
+            "CurseAddedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0140",
+      "taskmaster_id": 40,
+      "title": "Define Act 1 enemy data and definitions",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.intent.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/IntentSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "IntentSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0141",
+      "taskmaster_id": 41,
+      "title": "Implement enemy intent display and preview UI",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.intent.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/IntentSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "IntentSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.turn.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatTurnStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatTurnStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0142",
+      "taskmaster_id": 42,
+      "title": "Map node entry gating and backtracking rules",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.map.node.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.node.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapNodeSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapNodeSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.map.path.backtrack.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/MapPathBacktrackBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "MapPathBacktrackBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0143",
+      "taskmaster_id": 43,
+      "title": "Run state machine with Command-only transitions",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.run.state.transitioned",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStateTransitionedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStateTransitionedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0144",
+      "taskmaster_id": 44,
+      "title": "Deterministic resume integration tests (headless)",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.resumed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunResumedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunResumedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0145",
+      "taskmaster_id": 45,
+      "title": "Display difficulty in HUD and run summary",
+      "status": "pending",
+      "layer": "adapter",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.difficulty.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunDifficultySelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunDifficultySelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.score.updated",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/ScoreUpdatedEvent.cs"
+          ],
+          "contract_classes": [
+            "ScoreUpdatedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0146",
+      "taskmaster_id": 46,
+      "title": "Implement offer locking generation using RNG streams",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.reward.offer.locked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferLockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferLockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.reward.offer.presented",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs"
+          ],
+          "contract_classes": [
+            "RewardOfferPresentedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0147",
+      "taskmaster_id": 47,
+      "title": "Implement status trigger ordering and fixed damage rules",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.status.applied",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusAppliedEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusAppliedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.status.expired",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/StatusExpiredEvent.cs"
+          ],
+          "contract_classes": [
+            "StatusExpiredEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.fixed_damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatFixedDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatFixedDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0148",
+      "taskmaster_id": 48,
+      "title": "Implement damage calculation and AOE ordering",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.combat.damage.resolved",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatDamageResolvedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0149",
+      "taskmaster_id": 49,
+      "title": "Implement stability safeguards for combat loop",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.combat.loop.hard_stopped",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatLoopHardStoppedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatLoopHardStoppedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.card.invalid_play_blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatCardInvalidPlayBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatCardInvalidPlayBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0150",
+      "taskmaster_id": 50,
+      "title": "Implement save migration validation and failure blocking",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 2,
+      "contracts": [
+        {
+          "event_type": "core.save.migration.failed",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/SaveMigrationFailedEvent.cs"
+          ],
+          "contract_classes": [
+            "SaveMigrationFailedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs",
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.run.continue.blocked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunContinueBlockedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunContinueBlockedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0151",
+      "taskmaster_id": 51,
+      "title": "Integrate combat turn flow and persistence",
+      "status": "pending",
+      "layer": "core",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.combat.turn.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatTurnStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatTurnStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.autosave.written",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AutosaveWrittenEvent.cs"
+          ],
+          "contract_classes": [
+            "AutosaveWrittenEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0152",
+      "taskmaster_id": 52,
+      "title": "Implement enemy intent selection logic",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.intent.selected",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/IntentSelectedEvent.cs"
+          ],
+          "contract_classes": [
+            "IntentSelectedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0153",
+      "taskmaster_id": 53,
+      "title": "Headless smoke runner (Python) + strict mode",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 3,
+      "contracts": [
+        {
+          "event_type": "core.run.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/RunStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "RunStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.started",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatStartedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatStartedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        },
+        {
+          "event_type": "core.combat.ended",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/CombatEndedEvent.cs"
+          ],
+          "contract_classes": [
+            "CombatEndedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsM1Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0154",
+      "taskmaster_id": 54,
+      "title": "Integrate GdUnit4 suites into quality_gates.py",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0155",
+      "taskmaster_id": 55,
+      "title": "Coverage thresholds as configurable soft/hard gate",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 0,
+      "contracts": []
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0156",
+      "taskmaster_id": 56,
+      "title": "Audit JSONL validation + gate integration",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.audit.logged",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/AuditLoggedEvent.cs"
+          ],
+          "contract_classes": [
+            "AuditLoggedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    },
+    {
+      "view": ".taskmaster/tasks/tasks_gameplay.json",
+      "task_id": "GM-0157",
+      "taskmaster_id": 57,
+      "title": "Traceability gate for ADR/Chapter/Overlay links",
+      "status": "pending",
+      "layer": "ci",
+      "contract_refs_count": 1,
+      "contracts": [
+        {
+          "event_type": "core.traceability.checked",
+          "resolved": true,
+          "contract_files": [
+            "Game.Core/Contracts/Events/TraceabilityCheckedEvent.cs"
+          ],
+          "contract_classes": [
+            "TraceabilityCheckedEvent"
+          ],
+          "tests": [
+            "Game.Core.Tests/Contracts/DomainEventContractTests.cs",
+            "Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs"
+          ]
+        }
+      ]
+    }
+  ]
+}

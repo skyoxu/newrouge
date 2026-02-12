@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://br2gnqe16roh1"
+
+[deps]
+
+files=["res://_bmad/bmm/testarch/tea-index.name.translation", "res://_bmad/bmm/testarch/tea-index.description.translation", "res://_bmad/bmm/testarch/tea-index.tags.translation", "res://_bmad/bmm/testarch/tea-index.fragment.translation"]
+
+source_file="res://_bmad/bmm/testarch/tea-index.csv"
+dest_files=["res://_bmad/bmm/testarch/tea-index.name.translation", "res://_bmad/bmm/testarch/tea-index.description.translation", "res://_bmad/bmm/testarch/tea-index.tags.translation", "res://_bmad/bmm/testarch/tea-index.fragment.translation"]
+
+[params]
+
+compress=true
+delimiter=0
