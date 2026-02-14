@@ -116,7 +116,10 @@
     ],
     "taskmaster_id": 2,
     "taskmaster_exported": true,
-    "contractRefs": []
+    "contractRefs": [
+      "core.run.started",
+      "core.run.state.transitioned"
+    ]
   },
   {
     "id": "GM-0103",
