@@ -34,14 +34,17 @@ BASELINE_RE = re.compile(
 
 
 def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as file_obj:
-        while True:
-            chunk = file_obj.read(1024 * 1024)
-            if not chunk:
-                break
-            h.update(chunk)
-    return h.hexdigest()
+    data = _canonical_bytes(path)
+    return hashlib.sha256(data).hexdigest()
+
+
+def _canonical_bytes(path: Path) -> bytes:
+    """Return canonical content bytes for cross-platform stable hashing.
+
+    We normalize CRLF to LF so Windows and CI checkouts produce the same digest.
+    """
+    data = path.read_bytes()
+    return data.replace(b"\r\n", b"\n")
 
 
 def _build_baseline(repo_root: Path) -> dict[str, Any]:
@@ -64,7 +67,7 @@ def _build_baseline(repo_root: Path) -> dict[str, Any]:
                 "path": str(rel).replace("\\", "/"),
                 "exists": True,
                 "sha256": _sha256(full_path),
-                "bytes": full_path.stat().st_size,
+                "bytes": len(_canonical_bytes(full_path)),
             }
         )
 
@@ -157,4 +160,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
