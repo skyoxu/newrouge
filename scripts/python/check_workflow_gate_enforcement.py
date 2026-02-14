@@ -121,9 +121,17 @@ def main() -> int:
 
     module = _load_bundle_module(repo_root)
     task_files = [".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"]
-    bundle_gate_scripts = _extract_gate_scripts(module._hard_gate_commands(task_files)) | _extract_gate_scripts(
-        module._soft_gate_commands(task_files)
-    )
+    if hasattr(module, "_hard_gate_commands_with_options"):
+        hard_commands = module._hard_gate_commands_with_options(task_files, False)
+    else:
+        hard_commands = module._hard_gate_commands(task_files)
+
+    try:
+        soft_commands = module._soft_gate_commands(task_files, False)
+    except TypeError:
+        soft_commands = module._soft_gate_commands(task_files)
+
+    bundle_gate_scripts = _extract_gate_scripts(hard_commands) | _extract_gate_scripts(soft_commands)
 
     violations: list[dict[str, Any]] = []
     per_file: list[dict[str, Any]] = []

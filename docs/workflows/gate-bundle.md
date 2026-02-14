@@ -23,6 +23,11 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 - `--mode hard`：执行硬门；任一门禁失败即返回非 0。
 - `--mode soft`：执行软门；默认不阻断（如需阻断可加 `--strict-soft`）。
 - `--mode all`：先执行硬门，再执行软门，并输出总汇总。
+- `--stability-template-hard`：将 `check_acceptance_stability_template.py` 从软门提升为硬门（默认在软门）。
+- `--run-id`：可选运行标识；默认自动取 CI RunId（或本地时间戳），用于避免同日覆盖。
+- `--retention-days`：运行后自动清理 `runs/` 下超过保留天数的目录（默认 14）。
+- `--max-runs-per-day`：每个日期目录最多保留 N 个 run（默认 20，按最近修改时间保留）。
+- `--skip-prune-runs`：跳过本次清理（默认执行清理）。
 - `--task-files`：视图任务文件列表，供契约相关门禁读取。
 
 ## 当前门禁分组（SSoT 以脚本为准）
@@ -43,6 +48,7 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 ### Soft Gates
 
 - `generate_task_contract_test_matrix.py`
+- `check_acceptance_stability_template.py`
 
 ## CI 接入规范
 
@@ -61,11 +67,12 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 
 默认输出路径：
 
-- `logs/ci/<YYYY-MM-DD>/gate-bundle/hard/summary.json`
-- `logs/ci/<YYYY-MM-DD>/gate-bundle/soft/summary.json`
-- `logs/ci/<YYYY-MM-DD>/gate-bundle/summary.json`（`mode=all`）
+- `logs/ci/<YYYY-MM-DD>/gate-bundle/runs/<run-id>/hard/summary.json`
+- `logs/ci/<YYYY-MM-DD>/gate-bundle/runs/<run-id>/soft/summary.json`
+- `logs/ci/<YYYY-MM-DD>/gate-bundle/runs/<run-id>/summary.json`（`mode=all`）
 
 每个门禁的原始输出会写入同目录下 `<gate-name>.log`，用于快速定位失败根因。
+其中 `task_contract_test_matrix` 在 gate bundle 中会写入当前 run 目录（不再默认落盘到 `.taskmaster/docs/`），用于减少跟踪文件噪声。
 
 ## 变更规则
 

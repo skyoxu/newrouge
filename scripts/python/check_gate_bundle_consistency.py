@@ -123,8 +123,20 @@ def main() -> int:
     doc_hard, doc_soft = _extract_doc_sections(doc_text)
 
     module = _load_bundle_module(repo_root)
-    code_hard = _extract_script_names(module._hard_gate_commands([".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"]))
-    code_soft = _extract_script_names(module._soft_gate_commands([".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"]))
+    task_files = [".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"]
+
+    if hasattr(module, "_hard_gate_commands_with_options"):
+        hard_commands = module._hard_gate_commands_with_options(task_files, False)
+    else:
+        hard_commands = module._hard_gate_commands(task_files)
+
+    try:
+        soft_commands = module._soft_gate_commands(task_files, False)
+    except TypeError:
+        soft_commands = module._soft_gate_commands(task_files)
+
+    code_hard = _extract_script_names(hard_commands)
+    code_soft = _extract_script_names(soft_commands)
 
     hard_cmp = _compare(doc_hard, code_hard)
     soft_cmp = _compare(doc_soft, code_soft)
@@ -177,4 +189,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
