@@ -412,7 +412,9 @@
     "contractRefs": [
       "core.run.started",
       "core.run.resumed",
-      "core.run.state.transitioned"
+      "core.run.state.transitioned",
+      "core.combat.started",
+      "core.autosave.written"
     ]
   },
   {

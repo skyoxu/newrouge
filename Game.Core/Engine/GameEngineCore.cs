@@ -1,4 +1,5 @@
 using Game.Core.Contracts;
+using Game.Core.Contracts.Interfaces;
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
 using Game.Core.Ports;

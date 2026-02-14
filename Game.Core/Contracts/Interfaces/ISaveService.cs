@@ -5,10 +5,13 @@ namespace Game.Core.Contracts.Interfaces;
 /// <summary>
 /// Save/continue persistence service for single-slot policy.
 /// </summary>
+/// <remarks>
+/// ADR refs: ADR-0032, ADR-0007.
+/// Overlay ref: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md
+/// </remarks>
 public interface ISaveService
 {
     void WriteAutosave(AutosaveSnapshot snapshot);
     AutosaveSnapshot? ReadAutosave();
     ContinueMetadata? ReadContinueMetadata();
 }
-

@@ -431,7 +431,8 @@
       "在 Game.Core/Contracts 中至少定义 CardPlayed 与 CombatStarted 两个事件 DTO，并包含可区分事件的类型常量或字段。 Refs: Game.Core.Tests/Domain/GameEventContractsTests.cs",
       "在组合根完成 EventBus 的依赖注入配置，Godot 层通过接口获取该 EventBus 并能调用。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
       "Godot 层发布或订阅事件时使用 Game.Core.Contracts 中的 DTO 类型，仓库内不存在 Godot 层新增的同名契约定义文件。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
-      "可通过测试或检索证据确认：契约文件位于 Game.Core/Contracts 且 Godot 层无重复 DTO 定义。 Refs: Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs"
+      "可通过测试或检索证据确认：契约文件位于 Game.Core/Contracts 且 Godot 层无重复 DTO 定义。 Refs: Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs",
+      "EventBus 的任务验收必须覆盖并验证以下领域事件可发布/可订阅：core.combat.started、core.combat.card.played、core.reward.offer.locked、core.autosave.written、core.run.state.transitioned；任一事件缺失则验收失败。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for event publishing and subscription. Verify contracts are in correct location and not duplicated in Godot scripts. Refs: ADR-0004, ADR-0020."
@@ -439,10 +440,11 @@
     "taskmaster_id": 7,
     "taskmaster_exported": true,
     "contractRefs": [
+      "core.combat.started",
       "core.combat.card.played",
       "core.reward.offer.locked",
       "core.autosave.written",
-      "core.guild.member.joined"
+      "core.run.state.transitioned"
     ]
   },
   {
@@ -883,7 +885,9 @@
     "contractRefs": [
       "core.run.started",
       "core.run.resumed",
-      "core.run.state.transitioned"
+      "core.run.state.transitioned",
+      "core.combat.started",
+      "core.autosave.written"
     ]
   },
   {

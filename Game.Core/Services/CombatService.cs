@@ -1,5 +1,6 @@
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
+using Game.Core.Contracts.Interfaces;
 using System.Text.Json;
 
 namespace Game.Core.Services;

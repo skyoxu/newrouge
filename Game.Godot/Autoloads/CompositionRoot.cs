@@ -1,5 +1,5 @@
 using Game.Core.Ports;
-using Game.Core.Services;
+using Game.Core.Contracts.Interfaces;
 using Godot;
 
 namespace Game.Godot.Autoloads;

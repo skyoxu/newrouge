@@ -11,7 +11,7 @@ ADR-Refs:
 Test-Refs:
   - logs/ci/2026-02-12/docs-utf8-gate/summary.json
   - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
-  - logs/ci/2026-02-12/sc-semantic-gate-all/report.md
+  - logs/ci/2026-02-14/sc-semantic-gate-all/summary.json
 ---
 
 # 08章验收清单（M1: Warrior）
@@ -51,7 +51,7 @@ Test-Refs:
 **Real（当前已有证据）**
 - `logs/ci/2026-02-12/docs-utf8-gate/summary.json`
 - `logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json`
-- `logs/ci/2026-02-12/sc-semantic-gate-all/report.md`
+- `logs/ci/2026-02-14/sc-semantic-gate-all/summary.json`
 
 **Planned（后续实现落地）**
 - `Game.Core.Tests/Determinism/OfferLockingTests.cs`

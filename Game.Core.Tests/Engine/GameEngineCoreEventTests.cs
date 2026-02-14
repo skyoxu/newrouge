@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Game.Core.Contracts;
+using Game.Core.Contracts.Interfaces;
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
 using Game.Core.Engine;
-using Game.Core.Services;
 using Xunit;
 
 namespace Game.Core.Tests.Engine;

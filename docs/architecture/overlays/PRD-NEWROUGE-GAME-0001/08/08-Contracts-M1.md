@@ -22,6 +22,7 @@ Test-Refs:
   - Game.Core.Tests/Contracts/EventContractsM1Tests.cs
   - Game.Core.Tests/Contracts/DeckStatusSaveEventContractsTests.cs
   - Game.Core.Tests/Contracts/EventContractsBatch3Tests.cs
+  - Game.Core.Tests/Contracts/InterfaceContractsTests.cs
   - logs/ci/2026-02-12/contracts-validate.json
 ---
 
@@ -377,6 +378,9 @@ Test-Refs:
 - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
 - `Game.Core/Contracts/Interfaces/IRelicService.cs`
 - `Game.Core/Contracts/Interfaces/ICurseService.cs`
+- `Game.Core/Contracts/Interfaces/IEventBus.cs`
+  - 用途：跨层发布/订阅领域事件，作为 Core 与 Adapter 的统一事件总线抽象。
+  - 方法：`PublishAsync(DomainEvent evt)`、`Subscribe(Func<DomainEvent, Task> handler)`。
 
 ## 3. 回顾式审查结果（6 点）
 - 命名：事件常量统一归口 `EventTypes`，符合 ADR-0004 规范。

@@ -134,6 +134,10 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             "cmd": ["py", "-3", "scripts/python/check_domain_contracts.py"],
         },
         {
+            "name": "contract_interface_docs",
+            "cmd": ["py", "-3", "scripts/python/check_contract_interface_docs.py"],
+        },
+        {
             "name": "check_gate_bundle_consistency",
             "cmd": ["py", "-3", "scripts/python/check_gate_bundle_consistency.py"],
         },
