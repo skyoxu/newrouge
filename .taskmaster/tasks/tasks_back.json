@@ -1060,15 +1060,20 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "战斗循环必须具备稳定性保护：单回合出牌超过100张时触发硬上限，并具备失败处理路径以避免异常。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "在Windows环境下，硬上限与失败处理具备可观测结果，可通过状态或输出验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "验收清单中能定位到本任务相关用例索引，用于核对硬上限与失败处理结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "当单回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "触发硬停止时，必须记录可观察的审计条目，并能从审计日志中确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "对无效出牌请求，必须返回可观察的失败结果且不改变已确认状态，不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "新增xUnit用例覆盖“超过100张触发硬停止”的行为。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "新增xUnit用例断言硬停止时产生审计日志条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "实现与测试说明必须明确引用ADR-0029作为依据。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "当单回合出牌计数超过100张时，战斗循环必须触发硬上限并走失败处理路径，且结果可被验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "在Windows环境下，硬上限与失败处理触发后必须产生可观察结果（如状态、返回值或日志），可通过测试断言。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "验收清单必须能定位到本任务用例索引，且索引可用于核对“超过100张硬停止”与“失败处理”结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "当同一回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "触发硬停止时，系统必须记录可查询的审计条目，并能从日志确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "对无效出牌请求，系统必须返回明确失败结果，不改变已确认状态，且不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须存在xUnit用例，验证“超过100张出牌尝试”会触发硬停止而非继续处理。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "必须存在xUnit用例，断言硬停止路径会产生审计日志条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "实现说明与测试说明必须显式引用ADR-0029，作为硬上限与失败处理依据。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0029\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0049.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH02\", \"CH07\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0049.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0049.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0049.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0049.json"
     ],
     "test_strategy": [
       "xUnit tests for hard-stop behavior and audit log entries. Refs: ADR-0029."
@@ -1183,16 +1188,21 @@
       "Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd"
     ],
     "acceptance": [
-      "战斗流程从非战斗状态进入时，核心服务仅执行一次起始自动保存，并可在保存存储中观测到且仅观测到一条对应新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "每次满足前置条件的回合推进请求，必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时，本次请求返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "仅当判定达到回合结束条件时，才执行回合结束清理并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
-      "提供GdUnit4用例，覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "验收清单必须明确列出上述回合流程与恢复行为对应的GdUnit4测试文件路径，并说明每个文件验证的覆盖范围。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "回合结束清理必须由核心服务直接执行或由其统一触发，且每次清理都应留下可检索的记录或事件用于持久化核验与流程追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "[OBL:T51.O7] 新增一条：验收清单需显式标注本任务关键行为对应 ADR-0032 与 ADR-0025。",
-      "[OBL:T51.O7] 新增一条：至少一个测试条目需说明其验证点覆盖 ADR-0025 约束。",
-      "[OBL:T51.O7] 验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。"
+      "当流程从非战斗状态进入战斗状态时，核心服务必须且仅触发一次起始自动保存；保存存储中可观测到且仅可观测到一条与本次进入战斗对应的新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "每次满足前置条件的回合推进请求都必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时必须返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "仅当判定达到回合结束条件时才执行回合结束清理，并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统必须进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "必须提供 GdUnit4 用例，至少覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单必须明确列出上述回合流程与恢复行为对应的 GdUnit4 测试文件路径，并给出每个文件的验证覆盖范围说明。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "回合结束清理必须由核心服务直接执行或由其统一触发；每次清理都必须留下可检索记录或事件，用于持久化核验与流程追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "[OBL:T51.O7] 验收清单必须包含显式映射条目，将起始自动保存、回合推进、回合结束清理逐项关联到 ADR-0032 与 ADR-0025。",
+      "[OBL:T51.O7] 至少一个测试条目必须明确其验证点覆盖 ADR-0025 约束，且该覆盖点可通过测试说明或命名直接定位。",
+      "[OBL:T51.O7] 验收门禁输出必须显式给出 ADR-0032 与 ADR-0025 的可追溯映射结果；缺失任一 ADR 映射时判定为未通过。",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0025\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0051.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0051.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0051.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0051.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0051.json"
     ],
     "test_strategy": [
       "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032."
@@ -1519,11 +1529,19 @@
       "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
     ],
     "acceptance": [
-      "Provide scripts/python/validate_audit_logs.py to validate JSONL schema and required fields; any invalid line must fail with non-zero exit code. Refs: scripts/python/validate_audit_logs.py",
-      "Validation failure output must include offending line number and actionable reason for each rejected JSONL row. Refs: logs/ci/<date>/audit-validate/report.json",
-      "quality_gates.py must optionally invoke the validator and record executed/pass_fail in task-0056 summary output. Refs: scripts/python/quality_gates.py",
-      "When audit validation is enabled and returns fail, quality_gates.py must exit non-zero and stop downstream release steps. Refs: logs/ci/<date>/task-0056.json",
-      "Provide valid/invalid JSONL fixtures and reproduce one pass and one fail run on Windows. Refs: logs/ci/<date>/audit-validate/report.json"
+      "提供 `scripts/python/validate_audit_logs.py`，对安全审计 JSONL 执行逐行结构与必填字段校验；只要存在任意无效行，本次运行必须返回非零退出码且不得判定为通过。 Refs: scripts/python/validate_audit_logs.py",
+      "当校验失败时，输出必须包含每条被拒绝记录的实际行号与可执行修复原因，以便直接定位并修复对应 JSONL 行。 Refs: logs/ci/<date>/audit-validate/report.json",
+      "`quality_gates.py` 在启用该校验时必须实际调用审计校验器，并将该步骤的 `executed` 与 `pass_fail` 实际结果写入 task-0056 汇总 JSON。 Refs: scripts/python/quality_gates.py",
+      "当启用审计校验且校验结果为失败时，`quality_gates.py` 必须以非零状态结束本次门禁流程，流水线不得以成功状态继续发布路径。 Refs: logs/ci/<date>/task-0056.json",
+      "提供有效与无效 JSONL 夹具，并在 Windows 环境下可重复复现一轮通过与一轮失败的运行结果。 Refs: logs/ci/<date>/audit-validate/report.json",
+      "当未启用审计校验时，`quality_gates.py` 必须不调用 `validate_audit_logs.py`，并在 task-0056 汇总写入 `executed=false` 与 `pass_fail=\"skipped\"`。 Refs: scripts/python/quality_gates.py, logs/ci/<date>/task-0056.json",
+      "当启用审计校验时，`validate_audit_logs.py` 必须执行；任一校验失败时门禁必须非零退出。 Refs: scripts/python/validate_audit_logs.py, scripts/python/quality_gates.py",
+      "必须提供并执行 `Tests/CI/AuditLogs/ValidateAuditLogsTests.cs`、`Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs`、`Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
+      "task-0056 汇总必须记录上述测试的 `executed/pass_fail`；任一未执行或失败即判定任务失败。 Refs: logs/ci/<date>/task-0056.json",
+      "task-0056 汇总必须包含 `adr_refs=[\"ADR-0019\",\"ADR-0003\",\"ADR-0005\"]`；缺失任一 ADR 回链时门禁必须非零退出。 Refs: logs/ci/<date>/task-0056.json, docs/adr/ADR-0019-godot-security-baseline.md, docs/adr/ADR-0003-observability-release-health.md, docs/adr/ADR-0005-quality-gates.md",
+      "task-0056 汇总必须包含 `chapter_refs=[\"CH02\",\"CH03\",\"CH07\"]`；章节回链不完整或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0056.json, docs/architecture/base/02-security-baseline-godot-v2.md, docs/architecture/base/03-observability-sentry-logging-v2.md, docs/architecture/base/07-dev-build-and-gates-v2.md",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0056.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0056.json"
     ],
     "test_strategy": [
       "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."

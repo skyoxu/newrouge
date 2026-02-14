@@ -696,27 +696,27 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "当出牌流程未被任何阶段中止时，CombatService.PlayCard 必须按且仅按 Validate → ComputeCost → PayCost → BeforePlay → ResolveEffect → AfterPlay → MoveCard → DeathCheck 的固定顺序执行；任一步骤乱序、缺失或重复都应导致验收失败。 Refs: logs/ci/<date>/task-0011.json",
-      "当 Validate 失败或判定为无效出牌时，流程必须立即失败并阻断后续阶段，战斗状态保持调用前一致（允许审计/日志副作用），且返回失败结果可被断言。 Refs: logs/ci/<date>/task-0011.json",
-      "提供 xUnit 用例，在固定输入下同时验证管道步骤顺序可追踪且一致，以及执行结果可复现且一致；任何非确定性都必须被用例捕获。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "ComputeCost 与 PayCost 的结果必须直接决定 ResolveEffect 的可执行性与可用资源，并在测试中通过状态或返回值差异进行明确断言。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "在最终阶段，MoveCard 必须把卡牌移动到规则指定区域，且 DeathCheck 必须产出与规则一致的单位死亡结论；两者结果都可被断言验证。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "当流程未被中止时，BeforePlay 必须恰好在 ResolveEffect 前执行一次，AfterPlay 必须恰好在 ResolveEffect 后执行一次；缺失、提前、延后或重复均视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "CombatService.PlayCard 的核心实现必须位于 Core 层（例如 Game.Core 或 Scripts/Core），且不得直接依赖 Godot API 命名空间；一旦出现直接依赖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
-      "Task 11 测试必须在纯 xUnit（不启动 Godot 引擎）环境运行，并覆盖 PlayCard 关键路径（成功、校验失败、支付失败、最终收尾）；缺少纯 .NET 运行证据或关键路径覆盖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
-      "PlayCard pipeline order is fixed: Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck.",
-      "If PayCost fails, pipeline stops immediately; no downstream stage executes, and state mutation is limited to validated pre-check effects.",
-      "BeforePlay, ResolveEffect, and AfterPlay triggers must execute exactly once each per successful play.",
-      "xUnit must assert stage order and single-execution guarantees using deterministic call trace evidence.",
-      "PlayCard core logic must remain UI-agnostic; UI concerns stay outside the core pipeline.",
-      "BeforePlay, ResolveEffect, and AfterPlay trigger payload schema must be stable and versioned.",
-      "Task evidence must include traceability to ADR-0021 and ADR-0032.",
+      "当出牌成功且流程未被中止时，CombatService.PlayCard 必须且只能按 Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck 的固定顺序各执行一次；任一阶段缺失、重复或乱序即判定失败。 Refs: logs/ci/<date>/task-0011.json",
+      "当 Validate 失败或判定为无效出牌时，流程必须立即返回失败并阻断后续阶段，且战斗状态保持调用前一致（允许审计/日志副作用）。 Refs: logs/ci/<date>/task-0011.json",
+      "必须提供 xUnit 用例，在固定输入与固定随机源下验证阶段调用轨迹与执行结果可复现且一致；任何非确定性都必须触发测试失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "ComputeCost 与 PayCost 的结果必须共同决定是否允许进入 ResolveEffect，并在测试中通过状态快照或返回值差异进行明确断言。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "在最终阶段，MoveCard 必须将卡牌移动到规则指定区域，DeathCheck 必须产出与规则一致且可断言的死亡结论与终态。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "在成功且未中止的流程中，BeforePlay 必须恰好在 ResolveEffect 前执行一次，AfterPlay 必须恰好在 ResolveEffect 后执行一次。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "CombatService.PlayCard 的核心实现必须位于 Core 层并保持引擎无关；一旦出现对 Godot API 命名空间的直接依赖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Task 11 的验证必须可在纯 xUnit（不启动 Godot 引擎）环境运行，并覆盖成功、Validate 失败、PayCost 失败、MoveCard+DeathCheck 收尾四类关键路径。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "PlayCard 的管道顺序固定为 Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck，且同类输入必须产生同构阶段轨迹。",
+      "当 PayCost 失败时，流程必须在该阶段立即停止，且 BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck 均不得执行。",
+      "每次成功出牌必须恰好执行一次 BeforePlay、一次 ResolveEffect、一次 AfterPlay，且三者相对顺序不可改变。",
+      "xUnit 必须通过可比较的确定性调用轨迹断言阶段顺序与单次执行约束。",
+      "PlayCard 核心逻辑必须保持 UI 无关，UI 关注点不得进入核心管道。",
+      "BeforePlay、ResolveEffect、AfterPlay 的输入输出契约在本任务范围内必须稳定，并可由固定样例回归验证。",
+      "任务证据必须包含对 ADR-0021 与 ADR-0032 的可追溯映射，并对应本任务的顺序与确定性要求。",
       "[OBL:T11.O4] 当执行 PlayCard 时，核心管道不得读取或写入任何 UI 对象或 UI 状态。",
       "[OBL:T11.O4] 通过静态检查或测试断言 CombatService 不依赖 UI 层类型。",
       "[OBL:T11.O4] PlayCard 管道实现不得嵌入 UI concerns。",
       "[OBL:T11.O6] 当 PayCost 失败时，流程必须立即返回失败并阻断 BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck。",
       "[OBL:T11.O6] 当 PayCost 失败时，战斗状态与资源必须保持调用前一致（允许审计日志副作用）。",
-      "[OBL:T11.O6] 当 PayCost 失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。",
+      "[OBL:T11.O6] 当 Validate 或 ComputeCost 判定失败时，流程必须 fail-fast，且不得进入 BeforePlay/ResolveEffect/AfterPlay/MoveCard/DeathCheck。",
       "[OBL:T11.O8] 为 BeforePlay、ResolveEffect、AfterPlay 定义允许修改的状态边界并在测试中逐项断言。",
       "[OBL:T11.O8] 任一阶段出现越界副作用时必须判定失败。",
       "[OBL:T11.O8] BeforePlay、ResolveEffect、AfterPlay 必须具有稳定副作用边界（可审计且不越界）。",
@@ -724,8 +724,13 @@
       "[OBL:T11.O11] 同一用例必须断言失败后状态快照不变且失败结果可断言。",
       "[OBL:T11.O11] 必须提供 xUnit 用例断言校验失败或支付失败时的阻断推进与状态不变。",
       "[OBL:T11.O14] 验收项需显式要求 Task11 实现与测试均回链 ADR-0021 与 ADR-0032。",
-      "[OBL:T11.O14] CI 产物需包含可机读 adr_refs 字段用于门禁校验。",
-      "[OBL:T11.O14] 实现与测试应可追溯到 ADR-0021 与 ADR-0032。"
+      "[OBL:T11.O14] CI 产物需包含可机读回链字段（如 adr_refs）用于门禁校验。",
+      "[OBL:T11.O14] 实现与测试应可追溯到 ADR-0021 与 ADR-0032。",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0021\", \"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0011.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0011.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0011.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0011.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0011.json"
     ],
     "test_strategy": [
       "xUnit tests for pipeline step ordering and deterministic execution with fixed inputs. Refs: ADR-0032."
@@ -1387,13 +1392,18 @@
     ],
     "acceptance": [
       "进入 Rest.tscn 时，界面必须同时显示且可选择“升级（免费升级一张卡）”“治疗”“移除诅咒”三项；任一选项缺失、不可见或不可选择即判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "选择“升级”后，流程必须按“选择一张可升级卡→在 Route A 与 Route B 中二选一→进入确认步骤”推进；在确认前取消时，卡牌状态保持不变且不产生任何升级结果。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "升级确认中的不可逆提示必须通过翻译键渲染为有效文案，界面不得显示键名、占位符或异常回退文本；出现任一情况即失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "完成升级确认后不得触发任何支付流程，且不得减少任何可计量资源；若出现收费提示、支付入口或资源扣减则失败。 Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
-      "升级一经确认，在同一流程内不得撤销、回退或恢复为升级前状态；若存在可逆路径或不可逆结果不成立则失败. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
-      "升级确认后必须仅被选中的单张卡牌发生升级变化，其他卡牌状态保持不变；若出现未选中卡牌变化或多张卡牌同时变化则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "Within a single Rest scene session, free upgrade confirmation can occur at most once; after first confirmation, the upgrade entry must be disabled or blocked from re-entry. Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs",
-      "If user attempts a second upgrade flow in the same Rest session, system must reject the action and keep all card and resource states unchanged. Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs"
+      "选择“升级”后，流程必须按“选择一张可升级卡→在 Route A 与 Route B 中二选一→进入确认步骤”推进；在确认前取消时，所有卡牌与资源状态保持不变且不产生升级结果。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "升级确认中的不可逆提示必须由翻译键渲染为有效文案，界面不得显示键名、占位符或异常回退文本；出现任一情况即失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "完成升级确认后必须保持“免费升级”语义：不得触发任何支付流程，且不得减少任何可计量资源；若出现收费提示、支付入口或资源扣减则失败。 Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
+      "升级一经确认，在同一流程内必须不可撤销、不可回退且不可恢复为升级前状态；若存在可逆路径或不可逆结果不成立则失败. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
+      "升级确认后必须且仅有被选中的单张卡牌发生升级变化，其他卡牌状态保持不变；若出现未选中卡牌变化或多张卡牌同时变化则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "在单次 Rest 场景会话内，免费升级确认最多只能发生一次；首次确认后，升级入口必须被禁用或阻止再次进入。 Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs",
+      "若用户在同一 Rest 会话中尝试第二次进入升级流程，系统必须拒绝该操作，并保持所有卡牌与资源状态不变。 Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0033\", \"ADR-0010\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0021.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH10\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0021.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0021.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0021.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0021.json"
     ],
     "test_strategy": [
       "Test upgrade flow and confirmation. Verify upgrade is free and irreversible. Check translation keys. Refs: ADR-0033, ADR-0010."
@@ -1449,13 +1459,18 @@
       "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd"
     ],
     "acceptance": [
-      "Event.tscn 在进入事件时可见标题与描述，并提供至少两个可选项；这些选项中至少一个触发“立即HP损失”，至少一个触发“加入诅咒牌”，缺少任一类型即不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "每次进入事件时可选项集合即被锁定且不发生刷新/替换；玩家一旦作出选择即立即写入结果，退出后再次进入仍显示已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "事件标题、描述、选项文本均通过翻译系统提供；切换语言后三类文本应同步变化，且变化结果可被验证。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "进入 Event.tscn 时必须同时显示事件标题与描述，并提供不少于两个可选项；这些选项里至少一个执行“立即HP损失”，且至少一个执行“加入诅咒牌”，任一类型缺失即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "每次进入事件时，本次可选项集合必须已锁定且不发生刷新/替换；玩家一旦作出选择，结果必须立即写入，并在退出后再次进入时保持已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "事件标题、描述、选项文本必须全部通过翻译系统提供；切换语言后三类文本必须同步变化，且变化结果可被验证。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "选择“HP损失”代价选项后，当前HP必须在该次选择后立刻减少到可验证的新数值；若HP未变化则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
       "选择“加入诅咒牌”代价选项后，牌组必须在该次选择后立刻新增对应诅咒牌且数量可验证；若牌组未新增则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
-      "提供并可执行测试用例，覆盖事件选项与两类代价应用（HP损失、诅咒牌加入），并对结果进行可重复断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "提供并可执行测试用例，验证退出事件后再次进入时选项仍保持锁定且不可更改。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "必须提供并可执行测试用例，覆盖事件选项与两类代价应用（HP损失、诅咒牌加入），并对结果进行可重复断言。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "必须提供并可执行测试用例，验证退出事件后再次进入时选项仍保持锁定且不可更改。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0010\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0022.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH10\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0022.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0022.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0022.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0022.json"
     ],
     "test_strategy": [
       "Test event options and cost application. Verify choice locking on exit/re-enter. Refs: ADR-0032, ADR-0010."
@@ -1752,12 +1767,17 @@
       "Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs"
     ],
     "acceptance": [
-      "对任一给定难度值，DifficultyRuleService 必须返回与任务定义映射一致的规则修饰符集合，且可由断言直接验证映射结果。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
-      "在 Windows 环境执行单元测试时，必须验证难度到修饰符的解析正确；同一难度重复调用应返回值相等结果以证明确定性。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
-      "Overlay 的 Test-Refs 清单必须能追溯到本任务的相关测试文件，以核验难度映射与确定性要求已被测试覆盖。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "DifficultyRuleService 的输出必须仅由输入难度决定且不读取外部可变状态；同一输入在不同调用中的结果应可比较且值相等。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs",
-      "当难度>=10 时，结果必须包含 OverplayTax 且阈值 N=12；当难度<10 时，结果必须不包含 OverplayTax。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs",
-      "必须提供并通过 xUnit 用例，覆盖难度映射规则与确定性行为，且本地重复执行产生一致结论。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs"
+      "对每个输入难度值，DifficultyRuleService 必须返回与任务定义映射一致的规则修饰符集合；任一难度出现缺失、冗余或映射错误即判定失败。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "在 Windows 上运行单元测试时，必须断言难度到修饰符解析正确，且同一难度重复调用得到值相等结果；任一断言失败即不通过。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 清单必须能追溯到本任务相关测试文件，以证明难度映射与确定性要求已被测试覆盖；缺失或不可追溯即不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "DifficultyRuleService 的输出必须仅由输入难度决定，且不得读取外部可变状态；同一输入在不同调用中的结果必须可比较且值相等，否则判定不满足确定性。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs",
+      "当难度>=10 时，返回结果必须包含 OverplayTax 且阈值 N=12；当难度<10 时，返回结果必须不包含 OverplayTax。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs",
+      "必须提供并通过 xUnit 用例，覆盖难度映射规则与确定性行为；本地重复执行时必须产生一致结论，否则验收失败。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0021\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0027.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0027.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0027.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0027.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0027.json"
     ],
     "test_strategy": [
       "xUnit tests for rule resolution by difficulty and deterministic outputs. Refs: ADR-0032."
@@ -2002,7 +2022,12 @@
       "若存在对应 overlay 的验收清单文件，则其 Test-Refs 必须仅指向本任务已存在的测试文件，并可追溯到 relic_id 唯一性与翻译键存在性的验证；任一引用缺失、失效或无法追溯即判定不通过。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "xUnit 必须验证每个遗物都包含规则修饰的效果描述字段，且字段值非空或满足既定约束；同时确认该字段可在不加载 Godot 运行时的测试中被读取并断言，任一遗物不满足即测试失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "遗物定义集合必须明确限定为 M1 起始遗物集合且总数严格等于 20；若混入非 M1 遗物或以非 M1 集合替代统计则判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "验收清单必须显式回链 ADR-0010 与 ADR-0021，且能定位到对应实现与测试证据；任一 ADR 回链缺失或失效即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "验收清单必须显式回链 ADR-0010 与 ADR-0021，且能定位到对应实现与测试证据；任一 ADR 回链缺失或失效即判定失败。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0010\", \"ADR-0021\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0031.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH10\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0031.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0031.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0031.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0031.json"
     ],
     "test_strategy": [
       "xUnit tests to validate unique relic_id and translation key presence. Refs: ADR-0010."
@@ -2921,14 +2946,19 @@
       "Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs"
     ],
     "acceptance": [
-      "基于给定的 RNG 流生成 offer 候选并完成锁定，provenance 被持久化且可用于重现相同结果。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
-      "在 Windows 环境运行 xUnit 用例可验证锁定前后结果一致性且测试可通过。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
-      "Overlay 的 Test-Refs 指向本任务测试路径并能追溯到对应用例。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "OfferService 使用给定 RNG 流与输入生成可查询的候选列表，外部可观察候选数量与内容，不得出现无输出的空转。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
-      "首次锁定后 stable_id 与 display_order 被持久化；相同输入与相同 RNG 流在重载后再次生成时保持一致。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
-      "对已锁定的 offer 再次触发生成/锁定不得更改既有 stable_id 与 display_order。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
-      "provenance 被持久化且可查询，包含可用于一致性断言的关键信息（如 RNG 流标识与生成批次）。 Refs: Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs Game.Core.Tests/Services/OfferServiceTests.cs",
-      "xUnit 测试包含对“重载前后锁定结果一致性”的可验证断言。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs"
+      "在给定同一 RNG 流与相同输入时，系统必须生成 offer 候选并完成锁定；持久化的 provenance 可被读取并用于重现同一批结果。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "在 Windows 环境运行 xUnit 用例时，锁定结果在重载前后必须一致，且该用例集全部通过。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "Overlay 的 Test-Refs 必须明确指向本任务测试路径，并能从文档定位到可执行用例实现。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "OfferService 在给定 RNG 流与输入时必须返回可查询候选集合；候选数量与内容对外可观察，禁止出现无结果且无错误反馈。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "首次锁定后 stable_id 与 display_order 必须被持久化；在相同输入与相同 RNG 流下重载并再次生成时，两者保持不变。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
+      "对已锁定的 offer 再次触发生成/锁定时，既有 stable_id 与 display_order 必须保持原值，不得被改写。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "provenance 必须持久化且可查询，并至少包含可用于一致性断言的关键信息（如 RNG 流标识与生成批次）。 Refs: Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs Game.Core.Tests/Services/OfferServiceTests.cs",
+      "xUnit 测试必须包含“重载前后锁定结果一致性”的明确断言，且通过/失败可直接反映该条件是否成立。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0046.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0046.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0046.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0046.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0046.json"
     ],
     "test_strategy": [
       "xUnit tests for offer lock determinism across reloads. Refs: ADR-0032."
@@ -2982,12 +3012,17 @@
       "Game.Core.Tests/Services/FixedDamageRulesTests.cs"
     ],
     "acceptance": [
-      "在相同战斗状态与事件输入下，状态/遗物触发顺序确定且可复现，不依赖集合遍历顺序或随机性，结算结果一致 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "固定伤害遵循规则：例如 OverplayTax 的伤害不受增伤/减伤等修饰影响；有 xUnit 用例覆盖并断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Overlay 验收清单中的相关条目与本任务语义一致，明确覆盖“触发顺序确定性”和“固定伤害不被修饰” Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "当存在多个可触发的状态/遗物时，对同一输入多次结算得到完全相同的触发序列与最终伤害值。 Refs: Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
-      "固定伤害与非固定伤害在结算上可区分：固定伤害保持原值，非固定伤害仍可被常规修饰。 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
-      "gameplay:6: 触发顺序由 xUnit 用例验证，断言排序规则与实际触发序列一致 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "在相同初始战斗状态与相同事件输入下，状态/遗物触发顺序必须稳定可复现；重复结算得到一致触发序列与一致结果，且不得受集合遍历顺序或随机性影响 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "固定伤害规则可被测试证伪：例如 OverplayTax 伤害在结算后保持原值，不受增伤/减伤等修饰影响；需有 xUnit 用例断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Overlay 验收清单的对应条目必须与本任务语义对齐，并可明确核对到“触发顺序确定性”和“固定伤害不被修饰”两项要求 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "当同一时点存在多个可触发状态/遗物时，对同一输入进行多次结算必须产生完全相同的触发先后序列与最终伤害值 Refs: Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
+      "结算需可区分固定伤害与非固定伤害：固定伤害保持原值，非固定伤害继续按常规修饰规则变化，且该差异可由测试直接断言 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
+      "gameplay:6: 触发顺序必须由 xUnit 用例验证，断言既定排序规则与实际触发序列逐项一致；若不一致则测试失败 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0029\", \"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0047.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0047.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0047.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0047.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0047.json"
     ],
     "test_strategy": [
       "xUnit tests for trigger ordering and fixed damage invariants. Refs: ADR-0029."
@@ -3100,15 +3135,20 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "战斗循环必须具备稳定性保护：单回合出牌超过100张时触发硬上限，并具备失败处理路径以避免异常。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "在Windows环境下，硬上限与失败处理具备可观测结果，可通过状态或输出验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "验收清单中能定位到本任务相关用例索引，用于核对硬上限与失败处理结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "当单回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "触发硬停止时，必须记录可观察的审计条目，并能从审计日志中确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "对无效出牌请求，必须返回可观察的失败结果且不改变已确认状态，不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "新增xUnit用例覆盖“超过100张触发硬停止”的行为。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "新增xUnit用例断言硬停止时产生审计日志条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "实现与测试说明必须明确引用ADR-0029作为依据。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "当单回合出牌计数超过100张时，战斗循环必须触发硬上限并走失败处理路径，且结果可被验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "在Windows环境下，硬上限与失败处理触发后必须产生可观察结果（如状态、返回值或日志），可通过测试断言。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "验收清单必须能定位到本任务用例索引，且索引可用于核对“超过100张硬停止”与“失败处理”结果。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "当同一回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "触发硬停止时，系统必须记录可查询的审计条目，并能从日志确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "对无效出牌请求，系统必须返回明确失败结果，不改变已确认状态，且不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须存在xUnit用例，验证“超过100张出牌尝试”会触发硬停止而非继续处理。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "必须存在xUnit用例，断言硬停止路径会产生审计日志条目。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "实现说明与测试说明必须显式引用ADR-0029，作为硬上限与失败处理依据。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0029\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0049.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH02\", \"CH07\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0049.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0049.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0049.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0049.json"
     ],
     "test_strategy": [
       "xUnit tests for hard-stop behavior and audit log entries. Refs: ADR-0029."
@@ -3222,16 +3262,21 @@
       "Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd"
     ],
     "acceptance": [
-      "战斗流程从非战斗状态进入时，核心服务仅执行一次起始自动保存，并可在保存存储中观测到且仅观测到一条对应新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "每次满足前置条件的回合推进请求，必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时，本次请求返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "仅当判定达到回合结束条件时，才执行回合结束清理并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
-      "提供GdUnit4用例，覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "验收清单必须明确列出上述回合流程与恢复行为对应的GdUnit4测试文件路径，并说明每个文件验证的覆盖范围。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "回合结束清理必须由核心服务直接执行或由其统一触发，且每次清理都应留下可检索的记录或事件用于持久化核验与流程追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "[OBL:T51.O7] 新增一条：验收清单需显式标注本任务关键行为对应 ADR-0032 与 ADR-0025。",
-      "[OBL:T51.O7] 新增一条：至少一个测试条目需说明其验证点覆盖 ADR-0025 约束。",
-      "[OBL:T51.O7] 验收门禁必须显式体现对 ADR-0032 与 ADR-0025 的可追溯映射。"
+      "当流程从非战斗状态进入战斗状态时，核心服务必须且仅触发一次起始自动保存；保存存储中可观测到且仅可观测到一条与本次进入战斗对应的新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "每次满足前置条件的回合推进请求都必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时必须返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "仅当判定达到回合结束条件时才执行回合结束清理，并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统必须进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "必须提供 GdUnit4 用例，至少覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "验收清单必须明确列出上述回合流程与恢复行为对应的 GdUnit4 测试文件路径，并给出每个文件的验证覆盖范围说明。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "回合结束清理必须由核心服务直接执行或由其统一触发；每次清理都必须留下可检索记录或事件，用于持久化核验与流程追踪。 Refs: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "[OBL:T51.O7] 验收清单必须包含显式映射条目，将起始自动保存、回合推进、回合结束清理逐项关联到 ADR-0032 与 ADR-0025。",
+      "[OBL:T51.O7] 至少一个测试条目必须明确其验证点覆盖 ADR-0025 约束，且该覆盖点可通过测试说明或命名直接定位。",
+      "[OBL:T51.O7] 验收门禁输出必须显式给出 ADR-0032 与 ADR-0025 的可追溯映射结果；缺失任一 ADR 映射时判定为未通过。",
+      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0025\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0051.json",
+      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0051.json",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0051.json",
+      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: logs/ci/<date>/task-0051.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0051.json"
     ],
     "test_strategy": [
       "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032."
@@ -3549,11 +3594,19 @@
       "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
     ],
     "acceptance": [
-      "Provide scripts/python/validate_audit_logs.py to validate JSONL schema and required fields; any invalid line must fail with non-zero exit code. Refs: scripts/python/validate_audit_logs.py",
-      "Validation failure output must include offending line number and actionable reason for each rejected JSONL row. Refs: logs/ci/<date>/audit-validate/report.json",
-      "quality_gates.py must optionally invoke the validator and record executed/pass_fail in task-0056 summary output. Refs: scripts/python/quality_gates.py",
-      "When audit validation is enabled and returns fail, quality_gates.py must exit non-zero and stop downstream release steps. Refs: logs/ci/<date>/task-0056.json",
-      "Provide valid/invalid JSONL fixtures and reproduce one pass and one fail run on Windows. Refs: logs/ci/<date>/audit-validate/report.json"
+      "提供 `scripts/python/validate_audit_logs.py`，对安全审计 JSONL 执行逐行结构与必填字段校验；只要存在任意无效行，本次运行必须返回非零退出码且不得判定为通过。 Refs: scripts/python/validate_audit_logs.py",
+      "当校验失败时，输出必须包含每条被拒绝记录的实际行号与可执行修复原因，以便直接定位并修复对应 JSONL 行。 Refs: logs/ci/<date>/audit-validate/report.json",
+      "`quality_gates.py` 在启用该校验时必须实际调用审计校验器，并将该步骤的 `executed` 与 `pass_fail` 实际结果写入 task-0056 汇总 JSON。 Refs: scripts/python/quality_gates.py",
+      "当启用审计校验且校验结果为失败时，`quality_gates.py` 必须以非零状态结束本次门禁流程，流水线不得以成功状态继续发布路径。 Refs: logs/ci/<date>/task-0056.json",
+      "提供有效与无效 JSONL 夹具，并在 Windows 环境下可重复复现一轮通过与一轮失败的运行结果。 Refs: logs/ci/<date>/audit-validate/report.json",
+      "当未启用审计校验时，`quality_gates.py` 必须不调用 `validate_audit_logs.py`，并在 task-0056 汇总写入 `executed=false` 与 `pass_fail=\"skipped\"`。 Refs: scripts/python/quality_gates.py, logs/ci/<date>/task-0056.json",
+      "当启用审计校验时，`validate_audit_logs.py` 必须执行；任一校验失败时门禁必须非零退出。 Refs: scripts/python/validate_audit_logs.py, scripts/python/quality_gates.py",
+      "必须提供并执行 `Tests/CI/AuditLogs/ValidateAuditLogsTests.cs`、`Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs`、`Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
+      "task-0056 汇总必须记录上述测试的 `executed/pass_fail`；任一未执行或失败即判定任务失败。 Refs: logs/ci/<date>/task-0056.json",
+      "task-0056 汇总必须包含 `adr_refs=[\"ADR-0019\",\"ADR-0003\",\"ADR-0005\"]`；缺失任一 ADR 回链时门禁必须非零退出。 Refs: logs/ci/<date>/task-0056.json, docs/adr/ADR-0019-godot-security-baseline.md, docs/adr/ADR-0003-observability-release-health.md, docs/adr/ADR-0005-quality-gates.md",
+      "task-0056 汇总必须包含 `chapter_refs=[\"CH02\",\"CH03\",\"CH07\"]`；章节回链不完整或不一致时门禁必须非零退出。 Refs: logs/ci/<date>/task-0056.json, docs/architecture/base/02-security-baseline-godot-v2.md, docs/architecture/base/03-observability-sentry-logging-v2.md, docs/architecture/base/07-dev-build-and-gates-v2.md",
+      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: logs/ci/<date>/task-0056.json",
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: logs/ci/<date>/task-0056.json"
     ],
     "test_strategy": [
       "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."
