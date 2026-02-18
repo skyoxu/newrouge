@@ -8,13 +8,13 @@ namespace Game.Core.Tests.Contracts;
 public class InterfaceContractsTests
 {
     [Fact]
-    public void InMemoryEventBus_implements_contract_interface()
+    public void ShouldInMemoryEventBusImplementsContractInterface_WhenExecuted()
     {
         typeof(IEventBus).IsAssignableFrom(typeof(InMemoryEventBus)).Should().BeTrue();
     }
 
     [Fact]
-    public void Services_namespace_does_not_define_duplicate_IEventBus_contract()
+    public void ShouldServicesNamespaceDoesNotDefineDuplicateIEventBusContract_WhenExecuted()
     {
         var duplicate = typeof(InMemoryEventBus).Assembly.GetType("Game.Core.Services.IEventBus");
         duplicate.Should().BeNull();

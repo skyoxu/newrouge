@@ -157,6 +157,21 @@ def _is_allowed_test_path(p: str) -> bool:
     return s.startswith(ALLOWED_TEST_PREFIXES)
 
 
+def _is_evidence_path(p: str) -> bool:
+    s = str(p or "").strip().replace("\\", "/")
+    return s.startswith("logs/") or s.startswith("docs/")
+
+
+def _extend_unique(dst: list[str], items: list[str]) -> None:
+    seen = set(dst)
+    for raw in items:
+        s = str(raw or "").strip().replace("\\", "/")
+        if not s or s in seen:
+            continue
+        dst.append(s)
+        seen.add(s)
+
+
 def _strip_refs_suffix(s: str) -> str:
     return REFS_RE.sub("", s).rstrip()
 
@@ -424,10 +439,24 @@ def _apply_paths_to_view_entry(
     if not isinstance(acceptance, list):
         return {"view": view_label, "task_id": task_id, "updated": 0}
 
+    evidence_refs = entry.get("evidence_refs")
+    if not isinstance(evidence_refs, list):
+        evidence_refs = []
+    evidence_refs = [str(x).strip().replace("\\", "/") for x in evidence_refs if str(x).strip()]
+
     test_refs = entry.get("test_refs")
     if not isinstance(test_refs, list):
         test_refs = []
-    norm_test_refs = [str(x).strip().replace("\\", "/") for x in test_refs if str(x).strip()]
+    norm_test_refs: list[str] = []
+    for raw_ref in test_refs:
+        ref = str(raw_ref).strip().replace("\\", "/")
+        if not ref:
+            continue
+        if _is_allowed_test_path(ref):
+            _extend_unique(norm_test_refs, [ref])
+            continue
+        if _is_evidence_path(ref):
+            _extend_unique(evidence_refs, [ref])
 
     updated = 0
     new_acceptance: list[str] = []
@@ -438,15 +467,32 @@ def _apply_paths_to_view_entry(
             continue
 
         had_refs = bool(REFS_RE.search(text))
+        existing_refs = _extract_refs_from_acceptance_item(text) if had_refs else []
+        existing_evidence_refs = [p for p in existing_refs if _is_evidence_path(p)]
+        if existing_evidence_refs:
+            _extend_unique(evidence_refs, existing_evidence_refs)
+
         should_overwrite = bool(overwrite_existing) or (overwrite_indices is not None and idx in overwrite_indices)
+        should_overwrite = should_overwrite or bool(existing_evidence_refs)
         if had_refs and not should_overwrite:
             new_acceptance.append(text)
             continue
 
         if idx not in paths_by_index:
-            # If overwriting but model did not return a mapping for this index,
-            # keep original.
-            new_acceptance.append(text)
+            # If we entered overwrite mode only to clean non-test refs, keep existing valid test refs.
+            if existing_evidence_refs:
+                existing_valid_test_refs = [p for p in existing_refs if _is_allowed_test_path(p)]
+                existing_valid_test_refs = existing_valid_test_refs[: max(1, min(len(existing_valid_test_refs), 5))]
+                base_text = _strip_refs_suffix(text)
+                if existing_valid_test_refs:
+                    new_acceptance.append(f"{base_text} Refs: {' '.join(existing_valid_test_refs)}")
+                else:
+                    new_acceptance.append(base_text)
+                updated += 1
+            else:
+                # If overwriting but model did not return a mapping for this index,
+                # keep original.
+                new_acceptance.append(text)
             continue
 
         candidate = [p.replace("\\", "/") for p in paths_by_index[idx] if str(p).strip()]
@@ -473,6 +519,9 @@ def _apply_paths_to_view_entry(
                 chosen = gd_only
 
         if not chosen:
+            chosen = [p for p in existing_refs if _is_allowed_test_path(p)]
+
+        if not chosen:
             chosen = [_default_ref_for(task_id=task_id, prefer_gd=prefer_gd)]
 
         chosen = chosen[: max(1, min(len(chosen), 5))]
@@ -482,12 +531,11 @@ def _apply_paths_to_view_entry(
         new_acceptance.append(new_text)
         updated += 1
 
-        for p in chosen:
-            if p not in norm_test_refs:
-                norm_test_refs.append(p)
+        _extend_unique(norm_test_refs, chosen)
 
     entry["acceptance"] = new_acceptance
     entry["test_refs"] = norm_test_refs
+    entry["evidence_refs"] = evidence_refs
     return {"view": view_label, "task_id": task_id, "updated": updated}
 
 
@@ -582,10 +630,14 @@ def main() -> int:
                 if not s:
                     continue
                 if REFS_RE.search(s) and not args.overwrite_existing:
-                    if not args.rewrite_placeholders:
-                        continue
                     refs = _extract_refs_from_acceptance_item(s)
                     if not refs:
+                        if not args.rewrite_placeholders:
+                            continue
+                    has_non_test_ref = any(not _is_allowed_test_path(p) for p in refs)
+                    if has_non_test_ref:
+                        overwrite_by_view[view].add(idx)
+                    if not args.rewrite_placeholders and idx not in overwrite_by_view[view]:
                         continue
                     # Treat accidental binding to accessibility suites as placeholder unless the task is actually a11y.
                     if (

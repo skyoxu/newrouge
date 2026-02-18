@@ -10,7 +10,7 @@ namespace Game.Core.Tests.Contracts;
 public class RunAndSaveContractsTests
 {
     [Fact]
-    public void RunTransition_and_command_follow_command_driven_model()
+    public void ShouldRunTransitionAndCommandFollowCommandDrivenModel_WhenExecuted()
     {
         var command = new RunCommand(
             CommandId: "cmd-1",
@@ -34,7 +34,7 @@ public class RunAndSaveContractsTests
     }
 
     [Fact]
-    public void Autosave_and_continue_metadata_keep_single_slot_context()
+    public void ShouldAutosaveAndContinueMetadataKeepSingleSlotContext_WhenExecuted()
     {
         var autosave = new AutosaveSnapshot(
             RunId: "run-1",

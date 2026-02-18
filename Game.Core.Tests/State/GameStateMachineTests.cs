@@ -6,7 +6,7 @@ namespace Game.Core.Tests.State;
 public class GameStateMachineTests
 {
     [Fact]
-    public void Transitions_follow_happy_path_and_fire_events()
+    public void ShouldTransitionsFollowHappyPathAndFireEvents_WhenExecuted()
     {
         var fsm = new GameStateMachine();
         int calls = 0;
@@ -22,7 +22,7 @@ public class GameStateMachineTests
     }
 
     [Fact]
-    public void Invalid_transitions_are_rejected()
+    public void ShouldInvalidTransitionsAreRejected_WhenExecuted()
     {
         var fsm = new GameStateMachine();
         Assert.False(fsm.Resume());

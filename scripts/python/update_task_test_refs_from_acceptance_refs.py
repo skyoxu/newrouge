@@ -5,7 +5,8 @@ Update tasks_back.json / tasks_gameplay.json test_refs using acceptance "Refs:".
 
 This is a deterministic sync helper:
   - Parse each acceptance item for "Refs:" paths.
-  - De-duplicate and write them into test_refs (replace by default).
+  - Keep only test-file refs in test_refs (.cs/.gd under test roots).
+  - Move logs/docs evidence refs into evidence_refs (per view task object).
 
 Why:
   - validate_acceptance_refs.py can enforce that all acceptance refs are included in test_refs.
@@ -81,6 +82,20 @@ def _extract_refs_from_acceptance(acceptance: Any) -> list[str]:
     return out
 
 
+def _is_allowed_test_path(p: str) -> bool:
+    s = str(p or "").strip().replace("\\", "/")
+    if not s:
+        return False
+    if not (s.endswith(".cs") or s.endswith(".gd")):
+        return False
+    return s.startswith("Game.Core.Tests/") or s.startswith("Tests.Godot/tests/") or s.startswith("Tests/")
+
+
+def _is_evidence_path(p: str) -> bool:
+    s = str(p or "").strip().replace("\\", "/")
+    return s.startswith("logs/") or s.startswith("docs/")
+
+
 def _ensure_list_field(obj: dict[str, Any], key: str) -> list[str]:
     v = obj.get(key)
     if v is None:
@@ -139,29 +154,37 @@ def main() -> int:
             if r not in refs:
                 refs.append(r)
 
+    test_refs_from_acceptance = [r for r in refs if _is_allowed_test_path(r)]
+    evidence_refs_from_acceptance = [r for r in refs if _is_evidence_path(r)]
+
     changed_back = False
     changed_game = False
 
     if back_task is not None:
         back_refs = _ensure_list_field(back_task, "test_refs")
+        back_evidence = _ensure_list_field(back_task, "evidence_refs")
         if args.mode == "replace":
             before = list(back_refs)
-            back_task["test_refs"] = list(refs)
+            back_task["test_refs"] = list(test_refs_from_acceptance)
             changed_back = before != back_task["test_refs"]
         else:
-            changed_back = _add_unique(back_refs, refs)
+            changed_back = _add_unique(back_refs, test_refs_from_acceptance)
+        changed_back = _add_unique(back_evidence, evidence_refs_from_acceptance) or changed_back
 
     if gameplay_task is not None:
         game_refs = _ensure_list_field(gameplay_task, "test_refs")
+        game_evidence = _ensure_list_field(gameplay_task, "evidence_refs")
         if args.mode == "replace":
             before = list(game_refs)
-            gameplay_task["test_refs"] = list(refs)
+            gameplay_task["test_refs"] = list(test_refs_from_acceptance)
             changed_game = before != gameplay_task["test_refs"]
         else:
-            changed_game = _add_unique(game_refs, refs)
+            changed_game = _add_unique(game_refs, test_refs_from_acceptance)
+        changed_game = _add_unique(game_evidence, evidence_refs_from_acceptance) or changed_game
 
     print(
         f"UPDATE_TEST_REFS_FROM_ACCEPTANCE task_id={task_id} mode={args.mode} refs={len(refs)} "
+        f"test_refs={len(test_refs_from_acceptance)} evidence_refs={len(evidence_refs_from_acceptance)} "
         f"changed_back={changed_back} changed_game={changed_game} write={bool(args.write)}"
     )
     if not args.write:

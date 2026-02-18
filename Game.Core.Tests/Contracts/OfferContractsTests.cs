@@ -10,7 +10,7 @@ namespace Game.Core.Tests.Contracts;
 public class OfferContractsTests
 {
     [Fact]
-    public void OfferLockSnapshot_preserves_stable_ids_and_order()
+    public void ShouldOfferLockSnapshotPreservesStableIdsAndOrder_WhenExecuted()
     {
         var provenance = new OfferProvenance(
             SourceType: OfferSourceType.Reward,
@@ -37,7 +37,7 @@ public class OfferContractsTests
     }
 
     [Fact]
-    public void OfferItem_supports_card_form_and_route()
+    public void ShouldOfferItemSupportsCardFormAndRoute_WhenExecuted()
     {
         var item = new OfferItem(
             OfferItemId: "offer-item-1",

@@ -9,7 +9,7 @@ namespace Game.Core.Tests.Contracts;
 public class CardContractsTests
 {
     [Fact]
-    public void CardInstance_marks_Ultimate_form_correctly()
+    public void ShouldCardInstanceMarksUltimateFormCorrectly_WhenExecuted()
     {
         var instance = new CardInstance(
             InstanceId: "card-inst-1",
@@ -25,7 +25,7 @@ public class CardContractsTests
     }
 
     [Fact]
-    public void CardDefinition_and_modifier_have_strongly_typed_fields()
+    public void ShouldCardDefinitionAndModifierHaveStronglyTypedFields_WhenExecuted()
     {
         var modifier = new CardInstanceModifier(
             ModifierId: "m1",

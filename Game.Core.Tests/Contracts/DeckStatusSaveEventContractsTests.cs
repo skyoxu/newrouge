@@ -9,7 +9,7 @@ namespace Game.Core.Tests.Contracts;
 public class DeckStatusSaveEventContractsTests
 {
     [Fact]
-    public void Deck_events_should_keep_strongly_typed_payloads()
+    public void ShouldDeckEventsShouldKeepStronglyTypedPayloads_WhenExecuted()
     {
         var init = new DeckInitializedEvent(
             RunId: "run-1",
@@ -74,7 +74,7 @@ public class DeckStatusSaveEventContractsTests
     }
 
     [Fact]
-    public void Status_events_should_encode_apply_stack_expire_dispel_paths()
+    public void ShouldStatusEventsShouldEncodeApplyStackExpireDispelPaths_WhenExecuted()
     {
         var applied = new StatusAppliedEvent(
             RunId: "run-1",
@@ -120,7 +120,7 @@ public class DeckStatusSaveEventContractsTests
     }
 
     [Fact]
-    public void Save_and_rng_events_should_preserve_resume_traceability()
+    public void ShouldSaveAndRngEventsShouldPreserveResumeTraceability_WhenExecuted()
     {
         var writeOk = new SaveWriteSucceededEvent(
             RunId: "run-1",

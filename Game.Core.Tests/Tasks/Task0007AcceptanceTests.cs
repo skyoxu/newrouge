@@ -12,7 +12,7 @@ namespace Game.Core.Tests.Tasks;
 public class Task0007AcceptanceTests
 {
     [Fact]
-    public async Task EventBus_must_publish_and_subscribe_required_five_domain_events()
+    public async Task ShouldPublishAndSubscribeRequiredFiveDomainEvents_WhenEventBusProcessesAllContractEvents()
     {
         IEventBus bus = new InMemoryEventBus();
         var capturedTypes = new List<string>();
@@ -47,7 +47,7 @@ public class Task0007AcceptanceTests
     }
 
     [Fact]
-    public void Required_five_event_types_must_match_task_contractrefs_values()
+    public void ShouldMatchTaskContractRefsValues_WhenReadingRequiredFiveEventTypes()
     {
         EventTypes.CombatStarted.Should().Be("core.combat.started");
         EventTypes.CombatCardPlayed.Should().Be("core.combat.card.played");

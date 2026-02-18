@@ -9,7 +9,7 @@ namespace Game.Core.Tests.Contracts;
 public class EventContractsBatch3Tests
 {
     [Fact]
-    public void Card_and_combat_guard_events_have_explicit_payloads()
+    public void ShouldCardAndCombatGuardEventsHaveExplicitPayloads_WhenExecuted()
     {
         var cardUpgraded = new CardUpgradedEvent(
             RunId: "run-1",
@@ -76,7 +76,7 @@ public class EventContractsBatch3Tests
     }
 
     [Fact]
-    public void Run_map_shop_and_relic_events_have_clear_fields()
+    public void ShouldRunMapShopAndRelicEventsHaveClearFields_WhenExecuted()
     {
         var actLoaded = new ActConfigLoadedEvent(
             RunId: "run-1",
@@ -167,7 +167,7 @@ public class EventContractsBatch3Tests
     }
 
     [Fact]
-    public void Status_health_score_and_audit_events_have_traceable_values()
+    public void ShouldStatusHealthScoreAndAuditEventsHaveTraceableValues_WhenExecuted()
     {
         var statusApplied = new StatusAppliedEvent(
             RunId: "run-1",

@@ -7,7 +7,7 @@ namespace Game.Core.Tests.Services;
 public class CollisionServiceTests
 {
     [Fact]
-    public void AabbIntersects_basic_cases()
+    public void ShouldAabbIntersectsBasicCases_WhenExecuted()
     {
         Assert.True(CollisionService.AabbIntersects(0,0,10,10, 5,5,10,10));
         Assert.False(CollisionService.AabbIntersects(0,0,10,10, 11,0,10,10));
@@ -15,7 +15,7 @@ public class CollisionServiceTests
     }
 
     [Fact]
-    public void CircleIntersects_and_Distance()
+    public void ShouldCircleIntersectsAndDistance_WhenExecuted()
     {
         Assert.True(CollisionService.CircleIntersects(0,0,3, 4,0,3));
         Assert.False(CollisionService.CircleIntersects(0,0,1, 5,0,1));
@@ -24,7 +24,7 @@ public class CollisionServiceTests
     }
 
     [Fact]
-    public void PointInAabb_boundary_inclusive()
+    public void ShouldPointInAabbBoundaryInclusive_WhenExecuted()
     {
         Assert.True(CollisionService.PointInAabb(0,0, 0,0, 10,10));
         Assert.True(CollisionService.PointInAabb(10,10, 0,0, 10,10));

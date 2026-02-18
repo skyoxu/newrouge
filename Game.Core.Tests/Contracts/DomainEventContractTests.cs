@@ -10,7 +10,7 @@ namespace Game.Core.Tests.Contracts;
 public class DomainEventContractTests
 {
     [Fact]
-    public void DomainEvent_uses_DataJson_and_DateTimeOffset()
+    public void ShouldDomainEventUsesDataJsonAndDateTimeOffset_WhenExecuted()
     {
         var now = DateTimeOffset.UtcNow;
         var evt = new DomainEvent(
