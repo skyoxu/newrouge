@@ -6,7 +6,7 @@ namespace Game.Core.Tests.Domain;
 public class PlayerTests
 {
     [Fact]
-    public void New_player_has_full_health_and_origin_position()
+    public void ShouldNewPlayerHasFullHealthAndOriginPosition_WhenExecuted()
     {
         var p = new Player(maxHealth: 50);
         Assert.Equal(50, p.Health.Maximum);
@@ -17,7 +17,7 @@ public class PlayerTests
     }
 
     [Fact]
-    public void Move_and_TakeDamage_update_state()
+    public void ShouldMoveAndTakeDamageUpdateState_WhenExecuted()
     {
         var p = new Player(maxHealth: 10);
         p.Move(1.5, -2);

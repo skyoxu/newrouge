@@ -410,10 +410,31 @@ def main() -> int:
         str(out_dir / f"acceptance-refs.{task_id}.json"),
     ]
     gate_rc, gate_out = run_cmd(gate_cmd, cwd=repo_root(), timeout_sec=60)
+    gate_json_path = out_dir / f"acceptance-refs.{task_id}.json"
     write_text(out_dir / f"acceptance-refs.{task_id}.log", gate_out)
     if gate_rc != 0:
-        print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: acceptance refs gate failed rc={gate_rc} out={out_dir}")
-        return 1
+        # Compatibility fallback:
+        # Some tasks intentionally mix test refs with non-test evidence refs (logs/docs).
+        # For generation we only need valid test refs, so continue iff all gate errors are
+        # "not an allowed test path" violations.
+        proceed_with_warning = False
+        try:
+            gate_obj = json.loads(_read_text(gate_json_path)) if gate_json_path.exists() else {}
+            errs = gate_obj.get("errors") if isinstance(gate_obj, dict) else None
+            if isinstance(errs, list) and errs and all(
+                "not an allowed test path" in str(e or "") for e in errs
+            ):
+                proceed_with_warning = True
+        except Exception:  # noqa: BLE001
+            proceed_with_warning = False
+
+        if not proceed_with_warning:
+            print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: acceptance refs gate failed rc={gate_rc} out={out_dir}")
+            return 1
+        print(
+            "SC_LLM_ACCEPTANCE_TESTS WARN: acceptance refs include non-test paths; "
+            "continuing with test-path subset only."
+        )
 
     # Ensure sc-analyze context exists for this task id (and includes taskdoc if present).
     analyze_cmd = [
@@ -432,8 +453,12 @@ def main() -> int:
     analyze_rc, analyze_out = run_cmd(analyze_cmd, cwd=repo_root(), timeout_sec=900)
     write_text(out_dir / f"analyze-{task_id}.log", analyze_out)
     if analyze_rc != 0:
-        print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: sc-analyze failed rc={analyze_rc} out={out_dir}")
-        return 1
+        # Degrade gracefully when repository-level checks fail but task context is still generated.
+        # We only require task_context payload to build focused generation prompts.
+        print(
+            "SC_LLM_ACCEPTANCE_TESTS WARN: sc-analyze returned non-zero; "
+            "attempting to continue with available task_context artifacts."
+        )
 
     ctx_path = repo_root() / "logs" / "ci" / out_dir.parent.name / "sc-analyze" / f"task_context.{task_id}.json"
     # If date inference fails for any reason, fall back to the legacy alias.
@@ -490,7 +515,18 @@ def main() -> int:
             uniq.append({"anchor": a, "text": t})
         by_ref[r] = uniq
 
-    refs = sorted(by_ref.keys())
+    refs_all = sorted(by_ref.keys())
+    refs = [r for r in refs_all if _is_allowed_test_path(r)]
+    skipped_non_test_refs = [r for r in refs_all if not _is_allowed_test_path(r)]
+    write_json(
+        out_dir / f"refs-filtered.{task_id}.json",
+        {
+            "task_id": task_id,
+            "total_refs": len(refs_all),
+            "selected_test_refs": refs,
+            "skipped_non_test_refs": skipped_non_test_refs,
+        },
+    )
     results: list[GenResult] = []
 
     any_gd = False

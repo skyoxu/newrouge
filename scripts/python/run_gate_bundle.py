@@ -138,6 +138,18 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             "cmd": ["py", "-3", "scripts/python/check_contract_interface_docs.py"],
         },
         {
+            "name": "check_test_naming",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/python/check_test_naming.py",
+                "--style",
+                "should_when",
+                "--scope",
+                "all",
+            ],
+        },
+        {
             "name": "check_gate_bundle_consistency",
             "cmd": ["py", "-3", "scripts/python/check_gate_bundle_consistency.py"],
         },

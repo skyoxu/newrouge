@@ -9,7 +9,7 @@
         "testStrategy": "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\n",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0031",

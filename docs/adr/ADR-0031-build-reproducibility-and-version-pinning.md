@@ -1,7 +1,7 @@
 ---
 ADR-ID: ADR-0031
 title: 构建可复现性与版本锁定（Godot 4.5.1 + NuGet Lock）
-status: Proposed
+status: Accepted
 decision-time: '2026-01-22'
 deciders: [架构团队]
 archRefs: [CH07, CH09]
@@ -75,4 +75,3 @@ supersedes: []
 
 - 不锁版本、不写取证：短期省事，长期不可复现成本极高。
 - 使用 `global.json` 锁 SDK：可复现更强，但不符合当前团队选择。
-

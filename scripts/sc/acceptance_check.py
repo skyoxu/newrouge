@@ -50,6 +50,7 @@ from _acceptance_steps import (
     step_test_quality_soft,
     step_tests_all,
 )
+from _task1_env_evidence import step_task1_env_evidence
 from _risk_summary import write_risk_summary
 from _taskmaster import resolve_triplet
 from _unit_metrics import collect_unit_metrics
@@ -300,6 +301,10 @@ def main() -> int:
     if subtasks_mode not in ("skip", "warn", "require"):
         subtasks_mode = "skip"
     run_id = uuid.uuid4().hex
+    godot_bin = args.godot_bin or os.environ.get("GODOT_BIN")
+
+    if str(triplet.task_id) == "1" and enabled("tests"):
+        steps.append(step_task1_env_evidence(out_dir, godot_bin=godot_bin))
 
     if enabled("adr"):
         steps.append(step_adr_compliance(out_dir, triplet, strict_status=bool(args.strict_adr_status)))
@@ -346,7 +351,6 @@ def main() -> int:
         steps.append(step_ui_event_security(out_dir, json_mode=str(args.ui_event_json_guards), source_mode=str(args.ui_event_source_verify)))
         steps.append(step_security_soft(out_dir))
 
-    godot_bin = args.godot_bin or os.environ.get("GODOT_BIN")
     audit_mode = str(args.security_audit_evidence or "skip").strip().lower()
     if enabled("tests"):
         test_type = "all" if has_gd_refs else "unit"

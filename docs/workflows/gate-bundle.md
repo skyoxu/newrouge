@@ -43,6 +43,7 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 - `validate_contracts.py`
 - `check_domain_contracts.py`
 - `check_contract_interface_docs.py`
+- `check_test_naming.py`
 - `check_gate_bundle_consistency.py`
 - `check_workflow_gate_enforcement.py`
 

@@ -10,7 +10,7 @@ namespace Game.Core.Tests.Contracts;
 public class EventContractsM1Tests
 {
     [Fact]
-    public void Combat_events_have_expected_payload_shape()
+    public void ShouldCombatEventsHaveExpectedPayloadShape_WhenExecuted()
     {
         var started = new CombatStartedEvent(
             RunId: "run-1",
@@ -57,7 +57,7 @@ public class EventContractsM1Tests
     }
 
     [Fact]
-    public void Reward_and_event_node_events_are_deterministic_payloads()
+    public void ShouldRewardAndEventNodeEventsAreDeterministicPayloads_WhenExecuted()
     {
         var presented = new RewardOfferPresentedEvent(
             RunId: "run-1",
@@ -123,7 +123,7 @@ public class EventContractsM1Tests
     }
 
     [Fact]
-    public void Run_transition_event_tracks_command_driven_state_changes()
+    public void ShouldRunTransitionEventTracksCommandDrivenStateChanges_WhenExecuted()
     {
         var evt = new RunStateTransitionedEvent(
             RunId: "run-1",

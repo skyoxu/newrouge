@@ -7,6 +7,7 @@ test naming conventions and prevents regression to snake_case naming.
 Usage:
     py -3 scripts/python/check_test_naming.py
     py -3 scripts/python/check_test_naming.py --style strict
+    py -3 scripts/python/check_test_naming.py --style should_when --scope tasks
     py -3 scripts/python/check_test_naming.py --task-id 14 --style strict
 
 Exit codes:
@@ -83,6 +84,8 @@ def is_given_when_then_style(name: str) -> bool:
 def is_allowed_test_method_name(name: str, *, style: str) -> bool:
     if style == "legacy":
         return is_pascal_case(name) or is_pascal_case_with_underscores(name)
+    if style == "should_when":
+        return is_should_style(name)
     if style == "strict":
         return is_should_style(name) or is_given_when_then_style(name)
     raise ValueError(f"Unknown style: {style}")
@@ -236,18 +239,26 @@ def scan_specific_files(*, files: List[Path], style: str) -> dict:
 def main():
     """Main entry point for the script."""
     ap = argparse.ArgumentParser(description="Validate test method naming conventions for Game.Core.Tests.")
-    ap.add_argument("--style", choices=["legacy", "strict"], default="legacy", help="Naming style to enforce.")
+    ap.add_argument("--style", choices=["legacy", "strict", "should_when"], default="legacy", help="Naming style to enforce.")
+    ap.add_argument(
+        "--scope",
+        choices=["all", "tasks"],
+        default="all",
+        help="Validation scope: all tests or only Game.Core.Tests/Tasks.",
+    )
     ap.add_argument("--task-id", default=None, help="If set, validate only the task's C# test_refs (.cs).")
     args = ap.parse_args()
 
     project_root = repo_root()
     test_dir = project_root / "Game.Core.Tests"
+    if args.scope == "tasks":
+        test_dir = test_dir / "Tasks"
 
     if not test_dir.exists():
         print(f"Error: Test directory not found: {test_dir}", file=sys.stderr)
         return 1
 
-    scope = "all Game.Core.Tests"
+    scope = "all Game.Core.Tests" if args.scope == "all" else "Game.Core.Tests/Tasks"
     if args.task_id:
         scope = f"task-id={args.task_id} (test_refs .cs only)"
 
@@ -286,6 +297,8 @@ def main():
     if args.style == "strict":
         print("  - Should_: ShouldReturnZero_WhenMultiplierIsZero")
         print("  - Given_When_Then: GivenEnoughMoney_WhenBuyingCity_ThenCityOwned")
+    elif args.style == "should_when":
+        print("  - Should_When: ShouldReturnZero_WhenMultiplierIsZero")
     else:
         print("  - PascalCase: GivenNoState_WhenSaveGame_ThenThrowsInvalidOperationException")
         print("  - PascalCase_With_Underscores: SaveGame_WhenStateMissing_ShouldThrowInvalidOperationException")

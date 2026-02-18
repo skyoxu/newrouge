@@ -7,7 +7,7 @@ namespace Game.Core.Tests.Services;
 public class ScoreServiceTests
 {
     [Fact]
-    public void ComputeAddedScore_respects_multiplier_and_difficulty()
+    public void ShouldComputeAddedScoreRespectsMultiplierAndDifficulty_WhenExecuted()
     {
         var svc = new ScoreService();
         var cfg = new GameConfig(
@@ -27,7 +27,24 @@ public class ScoreServiceTests
     }
 
     [Fact]
-    public void Add_accumulates_and_reset_clears_score()
+    public void ShouldComputeAddedScoreHandlesEasyUnknownAndNegativeBasePoints_WhenExecuted()
+    {
+        var svc = new ScoreService();
+        var cfg = new GameConfig(50, 100, 1.0, false, Difficulty.Easy);
+
+        var easyAdded = svc.ComputeAddedScore(100, cfg);
+        Assert.Equal(90, easyAdded); // 100 * 1.0 * 0.9
+
+        cfg = cfg with { Difficulty = (Difficulty)999 };
+        var unknownDifficultyAdded = svc.ComputeAddedScore(10, cfg);
+        Assert.Equal(10, unknownDifficultyAdded); // default multiplier 1.0
+
+        var negativeBase = svc.ComputeAddedScore(-123, cfg);
+        Assert.Equal(0, negativeBase);
+    }
+
+    [Fact]
+    public void ShouldAddAccumulatesAndResetClearsScore_WhenExecuted()
     {
         var svc = new ScoreService();
         var cfg = new GameConfig(50, 100, 1.0, false, Difficulty.Medium);
@@ -42,6 +59,20 @@ public class ScoreServiceTests
 
         svc.Reset();
         Assert.Equal(0, svc.Score);
+    }
+
+    [Fact]
+    public void ShouldAddWithNegativePointsDoesNotDecreaseScore_WhenExecuted()
+    {
+        var svc = new ScoreService();
+        var cfg = new GameConfig(50, 100, 1.0, false, Difficulty.Medium);
+
+        svc.Add(10, cfg);
+        var before = svc.Score;
+
+        svc.Add(-999, cfg);
+
+        Assert.Equal(before, svc.Score);
     }
 }
 
