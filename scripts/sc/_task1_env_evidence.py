@@ -121,9 +121,17 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
     )
 
     # godot --version (PATH resolution)
+    # CI may only have Godot_v*.exe without a "godot" command on PATH.
+    # Build a tiny shim in evidence_dir to make "godot --version" deterministic.
+    shim_cmd = evidence_dir / "godot.cmd"
+    _write_utf8_file(
+        shim_cmd,
+        "@echo off\r\n"
+        + f"\"{godot_bin_path}\" %*\r\n",
+    )
     env_for_godot = os.environ.copy()
     godot_dir = str(godot_bin_path.parent)
-    env_for_godot["PATH"] = godot_dir + os.pathsep + env_for_godot.get("PATH", "")
+    env_for_godot["PATH"] = str(evidence_dir) + os.pathsep + godot_dir + os.pathsep + env_for_godot.get("PATH", "")
     rc_godot_path, out_godot_path = _run_command(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "godot --version"],
         env=env_for_godot,
