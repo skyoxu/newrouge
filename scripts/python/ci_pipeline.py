@@ -41,6 +41,45 @@ def read_json(path):
         return None
 
 
+def run_task1_preflight(root: str, godot_bin: str):
+    """
+    Generate Task 1 deterministic evidence artifacts before unit tests.
+    This keeps cold CI workspaces aligned with Task1 test expectations.
+    """
+    sc_dir = os.path.join(root, 'scripts', 'sc')
+    if not os.path.isdir(sc_dir):
+        return 1, {'status': 'fail', 'reason': f'missing scripts/sc: {sc_dir}'}
+
+    added_path = False
+    if sc_dir not in sys.path:
+        sys.path.insert(0, sc_dir)
+        added_path = True
+
+    try:
+        from _task1_env_evidence import step_task1_env_evidence
+        from _util import ci_dir
+
+        step = step_task1_env_evidence(ci_dir('ci-pipeline-task1-preflight'), godot_bin=godot_bin)
+        details = dict(getattr(step, 'details', {}) or {})
+        details.update(
+            {
+                'name': getattr(step, 'name', 'task1-env-evidence'),
+                'status': getattr(step, 'status', 'fail'),
+                'rc': getattr(step, 'rc', 1),
+                'log': getattr(step, 'log', None),
+            }
+        )
+        return int(getattr(step, 'rc', 1)), details
+    except Exception as exc:
+        return 1, {'status': 'fail', 'reason': f'task1 preflight import/exec error: {exc}'}
+    finally:
+        if added_path:
+            try:
+                sys.path.remove(sc_dir)
+            except ValueError:
+                pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -62,12 +101,19 @@ def main():
     os.makedirs(ci_dir, exist_ok=True)
 
     summary = {
+        'preflight_task1': {},
         'dotnet': {},
         'selfcheck': {},
         'encoding': {},
         'status': 'ok'
     }
     hard_fail = False
+
+    # 0) Task 1 preflight artifacts (hard gate)
+    preflight_rc, preflight_details = run_task1_preflight(root, args.godot_bin)
+    summary['preflight_task1'] = preflight_details
+    if preflight_rc != 0:
+        hard_fail = True
 
     # 1) Dotnet tests + coverage (soft gate on coverage)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
