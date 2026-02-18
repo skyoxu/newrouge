@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,19 @@ def _parse_dotnet_sdk_versions(text: str) -> list[str]:
         if first and first[0].isdigit():
             versions.append(first)
     return versions
+
+
+def _parse_major_from_version_text(text: str) -> int | None:
+    first_line = _first_non_empty_line(text)
+    if not first_line:
+        return None
+    match = re.search(r"(\d+)\.\d+\.\d+", first_line)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _write_utf8_file(path: Path, content: str) -> None:
@@ -148,6 +162,7 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
     rc_dotnet_ver, out_dotnet_ver = _run_command(["dotnet", "--version"])
     _write_utf8_file(evidence_dir / "dotnet-version.txt", out_dotnet_ver)
     dotnet_version = _first_non_empty_line(out_dotnet_ver)
+    dotnet_major = _parse_major_from_version_text(out_dotnet_ver)
     details["commands"]["dotnet_version_command"] = {"rc": rc_dotnet_ver}
 
     # dotnet --list-sdks
@@ -299,7 +314,7 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
     details["checks"]["godot_bin_mono_ok"] = _contains_token(out_godot_bin, "mono")
     details["checks"]["godot_bin_env_name_ok"] = True
     details["checks"]["godot_bin_env_scope_ok"] = godot_bin_env_scope in {"Process", "User", "Machine"}
-    details["checks"]["dotnet_version_ok"] = rc_dotnet_ver == 0 and dotnet_version.startswith("8.")
+    details["checks"]["dotnet_version_ok"] = rc_dotnet_ver == 0 and dotnet_major == 8
     details["checks"]["dotnet_sdk_8_present"] = rc_dotnet_sdks == 0 and any(v.startswith("8.") for v in dotnet_sdk_versions)
     details["checks"]["dotnet_restore_ok"] = rc_restore == 0
     details["checks"]["utf8_ok"] = utf8_ok
