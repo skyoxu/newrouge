@@ -109,6 +109,9 @@ def main():
     }
     hard_fail = False
 
+    # Keep Task1 preflight/test environment deterministic.
+    os.environ['GODOT_BIN'] = args.godot_bin
+
     # 0) Task 1 preflight artifacts (hard gate)
     preflight_rc, preflight_details = run_task1_preflight(root, args.godot_bin)
     summary['preflight_task1'] = preflight_details

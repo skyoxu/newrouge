@@ -157,6 +157,8 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
     details["commands"]["dotnet_list_sdks_command"] = {"rc": rc_dotnet_sdks}
 
     # dotnet restore .\NewRouge.sln
+    # Run once to warm caches, then persist the second (steady-state) output.
+    _run_command(["dotnet", "restore", ".\\NewRouge.sln"], cwd=root, timeout_sec=240)
     rc_restore, out_restore = _run_command(["dotnet", "restore", ".\\NewRouge.sln"], cwd=root, timeout_sec=240)
     _write_utf8_file(evidence_dir / "dotnet-restore.txt", out_restore)
     details["commands"]["dotnet_restore_command"] = {"rc": rc_restore}
