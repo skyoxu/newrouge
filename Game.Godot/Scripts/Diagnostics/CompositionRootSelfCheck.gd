@@ -56,9 +56,9 @@ func _run() -> void:
 
     # Also probe legacy autoload singletons if present
     var rootn = get_root()
-    if rootn.has_node("/root/Time"):
+    if rootn.has_node("/root/TimePort") or rootn.has_node("/root/Time"):
         result["ports"]["time"] = true
-    if rootn.has_node("/root/Input"):
+    if rootn.has_node("/root/InputPort") or rootn.has_node("/root/Input"):
         result["ports"]["input"] = true
     if rootn.has_node("/root/DataStore"):
         result["ports"]["dataStore"] = true

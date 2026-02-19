@@ -97,10 +97,20 @@ jobs:
         run: |
           $env:Path = "$HOME\.dotnet;" + $env:Path
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
-          & "$env:GODOT_BIN" --headless --path . --quit
-          & "$env:GODOT_BIN" --headless --path . --build-solutions --verbose --quit
           dotnet restore NewRouge.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build NewRouge.csproj -c Release -v minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $prewarm = Start-Process -FilePath "$env:GODOT_BIN" -ArgumentList "--headless", "--path", ".", "--quit" -Wait -PassThru -NoNewWindow
+          if ($prewarm.ExitCode -ne 0) {
+            Write-Warning "Godot prewarm exited with code $($prewarm.ExitCode); continue and rely on later export/runtime validation."
+          }
+
+          $buildSolutions = Start-Process -FilePath "$env:GODOT_BIN" -ArgumentList "--headless", "--path", ".", "--build-solutions", "--verbose", "--quit" -Wait -PassThru -NoNewWindow
+          if ($buildSolutions.ExitCode -ne 0) {
+            Write-Warning "Godot --build-solutions exited with code $($buildSolutions.ExitCode); continue and rely on dotnet build/export checks."
+          }
 
       - name: Export Windows EXE
         shell: pwsh

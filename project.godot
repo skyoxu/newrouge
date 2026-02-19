@@ -17,17 +17,17 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-EventBus="res://Game.Godot/Adapters/EventBusAdapter.cs"
-DataStore="res://Game.Godot/Adapters/DataStoreAdapter.cs"
-Logger="res://Game.Godot/Adapters/LoggerAdapter.cs"
-Audio="res://Game.Godot/Adapters/AudioPlayerAdapter.cs"
-Time="res://Game.Godot/Adapters/TimeAdapter.cs"
-Input="res://Game.Godot/Adapters/InputAdapter.cs"
-SqlDb="res://Game.Godot/Adapters/SqliteDataStore.cs"
-SecurityAudit="res://Game.Godot/Scripts/Security/SecurityAudit.cs"
-PerformanceTracker="res://Game.Godot/Scripts/Perf/PerformanceTracker.cs"
-SentryClient="res://Game.Godot/Scripts/Obs/SentryClient.cs"
-FeatureFlags="res://Game.Godot/Scripts/Config/FeatureFlags.cs"
+EventBus="*res://Game.Godot/Adapters/EventBusAdapter.cs"
+DataStore="*res://Game.Godot/Adapters/DataStoreAdapter.cs"
+Logger="*res://Game.Godot/Adapters/LoggerAdapter.cs"
+Audio="*res://Game.Godot/Adapters/AudioPlayerAdapter.cs"
+TimePort="*res://Game.Godot/Adapters/TimeAdapter.cs"
+InputPort="*res://Game.Godot/Adapters/InputAdapter.cs"
+SqlDb="*res://Game.Godot/Adapters/SqliteDataStore.cs"
+SecurityAudit="*res://Game.Godot/Scripts/Security/SecurityAudit.cs"
+PerformanceTracker="*res://Game.Godot/Scripts/Perf/PerformanceTracker.cs"
+SentryClient="*res://Game.Godot/Scripts/Obs/SentryClient.cs"
+FeatureFlags="*res://Game.Godot/Scripts/Config/FeatureFlags.cs"
 CompositionRoot="*res://Game.Godot/Autoloads/CompositionRoot.cs"
 
 [display]
