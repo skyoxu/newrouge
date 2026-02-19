@@ -110,7 +110,11 @@ jobs:
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
           dotnet restore NewRouge.csproj
           dotnet build NewRouge.csproj -c Release -v minimal
-          try { & "$env:GODOT_BIN" --headless --path . --quit } catch { Write-Warning $_ }
+
+          $prewarm = Start-Process -FilePath "$env:GODOT_BIN" -ArgumentList "--headless", "--path", ".", "--quit" -Wait -PassThru -NoNewWindow
+          if ($prewarm.ExitCode -ne 0) {
+            Write-Warning "Godot prewarm exited with code $($prewarm.ExitCode); continue because this step is non-blocking."
+          }
 
       - name: CI pipeline (Python)
         shell: pwsh
