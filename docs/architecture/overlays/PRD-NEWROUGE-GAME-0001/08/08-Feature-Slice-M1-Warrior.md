@@ -164,3 +164,16 @@ M1 的目标是交付一个可完整运行、可验证、可复现的最小闭�
 - `Game.Core/Contracts/Events/ShopCurseRemovedEvent.cs`
 - `Game.Core/Contracts/Events/ShopInventoryLockedEvent.cs`
 - `Game.Core/Contracts/Events/TraceabilityCheckedEvent.cs`
+
+## Task53 Acceptance Conclusion
+- Scope: `scripts/python/smoke_headless.py` strict/non-strict behavior and CI traceability evidence.
+- Acceptance evidence must include:
+  - `logs/ci/<date>/task-0053.json`
+  - `logs/ci/<date>/smoke/<timestamp>/headless.out.log`
+  - `logs/ci/<date>/smoke/<timestamp>/headless.err.log`
+  - `logs/ci/<date>/smoke/<timestamp>/summary.json`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs`
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs`
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs`
+- Conclusion rule: Feature-slice evidence must stay aligned with `ACCEPTANCE_CHECKLIST.md`; any mismatch is a fail.

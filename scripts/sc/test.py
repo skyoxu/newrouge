@@ -27,6 +27,7 @@ from _util import ci_dir, repo_root, run_cmd, today_str, write_json, write_text
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="sc-test (test shim)")
     ap.add_argument("--type", choices=["unit", "integration", "e2e", "all"], default="all")
+    ap.add_argument("--task-id", default=None, help="Optional task id for smoke evidence file logs/ci/<date>/task-<id>.json")
     ap.add_argument("--solution", default="Game.sln")
     ap.add_argument("--configuration", default="Debug")
     ap.add_argument("--godot-bin", default=None, help="Godot mono console binary (required for e2e/all)")
@@ -120,7 +121,7 @@ def run_gdunit_hard(out_dir: Path, godot_bin: str, timeout_sec: int, *, run_id: 
     return {"name": "gdunit-hard", "cmd": cmd, "rc": rc, "log": str(log_path), "report_dir": str(report_dir)}
 
 
-def run_smoke(out_dir: Path, godot_bin: str, scene: str) -> dict[str, Any]:
+def run_smoke(out_dir: Path, godot_bin: str, scene: str, task_id: str | None = None) -> dict[str, Any]:
     if scene.startswith("res://"):
         disk_path = repo_root() / scene[len("res://") :]
         if not disk_path.exists():
@@ -134,15 +135,16 @@ def run_smoke(out_dir: Path, godot_bin: str, scene: str) -> dict[str, Any]:
         "scripts/python/smoke_headless.py",
         "--godot-bin",
         godot_bin,
-        "--project",
+        "--project-path",
         ".",
         "--scene",
         scene,
         "--timeout-sec",
         "5",
-        "--mode",
-        "strict",
+        "--strict",
     ]
+    if str(task_id or "").strip():
+        cmd += ["--task-id", str(task_id).strip()]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=120)
     log_path = out_dir / "smoke.log"
     write_text(log_path, out)
@@ -196,7 +198,7 @@ def main() -> int:
             hard_fail = True
 
         if not args.skip_smoke:
-            sm = run_smoke(out_dir, godot_bin, args.smoke_scene)
+            sm = run_smoke(out_dir, godot_bin, args.smoke_scene, task_id=args.task_id)
             summary["steps"].append(sm)
             if sm["rc"] != 0:
                 hard_fail = True

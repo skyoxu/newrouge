@@ -73,3 +73,12 @@ Test-Refs:
 - `logs/ci/<YYYY-MM-DD>/env-evidence/packages-lock-exists.txt`
 - `logs/ci/<YYYY-MM-DD>/env-evidence/windows-only-check.txt`
 - `logs/ci/<YYYY-MM-DD>/env-evidence/utf8-check.txt`
+
+## Task53 Test-Refs (Headless Smoke Runner)
+- logs/ci/<date>/task-0053.json
+- logs/ci/<date>/smoke/<timestamp>/headless.out.log
+- logs/ci/<date>/smoke/<timestamp>/headless.err.log
+- logs/ci/<date>/smoke/<timestamp>/summary.json
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs

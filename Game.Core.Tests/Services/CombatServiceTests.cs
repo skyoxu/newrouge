@@ -131,8 +131,9 @@ public class CombatServiceTests
         bus.Published.Should().ContainSingle();
         var evt = bus.Published[0];
         evt.Type.Should().Be("player.damaged");
+        evt.DataJson.Should().NotBeNullOrWhiteSpace();
 
-        using var doc = JsonDocument.Parse(evt.DataJson);
+        using var doc = JsonDocument.Parse(evt.DataJson!);
         doc.RootElement.GetProperty("amount").GetInt32().Should().Be(20); // 20 * 0.5 * 2.0
         doc.RootElement.GetProperty("type").GetString().Should().Be(nameof(DamageType.Fire));
         doc.RootElement.GetProperty("critical").GetBoolean().Should().BeTrue();

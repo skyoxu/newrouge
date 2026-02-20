@@ -427,8 +427,17 @@ def step_ui_event_security(out_dir: Path, *, json_mode: str, source_mode: str) -
     return StepResult(name="ui-event-security", status="ok" if ok else "fail", rc=0 if ok else 1, details=details)
 
 
-def step_tests_all(out_dir: Path, godot_bin: str | None, *, run_id: str | None = None, test_type: str = "all") -> StepResult:
+def step_tests_all(
+    out_dir: Path,
+    godot_bin: str | None,
+    *,
+    run_id: str | None = None,
+    test_type: str = "all",
+    task_id: str | None = None,
+) -> StepResult:
     cmd = ["py", "-3", "scripts/sc/test.py", "--type", test_type]
+    if str(task_id or "").strip():
+        cmd += ["--task-id", str(task_id).strip()]
     if run_id:
         cmd += ["--run-id", run_id]
     if godot_bin and test_type != "unit":

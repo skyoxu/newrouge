@@ -85,3 +85,18 @@ Test-Refs:
 - 新增、删除或重命名 08 下文档时，必须同步更新本索引和验收清单。
 - 若口径变化影响 ADR（尤其 `ADR-0032`/`ADR-0033`），必须先补 ADR 再改 Overlay。
 - `Test-Refs` 可先占位，但路径必须稳定且可被后续自动化替换为真实用例。
+
+## Task53 Back-Link (Headless Smoke Runner)
+- Task: `T53 Headless smoke runner (Python) + strict mode`
+- Runner: `scripts/python/smoke_headless.py`
+- Strict behavior: strict mode returns non-zero when neither `[TEMPLATE_SMOKE_READY]` nor `[DB] opened` is found.
+- Non-strict behavior: permissive mode keeps exit code 0 for template ergonomics while still writing artifacts.
+- Artifact entry points:
+  - `logs/ci/<date>/task-0053.json`
+  - `logs/ci/<date>/smoke/<timestamp>/headless.out.log`
+  - `logs/ci/<date>/smoke/<timestamp>/headless.err.log`
+  - `logs/ci/<date>/smoke/<timestamp>/summary.json`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs`
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs`
+  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs`

@@ -232,7 +232,7 @@ py -3 scripts/python/godot_selfcheck.py run --godot-bin "$env:GODOT_BIN" --proje
 py -3 scripts/python/run_gdunit.py --prewarm --godot-bin "$env:GODOT_BIN" --project Tests.Godot --add tests/Security/Hard --timeout-sec 480
 
 # Headless smoke（严格模式；归档到 logs/ci/<run_id>/smoke/）
-py -3 scripts/python/smoke_headless.py --godot-bin "$env:GODOT_BIN" --project . --scene "res://Game.Godot/Scenes/Main.tscn" --timeout-sec 5 --mode strict
+py -3 scripts/python/smoke_headless.py --godot-bin "$env:GODOT_BIN" --project-path . --scene "res://Game.Godot/Scenes/Main.tscn" --timeout-sec 5 --strict
 
 # 直接 dotnet（不推荐作为 CI/取证入口）
 dotnet test Game.sln -c Debug
