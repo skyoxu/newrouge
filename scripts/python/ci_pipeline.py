@@ -17,6 +17,7 @@ import datetime as dt
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -122,13 +123,31 @@ def main():
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
                        '--solution', args.solution,
                        '--configuration', args.configuration], cwd=root)
+    with io.open(os.path.join(ci_dir, 'dotnet-run-dotnet-stdout.txt'), 'w', encoding='utf-8') as f:
+        f.write(out)
     dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
     summary['dotnet'] = {
         'rc': rc,
         'line_pct': (dotnet_sum.get('coverage') or {}).get('line_pct'),
         'branch_pct': (dotnet_sum.get('coverage') or {}).get('branch_pct'),
-        'status': dotnet_sum.get('status')
+        'status': dotnet_sum.get('status'),
+        'test_attempts': dotnet_sum.get('test_attempts') or [],
+        'failure_excerpt': dotnet_sum.get('failure_excerpt') or [],
     }
+    # Persist dotnet detailed outputs into logs/ci for artifact-based diagnosis.
+    try:
+        unit_dir = os.path.join('logs', 'unit', date)
+        for file_name in ('dotnet-test-output.txt', 'dotnet-restore.log', 'summary.json'):
+            src = os.path.join(unit_dir, file_name)
+            if os.path.exists(src):
+                shutil.copyfile(src, os.path.join(ci_dir, f'dotnet-{file_name}'))
+        attempt_files = [name for name in os.listdir(unit_dir) if name.startswith('dotnet-test-output-attempt-')]
+        for attempt_name in attempt_files:
+            src = os.path.join(unit_dir, attempt_name)
+            if os.path.exists(src):
+                shutil.copyfile(src, os.path.join(ci_dir, attempt_name))
+    except Exception:
+        pass
     if rc not in (0, 2) or summary['dotnet']['status'] == 'tests_failed':
         hard_fail = True
 
