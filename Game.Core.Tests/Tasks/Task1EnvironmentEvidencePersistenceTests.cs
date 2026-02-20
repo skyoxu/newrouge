@@ -69,8 +69,11 @@ public sealed class Task1EnvironmentEvidencePersistenceTests
         var godotEvidence = Path.Combine(artifact.EvidenceDirectory, "godot-version.txt");
         var godotBinEvidence = Path.Combine(artifact.EvidenceDirectory, "godot-bin-version.txt");
 
-        var godotBinPath = Environment.GetEnvironmentVariable("GODOT_BIN");
-        godotBinPath.Should().NotBeNullOrWhiteSpace("GODOT_BIN must be set for full-stdout evidence verification");
+        root.TryGetProperty("godot_bin", out var godotBinElement).Should().BeTrue("task-0001.json must include godot_bin");
+        var godotBinPath = godotBinElement.GetString();
+        godotBinPath.Should().NotBeNullOrWhiteSpace("task-0001.json godot_bin must be available for evidence verification");
+        File.Exists(godotBinPath!).Should().BeTrue("task-0001.json godot_bin should point to an existing executable");
+
         var godotDirectory = Path.GetDirectoryName(godotBinPath!);
         godotDirectory.Should().NotBeNullOrWhiteSpace("GODOT_BIN directory is required for PATH-prefixed command execution");
 
@@ -80,15 +83,19 @@ public sealed class Task1EnvironmentEvidencePersistenceTests
             prependPath: godotDirectory);
         var godotFromEnvBin = await RunProcessAsync(godotBinPath!, "--version");
 
-        BuildCombinedOutput(godotFromEnvBin)
+        NormalizeLineEndings(BuildCombinedOutput(godotFromEnvBin))
             .Should()
-            .Be(File.ReadAllText(godotBinEvidence), "& $env:GODOT_BIN --version evidence file must persist full stdout/stderr stream");
+            .Be(
+                NormalizeLineEndings(File.ReadAllText(godotBinEvidence)),
+                "& $env:GODOT_BIN --version evidence file must persist full stdout/stderr stream");
 
         if (godotFromPath.ExitCode == 0)
         {
-            BuildCombinedOutput(godotFromPath)
+            NormalizeLineEndings(BuildCombinedOutput(godotFromPath))
                 .Should()
-                .Be(File.ReadAllText(godotEvidence), "when godot --version is available, evidence file must persist full stdout/stderr stream");
+                .Be(
+                    NormalizeLineEndings(File.ReadAllText(godotEvidence)),
+                    "when godot --version is available, evidence file must persist full stdout/stderr stream");
         }
     }
 
@@ -910,6 +917,11 @@ public sealed class Task1EnvironmentEvidencePersistenceTests
         }
 
         return result.StdOut + Environment.NewLine + result.StdErr;
+    }
+
+    private static string NormalizeLineEndings(string value)
+    {
+        return value.Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 
     private static string FindRepoRoot()
