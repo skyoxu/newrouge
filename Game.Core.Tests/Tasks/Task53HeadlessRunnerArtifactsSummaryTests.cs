@@ -131,7 +131,14 @@ namespace Game.Core.Tests.Tasks
             var script = Path.Combine(repoRoot, "scripts", "python", "smoke_headless.py");
             var workingDirectory = CreateUniqueTempRoot();
             var godotBin = useRepoFakeGodot
-                ? Path.Combine(repoRoot, "tools", "fake-godot", "Godot_v4.5.1-stable_mono_win64_console.cmd")
+                ? CreateFakeGodotScript(
+                    workingDirectory,
+                    "fake-godot-with-markers.cmd",
+                    new[]
+                    {
+                        "echo [TEMPLATE_SMOKE_READY]",
+                        "echo [DB] opened",
+                    })
                 : CreateFakeGodotScript(
                     workingDirectory,
                     "fake-godot-no-marker.cmd",
