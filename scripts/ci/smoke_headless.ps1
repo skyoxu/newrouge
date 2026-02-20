@@ -2,13 +2,23 @@ param(
   [string]$GodotBin = $env:GODOT_BIN,
   [string]$Scene = 'res://Game.Godot/Scenes/Main.tscn',
   [int]$TimeoutSec = 5,
-  [string]$ProjectPath = '.'
+  [string]$ProjectPath = '.',
+  [switch]$Strict
 )
 
 $ErrorActionPreference = 'Stop'
 
 if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
   Write-Error "GODOT_BIN is not set or file not found. Pass -GodotBin or set env var."
+}
+if ($TimeoutSec -le 0) {
+  Write-Error "TimeoutSec must be greater than 0."
+}
+if (-not $Scene.StartsWith('res://') -or -not $Scene.EndsWith('.tscn')) {
+  Write-Error "Scene must be a known-good res://*.tscn path."
+}
+if (-not (Test-Path $ProjectPath -PathType Container)) {
+  Write-Error "ProjectPath not found or not a directory: $ProjectPath"
 }
 
 $day = Get-Date -Format 'yyyy-MM-dd'
@@ -47,6 +57,10 @@ if ($p.Id -gt 0) {
   if ($content -match '\[DB\] opened') {
     Write-Host 'SMOKE PASS (db opened)'
     exit 0
+  }
+  if ($Strict) {
+    Write-Warning 'SMOKE FAIL (strict mode: required marker missing).'
+    exit 1
   }
   if ($content.Length -gt 0) {
     Write-Host 'SMOKE PASS (any output)'

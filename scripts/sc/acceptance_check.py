@@ -357,7 +357,7 @@ def main() -> int:
         if test_type != "unit" and not godot_bin:
             steps.append(StepResult(name="tests-all", status="fail", rc=2, details={"error": "missing_godot_bin", "hint": "set --godot-bin or env GODOT_BIN"}))
         else:
-            steps.append(step_tests_all(out_dir, godot_bin, run_id=run_id, test_type=test_type))
+            steps.append(step_tests_all(out_dir, godot_bin, run_id=run_id, test_type=test_type, task_id=str(triplet.task_id)))
             if needs_headless:
                 steps.append(step_headless_e2e_evidence(out_dir, expected_run_id=run_id))
             if require_executed:

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Game.Core.Contracts;
 using Game.Core.Domain;
 using Game.Core.Ports;
@@ -218,9 +219,9 @@ public class GameStateManagerTests
         mgr.DisableAutoSave(); // idempotent
         await mgr.AutoSaveTickAsync(); // disabled path: no-op
 
-        Assert.Equal(1, events.FindAll(t => t == "game.autosave.enabled").Count);
-        Assert.Equal(1, events.FindAll(t => t == "game.autosave.disabled").Count);
-        Assert.Equal(1, events.FindAll(t => t == "game.autosave.completed").Count);
+        Assert.Single(events.FindAll(t => t == "game.autosave.enabled"));
+        Assert.Single(events.FindAll(t => t == "game.autosave.disabled"));
+        Assert.Single(events.FindAll(t => t == "game.autosave.completed"));
     }
 
     [Fact]
@@ -240,14 +241,16 @@ public class GameStateManagerTests
 
         Assert.NotNull(created);
         Assert.NotNull(loaded);
+        created!.DataJson.Should().NotBeNullOrWhiteSpace();
+        loaded!.DataJson.Should().NotBeNullOrWhiteSpace();
 
-        using (var createdDoc = JsonDocument.Parse(created!.DataJson))
+        using (var createdDoc = JsonDocument.Parse(created.DataJson!))
         {
             var payloadSaveId = createdDoc.RootElement.GetProperty("saveId").GetString();
             Assert.Equal(saveId, payloadSaveId);
         }
 
-        using (var loadedDoc = JsonDocument.Parse(loaded!.DataJson))
+        using (var loadedDoc = JsonDocument.Parse(loaded.DataJson!))
         {
             var payloadSaveId = loadedDoc.RootElement.GetProperty("saveId").GetString();
             Assert.Equal(saveId, payloadSaveId);

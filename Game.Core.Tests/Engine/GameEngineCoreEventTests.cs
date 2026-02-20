@@ -147,7 +147,8 @@ public class GameEngineCoreEventTests
         bus.Published.Should().ContainSingle();
         var evt = bus.Published[0];
         evt.Type.Should().Be("score.changed");
-        using var doc = JsonDocument.Parse(evt.DataJson);
+        evt.DataJson.Should().NotBeNullOrWhiteSpace();
+        using var doc = JsonDocument.Parse(evt.DataJson!);
         doc.RootElement.GetProperty("added").GetInt32().Should().Be(11);
         doc.RootElement.GetProperty("score").GetInt32().Should().Be(11);
     }
@@ -166,7 +167,8 @@ public class GameEngineCoreEventTests
         bus.Published.Should().ContainSingle();
         var evt = bus.Published[0];
         evt.Type.Should().Be("player.health.changed");
-        using var doc = JsonDocument.Parse(evt.DataJson);
+        evt.DataJson.Should().NotBeNullOrWhiteSpace();
+        using var doc = JsonDocument.Parse(evt.DataJson!);
         doc.RootElement.GetProperty("delta").GetInt32().Should().Be(-10);
         doc.RootElement.GetProperty("health").GetInt32().Should().Be(90);
     }
