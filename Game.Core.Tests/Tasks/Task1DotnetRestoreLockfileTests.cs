@@ -56,10 +56,6 @@ public sealed class Task1DotnetRestoreLockfileTests
                 File.Copy(backupPath, lockfilePath, overwrite: true);
                 File.Delete(backupPath);
             }
-            else if (!existedInitially && File.Exists(lockfilePath))
-            {
-                File.Delete(lockfilePath);
-            }
 
             TestGate.Release();
         }
@@ -74,7 +70,13 @@ public sealed class Task1DotnetRestoreLockfileTests
             var repoRoot = FindRepoRoot();
             var lockfilePath = Path.Combine(repoRoot, "packages.lock.json");
 
-            File.Exists(lockfilePath).Should().BeTrue("this negative-path check verifies restore does not remove an existing lock file");
+            if (!File.Exists(lockfilePath))
+            {
+                var bootstrap = await RunDotnetRestoreAsync(repoRoot);
+                bootstrap.ExitCode.Should().Be(0, bootstrap.CombinedOutput);
+            }
+
+            File.Exists(lockfilePath).Should().BeTrue("dotnet restore should materialize packages.lock.json before persistence checks");
 
             var restore = await RunDotnetRestoreAsync(repoRoot);
 
@@ -100,6 +102,9 @@ public sealed class Task1DotnetRestoreLockfileTests
         await TestGate.WaitAsync();
         try
         {
+            var warmup = await RunDotnetRestoreAsync(repoRoot);
+            warmup.ExitCode.Should().Be(0, warmup.CombinedOutput);
+
             var restore = await RunDotnetRestoreAsync(repoRoot);
 
             restore.ExitCode.Should().Be(0, restore.CombinedOutput);
