@@ -85,11 +85,18 @@ namespace Game.Core.Tests.Tasks
         {
             var repoRoot = FindRepoRoot();
             var script = Path.Combine(repoRoot, "scripts", "python", "smoke_headless.py");
-            var fakeGodot = Path.Combine(repoRoot, "tools", "fake-godot", "Godot_v4.5.1-stable_mono_win64_console.cmd");
             var workingDirectory = CreateUniqueTempRoot();
 
             try
             {
+                var fakeGodot = CreateFakeGodotScript(
+                    workingDirectory,
+                    "fake-godot-cli-validation.cmd",
+                    new[]
+                    {
+                        "echo [TEMPLATE_SMOKE_READY]",
+                    });
+
                 var help = RunPythonScript(script, workingDirectory, new[] { "--help" });
                 help.ExitCode.Should().Be(0);
                 help.StdOut.Should().Contain("--godot-bin");
@@ -292,8 +299,15 @@ namespace Game.Core.Tests.Tasks
         {
             var repoRoot = FindRepoRoot();
             var script = Path.Combine(repoRoot, "scripts", "python", "smoke_headless.py");
-            var fakeGodot = Path.Combine(repoRoot, "tools", "fake-godot", "Godot_v4.5.1-stable_mono_win64_console.cmd");
             var workingDirectory = CreateUniqueTempRoot();
+            var fakeGodot = CreateFakeGodotScript(
+                workingDirectory,
+                "fake-godot-task53-cli.cmd",
+                new[]
+                {
+                    "echo [TEMPLATE_SMOKE_READY]",
+                    "echo [DB] opened",
+                });
             var effectiveScene = string.IsNullOrWhiteSpace(scene) ? KnownGoodScenePath : scene;
 
             var args = new[]
@@ -317,6 +331,16 @@ namespace Game.Core.Tests.Tasks
                 run.StdErr,
                 FindLatestSmokeRunDirectory(workingDirectory),
                 FindTaskSummaryPath(workingDirectory));
+        }
+
+        private static string CreateFakeGodotScript(string workingDirectory, string scriptName, IReadOnlyList<string> bodyLines)
+        {
+            var scriptPath = Path.Combine(workingDirectory, scriptName);
+            var lines = new List<string> { "@echo off", "setlocal" };
+            lines.AddRange(bodyLines);
+            lines.Add("exit /b 0");
+            File.WriteAllLines(scriptPath, lines);
+            return scriptPath;
         }
 
         private static ProcessResult RunPythonScript(string scriptPath, string workingDirectory, IReadOnlyList<string> args)
