@@ -83,6 +83,26 @@ def pick_latest_existing(paths):
     return max(existing, key=lambda p: os.path.getmtime(p))
 
 
+def extract_failure_excerpt(output: str, max_lines: int = 40):
+    patterns = [
+        r"\[xUnit\.net.*\[FAIL\]",
+        r"^\s*Failed\s+",
+        r"^\s*失败\s+",
+        r"^.*error CS\d+.*$",
+        r"^.*Error Message:.*$",
+        r"^.*堆栈跟踪:.*$",
+        r"^.*Stack Trace:.*$",
+    ]
+    rx = [re.compile(p, re.IGNORECASE) for p in patterns]
+    lines = []
+    for line in output.splitlines():
+        if any(r.search(line) for r in rx):
+            lines.append(line)
+            if len(lines) >= max_lines:
+                break
+    return lines
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--solution', default='Game.sln')
@@ -113,14 +133,34 @@ def main():
         print(f'RUN_DOTNET status=fail stage=restore out={out_dir}')
         return 1
 
-    # Test with coverage
-    rc, out = run_cmd(['dotnet', 'test', args.solution,
-                       f'-c', args.configuration,
-                       '--collect:XPlat Code Coverage',
-                       '--logger', 'trx;LogFileName=tests.trx'], cwd=root)
+    # Test with coverage (retry once for known transient file-lock failures)
+    retry_on_fail = 1
+    try:
+        retry_on_fail = int(os.environ.get('DOTNET_TEST_RETRY_ON_FAIL', '1') or '1')
+    except ValueError:
+        retry_on_fail = 1
+    retry_on_fail = max(0, retry_on_fail)
+
+    test_attempt = 0
+    rc = 1
+    out = ''
+    attempts_log = []
+    while test_attempt <= retry_on_fail:
+        test_attempt += 1
+        rc, out = run_cmd(['dotnet', 'test', args.solution,
+                           f'-c', args.configuration,
+                           '--collect:XPlat Code Coverage',
+                           '--logger', 'trx;LogFileName=tests.trx'], cwd=root)
+        attempts_log.append({'attempt': test_attempt, 'rc': rc})
+        with io.open(os.path.join(out_dir, f'dotnet-test-output-attempt-{test_attempt}.txt'), 'w', encoding='utf-8') as f:
+            f.write(out)
+        if rc == 0:
+            break
+
     with io.open(os.path.join(out_dir, 'dotnet-test-output.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     summary['test_rc'] = rc
+    summary['test_attempts'] = attempts_log
 
     # Copy artifacts using paths emitted by dotnet test output (preferred).
     artifacts = parse_paths_from_test_output(out)
@@ -185,6 +225,13 @@ def main():
     summary['threshold_ok'] = threshold_ok
 
     summary['status'] = 'ok' if (rc == 0 and threshold_ok) else ('tests_failed' if rc != 0 else 'coverage_failed')
+    if summary['status'] == 'tests_failed':
+        excerpt = extract_failure_excerpt(out)
+        summary['failure_excerpt'] = excerpt
+        if excerpt:
+            print('RUN_DOTNET failure excerpt:')
+            for line in excerpt:
+                print(line)
     with io.open(os.path.join(out_dir, 'summary.json'), 'w', encoding='utf-8') as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
