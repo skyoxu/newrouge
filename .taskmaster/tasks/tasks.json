@@ -30,8 +30,8 @@
         "id": 2,
         "title": "Create core project structure and namespaces",
         "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
-        "details": "Create directories: Game.Core/, Game.Godot/, Game.Core.Tests/, Tests.Godot/. Set up C# projects with net8.0 target and Nullable enabled. Ensure Game.Core does not reference Godot API. Use NewRouge.* namespace for new code, migrate existing Game.* gradually. Refs: ADR-0021, ADR-0024.\n",
-        "testStrategy": "Validate project structure via directory listing and inspect .csproj files for correct settings. Run 'dotnet build' to ensure no compilation errors. Refs: ADR-0021, ADR-0024.\n",
+        "details": "Create directories: Game.Core/, Game.Godot/, Game.Core.Tests/, Tests.Godot/. Set up C# projects for Game.Core, Game.Core.Tests, and Tests.Godot with net8.0 target and Nullable enabled. Treat Game.Godot as script/resource directory under the root project (no standalone csproj). Ensure Game.Core does not reference Godot API. Use taskdoc/task-0002-change-set.json as authoritative Task 2 C# scope and enforce NewRouge.* namespace for listed files while allowing Game.* coexistence outside Task 2 scope. Refs: ADR-0024.\n",
+        "testStrategy": "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot. Verify Game.Godot behaves as script/resource directory. Use acceptance gate dotnet-build-warnaserror as the root build proof. Refs: ADR-0024.\n",
         "priority": "high",
         "dependencies": [
           "1"
@@ -39,7 +39,6 @@
         "status": "pending",
         "subtasks": [],
         "adrRefs": [
-          "ADR-0021",
           "ADR-0024"
         ],
         "archRefs": [

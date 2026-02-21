@@ -75,7 +75,6 @@
       "GM-0101"
     ],
     "adr_refs": [
-      "ADR-0021",
       "ADR-0024"
     ],
     "chapter_refs": [
@@ -104,15 +103,15 @@
       "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
     ],
     "acceptance": [
-      "仓库根目录存在 Game.Core/、Game.Godot/、Game.Core.Tests/、Tests.Godot/ 四个目录，可通过目录列表直接验证。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
-      "上述四个目录下各自存在对应的 .csproj 项目文件，且目标框架为 net8.0、Nullable 设置为 enable。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
-      "Game.Core 项目未引用任何 Godot 相关包或 API 依赖，且本任务新增代码的命名空间以 NewRouge. 前缀声明。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
-      "允许现有 Game.* 与新引入的 NewRouge.* 命名空间在仓库中同时存在，不要求一次性全量重命名，且此状态下构建仍应通过。 Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
-      "在仓库根目录执行 dotnet build 可成功完成且无编译错误输出。 Refs: Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
-      "有可复核的目录列表与 .csproj 设置核对记录，用于证明结构与设置符合要求（记录可放在 logs/ci/<date>/task-0002-structure.txt）。 Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd"
+      "Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "Game.Core must not reference any Godot package or API. taskdoc/task-0002-change-set.json is the authoritative Task 2 C# scope and must include Game.Core/Conventions and Game.Core.Tests/Tasks/Task2* entries (plus optional Tests.Godot Task2 C# entries); every listed file must declare namespaces under NewRouge.*; legacy Game.* may remain outside Task 2 scope. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "If legacy Game.* namespaces are present, they may coexist with NewRouge.*; Task 2 does not require full repository rename. Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
     ],
     "test_strategy": [
-      "Validate project structure via directory listing and inspect .csproj files for correct settings. Run 'dotnet build' to ensure no compilation errors. Refs: ADR-0021, ADR-0024."
+      "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot; treat Game.Godot as script/resource directory. Refs: ADR-0024.",
+      "Gate evidence: root build pass is enforced by sc-acceptance-check dotnet-build-warnaserror (exit code 0, no compiler errors), and Task2RootBuildGateTests validates build output classification.",
+      "Evidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability."
     ],
     "taskmaster_id": 2,
     "taskmaster_exported": true,
