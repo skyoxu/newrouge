@@ -24,15 +24,17 @@ func test_buttons_emit_pressed_and_panel_hides_on_close() -> void:
     var save_btn = panel.get_node("VBox/Buttons/SaveBtn")
     var load_btn = panel.get_node("VBox/Buttons/LoadBtn")
     var close_btn = panel.get_node("VBox/Buttons/CloseBtn")
-    var save_called := false
-    var load_called := false
-    save_btn.pressed.connect(func(): save_called = true)
-    load_btn.pressed.connect(func(): load_called = true)
+    var pressed_state := {
+        "save": false,
+        "load": false
+    }
+    save_btn.pressed.connect(func(): pressed_state["save"] = true)
+    load_btn.pressed.connect(func(): pressed_state["load"] = true)
     save_btn.emit_signal("pressed")
     load_btn.emit_signal("pressed")
     await get_tree().process_frame
-    assert_bool(save_called).is_true()
-    assert_bool(load_called).is_true()
+    assert_bool(bool(pressed_state["save"])).is_true()
+    assert_bool(bool(pressed_state["load"])).is_true()
     close_btn.emit_signal("pressed")
     await get_tree().process_frame
     assert_bool(panel.visible).is_false()
