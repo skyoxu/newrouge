@@ -1,0 +1,8 @@
+{
+  "task_id": 2,
+  "csharp_files": [
+    "Game.Core/Conventions/NamespaceConventions.cs",
+    "Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs",
+    "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
+  ]
+}
