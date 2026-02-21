@@ -87,7 +87,14 @@ def run_coverage_report(out_dir: Path, unit_artifacts_dir: Path) -> dict[str, An
     }
 
 
-def run_gdunit_hard(out_dir: Path, godot_bin: str, timeout_sec: int, *, run_id: str) -> dict[str, Any]:
+def run_gdunit_hard(
+    out_dir: Path,
+    godot_bin: str,
+    timeout_sec: int,
+    *,
+    run_id: str,
+    task_id: str | None = None,
+) -> dict[str, Any]:
     date = today_str()
     report_dir = Path("logs") / "e2e" / date / "sc-test" / "gdunit-hard"
     os.environ["AUDIT_LOG_ROOT"] = str(repo_root() / "logs" / "ci" / date)
@@ -99,6 +106,14 @@ def run_gdunit_hard(out_dir: Path, godot_bin: str, timeout_sec: int, *, run_id: 
             add_dirs.append(rel)
         elif (repo_root() / rel).exists():
             # Backward-compatible fallback for repos that keep GdUnit suites at repo root.
+            add_dirs.append(rel)
+    # Task-specific acceptance suites (e.g., tests/Tasks/test_taskXXXX_acceptance.gd)
+    # should be included only when a concrete task id is being validated.
+    if str(task_id or "").strip():
+        rel = "tests/Tasks"
+        if (tests_project / rel).exists():
+            add_dirs.append(rel)
+        elif (repo_root() / rel).exists():
             add_dirs.append(rel)
 
     cmd = [
@@ -192,7 +207,7 @@ def main() -> int:
             print("[sc-test] ERROR: --godot-bin (or env GODOT_BIN) is required for e2e/integration tests.")
             return 2
 
-        step = run_gdunit_hard(out_dir, godot_bin, args.timeout_sec, run_id=run_id)
+        step = run_gdunit_hard(out_dir, godot_bin, args.timeout_sec, run_id=run_id, task_id=args.task_id)
         summary["steps"].append(step)
         if step["rc"] != 0:
             hard_fail = True
