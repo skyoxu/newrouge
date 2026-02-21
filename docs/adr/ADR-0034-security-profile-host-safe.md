@@ -1,0 +1,47 @@
+# ADR-0034: Security Profile Baseline for Host-Safe Delivery
+
+- Status: Accepted
+- Date: 2026-02-22
+- Context:
+  - NewRouge 是 Windows-only 的单机项目，当前阶段目标是尽快完成 M1 可玩纵切，不是做强反篡改产品。
+  - 当前存在口径冲突：实现侧强调“主机安全优先、轻反篡改”，但验收和软审默认按“重安全”判定，导致任务反复打回、工期失控。
+  - 项目仍必须保留主机安全底线：路径边界、执行边界、外链边界；但不把“本地数据不可修改”当作默认硬门。
+  - 相关基线：`ADR-0019`（Godot 安全基线）、`ADR-0005`（质量门禁）。
+- Decision:
+  - 引入统一配置 `SECURITY_PROFILE`，支持两档：
+    - `strict`
+    - `host-safe`
+  - 默认策略：
+    - 开发与常规 CI 默认使用 `SECURITY_PROFILE=host-safe`。
+    - 进入发布/联机场景/高博弈风险场景时，显式切换 `SECURITY_PROFILE=strict`。
+  - `host-safe` 下的硬要求（必须保留）：
+    - 路径边界：只允许 `res://` 与 `user://`，拒绝绝对路径和越权路径。
+    - 执行边界：禁止运行时动态加载外部程序集/脚本，`OS.execute` 默认禁用。
+    - 外链边界：仅允许 `https` + 白名单主机。
+  - `host-safe` 下的降级项（默认非硬失败）：
+    - 本地存档签名/HMAC 强制。
+    - 快照完整性失败即硬拒绝/硬清空。
+    - 审计链式哈希强制。
+    - trusted publisher 强制门禁。
+  - 行为口径：
+    - 本地快照“不可信”时，默认“告警 + 可恢复”，而不是直接阻断。
+    - `ADR-0032` 规定的确定性与可复现规则不在本 ADR 的降级范围内，继续严格执行。
+  - 工程约束：
+    - `acceptance_check`、`llm_review`、CI workflow 必须使用同一 `SECURITY_PROFILE` 解释安全门禁，禁止口径分裂。
+- Consequences:
+  - 正向：
+    - 降低“软审反复打回”的无效返工。
+    - 安全投入聚焦主机安全边界，避免反篡改思维拖慢单机交付。
+    - 评审口径统一，减少团队内耗。
+  - 代价与风险：
+    - `host-safe` 不提供强反篡改保证，本地存档仍可被修改。
+    - 若未来引入联机、交易、排行榜等高博弈能力，必须提升到 `strict` 并补 ADR。
+- Supersedes: None
+- References:
+  - `docs/adr/ADR-0019-godot-security-baseline.md`
+  - `docs/adr/ADR-0005-quality-gates.md`
+  - `docs/adr/ADR-0032-save-resume-determinism.md`
+  - `scripts/sc/acceptance_check.py`
+  - `scripts/sc/llm_review.py`
+  - `.github/workflows/windows-quality-gate.yml`
+  - `.github/workflows/ci-windows.yml`
