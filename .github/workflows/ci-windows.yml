@@ -84,8 +84,46 @@ jobs:
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           $tpz = "godot/export_templates.tpz"
-          $u = "https://github.com/godotengine/godot/releases/download/${env:GODOT_VERSION}-stable/Godot_v${env:GODOT_VERSION}-stable_export_templates.tpz"
-          Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $tpz
+          $version = "${env:GODOT_VERSION}"
+          $urls = @(
+            "https://github.com/godotengine/godot/releases/download/${version}-stable/Godot_v${version}-stable_export_templates.tpz",
+            "https://downloads.tuxfamily.org/godotengine/${version}/Godot_v${version}-stable_export_templates.tpz"
+          )
+
+          $downloaded = $false
+          foreach ($u in $urls) {
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              try {
+                Write-Host "Download templates attempt=$attempt url=$u"
+                Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $tpz -TimeoutSec 600
+                if (-not (Test-Path $tpz)) { throw "Download target not found: $tpz" }
+                $fi = Get-Item $tpz
+                if ($fi.Length -lt 1048576) { throw "Downloaded file too small: $($fi.Length) bytes" }
+                $stream = [System.IO.File]::OpenRead($tpz)
+                try {
+                  $b0 = $stream.ReadByte()
+                  $b1 = $stream.ReadByte()
+                } finally {
+                  $stream.Dispose()
+                }
+                if ($b0 -ne 0x50 -or $b1 -ne 0x4B) {
+                  throw "Downloaded file is not a zip/tpz archive."
+                }
+                $downloaded = $true
+                break
+              } catch {
+                Write-Warning "Download failed attempt=$attempt url=$u err=$($_.Exception.Message)"
+                if (Test-Path $tpz) { Remove-Item -Force $tpz -ErrorAction SilentlyContinue }
+                if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+              }
+            }
+            if ($downloaded) { break }
+          }
+
+          if (-not $downloaded) {
+            throw "Unable to download export templates from known mirrors."
+          }
+
           $temp = "godot/templates_unpacked"
           Expand-Archive $tpz -DestinationPath $temp -Force
           $src = Join-Path $temp 'templates'
