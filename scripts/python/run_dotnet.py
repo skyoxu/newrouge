@@ -115,11 +115,18 @@ def main():
     out_dir = args.out_dir or os.path.join(root, 'logs', 'unit', date)
     ensure_dir(out_dir)
 
+    try:
+        test_timeout_ms = int(os.environ.get('DOTNET_TEST_TIMEOUT_MS', '1800000') or '1800000')
+    except ValueError:
+        test_timeout_ms = 1_800_000
+    test_timeout_ms = max(60_000, test_timeout_ms)
+
     summary = {
         'solution': args.solution,
         'configuration': args.configuration,
         'out_dir': out_dir,
         'status': 'fail',
+        'test_timeout_ms': test_timeout_ms,
     }
 
     # Restore
@@ -150,7 +157,7 @@ def main():
         rc, out = run_cmd(['dotnet', 'test', args.solution,
                            f'-c', args.configuration,
                            '--collect:XPlat Code Coverage',
-                           '--logger', 'trx;LogFileName=tests.trx'], cwd=root)
+                           '--logger', 'trx;LogFileName=tests.trx'], cwd=root, timeout=test_timeout_ms)
         attempts_log.append({'attempt': test_attempt, 'rc': rc})
         with io.open(os.path.join(out_dir, f'dotnet-test-output-attempt-{test_attempt}.txt'), 'w', encoding='utf-8') as f:
             f.write(out)
