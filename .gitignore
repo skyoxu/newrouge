@@ -116,3 +116,6 @@ node_modules/
 # Task files
 # tasks.json
 # tasks/ 
+
+# taskdoc: ignore transient local context notes only
+taskdoc/*-serena-context.md
