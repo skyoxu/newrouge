@@ -30,6 +30,7 @@ from typing import Any
 
 from _acceptance_artifacts import build_acceptance_evidence
 from _deterministic_review import DETERMINISTIC_AGENTS, build_deterministic_review
+from _security_profile import build_security_profile_context, resolve_security_profile, security_profile_payload
 from _taskmaster import TaskmasterTriplet, resolve_triplet
 from _util import ci_dir, repo_root, run_cmd, split_csv, today_str, write_json, write_text
 
@@ -727,6 +728,12 @@ def main() -> int:
         help="Threat model hint for review prompts: singleplayer|modded|networked (default: env SC_THREAT_MODEL or singleplayer).",
     )
     ap.add_argument(
+        "--security-profile",
+        default=None,
+        choices=["strict", "host-safe"],
+        help="Security review profile hint (default: env SECURITY_PROFILE or strict). host-safe de-emphasizes anti-tamper findings unless task explicitly requires them.",
+    )
+    ap.add_argument(
         "--claude-agents-root",
         default=None,
         help="Claude agents root (default: env CLAUDE_AGENTS_ROOT or $env:USERPROFILE\\.claude\\agents). Used to load lst97 agent prompts.",
@@ -824,6 +831,8 @@ def main() -> int:
     ctx = _build_task_context(triplet)
     threat_model = _resolve_threat_model(args.threat_model)
     threat_ctx = _build_threat_model_context(threat_model)
+    security_profile = resolve_security_profile(args.security_profile)
+    security_ctx = build_security_profile_context(security_profile)
     acceptance_ctx = ""
     acceptance_meta: dict[str, Any] | None = None
     if triplet:
@@ -913,6 +922,7 @@ def main() -> int:
                     details={
                         "claude_agents_root": str(claude_agents_root),
                         "agent_prompt_source": _agent_prompt(agent, claude_agents_root=claude_agents_root, skip_agent_files=bool(args.skip_agent_prompts))[1].get("agent_prompt_source"),
+                        "security_profile": security_profile_payload(security_profile),
                         **(det.get("details") or {}),
                         "note": "Deterministic mapping: generated from sc-acceptance-check artifacts.",
                     },
@@ -928,6 +938,8 @@ def main() -> int:
             blocks.append(ctx)
         if threat_ctx:
             blocks.append(threat_ctx)
+        if security_ctx:
+            blocks.append(security_ctx)
         if acceptance_ctx:
             blocks.append(acceptance_ctx)
         if acceptance_semantic_ctx:
@@ -953,6 +965,7 @@ def main() -> int:
                         "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"),
                         "claude_agents_root": str(claude_agents_root),
                         "agent_prompt_source": prompt_meta.get("agent_prompt_source"),
+                        "security_profile": security_profile_payload(security_profile),
                         "note": "--prompts-only: LLM execution skipped.",
                     },
                 )
@@ -1001,6 +1014,7 @@ def main() -> int:
                     "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"),
                     "claude_agents_root": str(claude_agents_root),
                     "agent_prompt_source": prompt_meta.get("agent_prompt_source"),
+                    "security_profile": security_profile_payload(security_profile),
                     "total_timeout_sec": total_timeout_sec,
                     "agent_timeout_sec": effective_timeout,
                     "verdict": verdict,
@@ -1018,6 +1032,7 @@ def main() -> int:
         "task_id": triplet.task_id if triplet else None,
         "strict": bool(args.strict),
         "threat_model": threat_model,
+        "security_profile": security_profile_payload(security_profile),
         "template_meta": template_meta,
         "acceptance_meta": acceptance_meta,
         "acceptance_semantic_meta": acceptance_semantic_meta,

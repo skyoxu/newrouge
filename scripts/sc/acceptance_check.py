@@ -52,6 +52,7 @@ from _acceptance_steps import (
 )
 from _task1_env_evidence import step_task1_env_evidence
 from _risk_summary import write_risk_summary
+from _security_profile import normalize_gate_mode, resolve_security_profile, security_gate_defaults, security_profile_payload
 from _taskmaster import resolve_triplet
 from _unit_metrics import collect_unit_metrics
 from _util import ci_dir, repo_root, run_cmd, today_str, write_json, write_text
@@ -224,40 +225,46 @@ def main() -> int:
     ap.add_argument("--require-task-test-refs", action="store_true", help="fail if tasks_back/tasks_gameplay test_refs is empty for the resolved task id")
     ap.add_argument("--require-executed-refs", action="store_true", help="fail if acceptance anchors cannot be proven executed in this run (TRX/JUnit evidence)")
     ap.add_argument(
+        "--security-profile",
+        default=None,
+        choices=["strict", "host-safe"],
+        help="Security posture profile (default: env SECURITY_PROFILE or strict). host-safe keeps host boundary checks hard, lowers anti-tamper defaults.",
+    )
+    ap.add_argument(
         "--security-path-gate",
-        default="require",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="Hard gate: path safety invariants (static). Default: require.",
+        help="Hard gate: path safety invariants (static). Default follows --security-profile.",
     )
     ap.add_argument(
         "--security-sql-gate",
-        default="require",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="Hard gate: SQL injection anti-patterns (static). Default: require.",
+        help="Hard gate: SQL injection anti-patterns (static). Default follows --security-profile.",
     )
     ap.add_argument(
         "--security-audit-schema-gate",
-        default="require",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="Hard gate: security-audit.jsonl schema keys exist in runtime code (static). Default: require.",
+        help="Hard gate: security-audit.jsonl schema keys exist in runtime code (static). Default follows --security-profile.",
     )
     ap.add_argument(
         "--ui-event-json-guards",
-        default="skip",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="UI event gate: JSON size/max-depth guards (static). Default: skip.",
+        help="UI event gate: JSON size/max-depth guards (static). Default follows --security-profile.",
     )
     ap.add_argument(
         "--ui-event-source-verify",
-        default="skip",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="UI event gate: if handler has `source`, require it is used (static). Default: skip.",
+        help="UI event gate: if handler has `source`, require it is used (static). Default follows --security-profile.",
     )
     ap.add_argument(
         "--security-audit-evidence",
-        default="skip",
+        default=None,
         choices=["skip", "warn", "require"],
-        help="Require runtime evidence of security-audit.jsonl for this run_id (requires tests). Default: skip.",
+        help="Require runtime evidence of security-audit.jsonl for this run_id (requires tests). Default follows --security-profile.",
     )
     ap.add_argument(
         "--require-headless-e2e",
@@ -300,6 +307,16 @@ def main() -> int:
     subtasks_mode = str(args.subtasks_coverage or "skip").strip().lower()
     if subtasks_mode not in ("skip", "warn", "require"):
         subtasks_mode = "skip"
+
+    security_profile = resolve_security_profile(args.security_profile)
+    security_defaults = security_gate_defaults(security_profile)
+    security_path_mode = normalize_gate_mode(args.security_path_gate, security_defaults["path"])
+    security_sql_mode = normalize_gate_mode(args.security_sql_gate, security_defaults["sql"])
+    security_audit_schema_mode = normalize_gate_mode(args.security_audit_schema_gate, security_defaults["audit_schema"])
+    ui_event_json_mode = normalize_gate_mode(args.ui_event_json_guards, security_defaults["ui_event_json_guards"])
+    ui_event_source_mode = normalize_gate_mode(args.ui_event_source_verify, security_defaults["ui_event_source_verify"])
+    security_audit_evidence_mode = normalize_gate_mode(args.security_audit_evidence, security_defaults["audit_evidence"])
+
     run_id = uuid.uuid4().hex
     godot_bin = args.godot_bin or os.environ.get("GODOT_BIN")
 
@@ -343,15 +360,15 @@ def main() -> int:
         steps.append(
             step_security_hard(
                 out_dir,
-                path_mode=str(args.security_path_gate),
-                sql_mode=str(args.security_sql_gate),
-                audit_schema_mode=str(args.security_audit_schema_gate),
+                path_mode=security_path_mode,
+                sql_mode=security_sql_mode,
+                audit_schema_mode=security_audit_schema_mode,
             )
         )
-        steps.append(step_ui_event_security(out_dir, json_mode=str(args.ui_event_json_guards), source_mode=str(args.ui_event_source_verify)))
+        steps.append(step_ui_event_security(out_dir, json_mode=ui_event_json_mode, source_mode=ui_event_source_mode))
         steps.append(step_security_soft(out_dir))
 
-    audit_mode = str(args.security_audit_evidence or "skip").strip().lower()
+    audit_mode = security_audit_evidence_mode
     if enabled("tests"):
         test_type = "all" if has_gd_refs else "unit"
         if test_type != "unit" and not godot_bin:
@@ -468,6 +485,15 @@ def main() -> int:
         "steps": [s.__dict__ for s in steps],
         "out_dir": str(out_dir),
         "subtasks_coverage_mode": subtasks_mode,
+        "security_profile": security_profile_payload(security_profile),
+        "security_modes": {
+            "path": security_path_mode,
+            "sql": security_sql_mode,
+            "audit_schema": security_audit_schema_mode,
+            "ui_event_json_guards": ui_event_json_mode,
+            "ui_event_source_verify": ui_event_source_mode,
+            "audit_evidence": audit_mode,
+        },
     }
     if risk_summary_rel:
         summary["risk_summary"] = risk_summary_rel
