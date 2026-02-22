@@ -34,6 +34,34 @@ def run_cmd(args, cwd=None, timeout=900_000):
     return p.returncode, out
 
 
+def _safe_int(raw, default):
+    try:
+        return int(str(raw).strip())
+    except Exception:
+        return int(default)
+
+
+def resolve_dotnet_stage_timeout_ms(cli_value):
+    """
+    Resolve outer timeout for run_dotnet stage.
+    Priority:
+      1) CLI --dotnet-stage-timeout-ms
+      2) env CI_DOTNET_STAGE_TIMEOUT_MS
+      3) derived default = max(60m, DOTNET_TEST_TIMEOUT_MS + 5m)
+    """
+    dotnet_test_timeout_ms = max(60_000, _safe_int(os.environ.get('DOTNET_TEST_TIMEOUT_MS', '1800000'), 1_800_000))
+    derived_default = max(3_600_000, dotnet_test_timeout_ms + 300_000)
+
+    if cli_value is not None:
+        candidate = _safe_int(cli_value, derived_default)
+    else:
+        env_value = os.environ.get('CI_DOTNET_STAGE_TIMEOUT_MS', '')
+        candidate = _safe_int(env_value, derived_default) if str(env_value).strip() else derived_default
+
+    # Clamp to [5m, 3h] to avoid accidental 0/negative and runaway values.
+    return max(300_000, min(candidate, 10_800_000))
+
+
 def read_json(path):
     try:
         with io.open(path, 'r', encoding='utf-8') as f:
@@ -90,6 +118,12 @@ def main():
     ap_all.add_argument('--godot-bin', required=True)
     ap_all.add_argument('--project', default='project.godot')
     ap_all.add_argument('--build-solutions', action='store_true')
+    ap_all.add_argument(
+        '--dotnet-stage-timeout-ms',
+        type=int,
+        default=None,
+        help='Outer timeout for run_dotnet stage in milliseconds. Default derives from DOTNET_TEST_TIMEOUT_MS and is at least 3600000.',
+    )
 
     args = ap.parse_args()
     if args.cmd != 'all':
@@ -120,17 +154,30 @@ def main():
         hard_fail = True
 
     # 1) Dotnet tests + coverage (soft gate on coverage)
+    dotnet_stage_timeout_ms = resolve_dotnet_stage_timeout_ms(args.dotnet_stage_timeout_ms)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
                        '--solution', args.solution,
-                       '--configuration', args.configuration], cwd=root)
+                       '--configuration', args.configuration], cwd=root, timeout=dotnet_stage_timeout_ms)
     with io.open(os.path.join(ci_dir, 'dotnet-run-dotnet-stdout.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
+    dotnet_status = dotnet_sum.get('status')
+    if rc == 124 and not dotnet_status:
+        dotnet_status = 'timeout'
+    timeout_reason = None
+    if rc == 124:
+        timeout_reason = 'ci_pipeline_dotnet_stage_timeout'
+        tail = '\n'.join((out or '').splitlines()[-120:])
+        with io.open(os.path.join(ci_dir, 'dotnet-timeout-tail.txt'), 'w', encoding='utf-8') as f:
+            f.write(tail)
     summary['dotnet'] = {
         'rc': rc,
+        'stage_timeout_ms': dotnet_stage_timeout_ms,
+        'timed_out': rc == 124,
+        'reason': timeout_reason,
         'line_pct': (dotnet_sum.get('coverage') or {}).get('line_pct'),
         'branch_pct': (dotnet_sum.get('coverage') or {}).get('branch_pct'),
-        'status': dotnet_sum.get('status'),
+        'status': dotnet_status,
         'test_attempts': dotnet_sum.get('test_attempts') or [],
         'failure_excerpt': dotnet_sum.get('failure_excerpt') or [],
     }
@@ -205,7 +252,17 @@ def main():
     with io.open(os.path.join(ci_dir, 'ci-pipeline-summary.json'), 'w', encoding='utf-8') as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
-    print(f"CI_PIPELINE status={summary['status']} dotnet={summary['dotnet'].get('status')} selfcheck={summary['selfcheck'].get('status')} encoding_bad={summary['encoding'].get('bad', 'n/a')}")
+    print(
+        "CI_PIPELINE status={status} dotnet={dotnet} dotnet_rc={dotnet_rc} dotnet_timeout_ms={dotnet_timeout_ms} "
+        "selfcheck={selfcheck} encoding_bad={encoding_bad}".format(
+            status=summary['status'],
+            dotnet=summary['dotnet'].get('status'),
+            dotnet_rc=summary['dotnet'].get('rc'),
+            dotnet_timeout_ms=summary['dotnet'].get('stage_timeout_ms'),
+            selfcheck=summary['selfcheck'].get('status'),
+            encoding_bad=summary['encoding'].get('bad', 'n/a'),
+        )
+    )
     return 0 if not hard_fail else 1
 
 

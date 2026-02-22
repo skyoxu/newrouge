@@ -31,6 +31,8 @@ jobs:
       GODOT_VERSION: '4.5.1'
       PYTHONIOENCODING: 'utf-8'
       PYTHONUTF8: '1'
+      SECURITY_PROFILE: 'host-safe'
+      CI_DOTNET_STAGE_TIMEOUT_MS: '4200000'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -301,7 +303,7 @@ jobs:
             if ($reqPerf -eq "true") { $only += 'perf' }
             $onlyArg = $only -join ','
 
-            $args = @("py", "-3", "scripts/sc/acceptance_check.py", "--task-id", $id, "--only", $onlyArg)
+            $args = @("py", "-3", "scripts/sc/acceptance_check.py", "--task-id", $id, "--only", $onlyArg, "--security-profile", "$env:SECURITY_PROFILE")
             if ($strict -eq "true") { $args += "--strict-adr-status" }
             if ($reqPerf -eq "true") { $args += "--require-perf" }
             if ($reqRefs -eq "true") { $args += "--require-task-test-refs" }
