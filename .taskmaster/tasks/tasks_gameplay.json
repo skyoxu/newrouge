@@ -106,12 +106,14 @@
       "Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
       "Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
       "Game.Core must not reference any Godot package or API. taskdoc/task-0002-change-set.json is the authoritative Task 2 C# scope and must include Game.Core/Conventions and Game.Core.Tests/Tasks/Task2* entries (plus optional Tests.Godot Task2 C# entries); every listed file must declare namespaces under NewRouge.*; legacy Game.* may remain outside Task 2 scope. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
-      "If legacy Game.* namespaces are present, they may coexist with NewRouge.*; Task 2 does not require full repository rename. Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
+      "If legacy Game.* namespaces are present, they may coexist with NewRouge.*; Task 2 does not require full repository rename. Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "Task 2 completion must include sc-acceptance-check step `dotnet-build-warnaserror` with exit_code=0 as root build proof; if this gate is not executed or fails, Task 2 must remain non-done and progression must be blocked. Refs: Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs"
     ],
     "test_strategy": [
       "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot; treat Game.Godot as script/resource directory. Refs: ADR-0024.",
       "Gate evidence: root build pass is enforced by sc-acceptance-check dotnet-build-warnaserror (exit code 0, no compiler errors), and Task2RootBuildGateTests validates build output classification.",
-      "Evidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability."
+      "Evidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability.",
+      "Evidence note: capture sc-acceptance-check summary at logs/ci/<YYYY-MM-DD>/sc-acceptance-check-task-2/summary.json and keep dotnet-build-warnaserror step status for audit (non-Refs evidence)."
     ],
     "taskmaster_id": 2,
     "taskmaster_exported": true,

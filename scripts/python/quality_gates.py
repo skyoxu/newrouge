@@ -12,7 +12,8 @@ Usage (Windows):
   py -3 scripts/python/quality_gates.py all \
     --solution Game.sln --configuration Debug \
     --godot-bin "C:\\Godot\\Godot_v4.5.1-stable_mono_win64_console.exe" \
-    --build-solutions
+    --build-solutions \
+    --security-profile host-safe
 
 Exit codes:
   0  all hard gates passed
@@ -206,12 +207,20 @@ def _run_to_file(cmd: list[str], out_path: Path) -> int:
         return 1
 
 
-def _write_env_evidence(date: str, godot_bin: str | None, dotnet_resolved: Path | None) -> None:
+def _resolve_security_profile(raw: str | None) -> str:
+    profile = str(raw or "").strip().lower()
+    if profile == "strict":
+        return "strict"
+    return "host-safe"
+
+
+def _write_env_evidence(date: str, godot_bin: str | None, dotnet_resolved: Path | None, security_profile: str) -> None:
     d = _ci_dir(date, "env-evidence")
     d.mkdir(parents=True, exist_ok=True)
 
     _write_text(d / "python.runtime.txt", sys.version)
     _run_to_file(["py", "-3", "--version"], d / "py.version.txt")
+    _write_text(d / "security.profile.txt", f"SECURITY_PROFILE={security_profile}\n")
 
     dotnet = shutil.which("dotnet")
     if dotnet:
@@ -298,6 +307,11 @@ def main() -> int:
     p_all.add_argument("--build-solutions", action="store_true")
     p_all.add_argument("--gdunit-hard", action="store_true", help="run hard GdUnit set (Adapters/Config + Security)")
     p_all.add_argument("--smoke", action="store_true", help="run headless smoke (strict marker/DB check)")
+    p_all.add_argument(
+        "--security-profile",
+        default=os.environ.get("SECURITY_PROFILE", "host-safe"),
+        help="security profile for downstream gates: host-safe|strict (default: env SECURITY_PROFILE or host-safe)",
+    )
     p_all.add_argument("--require-lock-files", action="store_true", default=True, help="require packages.lock.json (default: true)")
     p_all.add_argument("--no-require-lock-files", action="store_false", dest="require_lock_files", help="do not require lock files")
 
@@ -305,8 +319,10 @@ def main() -> int:
 
     if args.cmd == "all":
         date = _date_stamp()
+        security_profile = _resolve_security_profile(args.security_profile)
+        os.environ["SECURITY_PROFILE"] = security_profile
         dotnet_resolved = _ensure_dotnet_on_path()
-        _write_env_evidence(date, args.godot_bin, dotnet_resolved)
+        _write_env_evidence(date, args.godot_bin, dotnet_resolved, security_profile)
 
         prereqs_ok = _require_prereqs(date, args.godot_bin, args.require_lock_files, dotnet_resolved)
         if not prereqs_ok:

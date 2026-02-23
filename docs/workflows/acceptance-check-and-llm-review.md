@@ -76,6 +76,7 @@ CI 集成说明（Windows Quality Gate）：
 - 架构边界：`Game.Core/**` 不得引用 `Godot.*`
 - 构建门禁：`dotnet build -warnaserror`（通过 sc build 入口）
 - 测试门禁：`py -3 scripts/sc/test.py --type all`（含 xUnit + GdUnit4 + smoke）
+- 安全档位：默认 `host-safe`；可通过 `--security-profile strict` 切到严格安全口径（优先级：CLI > `SECURITY_PROFILE` > 默认）
 
 软门禁（不阻断，只记录证据）：
 
@@ -90,9 +91,11 @@ CI 集成说明（Windows Quality Gate）：
 默认**不启用**（避免在 CI/机器差异下误伤）。启用方式：
 
 - 显式启用：  
-  `py -3 scripts/sc/acceptance_check.py --task-id 10 --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
+  `py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
 - 或设置环境变量：  
   `$env:PERF_P95_THRESHOLD_MS = "20"`
+- 发布前/出网/高风险场景：  
+  `py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile strict --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
 - legacy 快捷开关：  
   `--require-perf`（阈值取 `PERF_P95_THRESHOLD_MS`，否则默认 20ms；仍建议优先用 `--perf-p95-ms` 明示）
 
@@ -176,7 +179,8 @@ py -3 scripts/sc/llm_review.py --task-id 10 --base main --strict
 每完成一个 `tasks.json` 的任务（或一个子任务提交）后：
 
 1) **硬门禁**：  
-   `py -3 scripts/sc/acceptance_check.py --task-id <id> --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
+   `py -3 scripts/sc/acceptance_check.py --task-id <id> --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
+   （发布前/高风险改为 `--security-profile strict`）
 2) **软审查（可选）**：  
    `py -3 scripts/sc/llm_review.py --task-id <id> --base main`
 3) 通过后再进入下一个任务（避免质量债滚雪球）。

@@ -13,6 +13,7 @@ TDD helper (gated, non-generative):
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -30,6 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    # Keep local runs aligned with CI default security posture.
+    os.environ.setdefault("SECURITY_PROFILE", "host-safe")
+
     # Lightweight subcommand routing (keeps backward compatibility):
     #   py -3 scripts/sc/build.py tdd ...
     if len(sys.argv) > 1 and sys.argv[1] == "tdd":
