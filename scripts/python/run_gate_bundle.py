@@ -150,6 +150,41 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             ],
         },
         {
+            "name": "llm_obligations_self_check",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/sc/llm_extract_task_obligations.py",
+                "--self-check",
+            ],
+        },
+        {
+            "name": "obligations_reuse_regression",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/python/check_obligations_reuse_regression.py",
+                "--task-files",
+                *task_files,
+            ],
+        },
+        {
+            "name": "obligations_unittest",
+            "cmd": [
+                "py",
+                "-3",
+                "-m",
+                "unittest",
+                "scripts.sc.tests.test_obligations_guard",
+                "scripts.sc.tests.test_obligations_extract_helpers",
+                "scripts.sc.tests.test_obligations_code_fingerprint",
+                "scripts.sc.tests.test_obligations_output_contract",
+                "scripts.sc.tests.test_obligations_cli_guards",
+                "scripts.sc.tests.test_obligations_pipeline_order",
+                "-v",
+            ],
+        },
+        {
             "name": "check_gate_bundle_consistency",
             "cmd": ["py", "-3", "scripts/python/check_gate_bundle_consistency.py"],
         },
