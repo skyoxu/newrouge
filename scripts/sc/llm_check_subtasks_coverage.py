@@ -108,6 +108,11 @@ def _truncate(text: str, *, max_chars: int) -> str:
     return text[: max_chars - 3] + "..."
 
 
+def _normalize_model_status(value: Any) -> str:
+    status = str(value or "").strip().lower()
+    return "ok" if status == "ok" else "fail"
+
+
 def _format_acceptance(view_name: str, acceptance: list[Any]) -> str:
     out = [f"[{view_name}] acceptance items ({len(acceptance)}):"]
     for idx, raw in enumerate(acceptance, start=1):
@@ -207,6 +212,8 @@ def main() -> int:
     ap.add_argument("--task-id", default=None, help="Taskmaster id (e.g. 17). Default: first status=in-progress task.")
     ap.add_argument("--timeout-sec", type=int, default=300, help="codex exec timeout in seconds (default: 300).")
     ap.add_argument("--max-prompt-chars", type=int, default=60_000, help="Max prompt size (default: 60000).")
+    ap.add_argument("--consensus-runs", type=int, default=1, help="Run N rounds and use majority status (default: 1).")
+    ap.add_argument("--round-id", default="", help="Optional run id suffix for output directory isolation.")
     args = ap.parse_args()
 
     try:
@@ -215,7 +222,10 @@ def main() -> int:
         print(f"SC_LLM_SUBTASKS_COVERAGE status=fail error=resolve_triplet_failed exc={exc}")
         return 2
 
-    out_dir = ci_dir(f"sc-llm-subtasks-coverage-task-{triplet.task_id}")
+    out_dir_name = f"sc-llm-subtasks-coverage-task-{triplet.task_id}"
+    if str(args.round_id or "").strip():
+        out_dir_name += f"-round-{str(args.round_id).strip()}"
+    out_dir = ci_dir(out_dir_name)
     title = str(triplet.master.get("title") or "").strip()
     raw_subtasks = triplet.master.get("subtasks")
     subtasks = _normalize_subtasks(raw_subtasks)
@@ -261,32 +271,39 @@ def main() -> int:
     prompt_path = out_dir / "prompt.md"
     write_text(prompt_path, prompt)
 
-    out_last_message = out_dir / "output-last-message.txt"
-    rc, trace, cmd = _run_codex_exec(prompt=prompt, out_last_message=out_last_message, timeout_sec=int(args.timeout_sec))
-    write_text(out_dir / "trace.log", trace)
-    summary["codex"] = {"rc": rc, "cmd": cmd}
+    runs = max(1, int(args.consensus_runs))
+    run_results: list[dict[str, Any]] = []
+    run_verdicts: list[dict[str, Any]] = []
+    cmd_ref: list[str] | None = None
+    for i in range(1, runs + 1):
+        run_last = out_dir / f"output-last-message-run-{i:02d}.txt"
+        run_trace = out_dir / f"trace-run-{i:02d}.log"
+        rc, trace, cmd = _run_codex_exec(prompt=prompt, out_last_message=run_last, timeout_sec=int(args.timeout_sec))
+        write_text(run_trace, trace)
+        if cmd_ref is None:
+            cmd_ref = cmd
+        parsed_obj: dict[str, Any] | None = None
+        err: str | None = None
+        if rc == 0:
+            try:
+                model_out = run_last.read_text(encoding="utf-8", errors="ignore")
+                parsed_obj = _extract_json_object(model_out)
+            except Exception as exc:  # noqa: BLE001
+                err = f"invalid_model_output: {exc}"
+        else:
+            err = "codex_exec_failed"
+        run_status = _normalize_model_status((parsed_obj or {}).get("status")) if parsed_obj else "fail"
+        run_results.append({"run": i, "rc": rc, "status": run_status, "error": err})
+        if parsed_obj:
+            run_verdicts.append({"run": i, "status": run_status, "obj": parsed_obj})
+            write_json(out_dir / f"verdict-run-{i:02d}.json", parsed_obj)
 
-    if rc != 0:
-        summary["status"] = "fail"
-        summary["error"] = "codex_exec_failed"
-        write_json(out_dir / "summary.json", summary)
-        print(f"SC_LLM_SUBTASKS_COVERAGE status=fail out={out_dir}")
-        return 1
-
-    try:
-        model_out = out_last_message.read_text(encoding="utf-8", errors="ignore")
-        obj = _extract_json_object(model_out)
-    except Exception as exc:  # noqa: BLE001
-        summary["status"] = "fail"
-        summary["error"] = f"invalid_model_output: {exc}"
-        write_json(out_dir / "summary.json", summary)
-        print(f"SC_LLM_SUBTASKS_COVERAGE status=fail out={out_dir}")
-        return 1
-
-    # Normalize verdict
-    verdict_status = str(obj.get("status") or "").strip().lower()
-    if verdict_status not in ("ok", "fail"):
-        verdict_status = "fail"
+    ok_votes = sum(1 for r in run_results if r["status"] == "ok")
+    fail_votes = runs - ok_votes
+    verdict_status = "ok" if ok_votes > fail_votes else "fail"
+    selected = next((v for v in run_verdicts if v["status"] == verdict_status), run_verdicts[0] if run_verdicts else None)
+    obj: dict[str, Any] = dict((selected or {}).get("obj") or {"task_id": str(triplet.task_id), "status": "fail", "subtasks": []})
+    obj["status"] = verdict_status
 
     uncovered = []
     for it in obj.get("subtasks") or []:
@@ -297,12 +314,34 @@ def main() -> int:
         if sid and not covered:
             uncovered.append(sid)
 
+    model_ids = {str((it or {}).get("id") or "").strip() for it in (obj.get("subtasks") or []) if isinstance(it, dict)}
+    input_ids = [str(s.get("id") or "").strip() for s in subtasks]
+    missing_reported = [sid for sid in input_ids if sid and sid not in model_ids]
+    if missing_reported:
+        verdict_status = "fail"
+        obj["status"] = "fail"
+        for sid in missing_reported:
+            if sid not in uncovered:
+                uncovered.append(sid)
+        notes = obj.get("notes") or []
+        if not isinstance(notes, list):
+            notes = []
+        obj["notes"] = notes + [f"deterministic_hard_gate: missing_subtask_report:{sid}" for sid in missing_reported]
+
     summary["status"] = verdict_status
     summary["uncovered_subtask_ids"] = uncovered
     summary["verdict_path"] = str((out_dir / "verdict.json").relative_to(repo_root())).replace("\\", "/")
+    summary["consensus_runs"] = runs
+    summary["consensus_votes"] = {"ok": ok_votes, "fail": fail_votes}
+    summary["run_results"] = run_results
+    summary["codex"] = {"rc": 0 if run_verdicts else 1, "cmd": cmd_ref or []}
+    if not run_verdicts:
+        summary["error"] = "all_runs_failed_or_invalid"
 
     write_json(out_dir / "verdict.json", obj)
     write_json(out_dir / "summary.json", summary)
+    write_text(out_dir / "output-last-message.txt", json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
+    write_text(out_dir / "trace.log", f"consensus_runs={runs}\nok_votes={ok_votes}\nfail_votes={fail_votes}\n")
 
     report_lines = [f"# T{triplet.task_id} subtasks coverage", "", f"Status: {verdict_status}", ""]
     report_lines.append("## Subtasks")

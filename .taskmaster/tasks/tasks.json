@@ -6,7 +6,7 @@
         "title": "Set up project environment and dependencies",
         "description": "Initialize the project with Godot 4.5.1 .NET, .NET 8 SDK, and ensure packages.lock.json is present.",
         "details": "Install Godot 4.5.1 .NET console binary, set GODOT_BIN environment variable. Ensure .NET 8 SDK is installed. Run 'dotnet restore .\\NewRouge.sln' to generate packages.lock.json if missing. Verify UTF-8 encoding and Windows-only compliance. Create logs/ directory structure for evidence. Refs: ADR-0031, ADR-0011.\n",
-        "testStrategy": "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\n",
+        "testStrategy": "Check Godot version via '& $env:GODOT_BIN --version' as required evidence, check .NET version via 'dotnet --version', and verify packages.lock.json exists. If PATH is configured, 'godot --version' may be captured as optional supplementary evidence. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\n",
         "priority": "high",
         "dependencies": [],
         "status": "done",
@@ -31,7 +31,7 @@
         "title": "Create core project structure and namespaces",
         "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
         "details": "Create directories: Game.Core/, Game.Godot/, Game.Core.Tests/, Tests.Godot/. Set up C# projects for Game.Core, Game.Core.Tests, and Tests.Godot with net8.0 target and Nullable enabled. Treat Game.Godot as script/resource directory under the root project (no standalone csproj). Ensure Game.Core does not reference Godot API. Use taskdoc/task-0002-change-set.json as authoritative Task 2 C# scope and enforce NewRouge.* namespace for listed files while allowing Game.* coexistence outside Task 2 scope. Refs: ADR-0024.\n",
-        "testStrategy": "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot. Verify Game.Godot behaves as script/resource directory. Use acceptance gate dotnet-build-warnaserror as the root build proof. Refs: ADR-0024.\n",
+      "testStrategy": "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot. Verify Game.Godot behaves as script/resource directory. Use acceptance gate dotnet-build-warnaserror as the root build proof; if this gate is not executed or fails, Task 2 cannot be marked done. Refs: ADR-0024.\n",
         "priority": "high",
         "dependencies": [
           "1"
@@ -513,7 +513,7 @@
         "id": 14,
         "title": "Create main menu scene with new run and continue options",
         "description": "Implement MainMenu.tscn with New Run, Continue (single slot), and Quit buttons per M1 requirements.",
-        "details": "Create MainMenu.tscn in Game.Godot/Scenes/ with UI buttons. Implement logic to check for valid autosave and enable/disable Continue. Add overwrite confirmation dialog with default focus on cancel. Use translations for visible text. Refs: ADR-0032, ADR-0010.\n",
+        "details": "Create main menu scene with new run and continue options. Create MainMenu.tscn in Game.Godot/Scenes/ with UI buttons. Implement logic to check for valid autosave and enable/disable Continue. Add overwrite confirmation dialog with default focus on cancel. Use translations for visible text. Refs: ADR-0032, ADR-0010.\n",
         "testStrategy": "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010.\n",
         "priority": "high",
         "dependencies": [
@@ -1316,7 +1316,7 @@
         "id": 41,
         "title": "Implement enemy intent display and preview UI",
         "description": "Show enemy next intent in combat UI.",
-        "details": "Display intent icon and description for each enemy. Use translation keys and ensure intent matches resolved data. Refs: ADR-0010, ADR-0022.\n",
+        "details": "Implement enemy intent display and preview UI. Display intent icon and description for each enemy. Use translation keys and ensure intent matches resolved data. Refs: ADR-0010, ADR-0022.\n",
         "testStrategy": "GdUnit4 tests for intent display and updates on turn start. Refs: ADR-0025.\n",
         "priority": "medium",
         "dependencies": [

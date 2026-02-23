@@ -392,6 +392,9 @@ def check_no_task_red_test_skeletons(out_dir: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    # Keep local TDD loop aligned with CI default security posture.
+    os.environ.setdefault("SECURITY_PROFILE", "host-safe")
+
     args = build_parser().parse_args()
     out_dir = ci_dir("sc-build-tdd")
 

@@ -11,7 +11,8 @@ def resolve_security_profile(value: str | None = None) -> str:
     raw = str(value or "").strip().lower()
     if not raw:
         raw = str(os.environ.get("SECURITY_PROFILE") or "").strip().lower()
-    return raw if raw in _KNOWN_PROFILES else "strict"
+    # Default to host-safe to match single-player delivery posture.
+    return raw if raw in _KNOWN_PROFILES else "host-safe"
 
 
 def security_gate_defaults(profile: str) -> dict[str, str]:
@@ -27,14 +28,14 @@ def security_gate_defaults(profile: str) -> dict[str, str]:
             "audit_evidence": "skip",
         }
 
-    # strict: preserve existing repository default behavior.
+    # strict: full hardening posture for higher-risk delivery contexts.
     return {
         "path": "require",
         "sql": "require",
         "audit_schema": "require",
-        "ui_event_json_guards": "skip",
-        "ui_event_source_verify": "skip",
-        "audit_evidence": "skip",
+        "ui_event_json_guards": "require",
+        "ui_event_source_verify": "require",
+        "audit_evidence": "require",
     }
 
 

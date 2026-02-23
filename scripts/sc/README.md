@@ -54,6 +54,7 @@
 - 性能门禁（可选硬门）：解析最新 `logs/ci/**/headless.log` 的 `[PERF] ... p95_ms=...` 并与阈值比较
   - 启用方式：`--perf-p95-ms <ms>` 或设置环境变量 `PERF_P95_THRESHOLD_MS=<ms>`
   - 快捷方式：`--require-perf`（legacy）：等价于启用性能硬门禁，阈值取 `PERF_P95_THRESHOLD_MS`，否则默认 20ms（口径见 ADR-0015）
+- 安全档位：默认 `host-safe`；发布前/高风险场景使用 `--security-profile strict`（优先级：CLI > `SECURITY_PROFILE` > 默认）
 
 可选：如果你仍希望保留“LLM 口头审查”的等价体验（但不建议作为硬门禁），使用：
 `py -3 scripts/sc/llm_review.py --task-id <id> --base main`（输出落盘到 `logs/ci/<YYYY-MM-DD>/sc-llm-review/`）。
@@ -80,7 +81,10 @@ py -3 scripts/sc/test.py --type unit
 py -3 scripts/sc/test.py --type all --godot-bin "$env:GODOT_BIN"
 
 # 验收门禁（等价 /acceptance-check）
-py -3 scripts/sc/acceptance_check.py --task-id 10 --godot-bin "$env:GODOT_BIN"
+py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile host-safe --godot-bin "$env:GODOT_BIN"
+
+# 发布前/高风险场景
+py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile strict --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20
 
 # 可选：LLM 口头审查（本地，软门禁；不建议作为 CI 硬门）
 py -3 scripts/sc/llm_review.py --task-id 10 --base main

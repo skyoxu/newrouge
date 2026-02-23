@@ -228,7 +228,7 @@ def main() -> int:
         "--security-profile",
         default=None,
         choices=["strict", "host-safe"],
-        help="Security posture profile (default: env SECURITY_PROFILE or strict). host-safe keeps host boundary checks hard, lowers anti-tamper defaults.",
+        help="Security posture profile (default: env SECURITY_PROFILE or host-safe). host-safe keeps host boundary checks hard, lowers anti-tamper defaults.",
     )
     ap.add_argument(
         "--security-path-gate",

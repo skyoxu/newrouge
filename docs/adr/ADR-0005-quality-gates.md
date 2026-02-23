@@ -55,7 +55,26 @@ supersedes: []
 - 编码/文档清洁：`scripts/python/check_encoding.py`
 - 契约引用对齐：`scripts/python/validate_contracts.py`
 
-### 5) 工件（统一落盘）
+### 5) 安全档位决策（对齐 ADR-0034）
+
+- 适用范围：`scripts/sc/acceptance_check.py` 的安全相关 gate 默认行为。
+- 档位优先级（高到低）：
+  1. CLI：`--security-profile host-safe|strict`
+  2. 环境变量：`SECURITY_PROFILE`
+  3. 默认：`host-safe`
+
+门禁矩阵：
+
+| Gate | host-safe | strict |
+| --- | --- | --- |
+| path | require | require |
+| sql | require | require |
+| audit_schema | warn | require |
+| ui_event_json_guards | skip | require |
+| ui_event_source_verify | skip | require |
+| audit_evidence | skip | require |
+
+### 6) 工件（统一落盘）
 
 - 单元测试：`logs/unit/<YYYY-MM-DD>/`
 - 引擎/场景：`logs/e2e/<YYYY-MM-DD>/`
@@ -67,6 +86,18 @@ supersedes: []
 
 ```powershell
 pwsh -File scripts/ci/quality_gate.ps1 -GodotBin "$env:GODOT_BIN"
+```
+
+任务级验收门禁（默认 host-safe）：
+
+```powershell
+py -3 scripts/sc/acceptance_check.py --task-id <id> --security-profile host-safe --godot-bin "$env:GODOT_BIN"
+```
+
+发布前/高风险场景（strict）：
+
+```powershell
+py -3 scripts/sc/acceptance_check.py --task-id <id> --security-profile strict --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20
 ```
 
 CI 侧应能在 `logs/**` 中找到对应摘要与日志文件；失败时可直接定位到具体 gate 的输出。
