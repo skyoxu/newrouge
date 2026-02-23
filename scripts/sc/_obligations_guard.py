@@ -3,6 +3,7 @@
 from __future__ import annotations
 import re
 from typing import Any
+from _obligations_prompt_acceptance import build_acceptance_prompt_blocks
 _ANTI_TAMPER_TERMS: tuple[str, ...] = (
     "anti tamper",
     "anti-tamper",
@@ -42,6 +43,10 @@ _HOST_SAFETY_TERMS: tuple[str, ...] = (
     "白名单",
 )
 
+_MIN_STRIPPED_EXCERPT_LEN = 12
+_MIN_STRIPPED_EN_WORDS = 3
+_MIN_STRIPPED_ZH_CHARS = 6
+
 
 def normalize_model_status(value: Any) -> str:
     status = str(value or "").strip().lower()
@@ -77,15 +82,60 @@ def _normalize_ws(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()
 
 
-def _contains_excerpt(excerpt: str, raw_corpus: str, norm_corpus: str) -> bool:
+def _strip_prompt_prefix(text: str) -> str:
+    s = str(text or "").strip()
+    if not s:
+        return s
+    patterns = (
+        r"^Task:\s*T\d+\s*[:：\-]?\s*",
+        r"^Master\s+title:\s*",
+        r"^任务[:：]\s*T?\d+\s*[:：\-]?\s*",
+        r"^主标题[:：]\s*",
+    )
+    for pat in patterns:
+        s2 = re.sub(pat, "", s, flags=re.IGNORECASE).strip()
+        if s2 != s:
+            s = s2
+    return s
+
+
+def _passes_stripped_excerpt_quality(norm_text: str) -> bool:
+    text = str(norm_text or "").strip()
+    if not text:
+        return False
+    en_words = len(re.findall(r"[A-Za-z]{2,}", text))
+    zh_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
+    return en_words >= _MIN_STRIPPED_EN_WORDS or zh_chars >= _MIN_STRIPPED_ZH_CHARS
+
+
+def _contains_excerpt(excerpt: str, raw_corpus: str, norm_corpus: str) -> tuple[bool, bool]:
+    """Return (matched, matched_after_prefix_strip)."""
     if not excerpt:
-        return False
-    if excerpt in raw_corpus:
-        return True
-    norm_excerpt = _normalize_ws(excerpt)
-    if not norm_excerpt:
-        return False
-    return norm_excerpt in norm_corpus
+        return False, False
+
+    def _match(candidate: str) -> bool:
+        if not candidate:
+            return False
+        if candidate in raw_corpus:
+            return True
+        norm_candidate = _normalize_ws(candidate)
+        return bool(norm_candidate and norm_candidate in norm_corpus)
+
+    if _match(excerpt):
+        return True, False
+
+    stripped = _strip_prompt_prefix(excerpt)
+    norm_stripped = _normalize_ws(stripped)
+    if (
+        stripped
+        and stripped != excerpt
+        and len(norm_stripped) >= _MIN_STRIPPED_EXCERPT_LEN
+        and _passes_stripped_excerpt_quality(norm_stripped)
+        and _match(stripped)
+    ):
+        return True, True
+
+    return False, False
 
 
 def _is_anti_tamper_only(text: str) -> bool:
@@ -158,6 +208,7 @@ def apply_deterministic_guards(
     det_issues: list[str] = []
     advisory_uncovered: list[str] = []
     hard_uncovered: list[str] = []
+    prefix_stripped_match_count = 0
 
     if int(min_obligations) > 0 and len(obligations) < int(min_obligations):
         det_issues.append(f"DET_MIN_OBLIGATIONS<{int(min_obligations)}")
@@ -186,8 +237,12 @@ def apply_deterministic_guards(
 
         if not excerpt:
             det_issues.append(f"DET_SOURCE_EXCERPT_EMPTY:{oid}")
-        elif raw_corpus and not _contains_excerpt(excerpt, raw_corpus, norm_corpus):
-            det_issues.append(f"DET_SOURCE_EXCERPT_NOT_FOUND:{oid}")
+        elif raw_corpus:
+            found, matched_after_strip = _contains_excerpt(excerpt, raw_corpus, norm_corpus)
+            if not found:
+                det_issues.append(f"DET_SOURCE_EXCERPT_NOT_FOUND:{oid}")
+            elif matched_after_strip:
+                prefix_stripped_match_count += 1
 
         if source.lower() != "master":
             sid = parse_subtask_source(source)
@@ -241,6 +296,7 @@ def apply_deterministic_guards(
     obj["status"] = status
     obj["uncovered_obligation_ids"] = hard_uncovered
     obj["advisory_uncovered_obligation_ids"] = advisory_uncovered
+    obj["source_excerpt_prefix_stripped_matches"] = prefix_stripped_match_count
 
     return obj, det_issues, hard_uncovered, advisory_uncovered
 
@@ -258,6 +314,7 @@ def render_obligations_report(obj: dict[str, Any]) -> str:
     lines.append(f"- status: {status}")
     lines.append(f"- uncovered(hard): {len(uncovered) if isinstance(uncovered, list) else 'unknown'}")
     lines.append(f"- uncovered(advisory): {len(advisory) if isinstance(advisory, list) else 'unknown'}")
+    lines.append(f"- excerpt_prefix_stripped_matches: {int(obj.get('source_excerpt_prefix_stripped_matches') or 0)}")
     lines.append("")
     if isinstance(obligations, list) and obligations:
         lines.append("## Obligations")
@@ -292,14 +349,6 @@ def _truncate(text: str, *, max_chars: int) -> str:
     return text[: max_chars - 3] + "..."
 
 
-def _format_acceptance(view_name: str, acceptance: list[Any]) -> str:
-    lines = [f"[{view_name}] acceptance items ({len(acceptance)}):"]
-    for idx, raw in enumerate(acceptance, start=1):
-        text = _truncate(str(raw or "").strip(), max_chars=520)
-        lines.append(f"- {view_name}:{idx}: {text}")
-    return "\n".join(lines)
-
-
 def build_obligation_prompt(
     *,
     task_id: str,
@@ -325,7 +374,7 @@ def build_obligation_prompt(
             if sub_test_strategy:
                 subtask_lines.append(f"  testStrategy: {sub_test_strategy}")
 
-    acceptance_blocks = [_format_acceptance(view_name, values) for view_name, values in acceptance_by_view.items()]
+    acceptance_blocks = build_acceptance_prompt_blocks(acceptance_by_view)
 
     schema = """
 Return JSON only (no Markdown).
@@ -357,6 +406,8 @@ Rules:
 - Avoid no-op loopholes: include at least one "must refuse / must not advance / state unchanged" obligation when applicable.
 - Use ONLY the provided task text (master.title/details/testStrategy + subtasks title/details/testStrategy) to derive obligations.
 - Each obligation MUST include source_excerpt copied verbatim from the provided task text; if you cannot cite an excerpt, do NOT include that obligation.
+- source_excerpt MUST NOT quote prompt headers such as "Task: T<id>" or "Master title:".
+- acceptance section is deduplicated; when filling matches.acceptance_index, use the original source index listed in "sources" (e.g., back:3).
 - Be conservative: mark covered ONLY when an acceptance item clearly implies it.
 - If ANY obligation is not covered => status must be "fail".
 - suggested_acceptance must be minimal and aligned to tasks_back/tasks_gameplay style (Chinese OK). Do NOT include any "Refs:" here.
