@@ -177,7 +177,7 @@ overlays 只做引用：
    - `py -3 scripts/python/generate_contracts_catalog.py --prd-id <PRD-ID>`（输出到 `logs/ci/<YYYY-MM-DD>/contracts-catalog/`；说明见 `docs/workflows/contracts-catalog-guide.md`）
 3) 确定性校验（防漂移）：
    - `py -3 scripts/python/validate_contracts.py`
-   - `py -3 scripts/python/task_links_validate.py`
+   - `py -3 scripts/python/task_links_validate.py --mode all`
    - `py -3 scripts/python/validate_task_overlays.py`
 
 本仓库当前提供的最小可读示例（用于快速对齐格式与验收表达，不复制阈值/策略）：
@@ -226,7 +226,7 @@ overlays 只做引用：
 1) overlays 回链与 checklist schema：
    - `py -3 scripts/python/validate_task_overlays.py`
 2) 任务回链与引用完整性：
-   - `py -3 scripts/python/task_links_validate.py`
+   - `py -3 scripts/python/task_links_validate.py --mode all`
    - `py -3 scripts/python/audit_task_ref_integrity.py`
 3) 文档编码与疑似乱码扫描（取证 + 防 PR 乱码）：
    - `py -3 scripts/ci/check_encoding_issues.py`

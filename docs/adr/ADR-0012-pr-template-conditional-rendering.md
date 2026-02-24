@@ -19,7 +19,7 @@
 
 - PR 模板文件：`.github/PULL_REQUEST_TEMPLATE.md`
 - Contracts 引用校验：`py -3 scripts/python/validate_contracts.py`
-- 任务回链校验：`py -3 scripts/python/task_links_validate.py`
+- 任务回链校验：`py -3 scripts/python/task_links_validate.py --mode all`
 
 说明：
 

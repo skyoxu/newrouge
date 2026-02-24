@@ -65,6 +65,10 @@ def _resolve_gate_command(name: str, cmd: list[str], out_dir: Path) -> list[str]
             resolved.extend(["--out-json", out_json])
         if "--out-md" not in resolved:
             resolved.extend(["--out-md", out_md])
+    if name == "check_tasks_all_refs_warning_budget":
+        out_json = str((out_dir / "check-tasks-all-refs-summary.json")).replace("\\", "/")
+        if "--summary-out" not in resolved:
+            resolved.extend(["--summary-out", out_json])
     return resolved
 
 
@@ -84,8 +88,8 @@ def _run_command(cmd: list[str], log_path: Path) -> tuple[int, str]:
     return proc.returncode, output
 
 
-def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
-    return [
+def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1) -> list[dict[str, Any]]:
+    commands = [
         {
             "name": "docs_utf8_integrity",
             "cmd": [
@@ -222,6 +226,20 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             "cmd": ["py", "-3", "scripts/python/check_workflow_gate_enforcement.py"],
         },
     ]
+    if task_links_max_warnings >= 0:
+        commands.append(
+            {
+                "name": "check_tasks_all_refs_warning_budget",
+                "cmd": [
+                    "py",
+                    "-3",
+                    "scripts/python/check_tasks_all_refs.py",
+                    "--max-warnings",
+                    str(task_links_max_warnings),
+                ],
+            }
+        )
+    return commands
 
 
 def _acceptance_stability_gate(task_files: list[str]) -> dict[str, Any]:
@@ -239,8 +257,12 @@ def _acceptance_stability_gate(task_files: list[str]) -> dict[str, Any]:
     }
 
 
-def _hard_gate_commands_with_options(task_files: list[str], stability_template_hard: bool) -> list[dict[str, Any]]:
-    commands = _hard_gate_commands(task_files)
+def _hard_gate_commands_with_options(
+    task_files: list[str],
+    stability_template_hard: bool,
+    task_links_max_warnings: int = -1,
+) -> list[dict[str, Any]]:
+    commands = _hard_gate_commands(task_files, task_links_max_warnings)
     if stability_template_hard:
         commands.append(_acceptance_stability_gate(task_files))
     return commands
@@ -385,6 +407,12 @@ def _run_group(
 
 
 def main() -> int:
+    env_task_links_budget = -1
+    try:
+        env_task_links_budget = int((os.getenv("TASK_LINKS_MAX_WARNINGS", "") or "-1").strip())
+    except ValueError:
+        env_task_links_budget = -1
+
     parser = argparse.ArgumentParser(description="Run grouped hard/soft gates.")
     parser.add_argument(
         "--mode",
@@ -396,6 +424,15 @@ def main() -> int:
         "--strict-soft",
         action="store_true",
         help="When mode=soft/all, return non-zero if any soft gate fails",
+    )
+    parser.add_argument(
+        "--task-links-max-warnings",
+        type=int,
+        default=env_task_links_budget,
+        help=(
+            "Hard fail threshold for check_tasks_all_refs warnings. "
+            "-1 disables this budget gate. Default reads TASK_LINKS_MAX_WARNINGS env."
+        ),
     )
     parser.add_argument(
         "--stability-template-hard",
@@ -459,7 +496,11 @@ def main() -> int:
     else:
         out_root = _default_out_root(run_id)
 
-    hard_commands = _hard_gate_commands_with_options(args.task_files, args.stability_template_hard)
+    hard_commands = _hard_gate_commands_with_options(
+        args.task_files,
+        args.stability_template_hard,
+        args.task_links_max_warnings,
+    )
     soft_commands = _soft_gate_commands(args.task_files, args.stability_template_hard)
 
     rc: int
