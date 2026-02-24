@@ -147,10 +147,23 @@ def step_adr_compliance(out_dir: Path, triplet: TaskmasterTriplet, *, strict_sta
 
 def step_task_links_validate(out_dir: Path) -> StepResult:
     # Validates tasks_back/tasks_gameplay refs (ADR/CH/overlay/depends_on).
+    raw_budget = (os.getenv("TASK_LINKS_MAX_WARNINGS", "") or "").strip()
+    max_warnings = -1
+    if raw_budget:
+        try:
+            max_warnings = int(raw_budget)
+        except ValueError:
+            max_warnings = -1
+
+    cmd = ["py", "-3", "scripts/python/task_links_validate.py", "--mode", "all"]
+    if max_warnings >= 0:
+        cmd.extend(["--max-warnings", str(max_warnings)])
+    cmd.extend(["--summary-out", str(out_dir / "task-links-validate-summary.json")])
+
     return run_and_capture(
         out_dir,
         name="task-links-validate",
-        cmd=["py", "-3", "scripts/python/task_links_validate.py"],
+        cmd=cmd,
         timeout_sec=300,
     )
 

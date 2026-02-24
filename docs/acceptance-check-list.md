@@ -50,7 +50,7 @@ py -3 scripts/sc/acceptance_check.py --task-id 10 --perf-p95-ms 20
 
 ### 5.2 `links`（硬门禁）
 
-- 运行：`py -3 scripts/python/task_links_validate.py`
+- 运行：`py -3 scripts/python/task_links_validate.py --mode all`
 - 仅在同时存在 `.taskmaster/tasks/tasks_back.json` 与 `.taskmaster/tasks/tasks_gameplay.json` 时启用
 
 ### 5.3 `overlay`（硬门禁）

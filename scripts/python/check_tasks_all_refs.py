@@ -23,6 +23,7 @@ without over-blocking when ADR mapping evolves.
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 from pathlib import Path
@@ -205,7 +206,12 @@ def check_tasks(tasks: list[dict[str, Any]], adr_ids: set[str], overlay_paths: s
     return failed == 0, all_errors, all_warnings
 
 
-def run_check_all(root: Path) -> bool:
+def _write_summary(path: Path, summary: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def run_check_all(root: Path, max_warnings: int = -1, summary_out: Path | None = None) -> bool:
     adr_ids = collect_adr_ids(root)
     overlay_paths = collect_overlay_paths(root)
 
@@ -215,18 +221,65 @@ def run_check_all(root: Path) -> bool:
     print(f"known ADR ids (sample): {sorted(adr_ids)[:12]} ...")
     print(f"overlay files (08/*): {sorted(overlay_paths)}")
 
-    ok_back, _, _ = check_tasks(back, adr_ids, overlay_paths, "tasks_back.json")
-    ok_gameplay, _, _ = check_tasks(gameplay, adr_ids, overlay_paths, "tasks_gameplay.json")
-    return ok_back and ok_gameplay
+    ok_back, back_errors, back_warnings = check_tasks(back, adr_ids, overlay_paths, "tasks_back.json")
+    ok_gameplay, gameplay_errors, gameplay_warnings = check_tasks(gameplay, adr_ids, overlay_paths, "tasks_gameplay.json")
+
+    total_warnings = len(back_warnings) + len(gameplay_warnings)
+    warning_budget_ok = True
+    if max_warnings >= 0 and total_warnings > max_warnings:
+        print(
+            f"- ERROR: warning budget exceeded: warnings={total_warnings} budget={max_warnings}"
+        )
+        warning_budget_ok = False
+
+    summary = {
+        "action": "check-tasks-all-refs",
+        "status": "ok" if (ok_back and ok_gameplay and warning_budget_ok) else "fail",
+        "max_warnings": max_warnings,
+        "total_warnings": total_warnings,
+        "files": {
+            "tasks_back.json": {
+                "tasks": len(back),
+                "errors": len(back_errors),
+                "warnings": len(back_warnings),
+            },
+            "tasks_gameplay.json": {
+                "tasks": len(gameplay),
+                "errors": len(gameplay_errors),
+                "warnings": len(gameplay_warnings),
+            },
+        },
+    }
+    if summary_out is not None:
+        _write_summary(summary_out, summary)
+
+    return ok_back and ok_gameplay and warning_budget_ok
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Validate ADR/chapter/overlay/dependency references for task view files.",
+    )
+    parser.add_argument(
+        "--max-warnings",
+        type=int,
+        default=-1,
+        help="Fail when total warning count exceeds this value; -1 disables budget check.",
+    )
+    parser.add_argument(
+        "--summary-out",
+        type=str,
+        default="",
+        help="Optional summary json output path.",
+    )
+    args = parser.parse_args()
+
     root = Path(__file__).resolve().parents[2]
-    ok = run_check_all(root)
+    summary_out = Path(args.summary_out) if args.summary_out else None
+    ok = run_check_all(root, max_warnings=args.max_warnings, summary_out=summary_out)
     if not ok:
         raise SystemExit(1)
 
 
 if __name__ == "__main__":
     main()
-

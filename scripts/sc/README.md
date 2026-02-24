@@ -44,7 +44,7 @@
 
 它把“6 个 subagents”映射为本仓库的可执行检查（部分为软门禁）：
 - ADR 合规（硬）：任务 `adrRefs/archRefs/overlay`、ADR 文件存在、ADR 状态为 Accepted
-- 任务回链（硬）：`scripts/python/task_links_validate.py`
+- 任务回链（硬）：`scripts/python/task_links_validate.py --mode all`（可用 `TASK_LINKS_MAX_WARNINGS` 控制 warning 预算）
 - Overlay 校验（硬）：`scripts/python/validate_task_overlays.py`
 - 契约一致性（硬）：`scripts/python/validate_contracts.py`
 - 架构边界（硬）：`Game.Core` 不得引用 `Godot.*`

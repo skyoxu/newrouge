@@ -23,7 +23,7 @@
 
 - `scripts/python/validate_task_master_triplet.py`：三份任务文件一致性（映射、depends_on、无环）+ ADR/CH/Overlay 全量引用校验（内部调用 `check_tasks_all_refs.py`）。
 - `scripts/python/verify_task_mapping.py`：人类可读 mapping 报告（不是 CI 硬门禁）。
-- `scripts/python/task_links_validate.py`：回链“一键硬门禁”（内部调用 `check_tasks_back_references.py` + `check_tasks_all_refs.py`）。
+- `scripts/python/task_links_validate.py`：回链“一键硬门禁”（默认建议 `--mode all`；内部调用 `check_tasks_back_references.py` + `check_tasks_all_refs.py`）。
 - `scripts/python/validate_task_overlays.py`：overlay 引用与 `ACCEPTANCE_CHECKLIST.md` Front Matter 校验。
 
 ### 确定性分析与证据链（无 LLM）
@@ -208,10 +208,10 @@ py -3 scripts/python/verify_task_mapping.py
   - 意义：回链的“一键硬门禁”。它会执行：
     1) `scripts/python/check_tasks_back_references.py`：只检查 backlog-only（`taskmaster_exported != true`）条目；
     2) `scripts/python/check_tasks_all_refs.py`：全量检查 `tasks_back.json + tasks_gameplay.json` 的 `adr_refs/chapter_refs/overlay_refs`。
-  - 建议用法：无参数；非 0 退出码视为 fail-fast。
+  - 建议用法：`--mode all`；CI 可加 `--max-warnings <budget>`；非 0 退出码视为 fail-fast。
 
 ```powershell
-py -3 scripts/python/task_links_validate.py
+py -3 scripts/python/task_links_validate.py --mode all
 ```
 
 - `scripts/python/validate_task_overlays.py`
@@ -679,7 +679,7 @@ py -3 scripts/python/check_test_naming.py --style legacy
 
 #### C3) 回链与 Overlay
 
-- `scripts/python/task_links_validate.py`
+- `scripts/python/task_links_validate.py`（建议 `--mode all`，CI 可选 `--max-warnings <budget>`）
   - 作用：回链一键校验（内部调用 `check_tasks_back_references.py` 与 `check_tasks_all_refs.py`）。
 
 - `scripts/python/validate_task_overlays.py`

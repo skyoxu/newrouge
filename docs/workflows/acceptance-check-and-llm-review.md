@@ -70,7 +70,7 @@ CI 集成说明（Windows Quality Gate）：
 硬门禁（失败即阻断）：
 
 - ADR 合规：任务 `adrRefs/archRefs/overlay` 是否完整；ADR 文件存在；至少引用 ≥1 个 **Accepted** ADR
-- 任务回链：`py -3 scripts/python/task_links_validate.py`
+- 任务回链：`py -3 scripts/python/task_links_validate.py --mode all`（可选：`--max-warnings <budget>`）
 - Overlay 校验：`py -3 scripts/python/validate_task_overlays.py`
 - 契约一致性：`py -3 scripts/python/validate_contracts.py`
 - 架构边界：`Game.Core/**` 不得引用 `Godot.*`

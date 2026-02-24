@@ -44,7 +44,7 @@
 - [ ] GdUnit4 集成/场景测试：`py -3 scripts/python/run_gdunit.py ...` 通过（如本次改动涉及 Godot 脚本/场景）
 - [ ] Headless smoke（如适用）：`py -3 scripts/python/smoke_headless.py ...` 通过
 - [ ] 覆盖率门禁（如适用）：已检查 `logs/unit/**/coverage.json`，新代码不低于项目约定阈值
-- [ ] 任务回链校验（如适用）：`py -3 scripts/python/task_links_validate.py` 通过
+- [ ] 任务回链校验（如适用）：`py -3 scripts/python/task_links_validate.py --mode all` 通过（CI 可选加 `--max-warnings <budget>`）
 
 ---
 
