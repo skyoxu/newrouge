@@ -171,6 +171,15 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             ],
         },
         {
+            "name": "llm_subtasks_coverage_self_check",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/sc/llm_check_subtasks_coverage.py",
+                "--self-check",
+            ],
+        },
+        {
             "name": "obligations_reuse_regression",
             "cmd": [
                 "py",
@@ -193,6 +202,10 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
                 "scripts.sc.tests.test_obligations_output_contract",
                 "scripts.sc.tests.test_obligations_cli_guards",
                 "scripts.sc.tests.test_obligations_pipeline_order",
+                "scripts.sc.tests.test_subtasks_coverage_cli_guards",
+                "scripts.sc.tests.test_subtasks_coverage_schema",
+                "scripts.sc.tests.test_subtasks_coverage_garbled_gate",
+                "scripts.sc.tests.test_subtasks_coverage_selection_policy",
                 "-v",
             ],
         },
