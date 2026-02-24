@@ -382,3 +382,18 @@ jobs:
           $out = "logs/ci/${{ github.run_id }}/schema-dump.json"
           py -3 scripts/python/db_schema_dump.py --glob "$env:APPDATA\Godot\app_userdata\newrouge\*.db" --out "$out"
           Write-Host "SCHEMA_DUMP_OUT=$out"
+
+  build-test-export:
+    name: build-test-export
+    if: always()
+    needs: [quality]
+    runs-on: windows-latest
+    steps:
+      - name: Mirror quality result for legacy required check context
+        shell: pwsh
+        run: |
+          if ("${{ needs.quality.result }}" -ne "success") {
+            Write-Error "quality job result=${{ needs.quality.result }}; mark build-test-export as failed."
+            exit 1
+          }
+          Write-Host "quality job passed; build-test-export compatibility check passed."
