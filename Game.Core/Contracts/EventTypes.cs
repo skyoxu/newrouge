@@ -1,5 +1,12 @@
 namespace Game.Core.Contracts;
 
+/// <summary>
+/// Stable domain event type constants (CloudEvents-like type values).
+/// </summary>
+/// <remarks>
+/// ADR refs: ADR-0004, ADR-0020.
+/// Overlay ref: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md
+/// </remarks>
 public static class EventTypes
 {
     public const string ActConfigLoaded = "core.act.config.loaded";
