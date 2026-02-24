@@ -159,6 +159,18 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
             ],
         },
         {
+            "name": "llm_align_acceptance_self_check",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/sc/llm_align_acceptance_semantics.py",
+                "--self-check",
+                "--strict-task-selection",
+                "--garbled-gate",
+                "off",
+            ],
+        },
+        {
             "name": "obligations_reuse_regression",
             "cmd": [
                 "py",
