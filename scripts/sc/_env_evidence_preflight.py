@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Task 1 environment evidence preflight.
+Environment evidence preflight.
 
 Purpose:
-  Generate deterministic Task 1 artifacts before tests so Task 1 acceptance
+  Generate deterministic environment artifacts before tests so acceptance
   tests can remain read-only and validate real gate outputs.
 """
 
@@ -98,16 +98,32 @@ def _rel(root: Path, path: Path) -> str:
     return str(path.relative_to(root)).replace("\\", "/")
 
 
-def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResult:
+def _normalize_task_id(task_id: str | int | None) -> str:
+    raw = str(task_id or "").strip()
+    if not raw:
+        return "1"
+    if raw.isdigit():
+        return str(int(raw))
+    return re.sub(r"[^0-9A-Za-z_-]+", "-", raw)
+
+
+def _task_json_filename(task_id: str) -> str:
+    if task_id.isdigit():
+        return f"task-{int(task_id):04d}.json"
+    return f"task-{task_id}.json"
+
+
+def step_env_evidence_preflight(out_dir: Path, *, godot_bin: str | None, task_id: str | int | None = None) -> StepResult:
     root = repo_root()
     date = today_str()
     ci_dir = root / "logs" / "ci" / date
     evidence_dir = ci_dir / "env-evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
-    task_json_path = ci_dir / "task-0001.json"
+    task_id_s = _normalize_task_id(task_id)
+    task_json_path = ci_dir / _task_json_filename(task_id_s)
 
     details: dict[str, Any] = {
-        "task_id": "1",
+        "task_id": task_id_s,
         "date": date,
         "task_json": str(task_json_path.relative_to(root)).replace("\\", "/"),
         "evidence_dir": str(evidence_dir.relative_to(root)).replace("\\", "/"),
@@ -118,9 +134,9 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
 
     if not godot_bin:
         details["errors"].append("GODOT_BIN is missing")
-        write_json(out_dir / "task1-env-evidence.json", details)
-        write_text(out_dir / "task1-env-evidence.log", "GODOT_BIN is missing\n")
-        return StepResult(name="task1-env-evidence", status="fail", rc=1, details=details, log=str(out_dir / "task1-env-evidence.log"))
+        write_json(out_dir / "env-evidence-preflight.json", details)
+        write_text(out_dir / "env-evidence-preflight.log", "GODOT_BIN is missing\n")
+        return StepResult(name="env-evidence-preflight", status="fail", rc=1, details=details, log=str(out_dir / "env-evidence-preflight.log"))
 
     godot_bin_path = Path(godot_bin)
     details["godot_bin"] = str(godot_bin_path)
@@ -342,7 +358,7 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
         if not bool(details["checks"].get(key)):
             details["errors"].append(f"check_failed:{key}")
 
-    write_json(out_dir / "task1-env-evidence.json", details)
+    write_json(out_dir / "env-evidence-preflight.json", details)
     log_lines = [
         f"task_json={task_json_path}",
         f"evidence_dir={evidence_dir}",
@@ -352,13 +368,20 @@ def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResu
     ]
     if details["errors"]:
         log_lines.append(f"errors={details['errors']}")
-    write_text(out_dir / "task1-env-evidence.log", "\n".join(log_lines) + "\n")
+    write_text(out_dir / "env-evidence-preflight.log", "\n".join(log_lines) + "\n")
 
     ok = len(details["errors"]) == 0
     return StepResult(
-        name="task1-env-evidence",
+        name="env-evidence-preflight",
         status="ok" if ok else "fail",
         rc=0 if ok else 1,
-        log=str(out_dir / "task1-env-evidence.log"),
+        log=str(out_dir / "env-evidence-preflight.log"),
         details=details,
     )
+
+
+def step_task1_env_evidence(out_dir: Path, *, godot_bin: str | None) -> StepResult:
+    """
+    Backward-compatible wrapper for old call sites.
+    """
+    return step_env_evidence_preflight(out_dir, godot_bin=godot_bin, task_id="1")
