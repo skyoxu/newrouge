@@ -206,6 +206,8 @@ def _hard_gate_commands(task_files: list[str]) -> list[dict[str, Any]]:
                 "scripts.sc.tests.test_subtasks_coverage_schema",
                 "scripts.sc.tests.test_subtasks_coverage_garbled_gate",
                 "scripts.sc.tests.test_subtasks_coverage_selection_policy",
+                "scripts.sc.tests.test_semantic_gate_all_contract",
+                "scripts.sc.tests.test_semantic_gate_all_cli_guards",
                 "-v",
             ],
         },
