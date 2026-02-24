@@ -70,10 +70,10 @@ def read_json(path):
         return None
 
 
-def run_task1_preflight(root: str, godot_bin: str):
+def run_env_evidence_preflight(root: str, godot_bin: str):
     """
-    Generate Task 1 deterministic evidence artifacts before unit tests.
-    This keeps cold CI workspaces aligned with Task1 test expectations.
+    Generate deterministic environment evidence artifacts before unit tests.
+    This keeps cold CI workspaces aligned with acceptance test expectations.
     """
     sc_dir = os.path.join(root, 'scripts', 'sc')
     if not os.path.isdir(sc_dir):
@@ -85,14 +85,14 @@ def run_task1_preflight(root: str, godot_bin: str):
         added_path = True
 
     try:
-        from _task1_env_evidence import step_task1_env_evidence
+        from _env_evidence_preflight import step_env_evidence_preflight
         from _util import ci_dir
 
-        step = step_task1_env_evidence(ci_dir('ci-pipeline-task1-preflight'), godot_bin=godot_bin)
+        step = step_env_evidence_preflight(ci_dir('ci-pipeline-env-preflight'), godot_bin=godot_bin, task_id='1')
         details = dict(getattr(step, 'details', {}) or {})
         details.update(
             {
-                'name': getattr(step, 'name', 'task1-env-evidence'),
+                'name': getattr(step, 'name', 'env-evidence-preflight'),
                 'status': getattr(step, 'status', 'fail'),
                 'rc': getattr(step, 'rc', 1),
                 'log': getattr(step, 'log', None),
@@ -100,7 +100,7 @@ def run_task1_preflight(root: str, godot_bin: str):
         )
         return int(getattr(step, 'rc', 1)), details
     except Exception as exc:
-        return 1, {'status': 'fail', 'reason': f'task1 preflight import/exec error: {exc}'}
+        return 1, {'status': 'fail', 'reason': f'env preflight import/exec error: {exc}'}
     finally:
         if added_path:
             try:
@@ -136,6 +136,7 @@ def main():
     os.makedirs(ci_dir, exist_ok=True)
 
     summary = {
+        'preflight_env_evidence': {},
         'preflight_task1': {},
         'dotnet': {},
         'selfcheck': {},
@@ -144,11 +145,12 @@ def main():
     }
     hard_fail = False
 
-    # Keep Task1 preflight/test environment deterministic.
+    # Keep preflight/test environment deterministic.
     os.environ['GODOT_BIN'] = args.godot_bin
 
-    # 0) Task 1 preflight artifacts (hard gate)
-    preflight_rc, preflight_details = run_task1_preflight(root, args.godot_bin)
+    # 0) Environment preflight artifacts (hard gate)
+    preflight_rc, preflight_details = run_env_evidence_preflight(root, args.godot_bin)
+    summary['preflight_env_evidence'] = preflight_details
     summary['preflight_task1'] = preflight_details
     if preflight_rc != 0:
         hard_fail = True
