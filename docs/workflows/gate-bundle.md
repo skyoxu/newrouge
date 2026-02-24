@@ -46,6 +46,7 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 - `check_test_naming.py`
 - `llm_extract_task_obligations.py`
 - `llm_align_acceptance_semantics.py`
+- `llm_check_subtasks_coverage.py`
 - `check_obligations_reuse_regression.py`
 - `obligations unittest suite`（`test_obligations_guard.py` / `test_obligations_extract_helpers.py` / `test_obligations_code_fingerprint.py` / `test_obligations_output_contract.py` / `test_obligations_cli_guards.py` / `test_obligations_pipeline_order.py`）
 - `check_gate_bundle_consistency.py`
