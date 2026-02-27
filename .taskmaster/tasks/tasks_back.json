@@ -1471,7 +1471,7 @@
       "执行后必须生成单一机器可读 summary JSON，包含各 suite 状态、门禁级别与总体门禁结论，并输出到 logs/ci/<date>/quality-gates/summary.json。 Refs: Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd",
       "GdUnit4 的 JUnit/XML 输出必须写入 logs/e2e/<date>/gdunit/junit.xml；若未生成该文件，summary 必须明确记录未生成原因。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd",
       "本地分别在开启与关闭 GdUnit4 参数运行 quality_gates.py 时，summary 中 suites 状态必须可区分为已运行与未运行，不能以缺失字段代替。 Refs: Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd",
-      "CI 任务必须以 summary JSON 的总体门禁结论作为 pass/fail 判定依据，且结论变化时 CI 结果同步变化。 Refs: Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs",
+      "CI 任务必须以 summary JSON 的总体门禁结论作为 pass/fail 判定依据，且结论变化时 CI 结果同步变化。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs",
       "Test-Refs 列表必须包含 logs/ci/<date>/quality-gates/summary.json 与 logs/e2e/<date>/gdunit/junit.xml，且路径与实际产物一致。 Refs: Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs",
       "Test-Refs 列表必须包含 Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd 与 Game.Core.Tests/Tasks/Task32AcceptanceTests.cs，并可对应到本任务验收项。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd",
       "在 ACCEPTANCE_CHECKLIST.md 中必须明确列出 ADR-0005、ADR-0011、ADR-0024 作为本任务门禁语义口径引用。 Refs: Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs"

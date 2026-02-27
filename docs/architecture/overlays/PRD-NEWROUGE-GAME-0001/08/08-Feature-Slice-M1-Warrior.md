@@ -177,3 +177,23 @@ M1 的目标是交付一个可完整运行、可验证、可复现的最小闭�
   - `Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs`
   - `Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs`
 - Conclusion rule: Feature-slice evidence must stay aligned with `ACCEPTANCE_CHECKLIST.md`; any mismatch is a fail.
+
+## Task54 Gate Notes
+- Task: `T54 Integrate GdUnit4 suites into quality_gates.py`
+- ADR-Refs: `ADR-0005`, `ADR-0011`, `ADR-0024`
+- Chapter-Refs: `CH06`, `CH07`, `CH10`
+- Test-Refs:
+  - `logs/ci/<date>/task-0054.json`
+  - `logs/ci/<date>/quality-gates/summary.json`
+  - `logs/e2e/<date>/gdunit/junit.xml`
+  - `Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd`
+  - `Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd`
+  - `Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs`
+  - `Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs`
+  - `Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs`
+  - `Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs`
+  - `Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd`
+  - `Game.Core.Tests/Tasks/Task32AcceptanceTests.cs`
+- Runtime notes:
+  - `adapters/security` failure blocks overall decision.
+  - `integration/ui` failure is soft and does not block overall decision.

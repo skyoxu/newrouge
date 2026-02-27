@@ -15,6 +15,7 @@ Usage (Windows):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import uuid
@@ -87,6 +88,78 @@ def run_coverage_report(out_dir: Path, unit_artifacts_dir: Path) -> dict[str, An
     }
 
 
+def _normalize_task_root_id(task_id: str | None) -> str | None:
+    raw = str(task_id or "").strip()
+    if not raw:
+        return None
+    return raw.split(".", 1)[0].strip()
+
+
+def _task_scoped_gdunit_refs(*, task_id: str | None, tests_project: Path) -> list[str]:
+    """
+    Resolve task-scoped GdUnit refs from task views to keep refs and execution evidence aligned.
+
+    Accepted ref shapes:
+    - Tests.Godot/tests/.../*.gd
+    - tests/.../*.gd
+    """
+    task_root_id = _normalize_task_root_id(task_id)
+    if not task_root_id:
+        return []
+
+    refs: list[str] = []
+    seen: set[str] = set()
+    view_files = [
+        repo_root() / ".taskmaster" / "tasks" / "tasks_back.json",
+        repo_root() / ".taskmaster" / "tasks" / "tasks_gameplay.json",
+    ]
+
+    for view_path in view_files:
+        if not view_path.is_file():
+            continue
+        try:
+            data = json.loads(view_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(data, list):
+            continue
+
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("taskmaster_id")).strip() != task_root_id:
+                continue
+
+            test_refs = item.get("test_refs")
+            if not isinstance(test_refs, list):
+                continue
+
+            for raw_ref in test_refs:
+                if not isinstance(raw_ref, str):
+                    continue
+                ref = raw_ref.replace("\\", "/").strip()
+                if not ref.lower().endswith(".gd"):
+                    continue
+
+                rel: str | None = None
+                if ref.startswith("Tests.Godot/"):
+                    rel = ref[len("Tests.Godot/") :]
+                elif ref.startswith("tests/"):
+                    rel = ref
+
+                if not rel:
+                    continue
+                if not (tests_project / rel).is_file():
+                    continue
+                if rel in seen:
+                    continue
+
+                seen.add(rel)
+                refs.append(rel)
+
+    return refs
+
+
 def run_gdunit_hard(
     out_dir: Path,
     godot_bin: str,
@@ -115,6 +188,12 @@ def run_gdunit_hard(
             add_dirs.append(rel)
         elif (repo_root() / rel).exists():
             add_dirs.append(rel)
+
+        # Add task-scoped GdUnit refs from task views so acceptance-executed-refs
+        # can bind to real executed tests.
+        for rel_ref in _task_scoped_gdunit_refs(task_id=task_id, tests_project=tests_project):
+            if rel_ref not in add_dirs:
+                add_dirs.append(rel_ref)
 
     cmd = [
         "py",
