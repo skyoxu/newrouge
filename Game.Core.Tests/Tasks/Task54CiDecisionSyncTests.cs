@@ -110,7 +110,7 @@ namespace Game.Core.Tests.Tasks
 
         // ACC:T54.11
         [Fact]
-        public void ShouldFailWhenCiFails_EvenIfNoGdUnitSuitesAreSelected()
+        public void ShouldFail_WhenCiFailsAndNoGdUnitSuitesAreSelected()
         {
             var result = RunQualityGatesWithMocks(
                 ciRc: 1,

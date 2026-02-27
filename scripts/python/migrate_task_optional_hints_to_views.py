@@ -99,7 +99,7 @@ SUPPLEMENT_PREFIX_RE = re.compile(
     flags=re.IGNORECASE,
 )
 OPTIONAL_CONTEXT_RE = re.compile(
-    rf"(?:\boptional\b|{_CN_OPT}|{_CN_SUG}|{_CN_HARD}|{_CN_DEMO}|{_CN_EXAMPLE}|{_CN_REF}|\b(?:supplement|add-?on|extra|demo|hint)s?\b)",
+    rf"(?:\boptional(?:\s+hint)?\s*{_CN_COLON}|\bhint(?:\s+path)?\s*{_CN_COLON}|\bdemo(?:\s+path|s)?\s*{_CN_COLON}|{_CN_OPT}\s*{_CN_COLON}|{_CN_SUG}\s*{_CN_COLON}|{_CN_HARD}\s*{_CN_COLON}|{_CN_DEMO}\s*{_CN_COLON}|{_CN_EXAMPLE}\s*{_CN_COLON}|{_CN_REF}\s*{_CN_COLON}|\b(?:supplement|add-?on|extra)\b\s*{_CN_COLON}|\b(local demo|demo references|demo paths)\b)",
     flags=re.IGNORECASE,
 )
 
