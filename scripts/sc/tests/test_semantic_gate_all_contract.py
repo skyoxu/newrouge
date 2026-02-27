@@ -16,6 +16,7 @@ from _semantic_gate_all_contract import (  # noqa: E402
     run_semantic_gate_all_self_check,
     validate_semantic_gate_summary,
 )
+from llm_semantic_gate_all import _parse_tsv_output  # noqa: E402
 
 
 class SemanticGateAllContractTests(unittest.TestCase):
@@ -72,6 +73,25 @@ class SemanticGateAllContractTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual("ok", payload.get("status"))
         self.assertIn("self-check", report)
+
+    def test_parse_tsv_output_should_normalize_verdicts_and_task_tokens(self) -> None:
+        parsed = _parse_tsv_output(
+            "\n".join(
+                [
+                    "T1\tok\treason-a",
+                    "t2\tNeeds_Fix\treason-b",
+                    "3\tPASS\treason-c",
+                    "T4\tFAILED\treason-d",
+                    "bad\tOK\treason-e",
+                ]
+            )
+        )
+        self.assertEqual(4, len(parsed))
+        by_id = {x.task_id: x for x in parsed}
+        self.assertEqual("OK", by_id[1].verdict)
+        self.assertEqual("Needs Fix", by_id[2].verdict)
+        self.assertEqual("OK", by_id[3].verdict)
+        self.assertEqual("Needs Fix", by_id[4].verdict)
 
 
 if __name__ == "__main__":

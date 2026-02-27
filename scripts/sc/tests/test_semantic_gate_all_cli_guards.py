@@ -39,6 +39,19 @@ class SemanticGateAllCliGuardTests(unittest.TestCase):
         self.assertEqual(2, proc.returncode)
         self.assertIn("--batch-size must be > 0", proc.stdout or "")
 
+    def test_even_consensus_runs_should_exit_two(self) -> None:
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "--consensus-runs", "2", "--garbled-gate", "off"],
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        self.assertEqual(2, proc.returncode)
+        self.assertIn("--consensus-runs must be an odd positive integer", proc.stdout or "")
+
 
 if __name__ == "__main__":
     unittest.main()
