@@ -25,6 +25,7 @@ Usage (Windows):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -66,7 +67,10 @@ class GenResult:
 
 
 def _read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="ignore")
+    try:
+        return path.read_text(encoding="utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="utf-8", errors="replace")
 
 
 def _truncate(text: str, *, max_chars: int) -> str:
@@ -156,7 +160,7 @@ def _run_codex_exec(*, prompt: str, out_last_message: Path, timeout_sec: int) ->
             input=prompt,
             text=True,
             encoding="utf-8",
-            errors="ignore",
+            errors="replace",
             cwd=str(repo_root()),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -171,19 +175,100 @@ def _run_codex_exec(*, prompt: str, out_last_message: Path, timeout_sec: int) ->
 
 def _extract_json_object(text: str) -> dict[str, Any]:
     text = text.strip()
+    if not text:
+        raise ValueError("Model output is empty.")
     try:
         obj = json.loads(text)
         if isinstance(obj, dict):
             return obj
     except Exception:
         pass
-    m = re.search(r"\{.*\}", text, flags=re.DOTALL)
-    if not m:
-        raise ValueError("No JSON object found in model output.")
-    obj = json.loads(m.group(0))
-    if not isinstance(obj, dict):
-        raise ValueError("Model output JSON is not an object.")
-    return obj
+
+    # 1) Try fenced JSON blocks first.
+    for m in re.finditer(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE):
+        chunk = (m.group(1) or "").strip()
+        if not chunk:
+            continue
+        try:
+            obj = json.loads(chunk)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            continue
+
+    # 2) Streaming parse from first '{' positions, non-greedy and robust.
+    decoder = json.JSONDecoder()
+    for idx, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _end = decoder.raw_decode(text[idx:])
+        except Exception:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    raise ValueError("No JSON object found in model output.")
+
+
+def _artifact_token_for_ref(ref: str) -> str:
+    normalized = str(ref or "").strip().replace("\\", "/")
+    base = Path(normalized).name or "ref"
+    safe_base = re.sub(r"[^A-Za-z0-9._-]+", "_", base)
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:10]
+    return f"{safe_base}-{digest}"
+
+
+def _validate_anchor_binding(*, ref: str, content: str, required_anchors: list[str]) -> tuple[bool, str | None]:
+    anchors = [a for a in required_anchors if str(a or "").strip()]
+    if not anchors:
+        return True, None
+
+    lines = content.replace("\r\n", "\n").split("\n")
+    if ref.lower().endswith(".gd"):
+        marker = re.compile(r"^\s*func\s+test_[A-Za-z0-9_]*\s*\(")
+    else:
+        marker = re.compile(r"^\s*\[(?:Fact|Theory)(?:\s*\(.*\))?\]\s*$")
+
+    missing: list[str] = []
+    unbound: list[str] = []
+    max_window = 5
+
+    for anchor in anchors:
+        positions = [idx for idx, line in enumerate(lines) if anchor in line]
+        if not positions:
+            missing.append(anchor)
+            continue
+
+        bound = False
+        for pos in positions:
+            start = pos + 1
+            end = min(len(lines), pos + 1 + max_window)
+            if any(marker.search(lines[i]) for i in range(start, end)):
+                bound = True
+                break
+        if not bound:
+            unbound.append(anchor)
+
+    if not missing and not unbound:
+        return True, None
+
+    parts: list[str] = []
+    if missing:
+        parts.append("missing anchors: " + ", ".join(missing))
+    if unbound:
+        parts.append("anchors not bound near test marker: " + ", ".join(unbound))
+    return False, "; ".join(parts)
+
+
+def _load_optional_prd_excerpt(*, include_prd_context: bool, prd_context_path: str) -> str:
+    if not include_prd_context:
+        return ""
+    path = Path(prd_context_path)
+    if not path.is_absolute():
+        path = repo_root() / path
+    if not path.exists():
+        return ""
+    return _truncate(_read_text(path), max_chars=8_000)
 
 
 def _prompt_for_ref(
@@ -289,9 +374,13 @@ def _is_allowed_test_path(p: str) -> bool:
     return s.startswith(ALLOWED_TEST_PREFIXES)
 
 
-def _select_primary_ref_prompt(*, task_id: str, title: str, candidates: list[dict[str, Any]]) -> str:
-    prd_path = repo_root() / "prd.txt"
-    prd = _truncate(_read_text(prd_path), max_chars=8_000) if prd_path.exists() else ""
+def _select_primary_ref_prompt(
+    *,
+    task_id: str,
+    title: str,
+    candidates: list[dict[str, Any]],
+    context_excerpt: str,
+) -> str:
     constraints = "\n".join(
         [
             "You are selecting a single primary acceptance ref to drive a RED-FIRST test.",
@@ -313,8 +402,8 @@ def _select_primary_ref_prompt(*, task_id: str, title: str, candidates: list[dic
             f"Task: {task_id}",
             f"Title: {title}",
             "",
-            "PRD excerpt (truncated):",
-            prd or "(empty)",
+            "Optional design context excerpt (truncated):",
+            context_excerpt or "(disabled)",
             "",
             "Candidates (each includes acceptance texts that reference it):",
             json.dumps(candidates, ensure_ascii=False, indent=2),
@@ -329,6 +418,7 @@ def _select_primary_ref_with_llm(
     task_id: str,
     title: str,
     by_ref: dict[str, list[str]],
+    context_excerpt: str,
     timeout_sec: int,
     out_dir: Path,
 ) -> tuple[str | None, dict[str, Any]]:
@@ -339,7 +429,12 @@ def _select_primary_ref_with_llm(
         return None, {"status": "skipped", "reason": "no_candidates"}
 
     payload = [{"ref": r, "acceptance_texts": by_ref.get(r, [])[:8]} for r in candidates[:20]]
-    prompt = _select_primary_ref_prompt(task_id=task_id, title=title, candidates=payload)
+    prompt = _select_primary_ref_prompt(
+        task_id=task_id,
+        title=title,
+        candidates=payload,
+        context_excerpt=context_excerpt,
+    )
 
     prompt_path = out_dir / f"primary-select-prompt-{task_id}.txt"
     last_msg_path = out_dir / f"primary-select-last-{task_id}.txt"
@@ -388,6 +483,16 @@ def main() -> int:
     ap.add_argument("--tdd-stage", choices=["normal", "red-first"], default="normal")
     ap.add_argument("--verify", choices=["none", "unit", "all", "auto"], default="auto")
     ap.add_argument("--godot-bin", default=None, help="Required when verify=all/auto and .gd files are involved.")
+    ap.add_argument(
+        "--include-prd-context",
+        action="store_true",
+        help="Include PRD excerpt in primary-ref selection prompt (default: disabled).",
+    )
+    ap.add_argument(
+        "--prd-context-path",
+        default=".taskmaster/docs/prd.txt",
+        help="Repo-relative path used when --include-prd-context is set.",
+    )
     args = ap.parse_args()
 
     task_id = str(args.task_id).split(".", 1)[0].strip()
@@ -527,17 +632,26 @@ def main() -> int:
             "skipped_non_test_refs": skipped_non_test_refs,
         },
     )
+    if not refs:
+        print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: no allowed test refs found for task_id={task_id}.")
+        return 1
+
     results: list[GenResult] = []
 
-    any_gd = False
+    any_gd = any(Path(r).suffix.lower() == ".gd" for r in refs)
     created = 0
 
     primary_ref = None
+    context_excerpt = _load_optional_prd_excerpt(
+        include_prd_context=bool(args.include_prd_context),
+        prd_context_path=str(args.prd_context_path),
+    )
     if str(args.tdd_stage) == "red-first":
         primary_ref, primary_meta = _select_primary_ref_with_llm(
             task_id=task_id,
             title=title,
             by_ref={k: [x.get("text", "") for x in v] for k, v in by_ref.items()},
+            context_excerpt=context_excerpt,
             timeout_sec=int(args.select_timeout_sec),
             out_dir=out_dir,
         )
@@ -550,9 +664,6 @@ def main() -> int:
             results.append(GenResult(ref=ref_norm, status="skipped", rc=0))
             continue
 
-        if disk.suffix.lower() == ".gd":
-            any_gd = True
-
         if str(args.tdd_stage) == "red-first" and primary_ref and ref_norm == primary_ref:
             intent = "red"
         else:
@@ -560,19 +671,21 @@ def main() -> int:
             # This avoids generating multiple failing tests when verify!=none.
             intent = "scaffold"
 
+        required_anchors = sorted({x.get("anchor", "") for x in by_ref.get(ref, []) if str(x.get("anchor", "")).strip()})
         prompt = _prompt_for_ref(
             task_id=task_id,
             title=title,
             ref=ref_norm,
             acceptance_texts=[x.get("text", "") for x in by_ref.get(ref, [])],
-            required_anchors=sorted({x.get("anchor", "") for x in by_ref.get(ref, []) if str(x.get("anchor", "")).strip()}),
+            required_anchors=required_anchors,
             intent=intent,
             task_context_markdown=task_context_md,
         )
-        prompt_path = out_dir / f"prompt-{task_id}-{Path(ref_norm).name}.txt"
+        artifact_token = _artifact_token_for_ref(ref_norm)
+        prompt_path = out_dir / f"prompt-{task_id}-{artifact_token}.txt"
         write_text(prompt_path, prompt)
-        output_path = out_dir / f"codex-last-{task_id}-{Path(ref_norm).name}.txt"
-        trace_path = out_dir / f"codex-trace-{task_id}-{Path(ref_norm).name}.log"
+        output_path = out_dir / f"codex-last-{task_id}-{artifact_token}.txt"
+        trace_path = out_dir / f"codex-trace-{task_id}-{artifact_token}.log"
 
         rc, trace_out, _cmd = _run_codex_exec(prompt=prompt, out_last_message=output_path, timeout_sec=int(args.timeout_sec))
         write_text(trace_path, trace_out)
@@ -599,6 +712,13 @@ def main() -> int:
                 raise ValueError(f"unexpected file_path: {fp}")
             if not content.strip():
                 raise ValueError("empty content")
+            ok, anchor_error = _validate_anchor_binding(
+                ref=ref_norm,
+                content=content,
+                required_anchors=required_anchors,
+            )
+            if not ok:
+                raise ValueError(anchor_error or "anchor binding validation failed")
             disk.parent.mkdir(parents=True, exist_ok=True)
             disk.write_text(content.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
             created += 1

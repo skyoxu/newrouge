@@ -41,6 +41,9 @@ def main() -> int:
         rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=3_600)
         out_dir = ci_dir("sc-build")
         write_text(out_dir / "tdd.log", out)
+        if out:
+            end = "" if out.endswith("\n") else "\n"
+            print(out, end=end)
         print(f"SC_BUILD_TDD rc={rc} out={out_dir}")
         return 0 if rc == 0 else rc
 
