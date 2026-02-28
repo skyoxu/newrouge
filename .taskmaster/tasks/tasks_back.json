@@ -236,7 +236,8 @@
     "test_refs": [
       "Game.Core.Tests/Services/CombatServiceTests.cs",
       "Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs"
+      "Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs",
+      "Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs"
     ],
     "acceptance": [
       "交付产物必须能被检索到四类合同：CombatLoop 阶段、PlayCard 结算流水线、伤害计算规则、OverplayTax 难度阈值；缺任一类即验收失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
@@ -252,15 +253,15 @@
       "交付与验收追溯必须明确关联 ADR-0021 与 ADR-0032，任一缺失即不满足本任务合同验收。 Refs: Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs",
       "当 Validate 失败时，流水线必须在 Validate 立即终止，不得进入 ComputeCost 及后续步骤，并保持关键战斗状态不变。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "必须提供 xUnit 用例覆盖 Validate 失败分支，断言调用序列止于 Validate 且状态保持不变。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Provide xUnit parameterized tests (Theory with InlineData or MemberData) for valid and invalid phase transitions with explicit guard expectations.",
-      "Cover boundary cases for OverplayTax (difficulty 9 and 10) and trigger-count threshold (N-1, N, N+1).",
-      "All parameterized cases must remain deterministic across repeated Windows runs.",
-      "[OBL:T6.O10] 伤害规则测试必须使用 xUnit Theory，并采用 InlineData 或 MemberData 实现表驱动覆盖。",
-      "[OBL:T6.O10] 乘子组合与固定伤害豁免至少覆盖正常值、边界值与反例输入。",
-      "[OBL:T6.O10] 伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。",
-      "[OBL:T6.O15] CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。",
-      "[OBL:T6.O15] 仅文档描述或注释声明不计为完成。",
-      "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。"
+      "Provide xUnit parameterized tests (Theory with InlineData or MemberData) for valid and invalid phase transitions with explicit guard expectations. Refs: Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs",
+      "Cover boundary cases for OverplayTax (difficulty 9 and 10) and trigger-count threshold (N-1, N, N+1). Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "All parameterized cases must remain deterministic across repeated Windows runs. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O10] 伤害规则测试必须使用 xUnit Theory，并采用 InlineData 或 MemberData 实现表驱动覆盖。 Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "[OBL:T6.O10] 乘子组合与固定伤害豁免至少覆盖正常值、边界值与反例输入。 Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O10] 伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。 Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "[OBL:T6.O15] CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O15] 仅文档描述或注释声明不计为完成。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032."
@@ -320,7 +321,9 @@
       "Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
       "Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
       "Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
-      "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+      "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs"
     ],
     "acceptance": [
       "当保存成功时，SaveService 必须将 schema_version、save_point_id、offer_locks 序列化后以“临时文件写入 + 原子替换”提交到 user://，且随后读取目标文件可得到与本次写入一致的完整最新数据。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
@@ -330,26 +333,26 @@
       "本任务不实现迁移逻辑：面对旧版本或不兼容数据时不得自动转换、升级或覆盖既有有效保存。 Refs: Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
       "xUnit 测试必须覆盖序列化往返一致性：写入后再读取时，schema_version、save_point_id、offer_locks 的值与写入前逐项一致。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
       "xUnit 测试必须覆盖原子提交失败路径：提交中断或写入失败时，目标保存文件不得出现部分写入状态，且上一份有效保存仍可读取。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
-      "xUnit must verify atomic commit behavior (write temp then replace target in a single commit step).",
-      "xUnit must verify no partial file is left when persistence fails.",
-      "xUnit must verify valid user:// relative paths are writable.",
-      "xUnit must verify absolute paths and traversal-like paths are fail-fast rejected.",
-      "xUnit must verify unsupported file extensions are rejected by validation.",
-      "xUnit must verify payloads over the configured size limit are rejected.",
-      "Add xUnit cases asserting allowlisted user:// path policy is explicit and auditable.",
-      "Add xUnit cases asserting reject paths include structured error code and context.",
-      "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。",
-      "[OBL:T12.O9] xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。",
-      "[OBL:T12.O9] 必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。",
-      "[OBL:T12.O10] xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。",
-      "[OBL:T12.O10] xUnit 测试必须覆盖提交失败路径：目标文件无部分写入状态且仍可读取上一份有效保存。",
-      "[OBL:T12.O10] 必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。",
-      "[OBL:T12.O11] xUnit 测试必须覆盖 user:// 合法相对路径写入成功。",
-      "[OBL:T12.O11] xUnit 测试必须覆盖绝对路径与 traversal-like 路径 fail-fast 拒绝且不得产生落盘文件。",
-      "[OBL:T12.O11] 必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。",
-      "[OBL:T12.O12] xUnit 测试必须断言持久化失败时向调用方传播带上下文错误并包含要求的证据字段。",
-      "[OBL:T12.O12] xUnit 测试必须断言失败后上一份有效保存内容保持不变。",
-      "[OBL:T12.O12] 必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。"
+      "xUnit must verify atomic commit behavior (write temp then replace target in a single commit step). Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "xUnit must verify no partial file is left when persistence fails. Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "xUnit must verify valid user:// relative paths are writable. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "xUnit must verify absolute paths and traversal-like paths are fail-fast rejected. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "xUnit must verify unsupported file extensions are rejected by validation. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "xUnit must verify payloads over the configured size limit are rejected. Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "Add xUnit cases asserting allowlisted user:// path policy is explicit and auditable. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "Add xUnit cases asserting reject paths include structured error code and context. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "[OBL:T12.O9] xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "[OBL:T12.O9] 必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "[OBL:T12.O10] xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "[OBL:T12.O10] xUnit 测试必须覆盖提交失败路径：目标文件无部分写入状态且仍可读取上一份有效保存。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "[OBL:T12.O10] 必须新增 xUnit 测试同时验证原子提交 commit behavior 与写失败后无 partial-file。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "[OBL:T12.O11] xUnit 测试必须覆盖 user:// 合法相对路径写入成功。 Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "[OBL:T12.O11] xUnit 测试必须覆盖绝对路径与 traversal-like 路径 fail-fast 拒绝且不得产生落盘文件。 Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "[OBL:T12.O11] 必须新增 xUnit 测试覆盖 user:// 合法路径允许与非法路径拒绝两类用例。 Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "[OBL:T12.O12] xUnit 测试必须断言持久化失败时向调用方传播带上下文错误并包含要求的证据字段。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "[OBL:T12.O12] xUnit 测试必须断言失败后上一份有效保存内容保持不变。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "[OBL:T12.O12] 必须新增 xUnit 测试断言失败路径的错误传播与 previous save 不变。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for serialization round-trip and atomic write behavior. Refs: ADR-0032."
@@ -406,12 +409,17 @@
       "event"
     ],
     "owner": "architecture",
-    "test_refs": [],
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd",
+      "Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
+      "Tests.Godot/tests/Integration/test_composition_root_runtime_injection.gd",
+      "Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs"
+    ],
     "acceptance": [
-      "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位于 Game.Godot/Scripts，并且仅承担装配/桥接职责、不含领域逻辑。",
-      "启动 Godot 项目时无 Autoload 相关错误；CompositionRoot 能对 Godot 节点完成核心服务注入，并且可通过运行时可观测证据验证注入生效。",
-      "提供 GdUnit4 测试用于验证组合根注入与 Autoload 装配；测试引用清单可追溯到新增测试并与之一致。",
-      "在验收清单中补充 ADR-0021/ADR-0022 的引用或回链项。"
+      "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位于 Game.Godot/Scripts，并且仅承担装配/桥接职责、不含领域逻辑。 Refs: Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd",
+      "启动 Godot 项目时无 Autoload 相关错误；CompositionRoot 能对 Godot 节点完成核心服务注入，并且可通过运行时可观测证据验证注入生效。 Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
+      "提供 GdUnit4 测试用于验证组合根注入与 Autoload 装配；测试引用清单可追溯到新增测试并与之一致。 Refs: Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd Tests.Godot/tests/Integration/test_composition_root_runtime_injection.gd",
+      "在验收清单中补充 ADR-0021/ADR-0022 的引用或回链项。 Refs: Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs"
     ],
     "test_strategy": [
       "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022."
@@ -552,7 +560,8 @@
       "Game.Core.Tests/Services/MapActConfigurationTests.cs",
       "Game.Core.Tests/Services/MapNavigationSelectionTests.cs",
       "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd"
+      "Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd",
+      "Game.Core.Tests/Tasks/Task0017AcceptanceTests.cs"
     ],
     "acceptance": [
       "当Act数量配置为2、4、5时，地图构建与导航初始化均成功，且不会触发由固定3个Act假设导致的失败；自动化验收中至少一个非3 Act配置通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
@@ -566,7 +575,7 @@
       "存在可重复执行的用例验证地图导航与节点选择行为，至少覆盖一次有效节点选择及其对应状态转移结果，并可稳定复现。 Refs: Game.Core.Tests/Services/MapNavigationSelectionTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
       "验收材料或变更记录中可检索到ADR-0007与ADR-0021的引用，并能对应到本任务的MapService与地图契约决策；缺失任一引用即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
       "[OBL:T17.O8] 当在分叉节点提交非法分支ID时，系统必须拒绝本次选择，当前节点与可达节点集合保持不变。 Refs: Game.Core.Tests/Services/MapServiceTests.cs Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd",
-      "[OBL:T17.O8] 同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。 Refs: Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd",
+      "[OBL:T17.O8] 同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。 Refs: Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd Game.Core.Tests/Tasks/Task0017AcceptanceTests.cs",
       "[OBL:T17.O8] 分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。 Refs: Game.Core.Tests/Services/MapServiceTests.cs Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd"
     ],
     "test_strategy": [
@@ -1239,19 +1248,22 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd"
+      "Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "Game.Core.Tests/Tasks/Task51AdrTraceabilityGateTests.cs"
     ],
     "acceptance": [
       "当流程从非战斗状态进入战斗状态时，核心服务必须且仅触发一次起始自动保存；保存存储中可观测到且仅可观测到一条与本次进入战斗对应的新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "每次满足前置条件的回合推进请求都必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时必须返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "仅当判定达到回合结束条件时才执行回合结束清理，并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统必须进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
-      "必须提供 GdUnit4 用例，至少覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "验收清单必须明确列出上述回合流程与恢复行为对应的 GdUnit4 测试文件路径，并给出每个文件的验证覆盖范围说明。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "必须提供 GdUnit4 用例，至少覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "验收清单必须明确列出上述回合流程与恢复行为对应的 GdUnit4 测试文件路径，并给出每个文件的验证覆盖范围说明。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
       "回合结束清理必须由核心服务直接执行或由其统一触发；每次清理都必须留下可检索记录或事件，用于持久化核验与流程追踪。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "[OBL:T51.O7] 验收清单必须包含显式映射条目，将起始自动保存、回合推进、回合结束清理逐项关联到 ADR-0032 与 ADR-0025。",
-      "[OBL:T51.O7] 至少一个测试条目必须明确其验证点覆盖 ADR-0025 约束，且该覆盖点可通过测试说明或命名直接定位。",
-      "[OBL:T51.O7] 验收门禁输出必须显式给出 ADR-0032 与 ADR-0025 的可追溯映射结果；缺失任一 ADR 映射时判定为未通过。",
+      "[OBL:T51.O7] 验收清单必须包含显式映射条目，将起始自动保存、回合推进、回合结束清理逐项关联到 ADR-0032 与 ADR-0025。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "[OBL:T51.O7] 至少一个测试条目必须明确其验证点覆盖 ADR-0025 约束，且该覆盖点可通过测试说明或命名直接定位。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T51.O7] 验收门禁输出必须显式给出 ADR-0032 与 ADR-0025 的可追溯映射结果；缺失任一 ADR 映射时判定为未通过。 Refs: Game.Core.Tests/Tasks/Task51AdrTraceabilityGateTests.cs",
       "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0025\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
@@ -1597,16 +1609,17 @@
     "test_refs": [
       "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
-      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
+      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
+      "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs"
     ],
     "acceptance": [
-      "提供 `scripts/python/validate_audit_logs.py`，对安全审计 JSONL 执行逐行结构与必填字段校验；只要存在任意无效行，本次运行必须返回非零退出码且不得判定为通过。 Refs: scripts/python/validate_audit_logs.py",
+      "提供 `scripts/python/validate_audit_logs.py`，对安全审计 JSONL 执行逐行结构与必填字段校验；只要存在任意无效行，本次运行必须返回非零退出码且不得判定为通过。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "当校验失败时，输出必须包含每条被拒绝记录的实际行号与可执行修复原因，以便直接定位并修复对应 JSONL 行。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "`quality_gates.py` 在启用该校验时必须实际调用审计校验器，并将该步骤的 `executed` 与 `pass_fail` 实际结果写入 task-0056 汇总 JSON。 Refs: scripts/python/quality_gates.py",
+      "`quality_gates.py` 在启用该校验时必须实际调用审计校验器，并将该步骤的 `executed` 与 `pass_fail` 实际结果写入 task-0056 汇总 JSON。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "当启用审计校验且校验结果为失败时，`quality_gates.py` 必须以非零状态结束本次门禁流程，流水线不得以成功状态继续发布路径。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "提供有效与无效 JSONL 夹具，并在 Windows 环境下可重复复现一轮通过与一轮失败的运行结果。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "当未启用审计校验时，`quality_gates.py` 必须不调用 `validate_audit_logs.py`，并在 task-0056 汇总写入 `executed=false` 与 `pass_fail=\"skipped\"`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "当启用审计校验时，`validate_audit_logs.py` 必须执行；任一校验失败时门禁必须非零退出。 Refs: scripts/python/validate_audit_logs.py, scripts/python/quality_gates.py",
+      "当启用审计校验时，`validate_audit_logs.py` 必须执行；任一校验失败时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "必须提供并执行 `Tests/CI/AuditLogs/ValidateAuditLogsTests.cs`、`Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs`、`Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
       "task-0056 汇总必须记录上述测试的 `executed/pass_fail`；任一未执行或失败即判定任务失败。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "task-0056 汇总必须包含 `adr_refs=[\"ADR-0019\",\"ADR-0003\",\"ADR-0005\"]`；缺失任一 ADR 回链时门禁必须非零退出。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
