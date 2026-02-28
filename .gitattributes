@@ -15,6 +15,10 @@
 *.xml     text eol=crlf
 *.ps1     text eol=crlf
 
+# Taskmaster task files (force LF to avoid CI/task diff noise)
+.taskmaster/tasks/tasks_back.json      text eol=lf
+.taskmaster/tasks/tasks_gameplay.json  text eol=lf
+
 # Binary files (no EOL conversions)
 *.png  binary
 *.jpg  binary
