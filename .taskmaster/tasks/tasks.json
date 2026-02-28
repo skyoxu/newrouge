@@ -36,7 +36,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0024"
@@ -62,7 +62,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0033",
@@ -1689,7 +1689,7 @@
         "dependencies": [
           "53"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0005",
