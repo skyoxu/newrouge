@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--task-id", default=None, help="task id; defaults to first status=in-progress in tasks.json")
     ap.add_argument("--solution", default="Game.sln")
     ap.add_argument("--configuration", default="Debug")
+    ap.add_argument(
+        "--green-scope",
+        choices=["task", "all"],
+        default="task",
+        help="green stage test scope: task-scoped (default) or all tests",
+    )
     ap.add_argument("--generate-red-test", action="store_true", help="create a failing test skeleton if missing")
     ap.add_argument("--no-coverage-gate", action="store_true", help="do not enforce default coverage thresholds")
     ap.add_argument(
@@ -97,6 +104,59 @@ def run_dotnet_test_filtered(task_id: str, *, solution: str, configuration: str,
     return {"name": "dotnet-test-filtered", "cmd": cmd, "rc": rc, "log": str(log_path), "filter": filter_expr}
 
 
+def _collect_task_test_refs(triplet: Any) -> list[str]:
+    refs: list[str] = []
+    for view in (triplet.back, triplet.gameplay):
+        if not isinstance(view, dict):
+            continue
+        test_refs = view.get("test_refs")
+        if not isinstance(test_refs, list):
+            continue
+        for ref in test_refs:
+            ref_s = str(ref or "").strip()
+            if not ref_s:
+                continue
+            if not ref_s.lower().endswith(".cs"):
+                continue
+            refs.append(ref_s.replace("\\", "/"))
+    # preserve order but unique
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for r in refs:
+        key = r.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(r)
+    return uniq
+
+
+def _class_token_from_test_ref(test_ref: str) -> str | None:
+    name = Path(test_ref).stem.strip()
+    if not name:
+        return None
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+        return None
+    return name
+
+
+def _build_green_filter_expr(*, task_id: str, triplet: Any) -> tuple[str, list[str]]:
+    refs = _collect_task_test_refs(triplet)
+    tokens: list[str] = []
+    for ref in refs:
+        token = _class_token_from_test_ref(ref)
+        if token:
+            tokens.append(token)
+
+    # Fallback to task-scoped namespace/class naming.
+    if not tokens:
+        tokens = [f"Task{task_id}"]
+
+    # `dotnet test --filter` uses `|` as OR.
+    terms = [f"FullyQualifiedName~{token}" for token in tokens]
+    return "|".join(terms), refs
+
+
 def run_sc_analyze_task_context(*, task_id: str, out_dir: Path) -> dict[str, Any]:
     # Ensure logs/ci/<date>/sc-analyze/task_context.json exists and is fresh enough for this TDD stage.
     # We intentionally use the repo's deterministic analyzer (no LLM).
@@ -142,16 +202,55 @@ def validate_task_context_required_fields(*, task_id: str, stage: str, out_dir: 
     return {"name": "validate_task_context_required_fields", "cmd": cmd, "rc": rc, "log": str(log_path), "status": "ok" if rc == 0 else "fail"}
 
 
-def run_green_gate(*, solution: str, configuration: str, out_dir: Path, no_coverage_gate: bool) -> dict[str, Any]:
-    if not no_coverage_gate:
+def run_green_gate(
+    *,
+    task_id: str,
+    triplet: Any,
+    solution: str,
+    configuration: str,
+    out_dir: Path,
+    no_coverage_gate: bool,
+    green_scope: str,
+) -> dict[str, Any]:
+    coverage_gate_enabled = (green_scope == "all") and (not no_coverage_gate)
+    if coverage_gate_enabled:
         os.environ.setdefault("COVERAGE_LINES_MIN", "90")
         os.environ.setdefault("COVERAGE_BRANCHES_MIN", "85")
+    else:
+        # Task-scoped green should validate correctness quickly without global denominator drift.
+        os.environ.pop("COVERAGE_LINES_MIN", None)
+        os.environ.pop("COVERAGE_BRANCHES_MIN", None)
 
     cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
-    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
+    filter_expr = ""
+    filter_refs: list[str] = []
+    if green_scope == "task":
+        filter_expr, filter_refs = _build_green_filter_expr(task_id=task_id, triplet=triplet)
+        cmd.extend(["--filter", filter_expr])
+
+    try:
+        inner_timeout_ms = int(os.environ.get("DOTNET_TEST_TIMEOUT_MS", "1800000") or "1800000")
+    except ValueError:
+        inner_timeout_ms = 1_800_000
+    inner_timeout_ms = max(60_000, inner_timeout_ms)
+    outer_timeout_sec = max(1_800, int(inner_timeout_ms / 1000) + 120)
+
+    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=outer_timeout_sec)
     log_path = out_dir / "run_dotnet.log"
     write_text(log_path, out)
-    return {"name": "run_dotnet", "cmd": cmd, "rc": rc, "log": str(log_path), "stdout": out}
+    return {
+        "name": "run_dotnet",
+        "cmd": cmd,
+        "rc": rc,
+        "log": str(log_path),
+        "stdout": out,
+        "inner_timeout_ms": inner_timeout_ms,
+        "outer_timeout_sec": outer_timeout_sec,
+        "scope": green_scope,
+        "coverage_gate_enabled": coverage_gate_enabled,
+        "filter": filter_expr,
+        "test_refs": filter_refs,
+    }
 
 
 def run_refactor_checks(out_dir: Path, *, task_id: str) -> list[dict[str, Any]]:
@@ -343,10 +442,13 @@ def main() -> int:
             return 1
 
         step = run_green_gate(
+            task_id=triplet.task_id,
+            triplet=triplet,
             solution=args.solution,
             configuration=args.configuration,
             out_dir=out_dir,
             no_coverage_gate=args.no_coverage_gate,
+            green_scope=args.green_scope,
         )
         summary["steps"].append(step)
         if step["rc"] == 2:
