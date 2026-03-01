@@ -224,7 +224,8 @@
     "test_refs": [
       "Game.Core.Tests/Domain/OfferLockingContractTests.cs",
       "Game.Core.Tests/Domain/RngStreamTypeTests.cs",
-      "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs"
+      "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
     ],
     "acceptance": [
       "代码库中可定位到 OfferLocking 与确定性结果相关契约定义，且验收记录可追溯到对应实现与测试证据，任一缺失即判定不通过。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
