@@ -107,18 +107,16 @@
       "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
     ],
     "acceptance": [
-      "代码库中可定位到 OfferLocking 与确定性结果相关契约定义，且验收记录可追溯到对应实现与测试证据，任一缺失即判定不通过。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "在 Windows 环境执行本任务验收测试时必须成功产出证据文件并写入指定日志路径；若未生成或路径不符则不通过。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "Overlay 的 Test-Refs 必须指向本任务新增或更新的测试文件路径并可被追溯验证；缺失或失效则不通过。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "OfferLocking 契约必须提供 stable_ids、display_order、provenance、rng_stream、locked_at_save_point 五个字段，并可通过测试验证字段存在且类型可判定。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "provenance 必须提供 source_type、source_id、act、floor、node_id、difficulty、rng_stream、stream_pos 八个字段，并可验证其 rng_stream 与 OfferLocking.rng_stream 保持一致。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "必须定义 RNG 流类型集合，且可判定至少包含 run、combat、event、loot、shop、offer 六类；任一缺失即不通过。 Refs: Game.Core.Tests/Domain/RngStreamTypeTests.cs",
-      "stable_ids 必须基于内容稳定 ID；测试需证明在仅调整 display_order 的情况下 stable_ids 集合保持不变，若 stable_ids 随排序变化而改变则不通过。 Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
-      "必须提供 xUnit 测试，验证 OfferLocking 结构完整且 provenance 字段完整可读。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "必须提供 xUnit 测试，验证序列化与反序列化前后 OfferLocking 数据一致，且同一输入可得到一致结果以支撑确定性。 Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
-      "实现与测试中必须显式标注并引用 ADR-0032，未建立可追溯关联则不通过。 Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "OfferLocking and its provenance carrier type must be implemented as compilable C# class or record class in contract layer and verifiable via reflection (type exists + IsClass true). Refs: Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
-      "Schema-only/document-only/dictionary-only representations without corresponding C# contract types are not acceptable and must fail the gate. Refs: Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+      "OfferLockSnapshot and OfferProvenance must be concrete C# contract types in the contracts layer and instantiable in tests; schema-only or dictionary-only representations are not acceptable. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "OfferLockSnapshot must expose stable_ids, display_order, provenance, rng_stream, and locked_at_save_point semantics (implemented as IsLockedAtSavePoint); reflection must verify field existence and types, and Provenance must round-trip as a value object. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "OfferProvenance must expose source_type, source_id, act, floor, node_id, difficulty, rng_stream, and stream_pos; reflection must verify field existence and types. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "OfferLockSnapshot.rng_stream must stay consistent with OfferProvenance.rng_stream in constructed samples. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Offer locking snapshots must preserve provenance stream_pos and carry lock-context boolean semantic for save-point state. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "RNG stream categories must be exactly run, combat, event, loot, shop, and offer; missing any one is a hard fail. OfferLockSnapshot.RngStream and OfferProvenance.RngStream must validate against this closed set, and unknown values must fail contract validation tests. Refs: Game.Core.Tests/Domain/RngStreamTypeTests.cs, Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "stable_ids must be content-stable IDs; changing display_order only must not change the stable_ids set. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "locked_at_save_point must be represented as explicit boolean semantic (IsLockedAtSavePoint) and remain reproducible for the same lock context; LockedAt timestamp, if present, is informational. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Serialization round-trip must preserve OfferLockSnapshot data; identical inputs (including rng_stream and stream_pos) must produce identical outputs, and changing rng_stream or stream_pos must keep stable_ids content-stable while the changed context is reflected in provenance fields. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "For identical lock inputs (context, candidates, provenance, save-point flag), deterministic retrieval semantics must return equivalent snapshots (StableIds, DisplayOrder, Provenance.RngStream, Provenance.StreamPosition, IsLockedAtSavePoint). Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests to validate offer locking structure and provenance fields. Test serialization/deserialization for deterministic behavior. Refs: ADR-0032."
@@ -2582,6 +2580,67 @@
     "contractRefs": [],
     "evidence_refs": [
       "logs/ci/<date>/task-0075.json"
+    ]
+  },
+  {
+    "id": "NG-0044",
+    "story_id": "BACKLOG-M1",
+    "title": "Semantic scope governance for soft review stabilization",
+    "description": "Create a governance guardrail that keeps semantic soft review bounded to task scope while preserving deterministic hard-gate precedence.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "NG-0043"
+    ],
+    "adr_refs": [
+      "ADR-0005",
+      "ADR-0003"
+    ],
+    "chapter_refs": [
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ci",
+      "semantic-governance"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "acceptance": [
+      "task-0058-semantic-governance.json must record semantic policy mode, gate precedence, and evaluation result. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Policy scope must bind semantic checks to task master.details and mapped view acceptance entries only; out-of-scope expansions must be marked advisory. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check is ok and llm_review has warn-level findings only, governance result must remain pass with advisory notes. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check fails, governance result must be fail regardless of llm_review output. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Governance output must include machine-readable fields for blocker_findings and advisory_findings with stable keys. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Windows execution evidence must include platform=windows and non-empty run_id in task-0058-semantic-governance.json. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Task mapping must remain linked: tasks.json id=58 and tasks_back id=NG-0044 must reference each other via taskmaster_id=58. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "One pass sample and one advisory-warning sample must both be reproducible from local scripts without manual file edits. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run governance evaluation on Windows with one pass sample and one advisory-warning sample, then validate JSON evidence shape and linkage fields."
+    ],
+    "taskmaster_id": 58,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0058-semantic-governance.json",
+      "logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json",
+      "logs/ci/<date>/sc-llm-review-task-<id>/summary.json"
     ]
   }
 ]

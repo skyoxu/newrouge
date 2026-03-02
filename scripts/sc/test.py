@@ -41,14 +41,33 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
-def run_unit(out_dir: Path, solution: str, configuration: str, *, run_id: str) -> dict[str, Any]:
+def run_unit(
+    out_dir: Path,
+    solution: str,
+    configuration: str,
+    *,
+    run_id: str,
+    task_id: str | None = None,
+) -> dict[str, Any]:
     cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
+    task_cs_refs = _task_scoped_cs_refs(task_id=task_id)
+    task_filter = _build_dotnet_filter_from_cs_refs(task_cs_refs)
+    if task_filter:
+        cmd += ["--filter", task_filter]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
     log_path = out_dir / "unit.log"
     write_text(log_path, out)
     unit_artifacts_dir = repo_root() / "logs" / "unit" / today_str()
     write_text(unit_artifacts_dir / "run_id.txt", run_id + "\n")
-    return {"name": "unit", "cmd": cmd, "rc": rc, "log": str(log_path), "artifacts_dir": str(unit_artifacts_dir)}
+    return {
+        "name": "unit",
+        "cmd": cmd,
+        "rc": rc,
+        "log": str(log_path),
+        "artifacts_dir": str(unit_artifacts_dir),
+        "task_cs_refs": task_cs_refs,
+        "dotnet_filter": task_filter or "",
+    }
 
 
 def run_coverage_report(out_dir: Path, unit_artifacts_dir: Path) -> dict[str, Any]:
@@ -158,6 +177,76 @@ def _task_scoped_gdunit_refs(*, task_id: str | None, tests_project: Path) -> lis
                 refs.append(rel)
 
     return refs
+
+
+def _task_scoped_cs_refs(*, task_id: str | None) -> list[str]:
+    """
+    Resolve task-scoped C# test refs from task views.
+
+    Accepted ref shape:
+    - Game.Core.Tests/.../*.cs
+    """
+    task_root_id = _normalize_task_root_id(task_id)
+    if not task_root_id:
+        return []
+
+    refs: list[str] = []
+    seen: set[str] = set()
+    view_files = [
+        repo_root() / ".taskmaster" / "tasks" / "tasks_back.json",
+        repo_root() / ".taskmaster" / "tasks" / "tasks_gameplay.json",
+    ]
+
+    for view_path in view_files:
+        if not view_path.is_file():
+            continue
+        try:
+            data = json.loads(view_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(data, list):
+            continue
+
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("taskmaster_id")).strip() != task_root_id:
+                continue
+            test_refs = item.get("test_refs")
+            if not isinstance(test_refs, list):
+                continue
+
+            for raw_ref in test_refs:
+                if not isinstance(raw_ref, str):
+                    continue
+                ref = raw_ref.replace("\\", "/").strip()
+                if not ref.lower().endswith(".cs"):
+                    continue
+                if not ref.startswith("Game.Core.Tests/"):
+                    continue
+                if not (repo_root() / ref).is_file():
+                    continue
+                if ref in seen:
+                    continue
+                seen.add(ref)
+                refs.append(ref)
+
+    return refs
+
+
+def _build_dotnet_filter_from_cs_refs(cs_refs: list[str]) -> str:
+    clauses: list[str] = []
+    seen: set[str] = set()
+    for ref in cs_refs:
+        stem = Path(ref).stem.strip()
+        if not stem:
+            continue
+        clause = f"FullyQualifiedName~{stem}"
+        if clause in seen:
+            continue
+        seen.add(clause)
+        clauses.append(clause)
+    return "|".join(clauses)
 
 
 def run_gdunit_hard(
@@ -270,7 +359,7 @@ def main() -> int:
             os.environ.setdefault("COVERAGE_LINES_MIN", "90")
             os.environ.setdefault("COVERAGE_BRANCHES_MIN", "85")
 
-        step = run_unit(out_dir, args.solution, args.configuration, run_id=run_id)
+        step = run_unit(out_dir, args.solution, args.configuration, run_id=run_id, task_id=args.task_id)
         summary["steps"].append(step)
         if step["rc"] != 0:
             hard_fail = True

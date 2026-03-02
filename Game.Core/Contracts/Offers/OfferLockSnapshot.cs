@@ -11,6 +11,6 @@ public sealed record OfferLockSnapshot(
     IReadOnlyList<string> DisplayOrder,
     OfferProvenance Provenance,
     string RngStream,
-    DateTimeOffset LockedAt
+    bool IsLockedAtSavePoint,
+    DateTimeOffset? LockedAt
 );
-

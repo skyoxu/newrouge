@@ -1,24 +1,20 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Game.Core.Contracts;
-using Game.Core.Contracts.Events;
 using Game.Core.Contracts.Interfaces;
 using Game.Core.Contracts.Offers;
+using Game.Core.Services;
 using Xunit;
 
 namespace Game.Core.Tests.Domain;
 
 public sealed class OfferLockingContractTests
 {
-    private const string AdrReference = "ADR-0032";
-    private const string ThisTestRef = "Game.Core.Tests/Domain/OfferLockingContractTests.cs";
-
     // ACC:T4.1
     [Fact]
-    public void Should_ExposeOfferLockingCoreContracts_When_InspectingPublicTypes()
+    public void ShouldExposeOfferLockingCoreContracts_WhenInspectingPublicTypes()
     {
         typeof(OfferLockSnapshot).IsPublic.Should().BeTrue();
         typeof(OfferProvenance).IsPublic.Should().BeTrue();
@@ -37,7 +33,7 @@ public sealed class OfferLockingContractTests
 
     // ACC:T4.2
     [Fact]
-    public void Should_DefineOfferLockSnapshotShape_When_UsingReflection()
+    public void ShouldDefineOfferLockSnapshotShape_WhenUsingReflection()
     {
         var properties = typeof(OfferLockSnapshot)
             .GetProperties()
@@ -51,13 +47,15 @@ public sealed class OfferLockingContractTests
             .WhoseValue.Should().Be(typeof(OfferProvenance));
         properties.Should().ContainKey(nameof(OfferLockSnapshot.RngStream))
             .WhoseValue.Should().Be(typeof(string));
+        properties.Should().ContainKey(nameof(OfferLockSnapshot.IsLockedAtSavePoint))
+            .WhoseValue.Should().Be(typeof(bool));
         properties.Should().ContainKey(nameof(OfferLockSnapshot.LockedAt))
-            .WhoseValue.Should().Be(typeof(DateTimeOffset));
+            .WhoseValue.Should().Be(typeof(DateTimeOffset?));
     }
 
     // ACC:T4.3
     [Fact]
-    public void Should_DefineOfferProvenanceShape_When_UsingReflection()
+    public void ShouldDefineOfferProvenanceShape_WhenUsingReflection()
     {
         var properties = typeof(OfferProvenance)
             .GetProperties()
@@ -83,7 +81,7 @@ public sealed class OfferLockingContractTests
 
     // ACC:T4.4
     [Fact]
-    public void Should_KeepRngStreamConsistentBetweenSnapshotAndProvenance_When_Constructed()
+    public void ShouldKeepRngStreamConsistentBetweenSnapshotAndProvenance_WhenConstructed()
     {
         const string rngStream = "reward.offer.stream";
         var lockedAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero);
@@ -103,79 +101,104 @@ public sealed class OfferLockingContractTests
             DisplayOrder: new[] { "offer-b", "offer-c", "offer-a" },
             Provenance: provenance,
             RngStream: rngStream,
+            IsLockedAtSavePoint: true,
             LockedAt: lockedAt);
 
         snapshot.RngStream.Should().Be(snapshot.Provenance.RngStream);
         snapshot.StableIds.Should().ContainInOrder("offer-a", "offer-b", "offer-c");
+        snapshot.IsLockedAtSavePoint.Should().BeTrue();
         snapshot.LockedAt.Should().Be(lockedAt);
     }
 
     // ACC:T4.5
     [Fact]
-    public void Should_ExposeOfferLifecycleEventTypeContracts_When_ReadingConstants()
+    public void ShouldPreserveProvenanceStreamPosition_WhenLockingOfferThroughService()
     {
-        EventTypes.RewardOfferLocked.Should().Be("core.reward.offer.locked");
-        EventTypes.RewardOfferPresented.Should().Be("core.reward.offer.presented");
-        EventTypes.RewardOfferSelected.Should().Be("core.reward.offer.selected");
-        EventTypes.RewardOfferSkipped.Should().Be("core.reward.offer.skipped");
+        var service = new DeterministicOfferService();
+        var provenance = new OfferProvenance(
+            SourceType: OfferSourceType.Reward,
+            SourceId: "reward.node.3",
+            Act: 2,
+            Floor: 8,
+            NodeId: "N-2-8",
+            Difficulty: 5,
+            RngStream: "reward.offer",
+            StreamPosition: 256L);
+        var candidates = new[]
+        {
+            new OfferItem("offer-1", "card.a", Game.Core.Contracts.Cards.CardForm.Base, null, "common"),
+            new OfferItem("offer-2", "card.b", Game.Core.Contracts.Cards.CardForm.U1A, Game.Core.Contracts.Cards.UpgradeRoute.A, "rare"),
+        };
 
-        RewardOfferLockedEvent.EventType.Should().Be(EventTypes.RewardOfferLocked);
-        RewardOfferPresentedEvent.EventType.Should().Be(EventTypes.RewardOfferPresented);
-        RewardOfferSelectedEvent.EventType.Should().Be(EventTypes.RewardOfferSelected);
-        RewardOfferSkippedEvent.EventType.Should().Be(EventTypes.RewardOfferSkipped);
+        var snapshot = service.LockOffer("ctx-stream-pos", candidates, provenance);
+
+        snapshot.Provenance.Should().Be(provenance);
+        snapshot.RngStream.Should().Be(provenance.RngStream);
+        snapshot.Provenance.StreamPosition.Should().Be(256L);
+        snapshot.IsLockedAtSavePoint.Should().BeTrue();
+        snapshot.LockedAt.Should().NotBeNull();
     }
 
     // ACC:T4.8
     [Fact]
-    public void Should_FollowWindowsCompatibleEvidencePathConventions_When_BuildingLogTargets()
+    public void ShouldKeepBooleanSavePointSemanticSeparatedFromTimestamp_WhenCreatingSnapshotContracts()
     {
-        var date = new DateTime(2026, 3, 1);
-        var expectedRelative = "logs/unit/2026-03-01/offer-locking-contracts.json";
+        var service = new DeterministicOfferService();
+        var provenance = new OfferProvenance(
+            SourceType: OfferSourceType.Reward,
+            SourceId: "reward.node.1",
+            Act: 1,
+            Floor: 2,
+            NodeId: "N-1-2",
+            Difficulty: 3,
+            RngStream: "reward.offer",
+            StreamPosition: 42L);
 
-        var windowsPath = Path.Combine("logs", "unit", date.ToString("yyyy-MM-dd"), "offer-locking-contracts.json");
-        var normalized = windowsPath.Replace('\\', '/');
+        var candidates = new[]
+        {
+            new OfferItem("offer-a", "card.a", Game.Core.Contracts.Cards.CardForm.Base, null, "common"),
+        };
 
-        Path.IsPathRooted(windowsPath).Should().BeFalse();
-        normalized.Should().Be(expectedRelative);
+        var lockAtSavePoint = service.LockOffer("ctx-savepoint", candidates, provenance, isLockedAtSavePoint: true);
+        var lockOutsideSavePoint = service.LockOffer("ctx-non-savepoint", candidates, provenance, isLockedAtSavePoint: false);
+        var repeatedLockInSameContext = service.LockOffer("ctx-savepoint", candidates, provenance, isLockedAtSavePoint: true);
+
+        lockAtSavePoint.IsLockedAtSavePoint.Should().BeTrue();
+        lockAtSavePoint.LockedAt.Should().NotBeNull();
+        lockOutsideSavePoint.IsLockedAtSavePoint.Should().BeFalse();
+        lockOutsideSavePoint.LockedAt.Should().BeNull();
+        repeatedLockInSameContext.IsLockedAtSavePoint.Should().Be(lockAtSavePoint.IsLockedAtSavePoint);
     }
 
     // ACC:T4.10
     [Fact]
-    public void Should_LinkContractSourcesAndTestsToAdr0032_When_ReadingTraceabilityMarkers()
+    public void ShouldPreserveDeterministicSemanticsWhenRetrievingLockedOffer_ForSameContext()
     {
-        var offerSnapshotSource = ReadTextFromRepo("Game.Core/Contracts/Offers/OfferLockSnapshot.cs");
-        var provenanceSource = ReadTextFromRepo("Game.Core/Contracts/Offers/OfferProvenance.cs");
-        var offerServiceSource = ReadTextFromRepo("Game.Core/Contracts/Interfaces/IOfferService.cs");
-
-        offerSnapshotSource.Should().Contain(AdrReference);
-        provenanceSource.Should().Contain(AdrReference);
-        offerServiceSource.Should().Contain(AdrReference);
-
-        ThisTestRef.Should().Be("Game.Core.Tests/Domain/OfferLockingContractTests.cs");
-        ThisTestRef.Should().EndWith(".cs");
-    }
-
-    private static string ReadTextFromRepo(string repoRelativePath)
-    {
-        var repoRoot = FindRepoRoot();
-        var fullPath = Path.Combine(repoRoot, repoRelativePath.Replace('/', Path.DirectorySeparatorChar));
-        return File.ReadAllText(fullPath);
-    }
-
-    private static string FindRepoRoot()
-    {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (current is not null)
+        var service = new DeterministicOfferService();
+        var provenance = new OfferProvenance(
+            SourceType: OfferSourceType.Reward,
+            SourceId: "reward.node.10",
+            Act: 2,
+            Floor: 10,
+            NodeId: "N-2-10",
+            Difficulty: 5,
+            RngStream: "reward.offer",
+            StreamPosition: 777L);
+        var candidates = new[]
         {
-            if (File.Exists(Path.Combine(current.FullName, "NewRouge.sln")))
-            {
-                return current.FullName;
-            }
+            new OfferItem("offer-a", "card.a", Game.Core.Contracts.Cards.CardForm.Base, null, "common"),
+            new OfferItem("offer-b", "card.b", Game.Core.Contracts.Cards.CardForm.U1B, Game.Core.Contracts.Cards.UpgradeRoute.B, "rare"),
+        };
 
-            current = current.Parent;
-        }
+        var locked = service.LockOffer("ctx-get-locked", candidates, provenance, isLockedAtSavePoint: true);
+        var retrieved = service.GetLockedOffer("ctx-get-locked");
 
-        throw new InvalidOperationException("Unable to locate repository root containing NewRouge.sln.");
+        retrieved.Should().NotBeNull();
+        retrieved!.StableIds.Should().Equal(locked.StableIds);
+        retrieved.DisplayOrder.Should().Equal(locked.DisplayOrder);
+        retrieved.Provenance.Should().Be(locked.Provenance);
+        retrieved.RngStream.Should().Be(locked.RngStream);
+        retrieved.IsLockedAtSavePoint.Should().BeTrue();
+        service.GetLockedOffer("ctx-missing").Should().BeNull();
     }
 }

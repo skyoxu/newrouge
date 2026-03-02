@@ -17,10 +17,10 @@ Arch-Refs:
   - CH06
   - CH07
 Test-Refs:
-  - Game.Core.Tests/Determinism/OfferLockingTests.cs
-  - Game.Core.Tests/Save/SaveResumeBoundaryTests.cs
-  - Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs
-  - Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs
+  - Game.Core.Tests/Domain/OfferLockingContractTests.cs
+  - Game.Core.Tests/Domain/RngStreamTypeTests.cs
+  - Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs
+  - Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs
   - Tests.Godot/Smoke/ContinueGateTests.gd
 ---
 

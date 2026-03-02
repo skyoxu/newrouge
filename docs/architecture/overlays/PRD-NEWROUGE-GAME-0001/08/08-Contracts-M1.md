@@ -367,6 +367,7 @@ Test-Refs:
 - 通用事件信封与事件常量
   - `Game.Core/Contracts/DomainEvent.cs`
   - `Game.Core/Contracts/EventTypes.cs`
+  - `Game.Core/Contracts/RngStreamType.cs`
 
 ### 2.3 接口契约
 - `Game.Core/Contracts/Interfaces/IRngStreamRegistry.cs`

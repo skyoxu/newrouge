@@ -1,9 +1,8 @@
 using System;
-using System.Collections.Generic;
 using FluentAssertions;
-using Game.Core.Contracts;
-using Game.Core.Contracts.Events;
+using Game.Core.Contracts.Cards;
 using Game.Core.Contracts.Offers;
+using Game.Core.Services;
 using Xunit;
 
 namespace Game.Core.Tests.Tasks;
@@ -12,58 +11,51 @@ public sealed class Task0004AcceptanceTests
 {
     // ACC:T4.11
     [Fact]
-    public void Should_Expose_OfferLockingContracts_As_ConcreteClassTypes_When_ValidatedByReflection()
+    public void ShouldRejectUnknownRngStream_WhenLockingOffer()
     {
-        var requiredContractTypes = new[]
-        {
-            typeof(OfferLockSnapshot),
-            typeof(OfferProvenance),
-            typeof(OfferItem),
-        };
+        var service = new DeterministicOfferService();
+        var candidates = CreateCandidates();
+        var provenance = CreateProvenance(rngStream: "invalid.stream");
 
-        requiredContractTypes.Should().OnlyContain(type => type.IsClass);
-        requiredContractTypes.Should().OnlyContain(type => !type.IsAbstract);
-        requiredContractTypes.Should().OnlyContain(type =>
-            type.Namespace != null &&
-            type.Namespace.StartsWith("Game.Core.Contracts.Offers", StringComparison.Ordinal));
+        Action lockAction = () => service.LockOffer("ctx-invalid-stream", candidates, provenance);
+
+        lockAction.Should().Throw<ArgumentException>()
+            .WithMessage("*Unsupported rng_stream*");
     }
 
     // ACC:T4.12
     [Fact]
-    public void Should_Reject_SchemaOnlyRepresentations_When_EnforcingConcreteOfferContractGate()
+    public void ShouldRejectNegativeStreamPosition_WhenLockingOffer()
     {
-        Action dictionaryShape = () => EnsureConcreteOfferContractType(typeof(Dictionary<string, object>), nameof(OfferLockSnapshot));
-        Action scalarShape = () => EnsureConcreteOfferContractType(typeof(string), nameof(OfferProvenance));
+        var service = new DeterministicOfferService();
+        var candidates = CreateCandidates();
+        var provenance = CreateProvenance(rngStream: "reward.offer", streamPosition: -1L);
 
-        dictionaryShape.Should().Throw<InvalidOperationException>()
-            .WithMessage("*schema-only*dictionary-only*");
-        scalarShape.Should().Throw<InvalidOperationException>()
-            .WithMessage("*schema-only*dictionary-only*");
+        Action lockAction = () => service.LockOffer("ctx-invalid-position", candidates, provenance);
+
+        lockAction.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage("*stream_pos must be non-negative*");
     }
 
-    [Fact]
-    public void Should_Keep_RewardOfferEventTypeConstants_Stable_When_MappingContractRefs()
+    private static OfferProvenance CreateProvenance(string rngStream, long streamPosition = 64L)
     {
-        EventTypes.RewardOfferLocked.Should().Be("core.reward.offer.locked");
-        EventTypes.RewardOfferPresented.Should().Be("core.reward.offer.presented");
-        EventTypes.RewardOfferSelected.Should().Be("core.reward.offer.selected");
-        EventTypes.RewardOfferSkipped.Should().Be("core.reward.offer.skipped");
-
-        RewardOfferLockedEvent.EventType.Should().Be(EventTypes.RewardOfferLocked);
-        RewardOfferPresentedEvent.EventType.Should().Be(EventTypes.RewardOfferPresented);
-        RewardOfferSelectedEvent.EventType.Should().Be(EventTypes.RewardOfferSelected);
-        RewardOfferSkippedEvent.EventType.Should().Be(EventTypes.RewardOfferSkipped);
+        return new OfferProvenance(
+            SourceType: OfferSourceType.Reward,
+            SourceId: "reward.node.9",
+            Act: 2,
+            Floor: 9,
+            NodeId: "N-2-9",
+            Difficulty: 5,
+            RngStream: rngStream,
+            StreamPosition: streamPosition);
     }
 
-    private static void EnsureConcreteOfferContractType(Type candidateType, string contractName)
+    private static OfferItem[] CreateCandidates()
     {
-        var inContractsNamespace = candidateType.Namespace is not null &&
-            candidateType.Namespace.StartsWith("Game.Core.Contracts", StringComparison.Ordinal);
-
-        if (!candidateType.IsClass || candidateType.IsAbstract || !inContractsNamespace)
+        return new[]
         {
-            throw new InvalidOperationException(
-                $"{contractName} must be a concrete C# contract type, not a schema-only/dictionary-only representation.");
-        }
+            new OfferItem("offer-a", "card.a", CardForm.Base, null, "common"),
+            new OfferItem("offer-b", "card.b", CardForm.U1A, UpgradeRoute.A, "rare"),
+        };
     }
 }

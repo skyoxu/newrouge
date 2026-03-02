@@ -11,6 +11,10 @@ namespace Game.Core.Contracts.Interfaces;
 /// </remarks>
 public interface IOfferService
 {
-    OfferLockSnapshot LockOffer(string offerContextId, IReadOnlyList<OfferItem> candidates, OfferProvenance provenance);
+    OfferLockSnapshot LockOffer(
+        string offerContextId,
+        IReadOnlyList<OfferItem> candidates,
+        OfferProvenance provenance,
+        bool isLockedAtSavePoint = true);
     OfferLockSnapshot? GetLockedOffer(string offerContextId);
 }

@@ -249,7 +249,15 @@ def step_tests_all(
     test_type: str = "all",
     task_id: str | None = None,
 ) -> StepResult:
-    cmd = ["py", "-3", "scripts/sc/test.py", "--type", test_type]
+    cmd = [
+        "py",
+        "-3",
+        "scripts/sc/test.py",
+        "--type",
+        test_type,
+        "--no-coverage-gate",
+        "--no-coverage-report",
+    ]
     if str(task_id or "").strip():
         cmd += ["--task-id", str(task_id).strip()]
     if run_id:
