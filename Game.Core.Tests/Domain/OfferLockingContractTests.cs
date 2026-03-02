@@ -172,7 +172,7 @@ public sealed class OfferLockingContractTests
 
     // ACC:T4.10
     [Fact]
-    public void ShouldPreserveDeterministicSemanticsWhenRetrievingLockedOffer_ForSameContext()
+    public void ShouldPreserveDeterministicSemanticsWhenRetrievingLockedOffer_WhenContextIsSame()
     {
         var service = new DeterministicOfferService();
         var provenance = new OfferProvenance(
