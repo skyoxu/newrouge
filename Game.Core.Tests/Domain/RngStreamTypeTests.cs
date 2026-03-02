@@ -22,7 +22,7 @@ public sealed class RngStreamTypeTests
 
     // ACC:T4.6
     [Fact]
-    public void Should_DefineRequiredRngStreamCategories_When_RngStreamContractIsAvailable()
+    public void ShouldDefineRequiredRngStreamCategories_WhenRngStreamContractIsAvailable()
     {
         var required = RequiredStreamCategories.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -33,12 +33,10 @@ public sealed class RngStreamTypeTests
         eventCategories.Should().Contain(new[] { "run", "combat", "event", "shop", "offer" });
 
         var rngStreamTypeContract = FindRngStreamTypeContract();
-        if (rngStreamTypeContract is null)
-        {
-            return;
-        }
+        rngStreamTypeContract.Should().NotBeNull(
+            because: "Task 4 requires a concrete RNG stream type contract");
 
-        var declaredCategories = ExtractDeclaredCategories(rngStreamTypeContract);
+        var declaredCategories = ExtractDeclaredCategories(rngStreamTypeContract!);
         declaredCategories.Should().Contain(required,
             because: "RNG stream type contract must include run, combat, event, loot, shop, and offer");
     }

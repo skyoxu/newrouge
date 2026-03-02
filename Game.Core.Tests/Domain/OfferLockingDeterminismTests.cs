@@ -17,7 +17,7 @@ public sealed class OfferLockingDeterminismTests
 {
     // ACC:T4.7
     [Fact]
-    public void Should_KeepStableIdsUnchanged_When_OnlyDisplayOrderChanges()
+    public void ShouldKeepStableIdsUnchanged_WhenOnlyDisplayOrderChanges()
     {
         var service = CreateOfferServiceForDeterminismTests();
         var provenance = CreateProvenance();
@@ -41,7 +41,7 @@ public sealed class OfferLockingDeterminismTests
 
     // ACC:T4.9
     [Fact]
-    public void Should_PreserveOfferLockingDataAcrossJsonRoundTrip_AndStayDeterministic_ForSameInput()
+    public void ShouldPreserveOfferLockingDataAcrossJsonRoundTripAndStayDeterministic_WhenInputIsSame()
     {
         var serviceA = CreateOfferServiceForDeterminismTests();
         var serviceB = CreateOfferServiceForDeterminismTests();
@@ -67,6 +67,21 @@ public sealed class OfferLockingDeterminismTests
             because: "same input must produce stable deterministic display_order");
         lockedByServiceB.Provenance.Should().Be(lockedByServiceA.Provenance);
         lockedByServiceB.RngStream.Should().Be(lockedByServiceA.RngStream);
+
+        var changedStream = provenance with { RngStream = "shop.offer" };
+        var changedPosition = provenance with { StreamPosition = provenance.StreamPosition + 1 };
+
+        var lockWithChangedStream = serviceA.LockOffer("ctx-deterministic-stream", candidates, changedStream);
+        var lockWithChangedPosition = serviceA.LockOffer("ctx-deterministic-position", candidates, changedPosition);
+
+        lockWithChangedStream.StableIds.Should().Equal(lockedByServiceA.StableIds,
+            because: "stable_ids are content-stable and must not depend on rng_stream");
+        lockWithChangedPosition.StableIds.Should().Equal(lockedByServiceA.StableIds,
+            because: "stable_ids are content-stable and must not depend on stream_pos");
+        lockWithChangedStream.Provenance.RngStream.Should().NotBe(lockedByServiceA.Provenance.RngStream,
+            because: "rng context changes must be reflected in provenance");
+        lockWithChangedPosition.Provenance.StreamPosition.Should().NotBe(lockedByServiceA.Provenance.StreamPosition,
+            because: "rng context changes must be reflected in provenance");
     }
 
     private static IOfferService CreateOfferServiceForDeterminismTests()

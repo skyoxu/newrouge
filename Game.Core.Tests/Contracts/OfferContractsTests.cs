@@ -28,12 +28,15 @@ public class OfferContractsTests
             DisplayOrder: new List<string> { "offer-b", "offer-a", "offer-c" },
             Provenance: provenance,
             RngStream: "reward",
+            IsLockedAtSavePoint: true,
             LockedAt: DateTimeOffset.UtcNow
         );
 
         snapshot.StableIds.Should().ContainInOrder("offer-a", "offer-b", "offer-c");
         snapshot.DisplayOrder.Should().ContainInOrder("offer-b", "offer-a", "offer-c");
         snapshot.Provenance.SourceType.Should().Be(OfferSourceType.Reward);
+        snapshot.IsLockedAtSavePoint.Should().BeTrue();
+        snapshot.LockedAt.Should().NotBeNull();
     }
 
     [Fact]

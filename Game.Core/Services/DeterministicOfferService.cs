@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Game.Core.Contracts;
 using Game.Core.Contracts.Interfaces;
 using Game.Core.Contracts.Offers;
 
@@ -13,12 +14,23 @@ namespace Game.Core.Services;
 /// </remarks>
 public sealed class DeterministicOfferService : IOfferService
 {
+    private static readonly HashSet<string> AllowedRngStreams = new(StringComparer.Ordinal)
+    {
+        RngStreamType.Run,
+        RngStreamType.Combat,
+        RngStreamType.Event,
+        RngStreamType.Loot,
+        RngStreamType.Shop,
+        RngStreamType.Offer,
+    };
+
     private readonly Dictionary<string, OfferLockSnapshot> _lockedOffers = new(StringComparer.Ordinal);
 
     public OfferLockSnapshot LockOffer(
         string offerContextId,
         IReadOnlyList<OfferItem> candidates,
-        OfferProvenance provenance)
+        OfferProvenance provenance,
+        bool isLockedAtSavePoint = true)
     {
         if (string.IsNullOrWhiteSpace(offerContextId))
         {
@@ -27,6 +39,7 @@ public sealed class DeterministicOfferService : IOfferService
 
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(provenance);
+        ValidateProvenanceRngContext(provenance);
 
         var displayOrder = candidates
             .Select(static candidate => candidate.OfferItemId)
@@ -38,7 +51,8 @@ public sealed class DeterministicOfferService : IOfferService
             DisplayOrder: displayOrder,
             Provenance: provenance,
             RngStream: provenance.RngStream,
-            LockedAt: DateTimeOffset.UtcNow);
+            IsLockedAtSavePoint: isLockedAtSavePoint,
+            LockedAt: isLockedAtSavePoint ? DateTimeOffset.UtcNow : null);
 
         _lockedOffers[offerContextId] = snapshot;
         return snapshot;
@@ -93,5 +107,36 @@ public sealed class DeterministicOfferService : IOfferService
         var bytes = Encoding.UTF8.GetBytes(input);
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant()[..16];
+    }
+
+    private static void ValidateProvenanceRngContext(OfferProvenance provenance)
+    {
+        var streamCategory = ExtractStreamCategory(provenance.RngStream);
+        if (string.IsNullOrWhiteSpace(streamCategory) || !AllowedRngStreams.Contains(streamCategory))
+        {
+            throw new ArgumentException(
+                $"Unsupported rng_stream '{provenance.RngStream}'. Expected one of: {string.Join(", ", AllowedRngStreams)}.",
+                nameof(provenance));
+        }
+
+        if (provenance.StreamPosition < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(provenance),
+                provenance.StreamPosition,
+                "stream_pos must be non-negative.");
+        }
+    }
+
+    private static string ExtractStreamCategory(string streamName)
+    {
+        if (string.IsNullOrWhiteSpace(streamName))
+        {
+            return string.Empty;
+        }
+
+        var normalized = streamName.Trim().ToLowerInvariant();
+        var parts = normalized.Split(new[] { '.', '/', ':' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? normalized : parts[^1];
     }
 }
