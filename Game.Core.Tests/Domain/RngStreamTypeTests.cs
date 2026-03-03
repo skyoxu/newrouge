@@ -135,8 +135,13 @@ public sealed class RngStreamTypeTests
         }
     }
 
-    private static string? TryExtractCoreCategory(string value)
+    private static string? TryExtractCoreCategory(string? value)
     {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
         if (!value.StartsWith("core.", StringComparison.Ordinal))
         {
             return null;

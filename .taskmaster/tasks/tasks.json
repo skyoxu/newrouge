@@ -482,16 +482,17 @@
         "id": 13,
         "title": "Set up Godot autoloads and composition root",
         "description": "Configure Godot autoloads (EventBus, DataStore, Logger, etc.) and composition root for dependency injection per project-context.md.",
-        "details": "Create Autoload scripts in Game.Godot/Scripts for EventBus, DataStore, Logger, SecurityAudit, PerformanceTracker, SentryClient, FeatureFlags, CompositionRoot. Implement CompositionRoot to inject core services into Godot nodes. Ensure no domain logic in autoloads. Refs: ADR-0021, ADR-0022.\n",
-        "testStrategy": "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022.\n",
+        "details": "Register required Autoload scripts for EventBus, DataStore, Logger, SecurityAudit, PerformanceTracker, SentryClient, FeatureFlags, and CompositionRoot under Game.Godot/Adapters, Game.Godot/Scripts, and Game.Godot/Autoloads as appropriate. Implement CompositionRoot to inject core ports into Godot nodes via an explicit injection contract, and ensure missing/invalid injection hooks fail with observable errors. Ensure no domain logic in autoloads. Refs: ADR-0007, ADR-0021, ADR-0022.\n",
+        "testStrategy": "Run Godot project to verify autoloads load without startup errors. Write GdUnit4 tests to validate composition root wiring with at least two probe nodes, explicit InjectCompositionPorts(time,input,resourceLoader,dataStore,logger,eventBus) hook contract, non-hook rejection, signature-mismatch rejection, and faulty-hook failure reporting. Refs: ADR-0007, ADR-0021, ADR-0022.\n",
         "priority": "high",
         "dependencies": [
           "1",
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
+          "ADR-0007",
           "ADR-0021",
           "ADR-0022"
         ],

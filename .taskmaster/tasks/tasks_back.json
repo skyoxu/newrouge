@@ -379,6 +379,7 @@
       "NG-0001"
     ],
     "adr_refs": [
+      "ADR-0007",
       "ADR-0021",
       "ADR-0022"
     ],
@@ -409,29 +410,20 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd",
-      "Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
-      "Tests.Godot/tests/Integration/test_composition_root_runtime_injection.gd",
+      "Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
       "Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs"
     ],
     "acceptance": [
-      "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位于 Game.Godot/Scripts，并且仅承担装配/桥接职责、不含领域逻辑。 Refs: Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd",
-      "启动 Godot 项目时无 Autoload 相关错误；CompositionRoot 能对 Godot 节点完成核心服务注入，并且可通过运行时可观测证据验证注入生效。 Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd",
-      "提供 GdUnit4 测试用于验证组合根注入与 Autoload 装配；测试引用清单可追溯到新增测试并与之一致。 Refs: Tests.Godot/tests/Integration/test_composition_root_autoload_registry.gd Tests.Godot/tests/Integration/test_composition_root_runtime_injection.gd",
-      "在验收清单中补充 ADR-0021/ADR-0022 的引用或回链项。 Refs: Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs"
+      "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位置限定在 Game.Godot/Adapters、Game.Godot/Scripts、Game.Godot/Autoloads，且仅承担装配/桥接职责，不包含领域规则计算或状态机分支。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
+      "CompositionRoot 必须在运行时提供 time、input、resourceLoader、dataStore、logger、eventBus 端口可用，且 HasInitializationErrors 返回 false 且 InitializationErrors 为空；CompositionRoot 装配节点在场景生命周期内可解析。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
+      "CompositionRoot 必须在运行时将 core 端口注入到实现注入钩子的 Godot 节点集合（不少于 2 个探针节点）并被节点实际消费；验收需断言节点拿到的 time、input、resourceLoader、dataStore、logger、eventBus 端口引用均为非空，且对未实现注入钩子、注入钩子签名不合法（invalid hook/signature）或钩子内部异常的节点返回失败并记录可观测错误（非静默成功）。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd"
     ],
     "test_strategy": [
       "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022."
     ],
     "taskmaster_id": 13,
     "taskmaster_exported": true,
-    "contractRefs": [
-      "core.run.started",
-      "core.run.resumed",
-      "core.run.state.transitioned",
-      "core.combat.started",
-      "core.autosave.written"
-    ],
+    "contractRefs": [],
     "evidence_refs": [
       "logs/ci/<date>/task-0013.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
