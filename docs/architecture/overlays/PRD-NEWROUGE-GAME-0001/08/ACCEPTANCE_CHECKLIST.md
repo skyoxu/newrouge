@@ -100,3 +100,11 @@ Test-Refs:
   - Summary JSON must include suite status, gate level, and overall decision.
   - GdUnit suites `adapters/security` are hard gate; `integration/ui` are soft gate.
   - `task-0054.json` must be generated and linked by task evidence refs.
+
+## Task13 ADR 回链
+- Task: `T13 Set up Godot autoloads and composition root`
+- ADR-Refs: `ADR-0007`, `ADR-0021`, `ADR-0022`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs`
+  - `Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd`
+  - `Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd`
