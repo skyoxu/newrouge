@@ -37,7 +37,7 @@ public sealed class CombatLoopPhaseTransitionTests
     // ACC:T6.14
     [Theory]
     [MemberData(nameof(ValidTransitions))]
-    public void Should_AllowValidTransitions_When_GuardIsSatisfied(string fromPhase, string toPhase)
+    public void ShouldAllowValidTransitions_WhenGuardIsSatisfied(string fromPhase, string toPhase)
     {
         var result = ProbeTransition(fromPhase, toPhase);
 
@@ -49,9 +49,10 @@ public sealed class CombatLoopPhaseTransitionTests
         string.IsNullOrWhiteSpace(result.GuardMessage).Should().BeTrue("Valid transitions should not emit a guard rejection message.");
     }
 
+    // ACC:T6.14
     [Theory]
     [MemberData(nameof(InvalidTransitions))]
-    public void Should_RejectInvalidTransitions_And_KeepStateUnchanged_When_GuardFails(string fromPhase, string toPhase)
+    public void ShouldRejectInvalidTransitionsAndKeepStateUnchanged_WhenGuardFails(string fromPhase, string toPhase)
     {
         var result = ProbeTransition(fromPhase, toPhase);
 

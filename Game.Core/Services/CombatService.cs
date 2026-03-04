@@ -1,5 +1,6 @@
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
+using Game.Core.Contracts.Combat;
 using Game.Core.Contracts.Interfaces;
 using System.Text.Json;
 
@@ -8,6 +9,7 @@ namespace Game.Core.Services;
 public class CombatService
 {
     private readonly IEventBus? _bus;
+    private readonly PlayCardResolutionPipeline _playCardPipeline = new();
 
     public CombatService(IEventBus? bus = null)
     {
@@ -64,5 +66,43 @@ public class CombatService
             Timestamp: DateTimeOffset.UtcNow,
             Id: $"dmg-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"
         ));
+    }
+
+    public PlayCardPipelineResult ExecutePlayCardPipeline(PlayCardPipelineInput input)
+    {
+        return _playCardPipeline.Execute(input);
+    }
+
+    public static int CalculateDamageWithStatusMultipliers(
+        int baseDamage,
+        int strength,
+        double weakMultiplier,
+        double vulnerableMultiplier,
+        bool isFixedDamage)
+    {
+        return PlayCardResolutionPipeline.CalculateDamageWithStatusMultipliers(
+            baseDamage: baseDamage,
+            strength: strength,
+            weakMultiplier: weakMultiplier,
+            vulnerableMultiplier: vulnerableMultiplier,
+            isFixedDamage: isFixedDamage);
+    }
+
+    public static int CalculateOverplayTax(
+        int difficultyId,
+        int cardsPlayedThisTurn,
+        int overplayTriggerN,
+        int overplayTaxPerCard)
+    {
+        return PlayCardResolutionPipeline.CalculateOverplayTax(
+            difficultyId: difficultyId,
+            cardsPlayedThisTurn: cardsPlayedThisTurn,
+            overplayTriggerN: overplayTriggerN,
+            overplayTaxPerCard: overplayTaxPerCard);
+    }
+
+    public static IReadOnlyList<CombatantOrderKey> OrderCombatantsDeterministically(IEnumerable<CombatantOrderKey> items)
+    {
+        return PlayCardResolutionPipeline.SortByDeterministicOrder(items);
     }
 }

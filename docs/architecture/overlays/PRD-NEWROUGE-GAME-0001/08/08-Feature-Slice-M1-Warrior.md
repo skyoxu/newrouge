@@ -21,6 +21,10 @@ Test-Refs:
   - Game.Core.Tests/Domain/RngStreamTypeTests.cs
   - Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs
   - Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs
+  - Game.Core.Tests/Services/CombatServiceTests.cs
+  - Game.Core.Tests/Domain/ValueObjects/DamageTests.cs
+  - Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs
+  - Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs
   - Tests.Godot/Smoke/ContinueGateTests.gd
 ---
 
