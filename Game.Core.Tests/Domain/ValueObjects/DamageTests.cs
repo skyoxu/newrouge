@@ -7,7 +7,6 @@ namespace Game.Core.Tests.Domain.ValueObjects;
 
 public sealed class DamageTests
 {
-    // ACC:T6.6
     [Fact]
     public void ShouldClampEffectiveAmountToZero_WhenRawAmountIsNegative()
     {
@@ -27,6 +26,8 @@ public sealed class DamageTests
         damage.EffectiveAmount.Should().Be(expected);
     }
 
+    // ACC:T6.6
+    // ACC:T6.9
     // ACC:T6.17
     // ACC:T6.18
     // ACC:T6.19
