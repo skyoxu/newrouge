@@ -110,10 +110,30 @@ public sealed class CombatServiceTests
     {
         File.Exists(WarriorFeatureSlicePath).Should().BeTrue("Task 6 requires overlay Test-Refs to stay aligned.");
         var content = File.ReadAllText(WarriorFeatureSlicePath);
+        var semanticMarkersByRef = new Dictionary<string, string[]>
+        {
+            ["Game.Core.Tests/Services/CombatServiceTests.cs"] = new[] { "ACC:T6.5", "ACC:T6.23", "ACC:T6.24" },
+            ["Game.Core.Tests/Domain/ValueObjects/DamageTests.cs"] = new[] { "ACC:T6.17", "ACC:T6.18", "ACC:T6.19" },
+            ["Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs"] = new[] { "ACC:T6.14" },
+            ["Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs"] = new[] { "ACC:T6.11" },
+        };
 
         foreach (var requiredRef in RequiredTask6Refs)
         {
             content.Should().Contain(requiredRef);
+
+            var absolutePath = Path.Combine(RepoRoot, requiredRef.Replace('/', Path.DirectorySeparatorChar));
+            File.Exists(absolutePath).Should().BeTrue($"Referenced test file must exist: {requiredRef}");
+
+            if (semanticMarkersByRef.TryGetValue(requiredRef, out var markers))
+            {
+                var refContent = File.ReadAllText(absolutePath);
+                foreach (var marker in markers)
+                {
+                    refContent.Should().Contain(marker, $"Referenced file must carry semantic anchor: {marker}");
+                    AssertAnchorBoundToAssertion(refContent, marker);
+                }
+            }
         }
     }
 
@@ -182,6 +202,36 @@ public sealed class CombatServiceTests
         sorted.Should().Equal("a|1", "a|2", "b|1", "b|2");
     }
 
+    // ACC:T6.8
+    [Fact]
+    public void ShouldProduceIdenticalSortedSequenceAcrossInputPermutations_WhenKeysAreSame()
+    {
+        var setA = new[]
+        {
+            new CombatantOrderKey("b", "2"),
+            new CombatantOrderKey("a", "2"),
+            new CombatantOrderKey("b", "1"),
+            new CombatantOrderKey("a", "1"),
+        };
+        var setB = new[]
+        {
+            new CombatantOrderKey("a", "1"),
+            new CombatantOrderKey("b", "1"),
+            new CombatantOrderKey("a", "2"),
+            new CombatantOrderKey("b", "2"),
+        };
+
+        var sortedA = CombatService.OrderCombatantsDeterministically(setA)
+            .Select(x => $"{x.CombatantId}|{x.StableId}")
+            .ToArray();
+        var sortedB = CombatService.OrderCombatantsDeterministically(setB)
+            .Select(x => $"{x.CombatantId}|{x.StableId}")
+            .ToArray();
+
+        sortedA.Should().Equal("a|1", "a|2", "b|1", "b|2");
+        sortedB.Should().Equal(sortedA);
+    }
+
     // ACC:T6.10
     [Fact]
     public void ShouldRejectInvalidPhaseTransitionAndKeepState_WhenGuardFails()
@@ -218,6 +268,29 @@ public sealed class CombatServiceTests
     [InlineData(PlayCardPipelineStep.ComputeCost, 2)]
     [InlineData(PlayCardPipelineStep.PayCost, 3)]
     public void ShouldStopAtComputeOrPayCostAndKeepStateUnchanged_WhenFailureIsInjected(
+        PlayCardPipelineStep failAtStep,
+        int expectedExecutedStepCount)
+    {
+        var service = new CombatService();
+        var input = CreateValidPipelineInput(failAtStep: failAtStep);
+
+        var result = service.ExecutePlayCardPipeline(input);
+
+        result.Success.Should().BeFalse();
+        result.ExecutedSteps.Should().HaveCount(expectedExecutedStepCount);
+        result.ExecutedSteps.Should().Equal(CanonicalPipelineOrder.Take(expectedExecutedStepCount));
+        result.StateAfter.Should().Be(result.StateBefore);
+        result.FailureReason.Should().Contain($"Injected failure at {failAtStep}");
+    }
+
+    // ACC:T6.26
+    [Theory]
+    [InlineData(PlayCardPipelineStep.BeforePlayTriggers, 4)]
+    [InlineData(PlayCardPipelineStep.ResolveEffect, 5)]
+    [InlineData(PlayCardPipelineStep.AfterPlayTriggers, 6)]
+    [InlineData(PlayCardPipelineStep.MoveCard, 7)]
+    [InlineData(PlayCardPipelineStep.DeathCheck, 8)]
+    public void ShouldStopAtPostCostStepAndKeepStateUnchanged_WhenFailureIsInjected(
         PlayCardPipelineStep failAtStep,
         int expectedExecutedStepCount)
     {
@@ -278,6 +351,7 @@ public sealed class CombatServiceTests
     }
 
     // ACC:T6.16
+    // ACC:T6.25
     [Theory]
     [InlineData(9, 2, 3, 2, "a", "1")]
     [InlineData(10, 3, 3, 2, "a", "1")]
@@ -309,6 +383,51 @@ public sealed class CombatServiceTests
         first.OverplayTax.Should().Be(second.OverplayTax);
         first.ExecutedSteps.Should().Equal(second.ExecutedSteps);
         first.StateAfter.Should().Be(second.StateAfter);
+    }
+
+    // ACC:T6.27
+    [Fact]
+    public void ShouldUseExplicitCombatContractTypesDirectly_WhenVerifyingPipelineAndDamageRules()
+    {
+        var pipeline = new PlayCardResolutionPipeline();
+        var input = CreateValidPipelineInput(
+            baseDamage: 10,
+            strength: 2,
+            weakMultiplier: 0.75,
+            vulnerableMultiplier: 1.5,
+            isFixedDamage: false);
+
+        var result = pipeline.Execute(input);
+        var damage = PlayCardResolutionPipeline.CalculateDamageWithStatusMultipliers(
+            baseDamage: 10,
+            strength: 2,
+            weakMultiplier: 0.75,
+            vulnerableMultiplier: 1.5,
+            isFixedDamage: false);
+
+        typeof(PlayCardResolutionPipeline).Namespace.Should().Be("Game.Core.Contracts.Combat");
+        result.Success.Should().BeTrue(result.FailureReason);
+        damage.Should().Be(14);
+    }
+
+    // ACC:T6.28
+    [Fact]
+    public void ShouldApplyComparatorPrecedenceAndStableTieHandling_WhenOrderingCombatants()
+    {
+        var keyA1First = new CombatantOrderKey("a", "1");
+        var keyA1Second = new CombatantOrderKey("a", "1");
+        var keyA2 = new CombatantOrderKey("a", "2");
+        var keyB1 = new CombatantOrderKey("b", "1");
+
+        var input = new[] { keyA1Second, keyB1, keyA1First, keyA2 };
+
+        var sorted1 = CombatService.OrderCombatantsDeterministically(input).ToArray();
+        var sorted2 = CombatService.OrderCombatantsDeterministically(input).ToArray();
+
+        sorted1.Select(x => $"{x.CombatantId}|{x.StableId}").Should().Equal("a|1", "a|1", "a|2", "b|1");
+        object.ReferenceEquals(sorted1[0], keyA1Second).Should().BeTrue();
+        object.ReferenceEquals(sorted1[1], keyA1First).Should().BeTrue();
+        sorted2.Should().Equal(sorted1);
     }
 
     [Fact]
@@ -416,5 +535,73 @@ public sealed class CombatServiceTests
             CombatantId: combatantId,
             StableId: stableId,
             FailAtStep: failAtStep);
+    }
+
+    private static void AssertAnchorBoundToAssertion(string fileContent, string marker)
+    {
+        var lines = fileContent.Replace("\r\n", "\n").Split('\n');
+        var anchorLine = Array.FindIndex(lines, line => line.Contains(marker, StringComparison.Ordinal));
+        anchorLine.Should().BeGreaterThanOrEqualTo(0);
+
+        var attributeLine = -1;
+        for (var i = anchorLine + 1; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("[Fact]", StringComparison.Ordinal) || lines[i].Contains("[Theory]", StringComparison.Ordinal))
+            {
+                attributeLine = i;
+                break;
+            }
+
+            if (lines[i].Contains("ACC:T6.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+        }
+
+        attributeLine.Should().BeGreaterThanOrEqualTo(0, $"Anchor {marker} must bind to a concrete xUnit test method.");
+
+        var methodLine = -1;
+        for (var i = attributeLine + 1; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("public void ", StringComparison.Ordinal))
+            {
+                methodLine = i;
+                break;
+            }
+        }
+
+        methodLine.Should().BeGreaterThanOrEqualTo(0, $"Anchor {marker} must bind to a named test method.");
+
+        var hasAssertion = false;
+        var braceDepth = 0;
+        var bodyEntered = false;
+        for (var i = methodLine; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            if (line.Contains(".Should(", StringComparison.Ordinal) || line.Contains("Assert.", StringComparison.Ordinal))
+            {
+                hasAssertion = true;
+            }
+
+            foreach (var ch in line)
+            {
+                if (ch == '{')
+                {
+                    braceDepth++;
+                    bodyEntered = true;
+                }
+                else if (ch == '}' && bodyEntered)
+                {
+                    braceDepth--;
+                    if (braceDepth == 0)
+                    {
+                        i = lines.Length;
+                        break;
+                    }
+                }
+            }
+        }
+
+        hasAssertion.Should().BeTrue($"Anchor {marker} must bind to behavior assertion, not comments only.");
     }
 }
