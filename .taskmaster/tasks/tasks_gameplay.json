@@ -380,7 +380,9 @@
       "[OBL:T6.O10] 伤害规则测试必须采用表驱动 xUnit 形式以覆盖乘子数学与固定伤害不变量。 Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
       "[OBL:T6.O15] CombatLoop 必须在 Game.Core 中以 C# 类或等价契约类型实现，并可被测试项目直接引用。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "[OBL:T6.O15] 仅文档描述或注释声明不计为完成。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs"
+      "[OBL:T6.O15] CombatLoop 必须以代码中的类形式实现（Create classes），不能仅停留在文档层声明。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "PlayCard resolution must apply OverplayTax in ComputeCost and use taxed cost in PayCost when difficulty >= 10 and trigger threshold is met. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "When ComputeCost or PayCost fails, pipeline must stop immediately and keep critical combat state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032."

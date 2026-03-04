@@ -390,3 +390,12 @@ Test-Refs:
 - 纯 C#：新增契约不依赖 Godot API。
 - 类型明确：字段使用 `string`、`DateTimeOffset`、`int`、`IReadOnlyList<T>` 等明确类型。
 - Overlay 回链：本页记录了新增事件/DTO/接口及契约路径。
+
+## 4. Task 6 Contract Backlink
+- **CombatLoop** (`core.combat.loop`)
+  - 触发时机：战斗阶段机进行合法/非法迁移校验时
+  - 字段：`CurrentPhase`, `LastGuardFailureReason`
+  - 契约位置：`Game.Core/Contracts/Combat/CombatLoop.cs`
+- **CombatLoopPhase** (`core.combat.loop.phase`)
+  - 用途：定义战斗阶段枚举（StartOfTurn, Draw, Main, EndOfTurn）
+  - 契约位置：`Game.Core/Contracts/Combat/CombatLoop.cs`
