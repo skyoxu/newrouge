@@ -119,3 +119,4 @@ node_modules/
 
 # taskdoc: ignore all local task context artifacts
 taskdoc/**
+!taskdoc/task-0002-change-set.json
