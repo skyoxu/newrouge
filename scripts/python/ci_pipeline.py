@@ -136,6 +136,8 @@ def main():
     os.makedirs(ci_dir, exist_ok=True)
 
     summary = {
+        'manual_triplet_examples': {},
+        'whitelist_expiry_warning': {},
         'preflight_env_evidence': {},
         'preflight_task1': {},
         'dotnet': {},
@@ -148,14 +150,68 @@ def main():
     # Keep preflight/test environment deterministic.
     os.environ['GODOT_BIN'] = args.godot_bin
 
-    # 0) Environment preflight artifacts (hard gate)
+    # 0) Enforce unified task-level entrypoint command policy (hard gate)
+    rc0, out0 = run_cmd(
+        [
+            'py',
+            '-3',
+            'scripts/python/forbid_manual_sc_triplet_examples.py',
+            '--root',
+            '.',
+            '--mode',
+            'all',
+            '--whitelist',
+            'docs/workflows/unified-pipeline-command-whitelist.txt',
+            '--whitelist-metadata',
+            'require',
+        ],
+        cwd=root,
+    )
+    with io.open(os.path.join(ci_dir, 'forbid-manual-sc-triplet-examples.log'), 'w', encoding='utf-8') as f:
+        f.write(out0)
+    manual_sum = read_json(os.path.join('logs', 'ci', date, 'forbid-manual-sc-triplet-examples.json')) or {}
+    summary['manual_triplet_examples'] = {
+        'rc': rc0,
+        'status': 'ok' if rc0 == 0 else 'fail',
+        'hits_count': manual_sum.get('hits_count'),
+        'scanned_files': manual_sum.get('scanned_files'),
+        'mode': manual_sum.get('mode'),
+    }
+    if rc0 != 0:
+        hard_fail = True
+
+    # 0.5) Soft warning: whitelist expiry horizon.
+    rcw, outw = run_cmd(
+        [
+            'py',
+            '-3',
+            'scripts/python/warn_whitelist_expiry.py',
+            '--root',
+            '.',
+            '--whitelist',
+            'docs/workflows/unified-pipeline-command-whitelist.txt',
+        ],
+        cwd=root,
+    )
+    with io.open(os.path.join(ci_dir, 'whitelist-expiry-warning.log'), 'w', encoding='utf-8') as f:
+        f.write(outw)
+    warn_sum = read_json(os.path.join('logs', 'ci', date, 'whitelist-expiry-warning.json')) or {}
+    summary['whitelist_expiry_warning'] = {
+        'rc': rcw,
+        'status': warn_sum.get('status') or ('ok' if rcw == 0 else 'warn'),
+        'expiring_soon_count': warn_sum.get('expiring_soon_count'),
+        'expired_count': warn_sum.get('expired_count'),
+        'warn_days': warn_sum.get('warn_days'),
+    }
+
+    # 1) Environment preflight artifacts (hard gate)
     preflight_rc, preflight_details = run_env_evidence_preflight(root, args.godot_bin)
     summary['preflight_env_evidence'] = preflight_details
     summary['preflight_task1'] = preflight_details
     if preflight_rc != 0:
         hard_fail = True
 
-    # 1) Dotnet tests + coverage (soft gate on coverage)
+    # 2) Dotnet tests + coverage (soft gate on coverage)
     dotnet_stage_timeout_ms = resolve_dotnet_stage_timeout_ms(args.dotnet_stage_timeout_ms)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
                        '--solution', args.solution,
@@ -200,7 +256,7 @@ def main():
     if rc not in (0, 2) or summary['dotnet']['status'] == 'tests_failed':
         hard_fail = True
 
-    # 2) Godot self-check (hard gate)
+    # 3) Godot self-check (hard gate)
     # ensure autoload fixed (explicit project path)
     _ = run_cmd(['py', '-3', 'scripts/python/godot_selfcheck.py', 'fix-autoload', '--project', args.project], cwd=root)
     sc_args = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
@@ -245,7 +301,7 @@ def main():
     if not sc_ok:
         hard_fail = True
 
-    # 3) Encoding scan (soft gate)
+    # 4) Encoding scan (soft gate)
     rc3, out3 = run_cmd(['py', '-3', 'scripts/python/check_encoding.py', '--since-today'], cwd=root)
     enc_sum = read_json(os.path.join('logs', 'ci', date, 'encoding', 'session-summary.json')) or {}
     summary['encoding'] = enc_sum
@@ -255,9 +311,12 @@ def main():
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
     print(
-        "CI_PIPELINE status={status} dotnet={dotnet} dotnet_rc={dotnet_rc} dotnet_timeout_ms={dotnet_timeout_ms} "
+        "CI_PIPELINE status={status} manual_examples={manual_examples} whitelist_expiry={whitelist_expiry} "
+        "dotnet={dotnet} dotnet_rc={dotnet_rc} dotnet_timeout_ms={dotnet_timeout_ms} "
         "selfcheck={selfcheck} encoding_bad={encoding_bad}".format(
             status=summary['status'],
+            manual_examples=summary['manual_triplet_examples'].get('status'),
+            whitelist_expiry=summary['whitelist_expiry_warning'].get('status'),
             dotnet=summary['dotnet'].get('status'),
             dotnet_rc=summary['dotnet'].get('rc'),
             dotnet_timeout_ms=summary['dotnet'].get('stage_timeout_ms'),

@@ -34,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--self-check", action="store_true", help="Validate args and orchestration wiring only; do not resolve task or run gates.")
     ap.add_argument("--dry-run-plan", action="store_true", help="Resolve task and print planned steps/gate levels without executing checks.")
     ap.add_argument("--task-id", default=None, help="Taskmaster id (e.g. 10 or 10.3). Default: first status=in-progress task.")
+    ap.add_argument("--run-id", default=None, help="Optional fixed run id for deterministic evidence binding across scripts.")
     ap.add_argument("--godot-bin", default=None, help="Godot mono console path (or set env GODOT_BIN)")
     ap.add_argument(
         "--out-per-task",
