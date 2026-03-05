@@ -298,14 +298,14 @@ jobs:
           $reqRefs = "${{ github.event_name == 'workflow_dispatch' && inputs.require_task_test_refs || 'false' }}"
 
           foreach ($id in $env:SC_TASK_IDS.Split(',')) {
-            $only = @('adr','overlay','contracts','arch','build','security','quality','rules')
+            $only = @('adr','overlay','contracts','arch','build','security','quality','rules','tests')
             if ((Test-Path ".taskmaster/tasks/tasks_back.json") -and (Test-Path ".taskmaster/tasks/tasks_gameplay.json")) {
               $only += 'links'
             }
             if ($reqPerf -eq "true") { $only += 'perf' }
             $onlyArg = $only -join ','
 
-            $args = @("py", "-3", "scripts/sc/acceptance_check.py", "--task-id", $id, "--only", $onlyArg, "--security-profile", "$env:SECURITY_PROFILE")
+            $args = @("py", "-3", "scripts/sc/acceptance_check.py", "--task-id", $id, "--only", $onlyArg, "--security-profile", "$env:SECURITY_PROFILE", "--require-headless-e2e")
             if ($strict -eq "true") { $args += "--strict-adr-status" }
             if ($reqPerf -eq "true") { $args += "--require-perf" }
             if ($reqRefs -eq "true") { $args += "--require-task-test-refs" }
