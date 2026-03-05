@@ -12,6 +12,7 @@ jobs:
       PYTHONIOENCODING: 'utf-8'
       PYTHONUTF8: '1'
       SECURITY_PROFILE: 'host-safe'
+      WHITELIST_WARN_DAYS: '90'
       TASK_LINKS_MAX_WARNINGS: '100'
       CI_DOTNET_STAGE_TIMEOUT_MS: '4200000'
     steps:
