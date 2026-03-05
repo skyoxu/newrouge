@@ -2,6 +2,11 @@ name: Windows CI (Manual)
 
 on:
   workflow_dispatch:
+    inputs:
+      acceptance_task_id:
+        description: 'Task id for acceptance post-evidence gate (default: 1)'
+        required: false
+        default: '1'
 
 jobs:
   build-test-export:
@@ -12,6 +17,7 @@ jobs:
       PYTHONIOENCODING: 'utf-8'
       PYTHONUTF8: '1'
       SECURITY_PROFILE: 'host-safe'
+      SC_ACCEPTANCE_TASK_ID: ${{ inputs.acceptance_task_id }}
       WHITELIST_WARN_DAYS: '90'
       TASK_LINKS_MAX_WARNINGS: '100'
       CI_DOTNET_STAGE_TIMEOUT_MS: '4200000'
@@ -159,6 +165,17 @@ jobs:
         shell: pwsh
         run: |
           py -3 scripts/python/ci_pipeline.py all --solution Game.sln --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
+
+      - name: Acceptance check post-evidence gate (layer2)
+        shell: pwsh
+        run: |
+          $taskId = "$env:SC_ACCEPTANCE_TASK_ID".Trim()
+          if ([string]::IsNullOrWhiteSpace($taskId)) { $taskId = '1' }
+          if ($taskId -notmatch '^\d+(\.\d+)?$') {
+            throw "Invalid SC_ACCEPTANCE_TASK_ID='$taskId'. Expected numeric task id like 1 or 1.2."
+          }
+          Write-Host "SC_ACCEPTANCE_TASK_ID=$taskId"
+          py -3 scripts/sc/acceptance_check.py --task-id "$taskId" --only tests --security-profile "$env:SECURITY_PROFILE" --require-headless-e2e --godot-bin "$env:GODOT_BIN"
 
       - name: Upload CI logs (always)
         if: always()

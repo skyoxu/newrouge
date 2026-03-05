@@ -105,6 +105,40 @@ class AcceptanceCheckCliGuardTests(unittest.TestCase):
         self.assertEqual("run", summary.get("mode"))
         self.assertIn(summary.get("status"), ("ok", "fail"))
 
+    def test_task1_require_headless_should_force_tests_all_and_post_gate(self) -> None:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--task-id",
+                "1",
+                "--dry-run-plan",
+                "--only",
+                "tests",
+                "--require-headless-e2e",
+            ],
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        self.assertEqual(0, proc.returncode)
+        self.assertIn("SC_ACCEPTANCE_DRY_RUN_PLAN status=ok", proc.stdout or "")
+        out_dir = Path(self._extract_out_dir(proc.stdout or ""))
+        summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+        plan = summary.get("step_plan") or []
+
+        tests_all = next((x for x in plan if isinstance(x, dict) and x.get("name") == "tests-all"), {})
+        self.assertEqual("all", tests_all.get("test_type"))
+
+        headless = next((x for x in plan if isinstance(x, dict) and x.get("name") == "headless-e2e-evidence"), {})
+        self.assertTrue(bool(headless.get("enabled")))
+
+        post_gate = next((x for x in plan if isinstance(x, dict) and x.get("name") == "post-evidence-integration"), {})
+        self.assertTrue(bool(post_gate.get("enabled")))
+
 
 if __name__ == "__main__":
     unittest.main()
