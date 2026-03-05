@@ -19,6 +19,9 @@
 .taskmaster/tasks/tasks_back.json      text eol=lf
 .taskmaster/tasks/tasks_gameplay.json  text eol=lf
 
+# Scripts (force LF to reduce cross-repo noise and keep CI/tooling stable)
+scripts/** text eol=lf
+
 # Binary files (no EOL conversions)
 *.png  binary
 *.jpg  binary
