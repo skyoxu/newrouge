@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Game.Core.Contracts.Save;
 
 namespace Game.Core.Contracts.Interfaces;
@@ -11,7 +12,7 @@ namespace Game.Core.Contracts.Interfaces;
 /// </remarks>
 public interface ISaveService
 {
-    void WriteAutosave(AutosaveSnapshot snapshot);
-    AutosaveSnapshot? ReadAutosave();
-    ContinueMetadata? ReadContinueMetadata();
+    Task WriteAutosaveAsync(AutosaveSnapshot snapshot);
+    Task<AutosaveSnapshot?> ReadAutosaveAsync();
+    Task<ContinueMetadata?> ReadContinueMetadataAsync();
 }

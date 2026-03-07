@@ -95,6 +95,9 @@ py -3 scripts/sc/build.py tdd --stage refactor
 # Unified task-level entry (test + acceptance + llm review)
 py -3 scripts/sc/run_review_pipeline.py --task-id 10 --godot-bin "$env:GODOT_BIN" --security-profile host-safe
 
+# Task-scoped verification: disable coverage gate/report for filtered refs
+py -3 scripts/sc/run_review_pipeline.py --task-id 10 --godot-bin "$env:GODOT_BIN" --security-profile host-safe --test-no-coverage-gate --test-no-coverage-report
+
 # Strict profile for release hardening
 py -3 scripts/sc/run_review_pipeline.py --task-id 10 --godot-bin "$env:GODOT_BIN" --security-profile strict
 
