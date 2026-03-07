@@ -34,6 +34,7 @@ Test-Refs:
 - [ ] 契约落盘在 `Game.Core/Contracts/**`，Core 不依赖 Godot API。
 - [ ] 奖励候选集锁定包含可审计标识（stable ids / order / provenance）。
 - [ ] Continue 阻断路径可解释并可取证（坏档、迁移失败、校验失败）。
+- [ ] autosave 写失败路径可解释并可取证，至少覆盖 `temp_write_failed` 与 `atomic_replace_failed`，且失败后保留上一份有效 autosave。
 - [ ] 商店不提供升级入口，升级只允许在休整/特殊事件发生。
 
 ## 四、测试框架验收

@@ -182,6 +182,8 @@ Test-Refs:
 - **SaveWriteFailedEvent** (`core.save.write.failed`)
   - 触发时机：autosave 写入失败后。
   - 字段：`RunId`, `SavePointId`, `ReasonCode`, `Message`, `FailedAt`。
+  - `ReasonCode` 最小覆盖：`temp_write_failed`、`atomic_replace_failed`、`save_failed`。
+  - `Message` 用于向调用方暴露失败摘要；更细的结构化 evidence（如 `action`, `target`, `caller`, `temp_path`）由运行时异常与审计链承接。
   - 契约位置：`Game.Core/Contracts/Events/SaveWriteFailedEvent.cs`
 
 - **SaveLoadedEvent** (`core.save.loaded`)

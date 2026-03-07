@@ -29,6 +29,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--godot-bin", default=None, help="Godot binary path (or env GODOT_BIN).")
     parser.add_argument("--security-profile", default="host-safe", choices=["strict", "host-safe"])
     parser.add_argument("--skip-test", action="store_true", help="Skip sc-test step.")
+    parser.add_argument(
+        "--test-no-coverage-gate",
+        action="store_true",
+        help="Pass --no-coverage-gate to sc-test for task-scoped or exploratory runs.",
+    )
+    parser.add_argument(
+        "--test-no-coverage-report",
+        action="store_true",
+        help="Pass --no-coverage-report to sc-test to skip HTML coverage report generation.",
+    )
     parser.add_argument("--skip-acceptance", action="store_true", help="Skip sc-acceptance-check step.")
     parser.add_argument("--skip-llm-review", action="store_true", help="Skip sc-llm-review step.")
     parser.add_argument("--llm-agents", default="all", help="llm_review --agents value. Default: all.")
@@ -210,6 +220,10 @@ def main() -> int:
     test_cmd = ["py", "-3", "scripts/sc/test.py", "--task-id", task_id, "--run-id", run_id]
     if args.godot_bin:
         test_cmd += ["--godot-bin", str(args.godot_bin)]
+    if args.test_no_coverage_gate:
+        test_cmd.append("--no-coverage-gate")
+    if args.test_no_coverage_report:
+        test_cmd.append("--no-coverage-report")
     steps.append(("sc-test", test_cmd, 1800, args.skip_test))
 
     acceptance_cmd = [

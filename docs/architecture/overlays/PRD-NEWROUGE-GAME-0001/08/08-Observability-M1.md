@@ -32,7 +32,9 @@ M1 可观测性目标是让“确定性、可追溯、可回放”成为可验�
 - 候选集首次锁定：记录锁定来源、候选标识与顺序。
 - Continue 阻断：记录阻断原因（坏档、迁移失败、校验失败）。
 - 存档边界写入：记录节点前写入与战斗初始写入。
-- 非法操作拒绝：记录路径越权、违规出网等安全拒绝事件。
+- autosave 失败路径：至少区分 `write_temp` 与 `replace_target` 两个动作，并能映射 `temp_write_failed`、`atomic_replace_failed` 等 reason code。
+- 非法操作拒绝：记录路径越权、违规出网等安全拒绝事件；与存档相关时至少能回溯 `path_outside_user_scope`、`path_contains_traversal`、`extension_not_allowed`。
+- 范围边界：Task12 先保证结构化 evidence 可被调用方与测试读取；统一 JSONL 持久化与 gate integration 由 T56 承接，避免把“审计链落盘”误判为 Task12 本体。
 
 ## 4. 门禁任务对齐
 - T56: Audit JSONL validation + gate integration。
