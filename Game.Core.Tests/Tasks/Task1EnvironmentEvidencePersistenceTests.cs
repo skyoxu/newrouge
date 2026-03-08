@@ -636,7 +636,13 @@ public sealed class Task1EnvironmentEvidencePersistenceTests
             return ValidationResult.Fail(new[] { "task1 checklist section token is missing (ACC:T1.3)" });
         }
 
-        var task1Section = checklistContent[sectionStart..];
+        var nextSectionStart = checklistContent.IndexOf(
+            "\n## ",
+            sectionStart + Task1ChecklistSectionToken.Length,
+            StringComparison.Ordinal);
+        var task1Section = nextSectionStart > sectionStart
+            ? checklistContent[sectionStart..nextSectionStart]
+            : checklistContent[sectionStart..];
         var refs = ChecklistPathRegex
             .Matches(task1Section)
             .Select(match => match.Value)
