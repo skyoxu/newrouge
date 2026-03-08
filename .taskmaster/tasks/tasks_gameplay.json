@@ -1937,13 +1937,13 @@
       "Game.Core.Tests/Services/ActConfigLoaderTests.cs"
     ],
     "acceptance": [
-      "? Game.Core ?? ActConfig???? schema_version?act_id?node_graph?pools?encounters????? Act JSON ????????????????? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "?? System.Text.Json ? Act ?????? ActConfig???????? IsSuccess=true ? Config ??? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "????????JSON ??????????????? IsSuccess=false?Config=null?????? ErrorCode ??? ErrorMessage? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs",
-      "schema_version ??????????????????????????????????? Refs: Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "xUnit ???? JSON ????????? payload ???? ErrorCode ?????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
-      "? act_id/node_graph/pools/encounters ???????????????????????????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
-      "???????? act_id ????????????????? node_graph/pools/encounters ????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs"
+      "Define ActConfig in Game.Core with schema_version, act_id, node_graph, pools, encounters. Valid Act JSON must map fields without silent rewrite. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "Load ActConfig from Act data file via System.Text.Json. Success path must return IsSuccess=true and non-null Config. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "When file read fails, JSON parse fails, or required fields are missing, return IsSuccess=false, Config=null, stable ErrorCode, and non-empty ErrorMessage. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "schema_version must exist and be supported. Missing, unknown, or incompatible versions must fail with assertable error. Refs: Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "xUnit covers valid JSON success and multiple invalid payload failures, with deterministic ErrorCode assertions. Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "Invalid act_id/node_graph/pools/encounters values must map to field-level deterministic error codes without overlapping generic failure semantics. Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "Loading two different act_id configs sequentially must keep node_graph/pools/encounters isolated with no cross-value contamination. Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for loading valid/invalid ActConfig and schema version checks. Refs: ADR-0006."
