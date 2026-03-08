@@ -363,6 +363,7 @@ Test-Refs:
 - 配置与内容
   - `Game.Core/Contracts/Config/DifficultyConfig.cs`
   - `Game.Core/Contracts/Config/ActConfig.cs`
+  - `Game.Core/Contracts/Config/ActConfigLoadResult.cs`
   - `Game.Core/Contracts/Content/RelicDefinition.cs`
   - `Game.Core/Contracts/Content/RelicInstance.cs`
   - `Game.Core/Contracts/Content/CurseDefinition.cs`

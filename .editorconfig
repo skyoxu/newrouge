@@ -2,3 +2,16 @@ root = true
 
 [*]
 charset = utf-8
+
+# C# naming gate (lightweight hard gate):
+# - enforce public type/member naming only
+# - keep private/local naming flexible for iteration speed
+[*.cs]
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+dotnet_naming_symbols.public_types_and_members.applicable_kinds = class,struct,interface,enum,delegate,property,method,event,field
+dotnet_naming_symbols.public_types_and_members.applicable_accessibilities = public
+
+dotnet_naming_rule.public_types_and_members_must_be_pascal.symbols = public_types_and_members
+dotnet_naming_rule.public_types_and_members_must_be_pascal.style = pascal_case_style
+dotnet_naming_rule.public_types_and_members_must_be_pascal.severity = error

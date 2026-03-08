@@ -109,3 +109,23 @@ Test-Refs:
   - `Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs`
   - `Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd`
   - `Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd`
+
+
+## Task28 Contract/Test Backlinks
+- Task: `T28 Create ActConfig data model and loader`
+- ADR-Refs: `ADR-0006`, `ADR-0031`, `ADR-0021`
+- Contract-Refs:
+  - `Game.Core/Contracts/Config/ActConfig.cs`
+  - `Game.Core/Contracts/Config/ActConfigLoadResult.cs`
+  - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
+  - `Game.Core/Contracts/Events/ActConfigLoadedEvent.cs` (`core.act.config.loaded`)
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs`
+- Evidence:
+  - `logs/ci/<date>/task-0028.json`
+- Checklist:
+  - `ActConfig` includes `schema_version/act_id/node_graph/pools/encounters`
+  - schema validation failure is deterministic and assertable
+  - overlay contracts/testing documents both contain the same Task28 refs

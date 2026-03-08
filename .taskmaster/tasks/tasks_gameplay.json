@@ -1937,15 +1937,13 @@
       "Game.Core.Tests/Services/ActConfigLoaderTests.cs"
     ],
     "acceptance": [
-      "在 Game.Core 中提供 ActConfig 类型，并至少包含 act_id、node_graph、pools、encounters 四个可反序列化字段；给定包含这些字段的 Act JSON 时可映射为该配置对象。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "在 Windows 环境下，加载器可从数据文件读取并使用 System.Text.Json 反序列化为 ActConfig；当读取失败或反序列化失败时，必须返回可断言的失败结果且不返回成功配置。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "Overlay 的 Test-Refs 清单包含并可定位到本任务 ActConfig 加载相关测试路径，以支持验收追溯。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "ActConfig JSON 必须包含显式 schema_version 字段；当 schema_version 缺失、未知或不兼容时，加载必须失败并返回可验证错误。 Refs: Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
-      "xUnit 用例覆盖以下情形：有效 ActConfig JSON 成功加载；字段缺失、类型错误或非法 JSON 被拒绝；schema_version 不匹配被拒绝。 Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
-      "ActConfig 加载成功后，node_graph、pools、encounters 三个字段内容与输入 JSON 保持一致，不得丢失或被静默改写。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "schema_version 校验失败时返回明确且可断言的错误信息，并由 xUnit 用例进行断言。 Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "Task 28 acceptance must explicitly include traceability to ADR-0006, ADR-0031, and ADR-0021 in checklist or task evidence; missing any ADR id fails acceptance. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-      "An auto-check rule must validate presence and consistency of ADR-0006/ADR-0031/ADR-0021 linkage in task evidence outputs; any missing linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs"
+      "? Game.Core ?? ActConfig???? schema_version?act_id?node_graph?pools?encounters????? Act JSON ????????????????? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "?? System.Text.Json ? Act ?????? ActConfig???????? IsSuccess=true ? Config ??? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "????????JSON ??????????????? IsSuccess=false?Config=null?????? ErrorCode ??? ErrorMessage? Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "schema_version ??????????????????????????????????? Refs: Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "xUnit ???? JSON ????????? payload ???? ErrorCode ?????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "? act_id/node_graph/pools/encounters ???????????????????????????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "???????? act_id ????????????????? node_graph/pools/encounters ????? Refs: Game.Core.Tests/Services/ActConfigLoaderTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for loading valid/invalid ActConfig and schema version checks. Refs: ADR-0006."

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using FluentAssertions;
 using Game.Core.Contracts;
 using Game.Core.Domain;
@@ -268,6 +269,12 @@ public class ContractInstantiationCoverageTests
         if (t == typeof(DateTime))
         {
             value = DateTime.UnixEpoch;
+            return true;
+        }
+
+        if (t == typeof(JsonElement))
+        {
+            value = JsonDocument.Parse("{\"sample\":true}").RootElement.Clone();
             return true;
         }
 
