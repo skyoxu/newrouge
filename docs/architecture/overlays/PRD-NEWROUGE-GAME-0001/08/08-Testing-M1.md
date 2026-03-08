@@ -62,3 +62,20 @@ Test-Refs:
 - 任何硬门失败不得标记任务为 done。
 - 修复优先顺序：契约 -> 规则 -> 场景绑定 -> 文案/回链。
 
+
+## 6. Task28 Test-Refs
+- Task: `T28 / GM-0128`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs`
+- Contract/Service under test:
+  - `Game.Core/Contracts/Config/ActConfig.cs`
+  - `Game.Core/Contracts/Config/ActConfigLoadResult.cs`
+  - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
+  - `Game.Core/Contracts/Events/ActConfigLoadedEvent.cs`
+  - `Game.Core/Services/ActConfigLoader.cs`
+- Gate focus:
+  - valid JSON maps `schema_version/act_id/node_graph/pools/encounters`
+  - missing or unsupported `schema_version` must fail with assertable error code/message
+  - read/deserialize failure must return deterministic failure result

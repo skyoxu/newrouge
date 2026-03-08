@@ -202,3 +202,16 @@ M1 的目标是交付一个可完整运行、可验证、可复现的最小闭�
 - Runtime notes:
   - `adapters/security` failure blocks overall decision.
   - `integration/ui` failure is soft and does not block overall decision.
+
+## Task28 Contract Backlinks
+- Task: `T28 / GM-0128 Create ActConfig data model and loader`
+- ADR-Refs: `ADR-0006`, `ADR-0031`, `ADR-0021`
+- Contract-Refs:
+  - `Game.Core/Contracts/Config/ActConfig.cs`
+  - `Game.Core/Contracts/Config/ActConfigLoadResult.cs`
+  - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
+  - `Game.Core/Contracts/Events/ActConfigLoadedEvent.cs` (`core.act.config.loaded`)
+- Field baseline (`ActConfig`):
+  - `schema_version`, `act_id`, `node_graph`, `pools`, `encounters`
+- Implementation:
+  - `Game.Core/Services/ActConfigLoader.cs`
