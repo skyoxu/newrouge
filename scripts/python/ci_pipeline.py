@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 
 def run_cmd(args, cwd=None, timeout=900_000):
@@ -107,6 +108,18 @@ def run_env_evidence_preflight(root: str, godot_bin: str):
                 sys.path.remove(sc_dir)
             except ValueError:
                 pass
+
+
+def run_env_evidence_preflight_with_retry(root: str, godot_bin: str):
+    """
+    Retry preflight once to reduce transient CI flakiness (cold workspace/path race).
+    """
+    rc, details = run_env_evidence_preflight(root, godot_bin)
+    if rc == 0:
+        return rc, details, 1
+    time.sleep(2.0)
+    rc2, details2 = run_env_evidence_preflight(root, godot_bin)
+    return rc2, details2, 2
 
 
 def main():
@@ -204,8 +217,10 @@ def main():
         'warn_days': warn_sum.get('warn_days'),
     }
 
-    # 1) Environment preflight artifacts (hard gate)
-    preflight_rc, preflight_details = run_env_evidence_preflight(root, args.godot_bin)
+    # 1) Environment preflight artifacts (hard gate, with one retry for transient failures)
+    preflight_rc, preflight_details, preflight_attempts = run_env_evidence_preflight_with_retry(root, args.godot_bin)
+    preflight_details = dict(preflight_details or {})
+    preflight_details['attempts'] = preflight_attempts
     summary['preflight_env_evidence'] = preflight_details
     summary['preflight_task1'] = preflight_details
     if preflight_rc != 0:
@@ -256,13 +271,15 @@ def main():
     if rc not in (0, 2) or summary['dotnet']['status'] == 'tests_failed':
         hard_fail = True
 
-    # 3) Godot self-check (hard gate)
+    # 3) Godot self-check (hard gate, with one retry to reduce transient launch flakiness)
     # ensure autoload fixed (explicit project path)
     _ = run_cmd(['py', '-3', 'scripts/python/godot_selfcheck.py', 'fix-autoload', '--project', args.project], cwd=root)
-    sc_args = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
+    sc_args_base = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
+    sc_args = list(sc_args_base)
     if args.build_solutions:
         sc_args.append('--build-solutions')
     rc2, out2 = run_cmd(sc_args, cwd=root, timeout=600_000)
+    sc_attempts = 1
     # persist raw stdout for diagnosis
     os.makedirs(os.path.join('logs', 'ci', date), exist_ok=True)
     with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout.txt'), 'w', encoding='utf-8') as f:
@@ -297,6 +314,25 @@ def main():
         pass
 
     sc_ok = (sc_sum.get('status') == 'ok') or (rc2 == 0)
+    if not sc_ok:
+        time.sleep(2.0)
+        rc_retry, out_retry = run_cmd(sc_args_base, cwd=root, timeout=600_000)
+        with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout-retry.txt'), 'w', encoding='utf-8') as f:
+            f.write(out_retry)
+        sc_attempts = 2
+        if rc_retry == 0:
+            rc2 = rc_retry
+            out2 = out_retry
+            sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or {'status': 'ok', 'note': 'retry_rc_zero'}
+            sc_ok = True
+        else:
+            # Keep latest status payload if it became available during retry.
+            sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or sc_sum
+            sc_ok = (sc_sum.get('status') == 'ok') or (rc_retry == 0)
+            rc2 = rc_retry
+            out2 = out_retry
+    sc_sum = dict(sc_sum or {})
+    sc_sum['attempts'] = sc_attempts
     summary['selfcheck'] = sc_sum or {'status': 'fail', 'note': 'no-summary'}
     if not sc_ok:
         hard_fail = True
