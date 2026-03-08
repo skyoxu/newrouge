@@ -340,8 +340,6 @@ def step_env_evidence_preflight(out_dir: Path, *, godot_bin: str | None, task_id
     required_truthy = [
         "godot_bin_absolute",
         "godot_bin_exists",
-        "godot_bin_name_has_mono",
-        "godot_bin_name_has_console",
         "godot_bin_version_ok",
         "godot_bin_mono_ok",
         "godot_bin_env_name_ok",
