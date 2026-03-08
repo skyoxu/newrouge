@@ -103,6 +103,16 @@ def _find_fallback_selfcheck_json(date: str) -> str | None:
     return matches[0]
 
 
+def _find_local_selfcheck_json(root: str, date: str) -> str | None:
+    """
+    Prefer project-local logs first when SELF_CHECK_OUT marker is missing.
+    """
+    candidate = os.path.join(root, 'logs', 'e2e', date, 'composition_root_selfcheck.json')
+    if os.path.isfile(candidate):
+        return candidate
+    return None
+
+
 def run_selfcheck(godot_bin: str, project_godot: str, build_solutions: bool) -> dict:
     root = os.path.dirname(os.path.abspath(project_godot))
     date = dt.date.today().strftime('%Y-%m-%d')
@@ -155,7 +165,7 @@ def run_selfcheck(godot_bin: str, project_godot: str, build_solutions: bool) -> 
         out = out2
         m = re.search(r'SELF_CHECK_OUT:(.*)$', out or '', flags=re.M)
         if not m:
-            fallback = _find_fallback_selfcheck_json(date)
+            fallback = _find_local_selfcheck_json(root, date) or _find_fallback_selfcheck_json(date)
             if not fallback:
                 summary['reason'] = 'SELF_CHECK_OUT not found in console output'
                 return summary
@@ -166,7 +176,7 @@ def run_selfcheck(godot_bin: str, project_godot: str, build_solutions: bool) -> 
         user_json = m.group(1).strip()
 
     if not os.path.exists(user_json):
-        fallback = _find_fallback_selfcheck_json(date)
+        fallback = _find_local_selfcheck_json(root, date) or _find_fallback_selfcheck_json(date)
         if not fallback:
             summary['reason'] = f'output not found at {user_json}'
             return summary
