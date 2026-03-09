@@ -170,14 +170,16 @@
       "status"
     ],
     "owner": "architecture",
-    "test_refs": [],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
+    ],
     "acceptance": [
       "可通过契约定义与测试断言验证：StatusType 枚举包含 Buff、Debuff、RuleModifier，且定义 ExpiresTiming 枚举；Status 至少包含 status_id、stacks、duration_turns、source_id、expires_timing、strength 字段；执行驱散时 RuleModifier 与 status.strength 相关效果不会被移除；同一输入集合按 stable_id 排序时输出顺序恒定。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "对同一初始状态执行同一操作序列时，Status 的叠加、duration_turns 累计与衰减结果必须一致且可断言；当操作不满足生效条件时，状态保持不变，并可通过前后状态对比直接验证。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "xUnit 测试必须覆盖叠加规则、持续时长处理、驱散边界（含 RuleModifier 与 strength 不可驱散）以及 stable_id 排序确定性；任一规则被破坏时，至少一个对应测试用例失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "Status 契约必须显式提供叠加、持续时长累计、衰减三个可调用方法（命名可等价）；任一方法缺失、不可访问或无法被 xUnit 直接断言即判定失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
-      "实现与测试产物必须能显式回链 ADR-0021 与 ADR-0029（例如 task-0005.json 的 refs 字段、测试命名或 ACCEPTANCE_CHECKLIST.md 对应条目）；任一 ADR 缺失或映射不一致即判定失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
-      "ADR-0021 与 ADR-0029 必须在 task-0005.json 的 refs 与 ACCEPTANCE_CHECKLIST.md 的对应验收项中形成一致映射；任一文件缺失对应 ADR 或两者不一致即判定失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
+      "ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
+      "ADR-0021 and ADR-0029 listed in ACCEPTANCE_CHECKLIST.md section \"Task5 ADR Mapping\" must exactly match task=5 adr_refs in both task views; any mismatch must fail. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "Status must be a C# class (record class allowed), not a struct or interface; xUnit must assert typeof(Status).IsClass == true and fail on any non-class shape. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
     ],
     "test_strategy": [

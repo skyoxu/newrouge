@@ -129,3 +129,7 @@ Test-Refs:
   - `ActConfig` includes `schema_version/act_id/node_graph/pools/encounters`
   - schema validation failure is deterministic and assertable
   - overlay contracts/testing documents both contain the same Task28 refs
+
+## Task5 ADR Mapping
+- ADR-0021
+- ADR-0029
