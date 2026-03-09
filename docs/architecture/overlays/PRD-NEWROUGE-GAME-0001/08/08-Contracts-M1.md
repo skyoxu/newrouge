@@ -351,7 +351,9 @@ Test-Refs:
   - `Game.Core/Contracts/Offers/OfferProvenance.cs`
   - `Game.Core/Contracts/Offers/OfferSourceType.cs`
 - 状态系统
+  - `Game.Core/Contracts/Status/Status.cs`
   - `Game.Core/Contracts/Status/StatusInstance.cs`
+  - `Game.Core/Contracts/Status/StatusOperations.cs`
   - `Game.Core/Contracts/Status/StatusType.cs`
   - `Game.Core/Contracts/Status/ExpiresTiming.cs`
 - Run 与存档
