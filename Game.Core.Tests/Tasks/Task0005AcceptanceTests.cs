@@ -158,7 +158,11 @@ public sealed class Task0005AcceptanceTests
         var index = checklist.IndexOf(section, StringComparison.Ordinal);
         index.Should().BeGreaterOrEqualTo(0, "checklist must include Task5 ADR Mapping section");
 
-        var slice = checklist[index..];
+        var start = index + section.Length;
+        var nextSection = checklist.IndexOf("\n## ", start, StringComparison.Ordinal);
+        var slice = nextSection >= 0
+            ? checklist[index..nextSection]
+            : checklist[index..];
         return slice
             .Split('\n')
             .Select(line => line.Trim())
