@@ -1,0 +1,11 @@
+{
+  "prd_id": "PRD-NEWROUGE-GAME-0001",
+  "files": {
+    "index": "_index.md",
+    "feature": "08-Feature-Slice-M1-Warrior.md",
+    "contracts": "08-Contracts-M1.md",
+    "testing": "08-Testing-M1.md",
+    "observability": "08-Observability-M1.md",
+    "acceptance": "ACCEPTANCE_CHECKLIST.md"
+  }
+}

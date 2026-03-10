@@ -21,10 +21,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -86,10 +84,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -150,10 +146,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -209,10 +203,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -279,10 +271,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -343,10 +333,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -434,10 +422,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -501,10 +487,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -593,10 +577,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -662,10 +644,8 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -723,10 +703,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -821,10 +800,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -913,10 +891,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -932,7 +909,9 @@
     "acceptance": [
       "在 Godot 项目中注册且可见的 Autoload 必须包含 EventBus、DataStore、Logger、SecurityAudit、PerformanceTracker、SentryClient、FeatureFlags、CompositionRoot；脚本位置限定在 Game.Godot/Adapters、Game.Godot/Scripts、Game.Godot/Autoloads，且仅承担装配/桥接职责，不包含领域规则计算或状态机分支。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
       "CompositionRoot 必须在运行时提供 time、input、resourceLoader、dataStore、logger、eventBus 端口可用，且 HasInitializationErrors 返回 false 且 InitializationErrors 为空；CompositionRoot 装配节点在场景生命周期内可解析。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
-      "CompositionRoot 必须在运行时将 core 端口注入到实现注入钩子的 Godot 节点集合（不少于 2 个探针节点）并被节点实际消费；验收需断言节点拿到的 time、input、resourceLoader、dataStore、logger、eventBus 端口引用均为非空，且对未实现注入钩子、注入钩子签名不合法（invalid hook/signature）或钩子内部异常的节点返回失败并记录可观测错误（非静默成功）。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd"
+      "CompositionRoot 必须在运行时将 core 端口注入到实现注入钩子的 Godot 节点集合（不少于 2 个探针节点）并被节点实际消费；验收需断言节点拿到的 time、input、resourceLoader、dataStore、logger、eventBus 端口引用均为非空，且对未实现注入钩子、注入钩子签名不合法（invalid hook/signature）或钩子内部异常的节点返回失败并记录可观测错误（非静默成功）。 Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
+      "Startup smoke must run the Godot project and verify all required autoloads load without startup errors; if any autoload fails to load or any startup error/fatal appears, acceptance must fail and stop further wiring checks. Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd",
+      "Ensure no domain logic in autoloads: autoload scripts may only perform composition/bridge responsibilities and must not contain domain-rule calculations or state-machine branching; violations must fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd"
     ],
     "test_strategy": [
       "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022."
@@ -970,10 +949,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1042,10 +1020,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1103,10 +1080,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1165,10 +1141,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1246,10 +1221,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1314,10 +1288,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1392,10 +1365,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1456,10 +1428,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1527,10 +1498,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1596,10 +1566,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1619,7 +1588,8 @@
       "包含命名占位符的翻译条目使用 {name} 形式，并在界面中被实际值替换显示 Refs: Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
       "脚本与场景引用翻译键而非直接文本，且至少覆盖主入口界面文案 Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
       "In both en and zh-CN locales, the same UI node must assert exact text equality against expected localized values; mismatch fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "If rendered text equals the key name, missing translation placeholder, or fallback text, acceptance must fail and task status must not progress. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd"
+      "If rendered text equals the key name, missing translation placeholder, or fallback text, acceptance must fail and task status must not progress. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Translation keys must use approved domain prefixes (including ui., card., relic., event., etc.); any key without an approved documented prefix mapping must fail acceptance, and hard-coded UI text in scenes/scripts must fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
     ],
     "test_strategy": [
       "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010."
@@ -1654,10 +1624,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1718,10 +1687,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1783,10 +1751,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1853,10 +1820,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1923,10 +1889,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -1986,10 +1951,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2052,10 +2016,9 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2076,7 +2039,8 @@
       "Overlay 的 Test-Refs 清单必须包含本任务测试文件路径，并且可由该路径定位到 Task 30 对应验收用例；路径缺失或无法定位即验收失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicDefinition 的契约类型，并公开 relic_id、name_key、description_key、tags 四个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicDefinitionTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicInstance 的契约类型，并公开 instance_id、modifiers 两个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicInstanceTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
-      "仓库中除 Game.Core/Contracts 外不得存在 RelicDefinition 或 RelicInstance 的契约定义声明；一旦发现同名契约定义即验收失败。 Refs: Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs"
+      "仓库中除 Game.Core/Contracts 外不得存在 RelicDefinition 或 RelicInstance 的契约定义声明；一旦发现同名契约定义即验收失败。 Refs: Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
+      "Must include serialization round-trip acceptance: after JSON serialize/deserialize for RelicDefinition and RelicInstance, fields relic_id/name_key/description_key/tags and instance_id/modifiers must remain identical; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Domain/RelicDefinitionTests.cs Game.Core.Tests/Domain/RelicInstanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for relic contract validity and serialization. Refs: ADR-0020."
@@ -2116,10 +2080,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2181,10 +2145,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2242,10 +2206,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2315,10 +2279,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2385,10 +2349,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2450,10 +2414,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2516,10 +2480,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2577,10 +2541,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2644,10 +2608,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2711,10 +2675,10 @@
     "overlay_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "newrouge",
@@ -2769,12 +2733,7 @@
       "CH04"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -2826,12 +2785,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -2890,12 +2844,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -2956,12 +2905,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3031,12 +2975,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3092,12 +3031,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3163,12 +3097,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3233,12 +3162,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3294,12 +3218,7 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3366,12 +3285,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3429,12 +3343,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3506,12 +3415,7 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3564,12 +3468,7 @@
       "CH10"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3644,12 +3543,7 @@
       "CH01"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3715,12 +3609,7 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3782,12 +3671,7 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3858,12 +3742,7 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "newrouge",
@@ -3884,7 +3763,13 @@
       "Traceability check must run on Windows and output platform=windows in task-0057-traceability.json. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "The test strategy must execute one pass sample and one fail sample; pass must exit 0 without mismatch, fail must exit non-zero with mismatch diff. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Task57TraceabilityGateTests.cs must cover ADR/chapter/overlay checks and assertions must match task-0057-traceability.json pass/fail and diff output. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
-      "Traceability gate must run as a dedicated CI job or dedicated command; if this gate is skipped, unrecognized, or not executed, pipeline must fail before release stages. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs"
+      "Traceability gate must run as a dedicated CI job or dedicated command; if this gate is skipped, unrecognized, or not executed, pipeline must fail before release stages. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
+      "Gate must explicitly validate consistency across tasks.json ADR/chapter refs and overlay Test-Refs anchors (bidirectional): missing or mismatched links in either direction must fail with non-zero exit. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
+      "Traceability gate must validate full linkage consistency among task adr_refs/chapter_refs/overlay_refs and overlay 08 Test-Refs anchors (_index.md, 08-Feature-Slice-M1-Warrior.md, ACCEPTANCE_CHECKLIST.md); any missing, stale, or mismatched link must fail with non-zero exit and emit machine-readable diffs. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
+      "Validator must parse and compare these exact fields for Task 57: tasks.json master.adrRefs/chapterRefs/overlay, tasks_back.json and tasks_gameplay.json adr_refs/chapter_refs/overlay_refs, and overlay 08 Test-Refs entries; the consistency scope must include ADR refs, chapter refs, overlay refs, and Test-Refs path anchors. Any mismatch or missing item in this scope must fail gate with non-zero exit and JSON diff evidence. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
+      "必须校验 ADR / 章节 / Overlay Test-Refs 一致性：对比 tasks.json 与 tasks_back.json/tasks_gameplay.json 以及 overlay 文档中的 Test-Refs，任一缺失、错链、过期链接都必须判定失败并输出 diff。 Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
+      "The dedicated validator must compare all required link domains declared by the task metadata against overlay documents, emit JSON diff entries for every missing/stale/mismatched link, and return non-zero when any diff exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
+      "Dedicated checker must compare three required link groups across task metadata and project docs, emit machine-readable diffs for missing/stale/mismatched links, and return non-zero when any mismatch exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs"
     ],
     "test_strategy": [
       "Run traceability check on Windows with one pass sample and one fail sample."

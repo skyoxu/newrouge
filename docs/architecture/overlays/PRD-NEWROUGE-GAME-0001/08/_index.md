@@ -3,6 +3,7 @@ PRD-ID: PRD-NEWROUGE-GAME-0001
 Title: 08章功能纵切索引（M1: Warrior）
 Status: Draft
 ADR-Refs:
+  - ADR-0021
   - ADR-0005
   - ADR-0010
   - ADR-0011
