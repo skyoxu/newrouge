@@ -16,6 +16,7 @@ Test-Refs:
   - Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs
+  - Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0057AcceptanceTests.cs

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from _util import repo_root
+from _acceptance_semantic_scope import split_acceptance_scope
 
 
 PROMPT_HEADER = """Role: semantic-equivalence-auditor (batch)
@@ -15,6 +16,7 @@ PROMPT_HEADER = """Role: semantic-equivalence-auditor (batch)
 Goal: for each task below, judge whether the acceptance set is semantically equivalent to the task description.
 Scope: stage-2 only. Do NOT re-check deterministic gates (refs existence, anchors, ADR/security/static scans).
 Important: DO NOT infer requirements from any test file names/paths; treat refs as non-semantic metadata.
+Important: Governance-only acceptance items (ADR/checklist/traceability/marker refs) are excluded from semantic equivalence.
 
 Output format (STRICT, no markdown fences):
 For each task, output exactly one TSV line:
@@ -118,12 +120,16 @@ def _task_brief(
                 out.append(s)
         return out
 
-    def _acc(entry: dict[str, Any]) -> list[str]:
+    def _acc(entry: dict[str, Any]) -> tuple[list[str], list[str]]:
         raw = entry.get("acceptance") or []
         if not isinstance(raw, list):
-            return []
-        items = [_strip_refs_clause(x) for x in raw]
-        return [s for s in items if s][:max_acceptance_items]
+            return ([], [])
+        semantic_raw, governance_raw = split_acceptance_scope(raw)
+        semantic_items = [_strip_refs_clause(x) for x in semantic_raw]
+        governance_items = [_strip_refs_clause(x) for x in governance_raw]
+        semantic = [s for s in semantic_items if s][:max_acceptance_items]
+        governance = [s for s in governance_items if s][:max_acceptance_items]
+        return semantic, governance
 
     lines = [
         f"### Task {task_id}: {str(master.get('title') or '').strip()}",
@@ -141,14 +147,18 @@ def _task_brief(
         lines.append(f"- contractRefs: {', '.join(contract_refs[:20])}{' ...' if len(contract_refs) > 20 else ''}")
     if labels:
         lines.append(f"- labels: {', '.join(labels[:20])}{' ...' if len(labels) > 20 else ''}")
-    back_acc = _acc(back)
-    gameplay_acc = _acc(gameplay)
+    back_acc, back_governance = _acc(back)
+    gameplay_acc, gameplay_governance = _acc(gameplay)
     if back_acc:
         lines.append("- acceptance (view=back):")
         lines.extend([f"  - {a}" for a in back_acc])
+    if back_governance:
+        lines.append(f"- governance_acceptance_ignored (view=back): {len(back_governance)}")
     if gameplay_acc:
         lines.append("- acceptance (view=gameplay):")
         lines.extend([f"  - {a}" for a in gameplay_acc])
+    if gameplay_governance:
+        lines.append(f"- governance_acceptance_ignored (view=gameplay): {len(gameplay_governance)}")
     if not back_acc and not gameplay_acc:
         lines.append("- acceptance: (missing in both views)")
     return "\n".join(lines).strip()

@@ -43,6 +43,7 @@ from _subtasks_coverage_schema import (  # noqa: E402
     validate_subtasks_coverage_schema,
 )
 from _subtasks_coverage_garbled import run_subtasks_coverage_garbled_precheck  # noqa: E402
+from _acceptance_semantic_scope import split_acceptance_scope  # noqa: E402
 
 
 def _run_codex_exec(*, prompt: str, out_last_message: Path, timeout_sec: int) -> tuple[int, str, list[str]]:
@@ -229,10 +230,15 @@ def main() -> int:
     subtasks = normalize_subtasks(raw_subtasks)
 
     acceptance_by_view: dict[str, list[Any]] = {}
+    governance_ignored_counts: dict[str, int] = {}
     if is_view_present(triplet.back):
-        acceptance_by_view["back"] = list((triplet.back or {}).get("acceptance") or [])
+        semantic, governance = split_acceptance_scope(list((triplet.back or {}).get("acceptance") or []))
+        acceptance_by_view["back"] = semantic
+        governance_ignored_counts["back"] = len(governance)
     if is_view_present(triplet.gameplay):
-        acceptance_by_view["gameplay"] = list((triplet.gameplay or {}).get("acceptance") or [])
+        semantic, governance = split_acceptance_scope(list((triplet.gameplay or {}).get("acceptance") or []))
+        acceptance_by_view["gameplay"] = semantic
+        governance_ignored_counts["gameplay"] = len(governance)
 
     summary: dict[str, Any] = {
         "cmd": "sc-llm-subtasks-coverage",
@@ -241,6 +247,7 @@ def main() -> int:
         "status": None,
         "subtasks_total": len(subtasks),
         "views_present": sorted(acceptance_by_view.keys()),
+        "governance_ignored_counts": governance_ignored_counts,
         "out_dir": str(out_dir.relative_to(repo_root())).replace("\\", "/"),
         "selection_policy": selection_policy,
         "garbled_gate": garbled_gate,

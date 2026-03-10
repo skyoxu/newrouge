@@ -130,3 +130,10 @@ py -3 scripts/sc/git.py commit --smart-commit --task-ref "#10.1"
 - If any summary field/structure changes under `scripts/sc`, update the matching schema in `scripts/sc/schemas/*.schema.json` in the same change set.
 - After this type of change, run at least once: `py -3 scripts/sc/run_review_pipeline.py --task-id 1 --dry-run --skip-llm-review`.
 - Do not commit summary-contract changes if this minimal self-check fails.
+
+## Acceptance Scope Split (Semantic vs Governance)
+
+- Semantic gates (`sc-semantic-gate-all`, `sc-llm-check-subtasks-coverage`) now ignore governance-only acceptance items by default.
+- Governance-only items include ADR/checklist/traceability/marker/result-json refs style clauses.
+- `sc-llm-align-acceptance-semantics` will keep governance-only acceptance items unchanged.
+- Authoring template: `docs/workflows/acceptance-semantic-governance-template.md`.

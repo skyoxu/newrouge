@@ -20,6 +20,7 @@ bootstrap_imports()
 
 from _taskmaster import default_paths, iter_master_tasks, load_json  # noqa: E402
 from _util import repo_root, write_text  # noqa: E402
+from _acceptance_semantic_scope import is_governance_acceptance_line  # noqa: E402
 
 
 REFS_RE = re.compile(r"\bRefs\s*:\s*(.+)$", flags=re.IGNORECASE)
@@ -161,6 +162,7 @@ def render_task_context(
     lines.append("- Preserve existing Refs: suffix tokens verbatim for existing items.")
     lines.append("- Prefer wording that is observable/testable (state/event/output), avoid binding to implementation internals.")
     lines.append("- Avoid no-op loopholes: acceptance should be falsifiable; if applicable, include an explicit refusal/unchanged-state clause.")
+    lines.append("- Governance acceptance items (ADR/checklist/traceability/marker refs) are NOT semantic obligations and should remain unchanged.")
     lines.append("- Do not introduce new obligations unrelated to the master description/details.")
     lines.append(f"- Mode: {mode}")
     lines.append(f"- Align view descriptions to master: {bool(align_view_descriptions)}")
@@ -176,10 +178,11 @@ def render_task_context(
             lines.append("  (empty)")
         for i, a in enumerate(v.acceptance, 1):
             prefix, refs = split_refs(a)
+            marker = " [governance]" if is_governance_acceptance_line(a) else ""
             if refs:
-                lines.append(f"  {i}. {prefix} {refs}")
+                lines.append(f"  {i}. {prefix} {refs}{marker}")
             else:
-                lines.append(f"  {i}. {prefix}")
+                lines.append(f"  {i}. {prefix}{marker}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 
@@ -195,6 +198,7 @@ def build_prompt(task_context: str) -> str:
     blocks.append("- Do NOT add new Refs: tokens in this step (acceptance-only phase).")
     blocks.append("- If the task contains subtasks, acceptance must cover those obligations; if mode prevents it, explain in notes.")
     blocks.append("- Prefer falsifiable statements: avoid wording that can be satisfied by doing nothing.")
+    blocks.append("- Keep governance-only acceptance items unchanged (ADR/checklist/traceability/marker refs are non-semantic).")
     blocks.append("")
     blocks.append("Mode rules:")
     blocks.append('- rewrite-only: for each view, output acceptance array with EXACT SAME LENGTH as input and do NOT reorder items.')
@@ -299,6 +303,8 @@ def validate_output(
                     return False, f"{key}:refs_changed_at_{i+1}"
                 if (not old_refs) and new_refs:
                     return False, f"{key}:unexpected_refs_added_at_{i+1}"
+                if is_governance_acceptance_line(old) and str(new_s).strip() != str(old).strip():
+                    return False, f"{key}:governance_item_changed_at_{i+1}"
             else:
                 _p, refs = split_refs(new_s)
                 if refs:
