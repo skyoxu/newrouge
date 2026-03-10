@@ -133,3 +133,14 @@ Test-Refs:
 ## Task5 ADR Mapping
 - ADR-0021
 - ADR-0029
+
+## Task30 ADR Mapping
+- ADR-0010
+- ADR-0020
+- ADR-0021
+
+## Task30 Serialization Semantics
+- RelicDefinition serialized keys must be exactly: `relic_id`, `name_key`, `description_key`, `tags`.
+- RelicInstance serialized keys must be exactly: `instance_id`, `modifiers`.
+- Missing required keys or renamed keys must fail acceptance (`ACC:T30.1`).
+- Refs: `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`

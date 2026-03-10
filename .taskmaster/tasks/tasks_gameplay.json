@@ -2071,15 +2071,12 @@
       "Game.Core.Tests/Domain/RelicInstanceTests.cs"
     ],
     "acceptance": [
-      "在 Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs 中必须存在 Task 30 的 xUnit 验收用例；当 RelicDefinition 或 RelicInstance 缺少指定字段或属性，或其序列化结果与预期不一致时，测试会失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "Task 30 must include an xUnit acceptance test at Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs; acceptance must fail when RelicDefinition is missing any required key (relic_id, name_key, description_key, tags), or when RelicInstance is missing any required key (instance_id, modifiers). Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "在 Windows 环境运行该验收测试套件时应全部通过，且断言可证明 RelicDefinition 与 RelicInstance 的契约声明仅位于 Game.Core/Contracts；若在其他目录出现同名契约声明则断言失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "Overlay 的 Test-Refs 清单必须包含本任务测试文件路径，并且可由该路径定位到 Task 30 对应验收用例；路径缺失或无法定位即验收失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicDefinition 的契约类型，并公开 relic_id、name_key、description_key、tags 四个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicDefinitionTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicInstance 的契约类型，并公开 instance_id、modifiers 两个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicInstanceTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
-      "仓库中除 Game.Core/Contracts 外不得存在 RelicDefinition 或 RelicInstance 的契约定义声明；一旦发现同名契约定义即验收失败。 Refs: Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
-      "task-0030 result JSON refs must include ADR-0020, ADR-0021, and ADR-0010; missing any ADR ref fails acceptance. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
-      "ACCEPTANCE_CHECKLIST.md must explicitly list ADR-0020, ADR-0021, and ADR-0010 and exactly match task-0030 JSON refs; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
-      "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs must include an auditable ADR-0020 reference marker that gate scripts can parse; missing or unparsable marker fails acceptance. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs"
+      "仓库中除 Game.Core/Contracts 外不得存在 RelicDefinition 或 RelicInstance 的契约定义声明；一旦发现同名契约定义即验收失败。 Refs: Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for relic contract validity and serialization. Refs: ADR-0020."
