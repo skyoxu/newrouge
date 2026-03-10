@@ -132,8 +132,17 @@ def render_commit_message(
     return msg
 
 
+def sync_overlay_task_drift_baseline(*, out_dir: Path) -> tuple[int, str, Path]:
+    cmd = ["py", "-3", "scripts/python/remind_overlay_task_drift.py", "--write"]
+    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=120)
+    log_path = out_dir / "overlay-task-drift-sync.log"
+    write_text(log_path, out)
+    return rc, out, log_path
+
+
 def main() -> int:
     args = build_parser().parse_args()
+    out_dir = ci_dir("sc-git")
 
     op = args.operation
     extra = list(args.args)
@@ -148,6 +157,22 @@ def main() -> int:
     notes = []
 
     if op == "commit" and args.smart_commit and not has_commit_message(extra):
+        drift_rc, _drift_out, drift_log = sync_overlay_task_drift_baseline(out_dir=out_dir)
+        if drift_rc != 0:
+            summary: dict[str, Any] = {
+                "cmd": "sc-git",
+                "operation": op,
+                "args": extra,
+                "interactive": bool(args.interactive),
+                "rc": drift_rc,
+                "log": str(drift_log),
+                "notes": [{"overlay_task_drift_sync": "failed"}],
+            }
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_GIT rc={drift_rc} op={op} cmd=overlay-task-drift-sync out={out_dir}")
+            return drift_rc
+
+        notes.append({"overlay_task_drift_sync": "updated_or_ok", "log": str(drift_log)})
         triplet = resolve_triplet(task_id=args.task_id)
         task_ref = args.task_ref or f"#{triplet.task_id}"
         subject = smart_commit_message()
@@ -160,7 +185,6 @@ def main() -> int:
             overlay_file=triplet.overlay(),
         )
 
-        out_dir = ci_dir("sc-git")
         msg_path = out_dir / "commit-message.txt"
         write_text(msg_path, commit_msg)
 
@@ -176,7 +200,6 @@ def main() -> int:
             }
         )
 
-    out_dir = ci_dir("sc-git")
     rc, out = run_cmd(git_args, cwd=repo_root(), timeout_sec=300)
 
     # Log output
