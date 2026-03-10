@@ -20,7 +20,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Set up project environment and dependencies.",
@@ -46,7 +46,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 2,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Create core project structure and namespaces.",
@@ -73,7 +73,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement core contracts for card identity and forms.",
@@ -99,7 +99,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement core contracts for offer locking and deterministic outcomes.",
@@ -126,7 +126,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement core contracts for status and modifier system.",
@@ -193,7 +193,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Break down this task with a focus on Implement core contracts for combat loop and resolution pipeline.",
@@ -220,7 +220,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Set up event bus and contracts location.",
@@ -285,7 +285,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Break down this task with a focus on Implement core logic for card identity and forms.",
@@ -312,7 +312,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement deterministic RNG stream registry.",
@@ -339,7 +339,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement status application, stacking, and decay.",
@@ -405,7 +405,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Break down this task with a focus on Implement combat resolution pipeline (core).",
@@ -472,7 +472,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Break down this task with a focus on Implement save serialization and atomic write.",
@@ -504,7 +504,7 @@
           "CH07",
           "CH09"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Set up Godot autoloads and composition root.",
@@ -532,7 +532,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Create main menu scene with new run and continue options.",
@@ -560,7 +560,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement difficulty selection UI.",
@@ -586,7 +586,7 @@
           "CH06",
           "CH10"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement character selection UI for Warrior only.",
@@ -613,7 +613,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Create modular Act structure for map system.",
@@ -682,7 +682,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Break down this task with a focus on Implement combat scene UI shell and bindings.",
@@ -711,7 +711,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement reward scene with card three-choice-one and offer locking.",
@@ -740,7 +740,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement shop scene with inventory locking and no upgrade context.",
@@ -769,7 +769,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement rest scene with free upgrade option.",
@@ -797,7 +797,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement event scene with dark cost examples.",
@@ -823,7 +823,7 @@
           "CH06",
           "CH10"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Set up translations system with key naming conventions.",
@@ -849,7 +849,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement Warrior starting deck with 10 cards.",
@@ -877,7 +877,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement rage as state buff for Warrior.",
@@ -907,7 +907,7 @@
           "CH05",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Define difficulty configuration contract and immutability.",
@@ -935,7 +935,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement difficulty rule modifiers.",
@@ -964,7 +964,7 @@
           "CH05",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Create ActConfig data model and loader.",
@@ -992,7 +992,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement card drop pools per Act and encounter type.",
@@ -1021,7 +1021,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Define relic contracts and instance model.",
@@ -1049,7 +1049,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement 20 starting relic definitions and uniqueness checks.",
@@ -1076,7 +1076,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement curse cards and removal services.",
@@ -1104,7 +1104,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement deck operations service (draw/discard/exhaust/retain).",
@@ -1133,7 +1133,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement card targeting and drag UX.",
@@ -1162,7 +1162,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement end-of-combat resolution pipeline.",
@@ -1191,7 +1191,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement autosave triggers per determinism policy.",
@@ -1221,7 +1221,7 @@
           "CH05",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Single-slot continue metadata and integrity checks.",
@@ -1250,7 +1250,7 @@
           "CH03",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Audit logging for determinism and security events.",
@@ -1279,7 +1279,7 @@
           "CH06",
           "CH10"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Populate translations for M1 cards, relics, events.",
@@ -1307,7 +1307,7 @@
           "CH05",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Define Act 1 enemy data and definitions.",
@@ -1338,7 +1338,7 @@
           "CH05",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement enemy intent display and preview UI.",
@@ -1364,7 +1364,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Map node entry gating and backtracking rules.",
@@ -1392,7 +1392,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Run state machine with Command-only transitions.",
@@ -1423,7 +1423,7 @@
           "CH02",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Deterministic resume integration tests (headless).",
@@ -1453,7 +1453,7 @@
           "CH10",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Display difficulty in HUD and run summary.",
@@ -1480,7 +1480,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement offer locking generation using RNG streams.",
@@ -1507,7 +1507,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement status trigger ordering and fixed damage rules.",
@@ -1535,7 +1535,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement damage calculation and AOE ordering.",
@@ -1562,7 +1562,7 @@
           "CH02",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement stability safeguards for combat loop.",
@@ -1589,7 +1589,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement save migration validation and failure blocking.",
@@ -1618,7 +1618,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Integrate combat turn flow and persistence.",
@@ -1646,7 +1646,7 @@
           "CH06",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 6,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Implement enemy intent selection logic.",
@@ -1674,7 +1674,7 @@
           "CH07",
           "CH10"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Headless smoke runner (Python) + strict mode.",
@@ -1702,7 +1702,7 @@
           "CH07",
           "CH10"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Integrate GdUnit4 suites into quality_gates.py.",
@@ -1726,7 +1726,7 @@
         "archRefs": [
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 5,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Coverage thresholds as configurable soft/hard gate.",
@@ -1754,7 +1754,7 @@
           "CH03",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Audit JSONL validation + gate integration.",
@@ -1782,7 +1782,7 @@
           "CH03",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on traceability gate for ADR/Chapter/Overlay links.",
@@ -1808,7 +1808,7 @@
           "CH03",
           "CH07"
         ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on semantic scope governance for soft review stabilization.",
