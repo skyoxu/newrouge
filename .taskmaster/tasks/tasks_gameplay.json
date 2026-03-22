@@ -3686,12 +3686,12 @@
       "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
     ],
     "acceptance": [
-      "?? `scripts/python/validate_audit_logs.py`?????? JSONL ?????????????????????????????????????????????? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "????????????????????????????????????????????? JSONL ?? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "`quality_gates.py` ????????????????????????? `executed` ? `pass_fail` ?????? task-0056 ?? JSON? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "?????????`validate_audit_logs.py` ???????????? `quality_gates.py` ?????????????? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "??????? JSONL ????? Windows ??????????????????????? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "??????????`quality_gates.py` ????? `validate_audit_logs.py`??? task-0056 ???? `executed=false` ? `pass_fail=\"skipped\"`? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
+      "Provide scripts/python/validate_audit_logs.py to validate security-audit JSONL line-by-line (structure + required fields); any invalid row must return non-zero and must not be treated as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "On validation failure, output must include exact line numbers and actionable fix reasons so the broken JSONL rows can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "quality_gates.py must invoke the audit validator when enabled and persist actual executed/pass_fail results into task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "When audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must exit non-zero and block downstream release path. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "Provide valid and invalid JSONL fixtures and reproduce one passing and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "When audit validation is disabled, quality_gates.py must not invoke validate_audit_logs.py and must write executed=false and pass_fail=\"skipped\" into task-0056 summary. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],
     "test_strategy": [
       "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."

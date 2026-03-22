@@ -8,7 +8,7 @@ namespace Game.Core.Tests.Services;
 public sealed class StatusServiceTests
 {
     [Fact]
-    public void Should_ReturnCurrent_WhenIncomingHasNoPositiveStacksAndDuration()
+    public void ShouldReturnCurrent_WhenIncomingHasNoPositiveStacksAndDuration()
     {
         var service = new StatusService();
         var current = CreateStatus(stacks: 2, durationTurns: 3, timing: ExpiresTiming.OwnerEndOfTurnCleanup);
@@ -20,7 +20,7 @@ public sealed class StatusServiceTests
     }
 
     [Fact]
-    public void Should_Stack_WhenIncomingHasPositiveStacksOrDuration()
+    public void ShouldStack_WhenIncomingHasPositiveStacksOrDuration()
     {
         var service = new StatusService();
         var current = CreateStatus(stacks: 2, durationTurns: 3, timing: ExpiresTiming.OwnerEndOfTurnCleanup);
@@ -33,7 +33,7 @@ public sealed class StatusServiceTests
     }
 
     [Fact]
-    public void Should_ReturnCurrent_WhenTickCalledForNeverExpireStatus()
+    public void ShouldReturnCurrent_WhenTickCalledForNeverExpireStatus()
     {
         var service = new StatusService();
         var current = CreateStatus(stacks: 1, durationTurns: 4, timing: ExpiresTiming.Never);
@@ -44,7 +44,7 @@ public sealed class StatusServiceTests
     }
 
     [Fact]
-    public void Should_ReturnCurrent_WhenTickTimingDoesNotMatchStatusTiming()
+    public void ShouldReturnCurrent_WhenTickTimingDoesNotMatchStatusTiming()
     {
         var service = new StatusService();
         var current = CreateStatus(stacks: 1, durationTurns: 4, timing: ExpiresTiming.OwnerEndOfTurnCleanup);
@@ -55,7 +55,7 @@ public sealed class StatusServiceTests
     }
 
     [Fact]
-    public void Should_DecayDuration_WhenTickTimingMatchesStatusTiming()
+    public void ShouldDecayDuration_WhenTickTimingMatchesStatusTiming()
     {
         var service = new StatusService();
         var current = CreateStatus(stacks: 1, durationTurns: 4, timing: ExpiresTiming.OwnerStartOfTurn);
