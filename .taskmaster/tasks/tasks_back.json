@@ -943,7 +943,8 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1004,7 +1005,8 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1068,7 +1070,8 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1136,7 +1139,8 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1194,7 +1198,8 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1266,7 +1271,8 @@
       "CH05"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1321,7 +1327,8 @@
       "CH10"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1398,7 +1405,8 @@
       "CH01"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1466,7 +1474,8 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1530,7 +1539,8 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -1541,25 +1551,18 @@
     ],
     "owner": "architecture",
     "test_refs": [
+      "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
-      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
-      "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs"
+      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
     ],
     "acceptance": [
-      "提供 `scripts/python/validate_audit_logs.py`，对安全审计 JSONL 执行逐行结构与必填字段校验；只要存在任意无效行，本次运行必须返回非零退出码且不得判定为通过。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "当校验失败时，输出必须包含每条被拒绝记录的实际行号与可执行修复原因，以便直接定位并修复对应 JSONL 行。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "`quality_gates.py` 在启用该校验时必须实际调用审计校验器，并将该步骤的 `executed` 与 `pass_fail` 实际结果写入 task-0056 汇总 JSON。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "当启用审计校验且校验结果为失败时，`quality_gates.py` 必须以非零状态结束本次门禁流程，流水线不得以成功状态继续发布路径。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "提供有效与无效 JSONL 夹具，并在 Windows 环境下可重复复现一轮通过与一轮失败的运行结果。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "当未启用审计校验时，`quality_gates.py` 必须不调用 `validate_audit_logs.py`，并在 task-0056 汇总写入 `executed=false` 与 `pass_fail=\"skipped\"`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "当启用审计校验时，`validate_audit_logs.py` 必须执行；任一校验失败时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "必须提供并执行 `Tests/CI/AuditLogs/ValidateAuditLogsTests.cs`、`Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs`、`Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs`。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
-      "task-0056 汇总必须记录上述测试的 `executed/pass_fail`；任一未执行或失败即判定任务失败。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "task-0056 汇总必须包含 `adr_refs=[\"ADR-0019\",\"ADR-0003\",\"ADR-0005\"]`；缺失任一 ADR 回链时门禁必须非零退出。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "task-0056 汇总必须包含 `chapter_refs=[\"CH02\",\"CH03\",\"CH07\"]`；章节回链不完整或不一致时门禁必须非零退出。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
+      "?? `scripts/python/validate_audit_logs.py`?????? JSONL ?????????????????????????????????????????????? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "????????????????????????????????????????????? JSONL ?? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "`quality_gates.py` ????????????????????????? `executed` ? `pass_fail` ?????? task-0056 ?? JSON? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "?????????`validate_audit_logs.py` ???????????? `quality_gates.py` ?????????????? Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "??????? JSONL ????? Windows ??????????????????????? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "??????????`quality_gates.py` ????? `validate_audit_logs.py`??? task-0056 ???? `executed=false` ? `pass_fail=\"skipped\"`? Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],
     "test_strategy": [
       "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."
@@ -1603,7 +1606,8 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -2491,7 +2495,8 @@
       "CH10"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -2536,7 +2541,8 @@
       "CH10"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",
@@ -2578,7 +2584,8 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "labels": [
       "backlog",

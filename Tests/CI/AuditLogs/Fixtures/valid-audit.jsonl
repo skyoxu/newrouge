@@ -1,0 +1,2 @@
+{"ts":"2026-03-11T00:00:00Z","action":"open_url","reason":"allowed","target":"https://example.com","caller":"security_test"}
+{"ts":"2026-03-11T00:00:01Z","action":"open_url","reason":"allowed","target":"https://example.com/page","caller":"security_test"}

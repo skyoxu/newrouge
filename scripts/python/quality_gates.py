@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from _task0056_audit import run_task0056_audit_validation, write_task0056_record
 ALL_GDUNIT_SUITES = ("adapters", "security", "integration", "ui")
 HARD_GDUNIT_SUITES = ("adapters", "security")
 SOFT_GDUNIT_SUITES = ("integration", "ui")
@@ -375,7 +376,11 @@ def main() -> int:
         return 1
 
     ci_rc = run_ci_pipeline(args.solution, args.configuration, args.godot_bin, args.build_solutions)
+    os.environ["QUALITY_GATES_CI_RC"] = str(ci_rc)
     hard_failed = ci_rc != 0
+    audit_validation = run_task0056_audit_validation(_repo_root(), date)
+    if bool(audit_validation.get("enabled")) and int(audit_validation.get("rc") or 0) != 0:
+        hard_failed = True
 
     selected_suites, invalid_suites = _resolve_selected_suites(args.gdunit_suites, args.gdunit_hard)
     suite_runs: dict[str, dict[str, object]] = {}
@@ -414,8 +419,18 @@ def main() -> int:
         invalid_suites=invalid_suites,
         junit_artifact=junit_artifact,
     )
-    final_exit_code = 1 if hard_failed else 0
-    _write_task_0054_record(date=date, selected_suites=selected_suites, summary_payload=summary_payload, final_exit_code=final_exit_code)
+    provisional_exit_code = 1 if hard_failed else 0
+    _write_task_0054_record(
+        date=date,
+        selected_suites=selected_suites,
+        summary_payload=summary_payload,
+        final_exit_code=provisional_exit_code,
+    )
+    record_validation = write_task0056_record(_repo_root(), date, audit_validation, provisional_exit_code)
+    final_exit_code = provisional_exit_code
+    if not bool(record_validation.get("valid")):
+        final_exit_code = 1
+        write_task0056_record(_repo_root(), date, audit_validation, final_exit_code)
     return final_exit_code
 
 if __name__ == "__main__":
