@@ -21,4 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Game.Core\Game.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Tests\CI\AuditLogs\ValidateAuditLogsTests.cs" Link="CI\AuditLogs\ValidateAuditLogsTests.cs" />
+  </ItemGroup>
 </Project>

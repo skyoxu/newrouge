@@ -183,8 +183,9 @@ def _task_scoped_cs_refs(*, task_id: str | None) -> list[str]:
     """
     Resolve task-scoped C# test refs from task views.
 
-    Accepted ref shape:
+    Accepted ref shapes:
     - Game.Core.Tests/.../*.cs
+    - Tests/CI/.../*.cs
     """
     task_root_id = _normalize_task_root_id(task_id)
     if not task_root_id:
@@ -222,7 +223,7 @@ def _task_scoped_cs_refs(*, task_id: str | None) -> list[str]:
                 ref = raw_ref.replace("\\", "/").strip()
                 if not ref.lower().endswith(".cs"):
                     continue
-                if not ref.startswith("Game.Core.Tests/"):
+                if not (ref.startswith("Game.Core.Tests/") or ref.startswith("Tests/CI/")):
                     continue
                 if not (repo_root() / ref).is_file():
                     continue
