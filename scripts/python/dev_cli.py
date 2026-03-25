@@ -147,6 +147,74 @@ def cmd_run_smoke_strict(args: argparse.Namespace) -> int:
     ])
 
 
+def cmd_detect_project_stage(args: argparse.Namespace) -> int:
+    """Detect current repo stage and refresh project-health artifacts."""
+
+    return run([
+        "py",
+        "-3",
+        "scripts/python/detect_project_stage.py",
+        "--repo-root",
+        args.repo_root,
+    ])
+
+
+def cmd_doctor_project(args: argparse.Namespace) -> int:
+    """Run deterministic project doctor checks."""
+
+    return run([
+        "py",
+        "-3",
+        "scripts/python/doctor_project.py",
+        "--repo-root",
+        args.repo_root,
+    ])
+
+
+def cmd_check_directory_boundaries(args: argparse.Namespace) -> int:
+    """Run deterministic directory boundary checks."""
+
+    return run([
+        "py",
+        "-3",
+        "scripts/python/check_directory_boundaries.py",
+        "--repo-root",
+        args.repo_root,
+    ])
+
+
+def cmd_project_health_scan(args: argparse.Namespace) -> int:
+    """Run full project-health scan and refresh dashboard artifacts."""
+
+    cmd = [
+        "py",
+        "-3",
+        "scripts/python/project_health_scan.py",
+        "--repo-root",
+        args.repo_root,
+    ]
+    if args.serve:
+        cmd.append("--serve")
+    if args.port:
+        cmd += ["--port", str(args.port)]
+    return run(cmd)
+
+
+def cmd_serve_project_health(args: argparse.Namespace) -> int:
+    """Serve local project-health dashboard at 127.0.0.1."""
+
+    cmd = [
+        "py",
+        "-3",
+        "scripts/python/serve_project_health.py",
+        "--repo-root",
+        args.repo_root,
+    ]
+    if args.port:
+        cmd += ["--port", str(args.port)]
+    return run(cmd)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -190,6 +258,34 @@ def build_parser() -> argparse.ArgumentParser:
     p_sm.add_argument("--godot-bin", required=True)
     p_sm.add_argument("--timeout-sec", type=int, default=5)
     p_sm.set_defaults(func=cmd_run_smoke_strict)
+
+    # project-health: detect-project-stage
+    p_dps = sub.add_parser("detect-project-stage", help="detect repo stage and refresh project-health artifacts")
+    p_dps.add_argument("--repo-root", default=".")
+    p_dps.set_defaults(func=cmd_detect_project_stage)
+
+    # project-health: doctor-project
+    p_dp = sub.add_parser("doctor-project", help="run deterministic project doctor checks")
+    p_dp.add_argument("--repo-root", default=".")
+    p_dp.set_defaults(func=cmd_doctor_project)
+
+    # project-health: check-directory-boundaries
+    p_cdb = sub.add_parser("check-directory-boundaries", help="run deterministic directory boundary checks")
+    p_cdb.add_argument("--repo-root", default=".")
+    p_cdb.set_defaults(func=cmd_check_directory_boundaries)
+
+    # project-health: project-health-scan
+    p_phs = sub.add_parser("project-health-scan", help="run stage+doctor+boundary checks and refresh dashboard")
+    p_phs.add_argument("--repo-root", default=".")
+    p_phs.add_argument("--serve", action="store_true")
+    p_phs.add_argument("--port", type=int, default=0)
+    p_phs.set_defaults(func=cmd_project_health_scan)
+
+    # project-health: serve-project-health
+    p_sph = sub.add_parser("serve-project-health", help="serve local project-health dashboard")
+    p_sph.add_argument("--repo-root", default=".")
+    p_sph.add_argument("--port", type=int, default=0)
+    p_sph.set_defaults(func=cmd_serve_project_health)
 
     return parser
 
