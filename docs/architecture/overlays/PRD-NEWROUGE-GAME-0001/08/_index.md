@@ -51,7 +51,7 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-03-26T08:12:53.501916+00:00",
+  "generated_at": "2026-03-26T09:15:45.710649+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
