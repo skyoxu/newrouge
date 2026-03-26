@@ -40,7 +40,7 @@ This file provides guidance to Codex Cli when working with code in this reposito
    - `shards/flattened-prd.xml` - All PRD in single XML
 3. **Test framework** - `docs/testing-framework.md` (critical for TDD)
 
-4. **????????**
+4. **Recovery Entry Points**
    - `docs/workflows/prototype-lane.md`
    - `docs/agents/16-directory-responsibilities.md`
    - `py -3 scripts/python/dev_cli.py resume-task --run-id <run_id>`
