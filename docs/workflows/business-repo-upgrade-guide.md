@@ -1,24 +1,5 @@
 # Business Repo Upgrade Guide
 
-## newrouge 本地使用说明（先看这段）
-
-- 这份文档记录的是“模板升级波次”的迁移面，默认读者是“待升级的业务仓”。
-- `F:\newrouge` 当前应把它当成“差异清单”，不要把文中所有命令直接当本仓可执行命令。
-- 当前本仓实际可执行的 `dev_cli` 入口只有：
-  - `run-ci-basic`
-  - `run-quality-gates`
-  - `run-gdunit-hard`
-  - `run-gdunit-full`
-  - `run-preflight`
-  - `run-smoke-strict`
-  - `detect-project-stage`
-  - `doctor-project`
-  - `check-directory-boundaries`
-  - `project-health-scan`
-  - `serve-project-health`
-- 文中核心入口在本仓均已接线可执行（含 `run-local-hard-checks`、`project-health-scan`、`serve-project-health`）。
-- 本仓已使用真实 task triplet：`.taskmaster/tasks/tasks.json`、`tasks_back.json`、`tasks_gameplay.json`；`examples/taskmaster/**` 只能作为迁移参考，不是执行 SSoT。
-
 ## Scope
 
 - Base compare wave: `origin/main` (`125d7f1`) -> template migration wave rooted at `883f69e`
@@ -709,3 +690,4 @@ A scripts/sc/tests/test_run_review_pipeline_marathon.py
 A scripts/sc/tests/test_sc_test_orchestration.py
 A scripts/sc/tests/test_sc_test_refs.py
 ```
+

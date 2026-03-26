@@ -1,59 +1,145 @@
-# 本地硬校验执行指南（newrouge 对齐版）
+# Local Hard Checks Workflow
 
-本文档定义 `F:\newrouge` 当前可执行的 `run-local-hard-checks` 入口与行为。
+This document defines the contract for py -3 scripts/python/dev_cli.py run-local-hard-checks.
 
-## 主入口
+## Goal
 
-```powershell
+- Provide one stable local entrypoint for full hard validation.
+- Avoid step drift caused by manually stitching commands together.
+- Avoid re-running 
+un_gate_bundle.py --mode hard and creating duplicate noise.
+- Treat local hard validation as a first-class run object for recovery after context resets.
+
+## When To Use It
+
+- Run it before commit when you want the full local hard path.
+- Run it before a PR when semantics, contracts, unit tests, and the small engine set all need confirmation.
+- Run it to reproduce the repository-recommended local order before debugging a CI failure.
+- Read its sidecars after a context reset to see where the local hard path stopped.
+
+## Default Order
+
+
+un-local-hard-checks executes these steps in order and stops at the first failing step:
+
+1. scripts/python/run_gate_bundle.py --mode hard
+2. scripts/python/run_dotnet.py
+3. scripts/python/run_gdunit.py (Adapters/Config + Security hard set, only when --godot-bin is provided)
+4. scripts/python/smoke_headless.py --strict (only when --godot-bin is provided)
+
+Core rules:
+
+- 
+un_gate_bundle.py runs exactly once.
+- quality_gates.py all is intentionally excluded from this chain to avoid re-triggering the hard bundle.
+- Without --godot-bin, the run executes project health scan + gate bundle + dotnet.
+- Every step writes events and a step log so recovery can start from artifacts instead of memory.
+
+## Recommended Commands
+
+`powershell
+# Full local hard validation
 py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin C:\Godot\Godot_v4.5.1-stable_mono_win64_console.exe
-```
 
-不带 `--godot-bin` 时，会跳过 GdUnit/Smoke，仅执行仓库级硬门与 dotnet。
+# No Godot runtime available: semantics, contracts, and dotnet only
+py -3 scripts/python/dev_cli.py run-local-hard-checks
+`
 
-## 默认执行顺序
+## Main Parameters
 
-`run-local-hard-checks` 按以下顺序执行，遇到首个失败即停止：
+- --godot-bin <path>: enables the GdUnit4 hard set and strict smoke.
+- --solution <path>: forwarded to 
+un_dotnet.py; default Game.sln.
+- --configuration <Debug|Release>: forwarded to 
+un_dotnet.py; default Debug.
+- --delivery-profile <profile>: resolves the run-level delivery profile and default security profile.
+- --task-file <path>: repeatable; overrides the default task views and is forwarded to the hard gate bundle.
+- --out-dir <path>: overrides the harness run root; default is logs/ci/<YYYY-MM-DD>/local-hard-checks-<run-id>/.
+- --run-id <id>: stable identity for the whole harness run and its nested hard bundle artifacts.
+- --timeout-sec <n>: forwarded to strict smoke; default 5.
 
-1. `project-health-scan`
-2. `run_gate_bundle.py --mode hard`
-3. `run_dotnet.py`
-4. `run_gdunit.py`（仅当提供 `--godot-bin`）
-5. `smoke_headless.py --strict`（仅当提供 `--godot-bin`）
+## Difference From Other Entrypoints
 
-## 关键参数
+### 
+un-ci-basic
 
-- `--solution`：默认 `Game.sln`
-- `--configuration`：默认 `Debug`
-- `--godot-bin`：启用 GdUnit + Strict Smoke
-- `--delivery-profile`：传递交付档位（默认从配置解析）
-- `--task-file`：可重复，覆盖 hard gate 读取的任务文件
-- `--out-dir`：指定本次运行产物目录
-- `--run-id`：指定稳定 run id
-- `--timeout-sec`：strict smoke 超时，默认 5
+- Goal: minimal hard gate entrypoint.
+- Default behavior: only runs 
+un_gate_bundle.py --mode hard.
+- It only appends legacy ci_pipeline.py when --legacy-preflight is explicitly enabled.
 
-## 产物
+### 
+un-quality-gates
 
-默认产物目录：
+- Goal: wrap quality_gates.py all.
+- Default behavior: run the hard gate bundle first and optionally append --gdunit-hard / --smoke.
+- Useful for focused engine-side checks, but not the right primary entrypoint for full local hard validation because it can duplicate the hard bundle path.
 
-`logs/ci/<YYYY-MM-DD>/local-hard-checks-<run-id>/`
+### Manual Step Execution
 
-关键 sidecar：
+Useful when isolating one failing step, but not the recommended day-to-day default.
 
-- `summary.json`
-- `execution-context.json`
-- `repair-guide.json`
-- `repair-guide.md`
-- `run-events.jsonl`
-- `harness-capabilities.json`
-- `run_id.txt`
-- `<step>.log`
+## Artifacts And Logs
 
-latest 索引：
+### Harness Root
 
-`logs/ci/<YYYY-MM-DD>/local-hard-checks-latest.json`
+Default root: logs/ci/<YYYY-MM-DD>/local-hard-checks-<run-id>/
 
-## 止损规则
+This directory is now a first-class run object and writes at least:
 
-- 日常全量本地硬门优先使用本入口，不再手工拼接三到五条命令。
-- 若只排查仓库健康，直接跑 `project-health-scan`，不要拉长流程。
-- 若只排查引擎测试，优先用 `run-gdunit-hard`。
+- summary.json: canonical run status and step list
+- execution-context.json: profile state, failed step, and sidecar pointers
+- 
+epair-guide.json: machine-readable repair guidance
+- 
+epair-guide.md: human-readable repair guidance
+- 
+un-events.jsonl: append-only lifecycle and step timeline
+- harness-capabilities.json: supported sidecars and recovery actions for this run type
+- 
+un_id.txt: stable run id
+- <step>.log: one JSON log per step, for example gate-bundle-hard.log
+
+The same date directory also gets a repo-scoped pointer:
+
+- logs/ci/<YYYY-MM-DD>/local-hard-checks-latest.json
+
+### Repo Health Prelude
+
+- The run now refreshes `logs/ci/project-health/latest.json` and `logs/ci/project-health/latest.html` before any hard validation step.
+- `warn` from project health does not block the run.
+- `fail` from project health blocks the run immediately because it indicates a repo-level stop-loss issue.
+
+### Nested Step Artifacts
+
+- Hard gate bundle: nested summary at <run-out-dir>/hard/summary.json
+- Dotnet: logs/unit/<YYYY-MM-DD>/
+- GdUnit4 hard set: logs/e2e/dev-cli/local-hard-checks-gdunit-hard/
+- Strict smoke: logs/ci/<YYYY-MM-DD>/smoke/<timestamp>/
+
+### Protocol Boundary
+
+This run currently supports only the minimal recovery actions:
+
+- 
+erun
+- inspect-failed-step
+
+It does not produce pproval-request.json, pproval-response.json, marathon-state.json, or gent-review.json. Those sidecars remain part of the task-scoped 
+un_review_pipeline.py protocol.
+
+## Stop-Loss Rules
+
+- If you only want semantics and contract gates, use 
+un-ci-basic instead.
+- If you only want GdUnit4 hard or smoke, use 
+un-quality-gates or the dedicated subcommands instead.
+- If this entrypoint needs more steps later, do not push command composition back into dev_cli.py; extend scripts/python/local_hard_checks_harness.py and scripts/python/dev_cli_builders.py instead.
+- If future work needs approvals, marathon checkpoints, or reviewer sidecars, decide first whether the feature still belongs to a repo-scoped run or should move into the task-scoped review pipeline.
+
+## Related Docs
+
+- docs/testing-framework.md
+- docs/workflows/gate-bundle.md
+- docs/workflows/run-protocol.md
+- DELIVERY_PROFILE.md
