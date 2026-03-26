@@ -59,7 +59,8 @@
     ],
     "taskmaster_id": 1,
     "taskmaster_exported": true,
-    "contractRefs": []
+    "contractRefs": [],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0102",
@@ -120,7 +121,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0002-structure.txt"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0103",
@@ -178,7 +180,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0104",
@@ -245,7 +248,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0004.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0105",
@@ -307,7 +311,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0005.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0106",
@@ -395,7 +400,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0006.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0107",
@@ -462,7 +468,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0108",
@@ -551,7 +558,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0008.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0109",
@@ -618,7 +626,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0110",
@@ -677,7 +686,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0111",
@@ -774,7 +784,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0011.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0112",
@@ -860,7 +871,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0113",
@@ -922,7 +934,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0013.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0114",
@@ -993,7 +1006,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0115",
@@ -1056,7 +1070,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0116",
@@ -1115,7 +1130,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0117",
@@ -1192,7 +1208,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0118",
@@ -1260,7 +1277,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0119",
@@ -1337,7 +1355,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0019.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0120",
@@ -1400,7 +1419,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0121",
@@ -1471,7 +1491,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0021.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0122",
@@ -1542,7 +1563,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0022.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0123",
@@ -1599,7 +1621,8 @@
     "contractRefs": [],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0124",
@@ -1660,7 +1683,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0125",
@@ -1723,7 +1747,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0126",
@@ -1793,7 +1818,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0026.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0127",
@@ -1861,7 +1887,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0027.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0128",
@@ -1924,7 +1951,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0028.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0129",
@@ -1988,7 +2016,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0130",
@@ -2053,7 +2082,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0030.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0131",
@@ -2119,7 +2149,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0031.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0132",
@@ -2179,7 +2210,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0133",
@@ -2251,7 +2283,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0033.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0134",
@@ -2321,7 +2354,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0135",
@@ -2386,7 +2420,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0136",
@@ -2452,7 +2487,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0036.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0137",
@@ -2514,7 +2550,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0138",
@@ -2581,7 +2618,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0038.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0139",
@@ -2649,7 +2687,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0140",
@@ -2705,7 +2744,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0141",
@@ -2762,7 +2802,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0142",
@@ -2819,7 +2860,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0143",
@@ -2877,7 +2919,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0144",
@@ -2948,7 +2991,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0145",
@@ -3007,7 +3051,8 @@
     ],
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0146",
@@ -3073,7 +3118,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0046.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0147",
@@ -3137,7 +3183,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0047.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0148",
@@ -3195,7 +3242,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0048.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0149",
@@ -3261,7 +3309,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0049.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0150",
@@ -3317,7 +3366,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0050.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0151",
@@ -3390,7 +3440,8 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0051.json"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0152",
@@ -3444,7 +3495,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0052.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0153",
@@ -3518,7 +3570,8 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0154",
@@ -3589,7 +3642,8 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "logs/ci/<date>/quality-gates/summary.json",
       "logs/e2e/<date>/gdunit/junit.xml"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0155",
@@ -3647,7 +3701,8 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0055.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0156",
@@ -3711,7 +3766,8 @@
       "docs/architecture/base/03-observability-sentry-logging-v2.md",
       "docs/architecture/base/07-dev-build-and-gates-v2.md",
       "logs/ci/<date>/security-audit.jsonl"
-    ]
+    ],
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0157",
@@ -3777,6 +3833,7 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
-    ]
+    ],
+    "semantic_review_tier": "full"
   }
 ]

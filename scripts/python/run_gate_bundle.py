@@ -25,9 +25,76 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from _delivery_profile import known_delivery_profiles, profile_gate_bundle_defaults, resolve_delivery_profile
+except ImportError:
+    _SC_DIR = Path(__file__).resolve().parents[1] / "sc"
+    if str(_SC_DIR) not in sys.path:
+        sys.path.insert(0, str(_SC_DIR))
+    from _delivery_profile import known_delivery_profiles, profile_gate_bundle_defaults, resolve_delivery_profile
+
+try:
     from gate_bundle_retention import prune_gate_bundle_runs
 except ImportError:
     from scripts.python.gate_bundle_retention import prune_gate_bundle_runs
+
+
+TASK_FILE_DEPENDENT_GATES = {
+    "overlay_task_drift",
+    "task_contract_refs_gate",
+    "obligations_reuse_regression",
+    "task_contract_test_matrix",
+    "acceptance_stability_template",
+    "check_tasks_all_refs_warning_budget",
+    "llm_align_acceptance_self_check",
+}
+
+CONTRACT_INTERFACES_DIR = Path("Game.Core/Contracts/Interfaces")
+PRD_GDD_CONSISTENCY_CONFIG = Path("scripts/python/config/prd-gdd-consistency-rules.json")
+DELIVERY_PROFILE_CHOICES = tuple(sorted(known_delivery_profiles()))
+
+
+def _configure_console_streams() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            continue
+
+
+def _safe_print(text: str, *, end: str = "\n") -> None:
+    try:
+        print(text, end=end)
+        return
+    except UnicodeEncodeError:
+        pass
+
+    stream = getattr(sys, "stdout", None)
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    rendered = text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    print(rendered, end=end)
+
+
+def _existing_task_files(task_files: list[str], repo_root: Path) -> list[str]:
+    existing: list[str] = []
+    for item in task_files:
+        candidate = (repo_root / str(item)).resolve()
+        if candidate.exists() and candidate.is_file():
+            existing.append(str(item))
+    return existing
+
+
+def _skip_reason_for_gate(name: str, *, repo_root: Path, task_files: list[str]) -> str | None:
+    existing_task_files = _existing_task_files(task_files, repo_root)
+    if name in TASK_FILE_DEPENDENT_GATES and not existing_task_files:
+        return "missing_task_files"
+    if name == "contract_interface_docs" and not (repo_root / CONTRACT_INTERFACES_DIR).exists():
+        return "missing_contract_interfaces_dir"
+    if name == "prd_gdd_semantic_consistency" and not (repo_root / PRD_GDD_CONSISTENCY_CONFIG).exists():
+        return "missing_prd_gdd_consistency_config"
+    return None
 
 
 def _today() -> str:
@@ -56,8 +123,26 @@ def _default_out_root(run_id: str) -> Path:
     return Path("logs") / "ci" / _today() / "gate-bundle" / "runs" / run_id
 
 
+def resolve_gate_bundle_runtime(*, delivery_profile: str | None, task_links_max_warnings: int | None = None, stability_template_hard: bool = False) -> dict[str, Any]:
+    resolved_delivery_profile = resolve_delivery_profile(delivery_profile)
+    defaults = profile_gate_bundle_defaults(resolved_delivery_profile)
+    resolved_task_links_max_warnings = task_links_max_warnings
+    if resolved_task_links_max_warnings is None:
+        resolved_task_links_max_warnings = int(defaults.get("task_links_max_warnings", -1) or -1)
+    resolved_stability_template_hard = bool(stability_template_hard or defaults.get("stability_template_hard", False))
+    return {
+        "delivery_profile": resolved_delivery_profile,
+        "task_links_max_warnings": int(resolved_task_links_max_warnings),
+        "stability_template_hard": resolved_stability_template_hard,
+    }
+
+
 def _resolve_gate_command(name: str, cmd: list[str], out_dir: Path) -> list[str]:
     resolved = [str(x) for x in cmd]
+    if name in {"backfill_semantic_review_tier", "validate_semantic_review_tier"}:
+        summary_name = "backfill-semantic-review-tier-summary.json" if name == "backfill_semantic_review_tier" else "validate-semantic-review-tier-summary.json"
+        if "--summary-path" not in resolved:
+            resolved.extend(["--summary-path", str((out_dir / summary_name)).replace("\\", "/")])
     if name == "task_contract_test_matrix":
         out_json = str((out_dir / "task-contract-test-matrix.json")).replace("\\", "/")
         out_md = str((out_dir / "task-contract-test-matrix.md")).replace("\\", "/")
@@ -130,8 +215,16 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
             "cmd": ["py", "-3", "scripts/python/forbid_mirror_path_refs.py", "--root", "."],
         },
         {
+            "name": "audit_tests_godot_mirror_git_tracking",
+            "cmd": ["py", "-3", "scripts/python/audit_tests_godot_mirror_git_tracking.py", "--root", "."],
+        },
+        {
             "name": "validate_contracts",
             "cmd": ["py", "-3", "scripts/python/validate_contracts.py"],
+        },
+        {
+            "name": "validate_recovery_docs",
+            "cmd": ["py", "-3", "scripts/python/validate_recovery_docs.py"],
         },
         {
             "name": "check_domain_contracts",
@@ -148,9 +241,23 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "-3",
                 "scripts/python/check_test_naming.py",
                 "--style",
-                "should_when",
-                "--scope",
-                "all",
+                "legacy",
+            ],
+        },
+        {
+            "name": "backfill_semantic_review_tier",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/python/backfill_semantic_review_tier.py",
+            ],
+        },
+        {
+            "name": "validate_semantic_review_tier",
+            "cmd": [
+                "py",
+                "-3",
+                "scripts/python/validate_semantic_review_tier.py",
             ],
         },
         {
@@ -322,6 +429,8 @@ def _run_group(
     strict_soft: bool,
     out_dir: Path,
     run_id: str,
+    repo_root: Path,
+    task_files: list[str],
 ) -> tuple[int, dict[str, Any]]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -333,11 +442,29 @@ def _run_group(
         cmd = _resolve_gate_command(name, [str(x) for x in item["cmd"]], out_dir)
         log_path = out_dir / f"{name}.log"
 
-        print(f"[gate-bundle] START mode={mode} gate={name}")
+        skip_reason = _skip_reason_for_gate(name, repo_root=repo_root, task_files=task_files)
+        if skip_reason:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            skip_text = f"[gate-bundle] SKIP mode={mode} gate={name} reason={skip_reason}\n"
+            log_path.write_text(skip_text, encoding="utf-8")
+            _safe_print(skip_text, end="")
+            gate_results.append(
+                {
+                    "name": name,
+                    "rc": 0,
+                    "command": cmd,
+                    "log": str(log_path).replace("\\", "/"),
+                    "skipped": True,
+                    "skip_reason": skip_reason,
+                }
+            )
+            continue
+
+        _safe_print(f"[gate-bundle] START mode={mode} gate={name}")
         rc, output = _run_command(cmd, log_path)
         if output:
-            print(output, end="" if output.endswith("\n") else "\n")
-        print(f"[gate-bundle] END mode={mode} gate={name} rc={rc}")
+            _safe_print(output, end="" if output.endswith("\n") else "\n")
+        _safe_print(f"[gate-bundle] END mode={mode} gate={name} rc={rc}")
 
         if rc != 0:
             failed += 1
@@ -367,6 +494,7 @@ def _run_group(
         "strict_soft": strict_soft,
         "total": len(gate_results),
         "failed": failed,
+        "skipped": sum(1 for item in gate_results if item.get("skipped")),
         "status": "ok" if exit_code == 0 else "fail",
         "gates": gate_results,
     }
@@ -413,6 +541,7 @@ def _run_group(
 
 
 def main() -> int:
+    _configure_console_streams()
     env_task_links_budget = -1
     try:
         env_task_links_budget = int((os.getenv("TASK_LINKS_MAX_WARNINGS", "") or "-1").strip())
@@ -432,12 +561,18 @@ def main() -> int:
         help="When mode=soft/all, return non-zero if any soft gate fails",
     )
     parser.add_argument(
+        "--delivery-profile",
+        default=None,
+        choices=DELIVERY_PROFILE_CHOICES,
+        help="Delivery profile (default: env DELIVERY_PROFILE or fast-ship).",
+    )
+    parser.add_argument(
         "--task-links-max-warnings",
         type=int,
-        default=env_task_links_budget,
+        default=None,
         help=(
             "Hard fail threshold for check_tasks_all_refs warnings. "
-            "-1 disables this budget gate. Default reads TASK_LINKS_MAX_WARNINGS env."
+            "-1 disables this budget gate. Default reads TASK_LINKS_MAX_WARNINGS env, then delivery profile."
         ),
     )
     parser.add_argument(
@@ -486,6 +621,16 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    task_links_max_warnings = args.task_links_max_warnings
+    if task_links_max_warnings is None and env_task_links_budget >= 0:
+        task_links_max_warnings = env_task_links_budget
+    runtime = resolve_gate_bundle_runtime(
+        delivery_profile=args.delivery_profile,
+        task_links_max_warnings=task_links_max_warnings,
+        stability_template_hard=bool(args.stability_template_hard),
+    )
+    os.environ["DELIVERY_PROFILE"] = str(runtime["delivery_profile"])
+
     if args.retention_days < 0:
         print("GATE_BUNDLE status=fail reason=invalid-retention-days")
         return 2
@@ -504,19 +649,19 @@ def main() -> int:
 
     hard_commands = _hard_gate_commands_with_options(
         args.task_files,
-        args.stability_template_hard,
-        args.task_links_max_warnings,
+        bool(runtime["stability_template_hard"]),
+        int(runtime["task_links_max_warnings"]),
     )
-    soft_commands = _soft_gate_commands(args.task_files, args.stability_template_hard)
+    soft_commands = _soft_gate_commands(args.task_files, bool(runtime["stability_template_hard"]))
 
     rc: int
     if args.mode == "hard":
-        rc, _ = _run_group("hard", hard_commands, args.strict_soft, out_root / "hard", run_id)
+        rc, _ = _run_group("hard", hard_commands, args.strict_soft, out_root / "hard", run_id, Path.cwd().resolve(), list(args.task_files))
     elif args.mode == "soft":
-        rc, _ = _run_group("soft", soft_commands, args.strict_soft, out_root / "soft", run_id)
+        rc, _ = _run_group("soft", soft_commands, args.strict_soft, out_root / "soft", run_id, Path.cwd().resolve(), list(args.task_files))
     else:
-        hard_rc, hard_summary = _run_group("hard", hard_commands, args.strict_soft, out_root / "hard", run_id)
-        soft_rc, soft_summary = _run_group("soft", soft_commands, args.strict_soft, out_root / "soft", run_id)
+        hard_rc, hard_summary = _run_group("hard", hard_commands, args.strict_soft, out_root / "hard", run_id, Path.cwd().resolve(), list(args.task_files))
+        soft_rc, soft_summary = _run_group("soft", soft_commands, args.strict_soft, out_root / "soft", run_id, Path.cwd().resolve(), list(args.task_files))
 
         combined = {
             "ts": dt.datetime.now(dt.timezone.utc).isoformat(),

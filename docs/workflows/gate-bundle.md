@@ -30,6 +30,35 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 - `--skip-prune-runs`：跳过本次清理（默认执行清理）。
 - `--task-files`：视图任务文件列表，供契约相关门禁读取。
 
+## 模板仓首次启用 overlay_task_drift
+
+`remind_overlay_task_drift.py` 的 baseline 只应在“真实 Taskmaster triplet 已落地”之后初始化。
+
+当前模板仓如果仍缺少以下文件：
+
+- `.taskmaster/tasks/tasks.json`
+- `.taskmaster/tasks/tasks_back.json`
+- `.taskmaster/tasks/tasks_gameplay.json`
+
+则不要执行 `--write`。此时写入的只会是“任务文件不存在”的空快照，会误导后续维护者，以为 drift baseline 已完成初始化。
+
+推荐时机：
+
+1. 新项目复制模板后，已经生成真实 `.taskmaster/tasks/*.json`。
+2. 目标 overlay 索引已经确定，不再是临时示例页。
+3. 首次执行前，确认当前任务文件内容就是希望固化的基线状态。
+
+Windows 示例：
+
+```powershell
+py -3 scripts/python/remind_overlay_task_drift.py --write --overlay-index docs/architecture/overlays/PRD-Guild-Manager/08/_index.md
+```
+
+模板仓默认口径：
+
+- 缺少真实 task files 时，`run_gate_bundle.py` 允许 `overlay_task_drift` 自动跳过。
+- 新项目准备好真实 triplet 后，再显式执行一次 `--write` 完成 baseline 初始化。
+
 ## 当前门禁分组（SSoT 以脚本为准）
 
 ### Hard Gates
@@ -40,10 +69,14 @@ py -3 scripts/python/run_gate_bundle.py --mode all --task-files .taskmaster/task
 - `check_task_contract_refs.py`
 - `check_no_hardcoded_core_events.py`
 - `forbid_mirror_path_refs.py`
+- `audit_tests_godot_mirror_git_tracking.py`
 - `validate_contracts.py`
+- `validate_recovery_docs.py`
 - `check_domain_contracts.py`
 - `check_contract_interface_docs.py`
 - `check_test_naming.py`
+- `backfill_semantic_review_tier.py`
+- `validate_semantic_review_tier.py`
 - `llm_extract_task_obligations.py`
 - `llm_align_acceptance_semantics.py`
 - `llm_check_subtasks_coverage.py`

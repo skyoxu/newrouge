@@ -26,8 +26,8 @@ def build_gate_bundle_hard_cmd(
         "--task-files",
         *task_files,
     ]
-    # Compatibility: newrouge run_gate_bundle.py currently does not accept
-    # --delivery-profile, so do not pass it from local-hard-checks harness.
+    if delivery_profile:
+        cmd += ["--delivery-profile", delivery_profile]
     if run_id:
         cmd += ["--run-id", run_id]
     if out_dir:
