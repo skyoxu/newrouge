@@ -4,7 +4,7 @@
 
 - 本文是“模板仓 -> 业务仓”的通用升级协议，**不是** `newrouge` 当前能力清单。
 - 在 `F:\newrouge` 执行时，凡是涉及以下命令需按现状处理：
-  - `run-local-hard-checks`：本仓未接入，使用 `py -3 scripts/python/dev_cli.py run-ci-basic --godot-bin <path>` 作为本地硬门主入口。
+  - `run-local-hard-checks`：本仓已接入，可直接执行。
   - `project-health-scan` / `serve-project-health`：本仓已接入，可直接执行。
 - 本仓已具备真实 triplet（`.taskmaster/tasks/tasks*.json`），因此不应继续按“仅 template fallback”口径运维。
 - 使用本协议时，先对照 `docs/workflows/business-repo-upgrade-guide.md` 的本地化说明，再决定是否迁移缺失脚本。

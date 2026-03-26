@@ -16,7 +16,7 @@
   - `check-directory-boundaries`
   - `project-health-scan`
   - `serve-project-health`
-- 文中涉及 `run-local-hard-checks` 的步骤，在本仓属于“待迁移能力”；`project-health-scan`、`serve-project-health` 已完成接线可直接执行。
+- 文中核心入口在本仓均已接线可执行（含 `run-local-hard-checks`、`project-health-scan`、`serve-project-health`）。
 - 本仓已使用真实 task triplet：`.taskmaster/tasks/tasks.json`、`tasks_back.json`、`tasks_gameplay.json`；`examples/taskmaster/**` 只能作为迁移参考，不是执行 SSoT。
 
 ## Scope
