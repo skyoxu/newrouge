@@ -135,6 +135,18 @@ def render_commit_message(
 def sync_overlay_task_drift_baseline(*, out_dir: Path) -> tuple[int, str, Path]:
     cmd = ["py", "-3", "scripts/python/remind_overlay_task_drift.py", "--write"]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=120)
+    if rc != 0:
+        log_path = out_dir / "overlay-task-drift-sync.log"
+        write_text(log_path, out)
+        return rc, out, log_path
+
+    # Ensure potential baseline updates are included in the current commit.
+    overlay_index_rel = "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+    add_rc, add_out = run_cmd(["git", "add", overlay_index_rel], cwd=repo_root(), timeout_sec=30)
+    if add_rc != 0:
+        out = out + ("\n" if out else "") + add_out
+        rc = add_rc
+
     log_path = out_dir / "overlay-task-drift-sync.log"
     write_text(log_path, out)
     return rc, out, log_path

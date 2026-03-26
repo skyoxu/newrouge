@@ -30,6 +30,10 @@ One‑liner（已在 Editor 安装 Export Templates 后）：
 - 导出与冒烟：Windows-only 脚本与文档
 
 ## Quick Links
+- ????????`docs/workflows/project-health-dashboard.md`
+- ???????`docs/workflows/script-entrypoints-index.md`
+- ???????`docs/workflows/stable-public-entrypoints.md`
+- ???????`docs/workflows/prototype-lane.md`
 - 文档索引：`docs/PROJECT_DOCUMENTATION_INDEX.md`
 - 快速开始（开发/测试/导出）：`docs/GETTING_STARTED.md`
 - Windows-only 快速指引：`docs/migration/Phase-17-Windows-Only-Quickstart.md`
