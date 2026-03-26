@@ -7,10 +7,11 @@ from pathlib import Path
 def _prefer_named(candidates: list[Path], preferred_names: tuple[str, ...]) -> Path | None:
     if not candidates:
         return None
-    lowered = {name.lower() for name in preferred_names}
-    for candidate in candidates:
-        if candidate.name.lower() in lowered:
-            return candidate
+    by_name = {candidate.name.lower(): candidate for candidate in candidates}
+    for preferred_name in preferred_names:
+        matched = by_name.get(preferred_name.lower())
+        if matched is not None:
+            return matched
     return None
 
 
@@ -18,7 +19,9 @@ def resolve_solution_file(root: Path) -> Path | None:
     candidates = sorted(root.glob('*.sln'))
     if not candidates:
         return None
-    preferred = _prefer_named(candidates, ('Game.sln', f'{root.name}.sln', 'GodotGame.sln'))
+    # Keep Task1 deterministic: prefer the repository solution naming first.
+    # Fallback to legacy names only when canonical names are missing.
+    preferred = _prefer_named(candidates, (f'{root.name}.sln', 'NewRouge.sln', 'GodotGame.sln', 'Game.sln'))
     if preferred is not None:
         return preferred
     return candidates[0]

@@ -198,7 +198,7 @@ jobs:
       - name: CI pipeline (Python)
         shell: pwsh
         run: |
-          py -3 scripts/python/ci_pipeline.py all --solution Game.sln --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
+          py -3 scripts/python/ci_pipeline.py all --solution NewRouge.sln --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
 
       - name: Resolve Task IDs for acceptance-check
         shell: pwsh
