@@ -1,26 +1,39 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lastking.local/schemas/sc-review-pipeline-summary.schema.json",
-  "title": "sc-review-pipeline summary",
+  "$id": "https://lastking.local/schemas/sc-local-hard-checks-summary.schema.json",
+  "title": "local-hard-checks summary",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "schema_version",
+    "protocol_version",
     "cmd",
     "task_id",
     "requested_run_id",
     "run_id",
-    "allow_overwrite",
-    "force_new_run_id",
+    "delivery_profile",
+    "security_profile",
     "status",
+    "failed_step",
+    "started_at",
+    "finished_at",
+    "out_dir",
     "steps"
   ],
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "protocol_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
     "cmd": {
-      "const": "sc-review-pipeline"
+      "const": "local-hard-checks"
     },
     "task_id": {
-      "type": "string",
-      "pattern": "^[0-9]+$"
+      "const": "repo"
     },
     "requested_run_id": {
       "type": "string",
@@ -28,13 +41,18 @@
     },
     "run_id": {
       "type": "string",
-      "pattern": "^([A-Fa-f0-9]{32}|[A-Za-z0-9][A-Za-z0-9._:-]{2,127})$"
+      "minLength": 1
     },
-    "allow_overwrite": {
-      "type": "boolean"
+    "delivery_profile": {
+      "type": "string",
+      "minLength": 1
     },
-    "force_new_run_id": {
-      "type": "boolean"
+    "security_profile": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "host-safe"
+      ]
     },
     "status": {
       "type": "string",
@@ -42,6 +60,21 @@
         "ok",
         "fail"
       ]
+    },
+    "failed_step": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "finished_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "out_dir": {
+      "type": "string",
+      "minLength": 1
     },
     "steps": {
       "type": "array",
@@ -58,15 +91,18 @@
         "name",
         "cmd",
         "rc",
-        "status"
+        "status",
+        "log"
       ],
       "properties": {
         "name": {
           "type": "string",
           "enum": [
-            "sc-test",
-            "sc-acceptance-check",
-            "sc-llm-review"
+            "project-health-scan",
+            "gate-bundle-hard",
+            "run-dotnet",
+            "gdunit-hard",
+            "smoke-strict"
           ]
         },
         "cmd": {
@@ -84,9 +120,7 @@
           "type": "string",
           "enum": [
             "ok",
-            "fail",
-            "skipped",
-            "planned"
+            "fail"
           ]
         },
         "log": {
@@ -98,29 +132,7 @@
         "summary_file": {
           "type": "string"
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "enum": [
-                  "ok",
-                  "fail"
-                ]
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "required": [
-              "log"
-            ]
-          }
-        }
-      ]
+      }
     }
   }
 }
