@@ -120,6 +120,14 @@ def _normalized_entries(entries: list[dict[str, Any]]) -> list[tuple[str, bool, 
     return sorted(normalized)
 
 
+def _entries_equal(lhs: dict[str, Any] | None, rhs: dict[str, Any]) -> bool:
+    if not lhs:
+        return False
+    lhs_entries = _normalized_entries(list(lhs.get("files") or []))
+    rhs_entries = _normalized_entries(list(rhs.get("files") or []))
+    return lhs_entries == rhs_entries
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Overlay task-drift reminder based on embedded checksum baseline.")
     parser.add_argument("--write", action="store_true", help="Update baseline in overlay index with current checksums.")
@@ -133,6 +141,11 @@ def main() -> int:
     embedded = _extract_embedded_baseline(index_text)
 
     if args.write:
+        # Stop-loss: avoid rewriting generated_at on every run when checksum entries are unchanged.
+        # This keeps smart-commit idempotent and prevents noisy dirty working trees.
+        if _entries_equal(embedded, current):
+            print("OVERLAY_TASK_BASELINE status=ok drift=false")
+            return 0
         updated_text = _replace_embedded_baseline(index_text, current)
         index_path.write_text(updated_text, encoding="utf-8")
         print(f"OVERLAY_TASK_BASELINE status=updated file={OVERLAY_INDEX.as_posix()}")

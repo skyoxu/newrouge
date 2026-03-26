@@ -1,59 +1,46 @@
-# NewRouge 文档总索引
+# NewRouge 文档索引
 
-> 维护口径：Windows-only / Godot 4.5.1 / C# .NET 8 / UTF-8  
-> 当前任务 SSoT：`.taskmaster/tasks/tasks.json` + 视图任务文件
+本文件是本仓文档导航的入口，口径以 Windows-only + Godot 4.5.x + C#(.NET 8) 为准。
 
-## 0. 先读这些
-- 项目规则：`AGENTS.md`
-- 上手指南：`docs/GETTING_STARTED.md`
-- 测试框架：`docs/testing-framework.md`
-- 任务主文件：`.taskmaster/tasks/tasks.json`
-- 任务视图：`.taskmaster/tasks/tasks_back.json`、`.taskmaster/tasks/tasks_gameplay.json`
+## 会话重置后建议阅读顺序
 
-## 1. 架构文档
+1. `README.md`
+2. `AGENTS.md`
+3. `docs/PROJECT_DOCUMENTATION_INDEX.md`
+4. `docs/testing-framework.md`
+5. `DELIVERY_PROFILE.md`
+6. `docs/workflows/local-hard-checks.md`
+7. `docs/workflows/project-health-dashboard.md`
+8. `execution-plans/` 下最新文件
+9. `decision-logs/` 下最新文件
 
-### 1.1 Base（跨切面 SSoT）
-- 路径：`docs/architecture/base/`
-- 说明：跨切面口径（安全、可观测、运行时、质量门禁）只在 Base 与 ADR 固化。
+## 核心事实源（SSoT）
 
-### 1.2 Overlay（功能纵切）
-- 路径：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/`
-- 当前纵切：M1 Warrior
-- 入口：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
+- 任务三件套：`.taskmaster/tasks/tasks.json`、`.taskmaster/tasks/tasks_back.json`、`.taskmaster/tasks/tasks_gameplay.json`
+- ADR：`docs/adr/ADR-*.md`、`docs/architecture/ADR_INDEX_GODOT.md`
+- Base 架构：`docs/architecture/base/**`
+- Overlay 纵切：`docs/architecture/overlays/**/08/**`
+- 测试规范：`docs/testing-framework.md`
 
-### 1.3 ADR
-- 路径：`docs/adr/`
-- 索引：`docs/architecture/ADR_INDEX_GODOT.md`
-- 当前关键：
-  - `docs/adr/ADR-0032-save-resume-determinism.md`
-  - `docs/adr/ADR-0033-card-identity-and-forms.md`
+## 工作流文档入口
 
-## 2. 产品与设计文档
-- PRD 主文档：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
-- GDD 主文档：`docs/gdd/GDD-NEWROUGE-V1.md`
-- 锁定表：`docs/prd/SSOT-LOCKS-NEWROUGE-V1.md`
-- Playtest 脚本：`docs/prd/PLAYTEST-SCRIPT-60MIN-NEWROUGE-V1.md`
-- Playtest 分级：`docs/prd/PLAYTEST-ISSUE-GRADING-AND-REVISION-GUIDE-NEWROUGE-V1.md`
+- 仓库升级指南：`docs/workflows/business-repo-upgrade-guide.md`
+- 模板升级协议：`docs/workflows/template-upgrade-protocol.md`
+- 项目健康看板：`docs/workflows/project-health-dashboard.md`
+- 本地硬校验：`docs/workflows/local-hard-checks.md`
+- 稳定入口清单：`docs/workflows/stable-public-entrypoints.md`
+- 脚本入口索引：`docs/workflows/script-entrypoints-index.md`
 
-## 3. 契约与测试入口
-- 契约目录：`Game.Core/Contracts/`
-- Core 测试：`Game.Core.Tests/`
-- Godot 测试：`Tests.Godot/`
-- Overlay 验收清单：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
+## 主要脚本入口
 
-## 4. 工作流与脚本
-- 方法论：`docs/workflows/acceptance-semantics-methodology.md`
-- 任务语义工具：`scripts/sc/`
-- CI/Pipeline 脚本：`scripts/python/`
+- 仓库级硬门：`py -3 scripts/python/dev_cli.py run-local-hard-checks`
+- 项目健康扫描：`py -3 scripts/python/dev_cli.py project-health-scan`
+- 项目健康服务：`py -3 scripts/python/dev_cli.py serve-project-health`
+- 任务评审流水线：`py -3 scripts/sc/run_review_pipeline.py --task-id <id>`
 
-## 5. 日志与工件
-- CI：`logs/ci/<YYYY-MM-DD>/`
-- 单测：`logs/unit/<YYYY-MM-DD>/`
-- E2E：`logs/e2e/<YYYY-MM-DD>/`
+## 证据与产物
+
+- CI 与本地校验：`logs/ci/<YYYY-MM-DD>/`
+- 单元测试：`logs/unit/<YYYY-MM-DD>/`
+- 引擎/E2E：`logs/e2e/<YYYY-MM-DD>/`
 - 性能：`logs/perf/<YYYY-MM-DD>/`
-
-## 6. 当前执行原则
-- 不再把 PRD/GDD 作为唯一事实源；以任务主文件与任务视图组合作为交付真相。
-- 文档改动必须可回链到 ADR、Overlay、Test-Refs 与任务验收条目。
-- 所有关键文档必须通过 UTF-8 / 无 BOM / 无语义乱码门禁。
-

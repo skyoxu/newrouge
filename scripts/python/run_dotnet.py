@@ -8,7 +8,7 @@ Env thresholds (optional):
   COVERAGE_BRANCHES_MIN e.g., "85" (percent)
 
 Usage (Windows):
-  py -3 scripts/python/run_dotnet.py --solution Game.sln --configuration Debug
+  py -3 scripts/python/run_dotnet.py --solution NewRouge.sln --configuration Debug
 """
 import argparse
 import datetime as dt
@@ -105,7 +105,7 @@ def extract_failure_excerpt(output: str, max_lines: int = 40):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--solution', default='Game.sln')
+    ap.add_argument('--solution', default='NewRouge.sln')
     ap.add_argument('--configuration', default='Debug')
     ap.add_argument('--filter', default=None, help='Optional dotnet test filter expression.')
     ap.add_argument('--out-dir', default=None)
