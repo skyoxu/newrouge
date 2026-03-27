@@ -98,6 +98,24 @@ def run_smoke_headless(godot_bin: str) -> int:
     return proc.returncode
 def _repo_root() -> Path: return Path(__file__).resolve().parents[2]
 def _date_stamp() -> str: return _dt.date.today().strftime("%Y-%m-%d")
+def _resolve_default_solution(root: Path | None = None) -> str:
+    resolved_root = root or _repo_root()
+    candidates = sorted(item.name for item in resolved_root.glob("*.sln"))
+    if not candidates:
+        return "Game.sln"
+    by_name = {item.lower(): item for item in candidates}
+    preferred_names = (
+        f"{resolved_root.name}.sln",
+        "NewRouge.sln",
+        "GodotGame.sln",
+        "Game.sln",
+    )
+    for preferred in preferred_names:
+        matched = by_name.get(preferred.lower())
+        if matched is not None:
+            return matched
+    return candidates[0]
+
 def _candidate_dotnet_paths() -> list[Path]:
     exe_name = "dotnet.exe" if os.name == "nt" else "dotnet"
     candidates: list[Path] = []
@@ -346,11 +364,11 @@ def _write_task_0054_record(*, date: str, selected_suites: list[str], summary_pa
     }
     _write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="cmd", required=True)
     p_all = sub.add_parser("all", help="run quality gates (ci_pipeline + optional GdUnit/Smoke)")
-    p_all.add_argument("--solution", default="Game.sln")
+    p_all.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
     p_all.add_argument("--configuration", default="Debug")
     p_all.add_argument("--godot-bin", default=os.environ.get("GODOT_BIN"))
     p_all.add_argument("--build-solutions", action="store_true")
@@ -360,12 +378,13 @@ def main() -> int:
     p_all.add_argument("--security-profile", default=os.environ.get("SECURITY_PROFILE", "host-safe"), help="security profile: host-safe|strict")
     p_all.add_argument("--require-lock-files", action="store_true", default=True, help="require packages.lock.json (default: true)")
     p_all.add_argument("--no-require-lock-files", action="store_false", dest="require_lock_files", help="do not require lock files")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.cmd != "all":
         print("Unsupported command", file=sys.stderr)
         return 1
 
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
     date = _date_stamp()
     security_profile = _resolve_security_profile(args.security_profile)
     os.environ["SECURITY_PROFILE"] = security_profile
@@ -375,7 +394,7 @@ def main() -> int:
     if not skip_prereqs and not _require_prereqs(date, args.godot_bin, args.require_lock_files, dotnet_resolved):
         return 1
 
-    ci_rc = run_ci_pipeline(args.solution, args.configuration, args.godot_bin, args.build_solutions)
+    ci_rc = run_ci_pipeline(resolved_solution, args.configuration, args.godot_bin, args.build_solutions)
     os.environ["QUALITY_GATES_CI_RC"] = str(ci_rc)
     hard_failed = ci_rc != 0
     audit_validation = run_task0056_audit_validation(_repo_root(), date)

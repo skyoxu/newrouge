@@ -44,7 +44,7 @@ last_generated: 2025-12-16
 
 ### 3.2 Python（适合本地编排/扩展）
 
-- `py -3 scripts/python/quality_gates.py all --godot-bin \"$env:GODOT_BIN\" --solution Game.sln --configuration Debug --build-solutions`
+- `py -3 scripts/python/quality_gates.py all --godot-bin \"$env:GODOT_BIN\" --configuration Debug --build-solutions`
 
 ## 4) CI 工作流映射（仓库内）
 

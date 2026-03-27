@@ -1,4 +1,4 @@
-# Local Hard Checks Workflow
+﻿# Local Hard Checks Workflow
 
 This document defines the contract for py -3 scripts/python/dev_cli.py run-local-hard-checks.
 
@@ -49,7 +49,7 @@ py -3 scripts/python/dev_cli.py run-local-hard-checks
 
 - --godot-bin <path>: enables the GdUnit4 hard set and strict smoke.
 - --solution <path>: forwarded to 
-un_dotnet.py; default Game.sln.
+un_dotnet.py; auto-resolved when omitted.
 - --configuration <Debug|Release>: forwarded to 
 un_dotnet.py; default Debug.
 - --delivery-profile <profile>: resolves the run-level delivery profile and default security profile.
@@ -143,3 +143,4 @@ un-quality-gates or the dedicated subcommands instead.
 - docs/workflows/gate-bundle.md
 - docs/workflows/run-protocol.md
 - DELIVERY_PROFILE.md
+
