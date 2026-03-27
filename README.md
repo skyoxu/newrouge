@@ -47,7 +47,7 @@
   - `docs/prd/**`
 - 架构与决策:
   - `docs/architecture/base/**`
-  - `docs/architecture/overlays/PRD-lastking-T2/08/**`
+- `docs/architecture/overlays/<PRD-ID>/08/**`
   - `docs/adr/ADR-*.md`
 - 运行日志与证据:
   - `logs/**`
