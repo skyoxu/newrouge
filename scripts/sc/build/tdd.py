@@ -28,6 +28,13 @@ def _bootstrap_imports() -> None:
 
 _bootstrap_imports()
 
+from _delivery_profile import (  # noqa: E402
+    default_security_profile_for_delivery,
+    known_delivery_profiles,
+    profile_test_defaults,
+    resolve_delivery_profile,
+)
+from _security_profile import resolve_security_profile  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _util import ci_dir, repo_root, run_cmd, today_str, write_json, write_text  # noqa: E402
 from _tdd_shared import (  # noqa: E402
@@ -37,6 +44,23 @@ from _tdd_shared import (  # noqa: E402
     write_coverage_hotspots,
 )
 
+DELIVERY_PROFILE_CHOICES = tuple(sorted(known_delivery_profiles()))
+
+
+def resolve_tdd_runtime(*, delivery_profile: str | None, security_profile: str | None, no_coverage_gate: bool) -> dict[str, Any]:
+    resolved_delivery_profile = resolve_delivery_profile(delivery_profile)
+    resolved_security_profile = resolve_security_profile(
+        security_profile or default_security_profile_for_delivery(resolved_delivery_profile)
+    )
+    test_defaults = profile_test_defaults(resolved_delivery_profile)
+    return {
+        "delivery_profile": resolved_delivery_profile,
+        "security_profile": resolved_security_profile,
+        "coverage_gate": bool(test_defaults.get("coverage_gate", True)) and not bool(no_coverage_gate),
+        "coverage_lines_min": max(0, int(test_defaults.get("coverage_lines_min", 90) or 0)),
+        "coverage_branches_min": max(0, int(test_defaults.get("coverage_branches_min", 85) or 0)),
+    }
+
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="sc-build tdd gatekeeper")
@@ -44,6 +68,18 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--task-id", default=None, help="task id; defaults to first status=in-progress in tasks.json")
     ap.add_argument("--solution", default="Game.sln")
     ap.add_argument("--configuration", default="Debug")
+    ap.add_argument(
+        "--delivery-profile",
+        default=None,
+        choices=DELIVERY_PROFILE_CHOICES,
+        help="Delivery profile (default: env DELIVERY_PROFILE or playable-ea).",
+    )
+    ap.add_argument(
+        "--security-profile",
+        default=None,
+        choices=["strict", "host-safe"],
+        help="Security profile override (default derives from delivery profile).",
+    )
     ap.add_argument(
         "--green-scope",
         choices=["task", "all"],
@@ -202,6 +238,60 @@ def validate_task_context_required_fields(*, task_id: str, stage: str, out_dir: 
     return {"name": "validate_task_context_required_fields", "cmd": cmd, "rc": rc, "log": str(log_path), "status": "ok" if rc == 0 else "fail"}
 
 
+def run_task_preflight(*, triplet: Any, out_dir: Path) -> dict[str, Any]:
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    task_id = str(getattr(triplet, "task_id", "") or "").strip()
+    master = dict(getattr(triplet, "master", {}) or {})
+    back = dict(getattr(triplet, "back", {}) or {})
+    gameplay = dict(getattr(triplet, "gameplay", {}) or {})
+
+    if not task_id:
+        errors.append("missing task_id in triplet")
+    if not str(master.get("title") or "").strip():
+        errors.append("missing master.title")
+    if not isinstance(back.get("acceptance"), list):
+        warnings.append("missing back.acceptance list")
+    if not isinstance(gameplay.get("acceptance"), list):
+        warnings.append("missing gameplay.acceptance list")
+
+    payload = {
+        "task_id": task_id,
+        "errors": errors,
+        "warnings": warnings,
+        "status": "ok" if not errors else "fail",
+    }
+    out_json = out_dir / "task-preflight.json"
+    write_json(out_json, payload)
+    log_path = out_dir / "task-preflight.log"
+    if errors:
+        write_text(log_path, "\n".join([f"ERROR: {item}" for item in errors]) + "\n")
+        return {
+            "name": "task_preflight",
+            "cmd": ["internal:task_preflight"],
+            "rc": 1,
+            "log": str(log_path),
+            "status": "fail",
+            "errors": errors,
+            "warnings": warnings,
+            "out": str(out_json),
+        }
+
+    lines = [f"OK: task_id={task_id}", f"warnings={len(warnings)}"]
+    lines.extend([f"WARN: {item}" for item in warnings])
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "task_preflight",
+        "cmd": ["internal:task_preflight"],
+        "rc": 0,
+        "log": str(log_path),
+        "status": "ok",
+        "warnings": warnings,
+        "out": str(out_json),
+    }
+
+
 def run_green_gate(
     *,
     task_id: str,
@@ -209,13 +299,15 @@ def run_green_gate(
     solution: str,
     configuration: str,
     out_dir: Path,
-    no_coverage_gate: bool,
+    coverage_gate: bool,
+    coverage_lines_min: int,
+    coverage_branches_min: int,
     green_scope: str,
 ) -> dict[str, Any]:
-    coverage_gate_enabled = (green_scope == "all") and (not no_coverage_gate)
+    coverage_gate_enabled = (green_scope == "all") and bool(coverage_gate)
     if coverage_gate_enabled:
-        os.environ.setdefault("COVERAGE_LINES_MIN", "90")
-        os.environ.setdefault("COVERAGE_BRANCHES_MIN", "85")
+        os.environ["COVERAGE_LINES_MIN"] = str(max(0, int(coverage_lines_min)))
+        os.environ["COVERAGE_BRANCHES_MIN"] = str(max(0, int(coverage_branches_min)))
     else:
         # Task-scoped green should validate correctness quickly without global denominator drift.
         os.environ.pop("COVERAGE_LINES_MIN", None)
@@ -368,10 +460,14 @@ def run_refactor_checks(out_dir: Path, *, task_id: str) -> list[dict[str, Any]]:
 
 
 def main() -> int:
-    # Keep local TDD loop aligned with CI default security posture.
-    os.environ.setdefault("SECURITY_PROFILE", "host-safe")
-
     args = build_parser().parse_args()
+    runtime = resolve_tdd_runtime(
+        delivery_profile=args.delivery_profile,
+        security_profile=args.security_profile,
+        no_coverage_gate=bool(args.no_coverage_gate),
+    )
+    os.environ["DELIVERY_PROFILE"] = str(runtime["delivery_profile"])
+    os.environ["SECURITY_PROFILE"] = str(runtime["security_profile"])
     out_dir = ci_dir("sc-build-tdd")
 
     before_contracts = snapshot_contract_files()
@@ -379,6 +475,8 @@ def main() -> int:
     summary: dict[str, Any] = {
         "cmd": "sc-build-tdd",
         "stage": args.stage,
+        "delivery_profile": str(runtime["delivery_profile"]),
+        "security_profile": str(runtime["security_profile"]),
         "allow_contract_changes": bool(args.allow_contract_changes),
         "status": "fail",
         "steps": [],
@@ -396,6 +494,13 @@ def main() -> int:
     }
 
     if args.stage == "red":
+        preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
+        summary["steps"].append(preflight_step)
+        if preflight_step["rc"] != 0:
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_BUILD_TDD status=fail out={out_dir}")
+            assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
+            return 1
         summary["steps"].append(run_sc_analyze_task_context(task_id=triplet.task_id, out_dir=out_dir))
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="red", out_dir=out_dir)
         summary["steps"].append(ctx_step)
@@ -432,6 +537,13 @@ def main() -> int:
         return 0 if summary["status"] == "ok" else 1
 
     if args.stage == "green":
+        preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
+        summary["steps"].append(preflight_step)
+        if preflight_step["rc"] != 0:
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_BUILD_TDD status=fail out={out_dir}")
+            assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
+            return 1
         summary["steps"].append(run_sc_analyze_task_context(task_id=triplet.task_id, out_dir=out_dir))
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="green", out_dir=out_dir)
         summary["steps"].append(ctx_step)
@@ -447,7 +559,9 @@ def main() -> int:
             solution=args.solution,
             configuration=args.configuration,
             out_dir=out_dir,
-            no_coverage_gate=args.no_coverage_gate,
+            coverage_gate=bool(runtime["coverage_gate"]),
+            coverage_lines_min=int(runtime["coverage_lines_min"]),
+            coverage_branches_min=int(runtime["coverage_branches_min"]),
             green_scope=args.green_scope,
         )
         summary["steps"].append(step)
@@ -460,6 +574,13 @@ def main() -> int:
         return 0 if step["rc"] == 0 else 1
 
     if args.stage == "refactor":
+        preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
+        summary["steps"].append(preflight_step)
+        if preflight_step["rc"] != 0:
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_BUILD_TDD status=fail out={out_dir}")
+            assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
+            return 1
         summary["steps"].append(run_sc_analyze_task_context(task_id=triplet.task_id, out_dir=out_dir))
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="refactor", out_dir=out_dir)
         summary["steps"].append(ctx_step)
