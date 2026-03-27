@@ -8,7 +8,7 @@ Env thresholds (optional):
   COVERAGE_BRANCHES_MIN e.g., "85" (percent)
 
 Usage (Windows):
-  py -3 scripts/python/run_dotnet.py --solution NewRouge.sln --configuration Debug
+  py -3 scripts/python/run_dotnet.py --configuration Debug
 """
 import argparse
 import datetime as dt
@@ -32,6 +32,38 @@ def run_cmd(args, cwd=None, timeout=900_000):
         out, _ = p.communicate()
         return 124, out
     return p.returncode, out
+
+
+def _script_repo_root() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _resolve_default_solution(root: str | None = None) -> str:
+    """Resolve default solution path with stable priority."""
+    resolved_root = root or _script_repo_root()
+    repo_name = os.path.basename(resolved_root.rstrip("\\/"))
+    try:
+        candidates = sorted(
+            entry
+            for entry in os.listdir(resolved_root)
+            if entry.lower().endswith(".sln")
+        )
+    except OSError:
+        return "Game.sln"
+    if not candidates:
+        return "Game.sln"
+    by_name = {item.lower(): item for item in candidates}
+    preferred_names = (
+        f"{repo_name}.sln",
+        "NewRouge.sln",
+        "GodotGame.sln",
+        "Game.sln",
+    )
+    for preferred in preferred_names:
+        matched = by_name.get(preferred.lower())
+        if matched is not None:
+            return matched
+    return candidates[0]
 
 
 def ensure_dir(path):
@@ -103,13 +135,14 @@ def extract_failure_excerpt(output: str, max_lines: int = 40):
     return lines
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument('--solution', default='NewRouge.sln')
+    ap.add_argument('--solution', default='', help='solution path; auto-resolved when omitted')
     ap.add_argument('--configuration', default='Debug')
     ap.add_argument('--filter', default=None, help='Optional dotnet test filter expression.')
     ap.add_argument('--out-dir', default=None)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
 
     root = os.getcwd()
     date = dt.date.today().strftime('%Y-%m-%d')
@@ -123,7 +156,7 @@ def main():
     test_timeout_ms = max(60_000, test_timeout_ms)
 
     summary = {
-        'solution': args.solution,
+        'solution': resolved_solution,
         'configuration': args.configuration,
         'filter': args.filter or '',
         'out_dir': out_dir,
@@ -132,7 +165,7 @@ def main():
     }
 
     # Restore
-    rc, out = run_cmd(['dotnet', 'restore', args.solution], cwd=root)
+    rc, out = run_cmd(['dotnet', 'restore', resolved_solution], cwd=root)
     with io.open(os.path.join(out_dir, 'dotnet-restore.log'), 'w', encoding='utf-8') as f:
         f.write(out)
     summary['restore_rc'] = rc
@@ -156,7 +189,7 @@ def main():
     attempts_log = []
     while test_attempt <= retry_on_fail:
         test_attempt += 1
-        test_cmd = ['dotnet', 'test', args.solution,
+        test_cmd = ['dotnet', 'test', resolved_solution,
                     f'-c', args.configuration,
                     '--collect:XPlat Code Coverage',
                     '--logger', 'trx;LogFileName=tests.trx']

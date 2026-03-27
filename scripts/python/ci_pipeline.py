@@ -4,7 +4,7 @@ CI pipeline driver (Python): dotnet tests+coverage (soft gate), Godot self-check
 
 Usage (Windows):
   py -3 scripts/python/ci_pipeline.py all \
-    --solution NewRouge.sln --configuration Debug \
+    --configuration Debug \
     --godot-bin "C:\\Godot\\Godot_v4.5.1-stable_mono_win64_console.exe" \
     --build-solutions
 
@@ -33,6 +33,34 @@ def run_cmd(args, cwd=None, timeout=900_000):
         out, _ = p.communicate()
         return 124, out
     return p.returncode, out
+
+
+def _resolve_default_solution(root: str | None = None) -> str:
+    """Resolve default solution path with stable priority."""
+    resolved_root = root or os.getcwd()
+    repo_name = os.path.basename(os.path.normpath(resolved_root))
+    try:
+        candidates = sorted(
+            entry
+            for entry in os.listdir(resolved_root)
+            if entry.lower().endswith(".sln")
+        )
+    except OSError:
+        return "Game.sln"
+    if not candidates:
+        return "Game.sln"
+    by_name = {item.lower(): item for item in candidates}
+    preferred_names = (
+        f"{repo_name}.sln",
+        "NewRouge.sln",
+        "GodotGame.sln",
+        "Game.sln",
+    )
+    for preferred in preferred_names:
+        matched = by_name.get(preferred.lower())
+        if matched is not None:
+            return matched
+    return candidates[0]
 
 
 def _safe_int(raw, default):
@@ -122,11 +150,11 @@ def run_env_evidence_preflight_with_retry(root: str, godot_bin: str):
     return rc2, details2, 2
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
     ap_all = sub.add_parser('all')
-    ap_all.add_argument('--solution', default='NewRouge.sln')
+    ap_all.add_argument('--solution', default='', help='solution path; auto-resolved when omitted')
     ap_all.add_argument('--configuration', default='Debug')
     ap_all.add_argument('--godot-bin', required=True)
     ap_all.add_argument('--project', default='project.godot')
@@ -138,12 +166,13 @@ def main():
         help='Outer timeout for run_dotnet stage in milliseconds. Default derives from DOTNET_TEST_TIMEOUT_MS and is at least 3600000.',
     )
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     if args.cmd != 'all':
         print('Unsupported command')
         return 1
 
     root = os.getcwd()
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution(root)
     date = dt.date.today().strftime('%Y-%m-%d')
     ci_dir = os.path.join('logs', 'ci', date)
     os.makedirs(ci_dir, exist_ok=True)
@@ -229,7 +258,7 @@ def main():
     # 2) Dotnet tests + coverage (soft gate on coverage)
     dotnet_stage_timeout_ms = resolve_dotnet_stage_timeout_ms(args.dotnet_stage_timeout_ms)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
-                       '--solution', args.solution,
+                       '--solution', resolved_solution,
                        '--configuration', args.configuration], cwd=root, timeout=dotnet_stage_timeout_ms)
     with io.open(os.path.join(ci_dir, 'dotnet-run-dotnet-stdout.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
@@ -244,6 +273,7 @@ def main():
         with io.open(os.path.join(ci_dir, 'dotnet-timeout-tail.txt'), 'w', encoding='utf-8') as f:
             f.write(tail)
     summary['dotnet'] = {
+        'solution': resolved_solution,
         'rc': rc,
         'stage_timeout_ms': dotnet_stage_timeout_ms,
         'timed_out': rc == 124,

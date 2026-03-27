@@ -1552,8 +1552,7 @@
       "CH07"
     ],
     "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
     ],
     "labels": [
       "backlog",

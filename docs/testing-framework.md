@@ -223,7 +223,7 @@ func test_main_menu_emits_settings() -> void:
 
 ```powershell
 # 单元测试 + 覆盖率（归档到 logs/unit/<YYYY-MM-DD>/）
-py -3 scripts/python/run_dotnet.py --solution Game.sln --configuration Debug
+py -3 scripts/python/run_dotnet.py --configuration Debug
 
 # Godot 组合根自检（归档到 logs/e2e/<YYYY-MM-DD>/ 与 logs/ci/<YYYY-MM-DD>/）
 py -3 scripts/python/godot_selfcheck.py run --godot-bin "$env:GODOT_BIN" --project project.godot --build-solutions
@@ -235,10 +235,10 @@ py -3 scripts/python/run_gdunit.py --prewarm --godot-bin "$env:GODOT_BIN" --proj
 py -3 scripts/python/smoke_headless.py --godot-bin "$env:GODOT_BIN" --project-path . --scene "res://Game.Godot/Scenes/Main.tscn" --timeout-sec 5 --strict
 
 # 直接 dotnet（不推荐作为 CI/取证入口）
-dotnet test Game.sln -c Debug
-dotnet test Game.sln -c Debug --collect:"XPlat Code Coverage"
-dotnet test Game.sln -c Debug --filter "FullyQualifiedName~PlayerTests"
-dotnet test Game.sln -c Debug --logger "console;verbosity=detailed"
+dotnet test NewRouge.sln -c Debug
+dotnet test NewRouge.sln -c Debug --collect:"XPlat Code Coverage"
+dotnet test NewRouge.sln -c Debug --filter "FullyQualifiedName~PlayerTests"
+dotnet test NewRouge.sln -c Debug --logger "console;verbosity=detailed"
 ```
 
 ### 覆盖率目标
@@ -440,7 +440,7 @@ func test_start_game_loads_first_level():
 **最小硬门禁（本地等价命令）**
 
 ```powershell
-py -3 scripts/python/ci_pipeline.py all --solution Game.sln --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
+py -3 scripts/python/ci_pipeline.py all --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
 ```
 
 该命令会：
