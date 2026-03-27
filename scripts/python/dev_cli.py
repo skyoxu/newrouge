@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from pathlib import Path
 
 from dev_cli_builders import (
     DEFAULT_GATE_BUNDLE_TASK_FILES,
@@ -42,6 +43,36 @@ def run(cmd: list[str]) -> int:
     print(f"[dev_cli] running: {' '.join(cmd)}")
     proc = subprocess.run(cmd, text=True)
     return proc.returncode
+
+
+def _resolve_default_solution() -> str:
+    """Resolve default solution path for local hard checks.
+
+    Priority:
+    1) <repo-name>.sln
+    2) NewRouge.sln
+    3) GodotGame.sln
+    4) Game.sln
+    5) first discovered *.sln
+    6) fallback to Game.sln
+    """
+
+    root = Path(__file__).resolve().parents[2]
+    candidates = sorted(root.glob("*.sln"))
+    if not candidates:
+        return "Game.sln"
+    by_name = {item.name.lower(): item for item in candidates}
+    preferred_names = (
+        f"{root.name}.sln",
+        "NewRouge.sln",
+        "GodotGame.sln",
+        "Game.sln",
+    )
+    for preferred in preferred_names:
+        matched = by_name.get(preferred.lower())
+        if matched is not None:
+            return matched.name
+    return candidates[0].name
 
 
 def cmd_run_ci_basic(args: argparse.Namespace) -> int:
@@ -113,8 +144,9 @@ def cmd_run_local_hard_checks(args: argparse.Namespace) -> int:
     """Run local hard checks via the protocolized harness wrapper."""
 
     task_files = list(args.task_file or DEFAULT_GATE_BUNDLE_TASK_FILES)
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
     return run_local_hard_checks(
-        solution=args.solution,
+        solution=resolved_solution,
         configuration=args.configuration,
         godot_bin=args.godot_bin,
         delivery_profile=args.delivery_profile,
@@ -220,7 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-local-hard-checks",
         help="run gate bundle hard + run_dotnet, and append gdunit/smoke when --godot-bin is provided",
     )
-    p_lh.add_argument("--solution", default="Game.sln")
+    p_lh.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
     p_lh.add_argument("--configuration", default="Debug")
     p_lh.add_argument("--godot-bin", default="")
     p_lh.add_argument("--delivery-profile", default="")
