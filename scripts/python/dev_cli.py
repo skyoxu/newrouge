@@ -94,9 +94,10 @@ def cmd_run_ci_basic(args: argparse.Namespace) -> int:
         print("[dev_cli] error: --godot-bin is required when --legacy-preflight is enabled", file=sys.stderr)
         return 2
 
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
     return run(
         build_legacy_ci_pipeline_cmd(
-            solution=args.solution,
+            solution=resolved_solution,
             configuration=args.configuration,
             godot_bin=args.godot_bin,
         )
@@ -106,9 +107,10 @@ def cmd_run_ci_basic(args: argparse.Namespace) -> int:
 def cmd_run_quality_gates(args: argparse.Namespace) -> int:
     """Run quality_gates.py all with optional hard GdUnit and smoke."""
 
+    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
     return run(
         build_quality_gates_cmd(
-            solution=args.solution,
+            solution=resolved_solution,
             configuration=args.configuration,
             build_solutions=bool(args.build_solutions),
             godot_bin=args.godot_bin,
@@ -223,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-ci-basic",
         help="run hard gate bundle first; optionally append legacy ci_pipeline preflight",
     )
-    p_ci.add_argument("--solution", default="Game.sln")
+    p_ci.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
     p_ci.add_argument("--configuration", default="Debug")
     p_ci.add_argument("--godot-bin", default="")
     p_ci.add_argument("--delivery-profile", default="")
@@ -235,7 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # run-quality-gates
     p_qg = sub.add_parser("run-quality-gates", help="run quality_gates.py all with optional GdUnit hard and smoke")
-    p_qg.add_argument("--solution", default="Game.sln")
+    p_qg.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
     p_qg.add_argument("--configuration", default="Debug")
     p_qg.add_argument("--build-solutions", action="store_true")
     p_qg.add_argument("--godot-bin", default="")
