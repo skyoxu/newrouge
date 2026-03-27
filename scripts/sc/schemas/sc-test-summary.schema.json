@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lastking.local/schemas/sc-test-summary.schema.json",
+  "$id": "https://newrouge.local/schemas/sc-test-summary.schema.json",
   "title": "sc-test summary",
   "type": "object",
   "additionalProperties": false,
