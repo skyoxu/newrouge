@@ -35,7 +35,7 @@
 
 - 仓库级硬门：`py -3 scripts/python/dev_cli.py run-local-hard-checks`
 - 项目健康扫描：`py -3 scripts/python/dev_cli.py project-health-scan`
-- 项目健康服务：`py -3 scripts/python/dev_cli.py serve-project-health`
+- 项目健康服务：`py -3 scripts/python/dev_cli.py project-health-scan --serve`
 - 任务评审流水线：`py -3 scripts/sc/run_review_pipeline.py --task-id <id>`
 
 ## 证据与产物

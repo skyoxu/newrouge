@@ -6,7 +6,7 @@
 
 - Repository: `newrouge`
 - Product: Windows-only Godot 4.5.1 + C# 单机项目
-- 默认交付姿态: `playable-ea`
+- 默认交付姿态: `fast-ship`
 - 默认安全姿态: `host-safe`
 - 升级对齐基线: `docs/workflows/business-repo-upgrade-guide.md`
 

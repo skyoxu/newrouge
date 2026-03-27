@@ -4,7 +4,7 @@
 
 ## 项目姿态
 
-- Delivery profile: `playable-ea`
+- Delivery profile: `fast-ship`
 - Security profile: `host-safe`
 - 运行平台: Windows Desktop
 
