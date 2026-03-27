@@ -182,7 +182,7 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
         self.assertEqual(0, rc)
         run_mock.assert_not_called()
         harness_mock.assert_called_once_with(
-            solution="Game.sln",
+            solution="NewRouge.sln",
             configuration="Debug",
             godot_bin="C:/Godot/Godot.exe",
             delivery_profile="standard",
@@ -198,6 +198,23 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
             rc = dev_cli.main(["run-local-hard-checks"])
 
         self.assertEqual(7, rc)
+        harness_mock.assert_called_once_with(
+            solution="NewRouge.sln",
+            configuration="Debug",
+            godot_bin="",
+            delivery_profile="",
+            task_files=dev_cli.DEFAULT_GATE_BUNDLE_TASK_FILES,
+            out_dir="",
+            run_id="",
+            timeout_sec=5,
+            run_fn=dev_cli.run,
+        )
+
+    def test_run_local_hard_checks_should_preserve_explicit_solution(self) -> None:
+        with mock.patch.object(dev_cli, "run_local_hard_checks", create=True, return_value=0) as harness_mock:
+            rc = dev_cli.main(["run-local-hard-checks", "--solution", "Game.sln"])
+
+        self.assertEqual(0, rc)
         harness_mock.assert_called_once_with(
             solution="Game.sln",
             configuration="Debug",
