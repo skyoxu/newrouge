@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lastking.local/schemas/sc-acceptance-check-summary.schema.json",
+  "$id": "https://newrouge.local/schemas/sc-acceptance-check-summary.schema.json",
   "title": "sc-acceptance-check summary",
   "type": "object",
   "additionalProperties": false,

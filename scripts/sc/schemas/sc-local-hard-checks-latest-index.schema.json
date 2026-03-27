@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lastking.local/schemas/sc-local-hard-checks-latest-index.schema.json",
+  "$id": "https://newrouge.local/schemas/sc-local-hard-checks-latest-index.schema.json",
   "title": "local-hard-checks latest-index",
   "type": "object",
   "additionalProperties": false,
