@@ -1,12 +1,4 @@
-﻿# Script Entrypoints Index
-
-## newrouge 本仓适配说明（2026-03-26）
-
-- 该索引来自模板升级同步，部分条目可能早于本仓功能开关。
-- 在 `F:\newrouge` 中，以脚本实际存在与 `--help` 输出为准。
-- 当前已知未启用条目示例：
-  - `scripts/sc/check_tdd_execution_plan.py`
-  - `scripts/sc/llm_generate_overlays_batch.py`
+# Script Entrypoints Index
 
 Generated from source scan on `2026-03-25`. This document inventories recurring workflow-facing executable scripts under `scripts/python/**`, `scripts/sc/**`, and `scripts/sc/build/**`. Internal helper modules (`_*.py`), test files, and one-off maintenance utilities are intentionally excluded.
 
@@ -68,6 +60,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/sc/build/tdd.py`
 - `scripts/sc/check_tdd_execution_plan.py`
 - `scripts/sc/llm_generate_tests_from_acceptance_refs.py`
+- `scripts/python/run_single_task_light_lane.py`
 
 ### Taskmaster / semantics / overlay
 
@@ -202,6 +195,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/sc/git.py`
 - `scripts/sc/llm_generate_red_test.py`
 - `scripts/sc/llm_generate_tests_from_acceptance_refs.py`
+- `scripts/python/run_single_task_light_lane.py`
 - `scripts/sc/llm_review.py`
 - `scripts/sc/llm_review_needs_fix_fast.py`
 - `scripts/sc/run_review_pipeline.py`
@@ -817,7 +811,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Direct local deps: None.
 - Transitive local deps: None.
 - Subcommands: None.
-- Declared args: `--write`, `--dry-run`, `--prd-id`, `--tasks-dir`
+- Declared args: `--dry-run`, `--prd-id`, `--tasks-dir`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - PRD/overlay parameters require real PRD sources, overlay roots, and business-local `PRD-ID` values.
@@ -1188,6 +1182,18 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
   - Model-backed steps require the repo's LLM runtime/CLI; deterministic-only or skip modes can reduce that requirement, but do not assume zero-model execution unless the script explicitly supports it.
 
+#### `scripts/python/run_single_task_light_lane.py`
+
+- Direct local deps: None.
+- Transitive local deps: None.
+- Subcommands: None.
+- Declared args: `--task-ids`, `--task-id-start`, `--task-id-end`, `--max-tasks`, `--timeout-sec`, `--out-dir`, `--no-resume`, `--stop-on-step-failure`, `--no-align-apply`, `--delivery-profile`, `--self-check`
+- Parameter prerequisites:
+  - Windows PowerShell + `py -3` from repo root.
+  - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/tasks.json` when real `.taskmaster/tasks/tasks.json` is absent.
+  - Model-backed steps require the repo's LLM runtime/CLI for semantics-related stages.
+  - Write/apply flow is controlled by `--no-align-apply`; default behavior includes `align --apply`.
+
 #### `scripts/sc/llm_review.py`
 
 - Direct local deps: `scripts/sc/_llm_review_engine.py`
@@ -1557,4 +1563,5 @@ Helper modules below are referenced directly by at least two included entry scri
 - When adding or deleting a workflow-facing entrypoint, update this document in the same change set as the script.
 - If a business repo copies entrypoints from this template, copy the listed direct and transitive local deps in the same migration batch.
 - Do not re-add one-off migration or sibling-sync scripts unless they graduate into a recurring workflow and are documented elsewhere first.
+
 

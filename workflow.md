@@ -201,7 +201,7 @@ py -3 scripts/sc/llm_generate_overlays_batch.py --prd <prd-main.md> --prd-id <PR
 ### 4.2 Apply 后冻结 overlay refs
 
 ```powershell
-py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write
+py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID>
 py -3 scripts/python/validate_overlay_execution.py --prd-id <PRD-ID>
 py -3 scripts/python/check_tasks_all_refs.py
 py -3 scripts/python/validate_task_master_triplet.py
@@ -243,6 +243,20 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 - 重复的 `Needs Fix` 指向 semantics，而不是代码实现
 
 ### 5.1 单任务轻量 lane
+
+Recommended wrapper first (full-step resilient execution + resume-friendly summary):
+
+```powershell
+py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile fast-ship
+```
+
+Read-only semantics lane (skip `align --apply`):
+
+```powershell
+py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile fast-ship --no-align-apply
+```
+
+Use the manual per-step commands below only when you need step-by-step debugging.
 
 抽 obligations：
 
@@ -492,3 +506,4 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 7. `run_review_pipeline.py --delivery-profile fast-ship`
 8. 只有当 pipeline 产出明确的 `Needs Fix` 时，再执行 `llm_review_needs_fix_fast.py`
 9. commit 或 PR 前执行 `run-local-hard-checks`
+
