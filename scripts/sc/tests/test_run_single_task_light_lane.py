@@ -125,6 +125,39 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
             self.assertEqual(11, payload["task_id_start"])
             self.assertEqual(11, payload["task_id_end"])
 
+    def test_normalize_step_command_should_drop_delivery_profile_when_unsupported(self) -> None:
+        cmd = [
+            "py",
+            "-3",
+            "scripts/sc/llm_extract_task_obligations.py",
+            "--task-id",
+            "56",
+            "--delivery-profile",
+            "fast-ship",
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(lane, "_script_supports_flag", return_value=False):
+                normalized = lane._normalize_step_command(root, cmd)
+        self.assertNotIn("--delivery-profile", normalized)
+        self.assertEqual(["py", "-3", "scripts/sc/llm_extract_task_obligations.py", "--task-id", "56"], normalized)
+
+    def test_normalize_step_command_should_keep_delivery_profile_when_supported(self) -> None:
+        cmd = [
+            "py",
+            "-3",
+            "scripts/sc/llm_extract_task_obligations.py",
+            "--task-id",
+            "56",
+            "--delivery-profile",
+            "fast-ship",
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(lane, "_script_supports_flag", return_value=True):
+                normalized = lane._normalize_step_command(root, cmd)
+        self.assertEqual(cmd, normalized)
+
 
 if __name__ == "__main__":
     unittest.main()
