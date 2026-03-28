@@ -1,0 +1,21 @@
+# T56 execution policy and gate strategy
+
+- Title: T56 execution policy and gate strategy
+- Date: 2026-03-28
+- Status: proposed
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T56
+- Git Head: 3222f292a9c74511951c71a0095de69b671416e2
+- Why now: TODO: explain why now
+- Context: TODO: capture context
+- Decision: TODO: record decision
+- Consequences: TODO: describe consequences
+- Recovery impact: TODO: describe recovery impact
+- Validation: TODO: describe validation
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `56`
+- Related run id: `d0a084c91c06469ca72780c9149ef59e`
+- Related latest.json: `logs/ci/2026-03-21/sc-review-pipeline-task-56/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-03-21/sc-review-pipeline-task-56-d0a084c91c06469ca72780c9149ef59e`
