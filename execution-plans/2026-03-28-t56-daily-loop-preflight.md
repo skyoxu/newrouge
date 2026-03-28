@@ -1,0 +1,21 @@
+# T56 daily loop preflight
+
+- Title: T56 daily loop preflight
+- Status: active
+- Branch: task/T56
+- Git Head: 3222f292a9c74511951c71a0095de69b671416e2
+- Goal: TODO: describe goal
+- Scope: TODO: define scope
+- Current step: TODO: define current step
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: TODO: define stop-loss boundary
+- Next action: TODO: define next action
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 56 --resume`
+- Open questions: none recorded yet
+- Exit criteria: TODO: define exit criteria
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `56`
+- Related run id: `d0a084c91c06469ca72780c9149ef59e`
+- Related latest.json: `logs/ci/2026-03-21/sc-review-pipeline-task-56/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-03-21/sc-review-pipeline-task-56-d0a084c91c06469ca72780c9149ef59e`

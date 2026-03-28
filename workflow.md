@@ -250,6 +250,22 @@ Recommended wrapper first (full-step resilient execution + resume-friendly summa
 py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile fast-ship
 ```
 
+Resume safety: the same `out-dir` only resumes safely for the same task selection, same `delivery-profile`, and same `align --apply` mode. For cross-range batches, use a separate `out-dir` or pass `--no-resume`.
+
+Default failed-task behavior is still full rerun. If a prior run already completed the successful prefix and only later steps failed, resume from the first failed step explicitly:
+
+```powershell
+py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile fast-ship --resume-failed-task-from first-failed-step
+```
+
+The wrapper also snapshots shared inner step artifacts into `tNNNN--<step>.artifacts/`, so later tasks do not overwrite earlier semantic/align/fill-refs evidence.
+Top-level `summary.json` also aggregates failure categories (`failure_category_*`) and semantic gate prompt-budget pressure (`prompt_trimmed_task_ids`, `semantic_gate_budget_hits`), so batch triage does not require opening each inner step log.
+When tasks are heavy or model response is slow, increase the inner LLM timeout explicitly:
+
+```powershell
+py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile fast-ship --llm-timeout-sec 600
+```
+
 Read-only semantics lane (skip `align --apply`):
 
 ```powershell
@@ -299,6 +315,7 @@ py -3 scripts/sc/llm_fill_acceptance_refs.py --task-id <id> --write
 ```powershell
 py -3 scripts/sc/llm_fill_acceptance_refs.py --task-id <id>
 ```
+
 
 ### 5.2 Batch instability lane
 
