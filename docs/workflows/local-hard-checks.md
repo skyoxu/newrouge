@@ -1,4 +1,4 @@
-﻿# Local Hard Checks Workflow
+# Local Hard Checks Workflow
 
 This document defines the contract for py -3 scripts/python/dev_cli.py run-local-hard-checks.
 
