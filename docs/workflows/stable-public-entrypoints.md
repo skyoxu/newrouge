@@ -1,13 +1,5 @@
 # Stable Public Entrypoints
 
-## newrouge 本仓适配说明（2026-03-26）
-
-- 本文来自模板升级同步，默认覆盖模板常见入口。
-- 在 `F:\newrouge` 中，若文档命令与实际脚本不一致，以 `py -3 scripts/python/dev_cli.py --help` 和仓库真实文件为准。
-- 当前已知未启用入口：
-  - `scripts/sc/check_tdd_execution_plan.py`
-  - `scripts/sc/llm_generate_overlays_batch.py`
-
 This document lists the stable, recommended script entrypoints for day-to-day use.
 Use it when you need to decide which command to run next.
 Use `docs/workflows/script-entrypoints-index.md` when you need the full executable inventory, direct deps, transitive deps, or full argument scan.
@@ -113,6 +105,21 @@ Why this is stable:
 - it is the default task-level main entrypoint
 - it replaces manually stitching lower-level review commands together
 
+### `py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile <profile> [--no-align-apply]`
+
+Use when:
+- a task needs workflow 5.1 semantics stabilization but you do not want to hand-stitch 7 commands
+- you want resilient full-step execution (default continues after single-step failures)
+- you want one rolling summary/log directory for resume-friendly long runs
+
+Prerequisites:
+- task triplet available
+- LLM runtime for semantics-related steps
+
+Why this is stable:
+- it is the optional wrapper for workflow 5.1 single-task light lane
+- it supports read-only lane mode (`--no-align-apply`) and resume from `summary.json`
+
 ### `py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify <mode>`
 
 Use when:
@@ -191,7 +198,7 @@ Use when:
 Stop-loss:
 - this script may be a lighter or repo-specific supplement; do not treat it as a replacement for `validate_contracts.py`
 
-### `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
+### `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID>`
 
 Use when:
 - task overlay refs drift from overlay docs
@@ -248,3 +255,4 @@ Use them directly when you are isolating one failing stage or intentionally bypa
   - repo-health records and local dashboard behavior
 - `scripts/sc/README.md`
   - deeper `sc-*` runtime behavior and examples
+
