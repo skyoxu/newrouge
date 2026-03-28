@@ -104,16 +104,16 @@
       "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
     ],
     "acceptance": [
-      "OfferLockSnapshot and OfferProvenance must be concrete C# contract types in the contracts layer and instantiable in tests; schema-only or dictionary-only representations are not acceptable. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "OfferLockSnapshot must expose stable_ids, display_order, provenance, rng_stream, and locked_at_save_point semantics (implemented as IsLockedAtSavePoint); reflection must verify field existence and types, and Provenance must round-trip as a value object. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "OfferProvenance must expose source_type, source_id, act, floor, node_id, difficulty, rng_stream, and stream_pos; reflection must verify field existence and types. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "OfferLockSnapshot.rng_stream must stay consistent with OfferProvenance.rng_stream in constructed samples. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "Offer locking snapshots must preserve provenance stream_pos and carry lock-context boolean semantic for save-point state. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "RNG stream categories must be exactly run, combat, event, loot, shop, and offer; missing any one is a hard fail. OfferLockSnapshot.RngStream and OfferProvenance.RngStream must validate against this closed set, and unknown values must fail contract validation tests. Refs: Game.Core.Tests/Domain/RngStreamTypeTests.cs, Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "stable_ids must be content-stable IDs; changing display_order only must not change the stable_ids set. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
-      "locked_at_save_point must be represented as explicit boolean semantic (IsLockedAtSavePoint) and remain reproducible for the same lock context; LockedAt timestamp, if present, is informational. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-      "Serialization round-trip must preserve OfferLockSnapshot data; identical inputs (including rng_stream and stream_pos) must produce identical outputs, and changing rng_stream or stream_pos must keep stable_ids content-stable while the changed context is reflected in provenance fields. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
-      "For identical lock inputs (context, candidates, provenance, save-point flag), deterministic retrieval semantics must return equivalent snapshots (StableIds, DisplayOrder, Provenance.RngStream, Provenance.StreamPosition, IsLockedAtSavePoint). Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs"
+      "Contracts layer provides concrete C# types `OfferLockSnapshot` and `OfferProvenance` that can be instantiated in tests; a schema-only or dictionary-only representation does not satisfy this requirement. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "`OfferLockSnapshot` includes `stable_ids`, `display_order`, `provenance`, `rng_stream`, and `locked_at_save_point` semantics (implemented as `IsLockedAtSavePoint`), and `Provenance` remains intact through value-object round-trip serialization/deserialization. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "`OfferProvenance` includes `source_type`, `source_id`, `act`, `floor`, `node_id`, `difficulty`, `rng_stream`, and `stream_pos` with contract-visible field/type definitions that tests can verify. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "In valid constructed samples, `OfferLockSnapshot.rng_stream` equals `OfferProvenance.rng_stream`; any mismatch fails contract validation. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Offer-lock snapshots preserve `provenance.stream_pos` and explicitly carry save-point lock context as a boolean semantic. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "RNG stream categories are a closed set of `run`, `combat`, `event`, `loot`, `shop`, and `offer`; `OfferLockSnapshot.RngStream` and `OfferProvenance.RngStream` accept only this set, and unknown values fail validation tests. Refs: Game.Core.Tests/Domain/RngStreamTypeTests.cs, Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "`stable_ids` are content-stable IDs, and changing only `display_order` does not change the `stable_ids` set. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "`locked_at_save_point` is represented by explicit boolean semantics (`IsLockedAtSavePoint`) and is reproducible for the same lock context; any optional `LockedAt` timestamp is informational only. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Serialization/deserialization round-trip preserves full `OfferLockSnapshot` data; identical inputs (including `rng_stream` and `stream_pos`) produce identical outputs, and when `rng_stream` or `stream_pos` changes, `stable_ids` remain content-stable while provenance reflects the changed context. Refs: Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "For identical lock inputs (context, candidates, provenance, save-point flag), deterministic retrieval returns equivalent snapshots for `StableIds`, `DisplayOrder`, `Provenance.RngStream`, `Provenance.StreamPosition`, and `IsLockedAtSavePoint`. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests to validate offer locking structure and provenance fields. Test serialization/deserialization for deterministic behavior. Refs: ADR-0032."
@@ -560,18 +560,18 @@
       "Game.Core.Tests/Tasks/Task0017AcceptanceTests.cs"
     ],
     "acceptance": [
-      "当Act数量配置为2、4、5时，地图构建与导航初始化均成功，且不会触发由固定3个Act假设导致的失败；自动化验收中至少一个非3 Act配置通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
-      "在Windows环境下执行本任务验收时，地图初始化、节点展示与分叉选择流程均可完成；同一输入重复执行时得到一致的可观察结果，否则判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
+      "地图在Act数量配置为2、4、5时均能完成构建与导航初始化，且不会因固定3个Act假设而失败；自动化验收至少验证一个非3-Act配置通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
+      "在Windows环境执行验收时，地图初始化、节点展示、分叉选择流程均可完成；对同一输入重复执行产生一致的可观察结果，否则判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
       "Overlay中的Test-Refs可直接定位到本任务的地图导航与Act结构测试文件；若ACCEPTANCE_CHECKLIST中的对应路径不存在或无法核对通过状态，则判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
-      "Game.Core提供MapService用于Act与地图节点管理；给定固定输入时可断言节点集合、连接关系或状态变化，且对应单元测试通过。 Refs: Game.Core.Tests/Services/MapServiceTests.cs",
-      "Map.tscn中可识别到Combat、Event、Shop、Rest四类节点图标或等价可识别表现；缺失任一类型即判定不通过。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_icons_presence.gd",
-      "地图支持分叉选择：在同一初始状态下选择不同分支后，可达节点集合或后续路径至少存在一处可观察差异；若无差异则判定不通过。 Refs: Game.Core.Tests/Services/MapBranchSelectionTests.cs Tests.Godot/tests/Scenes/Map/test_map_branch_selection_paths.gd",
-      "进入任一节点前会保存node_pre_enter状态；进入后可通过读取状态或测试断言确认已保存且与进入前一致，未保存或不一致即判定失败。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_pre_enter_state.gd",
-      "存在xUnit用例验证Act结构为可配置数量而非固定3个；用例能够区分满足条件时的成功与不满足条件时的失败。 Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "存在可重复执行的用例验证地图导航与节点选择行为，至少覆盖一次有效节点选择及其对应状态转移结果，并可稳定复现。 Refs: Game.Core.Tests/Services/MapNavigationSelectionTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Game.Core中的MapService对Act与地图节点进行管理，并在固定输入下可稳定断言节点集合、连接关系与状态变化，且对应xUnit测试通过。 Refs: Game.Core.Tests/Services/MapServiceTests.cs",
+      "Map.tscn可识别到Combat、Event、Shop、Rest四类节点图标或等价可识别表现；缺失任一类型即判定不通过。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_icons_presence.gd",
+      "地图支持分叉选择：同一初始状态下选择不同分支后，可达节点集合或后续路径至少存在一处可观察差异；若无差异则判定不通过。 Refs: Game.Core.Tests/Services/MapBranchSelectionTests.cs Tests.Godot/tests/Scenes/Map/test_map_branch_selection_paths.gd",
+      "进入任一节点前必须保存node_pre_enter状态；进入后可通过读取状态或测试断言确认其已保存且与进入前一致，未保存或不一致即判定失败。 Refs: Tests.Godot/tests/Scenes/Map/test_map_node_pre_enter_state.gd",
+      "存在xUnit用例验证Act结构可按配置数量运行且不依赖固定3个Act；用例能区分满足条件时成功与不满足条件时失败。 Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "存在可重复执行的用例验证地图导航与节点选择，至少覆盖一次有效节点选择及其状态转移结果，并能稳定复现。 Refs: Game.Core.Tests/Services/MapNavigationSelectionTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
       "验收材料或变更记录中可检索到ADR-0007与ADR-0021的引用，并能对应到本任务的MapService与地图契约决策；缺失任一引用即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0017_acceptance.gd",
-      "[OBL:T17.O8] 当在分叉节点提交非法分支ID时，系统必须拒绝本次选择，当前节点与可达节点集合保持不变。 Refs: Game.Core.Tests/Services/MapServiceTests.cs Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd",
-      "[OBL:T17.O8] 同一非法输入重复执行时结果一致，并可通过xUnit或Godot测试断言未发生状态推进。 Refs: Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd Game.Core.Tests/Tasks/Task0017AcceptanceTests.cs",
+      "[OBL:T17.O8] 在分叉节点提交非法分支ID时，系统必须拒绝该次选择，且当前节点与可达节点集合保持不变。 Refs: Game.Core.Tests/Services/MapServiceTests.cs Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd",
+      "[OBL:T17.O8] 对同一非法输入重复执行时结果必须一致，并可通过xUnit或Godot测试断言未发生状态推进。 Refs: Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd Game.Core.Tests/Tasks/Task0017AcceptanceTests.cs",
       "[OBL:T17.O8] 分叉选择接收无效分支输入时必须拒绝前进，且当前导航状态保持不变（must not advance / state unchanged）。 Refs: Game.Core.Tests/Services/MapServiceTests.cs Tests.Godot/tests/Scenes/Map/test_map_fork_invalid_branch_rejected.gd"
     ],
     "test_strategy": [
@@ -1569,11 +1569,11 @@
       "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
     ],
     "acceptance": [
-      "Provide scripts/python/validate_audit_logs.py to validate security-audit JSONL line-by-line (structure + required fields); any invalid row must return non-zero and must not be treated as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "On validation failure, output must include exact line numbers and actionable fix reasons so the broken JSONL rows can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "quality_gates.py must invoke the audit validator when enabled and persist actual executed/pass_fail results into task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "When audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must exit non-zero and block downstream release path. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "Provide valid and invalid JSONL fixtures and reproduce one passing and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "Provide scripts/python/validate_audit_logs.py that validates security-audit JSONL line by line for JSON structure and required fields; any invalid line must cause a non-zero exit and the validation result must not be reported as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "When validation fails, the output must include the exact failing line number and an actionable fix reason so the broken row can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "When audit validation is enabled, quality_gates.py must invoke the audit validator and persist the actual executed/pass_fail result into the task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+      "If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must exit non-zero and block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "Provide valid and invalid JSONL fixtures and reproduce one passing run and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "When audit validation is disabled, quality_gates.py must not invoke validate_audit_logs.py and must write executed=false and pass_fail=\"skipped\" into task-0056 summary. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],
     "test_strategy": [
@@ -2610,15 +2610,15 @@
       "Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
     ],
     "acceptance": [
-      "task-0058-semantic-governance.json must record semantic policy mode, gate precedence, and evaluation result. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Policy scope must bind semantic checks to task master.details and mapped view acceptance entries only; out-of-scope expansions must be marked advisory. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "When acceptance_check is ok and llm_review has warn-level findings only, governance result must remain pass with advisory notes. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "When acceptance_check fails, governance result must be fail regardless of llm_review output. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Governance output must include machine-readable fields for blocker_findings and advisory_findings with stable keys. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Windows execution evidence must include platform=windows and non-empty run_id in task-0058-semantic-governance.json. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "task-0058-semantic-governance.json must include semantic_policy_mode, gate_precedence, and governance_result fields with non-empty values. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Policy evaluation scope must be limited to task master.details and mapped view acceptance items; any expansion beyond that scope must be classified as advisory out-of-scope, not blocker. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check is ok and llm_review has warn-level findings only (without explicit elevation), governance_result must be pass and advisory notes must be recorded. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check fails, governance_result must be fail regardless of llm_review output. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Governance output must expose machine-readable blocker_findings and advisory_findings fields using stable key names. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Windows execution evidence in task-0058-semantic-governance.json must include platform=windows and a non-empty run_id. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
       "Task mapping must remain linked: tasks.json id=58 and tasks_back id=NG-0044 must reference each other via taskmaster_id=58. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "One pass sample and one advisory-warning sample must both be reproducible from local scripts without manual file edits. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "If any llm_review finding is explicitly elevated to blocker, output must include elevation_rule_id and evidence, and the finding must move to blocker_findings; without explicit elevation rule, warn findings must remain advisory_findings and must not fail governance. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+      "One pass sample and one advisory-warning sample must both be reproducible via local scripts without manual file edits. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "If any llm_review finding is explicitly elevated to blocker, output must include elevation_rule_id and supporting evidence and the finding must appear in blocker_findings; without an explicit elevation rule, warn findings must remain in advisory_findings and must not fail governance. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
     ],
     "test_strategy": [
       "Run governance evaluation on Windows with one pass sample and one advisory-warning sample, then validate JSON evidence shape and linkage fields."

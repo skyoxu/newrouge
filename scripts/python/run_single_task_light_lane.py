@@ -18,6 +18,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+_FLAG_SUPPORT_CACHE: dict[tuple[str, str], bool] = {}
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -180,6 +182,47 @@ def _steps(*, align_apply: bool, delivery_profile: str) -> list[tuple[str, list[
     ]
 
 
+def _script_supports_flag(root: Path, script_path: str, flag: str) -> bool:
+    key = (script_path, flag)
+    cached = _FLAG_SUPPORT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        proc = subprocess.run(
+            ["py", "-3", script_path, "-h"],
+            cwd=str(root),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=30,
+        )
+        blob = f"{proc.stdout or ''}\n{proc.stderr or ''}".lower()
+        supported = flag.lower() in blob
+    except Exception:
+        supported = False
+    _FLAG_SUPPORT_CACHE[key] = supported
+    return supported
+
+
+def _drop_flag_with_value(cmd: list[str], flag: str) -> list[str]:
+    out = list(cmd)
+    while flag in out:
+        idx = out.index(flag)
+        del out[idx]
+        if idx < len(out) and not out[idx].startswith("--"):
+            del out[idx]
+    return out
+
+
+def _normalize_step_command(root: Path, cmd: list[str]) -> list[str]:
+    if len(cmd) >= 3 and "--delivery-profile" in cmd:
+        script_path = str(cmd[2])
+        if not _script_supports_flag(root, script_path, "--delivery-profile"):
+            return _drop_flag_with_value(cmd, "--delivery-profile")
+    return cmd
+
+
 def _run_step(root: Path, cmd: list[str], *, timeout_sec: int) -> tuple[int, str, str]:
     try:
         proc = subprocess.run(
@@ -338,6 +381,7 @@ def main() -> int:
 
         for step_name, template in steps:
             cmd = [part.format(id=task_id) for part in template]
+            cmd = _normalize_step_command(root, cmd)
             rc, stdout, stderr = _run_step(root, cmd, timeout_sec=int(args.timeout_sec))
             log_path = out_dir / f"t{task_id:04d}--{step_name}.log"
             log_body = "\n".join(
