@@ -12,7 +12,7 @@ from typing import Any
 from _deterministic_review import DETERMINISTIC_AGENTS
 from _llm_review_acceptance import truncate
 from _security_profile import security_profile_payload
-from _util import split_csv, today_str
+from _util import repo_rel, split_csv, today_str
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -104,7 +104,7 @@ def summary_base(*, mode: str, out_dir: Path, args: argparse.Namespace, security
         "date": today_str(),
         "mode": mode,
         "status": status,
-        "out_dir": str(out_dir),
+        "out_dir": repo_rel(out_dir),
         "strict": bool(args.strict),
         "security_profile": security_profile_payload(security_profile),
         "prompt_budget": {

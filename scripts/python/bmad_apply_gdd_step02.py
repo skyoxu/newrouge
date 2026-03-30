@@ -20,14 +20,16 @@ import datetime as dt
 import hashlib
 import io
 import json
-import os
 import re
 import sys
+from pathlib import Path
 from typing import Tuple
 
 
-GDD_PATH = os.path.join("_bmad-output", "gdd.md")
-SNIPPET_PATH = os.path.join("_bmad-output", "snippets", "gdd-step-02-executive-summary.md")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BMAD_ROOT = REPO_ROOT / "_bmad-output"
+GDD_PATH = BMAD_ROOT / "gdd.md"
+SNIPPET_PATH = BMAD_ROOT / "snippets" / "gdd-step-02-executive-summary.md"
 
 
 def _now_iso() -> str:
@@ -42,23 +44,27 @@ def _sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest().upper()
 
 
-def _sha256_file(path: str) -> str:
+def _sha256_file(path: Path) -> str:
     with io.open(path, "rb") as f:
         return _sha256_bytes(f.read())
 
 
-def _write_json(path: str, obj: object) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def _write_json(path: Path, obj: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     with io.open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
 
-def _encoding_evidence(path: str) -> dict:
+def _repo_rel(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT.resolve())).replace("\\", "/")
+
+
+def _encoding_evidence(path: Path) -> dict:
     raw = io.open(path, "rb").read()
     first3_hex = " ".join(f"{x:02X}" for x in raw[:3])
     return {
-        "path": os.path.abspath(path),
+        "path": _repo_rel(path),
         "first3_hex": first3_hex,
         "utf8_bom": raw.startswith(b"\xEF\xBB\xBF"),
     }
@@ -111,7 +117,7 @@ def _replace_exec_summary_block(text: str, new_exec_summary: str) -> str:
 
 
 def _load_exec_summary_snippet() -> str:
-    if not os.path.isfile(SNIPPET_PATH):
+    if not SNIPPET_PATH.is_file():
         raise FileNotFoundError(
             f"Missing snippet file: {SNIPPET_PATH}. Create it as UTF-8 and re-run."
         )
@@ -123,7 +129,7 @@ def _load_exec_summary_snippet() -> str:
 
 
 def apply() -> Tuple[str, str]:
-    if not os.path.isfile(GDD_PATH):
+    if not GDD_PATH.is_file():
         raise FileNotFoundError(GDD_PATH)
 
     before_sha = _sha256_file(GDD_PATH)
@@ -156,19 +162,19 @@ def apply() -> Tuple[str, str]:
 
 def main() -> int:
     date = _today()
-    out_dir = os.path.join("logs", "ci", date, "gdd")
-    os.makedirs(out_dir, exist_ok=True)
+    out_dir = REPO_ROOT / "logs" / "ci" / date / "gdd"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    step_init_path = os.path.join(out_dir, "step-02.init.json")
-    step_complete_path = os.path.join(out_dir, "step-02.complete.json")
-    enc_path = os.path.join(out_dir, "check_encoding.gdd.step-02.log.json")
+    step_init_path = out_dir / "step-02.init.json"
+    step_complete_path = out_dir / "step-02.complete.json"
+    enc_path = out_dir / "check_encoding.gdd.step-02.log.json"
 
     _write_json(
         step_init_path,
         {
             "ts": _now_iso(),
             "action": "gdd.step-02.init",
-            "output_file": os.path.abspath(GDD_PATH),
+            "output_file": _repo_rel(GDD_PATH),
         },
     )
 
@@ -179,7 +185,7 @@ def main() -> int:
         {
             "ts": _now_iso(),
             "action": "gdd.step-02.complete",
-            "output_file": os.path.abspath(GDD_PATH),
+            "output_file": _repo_rel(GDD_PATH),
             "sha256_before": before_sha,
             "sha256_after": after_sha,
             "stepsCompleted": ["1", "2"],
@@ -189,7 +195,7 @@ def main() -> int:
         },
     )
 
-    print(f"GDD_STEP_02_APPLIED file={GDD_PATH} sha256={after_sha}")
+    print(f"GDD_STEP_02_APPLIED file={_repo_rel(GDD_PATH)} sha256={after_sha}")
     return 0
 
 
