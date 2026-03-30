@@ -39,12 +39,64 @@ def _write_master_tasks(path: Path, tasks: list[dict[str, object]]) -> None:
 
 class RunSingleTaskLightLaneTests(unittest.TestCase):
     def test_summary_scope_matches_should_fail_when_selected_ids_change(self) -> None:
-        scope = lane._build_resume_scope(selected=[11, 12], delivery_profile="fast-ship", align_apply=True)
+        scope = lane._build_resume_scope(
+            selected=[11, 12],
+            delivery_profile="fast-ship",
+            align_apply=True,
+            fill_refs_after_extract_fail="skip",
+            downstream_on_extract_fail="skip-soft",
+            downstream_on_extract_family_fail="auto",
+            fill_refs_mode="none",
+            batch_lane="extract-first",
+        )
         self.assertFalse(
             lane._summary_scope_matches(
-                {"resume_scope": lane._build_resume_scope(selected=[13], delivery_profile="fast-ship", align_apply=True)},
+                {
+                    "resume_scope": lane._build_resume_scope(
+                        selected=[13],
+                        delivery_profile="fast-ship",
+                        align_apply=True,
+                        fill_refs_after_extract_fail="skip",
+                        downstream_on_extract_fail="skip-soft",
+                        downstream_on_extract_family_fail="auto",
+                        fill_refs_mode="none",
+                        batch_lane="extract-first",
+                    )
+                },
                 scope,
             )
+        )
+
+    def test_resolve_downstream_on_extract_fail_should_use_skip_soft_for_multi_task_auto(self) -> None:
+        self.assertEqual("continue", lane._resolve_downstream_on_extract_fail("auto", selected_count=1))
+        self.assertEqual("skip-soft", lane._resolve_downstream_on_extract_fail("auto", selected_count=2))
+        self.assertEqual("skip-all", lane._resolve_downstream_on_extract_fail("skip-all", selected_count=9))
+
+    def test_resolve_downstream_on_extract_family_fail_should_apply_auto_family_policies(self) -> None:
+        self.assertEqual(
+            "skip-all",
+            lane._resolve_downstream_on_extract_family_fail("auto", extract_fail_family="timeout"),
+        )
+        self.assertEqual(
+            "skip-all",
+            lane._resolve_downstream_on_extract_family_fail(
+                "auto",
+                extract_fail_family="stdout:sc_llm_obligations_status_fail",
+            ),
+        )
+        self.assertEqual(
+            "skip-soft",
+            lane._resolve_downstream_on_extract_family_fail(
+                "auto",
+                extract_fail_family="error:model_output_invalid",
+            ),
+        )
+        self.assertEqual(
+            "",
+            lane._resolve_downstream_on_extract_family_fail(
+                "off",
+                extract_fail_family="timeout",
+            ),
         )
 
     def test_steps_should_toggle_align_apply_and_delivery_profile(self) -> None:
@@ -121,6 +173,63 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
                     ],
                 },
                 {
+                    "task_id": 16,
+                    "ok": False,
+                    "failed_steps": ["extract"],
+                    "steps": [
+                        {
+                            "step": "extract",
+                            "rc": 1,
+                            "inner_summary": {"status": "fail", "hard_uncovered_count": 3},
+                        }
+                    ],
+                },
+                {
+                    "task_id": 17,
+                    "ok": False,
+                    "failed_steps": ["extract"],
+                    "steps": [
+                        {
+                            "step": "extract",
+                            "rc": 1,
+                            "inner_summary": {"status": "fail", "schema_error_count": 2},
+                        }
+                    ],
+                },
+                {
+                    "task_id": 18,
+                    "ok": False,
+                    "failed_steps": ["extract"],
+                    "steps": [{"step": "extract", "rc": 1, "stderr_tail": "Model output invalid at line 42"}],
+                },
+                {
+                    "task_id": 19,
+                    "ok": False,
+                    "failed_steps": ["extract"],
+                    "steps": [
+                        {
+                            "step": "extract",
+                            "rc": 1,
+                            "inner_summary": {
+                                "status": "fail",
+                                "error": "model_output_invalid",
+                            },
+                        }
+                    ],
+                },
+                {
+                    "task_id": 20,
+                    "ok": False,
+                    "failed_steps": ["extract"],
+                    "steps": [
+                        {
+                            "step": "extract",
+                            "rc": 1,
+                            "stdout_tail": "SC_LLM_OBLIGATIONS status=fail out=C:/buildgame/sanguo/logs/ci/2026-03-28/sc-llm-obligations-task-67",
+                        }
+                    ],
+                },
+                {
                     "task_id": 15,
                     "ok": True,
                     "failed_steps": [],
@@ -131,11 +240,79 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
 
         lane._rebuild_counts(summary)
 
-        self.assertEqual({"timeout": 1, "coverage-gap": 1, "semantic-needs-fix": 1, "model-fail": 1}, summary["failure_category_counts"])
-        self.assertEqual({"timeout": [11], "coverage-gap": [12], "semantic-needs-fix": [13], "model-fail": [14]}, summary["failure_category_task_ids"])
-        self.assertEqual({"11": "timeout", "12": "coverage-gap", "13": "semantic-needs-fix", "14": "model-fail"}, summary["failure_category_by_task"])
+        self.assertEqual({"timeout": 1, "coverage-gap": 1, "semantic-needs-fix": 1, "model-fail": 6}, summary["failure_category_counts"])
+        self.assertEqual({"timeout": [11], "coverage-gap": [12], "semantic-needs-fix": [13], "model-fail": [14, 16, 17, 18, 19, 20]}, summary["failure_category_task_ids"])
+        self.assertEqual({"11": "timeout", "12": "coverage-gap", "13": "semantic-needs-fix", "14": "model-fail", "16": "model-fail", "17": "model-fail", "18": "model-fail", "19": "model-fail", "20": "model-fail"}, summary["failure_category_by_task"])
         self.assertEqual([13], summary["prompt_trimmed_task_ids"])
         self.assertEqual(1, summary["prompt_trimmed_count"])
+        self.assertEqual({"timeout": 1, "hard_uncovered": 1, "schema_error": 1, "model_fail": 3}, summary["extract_fail_bucket_counts"])
+        self.assertEqual({"timeout": [11], "hard_uncovered": [16], "schema_error": [17], "model_fail": [18, 19, 20]}, summary["extract_fail_bucket_task_ids"])
+        self.assertEqual(
+            {
+                "timeout": 1,
+                "hard_uncovered": 1,
+                "schema_error": 1,
+                "stderr:model output invalid at line <num>": 1,
+                "error:model_output_invalid": 1,
+                "stdout:sc_llm_obligations status=fail out=<path>": 1,
+            },
+            summary["extract_fail_signature_counts"],
+        )
+        self.assertEqual(
+            {
+                "timeout": [11],
+                "hard_uncovered": [16],
+                "schema_error": [17],
+                "stderr:model output invalid at line <num>": [18],
+                "error:model_output_invalid": [19],
+                "stdout:sc_llm_obligations status=fail out=<path>": [20],
+            },
+            summary["extract_fail_signature_task_ids"],
+        )
+        self.assertEqual(
+            {
+                "timeout": 1,
+                "hard_uncovered": 1,
+                "schema_error": 1,
+                "stderr:model_output_invalid": 1,
+                "error:model_output_invalid": 1,
+                "stdout:sc_llm_obligations_status_fail": 1,
+            },
+            summary["extract_fail_family_counts"],
+        )
+        self.assertEqual(
+            {
+                "timeout": [11],
+                "hard_uncovered": [16],
+                "schema_error": [17],
+                "stderr:model_output_invalid": [18],
+                "error:model_output_invalid": [19],
+                "stdout:sc_llm_obligations_status_fail": [20],
+            },
+            summary["extract_fail_family_task_ids"],
+        )
+        self.assertEqual(
+            [
+                {"signature": "error:model_output_invalid", "count": 1, "task_ids": [19]},
+                {"signature": "hard_uncovered", "count": 1, "task_ids": [16]},
+                {"signature": "schema_error", "count": 1, "task_ids": [17]},
+                {"signature": "stderr:model output invalid at line <num>", "count": 1, "task_ids": [18]},
+                {"signature": "stdout:sc_llm_obligations status=fail out=<path>", "count": 1, "task_ids": [20]},
+                {"signature": "timeout", "count": 1, "task_ids": [11]},
+            ],
+            summary["extract_fail_top_signatures"],
+        )
+        self.assertEqual(
+            [
+                {"family": "error:model_output_invalid", "count": 1, "task_ids": [19]},
+                {"family": "hard_uncovered", "count": 1, "task_ids": [16]},
+                {"family": "schema_error", "count": 1, "task_ids": [17]},
+                {"family": "stderr:model_output_invalid", "count": 1, "task_ids": [18]},
+                {"family": "stdout:sc_llm_obligations_status_fail", "count": 1, "task_ids": [20]},
+                {"family": "timeout", "count": 1, "task_ids": [11]},
+            ],
+            summary["extract_fail_top_families"],
+        )
         self.assertEqual(
             [
                 {
@@ -267,7 +444,7 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
                         "results": [
                             {
                                 "task_id": 11,
-                                "steps": [{"step": name, "rc": 0} for name in ["extract", "align", "coverage", "semantic_gate", "fill_refs_dry", "fill_refs_write", "fill_refs_verify"]],
+                                "steps": [{"step": name, "rc": 0} for name in ["extract", "align", "coverage", "semantic_gate"]],
                                 "failed_steps": [],
                                 "first_failed_step": "",
                                 "ok": True,
@@ -277,7 +454,12 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
                             "task_ids": [11, 12],
                             "delivery_profile": "fast-ship",
                             "align_apply": True,
-                            "step_names": ["extract", "align", "coverage", "semantic_gate", "fill_refs_dry", "fill_refs_write", "fill_refs_verify"],
+                            "fill_refs_after_extract_fail": "skip",
+                            "downstream_on_extract_fail": "skip-soft",
+                            "downstream_on_extract_family_fail": "auto",
+                            "fill_refs_mode": "none",
+                            "batch_lane": "extract-first",
+                            "step_names": ["extract", "align", "coverage", "semantic_gate"],
                         },
                     },
                     ensure_ascii=False,
@@ -300,7 +482,7 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
                 rc = lane.main()
 
             self.assertEqual(0, rc)
-            self.assertEqual(7, run_step_mock.call_count)
+            self.assertEqual(4, run_step_mock.call_count)
             payload = json.loads(summary_path.read_text(encoding="utf-8"))
             self.assertEqual(2, payload["processed_tasks"])
             self.assertEqual(12, payload["last_task_id"])
@@ -338,6 +520,11 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
                             "task_ids": [11],
                             "delivery_profile": "fast-ship",
                             "align_apply": True,
+                            "fill_refs_after_extract_fail": "skip",
+                            "downstream_on_extract_fail": "continue",
+                            "downstream_on_extract_family_fail": "auto",
+                            "fill_refs_mode": "write-verify",
+                            "batch_lane": "standard",
                             "step_names": ["extract", "align", "coverage", "semantic_gate", "fill_refs_dry", "fill_refs_write", "fill_refs_verify"],
                         },
                     },
@@ -371,6 +558,110 @@ class RunSingleTaskLightLaneTests(unittest.TestCase):
             self.assertEqual("old/extract.log", row["steps"][0]["log"])
             self.assertEqual("old/align.log", row["steps"][1]["log"])
             self.assertEqual("old/coverage.log", row["steps"][2]["log"])
+
+    def test_main_should_skip_fill_refs_after_extract_fail_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            tasks_path = root / ".taskmaster" / "tasks" / "tasks.json"
+            _write_master_tasks(tasks_path, [{"id": 11, "status": "in-progress"}])
+            out_dir = root / "logs" / "ci" / "skip-fill-refs"
+            argv = [
+                "run_single_task_light_lane.py",
+                "--task-ids",
+                "11",
+                "--out-dir",
+                str(out_dir),
+            ]
+            responses = [
+                (1, "SC_LLM_OBLIGATIONS status=fail out=fake", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+            ]
+
+            def _fake_run_step(_root: Path, _cmd: list[str], *, timeout_sec: int):
+                return responses.pop(0)
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(lane, "_repo_root", return_value=root), \
+                mock.patch.object(lane, "_run_step", side_effect=_fake_run_step) as run_step_mock:
+                rc = lane.main()
+
+            self.assertEqual(1, rc)
+            self.assertEqual(1, run_step_mock.call_count)
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            row = payload["results"][0]
+            self.assertEqual("auto", payload["downstream_on_extract_family_fail_resolved"])
+            self.assertEqual(
+                ["extract", "align", "coverage", "semantic_gate", "fill_refs_dry", "fill_refs_write", "fill_refs_verify"],
+                [item["step"] for item in row["steps"]],
+            )
+            skipped = {item["step"]: item for item in row["steps"][1:]}
+            self.assertTrue(all(bool(item.get("skipped")) for item in skipped.values()))
+            self.assertTrue(
+                all(str(item.get("skip_reason")) == "extract_failed_family_policy_skip_all" for item in skipped.values())
+            )
+            self.assertTrue(
+                all(
+                    str(item.get("extract_fail_family")) == "stdout:sc_llm_obligations_status_fail"
+                    for item in skipped.values()
+                )
+            )
+
+    def test_main_should_skip_soft_downstream_after_extract_fail_for_multi_task_auto(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            tasks_path = root / ".taskmaster" / "tasks" / "tasks.json"
+            _write_master_tasks(
+                tasks_path,
+                [
+                    {"id": 11, "status": "in-progress"},
+                    {"id": 12, "status": "in-progress"},
+                ],
+            )
+            out_dir = root / "logs" / "ci" / "skip-soft"
+            argv = [
+                "run_single_task_light_lane.py",
+                "--task-ids",
+                "11,12",
+                "--out-dir",
+                str(out_dir),
+            ]
+            responses = [
+                (1, "SC_LLM_OBLIGATIONS status=fail out=fake", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+                (0, "ok", ""),
+            ]
+
+            def _fake_run_step(_root: Path, _cmd: list[str], *, timeout_sec: int):
+                return responses.pop(0)
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(lane, "_repo_root", return_value=root), \
+                mock.patch.object(lane, "_run_step", side_effect=_fake_run_step) as run_step_mock:
+                rc = lane.main()
+
+            self.assertEqual(1, rc)
+            self.assertEqual(5, run_step_mock.call_count)
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("skip-soft", payload["downstream_on_extract_fail_resolved"])
+            self.assertEqual("extract-first", payload["batch_lane_resolved"])
+            self.assertEqual("none", payload["fill_refs_mode_resolved"])
+            row = payload["results"][0]
+            self.assertEqual(
+                ["extract", "align"],
+                [item["step"] for item in row["steps"]],
+            )
+            skipped = {item["step"]: item for item in row["steps"] if item.get("skipped")}
+            self.assertEqual({"align"}, set(skipped.keys()))
+            self.assertEqual("extract_failed_family_policy_skip_all", skipped["align"]["skip_reason"])
+            self.assertEqual("stdout:sc_llm_obligations_status_fail", skipped["align"]["extract_fail_family"])
 
     def test_main_should_retry_extract_timeout_once_with_expanded_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as td:
