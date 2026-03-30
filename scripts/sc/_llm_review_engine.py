@@ -33,7 +33,7 @@ from _llm_review_prompting import (
 )
 from _security_profile import build_security_profile_context, resolve_security_profile, security_profile_payload
 from _taskmaster import resolve_triplet
-from _util import ci_dir, repo_root, write_json, write_text
+from _util import ci_dir, repo_rel, repo_root, write_json, write_text
 
 
 def _run_self_check(args: argparse.Namespace) -> int:
@@ -45,7 +45,7 @@ def _run_self_check(args: argparse.Namespace) -> int:
     write_json(out_dir / "summary.json", summary)
     for e in errors:
         print(f"[sc-llm-review] ERROR: {e}")
-    print(f"SC_LLM_REVIEW_SELF_CHECK status={summary['status']} out={out_dir}")
+    print(f"SC_LLM_REVIEW_SELF_CHECK status={summary['status']} out={repo_rel(out_dir)}")
     return 0 if not errors else 2
 
 
@@ -86,7 +86,7 @@ def _run_dry_plan(args: argparse.Namespace) -> int:
     summary["agents"] = agents
     summary["plan"] = plan
     write_json(out_dir / "summary.json", summary)
-    print(f"SC_LLM_REVIEW_DRY_RUN_PLAN status={summary['status']} out={out_dir}")
+    print(f"SC_LLM_REVIEW_DRY_RUN_PLAN status={summary['status']} out={repo_rel(out_dir)}")
     return 0
 
 
@@ -337,5 +337,5 @@ def main() -> int:
         }
     )
     write_json(out_dir / "summary.json", summary)
-    print(f"SC_LLM_REVIEW status={summary['status']} out={out_dir}")
+    print(f"SC_LLM_REVIEW status={summary['status']} out={repo_rel(out_dir)}")
     return 0 if summary["status"] in ("ok", "warn") else 1
