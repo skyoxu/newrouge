@@ -317,7 +317,7 @@ def check_directory_boundaries(root: Path | str | None = None) -> dict[str, Any]
             {
                 "rule_id": "root-taskdoc-not-tracked",
                 "path": tracked,
-                "summary": "root taskdoc should not be git-tracked in this repository",
+                "summary": "root taskdoc should not be git-tracked in the template repo",
             }
         )
 

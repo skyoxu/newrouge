@@ -92,6 +92,46 @@ class ProjectHealthSupportTests(unittest.TestCase):
     def test_write_project_health_record_should_refresh_dashboard_and_latest_index(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
+            _write(
+                root / "logs" / "ci" / "2026-03-29" / "single-task-light-lane-v2-batch" / "summary.json",
+                json.dumps(
+                    {
+                        "cmd": "run_single_task_light_lane_batch",
+                        "status": "fail",
+                        "covered_count": 8,
+                        "failed_count": 6,
+                        "extract_family_recommended_actions": [
+                            {
+                                "family": "stdout:sc_llm_obligations_status_fail",
+                                "count": 5,
+                                "task_ids": [67, 68, 69],
+                                "recommended_action": "repair_obligations_or_task_context_before_downstream",
+                                "downstream_policy_hint": "skip-all",
+                                "reason": "extract already reported obligations failure",
+                            }
+                        ],
+                        "family_hotspots": [
+                            {
+                                "family": "stdout:sc_llm_obligations_status_fail",
+                                "task_id_start": 67,
+                                "task_id_end": 72,
+                                "count": 6,
+                            }
+                        ],
+                        "quarantine_ranges": [
+                            {
+                                "family": "stdout:sc_llm_obligations_status_fail",
+                                "task_id_start": 67,
+                                "task_id_end": 72,
+                                "reason": "family_streak>=5",
+                            }
+                        ],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+            )
             project_health.write_project_health_record(
                 root=root,
                 kind="detect-project-stage",
@@ -112,11 +152,21 @@ class ProjectHealthSupportTests(unittest.TestCase):
                 (root / "logs" / "ci" / "project-health" / "latest.json").read_text(encoding="utf-8")
             )
             latest_html = (root / "logs" / "ci" / "project-health" / "latest.html").read_text(encoding="utf-8")
+            report_catalog = json.loads(
+                (root / "logs" / "ci" / "project-health" / "report-catalog.latest.json").read_text(encoding="utf-8")
+            )
 
             self.assertEqual(3, len(latest_index["records"]))
+            self.assertIn("report_catalog_summary", latest_index)
+            self.assertEqual(report_catalog["total_json"], latest_index["report_catalog_summary"]["total_json"])
             self.assertIn("triplet missing", latest_html)
             self.assertIn("doctor ok", latest_html)
             self.assertIn("boundary fail", latest_html)
+            self.assertIn("批量任务诊断摘录", latest_html)
+            self.assertIn("repair_obligations_or_task_context_before_downstream", latest_html)
+            self.assertIn("stdout:sc_llm_obligations_status_fail", latest_html)
+            self.assertIn("family_streak&gt;=5", latest_html)
+            self.assertNotIn('meta http-equiv="refresh"', latest_html.lower())
 
 
 if __name__ == "__main__":
