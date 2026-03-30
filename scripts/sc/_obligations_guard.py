@@ -359,6 +359,7 @@ def build_obligation_prompt(
     acceptance_by_view: dict[str, list[Any]],
     security_profile: str,
     security_profile_context: str,
+    delivery_profile_context: str = "",
 ) -> str:
     subtask_lines: list[str] = []
     for item in subtasks:
