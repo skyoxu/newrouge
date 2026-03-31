@@ -113,6 +113,34 @@ class AcceptanceSemanticsRefsRestoreTests(unittest.TestCase):
         self.assertEqual("ok", reason)
         self.assertEqual(["back:1"], restore_marks)
 
+    def test_validate_output_should_still_fail_when_refs_are_added_to_item_without_original_refs(self) -> None:
+        view_inputs = [
+            align_core.ViewInput(
+                view="back",
+                taskmaster_id=5,
+                title="T5",
+                description="d",
+                acceptance=["ACC:T5.1 something without refs"],
+            )
+        ]
+        out_obj = {
+            "task_id": 5,
+            "mode": "rewrite-only",
+            "back": {"acceptance": ["ACC:T5.1 rewritten text Refs: Game.Core/B.cs"]},
+        }
+        restore_marks: list[str] = []
+        ok, reason = align_core.validate_output(
+            task_id=5,
+            mode="rewrite-only",
+            view_inputs=view_inputs,
+            out_obj=out_obj,
+            align_view_descriptions=False,
+            refs_restore_items=restore_marks,
+        )
+        self.assertFalse(ok)
+        self.assertEqual("back:unexpected_refs_added_at_1", reason)
+        self.assertEqual([], restore_marks)
+
     def test_restore_existing_refs_should_keep_new_prefix_and_old_refs(self) -> None:
         view_inputs = [
             align_core.ViewInput(
@@ -169,6 +197,7 @@ class AcceptanceSemanticsRefsRestoreTests(unittest.TestCase):
         self.assertEqual(0, int(result.get("failed") or 0))
         rows = result.get("results") or []
         self.assertEqual(1, len(rows))
+        self.assertEqual(1, rows[0].get("refs_restored_count"))
         self.assertEqual(["back:1"], rows[0].get("refs_restored_items"))
 
 

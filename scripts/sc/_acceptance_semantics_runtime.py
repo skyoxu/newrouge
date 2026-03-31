@@ -241,7 +241,14 @@ def run_alignment_tasks(
                 )
         if not ok:
             failed += 1
-            payload = {"task_id": tid, "status": "fail", "reason": validate_reason, "dir": str(task_out), "attempts": attempts}
+            payload = {
+                "task_id": tid,
+                "status": "fail",
+                "reason": validate_reason,
+                "dir": str(task_out),
+                "attempts": attempts,
+                "refs_restored_count": len(refs_restored_items),
+            }
             if refs_restored_items:
                 payload["refs_restored_items"] = refs_restored_items
             results.append(payload)
@@ -263,7 +270,16 @@ def run_alignment_tasks(
             if task_changed:
                 changed += 1
 
-        payload = {"task_id": tid, "status": "ok", "dir": str(task_out), "applied": bool(apply), "mode": mode, "changed": task_changed, "attempts": attempts}
+        payload = {
+            "task_id": tid,
+            "status": "ok",
+            "dir": str(task_out),
+            "applied": bool(apply),
+            "mode": mode,
+            "changed": task_changed,
+            "attempts": attempts,
+            "refs_restored_count": len(refs_restored_items),
+        }
         if refs_restored_items:
             payload["refs_restored_items"] = refs_restored_items
         results.append(payload)
