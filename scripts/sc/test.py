@@ -60,6 +60,7 @@ def resolve_test_runtime(*, delivery_profile: str | None, security_profile: str 
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="sc-test (test shim)")
+    ap.add_argument("--self-check", action="store_true", help="Validate parser/runtime wiring and summary contract without running tests.")
     ap.add_argument("--type", choices=["unit", "integration", "e2e", "all"], default="all")
     ap.add_argument("--task-id", default=None, help="Optional task id for smoke evidence file logs/ci/<date>/task-<id>.json")
     ap.add_argument("--solution", default="Game.sln")
@@ -74,6 +75,68 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-coverage-gate", action="store_true", help="do not enforce default coverage thresholds")
     ap.add_argument("--no-coverage-report", action="store_true", help="skip HTML coverage report generation")
     return ap
+
+
+def _planned_steps(*, test_type: str, include_coverage_report: bool, skip_smoke: bool) -> list[dict[str, Any]]:
+    planned: list[dict[str, Any]] = []
+    if test_type in ("unit", "all"):
+        planned.append({"name": "unit", "status": "skipped", "reason": "planned"})
+        planned.append({"name": "csharp-test-conventions", "status": "skipped", "reason": "planned"})
+        if include_coverage_report:
+            planned.append({"name": "coverage-report", "status": "skipped", "reason": "planned"})
+    if test_type in ("integration", "e2e", "all"):
+        planned.append({"name": "gdunit-hard", "status": "skipped", "reason": "planned"})
+        if not skip_smoke:
+            planned.append({"name": "smoke", "status": "skipped", "reason": "planned"})
+    return planned
+
+
+def _validate_planned_runtime_summary(*, run_id: str, args: argparse.Namespace, task_root_id: str | None, include_coverage_report: bool) -> None:
+    summary: dict[str, Any] = {
+        "cmd": "sc-test",
+        "run_id": run_id,
+        "type": args.type,
+        "solution": args.solution,
+        "configuration": args.configuration,
+        "status": "fail",
+        "steps": _planned_steps(test_type=args.type, include_coverage_report=include_coverage_report, skip_smoke=bool(args.skip_smoke)),
+    }
+    if task_root_id:
+        summary["task_id"] = task_root_id
+    validate_sc_test_summary(summary)
+
+
+def _run_self_check(args: argparse.Namespace) -> int:
+    out_dir = ci_dir("sc-test-self-check")
+    run_id = str(args.run_id or "").strip() or uuid.uuid4().hex
+    task_root_id = _normalize_task_root_id(args.task_id)
+    errors: list[str] = []
+    try:
+        _validate_planned_runtime_summary(
+            run_id=run_id,
+            args=args,
+            task_root_id=task_root_id,
+            include_coverage_report=not bool(args.no_coverage_report),
+        )
+    except SummarySchemaError as exc:
+        errors.append(str(exc))
+    payload: dict[str, Any] = {
+        "cmd": "sc-test",
+        "mode": "self-check",
+        "status": "ok" if not errors else "fail",
+        "out_dir": str(out_dir),
+        "run_id": run_id,
+        "type": args.type,
+        "solution": args.solution,
+        "configuration": args.configuration,
+        "planned_steps": _planned_steps(test_type=args.type, include_coverage_report=not bool(args.no_coverage_report), skip_smoke=bool(args.skip_smoke)),
+        "arg_validation": {"valid": len(errors) == 0, "errors": errors},
+    }
+    if task_root_id:
+        payload["task_id"] = task_root_id
+    write_json(out_dir / "summary.json", payload)
+    print(f"SC_TEST_SELF_CHECK status={payload['status']} out={out_dir}")
+    return 0 if not errors else 2
 
 
 def _normalize_task_root_id(task_id: str | None) -> str | None:
@@ -114,6 +177,8 @@ def run_smoke(out_dir: Path, godot_bin: str, scene: str, task_id: str | None = N
 
 def main() -> int:
     args = build_parser().parse_args()
+    if bool(args.self_check):
+        return _run_self_check(args)
     runtime = resolve_test_runtime(
         delivery_profile=args.delivery_profile,
         security_profile=args.security_profile,
@@ -142,6 +207,19 @@ def main() -> int:
     if task_root_id:
         summary["task_id"] = task_root_id
     schema_error_log = out_dir / "summary-schema-validation-error.log"
+
+    try:
+        _validate_planned_runtime_summary(
+            run_id=run_id,
+            args=args,
+            task_root_id=task_root_id,
+            include_coverage_report=not bool(args.no_coverage_report),
+        )
+    except SummarySchemaError as exc:
+        write_text(schema_error_log, f"{exc}\n")
+        write_json(out_dir / "summary.invalid.json", summary)
+        print(f"[sc-test] ERROR: planned summary schema validation failed. details={schema_error_log}")
+        return 2
 
     def _persist_summary() -> bool:
         try:

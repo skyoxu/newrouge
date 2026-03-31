@@ -43,6 +43,19 @@ class AcceptanceCheckCliGuardTests(unittest.TestCase):
         self.assertEqual(0, proc.returncode)
         self.assertIn("SC_ACCEPTANCE_SELF_CHECK status=ok", proc.stdout or "")
 
+    def test_self_check_should_accept_delivery_profile_flag(self) -> None:
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "--self-check", "--delivery-profile", "fast-ship"],
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        self.assertEqual(0, proc.returncode)
+        self.assertIn("SC_ACCEPTANCE_SELF_CHECK status=ok", proc.stdout or "")
+
     def test_self_check_should_fail_on_conflicting_args(self) -> None:
         proc = subprocess.run(
             [

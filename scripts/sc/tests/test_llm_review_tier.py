@@ -72,7 +72,7 @@ class LlmReviewTierPlanTests(unittest.TestCase):
                 back={"semantic_review_tier": "minimal", "contractRefs": ["Game.Core/Contracts/Guild/GuildEvent.cs"]},
             ),
             profile_defaults={
-                "agents": "architect-reviewer,code-reviewer",
+                "agents": "code-reviewer,security-auditor,semantic-equivalence-auditor",
                 "semantic_gate": "warn",
                 "timeout_sec": 600,
                 "agent_timeout_sec": 180,
@@ -82,7 +82,7 @@ class LlmReviewTierPlanTests(unittest.TestCase):
 
         self.assertEqual("minimal", plan["requested_tier"])
         self.assertEqual("full", plan["effective_tier"])
-        self.assertEqual("all", plan["agents"])
+        self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", plan["agents"])
         self.assertEqual("warn", plan["semantic_gate"])
         self.assertIn("contract_refs_present", plan["escalation_reasons"])
 
