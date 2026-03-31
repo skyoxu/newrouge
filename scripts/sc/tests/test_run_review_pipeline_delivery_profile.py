@@ -319,7 +319,8 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("skip", execution_context["llm_review"]["semantic_gate"])
             self.assertIn("--semantic-gate", llm_cmd)
             self.assertEqual("skip", llm_cmd[llm_cmd.index("--semantic-gate") + 1])
-            self.assertEqual("architect-reviewer,code-reviewer", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
             self.assertNotIn("--strict", llm_cmd)
 
     def test_dry_run_fast_ship_should_escalate_minimal_tier_for_contract_task(self) -> None:
@@ -360,7 +361,8 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("full", execution_context["llm_review"]["effective_tier"])
             self.assertIn("contract_refs_present", execution_context["llm_review"]["escalation_reasons"])
             self.assertEqual("warn", llm_cmd[llm_cmd.index("--semantic-gate") + 1])
-            self.assertEqual("all", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
 
 
 if __name__ == '__main__':

@@ -33,6 +33,26 @@ sc_test = _load_module("sc_test_orchestration_module", "scripts/sc/test.py")
 
 
 class ScTestOrchestrationTests(unittest.TestCase):
+    def test_self_check_should_validate_planned_summary_without_running_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "sc-test"
+            argv = ["test.py", "--self-check", "--type", "unit", "--run-id", "9" * 32]
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
+                mock.patch.object(sc_test, "run_unit") as run_unit_mock, \
+                mock.patch.object(sc_test, "run_csharp_test_conventions") as conventions_mock, \
+                mock.patch.object(sc_test, "run_coverage_report") as coverage_mock:
+                rc = sc_test.main()
+
+            self.assertEqual(0, rc)
+            run_unit_mock.assert_not_called()
+            conventions_mock.assert_not_called()
+            coverage_mock.assert_not_called()
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("self-check", summary["mode"])
+            self.assertEqual("ok", summary["status"])
+            self.assertEqual(["unit", "csharp-test-conventions", "coverage-report"], [item["name"] for item in summary["planned_steps"]])
+
     def test_main_should_run_unit_then_coverage_and_persist_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "sc-test"

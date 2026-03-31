@@ -16,20 +16,36 @@ func _new_db(node_name: String) -> Node:
     return db
 
 
-func _today_dir() -> String:
-    var d = Time.get_datetime_dict_from_system()
-    return "%04d-%02d-%02d" % [d.year, d.month, d.day]
+func _format_date_dir(d: Dictionary) -> String:
+    return "%04d-%02d-%02d" % [int(d.get("year", 0)), int(d.get("month", 0)), int(d.get("day", 0))]
+
+
+func _candidate_date_dirs() -> Array:
+    var local_dir := _format_date_dir(Time.get_datetime_dict_from_system(false))
+    var utc_dir := _format_date_dir(Time.get_datetime_dict_from_system(true))
+    var seen := {}
+    var dirs: Array = []
+    for date_dir in [local_dir, utc_dir]:
+        var key := str(date_dir)
+        if key == "":
+            continue
+        if not seen.has(key):
+            seen[key] = true
+            dirs.append(key)
+    return dirs
 
 
 func _audit_path() -> String:
-    return "res://logs/ci/%s/security-audit.jsonl" % _today_dir()
+    var dirs := _candidate_date_dirs()
+    if dirs.is_empty():
+        return "res://logs/ci/security-audit.jsonl"
+    return "res://logs/ci/%s/security-audit.jsonl" % str(dirs[0])
 
 func _audit_candidate_paths() -> Array:
-    var date_dir := _today_dir()
-    var paths: Array = [
-        ProjectSettings.globalize_path("res://logs/ci/%s/security-audit.jsonl" % date_dir),
-        ProjectSettings.globalize_path("res://../logs/ci/%s/security-audit.jsonl" % date_dir),
-    ]
+    var paths: Array = []
+    for date_dir in _candidate_date_dirs():
+        paths.append(ProjectSettings.globalize_path("res://logs/ci/%s/security-audit.jsonl" % date_dir))
+        paths.append(ProjectSettings.globalize_path("res://../logs/ci/%s/security-audit.jsonl" % date_dir))
     var env_root := OS.get_environment("AUDIT_LOG_ROOT").strip_edges()
     if env_root != "":
         paths.append(env_root.path_join("security-audit.jsonl"))

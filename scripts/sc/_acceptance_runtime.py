@@ -37,6 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--run-id", default=None, help="Optional fixed run id for deterministic evidence binding across scripts.")
     ap.add_argument("--godot-bin", default=None, help="Godot mono console path (or set env GODOT_BIN)")
     ap.add_argument(
+        "--delivery-profile",
+        default=None,
+        choices=["playable-ea", "fast-ship", "standard"],
+        help="Accepted for pipeline compatibility. acceptance_check behavior is still controlled by explicit gate flags and --security-profile.",
+    )
+    ap.add_argument(
         "--out-per-task",
         action="store_true",
         help="Write outputs to logs/ci/<date>/sc-acceptance-check-task-<id>/ to avoid overwriting when running many tasks.",

@@ -18,6 +18,7 @@ SCRIPT = SC_DIR / "llm_align_acceptance_semantics.py"
 sys.path.insert(0, str(SC_DIR))
 
 import _acceptance_semantics_runtime as runtime  # noqa: E402
+import _acceptance_semantics_align as align_core  # noqa: E402
 import llm_align_acceptance_semantics as align_script  # noqa: E402
 
 
@@ -81,6 +82,94 @@ class AcceptanceSemanticsRuntimeRetryTests(unittest.TestCase):
             self.assertIsNone(out_obj)
             self.assertEqual(1, attempts)
             self.assertEqual(1, calls["n"])
+
+
+class AcceptanceSemanticsRefsRestoreTests(unittest.TestCase):
+    def test_validate_output_should_record_refs_restore_instead_of_failing(self) -> None:
+        view_inputs = [
+            align_core.ViewInput(
+                view="back",
+                taskmaster_id=5,
+                title="T5",
+                description="d",
+                acceptance=["ACC:T5.1 something Refs: Game.Core/A.cs"],
+            )
+        ]
+        out_obj = {
+            "task_id": 5,
+            "mode": "rewrite-only",
+            "back": {"acceptance": ["ACC:T5.1 something Refs: Game.Core/B.cs"]},
+        }
+        restore_marks: list[str] = []
+        ok, reason = align_core.validate_output(
+            task_id=5,
+            mode="rewrite-only",
+            view_inputs=view_inputs,
+            out_obj=out_obj,
+            align_view_descriptions=False,
+            refs_restore_items=restore_marks,
+        )
+        self.assertTrue(ok)
+        self.assertEqual("ok", reason)
+        self.assertEqual(["back:1"], restore_marks)
+
+    def test_restore_existing_refs_should_keep_new_prefix_and_old_refs(self) -> None:
+        view_inputs = [
+            align_core.ViewInput(
+                view="back",
+                taskmaster_id=5,
+                title="T5",
+                description="d",
+                acceptance=["ACC:T5.1 old text Refs: docs/old.md"],
+            )
+        ]
+        out_obj = {
+            "task_id": 5,
+            "mode": "rewrite-only",
+            "back": {"acceptance": ["ACC:T5.1 new text Refs: docs/new.md"]},
+        }
+        restored = align_core.restore_existing_refs(view_inputs=view_inputs, out_obj=out_obj)
+        self.assertEqual(["back:1"], restored)
+        self.assertEqual("ACC:T5.1 new text Refs: docs/old.md", out_obj["back"]["acceptance"][0])
+
+    def test_run_alignment_tasks_should_emit_refs_restored_items(self) -> None:
+        master = align_core.MasterTaskInput(
+            task_id=5,
+            status="in-progress",
+            title="Task 5",
+            description="desc",
+            details="details",
+            test_strategy="",
+            subtasks=[],
+        )
+        back = [{"taskmaster_id": 5, "title": "Task 5", "description": "desc", "acceptance": ["ACC:T5.1 body Refs: docs/old.md"]}]
+        gameplay: list[dict[str, object]] = []
+        model_out = {
+            "task_id": 5,
+            "mode": "rewrite-only",
+            "back": {"acceptance": ["ACC:T5.1 body updated Refs: docs/new.md"]},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(runtime, "_run_model_with_retry", return_value=("ok", model_out, 1)):
+                result = runtime.run_alignment_tasks(
+                    task_ids=[5],
+                    master_index={5: master},
+                    semantic_hints={},
+                    back=back,
+                    gameplay=gameplay,
+                    out_dir=Path(td),
+                    apply=False,
+                    timeout_sec=30,
+                    max_failures=1,
+                    structural_for_not_done=False,
+                    append_only_for_done=False,
+                    align_view_descriptions_to_master=False,
+                    delivery_profile_context="",
+                )
+        self.assertEqual(0, int(result.get("failed") or 0))
+        rows = result.get("results") or []
+        self.assertEqual(1, len(rows))
+        self.assertEqual(["back:1"], rows[0].get("refs_restored_items"))
 
 
 class AlignAcceptanceCliGuardTests(unittest.TestCase):

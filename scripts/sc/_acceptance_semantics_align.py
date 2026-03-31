@@ -56,6 +56,44 @@ def split_refs(line: str) -> tuple[str, str | None]:
     return prefix.strip(), refs_blob
 
 
+def compose_line_with_refs(prefix: str, refs_blob: str | None) -> str:
+    head = str(prefix or "").strip()
+    tail = str(refs_blob or "").strip()
+    if head and tail:
+        return f"{head} {tail}".strip()
+    return head or tail
+
+
+def restore_existing_refs(*, view_inputs: list[ViewInput], out_obj: dict[str, Any]) -> list[str]:
+    restored: list[str] = []
+    for v in view_inputs:
+        payload = out_obj.get(v.view)
+        if not isinstance(payload, dict):
+            continue
+        acc = payload.get("acceptance")
+        if not isinstance(acc, list):
+            continue
+        changed = False
+        next_acc: list[str] = []
+        for idx, new_line in enumerate(acc):
+            new_s = str(new_line or "").strip()
+            if idx >= len(v.acceptance):
+                next_acc.append(new_s)
+                continue
+            old = v.acceptance[idx]
+            old_refs = split_refs(old)[1]
+            new_prefix, new_refs = split_refs(new_s)
+            if old_refs and new_refs != old_refs:
+                next_acc.append(compose_line_with_refs(new_prefix, old_refs))
+                restored.append(f"{v.view}:{idx + 1}")
+                changed = True
+            else:
+                next_acc.append(new_s)
+        if changed:
+            payload["acceptance"] = next_acc
+    return restored
+
+
 def normalize_acceptance_lines(lines: list[Any]) -> list[str]:
     out: list[str] = []
     for x in lines or []:
@@ -267,6 +305,7 @@ def validate_output(
     view_inputs: list[ViewInput],
     out_obj: dict[str, Any],
     align_view_descriptions: bool,
+    refs_restore_items: list[str] | None = None,
 ) -> tuple[bool, str]:
     if int(out_obj.get("task_id") or -1) != int(task_id):
         return False, "task_id_mismatch"
@@ -298,12 +337,15 @@ def validate_output(
             if i < len(v.acceptance):
                 old = v.acceptance[i]
                 _old_prefix, old_refs = split_refs(old)
-                _new_prefix, new_refs = split_refs(new_s)
+                new_prefix, new_refs = split_refs(new_s)
+                effective_new_s = new_s
                 if old_refs and new_refs != old_refs:
-                    return False, f"{key}:refs_changed_at_{i+1}"
+                    if refs_restore_items is not None:
+                        refs_restore_items.append(f"{key}:{i+1}")
+                    effective_new_s = compose_line_with_refs(new_prefix, old_refs)
                 if (not old_refs) and new_refs:
                     return False, f"{key}:unexpected_refs_added_at_{i+1}"
-                if is_governance_acceptance_line(old) and str(new_s).strip() != str(old).strip():
+                if is_governance_acceptance_line(old) and str(effective_new_s).strip() != str(old).strip():
                     return False, f"{key}:governance_item_changed_at_{i+1}"
             else:
                 _p, refs = split_refs(new_s)
@@ -350,4 +392,3 @@ def load_semantic_hints(path: str | None) -> dict[int, str]:
             if reason:
                 out[tid_i] = reason
     return out
-

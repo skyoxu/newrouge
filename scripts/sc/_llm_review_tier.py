@@ -225,7 +225,7 @@ def _config_for_tier(*, tier: str, profile_defaults: dict[str, Any]) -> dict[str
     base_strict = bool(profile_defaults.get("strict", False))
     if tier == "full":
         return {
-            "agents": "all",
+            "agents": base_agents,
             "semantic_gate": base_gate,
             "timeout_sec": base_timeout,
             "agent_timeout_sec": base_agent_timeout,
@@ -233,14 +233,14 @@ def _config_for_tier(*, tier: str, profile_defaults: dict[str, Any]) -> dict[str
         }
     if tier == "targeted":
         return {
-            "agents": "architect-reviewer,code-reviewer",
+            "agents": base_agents,
             "semantic_gate": "warn",
             "timeout_sec": min(base_timeout, 420),
             "agent_timeout_sec": min(base_agent_timeout, 150),
             "strict": False,
         }
     return {
-        "agents": "architect-reviewer,code-reviewer",
+        "agents": base_agents,
         "semantic_gate": "skip",
         "timeout_sec": min(base_timeout, 300),
         "agent_timeout_sec": min(base_agent_timeout, 120),

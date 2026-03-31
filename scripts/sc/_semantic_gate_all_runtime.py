@@ -169,11 +169,15 @@ def _build_batch_prompt(
     batch: list[int],
     max_acceptance_items: int,
     max_task_brief_chars: int,
+    delivery_profile_context: str = "",
     master_by_id: dict[int, dict[str, Any]],
     back_by_id: dict[int, dict[str, Any]],
     gameplay_by_id: dict[int, dict[str, Any]],
 ) -> str:
     blocks = [PROMPT_HEADER, ""]
+    profile_line = str(delivery_profile_context or "").strip()
+    if profile_line:
+        blocks.extend([profile_line, ""])
     for tid in batch:
         brief = _task_brief(
             tid,
@@ -192,6 +196,7 @@ def build_prompt_with_budget(
     batch: list[int],
     max_acceptance_items: int,
     max_prompt_chars: int,
+    delivery_profile_context: str = "",
     master_by_id: dict[int, dict[str, Any]],
     back_by_id: dict[int, dict[str, Any]],
     gameplay_by_id: dict[int, dict[str, Any]],
@@ -201,6 +206,7 @@ def build_prompt_with_budget(
         batch=batch,
         max_acceptance_items=max_acceptance_items,
         max_task_brief_chars=budget,
+        delivery_profile_context=delivery_profile_context,
         master_by_id=master_by_id,
         back_by_id=back_by_id,
         gameplay_by_id=gameplay_by_id,
@@ -214,6 +220,7 @@ def build_prompt_with_budget(
             batch=[],
             max_acceptance_items=max_acceptance_items,
             max_task_brief_chars=budget,
+            delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,
             back_by_id=back_by_id,
             gameplay_by_id=gameplay_by_id,
@@ -225,6 +232,7 @@ def build_prompt_with_budget(
             batch=batch,
             max_acceptance_items=max_acceptance_items,
             max_task_brief_chars=budget,
+            delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,
             back_by_id=back_by_id,
             gameplay_by_id=gameplay_by_id,
@@ -237,9 +245,9 @@ def build_prompt_with_budget(
             batch=batch,
             max_acceptance_items=max_acceptance_items,
             max_task_brief_chars=120,
+            delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,
             back_by_id=back_by_id,
             gameplay_by_id=gameplay_by_id,
         )
     return prompt, trimmed, budget
-

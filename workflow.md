@@ -371,6 +371,8 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --task-ids 1,2,3 --batch
 
 这是主日常路径。
 
+如需理解本章在 `T56` 实战中做过哪些优化、哪些脚本必须成批升级、以及旧项目如何完整对齐，请先读 `docs/workflows/chapter-6-t56-optimization-guide.md`。
+
 ### 6.1 先恢复状态
 
 ```powershell
@@ -409,6 +411,7 @@ py -3 scripts/python/dev_cli.py new-decision-log --title "<topic>" --task-id <id
 
 只有当它们能明显提升恢复效率，或让真实 tradeoff 可审计时才创建。
 
+
 ### 6.3 TDD preflight 决策
 
 推荐默认：
@@ -416,6 +419,83 @@ py -3 scripts/python/dev_cli.py new-decision-log --title "<topic>" --task-id <id
 ```powershell
 py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft
 ```
+
+#### 6.3.1 复杂任务判断标准
+
+把 `check_tdd_execution_plan.py` 当作第一个轻量判断器，而不是手工凭感觉判断。
+
+满足任意 2 条，默认按“复杂任务”处理：
+
+- 缺失测试文件数 `>= 3`
+- 同时涉及 `.cs` 和 `.gd`
+- `--verify auto|all`
+- acceptance anchors 总数 `>= 4`
+- 涉及多个测试根目录
+- 任务包含明显的契约 / 事件 / 重构 / 跨模块边界变化
+
+复杂任务的默认后续动作：
+
+1. 先创建或补充 `execution-plan`
+2. 再判断是否需要 Serena MCP 语义检索
+3. 只有在 Serena 检索结果会影响实现边界时，才把摘要写入 `taskdoc/<id>.md`
+
+#### 6.3.2 什么时候触发 Serena MCP
+
+`check_tdd_execution_plan.py` 只能判断“是否需要更多准备”，不能替代 Serena 语义查询。
+
+只有当复杂度来自“代码语义不清”，才触发 Serena。满足任意 1 条即可：
+
+- 你要扩展现有功能，但不确定是否已有同名 / 近似类、接口、服务或管理器
+- 你要对齐事件契约、DTO、接口命名，担心违反现有 ADR / Contracts 约定
+- 你要做 rename / refactor，需要知道跨文件引用位置
+- 你要理解某个模块边界、依赖链、谁在调用谁
+- 前一轮 `Needs Fix` 明确指出重复定义、边界误判、契约漂移或遗漏现有实现
+
+以下情况通常不需要 Serena：
+
+- 只是测试文件较多
+- 只是 `.cs` + `.gd` 混合，但模块边界已经很清楚
+- 只是 `verify=auto|all` 导致执行更重，而不是理解更难
+- 只是需要补测试，不涉及现有实现复用、契约对齐或引用追踪
+
+#### 6.3.3 Serena 执行动作与提示词模板
+
+如果触发 Serena，按以下顺序执行。优先用符号级查询，不要先用全文扫描替代：
+
+1. `find_symbol`：查相关 symbols，确认现有类 / 接口 / 服务是否已经存在
+2. `search_for_pattern`：查接口定义或关键契约模式，了解现有约定
+3. `find_symbol`：查事件契约 / DTO / contract constants，确认事件系统口径
+4. `find_referencing_symbols`：查依赖引用，确认现有模块如何使用该符号
+
+建议给 Codex / Serena 的执行提示词：
+
+```text
+当前任务先执行 Serena MCP 语义检索，再继续实现。
+
+触发原因：这是复杂任务，且复杂度来自代码语义而不是单纯测试规模。
+
+按以下顺序执行：
+1. find_symbol 查找相关 symbols
+2. search_for_pattern 查找接口定义或关键契约模式
+3. find_symbol 查找事件契约 / DTO / contract constants
+4. find_referencing_symbols 查找依赖引用链
+
+输出要求：
+- 只保留与当前任务直接相关的上下文
+- 总结“已有实现 / 应复用内容 / 契约约束 / 主要引用方”
+- 如果这些信息会影响实现边界，再使用 Python + UTF-8 写入 `taskdoc/<id>.md`
+- 如果 Serena MCP 不可用，不要阻塞任务；直接继续第 6 章流程，并在 execution-plan 或 decision-log 里记一条 `Serena skipped`
+```
+
+#### 6.3.4 taskdoc 使用口径
+
+`taskdoc/<id>.md` 现在是可选的本地上下文材料，不是第 6 章日常必产物。
+
+只有在以下情况下才值得写：
+
+- Serena 查询结果明显影响实现边界
+- 你需要把“已有实现 / 契约口径 / 依赖链”固化给后续 red / green / review 使用
+- 任务会跨会话，且仅靠 sidecars 不足以快速恢复语义上下文
 
 ### 6.4 Red stage
 

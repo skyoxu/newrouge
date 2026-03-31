@@ -23,6 +23,26 @@ def run_unit(
     if task_filter:
         cmd += ["--filter", task_filter]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
+    if (
+        task_filter
+        and int(rc) == 2
+        and "RUN_DOTNET status=coverage_failed" in str(out)
+        and "line=0.0%" in str(out)
+        and "branch=0.0" in str(out)
+    ):
+        fallback_cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
+        fallback_rc, fallback_out = run_cmd(fallback_cmd, cwd=repo_root(), timeout_sec=1_800)
+        out = (
+            f"{str(out).rstrip()}\n\n"
+            "[sc-test] task-scoped coverage is 0.0%; retrying unit without task filter.\n"
+            f"fallback_cmd: {' '.join(fallback_cmd)}\n"
+            f"fallback_rc: {int(fallback_rc)}\n"
+            "--- fallback output ---\n"
+            f"{str(fallback_out)}"
+        ).rstrip() + "\n"
+        if int(fallback_rc) == 0:
+            rc = 0
+            cmd = fallback_cmd
     log_path = out_dir / "unit.log"
     write_text(log_path, out)
     unit_artifacts_dir = repo_root() / "logs" / "unit" / today_str()

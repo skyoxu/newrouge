@@ -16,6 +16,7 @@ from _acceptance_semantics_align import (
     find_view_entry,
     normalize_acceptance_lines,
     render_task_context,
+    restore_existing_refs,
     run_codex_exec,
     safe_parse_json,
     validate_output,
@@ -162,6 +163,7 @@ def run_alignment_tasks(
     structural_for_not_done: bool,
     append_only_for_done: bool,
     align_view_descriptions_to_master: bool,
+    delivery_profile_context: str = "",
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     changed = 0
@@ -214,16 +216,35 @@ def run_alignment_tasks(
                 break
             continue
 
+        refs_restore_candidates: list[str] = []
         ok, validate_reason = validate_output(
             task_id=tid,
             mode=mode,
             view_inputs=view_inputs,
             out_obj=out_obj,
             align_view_descriptions=bool(align_view_descriptions_to_master),
+            refs_restore_items=refs_restore_candidates,
         )
+        refs_restored_items: list[str] = []
+        if ok:
+            refs_restored_items = restore_existing_refs(view_inputs=view_inputs, out_obj=out_obj)
+            if not refs_restored_items and refs_restore_candidates:
+                refs_restored_items = sorted(set(refs_restore_candidates))
+            if refs_restored_items:
+                ok, validate_reason = validate_output(
+                    task_id=tid,
+                    mode=mode,
+                    view_inputs=view_inputs,
+                    out_obj=out_obj,
+                    align_view_descriptions=bool(align_view_descriptions_to_master),
+                    refs_restore_items=None,
+                )
         if not ok:
             failed += 1
-            results.append({"task_id": tid, "status": "fail", "reason": validate_reason, "dir": str(task_out), "attempts": attempts})
+            payload = {"task_id": tid, "status": "fail", "reason": validate_reason, "dir": str(task_out), "attempts": attempts}
+            if refs_restored_items:
+                payload["refs_restored_items"] = refs_restored_items
+            results.append(payload)
             if max_failures > 0 and failed >= max_failures:
                 stopped_early = True
                 break
@@ -242,7 +263,10 @@ def run_alignment_tasks(
             if task_changed:
                 changed += 1
 
-        results.append({"task_id": tid, "status": "ok", "dir": str(task_out), "applied": bool(apply), "mode": mode, "changed": task_changed, "attempts": attempts})
+        payload = {"task_id": tid, "status": "ok", "dir": str(task_out), "applied": bool(apply), "mode": mode, "changed": task_changed, "attempts": attempts}
+        if refs_restored_items:
+            payload["refs_restored_items"] = refs_restored_items
+        results.append(payload)
 
     return {
         "results": results,

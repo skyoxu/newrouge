@@ -289,13 +289,13 @@
       "Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
     ],
     "acceptance": [
-      "可通过契约定义与测试断言验证：StatusType 枚举包含 Buff、Debuff、RuleModifier，且定义 ExpiresTiming 枚举；Status 至少包含 status_id、stacks、duration_turns、source_id、expires_timing、strength 字段；执行驱散时 RuleModifier 与 status.strength 相关效果不会被移除；同一输入集合按 stable_id 排序时输出顺序恒定。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
-      "对同一初始状态执行同一操作序列时，Status 的叠加、duration_turns 累计与衰减结果必须一致且可断言；当操作不满足生效条件时，状态保持不变，并可通过前后状态对比直接验证。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
+      "可通过契约与测试断言验证：StatusType 必须包含 Buff、Debuff、RuleModifier，且必须定义 ExpiresTiming；Status 必须包含 status_id、stacks、duration_turns、source_id、expires_timing、strength 字段；对同一输入集合按 stable_id 排序时，多次执行得到完全一致的顺序；执行驱散后 RuleModifier 与 status.strength 相关效果仍保留。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
+      "对同一初始状态执行同一操作序列时，Status 的叠加、duration_turns 累计与衰减结果必须一致且可断言；当某次操作前置条件不满足时，执行后状态必须与执行前完全一致。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "xUnit 测试必须覆盖叠加规则、持续时长处理、驱散边界（含 RuleModifier 与 strength 不可驱散）以及 stable_id 排序确定性；任一规则被破坏时，至少一个对应测试用例失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
-      "Status 契约必须显式提供叠加、持续时长累计、衰减三个可调用方法（命名可等价）；任一方法缺失、不可访问或无法被 xUnit 直接断言即判定失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
+      "Status 契约必须提供叠加、持续时长累计、衰减三个可调用方法（命名可等价）；每个方法都必须能通过调用后的状态变化（或按规则不变化）直接断言，任一方法缺失、不可访问或不可断言即失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
       "ADR-0021 and ADR-0029 listed in ACCEPTANCE_CHECKLIST.md section \"Task5 ADR Mapping\" must exactly match task=5 adr_refs in both task views; any mismatch must fail. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs",
-      "Status must be a C# class (record class allowed), not a struct or interface; xUnit must assert typeof(Status).IsClass == true and fail on any non-class shape. Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
+      "驱散边界必须可观测：当同一集合同时包含可驱散状态与 RuleModifier 或 status.strength 相关效果时，驱散后仅可驱散状态被移除，RuleModifier 与 status.strength 相关效果保持不变；若任一不可驱散效果被移除则判定失败。 Refs: Game.Core.Tests/Tasks/Task0005AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for status operations: stacking, duration handling, and dispel boundaries. Validate deterministic ordering via stable_id sorting. Refs: ADR-0021, ADR-0029."
@@ -355,34 +355,34 @@
       "Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs"
     ],
     "acceptance": [
-      "Deliverables must provide executable contracts for four groups: CombatLoop phases, PlayCard resolution pipeline, damage calculation rules, and OverplayTax difficulty threshold. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "xUnit must contain behavior assertions for phase transitions, pipeline order/short-circuit, damage rules, and OverplayTax plus determinism. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Referenced test files must contain executable assertions that prove Task6 contract obligations; stale, missing, or non-executable references fail semantic acceptance. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "CombatLoop contract must expose exactly four phases: StartOfTurn, Draw, Main, EndOfTurn; missing or extra phases fail acceptance. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "PlayCard pipeline contract must enforce the exact canonical sequence Validate->ComputeCost->PayCost->BeforePlayTriggers->ResolveEffect->AfterPlayTriggers->MoveCard->DeathCheck, with no missing, extra, or reordered steps. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Damage contract must apply Strength, Weak, and Vulnerable multipliers to mutable damage, and fixed damage must remain exempt from mutable multipliers. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "OverplayTax must be enabled only when difficulty >= 10 and must be disabled when difficulty < 10, with explicit boundary assertions. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Deterministic ordering must use combatant_id and stable_id to produce stable sequence output, and repeated runs of the same input must stay identical. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Task6 suite must include both positive and negative paths for transitions, pipeline behavior, damage rules, OverplayTax behavior, and deterministic outcomes. Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "Phase transition guards must reject invalid transitions and preserve unchanged combat state on rejection. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Deliverables provide executable contracts for four scopes: CombatLoop phases, PlayCard resolution pipeline, damage calculation rules, and the OverplayTax difficulty threshold. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "xUnit contains behavioral assertions for phase transitions, pipeline order and short-circuit behavior, damage rules, OverplayTax threshold behavior, and deterministic execution. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Referenced test files contain executable assertions that prove Task6 contract obligations; stale, missing, or non-executable references fail semantic acceptance. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "CombatLoop contract exposes exactly four phases: StartOfTurn, Draw, Main, EndOfTurn; any missing or extra phase fails acceptance. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "PlayCard pipeline contract enforces the exact canonical sequence Validate->ComputeCost->PayCost->BeforePlayTriggers->ResolveEffect->AfterPlayTriggers->MoveCard->DeathCheck, with no missing, extra, or reordered steps. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Damage contract applies Strength, Weak, and Vulnerable multipliers to mutable damage, and fixed damage remains exempt from mutable multipliers. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "OverplayTax is applied only when difficulty >= 10 and is not applied when difficulty < 10, with explicit boundary assertions. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Deterministic ordering uses combatant_id and stable_id to produce stable sequence output, and repeated runs with the same input stay identical. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Task6 test suite includes both positive and negative paths for transitions, pipeline behavior, damage rules, OverplayTax behavior, and deterministic outcomes. Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "Phase transition guards reject invalid transitions and preserve unchanged combat state when rejection occurs. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "Task6 contract behavior must stay consistent with ADR-0021 (state machine boundaries) and ADR-0032 (determinism), and tests must assert that alignment. Refs: Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs",
-      "When Validate fails, pipeline execution must stop at Validate and must not execute ComputeCost or any later step, with critical state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "xUnit must include an explicit Validate-failure case asserting step trace stops at Validate and state remains unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Tests must assert both valid and invalid phase transition behavior, including guard rejection and unchanged state on invalid transitions. Refs: Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs",
-      "Cover OverplayTax boundary at difficulty 9 and 10 with explicit assertions for taxed-cost applied vs not-applied behavior. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "All deterministic cases must produce identical outputs for identical inputs and identical initial state, independent of run count. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "[OBL:T6.O10] Damage coverage must execute a representative input matrix that proves multiplier and fixed-damage behavior across scenarios. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "[OBL:T6.O10] Multiplier and fixed-damage scenarios must include normal cases, boundary cases, and negative/invalid inputs. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs Game.Core.Tests/Services/CombatServiceTests.cs",
-      "[OBL:T6.O10] Table-driven damage tests must verify multiplier math, fixed-damage invariants, and deterministic numeric outputs. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "[OBL:T6.O15] CombatLoop must be implemented as an instantiable C# contract type in Game.Core and directly usable by tests. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "When Validate fails, pipeline execution stops at Validate and does not execute ComputeCost or later steps, with critical state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "xUnit includes an explicit Validate-failure case asserting that step trace stops at Validate and state remains unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Tests assert both valid and invalid phase transition behavior, including guard rejection and unchanged state on invalid transitions. Refs: Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs",
+      "Tests cover the OverplayTax boundary at difficulty 9 and 10 with explicit assertions for not-applied versus applied taxed-cost behavior. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "All deterministic cases produce identical outputs for identical inputs and identical initial state, independent of run count. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O10] Damage coverage executes a representative input matrix that proves multiplier and fixed-damage behavior across scenarios. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "[OBL:T6.O10] Multiplier and fixed-damage scenarios include normal cases, boundary cases, and negative/invalid inputs. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs Game.Core.Tests/Services/CombatServiceTests.cs",
+      "[OBL:T6.O10] Table-driven damage tests verify multiplier math, fixed-damage invariants, and deterministic numeric outputs. Refs: Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "[OBL:T6.O15] CombatLoop is implemented as an instantiable C# contract type in Game.Core and is directly usable by tests. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "[OBL:T6.O15] Contract completion requires executable behavior verified by tests, not descriptive-only declarations. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "[OBL:T6.O15] CombatLoop implementation must be located under Game.Core/Contracts/Combat and referenced by tests. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "PlayCard resolution must apply OverplayTax in ComputeCost and consume taxed cost in PayCost when difficulty >= 10. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "When ComputeCost or PayCost fails, pipeline must stop immediately at the failing step and keep critical combat state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "For the same PlayCardPipelineInput and same initial state, repeated runs must produce identical ExecutedSteps, StateAfter, and ExecutionFingerprint. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "When any post-cost step (BeforePlayTriggers, ResolveEffect, AfterPlayTriggers, MoveCard, DeathCheck) fails, execution must stop at the failing step and keep critical combat state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "PlayCard pipeline and damage calculation must be defined as explicit executable contract types under Game.Core/Contracts/Combat (or subfolders), and tests must reference those contract types directly instead of only service-side implicit behavior. Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
-      "Deterministic sequencing contract must define comparator precedence (combatant_id first, stable_id second) and deterministic tie handling for equal keys, and tests must assert this rule explicitly. Refs: Game.Core.Tests/Services/CombatServiceTests.cs"
+      "[OBL:T6.O15] CombatLoop implementation is located under Game.Core/Contracts/Combat and referenced by tests. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "PlayCard resolution applies OverplayTax during ComputeCost and consumes the taxed cost in PayCost when difficulty >= 10. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "When ComputeCost or PayCost fails, pipeline stops immediately at the failing step and keeps critical combat state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "For the same PlayCardPipelineInput and the same initial state, repeated runs produce identical ExecutedSteps, StateAfter, and ExecutionFingerprint. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "When any post-cost step (BeforePlayTriggers, ResolveEffect, AfterPlayTriggers, MoveCard, DeathCheck) fails, execution stops at the failing step and keeps critical combat state unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "PlayCard pipeline and damage calculation are defined as explicit executable contract types under Game.Core/Contracts/Combat (or subfolders), and tests reference those contract types directly rather than only service-side implicit behavior. Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Domain/ValueObjects/DamageTests.cs",
+      "Deterministic sequencing contract defines comparator precedence (combatant_id first, stable_id second) and deterministic tie handling for equal keys, and tests assert this rule explicitly. Refs: Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032."
@@ -445,14 +445,14 @@
       "Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs"
     ],
     "acceptance": [
-      "在 Game.Core/Contracts 中提供事件总线接口，包含发布与订阅方法；该目录为唯一契约来源，Godot 层仅通过引用使用且不复制契约。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
-      "提供 xUnit 用例覆盖事件发布与订阅的可用性，并在 Windows 上可用 `dotnet test` 通过。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "在 `Game.Core/Contracts` 下存在事件总线接口，并暴露可调用的发布与订阅方法；该目录是契约唯一来源，Godot 层仅通过引用使用，不能新增或复制同类契约定义。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "提供 xUnit 用例，能够实际验证“发布后可被订阅方接收”的行为（失败时会红灯）；并且在 Windows 上执行 `dotnet test` 通过。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md 的 Test-Refs 指向本任务新增或更新的 xUnit 用例路径。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
-      "在 Game.Core/Contracts 中至少定义 CardPlayed 与 CombatStarted 两个事件 DTO，并包含可区分事件的类型常量或字段。 Refs: Game.Core.Tests/Domain/GameEventContractsTests.cs",
-      "在组合根完成 EventBus 的依赖注入配置，Godot 层通过接口获取该 EventBus 并能调用。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
-      "Godot 层发布或订阅事件时使用 Game.Core.Contracts 中的 DTO 类型，仓库内不存在 Godot 层新增的同名契约定义文件。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
-      "可通过测试或检索证据确认：契约文件位于 Game.Core/Contracts 且 Godot 层无重复 DTO 定义。 Refs: Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs",
-      "EventBus 的任务验收必须覆盖并验证以下领域事件可发布/可订阅：core.combat.started、core.combat.card.played、core.reward.offer.locked、core.autosave.written、core.run.state.transitioned；任一事件缺失则验收失败。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs"
+      "在 `Game.Core/Contracts` 中定义 `CardPlayed` 与 `CombatStarted` 事件 DTO，且每个 DTO 含有可区分事件类型的常量或字段。 Refs: Game.Core.Tests/Domain/GameEventContractsTests.cs",
+      "在组合根完成 `EventBus` 依赖注入注册；Godot 层通过接口解析并可实际调用该 `EventBus`。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Godot 层在发布/订阅时使用 `Game.Core.Contracts` 中的 DTO 类型；仓库中不存在 Godot 层新增的同名契约定义文件。 Refs: Tests.Godot/tests/Adapters/test_event_bus_adapter.gd Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "通过自动化测试或可复现检索证据可确认：契约文件位于 `Game.Core/Contracts`，且 Godot 层无重复 DTO 定义。 Refs: Game.Core.Tests/Utilities/ContractsLocationAndDuplicationTests.cs",
+      "EventBus 验收需验证以下领域事件均可发布且可订阅：`core.combat.started`、`core.combat.card.played`、`core.reward.offer.locked`、`core.autosave.written`、`core.run.state.transitioned`；任一事件未被验证即验收失败。 Refs: Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests for event publishing and subscription. Verify contracts are in correct location and not duplicated in Godot scripts. Refs: ADR-0004, ADR-0020."
@@ -513,18 +513,18 @@
       "Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs"
     ],
     "acceptance": [
-      "CardService 对外提供按 card_id 获取定义、创建实例、U1 升级与 Ultimate 进阶；合法输入产生可观测且可断言的形态/层级变化，非法输入返回确定性失败并保持实例状态不变。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "按 card_id 查询定义时，命中返回唯一对应的 CardDefinition，未命中产生可重复验证的确定性失败结果（同类输入得到同类失败输出）。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "创建 CardInstance 时必须初始化 instance_id、base form 与修饰符容器，并保持卡牌定义与实例身份分离（实例变更不回写定义）。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "实例在升级与 Ultimate 形态迁移后，permanent_card_instance_modifiers 按继承语义完整保留且可通过测试比对；若迁移被拒绝，修饰符与形态均保持原值。 Refs: Game.Core.Tests/Services/CardServiceTests.cs Game.Core.Tests/Domain/CardInstanceTests.cs",
-      "upgrade_tier 与 upgrade_route 必须联合校验，U1 仅接受受支持路线组合；非法 tier/route 组合触发硬失败且实例状态（形态、层级、修饰符）不发生变化。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "CardService 必须对外提供按 card_id 获取定义、创建实例、执行 U1 升级与推进到 Ultimate 的能力；合法输入产生可断言的形态/层级结果，非法输入返回确定性失败且实例状态不变。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "按 card_id 查询定义时，命中返回唯一对应 CardDefinition；未命中必须产生可重复验证的确定性失败（同类输入得到同类失败输出）。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "创建 CardInstance 时必须初始化 instance_id、base form 和修饰符容器，并保证实例身份与 CardDefinition 身份分离（实例变更不影响定义）。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "实例在升级与 Ultimate 形态迁移后，permanent_card_instance_modifiers 必须按继承语义完整保留并可测试比对；若迁移被拒绝，修饰符与形态保持原值。 Refs: Game.Core.Tests/Services/CardServiceTests.cs Game.Core.Tests/Domain/CardInstanceTests.cs",
+      "upgrade_tier 与 upgrade_route 必须联合校验，U1 仅接受受支持的 tier/route 组合；非法组合触发硬失败且形态、层级、修饰符均不变化。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "xUnit 测试覆盖卡牌身份、card_id 查找命中/未命中、U1 路线升级、Ultimate 进阶与修饰符继承，并在测试描述中显式引用 ADR-0033。 Refs: Game.Core.Tests/Services/CardServiceTests.cs Game.Core.Tests/Domain/ValueObjects/CardIdentityTests.cs",
-      "与本任务对应的 xUnit 用例位于 Game.Core.Tests/Cards，能够直接定位并复现上述验收断言。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "When a card enters Ultimate form, it must override prior U1A/U1B gameplay effect definitions and become the active form. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "与本任务对应的 xUnit 用例应能直接定位并复现上述断言，覆盖 card identity、upgrade path 与 modifier inheritance。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "When a card enters Ultimate form, Ultimate must become the active form for that instance and subsequent behavior must be resolved from the Ultimate form state. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "Ultimate transition must preserve existing permanent_card_instance_modifiers on the same card instance. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "xUnit must verify card_id lookup hit and miss behavior with deterministic failure outputs. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "CardDefinition and CardInstance contract fields must be non-empty and assertion-readable in tests. Refs: Game.Core.Tests/Contracts/CardContractsTests.cs Game.Core.Tests/Contracts/ContractInstantiationCoverageTests.cs",
-      "xUnit must verify deterministic mapping from form transitions to visible effect description keys. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "CardDefinition and CardInstance contract fields required by instance creation must be non-empty/valid and assertion-readable in tests. Refs: Game.Core.Tests/Contracts/CardContractsTests.cs Game.Core.Tests/Contracts/ContractInstantiationCoverageTests.cs",
+      "xUnit must verify deterministic mapping from each allowed form transition to its observable effect description key/output. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "xUnit must verify route constraints and tier-route invariants for all legal and illegal inputs. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O10] 创建 CardInstance 后，实例字段必须与合同字段一一对应；缺失或额外字段均判失败。 Refs: Game.Core.Tests/Contracts/ContractInstantiationCoverageTests.cs Game.Core.Tests/Contracts/CardContractsTests.cs",
       "[OBL:T8.O10] 对合同字段的默认值与类型进行可重复断言。 Refs: Game.Core.Tests/Contracts/CardContractsTests.cs",
@@ -538,9 +538,9 @@
       "[OBL:T8.O15] xUnit 必须断言 Ultimate 为终态：已达 Ultimate 后再次进阶请求被拒绝。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O15] 终态拒绝时形态、层级与修饰符保持原值。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O15] xUnit tests must assert final-form transition constraints. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "xUnit must verify CardInstance identity persistence across save/load and form transitions. Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "xUnit must verify CardInstance identity persistence across form transitions (and equivalent contract round-trip scenarios when applicable). Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
       "xUnit must verify CardDefinition lookup remains stable for the same card_id across repeated reads. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "For U1 upgrades, route A and route B must map to distinct deterministic effect definitions. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "For U1 upgrades, route A and route B must map to distinct deterministic upgrade outcomes/effect definitions. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "Route values must be restricted to A/B; any other route input is rejected with a stable error code. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O8] U1 升级仅允许 upgrade_route=A 或 upgrade_route=B，并明确各路线可接受输入集合。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O8] 对 route A/B 分别给出可断言的通过条件与拒绝条件，拒绝时返回固定错误码。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
@@ -603,15 +603,15 @@
       "Game.Core.Tests/Tasks/Task9AdrBacklinkEvidenceTests.cs"
     ],
     "acceptance": [
-      "实现可按名称获取并管理的确定性 RNG 流注册表，至少包含 run、combat、event、loot、shop、offer 六个命名流，并用于确定性系统中的随机取样。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "命名 RNG 流的种子、当前状态与流位置（步数）可序列化并反序列化；恢复后继续取样时，输出序列与未中断运行在相同步数的结果一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "提供可按名称获取与管理的确定性 RNG 流注册表，且至少包含 run、combat、event、loot、shop、offer 六个命名流；确定性系统的随机取样必须来自这些已注册命名流。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "每个命名 RNG 流的种子、当前状态与流位置（步数）必须可序列化并反序列化；从序列化状态恢复后继续取样时，输出应与未中断运行在相同步数的结果一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
       "若存在 Overlay 验收清单，其 Test-Refs 必须明确指向本任务对应的 xUnit 用例（流隔离、状态序列化/恢复、UI 不推进 RNG），用于证明与本任务语义一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "在相同初始种子下，同一命名流在相同步数产生完全一致的输出序列；推进任一命名流不得改变其他命名流的后续输出（流间隔离）。 Refs: Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs",
-      "仅发生 UI 交互且不触发游戏逻辑时，任何 RNG 流均不得前进；可观测为操作前后所有流状态与位置（步数）保持不变。 Refs: Tests.Godot/tests/UI/test_hud_ui_only_actions_do_not_advance_rng.gd",
-      "将运行中状态序列化后恢复，下一次取样结果必须与未中断运行到同一步数时的结果一致，且后续序列持续一致。 Refs: Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs",
-      "xUnit 测试覆盖流隔离：推进一个命名流后，另一个命名流的状态、位置与输出保持预期不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "xUnit 测试覆盖种子/状态序列化与恢复一致性：恢复后在相同步数的取样结果与基线运行一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "xUnit 测试覆盖 UI 行为不推进 RNG：执行纯 UI 操作前后，所有命名流的状态与位置保持不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "在相同初始种子下，同一命名流在相同步数必须产生完全一致的输出；推进任一命名流后，其他命名流的后续输出不得被改变（流间隔离）。 Refs: Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs",
+      "当仅发生 UI 交互且未触发游戏逻辑时，任何 RNG 流都不得前进；可观测结果为操作前后全部命名流的状态与位置（步数）保持不变。 Refs: Tests.Godot/tests/UI/test_hud_ui_only_actions_do_not_advance_rng.gd",
+      "将运行中 RNG 状态序列化并恢复后，下一次取样结果必须与未中断运行到同一步数时一致，且之后的序列继续保持一致。 Refs: Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs",
+      "必须有 xUnit 用例验证流隔离：推进一个命名流后，另一个命名流的状态、位置与输出保持预期不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "必须有 xUnit 用例验证种子/状态序列化与恢复一致性：恢复后在相同步数的取样结果与基线运行一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
+      "必须有 xUnit 用例验证 UI 行为不推进 RNG：执行纯 UI 操作前后，所有命名流的状态与位置保持不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
       "Task 9 acceptance must explicitly trace implementation and tests to ADR-0032 and ADR-0021; missing either ADR linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
       "Overlay acceptance checklist must include ADR back-link checks for ADR-0032 and ADR-0021 with auditable evidence paths; any missing ADR link fails acceptance. Refs: Game.Core.Tests/Tasks/Task9AdrBacklinkEvidenceTests.cs"
     ],
@@ -667,8 +667,8 @@
       "Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
     ],
     "acceptance": [
-      "当状态服务对目标执行应用操作时，目标状态必须新增或按既定叠加规则更新（例如持续时间 +N）；持续时间仅在 owner_end_of_turn_cleanup 触发时衰减；执行驱散时仅移除 Debuff，若目标仅有 Buff 则状态结果保持不变。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
-      "提供可失败的 xUnit 单元测试断言，覆盖叠加规则、持续时间在 owner_end_of_turn_cleanup 的衰减触发时机、以及驱散边界（Debuff 被移除且 Buff 不被移除）。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
+      "当状态服务对目标执行 apply 时：若目标不存在该状态则新增，若已存在则按既定叠加规则更新（例如持续时间 +N）；持续时间仅在 owner_end_of_turn_cleanup 触发时衰减；执行 dispel 时仅移除 Debuff，若目标仅有 Buff 则状态结果保持不变。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
+      "提供可失败的 xUnit 单元测试断言，覆盖叠加规则、持续时间仅在 owner_end_of_turn_cleanup 的衰减触发时机、以及驱散边界（Debuff 被移除且 Buff 不被移除）。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
       "Overlay 的 Test-Refs 必须包含并指向本任务相关测试文件，并可从文档追溯到任务 10 的对应测试实现。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
       "Task 10 implementation and tests must explicitly trace to ADR-0021 and ADR-0029 (via refs fields, test annotations, or checklist mapping); missing either ADR reference fails acceptance. Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
       "Overlay acceptance entries for Task 10 must include ADR-0021 and ADR-0029 and resolve to concrete test artifacts; unresolved linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
@@ -734,13 +734,13 @@
       "Game.Core.Tests/Utilities/CiAdrRefsArtifactTests.cs"
     ],
     "acceptance": [
-      "当出牌成功且流程未中止时，CombatService.PlayCard 必须按 Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck 的固定顺序各执行且仅执行一次；任一阶段缺失、重复或乱序即失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "当 Validate 失败或判定为无效出牌时，流程必须立即返回失败并停止后续阶段，且战斗状态与资源保持调用前一致（允许审计/日志副作用）。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "必须提供 xUnit 用例，在固定输入与固定随机源下验证阶段调用轨迹与结果完全可复现；出现非确定性时测试必须失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "Validate、ComputeCost 与 PayCost 的联合结果必须决定是否进入 BeforePlay 及其后续阶段，并通过状态快照或返回值差异作出可断言验证。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "收尾阶段中，MoveCard 必须把卡牌移动到规则指定区域，DeathCheck 必须产出可断言且与规则一致的死亡结论与终态。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "在成功且未中止流程里，BeforePlay 必须恰好在 ResolveEffect 前执行一次，AfterPlay 必须恰好在 ResolveEffect 后执行一次。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "CombatService.PlayCard 的核心实现必须位于 Core 层并保持引擎无关；出现对 Godot API 命名空间的直接依赖即验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "当出牌成功且流程未中止时，CombatService.PlayCard 必须严格按 Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck 的固定顺序执行，且每个阶段恰好一次；任一缺失、重复或乱序即判定失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "当 Validate 失败或出牌被判定无效时，流程必须立即返回失败并停止后续阶段，且战斗状态与资源保持调用前一致（允许审计/日志副作用）。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须提供 xUnit 用例，在固定输入与固定随机源下断言阶段调用轨迹与输出结果完全可复现；出现非确定性时测试必须失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "Validate、ComputeCost 与 PayCost 的结果必须共同决定是否进入 BeforePlay 及后续阶段，并通过可断言的状态快照或返回值差异进行验证。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "收尾阶段中，MoveCard 必须将卡牌移动到规则指定区域，DeathCheck 必须产生与规则一致且可断言的死亡结论与终态。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "在成功且未中止的流程中，BeforePlay 必须恰好在 ResolveEffect 前执行一次，AfterPlay 必须恰好在 ResolveEffect 后执行一次。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "CombatService.PlayCard 的核心实现必须位于 Core 层并保持引擎无关；若出现对 Godot API 命名空间的直接依赖则验收失败。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
       "Task 11 的验证必须可在纯 xUnit（不启动 Godot 引擎）环境执行，并覆盖成功、Validate 失败、PayCost 失败、MoveCard+DeathCheck 收尾四类关键路径。 Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
       "PlayCard 管道顺序必须固定为 Validate -> ComputeCost -> PayCost -> BeforePlay -> ResolveEffect -> AfterPlay -> MoveCard -> DeathCheck，且同类输入必须产生同构阶段轨迹。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "当 PayCost 失败时，流程必须在该阶段立即停止，BeforePlay、ResolveEffect、AfterPlay、MoveCard、DeathCheck 均不得执行。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
@@ -831,22 +831,22 @@
       "Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs"
     ],
     "acceptance": [
-      "当保存成功时，SaveService 必须将 schema_version、save_point_id、offer_locks 序列化后以“临时文件写入 + 原子替换”提交到 user://，且随后读取目标文件可得到与本次写入一致的完整最新数据。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
-      "保存写入仅允许 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且不得在目标位置产生落盘文件。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
-      "任一持久化步骤失败时，必须向调用方传播带上下文的错误，并输出该次持久化要求的证据字段；失败后最近一次有效保存内容保持不变。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
-      "序列化载荷结构必须稳定包含 schema_version、save_point_id、offer_locks 三项字段；读取后可逐项验证字段存在且值可解析。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
-      "本任务不实现迁移逻辑：面对旧版本或不兼容数据时不得自动转换、升级或覆盖既有有效保存。 Refs: Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
+      "当保存成功时，SaveService 必须把 schema_version、save_point_id、offer_locks 写入同一保存载荷，并通过“先写临时文件再原子替换目标文件”提交到 user://；提交后读取目标文件必须得到本次写入的完整最新数据。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "保存仅允许写入 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且目标位置不得产生任何落盘文件。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "任一持久化步骤失败时，必须向调用方返回带上下文的错误并输出该次持久化要求的证据字段；失败后最近一次有效保存内容必须保持不变。 Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "序列化载荷必须稳定包含 schema_version、save_point_id、offer_locks 三项字段；读取结果必须可逐项验证字段存在且值可解析。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "本任务不实现迁移逻辑：遇到旧版本或不兼容数据时，不得自动转换、升级或覆盖既有有效保存。 Refs: Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
       "xUnit 测试必须覆盖序列化往返一致性：写入后再读取时，schema_version、save_point_id、offer_locks 的值与写入前逐项一致。 Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
       "xUnit 测试必须覆盖原子提交失败路径：提交中断或写入失败时，目标保存文件不得出现部分写入状态，且上一份有效保存仍可读取。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
-      "xUnit must verify atomic commit behavior (write temp then replace target in a single commit step). Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
-      "xUnit must verify no partial file is left when persistence fails. Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
-      "xUnit must verify valid user:// relative paths are writable. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "xUnit must verify atomic commit behavior by writing to a temp file first and replacing the target as one commit outcome. Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "xUnit must verify that persistence failure does not leave a partial target-file state. Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "xUnit must verify valid user:// relative paths are writable and can be read back after save. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
       "xUnit must verify absolute paths and traversal-like paths are fail-fast rejected. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
-      "xUnit must verify unsupported file extensions are rejected by validation. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
-      "xUnit must verify payloads over the configured size limit are rejected. Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "xUnit must verify path validation rejects inputs outside user:// safety boundaries. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "xUnit must verify serialization scope for this task remains the defined run-save payload shape and required fields. Refs: Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
       "Add xUnit cases asserting allowlisted user:// path policy is explicit and auditable. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
-      "Add xUnit cases asserting reject paths include structured error code and context. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
-      "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证 round-trip 一致性与载荷 shape stability。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
+      "Add xUnit cases asserting rejected paths return structured error code and contextual details to the caller. Refs: Game.Core.Tests/Services/SaveServicePathValidationTests.cs",
+      "[OBL:T12.O9] xUnit 测试必须在同一测试组中同时验证序列化 round-trip 一致性与载荷 shape stability。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
       "[OBL:T12.O9] xUnit 测试必须断言 schema_version、save_point_id、offer_locks 字段存在、可解析且键名稳定。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
       "[OBL:T12.O9] 必须新增 xUnit 序列化往返测试，并同时验证 required fields 与 shape stability。 Refs: Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
       "[OBL:T12.O10] xUnit 测试必须覆盖原子提交成功路径：替换后目标文件为最新完整数据且临时文件被清理。 Refs: Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
@@ -982,16 +982,16 @@
       "Tests.Godot/tests/UI/test_main_menu_events.gd"
     ],
     "acceptance": [
-      "提供并通过 GdUnit4 验收用例，覆盖主菜单按钮交互流程（New Run/Continue/Quit/覆盖确认）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
-      "提供并通过 GdUnit4 用例，验证按钮与对话框可见文本来自翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "GdUnit4 验收用例必须通过，且覆盖主菜单按钮交互流程（New Run/Continue/Quit/覆盖确认）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "GdUnit4 用例必须通过，并验证按钮与对话框可见文本来自翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "Overlay 08 的 Test-Refs 已包含本任务测试路径且可追溯。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
-      "MainMenu.tscn 位于 Game.Godot/Scenes/，运行时可见 New Run、Continue、Quit 三个按钮。 Refs: Tests.Godot/tests/UI/test_main_menu_scene.gd",
-      "Continue 仅基于单一 autosave 槽位判定：无有效 autosave 时禁用，有效 autosave 时可用。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_unique_slot_per_user.gd",
-      "存在有效 autosave 时点击 New Run 会弹出覆盖确认对话框，默认焦点在取消；选择取消时 autosave 保持不变。 Refs: Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
-      "所有可见文本（按钮与对话框）均来自翻译资源，界面无硬编码展示文本。 Refs: Tests.Godot/tests/UI/test_main_menu_translations.gd",
-      "点击 Quit 会触发退出流程并关闭应用。 Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
-      "提供主菜单 UI 流程的手动测试记录，覆盖 New Run 覆盖确认与 Continue 有效 autosave。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
-      "手动测试记录可审计（文件或清单）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Game.Godot/Scenes/MainMenu.tscn 必须存在且可加载，运行时可见 New Run、Continue、Quit 三个按钮。 Refs: Tests.Godot/tests/UI/test_main_menu_scene.gd",
+      "Continue 仅按单一 autosave 槽位状态判定：无有效 autosave 时禁用，有效 autosave 时可用。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_unique_slot_per_user.gd",
+      "存在有效 autosave 时点击 New Run 必须弹出覆盖确认对话框，默认焦点在取消；选择取消时 autosave 保持不变。 Refs: Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
+      "所有可见文本（按钮与对话框）必须来自翻译资源，界面不得展示硬编码文本。 Refs: Tests.Godot/tests/UI/test_main_menu_translations.gd",
+      "点击 Quit 必须触发退出流程并关闭应用，不得无动作停留在主菜单。 Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
+      "必须提供主菜单 UI 流程的手动测试记录，覆盖 New Run 覆盖确认与 Continue 有效 autosave。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "手动测试记录必须可审计（文件或清单可访问）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "验收项需检查 ADR-0032 与 ADR-0010 的引用或回链。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd"
     ],
     "test_strategy": [
@@ -1112,13 +1112,13 @@
       "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd"
     ],
     "acceptance": [
-      "在 CharacterSelect.tscn 中仅 Warrior 处于可选状态；其余角色被隐藏或置灰并显示“not open”标签，且可观察到选中状态变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
-      "在 Windows 环境打开 CharacterSelect.tscn 时可看到 Warrior 选项，界面能加载并完成基础交互（如切换/选择）。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "在 CharacterSelect.tscn 中仅 Warrior 可进入可选/选中状态；其余角色必须隐藏或置灰并显示“not open”标签，且尝试交互时这些角色状态不发生变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "在 Windows 环境打开 CharacterSelect.tscn 时，界面可成功加载并显示 Warrior 选项，且可完成至少一次对 Warrior 的选择交互。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
       "Overlay 的 Test-Refs 清单包含本任务用例并保持可追踪。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
-      "Warrior 的机制摘要显示为三行文本，语义分别覆盖：怒气作为状态增益、强力攻击窗口、代价与爆发。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd",
-      "机制摘要三行文本来自翻译键而非硬编码；切换语言后三行内容同步变化。 Refs: Tests.Godot/tests/UI/test_settings_locale.gd",
-      "除 Warrior 外其他角色不可被选中，点击或键盘操作不触发其选中状态。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd",
-      "gameplay:X: “not open”标签来自翻译键，切换语言时同步变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd"
+      "Warrior 的机制摘要必须显示为三行可见文本，三行语义分别覆盖：怒气作为状态增益、强力攻击窗口、代价与爆发。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd",
+      "机制摘要三行文本必须来自翻译键而非硬编码；切换语言后三行内容同步变化。 Refs: Tests.Godot/tests/UI/test_settings_locale.gd",
+      "除 Warrior 外其他角色不可被选中；点击或键盘操作这些角色时，不触发其选中状态变化。 Refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd",
+      "gameplay:X: “not open”标签必须来自翻译键，切换语言时其文本同步变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd"
     ],
     "test_strategy": [
       "Verify Warrior selection works and other characters are not selectable. Check translation keys for mechanism summary. Refs: ADR-0010."
@@ -1255,9 +1255,9 @@
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd"
     ],
     "acceptance": [
-      "加载 Combat.tscn 后，场景内必须存在且默认可见用于手牌显示、能量显示、抽牌堆显示、弃牌堆显示以及回合控制（开始/结束或等价控制）的 HUD 元素，并可被自动化测试稳定定位。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "当注入核心战斗状态快照时，Combat.tscn 的 UI 显示必须与状态逐项一致：手牌列表、当前能量值、抽牌堆数量、弃牌堆数量均可被逐项断言，不得以固定占位值通过验收。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "当核心战斗状态发生变化（如手牌增减、能量变化、牌堆计数变化）时，现有 UI 必须同步反映新值；同一输入状态应产生同一显示结果，且变化可通过可观察输出或自动化断言验证。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "加载 Combat.tscn 后，场景内必须存在且默认可见用于手牌、能量、抽牌堆、弃牌堆与回合控制（开始/结束或等价控制）的 HUD 元素，并可被自动化测试稳定定位。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "当注入核心战斗状态快照时，Combat.tscn 的 UI 显示必须与状态逐项一致：手牌列表、当前能量值、抽牌堆数量、弃牌堆数量均可被逐项断言；若显示固定占位值或与快照不一致则验收失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "当核心战斗状态发生变化（如手牌增减、能量变化、牌堆计数变化）时，现有 UI 必须同步反映新值；相同输入状态必须产生相同显示结果，且可通过可观察输出或自动化断言验证。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "本场景仅负责回合控制 UI 外壳与命令派发边界：交互事件必须路由至命令处理器，场景层不得直接变更核心状态、执行规则结算或推进完整回合；在无外部流程接管或动作为无效时，状态保持不变且不得自行推进回合。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
       "提供 GdUnit4 用例，至少覆盖 Combat.tscn 关键 UI 组件存在性与默认可见、对核心状态读取与变更同步、回合控制交互派发与无效动作阻止、可见文本通过本地化键解析，以及 headless 冒烟可执行路径。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
       "Task 18 的验收必须包含可审计的架构边界检查并对齐 ADR-0022 与 ADR-0010（UI shell boundary、state-binding boundary、no scene-responsibility overflow）；缺失任一检查即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
@@ -1331,11 +1331,11 @@
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd"
     ],
     "acceptance": [
-      "进入 Reward.tscn 时，界面上同时且仅显示 3 张可选卡牌，且每张卡牌都可见名称、描述与形态标识（Base/U1A/U1B/Ultimate）。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "在同一次奖励展示中，玩家最多只能确认 1 张卡牌；任意一张确认后，其余 2 张必须立即不可确认，且后续操作不会再次产生确认结果。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Game.Core.Tests/Services/RewardSelectionServiceTests.cs",
-      "首次展示该轮奖励时，系统必须锁定当前 offer 并写入自动存档；在未生成新 offer 的前提下，退出并重新进入后展示的三卡内容与顺序保持一致。 Refs: Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "执行“跳过”后 RNG 状态不得前进；在未生成新 offer 的前提下再次进入奖励界面时，仍展示同一组三卡。 Refs: Game.Core.Tests/Services/RewardOfferRngStateTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_skip_preserves_offer.gd",
-      "奖励界面所有可见文案必须来自翻译资源，界面中不得出现硬编码业务文案。 Refs: Tests.Godot/tests/UI/test_reward_ui_translations.gd",
+      "进入 Reward.tscn 后，界面必须同时且仅出现 3 张可选择卡牌；若数量不等于 3 或任一卡缺少名称、描述、形态标识（Base/U1A/U1B/Ultimate）则不通过。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "在同一轮奖励展示内，玩家仅能成功确认 1 张卡牌；首张确认成功后其余 2 张必须立即变为不可确认，且任何后续确认输入都不得产生第二次成功结果。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Game.Core.Tests/Services/RewardSelectionServiceTests.cs",
+      "该轮奖励首次展示时必须锁定当前 offer 并写入自动存档；在未生成新 offer 的前提下，退出并重新进入后展示的三卡内容与顺序必须与首次展示一致。 Refs: Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "执行“跳过”后 RNG 状态必须不前进；在未生成新 offer 的前提下再次进入奖励界面时，必须仍展示同一组三卡。 Refs: Game.Core.Tests/Services/RewardOfferRngStateTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_skip_preserves_offer.gd",
+      "奖励界面所有可见文案必须来自翻译资源；若出现任何硬编码业务文案则不通过。 Refs: Tests.Godot/tests/UI/test_reward_ui_translations.gd",
       "必须存在 xUnit 用例覆盖 offer 锁定逻辑，并验证退出后再次进入时仍读取并展示同一 offer。 Refs: Game.Core.Tests/Services/RewardOfferLockingServiceTests.cs",
       "必须存在覆盖奖励展示、单选确认与跳过流程的验证用例，并包含退出后再次进入仍保持同一 offer 的场景断言。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
       "Task 19 implementation and test artifacts must explicitly trace to ADR-0032 and ADR-0010 (for example in refs fields, checklist mapping, or test annotations); missing either ADR id fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0019_acceptance.gd",
@@ -1399,10 +1399,10 @@
       "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd"
     ],
     "acceptance": [
-      "进入商店时必须加载 Shop.tscn，并展示可购买的卡牌与遗物及其价格；本次进入后库存与价格保持锁定，退出后再次进入时除已购买条目外，其余库存与价格与锁定时一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
-      "在商店完成购买后，被购买条目必须立即从可购列表移除并标记为已购买/已拥有；商店提供且可执行移除与重铸服务，同时不存在任何升级/Upgrade 服务入口或按钮，UI 文案来自本地化系统且不含升级语境。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "进入商店时必须加载 Shop.tscn，并展示可购买的卡牌与遗物及其价格；该次进入的库存与价格在会话内保持锁定，退出后再次进入时除已购买条目外，其余条目与价格必须与首次锁定结果一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "在商店完成购买后，被购买条目必须立即从可购列表移除并标记为已购买/已拥有；商店必须提供且可执行移除与重铸服务，同时不得出现任何升级/Upgrade 服务入口或按钮，且相关 UI 文案来自本地化系统并不含升级语境。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
       "overlays 08 的验收清单必须登记本任务 Test-Refs，且这些引用可定位到覆盖商店购买、库存锁定、无升级文案三类行为的测试项。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
-      "进入商店后需将库存锁定状态与已购买记录写入自动存档（autosave）；退出并再次进入时展示结果必须与该持久化状态一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "进入商店后形成的库存锁定状态与已购买记录必须被持久化；退出并再次进入时，商店展示结果必须与该持久化状态一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
       "必须提供测试覆盖商店购买与退出再进入后的库存持久化行为，并在验收清单中登记对应测试引用。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
       "验收必须包含测试断言：商店 UI 文本与本地化内容均不出现升级/Upgrade 字样或等价语境。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
       "任务测试需实际验证商店 UI 不包含任何升级/Upgrade 相关文案或入口提示。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd"
@@ -1466,9 +1466,9 @@
     ],
     "acceptance": [
       "进入 Rest.tscn 时，界面必须同时显示且可选择“升级（免费升级一张卡）”“治疗”“移除诅咒”三项；任一选项缺失、不可见或不可选择即判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "选择“升级”后，流程必须按“选择一张可升级卡→在 Route A 与 Route B 中二选一→进入确认步骤”推进；在确认前取消时，所有卡牌与资源状态保持不变且不产生升级结果。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "升级确认中的不可逆提示必须由翻译键渲染为有效文案，界面不得显示键名、占位符或异常回退文本；出现任一情况即失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "完成升级确认后必须保持“免费升级”语义：不得触发任何支付流程，且不得减少任何可计量资源；若出现收费提示、支付入口或资源扣减则失败。 Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
+      "选择“升级”后，流程必须按“选择一张可升级卡→在 Route A 与 Route B 中二选一→进入确认步骤”推进；在确认前取消时，所有卡牌与资源状态必须保持不变且不得产生命中升级结果。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "升级确认中的不可逆提示必须通过翻译键渲染为有效文案，界面不得显示键名、占位符或异常回退文本；出现任一情况即失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "完成升级确认后必须满足“免费升级”语义：不得触发任何支付流程，且不得减少任何可计量资源；若出现收费提示、支付入口或资源扣减则失败。 Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
       "升级一经确认，在同一流程内必须不可撤销、不可回退且不可恢复为升级前状态；若存在可逆路径或不可逆结果不成立则失败. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
       "升级确认后必须且仅有被选中的单张卡牌发生升级变化，其他卡牌状态保持不变；若出现未选中卡牌变化或多张卡牌同时变化则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
       "在单次 Rest 场景会话内，免费升级确认最多只能发生一次；首次确认后，升级入口必须被禁用或阻止再次进入。 Refs: Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs",
@@ -1537,9 +1537,9 @@
       "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd"
     ],
     "acceptance": [
-      "进入 Event.tscn 时必须同时显示事件标题与描述，并提供不少于两个可选项；这些选项里至少一个执行“立即HP损失”，且至少一个执行“加入诅咒牌”，任一类型缺失即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "每次进入事件时，本次可选项集合必须已锁定且不发生刷新/替换；玩家一旦作出选择，结果必须立即写入，并在退出后再次进入时保持已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "事件标题、描述、选项文本必须全部通过翻译系统提供；切换语言后三类文本必须同步变化，且变化结果可被验证。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "进入 Event.tscn 时必须同时显示事件标题与描述，并提供不少于两个可选项；同一事件中必须可验证地包含“立即HP损失”与“加入诅咒牌”两类 dark cost 示例，任一类型缺失即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "每次进入事件时，本次可选项集合必须在进入时即锁定且不发生刷新/替换；玩家一旦作出选择，结果必须立即写入，并在退出后再次进入时保持已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "事件标题、描述、选项文本必须全部由翻译系统提供；切换语言后三类文本必须同步变化且变化结果可被验证。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
       "选择“HP损失”代价选项后，当前HP必须在该次选择后立刻减少到可验证的新数值；若HP未变化则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
       "选择“加入诅咒牌”代价选项后，牌组必须在该次选择后立刻新增对应诅咒牌且数量可验证；若牌组未新增则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
       "必须提供并可执行测试用例，覆盖事件选项与两类代价应用（HP损失、诅咒牌加入），并对结果进行可重复断言。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
@@ -1604,14 +1604,14 @@
       "Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
     ],
     "acceptance": [
-      "在 Game.Godot/Translations/ 下存在 en 与 zh-CN 的 CSV 翻译文件，并且在 Godot 中加载后至少有一处 UI 文本通过翻译显示 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "在 Game.Godot/Translations/ 下必须同时提供 en 与 zh-CN 的 CSV 翻译文件，并且在 Godot 中加载任一语言后至少有一处 UI 文本显示为对应译文（非键名或硬编码） Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
       "翻译键遵循 ADR-0010 与项目约定的命名与前缀（如 ui., card., relic., event.），且界面文本未新增硬编码字符串 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
       "验收清单中的 Test-Refs 指向的用例覆盖翻译加载与键名规范检查 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "包含命名占位符的翻译条目使用 {name} 形式，并在界面中被实际值替换显示 Refs: Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
-      "脚本与场景引用翻译键而非直接文本，且至少覆盖主入口界面文案 Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
-      "In both en and zh-CN locales, the same UI node must assert exact text equality against expected localized values; mismatch fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "If rendered text equals the key name, missing translation placeholder, or fallback text, acceptance must fail and task status must not progress. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "Translation keys must use approved domain prefixes (including ui., card., relic., event., etc.); any key without an approved documented prefix mapping must fail acceptance, and hard-coded UI text in scenes/scripts must fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
+      "包含命名占位符的翻译条目必须使用 {name} 形式，运行时界面显示必须将 {name} 替换为实际值，若仍显示占位符则验收失败 Refs: Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
+      "脚本与场景必须通过翻译键取文案而非直接文本，且该约束至少在主入口界面文案上被验证 Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
+      "在 en 与 zh-CN 两种 locale 下，同一 UI 节点的渲染文本必须分别与预期本地化值完全一致，任一不一致即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "若渲染文本等于键名、未替换占位符或回退文本，相关验收用例必须判定失败 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "翻译键必须使用已批准的域前缀（包括 ui., card., relic., event., etc.）；任何未映射到已文档化前缀的键都必须导致验收失败，且硬编码 UI 文本出现在 scenes/scripts 中也必须导致验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
     ],
     "test_strategy": [
       "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010."
@@ -1665,12 +1665,12 @@
       "Game.Core.Tests/Services/WarriorDeckManifestValidationTests.cs"
     ],
     "acceptance": [
-      "在新开局或等价初始化流程完成后，战士起始卡组包含且仅包含10张卡牌，组成与M1内容清单一致。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
-      "定义10张战士卡牌的基础定义（包含如 card.warrior.cleave 的标识），并提供可被测试读取与断言的标签与意图字段。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "在新开局或等价初始化流程完成后，战士起始卡组包含且仅包含10张卡牌，且卡牌标识集合与M1内容清单完全一致（无缺失、无额外）。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "系统提供10张战士卡牌的基础定义（包含如 card.warrior.cleave 的标识）；每张卡都暴露可被测试读取并断言的标签与意图字段。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
       "如存在本任务对应的 Overlay 验收清单，Test-Refs 应指向本任务的验收/测试用例且不包含无关条目。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
       "xUnit 测试必须验证：卡组总数为10；每张卡的标识与核心属性与M1内容清单一致；标签与意图可被读取并断言。 Refs: Game.Core.Tests/Services/WarriorStartingDeckServiceTests.cs Game.Core.Tests/Domain/WarriorCardDefinitionsTests.cs",
       "当M1内容清单缺失或与实现不一致时，相关测试应失败并输出差异信息，不得静默通过。 Refs: Game.Core.Tests/Services/WarriorDeckManifestValidationTests.cs",
-      "存在明确命名的起始牌组初始化服务（或同等组件），并负责构建战士起始卡组。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "存在明确命名的起始牌组初始化服务（或同等组件），其输出可验证地用于构建战士起始卡组。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
       "实现与测试显式引用 ADR-0033 作为口径来源。 Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs"
     ],
     "test_strategy": [
@@ -1727,12 +1727,12 @@
       "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs"
     ],
     "acceptance": [
-      "在战斗上下文中，战士怒气被定义为 Buff 状态；回合结束不会自然衰减，且战斗结束后怒气必须重置为 0（无怒气状态）。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "怒气仅可由既定来源产生并按既定叠层规则变化；与其他状态共同结算时，在相同输入下必须得到相同结算顺序与相同结果。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "怒气必须进入战斗伤害计算流水线：存在怒气时伤害结果应体现 Buff 影响；战斗结束并清零怒气后，相同条件下伤害结果应回到无怒气基线。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "提供并通过 xUnit 用例覆盖怒气叠层、跨回合保持、战斗结束清零三类行为；任一行为不满足时测试应失败。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "仅在战斗上下文中，战士怒气作为 Buff 状态存在；回合结束时怒气值保持不变（不得自然衰减）；战斗结束后怒气必须重置为 0 且处于无怒气状态。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "怒气仅可由既定来源产生并按既定叠层规则变化；与其他状态共同结算时，在相同输入下必须得到相同结算顺序与相同最终结果。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "怒气必须进入战斗伤害计算流水线：存在怒气时伤害结果应体现 Buff 影响；战斗结束并清零怒气后，相同条件下伤害结果必须回到无怒气基线。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "必须提供并通过 xUnit 用例覆盖怒气叠层、跨回合保持、战斗结束清零三类行为；任一行为不满足时测试必须失败。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
       "验收清单需明确对应测试文件路径与断言要点，使评审者可按路径复现并核对怒气相关结果。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "提供 xUnit 用例验证怒气与其他状态的确定性结算：相同输入必须产生相同顺序与相同最终结果，不允许出现非确定性漂移。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "必须提供 xUnit 用例验证怒气与其他状态的确定性结算：相同输入重复执行时必须产生相同顺序与相同最终结果，不允许出现非确定性漂移。 Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
       "Task 25 acceptance must explicitly include ADR-0033 and ADR-0021 traceability; missing either ADR id fails acceptance. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
       "Review gate must verify implementation and tests reference ADR-0033 and ADR-0021 consistently and audibly; inconsistent ADR mapping fails acceptance. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs"
     ],
@@ -1792,17 +1792,17 @@
       "Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs"
     ],
     "acceptance": [
-      "核心层提供 DifficultyConfig 的只读访问，包含 difficulty_id、label_key、description_key、ruleset_id 四字段；读取任一配置时可验证字段存在且可取值。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
-      "开始一次 run 时必须选择难度（取值范围 1–10）并写入该 run 的元数据；run 开始后对难度的任何修改请求不得改变已记录值（保持原值或被明确拒绝）。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
+      "核心层必须暴露 DifficultyConfig 的只读访问；返回数据包含 difficulty_id、label_key、description_key、ruleset_id 四字段且四字段均可读取，调用方不能通过该访问入口修改字段值。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
+      "开始一次 run 时必须选择难度（仅允许 1-10）并写入该 run 的元数据；run 开始后对难度的任何修改请求不得改变已记录值（保持原值或被明确拒绝）。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
       "验收清单中必须记录并指向与“难度配置持久化与不可变性”相关的测试引用项。 Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
       "验收清单必须指向 xUnit 测试文件，覆盖难度写入 run 元数据的验证。 Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
       "验收清单必须指向 xUnit 测试文件，覆盖 run 开始后难度不可变（拒绝或值不变）的验证。 Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
-      "xUnit tests verify difficulty is persisted into run metadata (with assertions). Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "xUnit tests must assert that the selected difficulty value is persisted into run metadata at run start. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
       "xUnit tests verify difficulty is immutable after run start (reject or value unchanged). Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
-      "At run start, selected DifficultyConfig fields (difficulty_id, label_key, description_key, ruleset_id) must be snapshot-persisted into run metadata. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
-      "After run start, any mutation request to persisted difficulty fields must be rejected or leave values unchanged, proven by xUnit assertions. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
-      "At run start, the selected DifficultyConfig snapshot must persist all four fields (difficulty_id, label_key, description_key, ruleset_id) into run metadata; missing any field fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
-      "Acceptance tests must assert field-by-field equality between persisted run metadata and selected DifficultyConfig snapshot; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "At run start, the selected DifficultyConfig snapshot must persist difficulty_id, label_key, description_key, and ruleset_id into run metadata. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "After run start, any mutation request to the persisted difficulty fields must be rejected or leave stored values unchanged, and this behavior must be proven by xUnit assertions. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "At run start, run metadata must contain all four selected DifficultyConfig fields (difficulty_id, label_key, description_key, ruleset_id); if any field is missing, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+      "Acceptance tests must assert field-by-field equality between persisted run metadata and the selected DifficultyConfig snapshot; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
       "After run start, mutation requests for these four persisted fields must be rejected and stored values must remain unchanged; any mutable field fails acceptance. Refs: Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
       "Task 26 acceptance checklist must explicitly include ADR-0023, ADR-0032, and ADR-0021 trace links; missing any ADR id fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
       "Gate validation for Task 26 must fail when ADR-0023/ADR-0032/ADR-0021 traceability is incomplete or inconsistent across checklist and task evidence outputs. Refs: Tests.Godot/tests/Tasks/test_task0026_acceptance.gd"
@@ -1864,8 +1864,8 @@
       "Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs"
     ],
     "acceptance": [
-      "对每个输入难度值，DifficultyRuleService 必须返回与任务定义映射一致的规则修饰符集合；任一难度出现缺失、冗余或映射错误即判定失败。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
-      "在 Windows 上运行单元测试时，必须断言难度到修饰符解析正确，且同一难度重复调用得到值相等结果；任一断言失败即不通过。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "对每个输入难度值，DifficultyRuleService 返回的规则修饰符集合必须与任务定义映射一致；任一难度出现缺失、冗余或映射错误即判定失败。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
+      "运行 xUnit 单元测试时，必须断言难度到修饰符解析正确，且同一难度重复调用得到值相等结果；任一断言失败即不通过。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
       "Overlay 的 Test-Refs 清单必须能追溯到本任务相关测试文件，以证明难度映射与确定性要求已被测试覆盖；缺失或不可追溯即不通过。 Refs: Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs",
       "DifficultyRuleService 的输出必须仅由输入难度决定，且不得读取外部可变状态；同一输入在不同调用中的结果必须可比较且值相等，否则判定不满足确定性。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceDeterminismTests.cs",
       "当难度>=10 时，返回结果必须包含 OverplayTax 且阈值 N=12；当难度<10 时，返回结果必须不包含 OverplayTax。 Refs: Game.Core.Tests/Services/DifficultyRuleServiceThresholdTests.cs",
@@ -1997,12 +1997,12 @@
       "Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs"
     ],
     "acceptance": [
-      "对每个已支持的Act与遭遇类型组合，系统都能解析到含稀有度层级的卡池定义，且行为满足任务0029验收测试断言。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
-      "在Windows环境执行任务0029相关验收测试时，测试结果全部通过并与任务0029期望断言一致。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "对每个已支持的Act与遭遇类型组合，查询时必须返回一个包含稀有度层级的有效卡池；任一组合缺失、返回空结果或缺少稀有度层级即判定不通过。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "在Windows环境执行任务0029相关验收测试时，测试结果必须全部通过并与任务0029期望断言一致；出现任一失败或断言不一致即验收失败。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
       "Overlay的Test-Refs清单已包含本任务对应测试条目，且条目与当前实现一一对应且无失配。 Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
-      "每个Act均定义normal/elite/boss/shop/event五类卡池条目并包含稀有度层级；给定Act与遭遇类型时可确定唯一卡池。 Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs",
-      "OfferService在UI展示卡牌选择时不得推进随机数状态；在相同种子与相同输入状态下重复调用返回完全一致的选择结果。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
-      "存在可重复通过的xUnit测试，分别验证卡池选择的确定性与稀有度分布稳定性。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs",
+      "每个Act均定义normal/elite/boss/shop/event五类卡池条目并包含稀有度层级；给定Act与遭遇类型时必须可解析到且仅解析到一个对应卡池。 Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "OfferService在UI展示卡牌选择时不得推进随机数状态；在相同种子与相同输入状态下重复调用必须返回完全一致的选择结果，若结果差异或RNG状态变化则验收失败。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
+      "存在可重复通过的xUnit测试，分别验证卡池选择的确定性与稀有度分布稳定性；任一测试不稳定或不通过即验收失败。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs",
       "Task 29 implementation acceptance must explicitly validate consistency with ADR-0032 and ADR-0033; missing either ADR trace fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
       "Task 29 test acceptance must include explicit ADR-0032 traceability check and record pass/fail in task evidence output; missing ADR-0032 gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
     ],
@@ -2063,8 +2063,8 @@
       "Game.Core.Tests/Domain/RelicInstanceTests.cs"
     ],
     "acceptance": [
-      "Task 30 must include an xUnit acceptance test at Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs; acceptance must fail when RelicDefinition is missing any required key (relic_id, name_key, description_key, tags), or when RelicInstance is missing any required key (instance_id, modifiers). Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
-      "在 Windows 环境运行该验收测试套件时应全部通过，且断言可证明 RelicDefinition 与 RelicInstance 的契约声明仅位于 Game.Core/Contracts；若在其他目录出现同名契约声明则断言失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "Task 30 must include an xUnit acceptance test at Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs, and that test must fail if RelicDefinition lacks any required key (relic_id, name_key, description_key, tags) or if RelicInstance lacks any required key (instance_id, modifiers). Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "在 Windows 环境运行该验收测试套件时必须全部通过；测试断言必须证明 RelicDefinition 与 RelicInstance 的契约声明仅位于 Game.Core/Contracts，若在其他目录出现同名契约声明则断言失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "Overlay 的 Test-Refs 清单必须包含本任务测试文件路径，并且可由该路径定位到 Task 30 对应验收用例；路径缺失或无法定位即验收失败 Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicDefinition 的契约类型，并公开 relic_id、name_key、description_key、tags 四个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicDefinitionTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
       "在 Game.Core/Contracts 下必须定义名为 RelicInstance 的契约类型，并公开 instance_id、modifiers 两个字段或属性；缺少任一项即验收失败。 Refs: Game.Core.Tests/Domain/RelicInstanceTests.cs Game.Core.Tests/Domain/RelicContractsBoundaryTests.cs",
@@ -2126,11 +2126,11 @@
       "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
     ],
     "acceptance": [
-      "遗物定义集合必须可枚举且数量严格等于 20；每个定义必须包含稳定的 relic_id、翻译键以及用于规则修饰的效果描述，并且可在不加载 Godot 运行时的单元测试中被构造与读取；对全集执行唯一性校验时，只要出现任一重复 relic_id 即判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "在 Windows 环境执行 xUnit 时，测试必须覆盖全部 20 个遗物并验证 relic_id 全局唯一且每个遗物都存在翻译键；任一遗物不满足任一条件时，测试必须失败并输出可定位的失败信号。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "必须存在且仅存在 20 条可枚举的遗物定义；每条定义都包含稳定的 relic_id、translation key 与用于规则修饰的 effect descriptor，并可在不加载 Godot 运行时的单元测试中被构造与读取；对全集做唯一性校验时，出现任一重复 relic_id 即判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "在 Windows 环境执行 xUnit 时，测试必须覆盖全部 20 个遗物并验证 relic_id 全局唯一且每个遗物都存在 translation key；任一遗物不满足任一条件时，测试必须失败并输出可定位的失败信号。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "若存在对应 overlay 的验收清单文件，则其 Test-Refs 必须仅指向本任务已存在的测试文件，并可追溯到 relic_id 唯一性与翻译键存在性的验证；任一引用缺失、失效或无法追溯即判定不通过。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "xUnit 必须验证每个遗物都包含规则修饰的效果描述字段，且字段值非空或满足既定约束；同时确认该字段可在不加载 Godot 运行时的测试中被读取并断言，任一遗物不满足即测试失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "遗物定义集合必须明确限定为 M1 起始遗物集合且总数严格等于 20；若混入非 M1 遗物或以非 M1 集合替代统计则判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "xUnit 必须验证每个遗物都包含用于规则修饰的 effect descriptor 字段，且字段值非空或满足既定约束；并确认该字段可在不加载 Godot 运行时的测试中被读取与断言，任一遗物不满足即测试失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "遗物定义集合必须明确对应 M1 起始遗物集合且总数严格等于 20；若混入非 M1 遗物或通过非 M1 集合替代统计则判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "验收清单必须显式回链 ADR-0010 与 ADR-0021，且能定位到对应实现与测试证据；任一 ADR 回链缺失或失效即判定失败。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "门禁汇总必须包含 `adr_refs=[\"ADR-0010\", \"ADR-0021\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH10\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
@@ -2192,8 +2192,8 @@
       "Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs"
     ],
     "acceptance": [
-      "运行时可发现并启用 `card.curse.*` 命名空间下的诅咒卡定义；每张诅咒卡仅有单一形态，任何升级尝试都会被拒绝且卡牌状态保持不变；非诅咒卡不会被误标记为诅咒卡。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
-      "商店服务、休息选项、事件选项三条路径均可触发诅咒移除；玩家确认后目标诅咒卡从牌组中移除，且牌组不会生成任何替换卡（牌组数量仅按移除结果减少）。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
+      "系统在运行时能够发现并启用 `card.curse.*` 命名空间下的诅咒卡定义；每张诅咒卡仅允许单一形态，任意升级请求都会被拒绝且该卡状态保持不变；非诅咒卡不得被识别或标记为诅咒卡。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
+      "商店服务、休息选项、事件选项三条路径都能够触发诅咒移除流程；玩家确认后，目标诅咒卡从牌组中移除，且不会生成替换卡（牌组数量仅因移除而减少）。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
       "ACCEPTANCE_CHECKLIST 中与本任务相关的验收条目可定位到对应测试文件，并能覆盖“诅咒卡约束验证”与“三条移除路径验证”两类检查。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
       "提供 xUnit 用例，验证诅咒卡仅有单一形态，且升级请求被拒绝并保持原卡状态不变。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs",
       "提供 xUnit 用例，分别验证商店、休息、事件三条移除路径在执行后目标诅咒卡已不存在，且牌组未新增替换卡。 Refs: Game.Core.Tests/Tasks/Task0032AcceptanceTests.cs"
@@ -2256,15 +2256,15 @@
       "Game.Core.Tests/Services/DeckServiceHandLimitTests.cs"
     ],
     "acceptance": [
-      "DeckService 必须提供 draw/discard/exhaust/retain/shuffle 五类操作；在相同初始状态与相同输入序列下，牌堆/手牌/弃牌堆/消耗区结果必须完全一致且可复现。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "DeckService 必须实现 draw/discard/exhaust/retain/shuffle 五类操作；给定相同初始状态与相同输入序列时，牌堆/手牌/弃牌堆/消耗区最终状态必须完全一致且可复现。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
       "任一流程结算后若手牌数量超过 10，超出部分必须按 instance_id 升序依次移入弃牌堆，且最终手牌数量必须为 10。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
-      "本任务的验收与测试映射必须可追溯，且至少覆盖抽牌顺序、弃牌顺序、EndOfTurn retain 规则与手牌上限溢出行为。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
-      "draw 必须按当前抽牌堆顺序依次将卡实例加入手牌；在不触发上限溢出的情况下，手牌新增顺序与抽牌顺序一致且可被测试验证。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "discard 必须将指定卡实例从其当前区域移入弃牌堆；除该实例迁移外，其他卡实例的集合与相对顺序保持不变，若未找到指定实例则状态不变。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "本任务的验收证据与测试映射必须可追溯，且至少覆盖抽牌顺序、弃牌顺序、EndOfTurn retain 规则与手牌上限溢出行为。 Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "draw 必须按当前抽牌堆顺序依次将卡实例加入手牌；在不触发手牌上限溢出的情况下，手牌新增顺序必须与抽牌顺序一致并可被测试验证。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "discard 必须将指定卡实例从其当前区域移入弃牌堆；除该实例迁移外，其他卡实例的集合与相对顺序保持不变；若未找到指定实例则状态必须不变。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
       "exhaust 必须将指定卡实例移入消耗区；该实例在后续抽牌与弃牌循环中不得再次出现。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
       "EndOfTurn 必须应用 retain 规则：标记 retain 的卡实例保留在手牌，未标记实例全部从手牌移入弃牌堆。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "shuffle 只允许重排抽牌堆顺序；卡实例总数与成员不变，不得新增或丢失实例，且手牌/弃牌堆/消耗区不受影响。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "必须提供 xUnit 用例，至少验证 draw 与 discard 的顺序行为、EndOfTurn retain 行为、以及手牌上限溢出按 instance_id 处理的行为。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Services/DeckServiceHandLimitTests.cs",
+      "shuffle 只允许重排抽牌堆顺序；卡实例总数与成员必须保持不变，不得新增或丢失实例，且手牌/弃牌堆/消耗区不受影响。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "必须提供 xUnit 用例，至少验证 draw 与 discard 的顺序行为、EndOfTurn retain 行为，以及手牌上限溢出按 instance_id 处理的行为。 Refs: Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Services/DeckServiceHandLimitTests.cs",
       "Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
       "Gate evaluation must fail when ADR-0021 or ADR-0032 traceability is absent from task evidence or test mapping. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd"
     ],
@@ -2334,8 +2334,8 @@
       "Tests.Godot/tests/UI/test_hud_updates_on_events.gd"
     ],
     "acceptance": [
-      "战斗场景中，鼠标悬停可选中敌方目标；若仅有一个敌人，该敌人始终为当前选中；将卡牌拖拽到目标上会触发出牌尝试；目标不满足时给出明确无效目标反馈；所有提示文本均使用翻译键。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
-      "在 Windows 环境下，悬停选中与拖拽出牌流程可重复执行且不中断，过程中可观察到目标选中与出牌尝试的状态变化。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "在战斗场景中，鼠标悬停会将敌方单位设为当前目标；当场上仅有一个敌人时，该敌人持续保持为当前目标。将卡牌拖拽到当前目标会触发出牌尝试；若目标不满足条件，界面必须给出明确的无效目标反馈；相关提示文本均通过翻译键读取。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
+      "在 Windows 环境下，悬停选中与拖拽出牌流程可连续重复执行多次且不出现流程中断；每次执行均能观察到目标选中变化与出牌尝试事件。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
       "Overlay 的 Test-Refs 已更新并指向本任务验收与相关测试清单。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
       "提供 GdUnit4 测试覆盖目标选择与拖拽出牌流程，并对无效目标反馈作出可观察断言。 Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/UI/test_hud_invalid_target_feedback.gd",
       "当目标条件不满足时，出牌尝试被拒绝，手牌与战斗状态保持不变，并显示无效目标反馈。 Refs: Tests.Godot/tests/Tasks/test_task0034_acceptance.gd",
@@ -2401,12 +2401,12 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "胜利与失败分支都必须触发战斗结束结算，并产生可验证的状态变化；不得以空操作或无状态变化通过验收。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "在 Windows 环境下执行战斗结束结算流程应无崩溃，且可观察到状态改变或场景切换结果；不得静默失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "当战斗结果为胜利或失败时，系统必须进入对应的战斗结束结算分支并产生可验证结果（如 run state 变更、场景切换或返回菜单）；若执行后无可观察状态变化则验收失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "在 Windows 环境执行战斗结束结算流程时不得崩溃，且必须能观察到状态改变或场景切换；若流程静默失败或无结果输出则验收失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
       "Overlay 的 Test-Refs 清单必须包含与本任务相关的测试引用，并与本验收项一致。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "胜利结算时必须按顺序完成：解析死亡触发、发放奖励、写入 run state、切换到 Reward 场景；缺任一步骤视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "失败结算时必须结束当前 run 并返回主菜单，且不得进入 Reward 场景。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "提供 xUnit 用例覆盖战斗结束结算与状态切换。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "胜利结算必须按顺序完成：解析死亡触发、发放奖励、写入 run state、切换到 Reward 场景；任一步骤缺失、跳过或顺序错误均视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "失败结算必须结束当前 run 并返回主菜单，且不得进入 Reward 场景。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须提供 xUnit 用例，覆盖战斗结束结算流程及相关状态切换行为。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
       "Task 35 acceptance must explicitly trace and validate ADR-0032 and ADR-0029 consistency; any conflict with either ADR fails acceptance and blocks progression. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs"
     ],
     "test_strategy": [
@@ -2467,10 +2467,10 @@
       "Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs"
     ],
     "acceptance": [
-      "当战斗进入初始状态、奖励界面首次显示、事件选择作出后，系统分别立即写入 1 次自动存档；除这三类触发外不得产生自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "玩家执行跳过/略过流程时，自动存档计数相对跳过前保持不变，不得新增任何自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "当且仅当发生以下事件时，系统分别立即写入 1 次自动存档：战斗进入初始状态、奖励界面首次显示、事件选择作出后；除这三类触发外不得产生自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "玩家执行跳过/略过流程前后，自动存档计数必须保持不变；跳过/略过流程本身不得新增任何自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
       "Overlay 08 验收清单中的 Test-Refs 指向本任务相关测试文件或占位，并与“战斗初始、奖励首次显示、事件选择后触发，跳过不新增”语义一致。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "xUnit 测试可观测地覆盖自动存档触发时机与存档内容一致性，并验证跳过流程不产生额外自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "xUnit 测试必须可观测地覆盖三类自动存档触发时机与存档内容一致性，并验证跳过/略过流程不产生额外自动存档。 Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
       "Task 36 acceptance must explicitly trace implementation and tests to ADR-0032 and ADR-0023; missing either ADR linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
       "Gate check must fail when ADR-0032 or ADR-0023 back-link evidence is absent from task-0036 outputs or checklist mapping. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs"
     ],
@@ -2531,10 +2531,10 @@
       "Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
     ],
     "acceptance": [
-      "单存档在成功保存后，继续加载时必须可读取运行元数据（run_id、difficulty_id、act、node_id、timestamp），且 Continue 判定逻辑使用这些元数据 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "加载时必须进行存档结构与完整性校验；若校验失败则阻止 Continue、显示错误提示，并保持既有存档内容不变 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "当单槽存档成功保存后，后续加载必须能读取运行元数据（run_id、difficulty_id、act、node_id、timestamp），且 Continue 是否可用必须由该元数据参与判定 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "加载单槽存档时必须执行结构与完整性校验；任一校验失败时必须阻止 Continue、显示错误提示，并保持现有存档内容不被修改 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
       "Overlay 验收清单中该任务的 Test-Refs 记录保持对齐且不新增引用 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "提供 xUnit 用例覆盖元数据校验与 Continue 门禁 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "提供 xUnit 用例覆盖元数据校验与 Continue 门禁的放行/阻止结果 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
       "相关测试在清单中明确标注为 xUnit Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
       "交付物需引用 ADR-0032 与 ADR-0029 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
     ],
@@ -2595,8 +2595,8 @@
       "Game.Core.Tests/Services/AuditLoggerEventCoverageTests.cs"
     ],
     "acceptance": [
-      "执行保存、加载或锁相关流程后，必须在 logs/ci/<YYYY-MM-DD>/security-audit.jsonl 生成审计文件，且路径符合 SSoT 规范。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
-      "在 Windows 环境中可直接验证日志写入成功，且 security-audit.jsonl 每一行都可被解析为独立 JSON 对象。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
+      "触发保存、加载、offer lock 或 deny 任一审计事件后，必须在 logs/ci/<YYYY-MM-DD>/security-audit.jsonl 产生或追加审计记录，且路径符合 SSoT 规范。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
+      "在 Windows 环境执行相关流程后必须可验证日志写入成功，且 security-audit.jsonl 必须满足 JSONL 约束（每一行都可独立解析为 JSON 对象）。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
       "验收需提供可追溯证据（测试结果或日志文件），并能对应 JSONL 字段与路径校验结果。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
       "在 logs/ci/<YYYY-MM-DD>/security-audit.jsonl 中，每条审计记录必须包含 ts、action、reason、target、caller 五个字段，任一字段缺失即不通过。 Refs: Game.Core.Tests/Services/AuditLoggerJsonlSchemaTests.cs",
       "日志必须至少包含保存、加载、offer lock、拒绝四类事件；触发拒绝场景时必须写入对应 deny 事件且包含 reason。 Refs: Game.Core.Tests/Services/AuditLoggerEventCoverageTests.cs",
@@ -2664,13 +2664,13 @@
       "Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
     ],
     "acceptance": [
-      "为 M1 卡牌/遗物/事件的全部可见文本补齐 en 与 zh-CN 翻译键；资源中可检索到这些键，任一缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "所有 UI 提示/按钮/弹窗等可见文本仅通过翻译键渲染；运行时发现任一硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "M1 卡牌、遗物、事件涉及的每个可见文本都具备 en 与 zh-CN 翻译键，且对应键可在翻译资源中检索到；任一文本缺键或任一语言条目缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "UI 提示/按钮/弹窗等可见文本在运行时必须由翻译键解析得到；检测到任一直接硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
       "PRD-NEWROUGE-GAME-0001 overlay 的 Test-Refs 指向本任务验收用例，且可追溯到翻译键存在性与冒烟检查 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "为所有 UI 提示/按钮/弹窗等可见文本补齐 en 与 zh-CN 翻译键，任一缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "新增 GdUnit4 冒烟用例覆盖翻译键加载与基础 UI 渲染 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "提供脚本或手动检查流程，验证所有引用翻译键存在 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "所有可见文本必须通过翻译键渲染，运行时发现任一硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "所有 UI 提示/按钮/弹窗等可见文本均补齐 en 与 zh-CN 翻译键并写入翻译资源，任一缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "存在并可执行 GdUnit4 冒烟用例，覆盖翻译键加载与基础 UI 渲染；用例缺失或执行失败即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "提供可复现的脚本或手动检查流程，用于验证所有被引用的翻译键均存在；流程缺失或检查结果出现缺键即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "在卡牌/遗物/事件及相关 UI 场景中，所有可见文本必须通过翻译键渲染；运行时发现任一硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
       "Task 39 artifacts must include explicit ADR-0010 traceability (refs/checklist/test annotation) with auditable linkage points; missing ADR-0010 linkage fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
       "Gate must reject progression when PRD overlay or related tests lack ADR-0010 linkage evidence for Task 39. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
     ],
@@ -2729,8 +2729,8 @@
       "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs"
     ],
     "acceptance": [
-      "提供 Act 1 的普通/精英/首领 EnemyDefinition 数据，包含统计属性与 intent pools；仅为数据定义，不含任何意图选择逻辑。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
-      "xUnit 用例验证敌人数据有效且定义列表顺序确定可重复（无随机漂移），可在 Windows 环境运行通过。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Act 1 敌人定义数据中必须包含普通/精英/首领三类 EnemyDefinition，且每条定义都包含统计属性与 intent pools；验收时不得出现任何意图选择逻辑实现（仅允许数据定义）。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "xUnit 测试必须可在 Windows 环境通过，并能验证敌人数据有效性及 EnemyDefinition 列表顺序在重复运行中保持确定一致（无随机漂移）。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
       "若本任务产生 overlay 文档变更，则 Test-Refs 清单与本任务测试一致且可追溯；未产生该类变更则不新增/不改动该清单。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
       "本任务相关改动需显式引用 ADR-0021（代码或文档均可）。 Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs"
     ],
@@ -2840,13 +2840,13 @@
       "Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs"
     ],
     "acceptance": [
-      "进入节点时，节点选项会被锁定；在相同输入下，node_pre_enter 的顺序与内容保持确定性且可通过测试验证。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
-      "在已选择节点后，不允许回退或改选其他节点；相关状态保持不变且可验证。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
+      "进入节点的瞬间即锁定节点选项；在相同输入下，node_pre_enter 的顺序与内容必须保持确定且可测试，且后续变更尝试会被拒绝并保持状态不变。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
+      "在已选择节点后，任何回退或改选其他节点的操作都必须被拒绝；已选节点与相关状态保持不变且可验证。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
       "Overlay 的 Test-Refs 已包含本任务验收用例，并与“锁定选项 + 禁止回退”的规则一致。 Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
-      "xUnit：验证进入节点时选项被锁定，且锁定状态不可变。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs",
-      "xUnit：断言在相同输入下锁定状态保持一致。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs",
+      "xUnit：验证进入节点时选项被锁定，且锁定后对选项状态的变更尝试不会生效。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs",
+      "xUnit：断言在相同输入下，锁定状态结果保持一致且可重复。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs",
       "xUnit：相同输入下 node_pre_enter 的顺序与内容完全一致。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs",
-      "xUnit：不同输入下，node_pre_enter 的顺序与内容按规则变化并可断言。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs"
+      "xUnit：不同输入下，node_pre_enter 的顺序与内容按规则发生变化并可断言。 Refs: Game.Core.Tests/Tasks/Task0042AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for node selection lock and deterministic node order. Refs: ADR-0032."
@@ -2900,13 +2900,13 @@
       "Game.Core.Tests/State/GameStateManagerTests.cs"
     ],
     "acceptance": [
-      "通过仅处理 Command 入口完成运行状态迁移的状态机已经实现，并有对应可追溯测试覆盖。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
-      "在 Windows 环境下可运行 xUnit，用例验证命令驱动的迁移顺序与状态不变式，结果可判定。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
+      "RunStateMachine 在运行时仅通过处理 Command 入口触发运行状态迁移，并有对应可追溯测试覆盖。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
+      "在 Windows 环境可运行 xUnit；用例可判定命令驱动的迁移顺序与状态不变式是否满足。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
       "Overlay 的 Test-Refs 指向本任务测试路径且可追溯。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs",
-      "在相同初始状态与相同 Command 顺序下处理命令，得到的运行状态序列与最终状态一致，并可由测试验证。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
-      "任何对外可观察的运行状态变更仅在处理 Command 时发生；未处理 Command 的调用保持运行状态不变。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
-      "提供可用的 RunStateMachine 与 Command 类型，仅通过 Command 入口触发迁移，并测试至少一个有效迁移与一个无效迁移的结果。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
-      "xUnit 覆盖命令迁移顺序与状态不变式，顺序错误或不变式破坏时测试应失败且可复现。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
+      "给定相同初始状态与相同 Command 顺序，处理后得到的运行状态序列与最终状态必须一致，并可由测试验证。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
+      "任何对外可观察的运行状态变更只能在处理 Command 时发生；未处理 Command 的调用必须保持运行状态不变。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
+      "提供可用的 RunStateMachine 与 Command 类型，迁移仅可由 Command 入口触发，并测试至少一个有效迁移与一个无效迁移（无效迁移不得改变状态）。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs",
+      "xUnit 覆盖命令迁移顺序与状态不变式；当顺序错误或不变式被破坏时，测试必须稳定失败且可复现。 Refs: Game.Core.Tests/State/GameStateMachineTests.cs Game.Core.Tests/State/GameStateManagerTests.cs",
       "文档或测试用例中明确引用 ADR-0032 与 ADR-0021。 Refs: Game.Core.Tests/Tasks/Task0043AcceptanceTests.cs"
     ],
     "test_strategy": [
@@ -2968,8 +2968,8 @@
       "Tests.Godot/tests/Integration/test_adr_trace_markers_gate.gd"
     ],
     "acceptance": [
-      "提供与任务范围一致的 headless GdUnit4 集成验收用例，且用例实际覆盖 reward/shop/event 三类流程的保存/恢复确定性检查（缺一即失败）。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
-      "验收用例在 Windows headless 模式下可直接运行通过；若启动交互窗口或依赖人工输入则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
+      "提供 headless GdUnit4 集成验收用例，并实际覆盖 reward/shop/event 三类流程的保存/恢复确定性验证；任一流程未覆盖即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
+      "验收用例可在 Windows headless 模式下无人值守执行并通过；若出现交互窗口或需要人工输入则判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
       "Overlay 的 Test-Refs 明确记录并可追溯到本任务测试路径，且指向路径可定位对应的 headless 验收用例。 Refs: Tests.Godot/tests/Tasks/test_task0044_acceptance.gd",
       "headless GdUnit4 在 reward、shop、event 各场景执行“保存→退出→重进→恢复”，并断言恢复后 offer lock 状态与选择结果与保存前一致。 Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
       "reward、shop、event 三类流程各至少包含一次可观测断言（状态或事件输出）；任一断言失败时输出可定位场景与字段的失败信息。 Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/Integration/test_reward_shop_event_assertion_diagnostics.gd",
@@ -3092,14 +3092,14 @@
       "Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs"
     ],
     "acceptance": [
-      "在给定同一 RNG 流与相同输入时，系统必须生成 offer 候选并完成锁定；持久化的 provenance 可被读取并用于重现同一批结果。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
-      "在 Windows 环境运行 xUnit 用例时，锁定结果在重载前后必须一致，且该用例集全部通过。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "在给定同一 RNG 流与相同输入时，系统必须生成并锁定同一批 offer 候选；持久化的 provenance 必须可读取，且可用于重现同一批锁定结果。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
+      "在 Windows 环境运行 xUnit 用例时，必须证明锁定结果在重载前后保持一致，且该用例集全部通过。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
       "Overlay 的 Test-Refs 必须明确指向本任务测试路径，并能从文档定位到可执行用例实现。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
-      "OfferService 在给定 RNG 流与输入时必须返回可查询候选集合；候选数量与内容对外可观察，禁止出现无结果且无错误反馈。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
-      "首次锁定后 stable_id 与 display_order 必须被持久化；在相同输入与相同 RNG 流下重载并再次生成时，两者保持不变。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
+      "OfferService 在给定 RNG 流与输入时必须返回可查询候选集合；候选数量与内容对外可观察，且不得出现无结果且无错误反馈。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "首次锁定后 stable_id 与 display_order 必须被持久化；在相同输入与相同 RNG 流下重载并再次生成时，两者必须保持不变。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs",
       "对已锁定的 offer 再次触发生成/锁定时，既有 stable_id 与 display_order 必须保持原值，不得被改写。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
-      "provenance 必须持久化且可查询，并至少包含可用于一致性断言的关键信息（如 RNG 流标识与生成批次）。 Refs: Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs Game.Core.Tests/Services/OfferServiceTests.cs",
-      "xUnit 测试必须包含“重载前后锁定结果一致性”的明确断言，且通过/失败可直接反映该条件是否成立。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
+      "provenance 必须持久化且可查询，并至少包含可用于一致性断言与重现的关键信息（如 RNG 流标识与生成批次）。 Refs: Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs Game.Core.Tests/Services/OfferServiceTests.cs",
+      "xUnit 测试必须包含“重载前后锁定结果一致性”的明确断言，且通过/失败结果可直接反映该条件是否成立。 Refs: Game.Core.Tests/Services/OfferServiceTests.cs",
       "门禁汇总必须包含 `adr_refs=[\"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
       "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Game.Core.Tests/Tasks/Task0046AcceptanceTests.cs",
@@ -3158,12 +3158,12 @@
       "Game.Core.Tests/Services/FixedDamageRulesTests.cs"
     ],
     "acceptance": [
-      "在相同初始战斗状态与相同事件输入下，状态/遗物触发顺序必须稳定可复现；重复结算得到一致触发序列与一致结果，且不得受集合遍历顺序或随机性影响 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "固定伤害规则可被测试证伪：例如 OverplayTax 伤害在结算后保持原值，不受增伤/减伤等修饰影响；需有 xUnit 用例断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "在相同初始战斗状态与相同事件输入下，状态/遗物的触发先后必须确定且可复现；重复结算应得到相同触发序列与相同结果，且不得因集合遍历顺序或随机性改变结果 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "固定伤害规则必须可被测试直接证伪：例如 OverplayTax 伤害在结算前后保持原值，不受增伤/减伤等修饰影响；需有 xUnit 用例断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "Overlay 验收清单的对应条目必须与本任务语义对齐，并可明确核对到“触发顺序确定性”和“固定伤害不被修饰”两项要求 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "当同一时点存在多个可触发状态/遗物时，对同一输入进行多次结算必须产生完全相同的触发先后序列与最终伤害值 Refs: Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
-      "结算需可区分固定伤害与非固定伤害：固定伤害保持原值，非固定伤害继续按常规修饰规则变化，且该差异可由测试直接断言 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
-      "gameplay:6: 触发顺序必须由 xUnit 用例验证，断言既定排序规则与实际触发序列逐项一致；若不一致则测试失败 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "结算必须能区分固定伤害与非固定伤害：固定伤害保持原值，非固定伤害按常规修饰规则变化，且该差异可由测试直接断言 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
+      "gameplay:6: 触发顺序必须由 xUnit 用例验证，断言既定排序规则与实际触发序列逐项一致；任一不一致必须导致测试失败 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "门禁汇总必须包含 `adr_refs=[\"ADR-0029\", \"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
@@ -3221,13 +3221,13 @@
       "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
     ],
     "acceptance": [
-      "在给定基础伤害与 Strength/Weak/Vulnerable 状态时，最终伤害必须按乘数规则计算，并输出可由测试直接断言的确定数值。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "当同一 AOE 命中多个目标时，处理顺序必须严格按 combatant_id 升序，且顺序可通过测试观测并断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "多段命中解析必须对每一段产生可观察的执行顺序与结算结果，测试可逐段断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "xUnit 测试必须覆盖 Strength/Weak/Vulnerable 对伤害结算的影响，并对最终输出数值进行断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "在给定基础伤害与 Strength/Weak/Vulnerable 状态时，最终伤害必须按乘数规则计算为可直接断言的确定数值；同一输入不得产生不同输出。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "当同一 AOE 命中多个目标时，处理顺序必须严格按 combatant_id 升序；若出现非升序、跳过目标或额外目标即判失败。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "多段命中解析必须对每一段产生可观察的执行顺序与结算结果，并可被测试逐段断言；不得以单次合并结算替代逐段结算。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "xUnit 测试必须覆盖 Strength/Weak/Vulnerable 对伤害结算的影响，并对最终输出数值进行期望值断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
       "xUnit 测试必须覆盖多段命中的结算顺序与结果，并可对顺序和结果分别断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "在多段命中中，每一段伤害都必须独立应用 Strength/Weak/Vulnerable 乘数规则，逐段计算结果可被断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "xUnit 测试必须断言 AOE 处理顺序为 combatant_id 升序；对同一输入重复执行时断言结果保持稳定一致。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "在多段命中中，每一段伤害都必须独立应用 Strength/Weak/Vulnerable 乘数规则并单独结算；任一段未独立应用即判失败。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "xUnit 测试必须断言 AOE 处理顺序为 combatant_id 升序；对同一输入重复执行时，顺序与结算结果都必须保持稳定一致。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
       "Task 48 acceptance outputs must include auditable architecture-decision trace records citing ADR-0021 and ADR-0032 as rule sources; missing either ADR source fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
       "Review gate must verify damage multiplier and deterministic ordering behavior do not deviate from ADR-0021/ADR-0032 semantics; any deviation fails acceptance and blocks progression. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
     ],
@@ -3281,14 +3281,14 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "当单回合出牌计数超过100张时，战斗循环必须触发硬上限并走失败处理路径，且结果可被验证。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "在Windows环境下，硬上限与失败处理触发后必须产生可观察结果（如状态、返回值或日志），可通过测试断言。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "当同一回合累计出牌尝试达到第101张时，战斗循环必须立即触发硬上限并进入失败处理路径，且第101张请求返回可断言的失败结果。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "在Windows环境下，硬上限或失败处理被触发后必须产生至少一种可观察输出（状态、返回值或日志），并可由自动化测试断言。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
       "验收清单必须能定位到本任务用例索引，且索引可用于核对“超过100张硬停止”与“失败处理”结果。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "当同一回合出牌尝试超过100张时，系统必须立即硬停止后续出牌请求，回合/战斗状态保持一致且不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "触发硬停止时，系统必须记录可查询的审计条目，并能从日志确认触发原因为超过单回合上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "对无效出牌请求，系统必须返回明确失败结果，不改变已确认状态，且不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "必须存在xUnit用例，验证“超过100张出牌尝试”会触发硬停止而非继续处理。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
-      "必须存在xUnit用例，断言硬停止路径会产生审计日志条目。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "当同一回合出牌尝试超过100张时，系统必须立即拒绝后续出牌请求，且回合/战斗状态保持一致并且进程不崩溃。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "触发硬停止时，系统必须写入可查询审计条目，且日志中可确认触发原因为超过单回合100张上限。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "对无效出牌请求，系统必须返回明确失败结果，已确认状态保持不变，且不得抛出未处理异常。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
+      "必须存在xUnit用例，验证“超过100张出牌尝试”会触发硬停止且不会继续处理后续出牌。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
+      "必须存在xUnit用例，断言硬停止路径会产生可检索的审计日志条目。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
       "实现说明与测试说明必须显式引用ADR-0029，作为硬上限与失败处理依据。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
       "门禁汇总必须包含 `adr_refs=[\"ADR-0029\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH02\", \"CH07\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0049AcceptanceTests.cs",
@@ -3347,10 +3347,10 @@
       "Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs"
     ],
     "acceptance": [
-      "读取存档时必须校验 schema_version；若需迁移则执行迁移；迁移成功时 Continue 可用；迁移失败时 Continue 必须保持不可用且不得进入游戏流程。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
-      "在 Windows 环境下的 xUnit 用例需覆盖“迁移失败会阻断 Continue 且错误提示可见”的路径，并能从测试结果验证失败分支确实被阻断。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "读取存档时必须校验 schema_version，并在需要时执行迁移；迁移成功后 Continue 可用；迁移失败时 Continue 必须保持不可用、不得进入游戏流程，且状态不得前进。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "在 Windows 环境下的 xUnit 用例必须覆盖“迁移失败会阻断 Continue 且错误提示可见”的路径，并可从测试结果直接判定失败分支未进入游戏流程。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
       "Overlay 的 Test-Refs 需要指向本任务相关测试文件，以对齐验收清单。 Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
-      "Windows xUnit must verify schema_version migration failure blocks Continue and keeps the entry inaccessible until migration is repaired. Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "Windows xUnit must verify that schema_version migration failure blocks Continue, surfaces an error, and keeps the entry inaccessible until migration succeeds. Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
       "Task 50 implementation and acceptance must explicitly satisfy ADR-0032 and ADR-0023 constraints; missing either ADR traceability fails acceptance. Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
       "Review evidence for Task 50 must provide auditable mapping to ADR-0032 and ADR-0023 in test artifacts or checklist refs; missing mapping fails acceptance. Refs: Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs"
     ],
@@ -3411,13 +3411,13 @@
       "Game.Core.Tests/Tasks/Task51AdrTraceabilityGateTests.cs"
     ],
     "acceptance": [
-      "当流程从非战斗状态进入战斗状态时，核心服务必须且仅触发一次起始自动保存；保存存储中可观测到且仅可观测到一条与本次进入战斗对应的新增记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "当流程从非战斗状态进入战斗状态时，核心服务必须触发且仅触发一次起始自动保存；保存存储中必须新增且仅新增一条与该次进入战斗对应的记录。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "每次满足前置条件的回合推进请求都必须经核心服务成功更新回合计数与当前行动者；任一前置条件不满足时必须返回不可推进结果，且回合计数与当前行动者保持推进前值。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "仅当判定达到回合结束条件时才执行回合结束清理，并产生可观测状态变化或事件；未达到条件时不得触发清理，且相关状态保持不变。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "从起始自动保存恢复后，回合计数与当前行动者必须与保存快照完全一致；在恢复态发起一次合法推进后，系统必须进入下一个有效回合状态。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
       "必须提供 GdUnit4 用例，至少覆盖进入战斗触发起始自动保存、合法回合推进、以及从起始自动保存恢复后继续推进三条主流程。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
       "验收清单必须明确列出上述回合流程与恢复行为对应的 GdUnit4 测试文件路径，并给出每个文件的验证覆盖范围说明。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
-      "回合结束清理必须由核心服务直接执行或由其统一触发；每次清理都必须留下可检索记录或事件，用于持久化核验与流程追踪。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "回合结束清理必须通过核心服务执行或由其统一触发；每次清理都必须留下可检索记录或事件，用于持久化核验与流程追踪。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "[OBL:T51.O7] 验收清单必须包含显式映射条目，将起始自动保存、回合推进、回合结束清理逐项关联到 ADR-0032 与 ADR-0025。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs Game.Core.Tests/Contracts/RunAndSaveContractsTests.cs",
       "[OBL:T51.O7] 至少一个测试条目必须明确其验证点覆盖 ADR-0025 约束，且该覆盖点可通过测试说明或命名直接定位。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
       "[OBL:T51.O7] 验收门禁输出必须显式给出 ADR-0032 与 ADR-0025 的可追溯映射结果；缺失任一 ADR 映射时判定为未通过。 Refs: Game.Core.Tests/Tasks/Task51AdrTraceabilityGateTests.cs",
@@ -3476,11 +3476,11 @@
     "owner": "gameplay",
     "test_refs": [],
     "acceptance": [
-      "在至少一组覆盖不同敌人的战斗状态样例中，意图选择必须由“该敌人的规则 + 当前战斗状态”共同决定且结果可核验；若同一敌人在不同状态下仍固定返回单一意图，则判定不通过。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
-      "在相同敌人、相同RNG流输入、相同战斗状态条件下，重复执行意图选择的结果必须完全一致；当RNG流输入或战斗状态任一变化时，必须基于新输入重新计算，并在至少一组样例中观察到结果差异。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
-      "已新增或更新xUnit用例，明确覆盖“同敌人+同输入结果一致”与“输入变化可触发差异”的确定性行为，并在Test-Refs清单中可追溯到对应测试文件。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
-      "With identical enemy and combat state, changing only RNG stream input must produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
-      "With identical enemy and RNG stream input, changing only combat state must produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
+      "在覆盖多个敌人且包含不同战斗状态的样例中，意图选择结果必须由“敌人规则 + 当前战斗状态”共同决定并可断言验证；若同一敌人在不同状态下始终返回同一意图，则验收失败。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
+      "在敌人、RNG流输入、战斗状态三者完全相同的前提下，重复执行意图选择必须得到完全一致结果；当仅RNG流输入或战斗状态任一发生变化时，必须基于新输入重新计算，并在至少一组样例中出现可验证的结果差异。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
+      "必须新增或更新xUnit用例，明确覆盖“同敌人+同输入结果一致”与“输入变化可触发差异”的确定性行为，并在Test-Refs清单中可追溯到对应测试文件。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
+      "With identical enemy and combat state, changing only RNG stream input must trigger intent recomputation and produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
+      "With identical enemy and RNG stream input, changing only combat state must trigger intent recomputation and produce at least one verifiable intent difference across samples; otherwise acceptance fails. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
       "Task 52 acceptance must explicitly trace to ADR-0032 and ADR-0021 in implementation/test evidence; missing either ADR link fails acceptance. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
       "xUnit acceptance outputs for Task 52 must include ADR-0032 trace fields that CI can audit; missing trace fields fails acceptance. Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs"
     ],
@@ -3679,18 +3679,18 @@
       "Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs"
     ],
     "acceptance": [
-      "未设置覆盖率环境变量时，run_dotnet.py 与 quality_gates.py 的有效阈值必须解析为 lines>=90 且 branches>=85，并在执行结果中可复核；任一脚本默认阈值不匹配即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "在 Windows 执行脚本时，临时设置阈值与门禁模式环境变量后，结果必须体现非默认有效阈值，且无需修改代码即可复现；若必须改代码才能得到非默认结果则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "未设置覆盖率环境变量时，scripts/python/run_dotnet.py 与 scripts/python/quality_gates.py 的有效阈值必须为 lines>=90 且 branches>=85，并能从执行产物中核对；任一脚本解析结果不满足该默认值即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "在 Windows 上执行脚本时，临时设置阈值与门禁模式环境变量后，运行结果必须显示已采用非默认有效阈值，且全程无需修改代码；若无法复现或需要改代码才生效则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
       "overlay 的 Test-Refs 与验收条目必须同时覆盖“阈值可覆盖、soft/hard 行为、摘要产出”三项义务，并与任务语义逐项对齐；缺失任一项即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "scripts/python/run_dotnet.py 与 scripts/python/quality_gates.py 在未设置覆盖率环境变量时默认使用 lines>=90、branches>=85；设置环境变量后必须采用覆盖后的有效阈值，并可在不改代码前提下完成一次非默认阈值验证。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "当设置覆盖率环境变量时，两脚本必须以环境变量值作为有效阈值（覆盖默认 lines>=90、branches>=85），并可通过一次不改代码的运行验证覆盖生效；若仍使用默认阈值则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
       "两脚本必须支持 soft/hard gate 选择：覆盖率低于有效阈值时，soft 模式以退出码 0 完成且记录 warning，hard 模式以非 0 退出；覆盖率达到或超过有效阈值时，两种模式均以退出码 0 完成。 Refs: Game.Core.Tests/Tasks/Task55CoverageGateModeSoftHardTests.cs",
-      "覆盖率结果必须输出单一机器可读 JSON 摘要，至少包含实际 line/branch 覆盖率、有效阈值（环境变量覆盖后）、gate mode 与 pass/fail，并分别生成于 logs/unit/<date>/summary.json 与 logs/ci/<date>/quality-gates/summary.json。 Refs: Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
+      "覆盖率检查必须生成单一机器可读 JSON 摘要，至少包含 measured line/branch coverage、环境变量覆盖后的有效阈值、gate mode 与 pass/fail，并分别产出到 logs/unit/<date>/summary.json 与 logs/ci/<date>/quality-gates/summary.json；任一字段或路径缺失即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
       "产出文档或记录必须可追溯到 ADR-0005 与 CH07，且本任务验收范围仅限覆盖率阈值配置、门禁行为与摘要产出；若出现无关新增要求则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageTraceabilityTests.cs Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs",
       "overlay 验收清单必须显式标注 ADR-0005 与 CH07 的关联，并保持条目范围与本任务一致；缺少关联或引入超范围条目即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "在 Windows 上执行 dotnet test，并通过临时环境变量验证阈值覆盖与 soft/hard 门禁行为；若结果不可复现或无法区分两种模式则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
+      "在 Windows 上执行 dotnet test，并通过临时环境变量分别验证阈值覆盖与 soft/hard 门禁分支；若同一套输入无法稳定复现结果或无法区分两种模式行为则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
       "overlay 文档必须记录 ADR-0005 与 CH07 的可追溯信息，并覆盖 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md 与 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-Quality-Metrics.md 两处；任一缺失即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
       "验收条目必须显式列出并可审计绑定以下 Test-Refs：Tests/CI/CoverageThresholdOverridesTests.cs、Tests/CI/CoverageGateModeSoftHardTests.cs、Tests/CI/CoverageSummaryJsonEmissionTests.cs；缺失任一文件路径即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "上述三份测试必须分别覆盖“阈值可覆盖”“soft/hard 行为”“摘要 JSON 产出”，并在执行记录中可逐项核对。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs"
+      "三份指定测试在执行记录中必须可逐项对应到“阈值可覆盖”“soft/hard 行为”“摘要 JSON 产出”三类义务，且任一义务缺少对应验证即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs"
     ],
     "test_strategy": [
       "Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars."
@@ -3709,7 +3709,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Audit JSONL validation + gate integration",
     "description": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -3744,7 +3744,7 @@
       "Provide scripts/python/validate_audit_logs.py that validates security-audit JSONL line by line for JSON structure and required fields; any invalid line must cause a non-zero exit and the validation result must not be reported as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "When validation fails, the output must include the exact failing line number and an actionable fix reason so the broken row can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "When audit validation is enabled, quality_gates.py must invoke the audit validator and persist the actual executed/pass_fail result into the task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must exit non-zero and block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must persist task-0056 summary with audit_validation.executed=true and pass_fail=\"fail\" before exiting non-zero to block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "Provide valid and invalid JSONL fixtures and reproduce one passing run and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "When audit validation is disabled, quality_gates.py must not invoke validate_audit_logs.py and must write executed=false and pass_fail=\"skipped\" into task-0056 summary. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],
@@ -3810,7 +3810,7 @@
       "Any ADR/chapter/overlay trace mismatch must fail the traceability gate with non-zero exit and block downstream release steps. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Traceability output must include machine-readable missing/mismatch diff items with concrete file/key locations. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Traceability check must run on Windows and output platform=windows in task-0057-traceability.json. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
-      "The test strategy must execute one pass sample and one fail sample; pass must exit 0 without mismatch, fail must exit non-zero with mismatch diff. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
+      "On Windows, the traceability check test strategy must run one pass sample and one fail sample: the pass sample exits 0 with no mismatch diff entries, and the fail sample exits non-zero with mismatch diff entries. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Task57TraceabilityGateTests.cs must cover ADR/chapter/overlay checks and assertions must match task-0057-traceability.json pass/fail and diff output. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Traceability gate must run as a dedicated CI job or dedicated command; if this gate is skipped, unrecognized, or not executed, pipeline must fail before release stages. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
       "Gate must explicitly validate consistency across tasks.json ADR/chapter refs and overlay Test-Refs anchors (bidirectional): missing or mismatched links in either direction must fail with non-zero exit. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
@@ -3818,7 +3818,7 @@
       "Validator must parse and compare these exact fields for Task 57: tasks.json master.adrRefs/chapterRefs/overlay, tasks_back.json and tasks_gameplay.json adr_refs/chapter_refs/overlay_refs, and overlay 08 Test-Refs entries; the consistency scope must include ADR refs, chapter refs, overlay refs, and Test-Refs path anchors. Any mismatch or missing item in this scope must fail gate with non-zero exit and JSON diff evidence. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
       "必须校验 ADR / 章节 / Overlay Test-Refs 一致性：对比 tasks.json 与 tasks_back.json/tasks_gameplay.json 以及 overlay 文档中的 Test-Refs，任一缺失、错链、过期链接都必须判定失败并输出 diff。 Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs scripts/python/check_tasks_all_refs.py scripts/python/validate_task_master_triplet.py",
       "The dedicated validator must compare all required link domains declared by the task metadata against overlay documents, emit JSON diff entries for every missing/stale/mismatched link, and return non-zero when any diff exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs",
-      "Dedicated checker must compare three required link groups across task metadata and project docs, emit machine-readable diffs for missing/stale/mismatched links, and return non-zero when any mismatch exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs"
+      "Dedicated checker must validate ADR refs, chapter refs, and overlay Test-Refs links across task metadata and overlay documents, emit machine-readable diffs for every missing/stale/mismatched link, and return non-zero when any mismatch exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs"
     ],
     "test_strategy": [
       "Run traceability check on Windows with one pass sample and one fail sample."

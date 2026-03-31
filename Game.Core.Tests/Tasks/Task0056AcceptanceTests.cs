@@ -65,24 +65,72 @@ public sealed class Task0056AcceptanceTests
         passFail.GetString().Should().Be("pass");
     }
 
+    [Fact]
+    public void ShouldInvokeRealAuditValidator_WhenAuditValidationEnabledWithoutFakeOverride()
+    {
+        var repoRoot = FindRepoRoot();
+        var date = DateTime.Today.ToString("yyyy-MM-dd");
+        var ciDir = Path.Combine(repoRoot, "logs", "ci", date);
+        Directory.CreateDirectory(ciDir);
+        var auditInputPath = Path.Combine(ciDir, "security-audit.jsonl");
+        File.WriteAllText(
+            auditInputPath,
+            "{\"ts\":\"2026-03-31T00:00:00Z\",\"action\":\"db.open.fail\",\"reason\":\"path_denied\",\"target\":\"C:/temp/security_open_denied.db\",\"caller\":\"task56-test\"}" + Environment.NewLine,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        var run = RunQualityGatesWithAuditValidation(enabled: true, fakeAuditValidatorRc: null);
+
+        run.ExitCode.Should().Be(0, "real validator should pass when audit JSONL is valid");
+        File.Exists(run.Task0056Path).Should().BeTrue();
+
+        using var taskDoc = JsonDocument.Parse(File.ReadAllText(run.Task0056Path, Encoding.UTF8));
+        var auditValidation = taskDoc.RootElement.GetProperty("audit_validation");
+        auditValidation.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        auditValidation.GetProperty("executed").GetBoolean().Should().BeTrue();
+        auditValidation.GetProperty("pass_fail").GetString().Should().Be("pass");
+
+        var summaryPath = auditValidation.GetProperty("summary_path").GetString();
+        var logPath = auditValidation.GetProperty("log_path").GetString();
+        File.Exists(summaryPath).Should().BeTrue("real validator must emit its summary artifact");
+        File.Exists(logPath).Should().BeTrue("real validator run must emit its execution log");
+        File.ReadAllText(logPath!, Encoding.UTF8).Should().NotContain("QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC");
+
+        using var validatorDoc = JsonDocument.Parse(File.ReadAllText(summaryPath!, Encoding.UTF8));
+        validatorDoc.RootElement.GetProperty("ok").GetBoolean().Should().BeTrue();
+    }
+
     // ACC:T56.4
     [Fact]
     public void ShouldExitNonZero_WhenAuditValidationEnabledAndValidatorFails()
     {
-        var run = RunQualityGatesWithAuditValidation(enabled: true, fakeAuditValidatorRc: 1);
+        var repoRoot = FindRepoRoot();
+        var date = DateTime.Today.ToString("yyyy-MM-dd");
+        var ciDir = Path.Combine(repoRoot, "logs", "ci", date);
+        Directory.CreateDirectory(ciDir);
+        var auditInputPath = Path.Combine(ciDir, "security-audit.jsonl");
+        File.WriteAllText(
+            auditInputPath,
+            "{\"ts\":\"2026-03-31T00:00:00Z\",\"action\":\"db.open.fail\",\"reason\":\"path_denied\",\"target\":\"C:/temp/security_open_denied.db\"}" + Environment.NewLine,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        var run = RunQualityGatesWithAuditValidation(enabled: true, fakeAuditValidatorRc: null);
 
         run.ExitCode.Should().Be(1, "quality gate must fail when enabled audit validation fails");
+        File.Exists(run.Task0056Path).Should().BeTrue("fail path must still persist task-0056 summary");
 
-        if (File.Exists(run.Task0056Path))
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(run.Task0056Path, Encoding.UTF8));
-            var root = doc.RootElement;
-            if (root.TryGetProperty("audit_validation", out var auditValidation) &&
-                auditValidation.TryGetProperty("pass_fail", out var passFail))
-            {
-                passFail.GetString().Should().Be("fail");
-            }
-        }
+        using var doc = JsonDocument.Parse(File.ReadAllText(run.Task0056Path, Encoding.UTF8));
+        var root = doc.RootElement;
+        var auditValidation = root.GetProperty("audit_validation");
+        auditValidation.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        auditValidation.GetProperty("executed").GetBoolean().Should().BeTrue();
+        auditValidation.GetProperty("pass_fail").GetString().Should().Be("fail");
+        root.GetProperty("exit_code").GetInt32().Should().Be(1);
+
+        var summaryPath = auditValidation.GetProperty("summary_path").GetString();
+        File.Exists(summaryPath).Should().BeTrue("validator failure must still produce summary artifact");
+        using var validatorDoc = JsonDocument.Parse(File.ReadAllText(summaryPath!, Encoding.UTF8));
+        validatorDoc.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        validatorDoc.RootElement.GetProperty("issues").GetArrayLength().Should().BeGreaterThan(0);
     }
 
     // ACC:T56.6
@@ -150,7 +198,7 @@ public sealed class Task0056AcceptanceTests
 
     private static GateRunResult RunQualityGatesWithAuditValidation(
         bool enabled,
-        int fakeAuditValidatorRc,
+        int? fakeAuditValidatorRc,
         bool fakeTask0056MissingFields = false)
     {
         var repoRoot = FindRepoRoot();
@@ -177,7 +225,9 @@ public sealed class Task0056AcceptanceTests
         psi.Environment["QUALITY_GATES_SKIP_PREREQS"] = "1";
         psi.Environment["QUALITY_GATES_FAKE_CI_RC"] = "0";
         psi.Environment["QUALITY_GATES_ENABLE_AUDIT_VALIDATION"] = enabled ? "1" : "0";
-        psi.Environment["QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC"] = fakeAuditValidatorRc.ToString();
+        psi.Environment["QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC"] = fakeAuditValidatorRc.HasValue
+            ? fakeAuditValidatorRc.Value.ToString()
+            : string.Empty;
         if (fakeTask0056MissingFields)
         {
             psi.Environment["QUALITY_GATES_FAKE_TASK0056_MISSING_FIELDS"] = "1";
