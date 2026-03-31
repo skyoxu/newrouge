@@ -26,6 +26,7 @@
 
 - 仓库升级指南：`docs/workflows/business-repo-upgrade-guide.md`
 - 模板升级协议：`docs/workflows/template-upgrade-protocol.md`
+- 第六章 T56 优化与升级指南：`docs/workflows/chapter-6-t56-optimization-guide.md`
 - 项目健康看板：`docs/workflows/project-health-dashboard.md`
 - 本地硬校验：`docs/workflows/local-hard-checks.md`
 - 稳定入口清单：`docs/workflows/stable-public-entrypoints.md`

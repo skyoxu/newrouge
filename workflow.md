@@ -371,6 +371,8 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --task-ids 1,2,3 --batch
 
 这是主日常路径。
 
+如需理解本章在 `T56` 实战中做过哪些优化、哪些脚本必须成批升级、以及旧项目如何完整对齐，请先读 `docs/workflows/chapter-6-t56-optimization-guide.md`。
+
 ### 6.1 先恢复状态
 
 ```powershell
