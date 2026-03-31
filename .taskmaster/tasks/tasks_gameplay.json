@@ -3744,7 +3744,7 @@
       "Provide scripts/python/validate_audit_logs.py that validates security-audit JSONL line by line for JSON structure and required fields; any invalid line must cause a non-zero exit and the validation result must not be reported as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
       "When validation fails, the output must include the exact failing line number and an actionable fix reason so the broken row can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "When audit validation is enabled, quality_gates.py must invoke the audit validator and persist the actual executed/pass_fail result into the task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must exit non-zero and block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
+      "If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must persist task-0056 summary with audit_validation.executed=true and pass_fail=\"fail\" before exiting non-zero to block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "Provide valid and invalid JSONL fixtures and reproduce one passing run and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
       "When audit validation is disabled, quality_gates.py must not invoke validate_audit_logs.py and must write executed=false and pass_fail=\"skipped\" into task-0056 summary. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],

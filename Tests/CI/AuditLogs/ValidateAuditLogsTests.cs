@@ -48,6 +48,9 @@ public sealed class ValidateAuditLogsTests
             issues.Any(x => x.GetProperty("line").GetInt32() == 2).Should().BeTrue();
             issues.Any(x => x.GetProperty("line").GetInt32() == 3).Should().BeTrue();
             issues.All(x => x.TryGetProperty("fix", out _)).Should().BeTrue();
+            issues.All(x => x.TryGetProperty("reason", out _)).Should().BeTrue();
+            issues.Select(x => x.GetProperty("reason").GetString()).Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
+            issues.Select(x => x.GetProperty("fix").GetString()).Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
         }
         finally
         {
@@ -93,7 +96,17 @@ public sealed class ValidateAuditLogsTests
     [Fact]
     public void ShouldReturnNonZeroExitCode_WhenAuditValidationEnabledAndValidatorFails()
     {
-        var run = RunQualityGates(repoRoot: FindRepoRoot(), enableAuditValidation: true, fakeValidatorRc: 1);
+        var repoRoot = FindRepoRoot();
+        var date = DateTime.Today.ToString("yyyy-MM-dd");
+        var ciDir = Path.Combine(repoRoot, "logs", "ci", date);
+        Directory.CreateDirectory(ciDir);
+        var auditInputPath = Path.Combine(ciDir, "security-audit.jsonl");
+        File.WriteAllText(
+            auditInputPath,
+            "{\"ts\":\"2026-03-31T00:00:00Z\",\"action\":\"db.open.fail\",\"reason\":\"path_denied\",\"target\":\"C:/temp/security_open_denied.db\"}" + Environment.NewLine,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        var run = RunQualityGates(repoRoot: repoRoot, enableAuditValidation: true, fakeValidatorRc: null);
 
         run.ExitCode.Should().Be(1);
         File.Exists(run.Task0056Path).Should().BeTrue();
@@ -103,6 +116,21 @@ public sealed class ValidateAuditLogsTests
         audit.GetProperty("enabled").GetBoolean().Should().BeTrue();
         audit.GetProperty("executed").GetBoolean().Should().BeTrue();
         audit.GetProperty("pass_fail").GetString().Should().Be("fail");
+        doc.RootElement.GetProperty("exit_code").GetInt32().Should().Be(1);
+
+        var summaryPath = audit.GetProperty("summary_path").GetString();
+        var logPath = audit.GetProperty("log_path").GetString();
+        File.Exists(summaryPath).Should().BeTrue();
+        File.Exists(logPath).Should().BeTrue();
+        File.ReadAllText(logPath!, Encoding.UTF8).Should().NotContain("QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC");
+
+        using var validatorDoc = JsonDocument.Parse(File.ReadAllText(summaryPath!, Encoding.UTF8));
+        validatorDoc.RootElement.GetProperty("ok").GetBoolean().Should().BeFalse();
+        var issues = validatorDoc.RootElement.GetProperty("issues").EnumerateArray().ToList();
+        issues.Should().NotBeEmpty();
+        issues.Select(x => x.GetProperty("line").GetInt32()).Should().Contain(1);
+        issues.Select(x => x.GetProperty("reason").GetString()).Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
+        issues.Select(x => x.GetProperty("fix").GetString()).Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
     }
 
     // ACC:T56.6
@@ -193,7 +221,7 @@ public sealed class ValidateAuditLogsTests
     private static GateRunResult RunQualityGates(
         string repoRoot,
         bool enableAuditValidation,
-        int fakeValidatorRc,
+        int? fakeValidatorRc,
         bool fakeTask0056MissingFields = false)
     {
         var date = DateTime.Today.ToString("yyyy-MM-dd");
@@ -218,7 +246,9 @@ public sealed class ValidateAuditLogsTests
         psi.Environment["QUALITY_GATES_SKIP_PREREQS"] = "1";
         psi.Environment["QUALITY_GATES_FAKE_CI_RC"] = "0";
         psi.Environment["QUALITY_GATES_ENABLE_AUDIT_VALIDATION"] = enableAuditValidation ? "1" : "0";
-        psi.Environment["QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC"] = fakeValidatorRc.ToString();
+        psi.Environment["QUALITY_GATES_FAKE_AUDIT_VALIDATOR_RC"] = fakeValidatorRc.HasValue
+            ? fakeValidatorRc.Value.ToString()
+            : string.Empty;
         if (fakeTask0056MissingFields)
         {
             psi.Environment["QUALITY_GATES_FAKE_TASK0056_MISSING_FIELDS"] = "1";
