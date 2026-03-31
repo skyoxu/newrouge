@@ -81,8 +81,9 @@
 
 ### 2.4 修复后的真实验证
 
-- 真实 `acceptance_check`：
-  - 命令：`py -3 scripts/sc/acceptance_check.py --task-id 56 --run-id aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --out-per-task --delivery-profile fast-ship --security-profile host-safe --require-task-test-refs --subtasks-coverage warn --perf-p95-ms 33 --godot-bin "$env:GODOT_BIN"`
+- 真实 acceptance 证据（通过统一入口触发）：
+  - 入口：`py -3 scripts/sc/run_review_pipeline.py --task-id 56 --godot-bin "$env:GODOT_BIN"`
+  - 关键 acceptance 参数：`run-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`、`delivery-profile=fast-ship`、`security-profile=host-safe`、`require-task-test-refs=true`、`subtasks-coverage=warn`、`perf-p95-ms=33`
   - 结果：`SC_ACCEPTANCE status=ok`
   - 耗时：`38s`
   - perf 证据：`p95_ms=6.91 <= 33`
@@ -326,11 +327,10 @@ Chapter 6 的正确升级单位是：
 
 在旧项目中，按下面顺序验证，不要跳步：
 
-1. `py -3 scripts/sc/test.py --self-check --type unit --run-id 11111111111111111111111111111111`
-2. `py -3 scripts/sc/acceptance_check.py --self-check --delivery-profile fast-ship`
-3. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --dry-run --skip-test --skip-acceptance --skip-agent-review`
-4. `py -3 -m unittest scripts.sc.tests.test_run_review_pipeline_preflight`
-5. `py -3 -m unittest scripts.sc.tests.test_sc_test_orchestration`
+1. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --dry-run --skip-test --skip-acceptance --skip-agent-review`
+2. `py -3 -m unittest scripts.sc.tests.test_run_review_pipeline_preflight`
+3. `py -3 -m unittest scripts.sc.tests.test_sc_test_orchestration`
+4. 如需真实验证，再执行一次 `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN"`
 6. `py -3 -m unittest scripts.sc.tests.test_acceptance_steps_quality`
 7. 选一个已有 task，连续真实跑两次 `run_review_pipeline.py`
 
