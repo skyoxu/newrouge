@@ -1544,7 +1544,7 @@
     "story_id": "BACKLOG-M1",
     "title": "Audit JSONL validation + gate integration",
     "description": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [

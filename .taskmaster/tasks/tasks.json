@@ -1742,7 +1742,7 @@
         "dependencies": [
           "54"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0019",
