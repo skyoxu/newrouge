@@ -104,6 +104,18 @@ def run_verify(
         cmd = ["py", "-3", "scripts/sc/test.py", "--type", "unit", "--task-id", task_id]
         if strict_red:
             cmd += ["--no-coverage-gate", "--no-coverage-report"]
-    rc, out = run_cmd_fn(cmd, cwd=repo_root_fn(), timeout_sec=1_800)
+    # In strict red-first mode with Godot tests, enforce raw gdUnit exit code
+    # so red failures cannot be normalized to success.
+    original_gdunit_strict = os.environ.get("GDUNIT_STRICT_EXIT_CODE")
+    if strict_red and mode == "all":
+        os.environ["GDUNIT_STRICT_EXIT_CODE"] = "1"
+    try:
+        rc, out = run_cmd_fn(cmd, cwd=repo_root_fn(), timeout_sec=1_800)
+    finally:
+        if strict_red and mode == "all":
+            if original_gdunit_strict is None:
+                os.environ.pop("GDUNIT_STRICT_EXIT_CODE", None)
+            else:
+                os.environ["GDUNIT_STRICT_EXIT_CODE"] = original_gdunit_strict
     write_text_fn(out_dir / f"verify-{task_id}.log", out)
     return mode, {"status": "ok" if rc == 0 else "fail", "rc": rc, "cmd": cmd}

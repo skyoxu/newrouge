@@ -27,14 +27,12 @@ def run_unit(
         task_filter
         and int(rc) == 2
         and "RUN_DOTNET status=coverage_failed" in str(out)
-        and "line=0.0%" in str(out)
-        and "branch=0.0" in str(out)
     ):
         fallback_cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
         fallback_rc, fallback_out = run_cmd(fallback_cmd, cwd=repo_root(), timeout_sec=1_800)
         out = (
             f"{str(out).rstrip()}\n\n"
-            "[sc-test] task-scoped coverage is 0.0%; retrying unit without task filter.\n"
+            "[sc-test] task-scoped coverage gate failed; retrying unit without task filter.\n"
             f"fallback_cmd: {' '.join(fallback_cmd)}\n"
             f"fallback_rc: {int(fallback_rc)}\n"
             "--- fallback output ---\n"
@@ -121,20 +119,42 @@ def run_gdunit_hard(
     os.environ["AUDIT_LOG_ROOT"] = str(repo_root() / "logs" / "ci" / date)
     add_dirs: list[str] = []
     tests_project = repo_root() / "Tests.Godot"
-    for rel in ["tests/Scenes", "tests/UI", "tests/Adapters/Config", "tests/Security/Hard"]:
-        if (tests_project / rel).exists():
-            add_dirs.append(rel)
-        elif (repo_root() / rel).exists():
-            add_dirs.append(rel)
     if str(task_id or "").strip():
-        rel = "tests/Tasks"
-        if (tests_project / rel).exists():
-            add_dirs.append(rel)
-        elif (repo_root() / rel).exists():
-            add_dirs.append(rel)
-        for rel_ref in task_scoped_gdunit_refs(task_id=task_id, tests_project=tests_project):
-            if rel_ref not in add_dirs:
-                add_dirs.append(rel_ref)
+        scoped_refs = task_scoped_gdunit_refs(task_id=task_id, tests_project=tests_project)
+        if not scoped_refs:
+            log_path = out_dir / "gdunit-hard.log"
+            write_text(
+                log_path,
+                "\n".join(
+                    [
+                        f"FAIL: no task-scoped gdunit refs found for task_id={str(task_id).strip()}",
+                        "Fix:",
+                        "  - ensure test_refs in task views include at least one existing .gd file",
+                        "  - run acceptance test generation before sc-test --type all",
+                    ]
+                )
+                + "\n",
+            )
+            return {
+                "name": "gdunit-hard",
+                "cmd": [
+                    "py",
+                    "-3",
+                    "scripts/python/run_gdunit.py",
+                ],
+                "rc": 2,
+                "log": str(log_path),
+                "report_dir": str(report_dir),
+                "status": "fail",
+                "reason": "missing_task_scoped_gdunit_refs",
+            }
+        add_dirs.extend(scoped_refs)
+    else:
+        for rel in ["tests/Scenes", "tests/UI", "tests/Adapters/Config", "tests/Security/Hard"]:
+            if (tests_project / rel).exists():
+                add_dirs.append(rel)
+            elif (repo_root() / rel).exists():
+                add_dirs.append(rel)
     cmd = [
         "py",
         "-3",

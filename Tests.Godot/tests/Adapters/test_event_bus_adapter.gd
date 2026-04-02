@@ -11,6 +11,8 @@ func before() -> void:
 func _on_evt(_type, _source, _data_json, _id, _spec, _ct, _ts):
     _emitted = true
 
+# acceptance: ACC:T7.5
+# acceptance: ACC:T7.6
 func test_publish_simple_emits_signal() -> void:
     _emitted = false
     _bus.PublishSimple("test.evt", "gdunit", "{}")

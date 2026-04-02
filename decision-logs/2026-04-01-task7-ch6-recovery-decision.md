@@ -1,0 +1,21 @@
+# Task7-Ch6-Recovery-Decision
+
+- Title: Task7-Ch6-Recovery-Decision
+- Date: 2026-04-01
+- Status: proposed
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T23
+- Git Head: 9d6771b6af68e60d3fad20df1dea0f36123e74c7
+- Why now: TODO: explain why now
+- Context: TODO: capture context
+- Decision: TODO: record decision
+- Consequences: TODO: describe consequences
+- Recovery impact: TODO: describe recovery impact
+- Validation: TODO: describe validation
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `7`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)

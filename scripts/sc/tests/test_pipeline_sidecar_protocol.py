@@ -29,6 +29,7 @@ def _stable_env() -> dict[str, str]:
         "SC_ACCEPTANCE_RUN_ID",
     ):
         env.pop(key, None)
+    env["SC_PIPELINE_ENFORCE_REFACTOR_PREREQ"] = "0"
     return env
 
 

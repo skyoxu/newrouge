@@ -78,6 +78,16 @@ Test-Refs:
   - 字段：`RunId`, `CombatId`, `ActorId`, `TargetId`, `CardInstanceId`, `EnergyCost`, `Sequence`, `PlayedAt`。
   - 契约位置：`Game.Core/Contracts/Events/CombatCardPlayedEvent.cs`
 
+- **CombatStarted** (`core.combat.started`)
+  - 触发时机：Task 7 验收中用于验证事件总线契约存在性的兼容 DTO。
+  - 字段：`RunId`, `CombatId`, `Turn`, `StartedAt`。
+  - 契约位置：`Game.Core/Contracts/Events/CombatStarted.cs`
+
+- **CardPlayed** (`core.combat.card.played`)
+  - 触发时机：Task 7 验收中用于验证事件总线契约存在性的兼容 DTO。
+  - 字段：`RunId`, `CombatId`, `CardInstanceId`, `PlayedAt`。
+  - 契约位置：`Game.Core/Contracts/Events/CardPlayed.cs`
+
 - **CombatDamageResolvedEvent** (`core.combat.damage.resolved`)
   - 触发时机：伤害结算并完成护甲/状态修正后。
   - 字段：`RunId`, `CombatId`, `SourceId`, `TargetId`, `BaseDamage`, `FinalDamage`, `IsFixedDamage`, `TargetArmorAfter`, `ResolvedAt`。

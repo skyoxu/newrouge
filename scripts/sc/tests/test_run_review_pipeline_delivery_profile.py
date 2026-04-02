@@ -34,6 +34,7 @@ def _stable_subprocess_env() -> dict[str, str]:
     env = dict(os.environ)
     for key in ('DELIVERY_PROFILE', 'SECURITY_PROFILE', 'SC_PIPELINE_RUN_ID', 'SC_TEST_RUN_ID', 'SC_ACCEPTANCE_RUN_ID'):
         env.pop(key, None)
+    env["SC_PIPELINE_ENFORCE_REFACTOR_PREREQ"] = "0"
     return env
 
 
