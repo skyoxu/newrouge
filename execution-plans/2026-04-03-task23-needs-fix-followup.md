@@ -10,7 +10,7 @@
 - Last completed step: Added Task 23 needs-fix decision log and execution follow-up linkage.
 - Stop-loss: Do not change gameplay logic or unrelated tasks; only adjust Task 23 wording/tests and recovery records.
 - Next action: Re-run deterministic and semantic-only review for Task 23 after metadata fix is committed.
-- Recovery command: `py -3 scripts/sc/llm_review.py --task-id 23 --security-profile host-safe --review-profile bmad-godot --review-template scripts/sc/templates/llm_review/bmad-godot-review-template.txt --semantic-gate warn --agents semantic-equivalence-auditor --base origin/main --diff-mode full --timeout-sec 1200 --agent-timeout-sec 600 --uncommitted`
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 23 --security-profile host-safe --llm-semantic-gate warn --llm-agents semantic-equivalence-auditor --llm-base origin/main --llm-diff-mode full --llm-timeout-sec 1200 --llm-agent-timeout-sec 600`
 - Open questions: Whether to fully converge semantic wording now or keep deferred under fast mode.
 - Exit criteria: `validate_recovery_docs` passes and Task 23 has deterministic green plus recorded/closed soft-review strategy.
 - Related ADRs: `docs/adr/ADR-0010-translation-keys-and-i18n-conventions.md`
@@ -34,13 +34,13 @@ Close the remaining soft-review `Needs Fix` for semantic wording scope without c
 ## Commands
 
 1. Re-run semantic-only review:
-   - `py -3 scripts/sc/llm_review.py --task-id 23 --security-profile host-safe --review-profile bmad-godot --review-template scripts/sc/templates/llm_review/bmad-godot-review-template.txt --semantic-gate warn --agents semantic-equivalence-auditor --base origin/main --diff-mode full --timeout-sec 1200 --agent-timeout-sec 600 --uncommitted`
+   - `py -3 scripts/sc/run_review_pipeline.py --task-id 23 --security-profile host-safe --llm-semantic-gate warn --llm-agents semantic-equivalence-auditor --llm-base origin/main --llm-diff-mode full --llm-timeout-sec 1200 --llm-agent-timeout-sec 600`
 2. If still `Needs Fix`, tighten acceptance wording in:
    - `.taskmaster/tasks/tasks_gameplay.json` (Task 23 acceptance lines)
 3. Re-check deterministic baseline:
    - `py -3 scripts/sc/run_review_pipeline.py --task-id 23 --security-profile host-safe --skip-llm-review --llm-base origin/main --llm-diff-mode full`
 4. Re-run full soft review when needed:
-   - `py -3 scripts/sc/llm_review.py --task-id 23 --security-profile host-safe --review-profile bmad-godot --review-template scripts/sc/templates/llm_review/bmad-godot-review-template.txt --semantic-gate warn --agents code-reviewer,security-auditor,test-automator,semantic-equivalence-auditor --base origin/main --diff-mode full --timeout-sec 1500 --agent-timeout-sec 600 --uncommitted`
+   - `py -3 scripts/sc/run_review_pipeline.py --task-id 23 --security-profile host-safe --llm-semantic-gate warn --llm-agents code-reviewer,security-auditor,test-automator,semantic-equivalence-auditor --llm-base origin/main --llm-diff-mode full --llm-timeout-sec 1500 --llm-agent-timeout-sec 600`
 
 ## Linked Decision Log
 
