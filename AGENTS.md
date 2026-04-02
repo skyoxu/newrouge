@@ -20,6 +20,7 @@
 - 日志、审计和证据统一放在 `logs/**`。
 - 非 trivial 任务必须显式分步并持续更新进度。
 - 不保留无用兼容层，过期路径应清理。
+- 若存在未修复 `Needs Fix`，必须先记录到 `decision-logs/**`，并在 `execution-plans/**` 写明后续修复入口与证据路径。
 
 ## Context Reset 后的启动顺序
 

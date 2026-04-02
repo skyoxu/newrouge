@@ -51,6 +51,7 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 ## Repository State Files
 - `execution-plans/` stores current execution intent and checkpoints.
 - `decision-logs/` stores decisions that changed architecture, workflow, or guardrails.
+- Unresolved `Needs Fix` must be recorded in `decision-logs/` first, then linked from `execution-plans/` with concrete next-step commands and evidence paths.
 - `logs/ci/active-tasks/task-<id>.active.md` is the shortest task-scoped recovery pointer.
 - `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` is the preferred full recovery entry because it summarizes the latest run plus matching `execution-plans/` and `decision-logs/`.
 - `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` points to the latest local pipeline artifacts, including `summary.json`, `execution-context.json`, `repair-guide.*`, and `agent-review.*` when generated.
