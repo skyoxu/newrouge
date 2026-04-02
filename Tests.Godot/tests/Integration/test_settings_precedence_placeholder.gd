@@ -26,6 +26,7 @@ func _write_config(path: String, lang: String) -> void:
 	var err := cfg.save(path)
 	assert_int(err).is_equal(Error.OK)
 
+# support: locale precedence behavior used by Task 23 evidence chain
 func test_settings_configfile_wins_over_db() -> void:
 	# Prepare conflicting sources: ConfigFile(lang="zh") vs DB(lang="en"); ConfigFile must win (ADR-0023)
 	var cfg_path := "user://settings.cfg"

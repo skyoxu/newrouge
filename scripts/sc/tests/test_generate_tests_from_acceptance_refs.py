@@ -30,6 +30,7 @@ def _load_module(name: str, relative_path: str):
 
 
 gen_script = _load_module("sc_generate_tests_from_acceptance_refs_module", "scripts/sc/llm_generate_tests_from_acceptance_refs.py")
+flow_helpers = _load_module("sc_acceptance_testgen_flow_module", "scripts/sc/_acceptance_testgen_flow.py")
 
 
 class _FakeTriplet:
@@ -45,6 +46,61 @@ class _FakeTriplet:
 
 
 class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
+    def test_run_verify_should_force_gdunit_strict_exit_in_strict_red_all_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            seen_env: list[str | None] = []
+
+            def fake_run_cmd(cmd, cwd, timeout_sec):  # noqa: ANN001, ARG001
+                seen_env.append(flow_helpers.os.environ.get("GDUNIT_STRICT_EXIT_CODE"))
+                return 1, "SC_TEST status=fail\n"
+
+            mode, step = flow_helpers.run_verify(
+                verify="all",
+                task_id="23",
+                any_gd=True,
+                godot_bin="C:/godot.exe",
+                out_dir=out_dir,
+                strict_red=True,
+                run_cmd_fn=fake_run_cmd,
+                repo_root_fn=lambda: Path(tmpdir),
+                write_text_fn=lambda path, text: path.write_text(text, encoding="utf-8"),
+            )
+
+        self.assertEqual("all", mode)
+        self.assertIsInstance(step, dict)
+        self.assertEqual(1, step["rc"])
+        self.assertEqual(["1"], seen_env)
+        self.assertIsNone(flow_helpers.os.environ.get("GDUNIT_STRICT_EXIT_CODE"))
+
+    def test_run_verify_should_restore_existing_gdunit_strict_env(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            old = flow_helpers.os.environ.get("GDUNIT_STRICT_EXIT_CODE")
+            flow_helpers.os.environ["GDUNIT_STRICT_EXIT_CODE"] = "0"
+            try:
+                def fake_run_cmd(cmd, cwd, timeout_sec):  # noqa: ANN001, ARG001
+                    self.assertEqual("1", flow_helpers.os.environ.get("GDUNIT_STRICT_EXIT_CODE"))
+                    return 0, "SC_TEST status=ok\n"
+
+                flow_helpers.run_verify(
+                    verify="all",
+                    task_id="23",
+                    any_gd=True,
+                    godot_bin="C:/godot.exe",
+                    out_dir=out_dir,
+                    strict_red=True,
+                    run_cmd_fn=fake_run_cmd,
+                    repo_root_fn=lambda: Path(tmpdir),
+                    write_text_fn=lambda path, text: path.write_text(text, encoding="utf-8"),
+                )
+                self.assertEqual("0", flow_helpers.os.environ.get("GDUNIT_STRICT_EXIT_CODE"))
+            finally:
+                if old is None:
+                    flow_helpers.os.environ.pop("GDUNIT_STRICT_EXIT_CODE", None)
+                else:
+                    flow_helpers.os.environ["GDUNIT_STRICT_EXIT_CODE"] = old
+
     def test_extract_acceptance_refs_with_anchors_should_tag_each_item(self) -> None:
         refs = gen_script._extract_acceptance_refs_with_anchors(
             acceptance=[

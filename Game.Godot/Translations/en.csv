@@ -1,0 +1,6 @@
+key,value
+ui.menu.start,Start
+ui.menu.settings,Settings
+ui.menu.quit,Quit
+ui.settings.language,Language
+ui.player.greeting,Welcome {name}!

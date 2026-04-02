@@ -11,6 +11,11 @@ namespace Game.Core.Tests.Tasks;
 
 public class Task0007AcceptanceTests
 {
+    // ACC:T7.1
+    // ACC:T7.2
+    // ACC:T7.3
+    // ACC:T7.6
+    // ACC:T7.8
     [Fact]
     public async Task ShouldPublishAndSubscribeRequiredFiveDomainEvents_WhenEventBusProcessesAllContractEvents()
     {
@@ -46,6 +51,7 @@ public class Task0007AcceptanceTests
         capturedTypes.Should().BeEquivalentTo(requiredTypes);
     }
 
+    // ACC:T7.8
     [Fact]
     public void ShouldMatchTaskContractRefsValues_WhenReadingRequiredFiveEventTypes()
     {

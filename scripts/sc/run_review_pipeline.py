@@ -105,6 +105,74 @@ def _read_json(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _normalize_task_id(value: Any) -> str:
+    return str(value or "").split(".", 1)[0].strip()
+
+
+def _find_latest_refactor_summary(task_id: str) -> tuple[Path | None, dict[str, Any]]:
+    logs_root = repo_root() / "logs" / "ci"
+    if not logs_root.exists():
+        return None, {}
+    candidates = sorted(
+        [item for item in logs_root.glob("*/sc-build-tdd/summary.json") if item.is_file()],
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        if str(payload.get("stage") or "").strip().lower() != "refactor":
+            continue
+        task_info = payload.get("task")
+        summary_task_id = _normalize_task_id(task_info.get("task_id")) if isinstance(task_info, dict) else ""
+        if summary_task_id != task_id:
+            continue
+        return candidate, payload
+    return None, {}
+
+
+def _env_flag_enabled(name: str, *, default: bool) -> bool:
+    raw = str(os.environ.get(name) or "").strip().lower()
+    if not raw:
+        return default
+    return raw not in {"0", "false", "no", "off"}
+
+
+def _should_enforce_refactor_prerequisite(args: Any) -> bool:
+    if bool(args.dry_run) or bool(args.resume) or bool(args.fork) or bool(args.abort):
+        return False
+    if bool(args.skip_test) or bool(args.skip_acceptance):
+        return False
+    return _env_flag_enabled("SC_PIPELINE_ENFORCE_REFACTOR_PREREQ", default=True)
+
+
+def validate_refactor_prerequisite(*, task_id: str, out_dir: Path) -> dict[str, Any]:
+    summary_path, payload = _find_latest_refactor_summary(task_id)
+    errors: list[str] = []
+    if summary_path is None:
+        errors.append("missing refactor summary: run workflow chapter 6.6 first")
+    else:
+        if str(payload.get("status") or "").strip().lower() != "ok":
+            errors.append(f"latest refactor summary status is not ok: {payload.get('status')}")
+    log_path = out_dir / "validate-refactor-prerequisite.log"
+    lines = [
+        f"task_id={task_id}",
+        f"summary_path={summary_path if summary_path is not None else ''}",
+        f"errors={len(errors)}",
+    ]
+    for err in errors:
+        lines.append(f"ERROR: {err}")
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "validate_refactor_prerequisite",
+        "cmd": ["internal:validate_refactor_prerequisite"],
+        "rc": 0 if not errors else 1,
+        "status": "ok" if not errors else "fail",
+        "log": str(log_path),
+        "summary_path": str(summary_path) if summary_path is not None else "",
+        "errors": errors,
+    }
+
+
 def _snapshot_directory(*, source_dir: Path, target_dir: Path) -> tuple[str, str]:
     if target_dir.exists():
         shutil.rmtree(target_dir)
@@ -334,6 +402,51 @@ def _load_source_run(task_id: str, selector_run_id: str | None) -> tuple[Path, d
         load_existing_summary_fn=_load_existing_summary,
         load_marathon_state_fn=load_marathon_state,
     )
+
+
+def _run_refactor_prerequisite(
+    *,
+    session: PipelineSession,
+    args: Any,
+    task_id: str,
+    run_id: str,
+    delivery_profile: str,
+    security_profile: str,
+) -> int | None:
+    if not _should_enforce_refactor_prerequisite(args):
+        return None
+
+    step = validate_refactor_prerequisite(task_id=task_id, out_dir=session.out_dir)
+    if step.get("status") == "ok":
+        session.append_run_event(
+            out_dir=session.out_dir,
+            event="refactor_prerequisite_completed",
+            task_id=task_id,
+            run_id=run_id,
+            delivery_profile=delivery_profile,
+            security_profile=security_profile,
+            status="ok",
+            details={
+                "rc": step.get("rc"),
+                "log": step.get("log"),
+                "summary_path": step.get("summary_path"),
+            },
+        )
+        return None
+
+    fail_step = {
+        "name": "sc-acceptance-check",
+        "cmd": ["internal:validate_refactor_prerequisite"],
+        "rc": int(step.get("rc") or 1),
+        "status": "fail",
+        "log": str(step.get("log") or ""),
+        "reported_out_dir": "",
+        "summary_file": "",
+    }
+    if not session.add_step(fail_step):
+        if session.schema_error_log.exists():
+            return 2
+    return session.finish()
 
 
 def _run_acceptance_preflight(
@@ -592,6 +705,18 @@ def main() -> int:
     )
     if not session.persist():
         return 2
+
+    prereq_rc = _run_refactor_prerequisite(
+        session=session,
+        args=args,
+        task_id=task_id,
+        run_id=run_id,
+        delivery_profile=delivery_profile,
+        security_profile=security_profile,
+    )
+    if prereq_rc is not None:
+        print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
+        return prereq_rc
 
     steps = build_pipeline_steps(
         args=args,

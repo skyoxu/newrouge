@@ -1606,12 +1606,12 @@
     "acceptance": [
       "在 Game.Godot/Translations/ 下必须同时提供 en 与 zh-CN 的 CSV 翻译文件，并且在 Godot 中加载任一语言后至少有一处 UI 文本显示为对应译文（非键名或硬编码） Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
       "翻译键遵循 ADR-0010 与项目约定的命名与前缀（如 ui., card., relic., event.），且界面文本未新增硬编码字符串 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "验收清单中的 Test-Refs 指向的用例覆盖翻译加载与键名规范检查 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "包含命名占位符的翻译条目必须使用 {name} 形式，运行时界面显示必须将 {name} 替换为实际值，若仍显示占位符则验收失败 Refs: Tests.Godot/tests/Integration/test_settings_precedence_placeholder.gd",
-      "脚本与场景必须通过翻译键取文案而非直接文本，且该约束至少在主入口界面文案上被验证 Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
+      "en and zh-CN CSV files must have identical key sets for all translation domains used by Task 23; keys must include at least ui./card./relic./event. and any extra domain must be ADR-0010-compliant (e.g., etc.). Acceptance must assert both en\\zh and zh\\en differences are empty. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Named placeholders must use {name}; runtime UI rendering must replace {name} with an actual value, and outputs containing {name} or raw key must fail acceptance Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Task 23-modified UI text entry points are MainMenu.tscn:VBox/BtnPlay.text, MainMenu.tscn:VBox/BtnSettings.text, and MainMenu.tscn:VBox/BtnQuit.text; each entry must use a translation key (ui.*) and must fail acceptance if any listed entry is hardcoded. Refs: Tests.Godot/tests/UI/test_main_menu_translation_keys.gd",
       "在 en 与 zh-CN 两种 locale 下，同一 UI 节点的渲染文本必须分别与预期本地化值完全一致，任一不一致即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
       "若渲染文本等于键名、未替换占位符或回退文本，相关验收用例必须判定失败 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
-      "翻译键必须使用已批准的域前缀（包括 ui., card., relic., event., etc.）；任何未映射到已文档化前缀的键都必须导致验收失败，且硬编码 UI 文本出现在 scenes/scripts 中也必须导致验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
+      "For all Task 23-modified UI text entry files (MainMenu.tscn and MainMenu.cs), keys must use approved prefixes (ui./card./relic./event./etc.); unapproved prefixes or hardcoded UI literals in these files must fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0023_acceptance.gd Tests.Godot/tests/UI/test_main_menu_translation_keys.gd"
     ],
     "test_strategy": [
       "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010."

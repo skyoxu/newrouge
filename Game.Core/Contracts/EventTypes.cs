@@ -69,4 +69,6 @@ public static class EventTypes
     public const string GuildMemberJoined = "core.guild.member.joined";
     public const string ScoreUpdated = "core.score.updated";
     public const string HealthUpdated = "core.health.updated";
+    public const string ContractCardPlayed = "core.contract.card.played";
+    public const string ContractCombatStarted = "core.contract.combat.started";
 }

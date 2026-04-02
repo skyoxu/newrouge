@@ -292,6 +292,132 @@ def run_task_preflight(*, triplet: Any, out_dir: Path) -> dict[str, Any]:
     }
 
 
+def _read_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _normalize_task_id(value: Any) -> str:
+    return str(value or "").split(".", 1)[0].strip()
+
+
+def _find_latest_red_first_summary(task_id: str) -> tuple[Path | None, dict[str, Any]]:
+    logs_root = repo_root() / "logs" / "ci"
+    if not logs_root.exists():
+        return None, {}
+    candidates = sorted(
+        [item for item in logs_root.glob(f"*/sc-llm-acceptance-tests/summary-{task_id}.json") if item.is_file()],
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        if _normalize_task_id(payload.get("task_id")) != task_id:
+            continue
+        return candidate, payload
+    return None, {}
+
+
+def _find_latest_green_summary(task_id: str) -> tuple[Path | None, dict[str, Any]]:
+    logs_root = repo_root() / "logs" / "ci"
+    if not logs_root.exists():
+        return None, {}
+    candidates = sorted(
+        [item for item in logs_root.glob("*/sc-build-tdd/summary.json") if item.is_file()],
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        if str(payload.get("stage") or "").strip().lower() != "green":
+            continue
+        task_info = payload.get("task")
+        summary_task_id = _normalize_task_id(task_info.get("task_id")) if isinstance(task_info, dict) else ""
+        if summary_task_id != task_id:
+            continue
+        return candidate, payload
+    return None, {}
+
+
+def validate_green_red_prerequisite(*, task_id: str, out_dir: Path) -> dict[str, Any]:
+    summary_path, payload = _find_latest_red_first_summary(task_id)
+    errors: list[str] = []
+    failed_refs: list[str] = []
+    if summary_path is None:
+        errors.append("missing red-first summary: run workflow chapter 6.4 first")
+    else:
+        if str(payload.get("tdd_stage") or "").strip().lower() != "red-first":
+            errors.append("latest acceptance test summary is not red-first")
+        results = payload.get("results")
+        if isinstance(results, list):
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get("status") or "").strip().lower() == "fail":
+                    failed_refs.append(str(item.get("ref") or "").strip())
+        if failed_refs:
+            errors.append(f"red-first summary contains failed refs: {len(failed_refs)}")
+        created = int(payload.get("created") or 0)
+        if created > 0:
+            red_verify = payload.get("red_verify")
+            red_status = str(red_verify.get("status") or "").strip().lower() if isinstance(red_verify, dict) else ""
+            if red_status != "ok":
+                errors.append("red-first created new tests but red_verify.status is not ok")
+
+    log_path = out_dir / "validate_green_red_prerequisite.log"
+    lines = [
+        f"task_id={task_id}",
+        f"summary_path={summary_path if summary_path is not None else ''}",
+        f"errors={len(errors)}",
+    ]
+    for ref in failed_refs[:30]:
+        lines.append(f"FAILED_REF: {ref}")
+    for err in errors:
+        lines.append(f"ERROR: {err}")
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "validate_green_red_prerequisite",
+        "cmd": ["internal:validate_green_red_prerequisite"],
+        "rc": 0 if not errors else 1,
+        "log": str(log_path),
+        "status": "ok" if not errors else "fail",
+        "summary_path": str(summary_path) if summary_path is not None else "",
+        "errors": errors,
+    }
+
+
+def validate_refactor_green_prerequisite(*, task_id: str, out_dir: Path) -> dict[str, Any]:
+    summary_path, payload = _find_latest_green_summary(task_id)
+    errors: list[str] = []
+    if summary_path is None:
+        errors.append("missing green summary: run workflow chapter 6.5 first")
+    else:
+        if str(payload.get("status") or "").strip().lower() != "ok":
+            errors.append(f"latest green summary status is not ok: {payload.get('status')}")
+
+    log_path = out_dir / "validate_refactor_green_prerequisite.log"
+    lines = [
+        f"task_id={task_id}",
+        f"summary_path={summary_path if summary_path is not None else ''}",
+        f"errors={len(errors)}",
+    ]
+    for err in errors:
+        lines.append(f"ERROR: {err}")
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "validate_refactor_green_prerequisite",
+        "cmd": ["internal:validate_refactor_green_prerequisite"],
+        "rc": 0 if not errors else 1,
+        "log": str(log_path),
+        "status": "ok" if not errors else "fail",
+        "summary_path": str(summary_path) if summary_path is not None else "",
+        "errors": errors,
+    }
+
+
 def run_green_gate(
     *,
     task_id: str,
@@ -537,6 +663,14 @@ def main() -> int:
         return 0 if summary["status"] == "ok" else 1
 
     if args.stage == "green":
+        prereq_step = validate_green_red_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
+        summary["steps"].append(prereq_step)
+        if prereq_step["rc"] != 0:
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_BUILD_TDD status=fail out={out_dir}")
+            assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
+            return 1
+
         preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
         summary["steps"].append(preflight_step)
         if preflight_step["rc"] != 0:
@@ -574,6 +708,14 @@ def main() -> int:
         return 0 if step["rc"] == 0 else 1
 
     if args.stage == "refactor":
+        prereq_step = validate_refactor_green_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
+        summary["steps"].append(prereq_step)
+        if prereq_step["rc"] != 0:
+            write_json(out_dir / "summary.json", summary)
+            print(f"SC_BUILD_TDD status=fail out={out_dir}")
+            assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
+            return 1
+
         preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
         summary["steps"].append(preflight_step)
         if preflight_step["rc"] != 0:
