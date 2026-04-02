@@ -1,8 +1,24 @@
-# Task 23 Needs-Fix Register (Fast Mode)
+# Task23-NeedsFix-Register
 
-Date: 2026-04-03  
-Task: `23`  
-Branch: `task/T23`
+- Title: Task23-NeedsFix-Register
+- Date: 2026-04-03
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T23
+- Git Head: 31d43c8b58ffbeee62c837fe5975f79516dc8fff
+- Why now: CI hard gate failed because newly added recovery docs missed required metadata, and Task 23 still carries one semantic soft-review needs-fix.
+- Context: Task 23 deterministic gates are green but semantic-equivalence soft review remains open in fast mode.
+- Decision: Keep fast-mode progression with explicit carry-over registration, enforce schema-compliant recovery docs, and defer strict semantic convergence to follow-up.
+- Consequences: CI hard gate can pass on recovery-doc validation; unresolved semantic item remains visible and auditable.
+- Recovery impact: `resume-task` and document recovery chain will include this deferred item with concrete commands.
+- Validation: Pass `py -3 scripts/python/validate_recovery_docs.py --dir all` and keep Task 23 deterministic checks green.
+- Related ADRs: `docs/adr/ADR-0010-translation-keys-and-i18n-conventions.md`
+- Related execution plans: `execution-plans/2026-04-03-task23-needs-fix-followup.md`
+- Related task id(s): `23`
+- Related run id: `23913335951`
+- Related latest.json: `logs/ci/2026-04-03/sc-review-pipeline-task-23/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-03/sc-llm-review-task-23/summary.json`, `logs/ci/2026-04-03/sc-acceptance-check-task-23/summary.json`
 
 ## Summary
 
@@ -33,4 +49,3 @@ Branch: `task/T23`
 - `logs/ci/2026-04-03/sc-llm-review-task-23/review-semantic-equivalence-auditor.md`
 - `logs/ci/2026-04-02/sc-review-pipeline-task-23-fb6346d54f24466c967bacb34c009d15/summary.json`
 - `logs/ci/2026-04-02/sc-acceptance-check-task-23/summary.json`
-
