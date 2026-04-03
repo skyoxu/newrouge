@@ -1,0 +1,21 @@
+# task7-llm-needs-fix-evidence-gap
+
+- Title: task7-llm-needs-fix-evidence-gap
+- Date: 2026-04-03
+- Status: proposed
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T7
+- Git Head: e2f03499f81f994e27a0a0b0a3bf9bea9a693a57
+- Why now: Task 7 chapter-6 run ended with deterministic green but llm semantic governance needs-fix remains.
+- Context: run_review_pipeline latest run_id 780251969b3e43edac30f845ca0a4a08 reported three medium needs-fix findings in sc-llm-review evidence chain.
+- Decision: Record unresolved semantic/evidence gaps and defer code changes to dedicated follow-up instead of mixing with infrastructure flow validation.
+- Consequences: Task 7 remains operationally green but not semantically converged for strict review profile.
+- Recovery impact: Resume from latest pipeline artifacts and rerun llm_review_needs_fix_fast after targeted acceptance/test adjustments.
+- Validation: Local hard checks remain green; review findings tracked with explicit evidence paths.
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `7`
+- Related run id: `780251969b3e43edac30f845ca0a4a08`
+- Related latest.json: `logs/ci/2026-04-03/sc-review-pipeline-task-7/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-03/sc-review-pipeline-task-7-780251969b3e43edac30f845ca0a4a08`

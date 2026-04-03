@@ -408,7 +408,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Set up event bus and contracts location",
     "description": "Implement event bus system and place contracts in Game.Core/Contracts per ADR-0004 and ADR-0020.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
