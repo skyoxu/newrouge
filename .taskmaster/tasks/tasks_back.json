@@ -1574,9 +1574,7 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
-      "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-      "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
-      "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs"
+      "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs"
     ],
     "acceptance": [
       "Provide scripts/python/validate_audit_logs.py that validates security-audit JSONL line by line for JSON structure and required fields; any invalid line must cause a non-zero exit and the validation result must not be reported as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",

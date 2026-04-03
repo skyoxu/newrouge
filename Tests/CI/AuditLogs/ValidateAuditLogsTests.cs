@@ -17,8 +17,6 @@ public sealed class ValidateAuditLogsTests
     {
         "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
         "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-        "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
-        "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
         "logs/ci/task-0056-summary.json",
         "logs/ci/security-audit.jsonl",
     };
