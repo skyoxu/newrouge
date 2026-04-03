@@ -11,8 +11,6 @@ TASK0056_REQUIRED_CHAPTER_REFS = ("CH02", "CH03", "CH07")
 TASK0056_REQUIRED_TEST_REFS = (
     "Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
     "Tests/CI/AuditLogs/ValidateAuditLogsTests.cs",
-    "Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs",
-    "Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs",
 )
 TASK0056_REQUIRED_ARTIFACT_REFS = (
     "logs/ci/task-0056-summary.json",

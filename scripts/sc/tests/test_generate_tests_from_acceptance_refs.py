@@ -101,6 +101,33 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
                 else:
                     flow_helpers.os.environ["GDUNIT_STRICT_EXIT_CODE"] = old
 
+    def test_run_verify_should_disable_coverage_for_unit_in_red_first_even_without_strict_red(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            seen_cmd: list[str] = []
+
+            def fake_run_cmd(cmd, cwd, timeout_sec):  # noqa: ANN001, ARG001
+                seen_cmd.extend(cmd)
+                return 0, "SC_TEST status=ok\n"
+
+            mode, step = flow_helpers.run_verify(
+                verify="unit",
+                task_id="56",
+                any_gd=False,
+                godot_bin=None,
+                out_dir=out_dir,
+                strict_red=False,
+                red_first=True,
+                run_cmd_fn=fake_run_cmd,
+                repo_root_fn=lambda: Path(tmpdir),
+                write_text_fn=lambda path, text: path.write_text(text, encoding="utf-8"),
+            )
+
+        self.assertEqual("unit", mode)
+        self.assertEqual(0, step["rc"])
+        self.assertIn("--no-coverage-gate", seen_cmd)
+        self.assertIn("--no-coverage-report", seen_cmd)
+
     def test_extract_acceptance_refs_with_anchors_should_tag_each_item(self) -> None:
         refs = gen_script._extract_acceptance_refs_with_anchors(
             acceptance=[
