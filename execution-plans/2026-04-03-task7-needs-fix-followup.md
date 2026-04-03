@@ -1,0 +1,21 @@
+# task7-needs-fix-followup
+
+- Title: task7-needs-fix-followup
+- Status: active
+- Branch: task/T7
+- Git Head: e2f03499f81f994e27a0a0b0a3bf9bea9a693a57
+- Goal: Close Task 7 LLM semantic needs-fix findings with minimal acceptance/test deltas while keeping deterministic gates green.
+- Scope: Task 7 acceptance wording and evidence-chain alignment only; no unrelated gameplay logic changes.
+- Current step: Chapter-6 baseline completed; unresolved findings captured and queued for follow-up patch.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not rewrite broad architecture docs; only edit Task 7 acceptance/tests and related refs.
+- Next action: Apply targeted fixes for ACC:T7.2/T7.3/T7.5/T7.7 evidence alignment, rerun llm_review_needs_fix_fast, then rerun run_review_pipeline.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 7 --resume`
+- Open questions: none recorded yet
+- Exit criteria: agent-review for Task 7 no longer reports needs-fix or remaining findings are explicitly accepted/deferred with decision log update.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-03-task7-llm-needs-fix-evidence-gap.md`
+- Related task id(s): `7`
+- Related run id: `780251969b3e43edac30f845ca0a4a08`
+- Related latest.json: `logs/ci/2026-04-03/sc-review-pipeline-task-7/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-03/sc-review-pipeline-task-7-780251969b3e43edac30f845ca0a4a08`
