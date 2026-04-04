@@ -99,8 +99,35 @@ jobs:
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
           & "$env:GODOT_BIN" --headless --path . --quit
           & "$env:GODOT_BIN" --headless --path . --build-solutions --verbose --quit
-          dotnet restore GodotGame.csproj
-          dotnet build GodotGame.csproj -c Release -v minimal
+          $preferredTargets = @(
+            "NewRouge.sln",
+            "GodotGame.sln",
+            "Game.sln",
+            "NewRouge.csproj",
+            "GodotGame.csproj",
+            "Game.csproj"
+          )
+          $dotnetTarget = $null
+          foreach ($target in $preferredTargets) {
+            if (Test-Path $target) {
+              $dotnetTarget = $target
+              break
+            }
+          }
+          if (-not $dotnetTarget) {
+            $firstSln = Get-ChildItem -Path . -Filter *.sln -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($firstSln) { $dotnetTarget = $firstSln.Name }
+          }
+          if (-not $dotnetTarget) {
+            $firstCsproj = Get-ChildItem -Path . -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($firstCsproj) { $dotnetTarget = $firstCsproj.Name }
+          }
+          if (-not $dotnetTarget) {
+            throw "Unable to resolve dotnet target (.sln/.csproj) in repository root."
+          }
+          Write-Host "Resolved dotnet target: $dotnetTarget"
+          dotnet restore $dotnetTarget
+          dotnet build $dotnetTarget -c Release -v minimal
 
       - name: Export Windows EXE
         shell: pwsh
@@ -164,6 +191,5 @@ jobs:
           }
           "SecurityProfile: $profile" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           "SecurityProfileSource: $source" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-
 
 
