@@ -1,0 +1,21 @@
+# task55-needs-fix-carryover-after-6-8
+
+- Title: task55-needs-fix-carryover-after-6-8
+- Date: 2026-04-04
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T55
+- Git Head: 889e5df734e40601c10e37d6f11fd86f5b95b4bf
+- Why now: 6.8 fast cleanup still returns Needs Fix verdicts with deterministic gates passing.
+- Context: TODO: capture context
+- Decision: Keep T55 as in-progress; carry Needs Fix into dedicated follow-up plan before final done/merge gate.
+- Consequences: TODO: describe consequences
+- Recovery impact: TODO: describe recovery impact
+- Validation: Artifacts: sc-needs-fix-fast-task-55/summary.json and sc-llm-review-task-55/*.md
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `55`
+- Related run id: `335ffd47d8894266b4427c130d999635`
+- Related latest.json: `logs/ci/2026-04-04/sc-review-pipeline-task-55/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-04/sc-review-pipeline-task-55-335ffd47d8894266b4427c130d999635`

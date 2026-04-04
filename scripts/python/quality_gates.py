@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 from _task0056_audit import run_task0056_audit_validation, write_task0056_record
+DEFAULT_LINES_THRESHOLD = 90.0
+DEFAULT_BRANCHES_THRESHOLD = 85.0
 ALL_GDUNIT_SUITES = ("adapters", "security", "integration", "ui")
 HARD_GDUNIT_SUITES = ("adapters", "security")
 SOFT_GDUNIT_SUITES = ("integration", "ui")
@@ -318,11 +320,140 @@ def _collect_junit_artifact(date: str, suite_runs: dict[str, dict[str, object]],
 def _quality_summary_path(date: str) -> Path:
     return _repo_root() / f"logs/ci/{date}/quality-gates/summary.json"
 
-def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict[str, dict[str, object]], ci_rc: int, smoke_rc: int | None, smoke_enabled: bool, invalid_suites: list[str], junit_artifact: dict[str, object]) -> dict[str, object]:
+
+def _parse_non_negative_float(raw: object) -> float | None:
+    text = "" if raw is None else str(raw).strip()
+    if not text:
+        return None
+    try:
+        value = float(text)
+    except ValueError:
+        return None
+    return value if value >= 0.0 else None
+
+
+def _resolve_coverage_threshold_value(preferred_key: str, legacy_key: str, default_value: float) -> tuple[float, str]:
+    preferred = _parse_non_negative_float(os.environ.get(preferred_key))
+    if preferred is not None:
+        return preferred, preferred_key
+    legacy = _parse_non_negative_float(os.environ.get(legacy_key))
+    if legacy is not None:
+        return legacy, legacy_key
+    return default_value, "default"
+
+
+def _resolve_coverage_gate_mode(raw: object) -> tuple[str, str]:
+    text = str(raw or "").strip().lower()
+    if text in ("soft", "hard"):
+        return text, "COVERAGE_GATE_MODE"
+    return "hard", "default"
+
+
+def _read_json(path: Path) -> dict[str, object]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _resolve_coverage_gate_summary(date: str) -> dict[str, object]:
+    unit_summary_rel = Path("logs") / "unit" / date / "summary.json"
+    unit_summary_path = _repo_root() / unit_summary_rel
+    unit_summary = _read_json(unit_summary_path) if unit_summary_path.is_file() else {}
+
+    lines_threshold, lines_source = _resolve_coverage_threshold_value(
+        "COVERAGE_LINES_THRESHOLD",
+        "COVERAGE_LINES_MIN",
+        DEFAULT_LINES_THRESHOLD,
+    )
+    branches_threshold, branches_source = _resolve_coverage_threshold_value(
+        "COVERAGE_BRANCHES_THRESHOLD",
+        "COVERAGE_BRANCHES_MIN",
+        DEFAULT_BRANCHES_THRESHOLD,
+    )
+
+    gate_mode, gate_mode_source = _resolve_coverage_gate_mode(
+        unit_summary.get("gate_mode") if unit_summary else os.environ.get("COVERAGE_GATE_MODE")
+    )
+    if unit_summary.get("gate_mode") in ("soft", "hard"):
+        gate_mode_source = "unit_summary"
+
+    measured_line = _parse_non_negative_float(unit_summary.get("measured_line_coverage"))
+    measured_branch = _parse_non_negative_float(unit_summary.get("measured_branch_coverage"))
+    if measured_line is None:
+        measured_line = _parse_non_negative_float((unit_summary.get("coverage") or {}).get("line_pct"))
+    if measured_branch is None:
+        measured_branch = _parse_non_negative_float((unit_summary.get("coverage") or {}).get("branch_pct"))
+
+    if measured_line is None or measured_branch is None:
+        return {
+            "status": "missing",
+            "suite_status": "failed",
+            "pass": False,
+            "threshold_ok": False,
+            "gate_mode": gate_mode,
+            "gate_mode_source": gate_mode_source,
+            "measured_line_coverage": None,
+            "measured_branch_coverage": None,
+            "effective_thresholds": {
+                "lines_min": lines_threshold,
+                "branches_min": branches_threshold,
+                "lines_source": lines_source,
+                "branches_source": branches_source,
+            },
+            "warnings": ["unit coverage summary is missing measured coverage fields"],
+            "summary_path": str(unit_summary_rel).replace("\\", "/"),
+        }
+
+    effective = unit_summary.get("effective_thresholds") if isinstance(unit_summary.get("effective_thresholds"), dict) else {}
+    lines_min = _parse_non_negative_float(effective.get("lines_min")) or lines_threshold
+    branches_min = _parse_non_negative_float(effective.get("branches_min")) or branches_threshold
+    lines_effective_source = str(effective.get("lines_source") or lines_source)
+    branches_effective_source = str(effective.get("branches_source") or branches_source)
+
+    threshold_ok = bool(measured_line >= lines_min and measured_branch >= branches_min)
+    gate_pass = threshold_ok or gate_mode == "soft"
+    warnings: list[str] = []
+    if gate_mode == "soft" and not threshold_ok:
+        warnings.append(
+            f"coverage below effective thresholds (line={measured_line:.2f} branch={measured_branch:.2f} "
+            f"< lines>={lines_min:.2f} branches>={branches_min:.2f})"
+        )
+    suite_status = "passed" if gate_pass else "failed"
+    if warnings and suite_status == "passed":
+        suite_status = "warn"
+    return {
+        "status": "ok",
+        "suite_status": suite_status,
+        "pass": gate_pass,
+        "threshold_ok": threshold_ok,
+        "gate_mode": gate_mode,
+        "gate_mode_source": gate_mode_source,
+        "measured_line_coverage": measured_line,
+        "measured_branch_coverage": measured_branch,
+        "effective_thresholds": {
+            "lines_min": lines_min,
+            "branches_min": branches_min,
+            "lines_source": lines_effective_source,
+            "branches_source": branches_effective_source,
+        },
+        "warnings": warnings,
+        "summary_path": str(unit_summary_rel).replace("\\", "/"),
+    }
+
+
+def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict[str, dict[str, object]], ci_rc: int, smoke_rc: int | None, smoke_enabled: bool, invalid_suites: list[str], junit_artifact: dict[str, object], coverage_gate: dict[str, object]) -> dict[str, object]:
     suites: dict[str, dict[str, object]] = {
         "ci_pipeline": _suite_record(gate_level="hard", selected=True, executed=True, status="passed" if ci_rc == 0 else "failed", rc=ci_rc),
         "adapters_security": _group_status(suite_runs, HARD_GDUNIT_SUITES, "hard"),
         "integration_ui": _group_status(suite_runs, SOFT_GDUNIT_SUITES, "soft"),
+        "coverage_gate": _suite_record(
+            gate_level=str(coverage_gate.get("gate_mode") or "hard"),
+            selected=True,
+            executed=str(coverage_gate.get("status")) != "missing",
+            status=str(coverage_gate.get("suite_status") or "failed"),
+            rc=None,
+        ),
         "smoke_headless": _suite_record(
             gate_level="hard",
             selected=smoke_enabled,
@@ -332,6 +463,8 @@ def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict
         ),
     }
     hard_failed = any(suites[name]["status"] == "failed" for name in ("ci_pipeline", "adapters_security", "smoke_headless"))
+    if str(coverage_gate.get("gate_mode") or "hard") == "hard" and suites["coverage_gate"]["status"] in ("failed", "missing"):
+        hard_failed = True
     summary_path = _quality_summary_path(date)
     rel_output = str(summary_path.relative_to(_repo_root())).replace("\\", "/")
     payload = {
@@ -339,6 +472,12 @@ def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict
         "chapter_refs": ["CH06", "CH07", "CH10"],
         "gate_level": "mixed",
         "overall_gate_conclusion": "fail" if hard_failed else "pass",
+        "measured_line_coverage": coverage_gate.get("measured_line_coverage"),
+        "measured_branch_coverage": coverage_gate.get("measured_branch_coverage"),
+        "effective_thresholds": coverage_gate.get("effective_thresholds"),
+        "gate_mode": coverage_gate.get("gate_mode"),
+        "pass": coverage_gate.get("pass"),
+        "coverage_gate": coverage_gate,
         "output": rel_output,
         "selected_gdunit_suites": [s for s in ALL_GDUNIT_SUITES if bool((suite_runs.get(s) or {}).get("selected"))],
         "invalid_gdunit_suites": invalid_suites,
@@ -427,6 +566,10 @@ def main(argv=None) -> int:
         if smoke_rc != 0:
             hard_failed = True
 
+    coverage_gate = _resolve_coverage_gate_summary(date)
+    if str(coverage_gate.get("gate_mode") or "hard") == "hard" and not bool(coverage_gate.get("pass")):
+        hard_failed = True
+
     junit_artifact = _collect_junit_artifact(date, suite_runs, bool(selected_suites))
     summary_payload = _write_quality_summary(
         date=date,
@@ -437,7 +580,9 @@ def main(argv=None) -> int:
         smoke_enabled=bool(args.smoke),
         invalid_suites=invalid_suites,
         junit_artifact=junit_artifact,
+        coverage_gate=coverage_gate,
     )
+    hard_failed = str(summary_payload.get("overall_gate_conclusion") or "pass") != "pass"
     provisional_exit_code = 1 if hard_failed else 0
     _write_task_0054_record(
         date=date,

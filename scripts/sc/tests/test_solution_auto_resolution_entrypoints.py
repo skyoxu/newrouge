@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -82,6 +83,213 @@ class SolutionAutoResolutionEntrypointsTests(unittest.TestCase):
             resolved = ci_pipeline._resolve_default_solution(str(root))
 
         self.assertEqual("NewRouge.sln", resolved)
+
+    # ACC:T55.6
+    def test_run_dotnet_main_should_treat_auto_solution_as_omitted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(run_dotnet, "_resolve_default_solution", return_value="NewRouge.sln"), \
+                mock.patch.object(run_dotnet.os, "getcwd", return_value=str(root)), \
+                mock.patch.object(run_dotnet, "run_cmd", return_value=(1, "restore failed")) as run_cmd_mock:
+                rc = run_dotnet.main(["--solution", "auto"])
+
+        self.assertEqual(1, rc)
+        self.assertGreaterEqual(run_cmd_mock.call_count, 1)
+        self.assertEqual(["dotnet", "restore", "NewRouge.sln"], run_cmd_mock.call_args_list[0].args[0])
+
+    def test_run_dotnet_main_should_fallback_to_test_project_when_solution_has_no_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "NewRouge.sln").write_text(
+                'Microsoft Visual Studio Solution File, Format Version 12.00\n'
+                'Project("{GUID}") = "Game.Core", "Game.Core\\Game.Core.csproj", "{ID}"\n'
+                "EndProject\n",
+                encoding="utf-8",
+            )
+            (root / "Game.Core.Tests").mkdir(parents=True, exist_ok=True)
+            (root / "Game.Core.Tests" / "Game.Core.Tests.csproj").write_text("<Project />", encoding="utf-8")
+            with mock.patch.object(run_dotnet, "_resolve_default_solution", return_value="NewRouge.sln"), \
+                mock.patch.object(run_dotnet.os, "getcwd", return_value=str(root)), \
+                mock.patch.object(run_dotnet, "run_cmd", return_value=(1, "restore failed")) as run_cmd_mock:
+                rc = run_dotnet.main(["--solution", "auto"])
+
+        self.assertEqual(1, rc)
+        self.assertGreaterEqual(run_cmd_mock.call_count, 1)
+        self.assertEqual(
+            ["dotnet", "restore", "Game.Core.Tests/Game.Core.Tests.csproj"],
+            run_cmd_mock.call_args_list[0].args[0],
+        )
+
+    # ACC:T55.1
+    # ACC:T55.2
+    def test_run_dotnet_threshold_resolution_should_prefer_threshold_env_and_default_to_90_85(self) -> None:
+        with mock.patch.dict(run_dotnet.os.environ, {}, clear=True):
+            lines_min, lines_src = run_dotnet._resolve_threshold_value(
+                preferred_key="COVERAGE_LINES_THRESHOLD",
+                legacy_key="COVERAGE_LINES_MIN",
+                default_value=run_dotnet.DEFAULT_LINES_THRESHOLD,
+            )
+            branches_min, branches_src = run_dotnet._resolve_threshold_value(
+                preferred_key="COVERAGE_BRANCHES_THRESHOLD",
+                legacy_key="COVERAGE_BRANCHES_MIN",
+                default_value=run_dotnet.DEFAULT_BRANCHES_THRESHOLD,
+            )
+        self.assertEqual(run_dotnet.DEFAULT_LINES_THRESHOLD, lines_min)
+        self.assertEqual(run_dotnet.DEFAULT_BRANCHES_THRESHOLD, branches_min)
+        self.assertEqual("default", lines_src)
+        self.assertEqual("default", branches_src)
+
+        with mock.patch.dict(
+            run_dotnet.os.environ,
+            {
+                "COVERAGE_LINES_THRESHOLD": "93",
+                "COVERAGE_LINES_MIN": "95",
+                "COVERAGE_BRANCHES_MIN": "86",
+            },
+            clear=True,
+        ):
+            lines_min, lines_src = run_dotnet._resolve_threshold_value(
+                preferred_key="COVERAGE_LINES_THRESHOLD",
+                legacy_key="COVERAGE_LINES_MIN",
+                default_value=run_dotnet.DEFAULT_LINES_THRESHOLD,
+            )
+            branches_min, branches_src = run_dotnet._resolve_threshold_value(
+                preferred_key="COVERAGE_BRANCHES_THRESHOLD",
+                legacy_key="COVERAGE_BRANCHES_MIN",
+                default_value=run_dotnet.DEFAULT_BRANCHES_THRESHOLD,
+            )
+        self.assertEqual(93.0, lines_min)
+        self.assertEqual("COVERAGE_LINES_THRESHOLD", lines_src)
+        self.assertEqual(86.0, branches_min)
+        self.assertEqual("COVERAGE_BRANCHES_MIN", branches_src)
+
+    # ACC:T55.4
+    def test_quality_gates_should_resolve_coverage_gate_summary_from_unit_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            date = "2026-04-04"
+            unit_summary_dir = root / "logs" / "unit" / date
+            unit_summary_dir.mkdir(parents=True, exist_ok=True)
+            (unit_summary_dir / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "measured_line_coverage": 91.2,
+                        "measured_branch_coverage": 88.4,
+                        "effective_thresholds": {
+                            "lines_min": 90,
+                            "branches_min": 85,
+                            "lines_source": "default",
+                            "branches_source": "default",
+                        },
+                        "gate_mode": "hard",
+                        "pass": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(quality_gates, "_repo_root", return_value=root), \
+                mock.patch.dict(quality_gates.os.environ, {}, clear=True):
+                coverage = quality_gates._resolve_coverage_gate_summary(date)
+
+        self.assertEqual("ok", coverage["status"])
+        self.assertEqual("hard", coverage["gate_mode"])
+        self.assertEqual(91.2, coverage["measured_line_coverage"])
+        self.assertEqual(88.4, coverage["measured_branch_coverage"])
+        self.assertTrue(bool(coverage["pass"]))
+        self.assertIn("effective_thresholds", coverage)
+
+    def test_quality_gates_should_mark_missing_when_unit_summary_not_found(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(quality_gates, "_repo_root", return_value=root), \
+                mock.patch.dict(quality_gates.os.environ, {}, clear=True):
+                coverage = quality_gates._resolve_coverage_gate_summary("2026-04-04")
+
+        self.assertEqual("missing", coverage["status"])
+        self.assertFalse(bool(coverage["pass"]))
+        self.assertEqual("failed", coverage["suite_status"])
+
+    def test_quality_gates_summary_should_fail_when_hard_coverage_gate_is_not_met(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            date = "2026-04-04"
+            summary_path = root / "logs" / "ci" / date / "quality-gates" / "summary.json"
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+
+            suite_runs = {
+                "adapters": quality_gates._suite_record(gate_level="hard", selected=False, executed=False, status="skipped", rc=None),
+                "security": quality_gates._suite_record(gate_level="hard", selected=False, executed=False, status="skipped", rc=None),
+                "integration": quality_gates._suite_record(gate_level="soft", selected=False, executed=False, status="skipped", rc=None),
+                "ui": quality_gates._suite_record(gate_level="soft", selected=False, executed=False, status="skipped", rc=None),
+            }
+            coverage_gate = {
+                "status": "ok",
+                "suite_status": "failed",
+                "pass": False,
+                "threshold_ok": False,
+                "gate_mode": "hard",
+                "gate_mode_source": "unit_summary",
+                "measured_line_coverage": 80.0,
+                "measured_branch_coverage": 70.0,
+                "effective_thresholds": {"lines_min": 90.0, "branches_min": 85.0},
+                "warnings": [],
+                "summary_path": f"logs/unit/{date}/summary.json",
+            }
+            with mock.patch.object(quality_gates, "_repo_root", return_value=root):
+                payload = quality_gates._write_quality_summary(
+                    date=date,
+                    security_profile="host-safe",
+                    suite_runs=suite_runs,
+                    ci_rc=0,
+                    smoke_rc=None,
+                    smoke_enabled=False,
+                    invalid_suites=[],
+                    junit_artifact={"status": "skipped"},
+                    coverage_gate=coverage_gate,
+                )
+
+            self.assertEqual("fail", payload["overall_gate_conclusion"])
+            written = json.loads(summary_path.read_text(encoding="utf-8"))
+            self.assertEqual("hard", written["gate_mode"])
+            self.assertEqual(80.0, written["measured_line_coverage"])
+            self.assertFalse(bool(written["pass"]))
+
+    # ACC:T55.3
+    def test_quality_gates_should_differentiate_soft_vs_hard_for_same_below_threshold_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            date = "2026-04-04"
+            unit_summary_dir = root / "logs" / "unit" / date
+            unit_summary_dir.mkdir(parents=True, exist_ok=True)
+            summary_path = unit_summary_dir / "summary.json"
+
+            below_threshold_payload = {
+                "measured_line_coverage": 80.0,
+                "measured_branch_coverage": 70.0,
+                "effective_thresholds": {"lines_min": 90, "branches_min": 85},
+                "pass": False,
+            }
+
+            with mock.patch.object(quality_gates, "_repo_root", return_value=root), \
+                mock.patch.dict(quality_gates.os.environ, {}, clear=True):
+                summary_path.write_text(
+                    json.dumps({**below_threshold_payload, "gate_mode": "soft"}),
+                    encoding="utf-8",
+                )
+                soft = quality_gates._resolve_coverage_gate_summary(date)
+
+                summary_path.write_text(
+                    json.dumps({**below_threshold_payload, "gate_mode": "hard"}),
+                    encoding="utf-8",
+                )
+                hard = quality_gates._resolve_coverage_gate_summary(date)
+
+        self.assertEqual("warn", soft["suite_status"])
+        self.assertTrue(bool(soft["pass"]))
+        self.assertEqual("soft", soft["gate_mode"])
+        self.assertEqual("failed", hard["suite_status"])
+        self.assertFalse(bool(hard["pass"]))
+        self.assertEqual("hard", hard["gate_mode"])
 
 
 if __name__ == "__main__":
