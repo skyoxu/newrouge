@@ -9,6 +9,7 @@ import argparse
 import os
 from argparse import Namespace
 
+from _delivery_profile import default_security_profile_for_delivery, profile_acceptance_defaults, resolve_delivery_profile
 from _security_profile import normalize_gate_mode, resolve_security_profile, security_gate_defaults
 
 
@@ -128,8 +129,37 @@ def normalize_subtasks_mode(value: str | None) -> str:
     return mode if mode in ("skip", "warn", "require") else "skip"
 
 
+def apply_delivery_profile_defaults(args: Namespace) -> Namespace:
+    delivery_profile = resolve_delivery_profile(getattr(args, "delivery_profile", None))
+    defaults = profile_acceptance_defaults(delivery_profile)
+    args.delivery_profile = delivery_profile
+
+    if getattr(args, "perf_p95_ms", None) is None:
+        args.perf_p95_ms = int(defaults.get("perf_p95_ms", 0) or 0)
+    if not bool(getattr(args, "strict_adr_status", False)):
+        args.strict_adr_status = bool(defaults.get("strict_adr_status", False))
+    if not bool(getattr(args, "strict_test_quality", False)):
+        args.strict_test_quality = bool(defaults.get("strict_test_quality", False))
+    if not bool(getattr(args, "strict_quality_rules", False)):
+        args.strict_quality_rules = bool(defaults.get("strict_quality_rules", False))
+    if not bool(getattr(args, "require_task_test_refs", False)):
+        args.require_task_test_refs = bool(defaults.get("require_task_test_refs", False))
+    if not bool(getattr(args, "require_executed_refs", False)):
+        args.require_executed_refs = bool(defaults.get("require_executed_refs", False))
+    if not bool(getattr(args, "require_headless_e2e", False)):
+        args.require_headless_e2e = bool(defaults.get("require_headless_e2e", False))
+
+    current_subtasks = normalize_subtasks_mode(getattr(args, "subtasks_coverage", None))
+    if current_subtasks == "skip" and delivery_profile == "standard":
+        args.subtasks_coverage = normalize_subtasks_mode(str(defaults.get("subtasks_coverage") or current_subtasks))
+    else:
+        args.subtasks_coverage = current_subtasks
+    return args
+
+
 def resolve_security_modes(args: Namespace) -> tuple[str, dict[str, str]]:
-    profile = resolve_security_profile(args.security_profile)
+    delivery_profile = resolve_delivery_profile(getattr(args, "delivery_profile", None))
+    profile = resolve_security_profile(args.security_profile or default_security_profile_for_delivery(delivery_profile))
     defaults = security_gate_defaults(profile)
     modes = {
         "path": normalize_gate_mode(args.security_path_gate, defaults["path"]),

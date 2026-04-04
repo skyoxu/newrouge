@@ -36,7 +36,7 @@ from _sc_test_steps import (
 )
 from _security_profile import resolve_security_profile
 from _summary_schema import SummarySchemaError, validate_sc_test_summary
-from _util import ci_dir, today_str, write_json, write_text
+from _util import ci_dir, repo_root, today_str, write_json, write_text
 
 
 DELIVERY_PROFILE_CHOICES = tuple(sorted(known_delivery_profiles()))
@@ -55,6 +55,7 @@ def resolve_test_runtime(*, delivery_profile: str | None, security_profile: str 
         "coverage_lines_min": max(0, int(defaults.get("coverage_lines_min", 90) or 0)),
         "coverage_branches_min": max(0, int(defaults.get("coverage_branches_min", 85) or 0)),
         "smoke_strict": bool(defaults.get("smoke_strict", True)),
+        "allow_full_unit_fallback": bool(defaults.get("allow_full_unit_fallback", False)),
     }
 
 
@@ -63,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--self-check", action="store_true", help="Validate parser/runtime wiring and summary contract without running tests.")
     ap.add_argument("--type", choices=["unit", "integration", "e2e", "all"], default="all")
     ap.add_argument("--task-id", default=None, help="Optional task id for smoke evidence file logs/ci/<date>/task-<id>.json")
-    ap.add_argument("--solution", default="Game.sln")
+    ap.add_argument("--solution", default="auto")
     ap.add_argument("--configuration", default="Debug")
     ap.add_argument("--delivery-profile", default=None, choices=DELIVERY_PROFILE_CHOICES, help="Delivery profile (default: env DELIVERY_PROFILE or fast-ship).")
     ap.add_argument("--security-profile", default=None, choices=["strict", "host-safe"], help="Security profile override (default derives from delivery profile).")
@@ -74,6 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--skip-smoke", action="store_true")
     ap.add_argument("--no-coverage-gate", action="store_true", help="do not enforce default coverage thresholds")
     ap.add_argument("--no-coverage-report", action="store_true", help="skip HTML coverage report generation")
+    ap.add_argument(
+        "--allow-full-unit-fallback",
+        action="store_true",
+        help="when task-scoped unit coverage reports 0.0%%, retry once without the task filter",
+    )
     return ap
 
 
@@ -155,8 +161,23 @@ def _build_dotnet_filter_from_cs_refs(cs_refs: list[str]) -> str:
     return _build_dotnet_filter_from_cs_refs_impl(cs_refs)
 
 
-def run_unit(out_dir: Path, solution: str, configuration: str, *, run_id: str, task_id: str | None = None) -> dict[str, Any]:
-    return _run_unit_impl(out_dir, solution, configuration, run_id=run_id, task_id=task_id)
+def run_unit(
+    out_dir: Path,
+    solution: str,
+    configuration: str,
+    *,
+    run_id: str,
+    task_id: str | None = None,
+    allow_full_unit_fallback: bool = False,
+) -> dict[str, Any]:
+    return _run_unit_impl(
+        out_dir,
+        solution,
+        configuration,
+        run_id=run_id,
+        task_id=task_id,
+        allow_full_unit_fallback=allow_full_unit_fallback,
+    )
 
 
 def run_coverage_report(out_dir: Path, unit_artifacts_dir: Path) -> dict[str, Any]:
@@ -167,12 +188,38 @@ def run_csharp_test_conventions(out_dir: Path, *, task_id: str | None = None) ->
     return _run_csharp_test_conventions_impl(out_dir, task_id=task_id)
 
 
-def run_gdunit_hard(out_dir: Path, godot_bin: str, timeout_sec: int, *, run_id: str, task_id: str | None = None) -> dict[str, Any]:
-    return _run_gdunit_hard_impl(out_dir, godot_bin, timeout_sec, run_id=run_id, task_id=task_id)
+def run_gdunit_hard(
+    out_dir: Path,
+    godot_bin: str,
+    timeout_sec: int,
+    *,
+    run_id: str,
+    task_id: str | None = None,
+    require_task_scoped_refs: bool = False,
+) -> dict[str, Any]:
+    return _run_gdunit_hard_impl(
+        out_dir,
+        godot_bin,
+        timeout_sec,
+        run_id=run_id,
+        task_id=task_id,
+        require_task_scoped_refs=require_task_scoped_refs,
+    )
 
 
 def run_smoke(out_dir: Path, godot_bin: str, scene: str, task_id: str | None = None, *, strict: bool = True) -> dict[str, Any]:
     return _run_smoke_impl(out_dir, godot_bin, scene, task_id=task_id, strict=strict)
+
+
+def _skipped_step(*, name: str, reason: str, cmd: list[str] | None = None) -> dict[str, Any]:
+    step: dict[str, Any] = {
+        "name": name,
+        "status": "skipped",
+        "reason": reason,
+    }
+    if cmd:
+        step["cmd"] = list(cmd)
+    return step
 
 
 def main() -> int:
@@ -248,7 +295,14 @@ def main() -> int:
         else:
             os.environ.pop("COVERAGE_LINES_MIN", None)
             os.environ.pop("COVERAGE_BRANCHES_MIN", None)
-        step = run_unit(out_dir, args.solution, args.configuration, run_id=run_id, task_id=args.task_id)
+        step = run_unit(
+            out_dir,
+            args.solution,
+            args.configuration,
+            run_id=run_id,
+            task_id=args.task_id,
+            allow_full_unit_fallback=bool(runtime["allow_full_unit_fallback"]) or bool(args.allow_full_unit_fallback),
+        )
         summary["steps"].append(step)
         if not _persist_summary():
             return 2
@@ -269,23 +323,55 @@ def main() -> int:
             if cov.get("status") == "fail":
                 hard_fail = True
 
+    task_gd_refs = _task_scoped_gdunit_refs(task_id=args.task_id, tests_project=repo_root() / "Tests.Godot") if args.task_id else []
+    explicit_engine_lane = args.type in ("integration", "e2e")
+    should_run_engine_lane = args.type in ("integration", "e2e") or (args.type == "all" and (not args.task_id or bool(task_gd_refs)))
+
     if args.type in ("integration", "e2e", "all"):
-        if not godot_bin:
-            print("[sc-test] ERROR: --godot-bin (or env GODOT_BIN) is required for e2e/integration tests.")
-            return 2
-        step = run_gdunit_hard(out_dir, godot_bin, args.timeout_sec, run_id=run_id, task_id=args.task_id)
-        summary["steps"].append(step)
-        if not _persist_summary():
-            return 2
-        if step["rc"] != 0:
-            hard_fail = True
-        if not args.skip_smoke:
-            smoke = run_smoke(out_dir, godot_bin, args.smoke_scene, task_id=args.task_id, strict=bool(runtime["smoke_strict"]))
-            summary["steps"].append(smoke)
+        if args.type == "all" and args.task_id and not task_gd_refs:
+            summary["steps"].append(
+                _skipped_step(
+                    name="gdunit-hard",
+                    reason="no_task_scoped_gd_refs_for_task",
+                    cmd=["py", "-3", "scripts/python/run_gdunit.py"],
+                )
+            )
             if not _persist_summary():
                 return 2
-            if smoke["rc"] != 0:
+            if not args.skip_smoke:
+                summary["steps"].append(
+                    _skipped_step(
+                        name="smoke",
+                        reason="no_task_scoped_gd_refs_for_task",
+                        cmd=["py", "-3", "scripts/python/smoke_headless.py"],
+                    )
+                )
+                if not _persist_summary():
+                    return 2
+        elif should_run_engine_lane:
+            if not godot_bin:
+                print("[sc-test] ERROR: --godot-bin (or env GODOT_BIN) is required for e2e/integration tests.")
+                return 2
+            step = run_gdunit_hard(
+                out_dir,
+                godot_bin,
+                args.timeout_sec,
+                run_id=run_id,
+                task_id=args.task_id,
+                require_task_scoped_refs=bool(args.task_id and (explicit_engine_lane or bool(task_gd_refs))),
+            )
+            summary["steps"].append(step)
+            if not _persist_summary():
+                return 2
+            if step["rc"] != 0:
                 hard_fail = True
+            if not args.skip_smoke:
+                smoke = run_smoke(out_dir, godot_bin, args.smoke_scene, task_id=args.task_id, strict=bool(runtime["smoke_strict"]))
+                summary["steps"].append(smoke)
+                if not _persist_summary():
+                    return 2
+                if smoke["rc"] != 0:
+                    hard_fail = True
 
     summary["status"] = "ok" if not hard_fail else "fail"
     if not _persist_summary():
