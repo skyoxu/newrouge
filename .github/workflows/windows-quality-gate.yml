@@ -196,9 +196,36 @@ jobs:
         run: |
           $env:Path = "$HOME\.dotnet;" + $env:Path
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
-          dotnet restore GodotGame.csproj
+          $preferredTargets = @(
+            "NewRouge.sln",
+            "GodotGame.sln",
+            "Game.sln",
+            "NewRouge.csproj",
+            "GodotGame.csproj",
+            "Game.csproj"
+          )
+          $dotnetTarget = $null
+          foreach ($target in $preferredTargets) {
+            if (Test-Path $target) {
+              $dotnetTarget = $target
+              break
+            }
+          }
+          if (-not $dotnetTarget) {
+            $firstSln = Get-ChildItem -Path . -Filter *.sln -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($firstSln) { $dotnetTarget = $firstSln.Name }
+          }
+          if (-not $dotnetTarget) {
+            $firstCsproj = Get-ChildItem -Path . -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($firstCsproj) { $dotnetTarget = $firstCsproj.Name }
+          }
+          if (-not $dotnetTarget) {
+            throw "Unable to resolve dotnet target (.sln/.csproj) in repository root."
+          }
+          Write-Host "Resolved dotnet target: $dotnetTarget"
+          dotnet restore $dotnetTarget
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet build GodotGame.csproj -c Release -v minimal
+          dotnet build $dotnetTarget -c Release -v minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $prewarm = Start-Process -FilePath "$env:GODOT_BIN" -ArgumentList "--headless", "--path", ".", "--quit" -Wait -PassThru -NoNewWindow
@@ -209,7 +236,7 @@ jobs:
       - name: CI pipeline (Python)
         shell: pwsh
         run: |
-          py -3 scripts/python/ci_pipeline.py all --solution Game.sln --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
+          py -3 scripts/python/ci_pipeline.py all --configuration Debug --godot-bin "$env:GODOT_BIN" --build-solutions
 
       - name: Resolve Task IDs for acceptance-check
         shell: pwsh
