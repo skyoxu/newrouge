@@ -78,7 +78,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 
 - `Task triplet required`: any `--task-id` / `--task-file` flow assumes Taskmaster data. Template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
 - `Godot runtime required`: any engine-side verification (`--godot-bin`, GdUnit, smoke, acceptance evidence, scene tests) needs a local Godot .NET console binary.
-- `Dotnet required`: `.NET 8 SDK` and valid `Game.sln` / `.csproj` paths must exist.
+- `Dotnet required`: `.NET 8 SDK` and a valid auto-resolved `.sln` or explicit `.csproj` path must exist.
 - `PRD / overlay input required`: PRD source files, overlay roots, and business-local `PRD-ID` values must be real.
 - `LLM runtime required`: model-backed generation / review scripts require the repo's configured LLM runtime or CLI unless the script has an explicit deterministic-only mode.
 - `Write flow`: commands with `--write` / `--apply` / `--in-place` or migration verbs mutate repo files and should be reviewed like code changes.
@@ -813,7 +813,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Direct local deps: None.
 - Transitive local deps: None.
 - Subcommands: None.
-- Declared args: `--write`, `--dry-run`, `--prd-id`, `--tasks-dir`
+- Declared args: `--write`, `--dry-run`, `--prd-id`, `--tasks-dir`, `--skip-done`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - PRD/overlay parameters require real PRD sources, overlay roots, and business-local `PRD-ID` values.
@@ -887,7 +887,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 #### `scripts/python/detect_project_stage.py`
 
@@ -908,7 +908,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
   - Serving parameters are local-only: use on `127.0.0.1`, not in CI.
 
 #### `scripts/python/doctor_project.py`
@@ -968,7 +968,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Declared args: `--test-project`, `--configuration`, `--out-dir`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 #### `scripts/python/prepare_gd_tests.py`
 
@@ -1000,7 +1000,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 #### `scripts/python/resume_task.py`
 
@@ -1020,7 +1020,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Declared args: `--solution`, `--configuration`, `--filter`, `--out-dir`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 #### `scripts/python/run_gate_bundle.py`
 
@@ -1139,7 +1139,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 #### `scripts/sc/check_tdd_execution_plan.py`
 
@@ -1261,21 +1261,26 @@ Notes:
 
 #### `scripts/sc/llm_review_needs_fix_fast.py`
 
-- Direct local deps: `scripts/sc/_util.py`
-- Transitive local deps: `scripts/sc/_util.py`
+- Direct local deps: `scripts/sc/_delivery_profile.py`, `scripts/sc/_util.py`
+- Transitive local deps: `scripts/sc/_delivery_profile.py`, `scripts/sc/_util.py`
 - Subcommands: None.
-- Declared args: `--task-id`, `--security-profile`, `--agents`, `--review-template`, `--base`, `--diff-mode`, `--max-rounds`, `--rerun-failing-only`, `--time-budget-min`, `--llm-timeout-sec`, `--agent-timeout-sec`, `--step-timeout-sec`, `--skip-sc-test`, `--python`
+- Declared args: `--task-id`, `--delivery-profile`, `--security-profile`, `--agents`, `--review-template`, `--base`, `--diff-mode`, `--max-rounds`, `--rerun-failing-only`, `--no-rerun-failing-only`, `--time-budget-min`, `--llm-timeout-sec`, `--agent-timeout-sec`, `--step-timeout-sec`, `--min-llm-budget-min`, `--final-pass`, `--skip-sc-test`, `--python`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
   - Model-backed steps require the repo's LLM runtime/CLI; deterministic-only or skip modes can reduce that requirement, but do not assume zero-model execution unless the script explicitly supports it.
+  - First round reviewer selection can auto-shrink from the previous task run's `agent-review.json` or `sc-llm-review` summary when those artifacts exist and are stable.
+  - Deterministic reuse can scan recent same-task pipeline artifacts across dates; git snapshot or security-profile mismatch still disables reuse.
+  - `--final-pass` disables deterministic shortcuts and reviewer auto-shrink, forces a full reviewer set, and is intended for the last closure run before handoff/PR.
 
 #### `scripts/sc/run_review_pipeline.py`
 
 - Direct local deps: `scripts/sc/_active_task_sidecar.py`, `scripts/sc/_agent_review_policy.py`, `scripts/sc/_delivery_profile.py`, `scripts/sc/_harness_capabilities.py`, `scripts/sc/_llm_review_tier.py`, `scripts/sc/_marathon_policy.py`, `scripts/sc/_marathon_state.py`, `scripts/sc/_pipeline_approval.py`, `scripts/sc/_pipeline_events.py`, `scripts/sc/_pipeline_helpers.py`, `scripts/sc/_pipeline_plan.py`, `scripts/sc/_pipeline_session.py`, `scripts/sc/_pipeline_support.py`, `scripts/sc/_repair_guidance.py`, `scripts/sc/_summary_schema.py`, `scripts/sc/_taskmaster.py`, `scripts/sc/_technical_debt.py`, `scripts/sc/_util.py`, `scripts/sc/agent_to_agent_review.py`
 - Transitive local deps: `scripts/sc/_active_task_sidecar.py`, `scripts/sc/_agent_review_contract.py`, `scripts/sc/_agent_review_policy.py`, `scripts/sc/_approval_contract.py`, `scripts/sc/_artifact_schema.py`, `scripts/sc/_artifact_schema_fallback.py`, `scripts/sc/_delivery_profile.py`, `scripts/sc/_harness_capabilities.py`, `scripts/sc/_llm_review_tier.py`, `scripts/sc/_marathon_policy.py`, `scripts/sc/_marathon_state.py`, `scripts/sc/_pipeline_approval.py`, `scripts/sc/_pipeline_events.py`, `scripts/sc/_pipeline_helpers.py`, `scripts/sc/_pipeline_plan.py`, `scripts/sc/_pipeline_session.py`, `scripts/sc/_pipeline_support.py`, `scripts/sc/_repair_approval.py`, `scripts/sc/_repair_guidance.py`, `scripts/sc/_repair_recommendations.py`, `scripts/sc/_sidecar_schema.py`, `scripts/sc/_summary_schema.py`, `scripts/sc/_summary_schema_fallback.py`, `scripts/sc/_summary_schema_local_hard_checks.py`, `scripts/sc/_taskmaster.py`, `scripts/sc/_taskmaster_paths.py`, `scripts/sc/_technical_debt.py`, `scripts/sc/_util.py`, `scripts/sc/agent_to_agent_review.py`
 - Subcommands: None.
-- Declared args: None.
+- Declared args: `--task-id`, `--run-id`, `--fork-from-run-id`, `--godot-bin`, `--delivery-profile`, `--security-profile`, `--skip-test`, `--skip-acceptance`, `--skip-llm-review`, `--skip-agent-review`, `--allow-full-unit-fallback`, `--llm-agents`, `--llm-timeout-sec`, `--llm-agent-timeout-sec`, `--llm-semantic-gate`, `--llm-base`, `--llm-diff-mode`, `--llm-no-uncommitted`, `--llm-strict`, `--review-template`, `--resume`, `--abort`, `--fork`, `--max-step-retries`, `--max-wall-time-sec`, `--context-refresh-after-failures`, `--context-refresh-after-resumes`, `--context-refresh-after-diff-lines`, `--context-refresh-after-diff-categories`, `--dry-run`, `--allow-overwrite`, `--force-new-run-id`.
+- Behavior notes: task-scoped previous timeout evidence can inject targeted `--agent-timeouts` for timed-out reviewers only; this is automatic and profile-aware.
+- Behavior notes: `--allow-full-unit-fallback` only affects the internal `sc-test` call when task-scoped unit coverage fails at `0.0%`; default delivery profiles keep this off to avoid accidental repo-wide retries.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
@@ -1286,12 +1291,13 @@ Notes:
 - Direct local deps: `scripts/sc/_delivery_profile.py`, `scripts/sc/_sc_test_refs.py`, `scripts/sc/_sc_test_steps.py`, `scripts/sc/_security_profile.py`, `scripts/sc/_summary_schema.py`, `scripts/sc/_util.py`
 - Transitive local deps: `scripts/sc/_delivery_profile.py`, `scripts/sc/_sc_test_refs.py`, `scripts/sc/_sc_test_steps.py`, `scripts/sc/_security_profile.py`, `scripts/sc/_summary_schema.py`, `scripts/sc/_summary_schema_fallback.py`, `scripts/sc/_summary_schema_local_hard_checks.py`, `scripts/sc/_taskmaster_paths.py`, `scripts/sc/_util.py`
 - Subcommands: None.
-- Declared args: `--type`, `--task-id`, `--solution`, `--configuration`, `--delivery-profile`, `--security-profile`, `--godot-bin`, `--run-id`, `--smoke-scene`, `--timeout-sec`, `--skip-smoke`, `--no-coverage-gate`, `--no-coverage-report`
+- Declared args: `--type`, `--task-id`, `--solution`, `--configuration`, `--delivery-profile`, `--security-profile`, `--godot-bin`, `--run-id`, `--smoke-scene`, `--timeout-sec`, `--skip-smoke`, `--no-coverage-gate`, `--no-coverage-report`, `--allow-full-unit-fallback`
+- Behavior notes: when task-scoped unit coverage fails at `0.0%`, the default behavior is fail-fast; `--allow-full-unit-fallback` opts into one explicit retry without the task filter.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
-  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `Game.sln`).
+  - Dotnet-related options require `.NET 8 SDK` and valid solution/project paths (default usually `auto`, which resolves to the project-preferred `.sln`).
 
 ### Taskmaster triplet and refs maintenance
 
@@ -1617,4 +1623,3 @@ Helper modules below are referenced directly by at least two included entry scri
 - When adding or deleting a workflow-facing entrypoint, update this document in the same change set as the script.
 - If a business repo copies entrypoints from this template, copy the listed direct and transitive local deps in the same migration batch.
 - Do not re-add one-off migration or sibling-sync scripts unless they graduate into a recurring workflow and are documented elsewhere first.
-

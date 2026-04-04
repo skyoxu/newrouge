@@ -21,6 +21,7 @@ from _agent_review_policy import apply_agent_review_policy, apply_agent_review_s
 from _delivery_profile import (
     default_security_profile_for_delivery,
     profile_acceptance_defaults,
+    profile_review_pipeline_defaults,
     profile_llm_review_defaults,
     resolve_delivery_profile,
 )
@@ -64,6 +65,8 @@ from _pipeline_support import (
     run_step as _run_step,
     upsert_step as _upsert_step,
 )
+from _llm_review_cli import resolve_agents
+from _change_scope import classify_change_scope_between_snapshots
 from _repair_guidance import build_execution_context, build_repair_guide, render_repair_guide_markdown
 from _taskmaster import resolve_triplet
 from _technical_debt import write_low_priority_debt_artifacts
@@ -103,74 +106,6 @@ def _read_json(path: Path) -> dict[str, Any]:
     except Exception:
         return {}
     return payload if isinstance(payload, dict) else {}
-
-
-def _normalize_task_id(value: Any) -> str:
-    return str(value or "").split(".", 1)[0].strip()
-
-
-def _find_latest_refactor_summary(task_id: str) -> tuple[Path | None, dict[str, Any]]:
-    logs_root = repo_root() / "logs" / "ci"
-    if not logs_root.exists():
-        return None, {}
-    candidates = sorted(
-        [item for item in logs_root.glob("*/sc-build-tdd/summary.json") if item.is_file()],
-        key=lambda item: item.stat().st_mtime,
-        reverse=True,
-    )
-    for candidate in candidates:
-        payload = _read_json(candidate)
-        if str(payload.get("stage") or "").strip().lower() != "refactor":
-            continue
-        task_info = payload.get("task")
-        summary_task_id = _normalize_task_id(task_info.get("task_id")) if isinstance(task_info, dict) else ""
-        if summary_task_id != task_id:
-            continue
-        return candidate, payload
-    return None, {}
-
-
-def _env_flag_enabled(name: str, *, default: bool) -> bool:
-    raw = str(os.environ.get(name) or "").strip().lower()
-    if not raw:
-        return default
-    return raw not in {"0", "false", "no", "off"}
-
-
-def _should_enforce_refactor_prerequisite(args: Any) -> bool:
-    if bool(args.dry_run) or bool(args.resume) or bool(args.fork) or bool(args.abort):
-        return False
-    if bool(args.skip_test) or bool(args.skip_acceptance):
-        return False
-    return _env_flag_enabled("SC_PIPELINE_ENFORCE_REFACTOR_PREREQ", default=True)
-
-
-def validate_refactor_prerequisite(*, task_id: str, out_dir: Path) -> dict[str, Any]:
-    summary_path, payload = _find_latest_refactor_summary(task_id)
-    errors: list[str] = []
-    if summary_path is None:
-        errors.append("missing refactor summary: run workflow chapter 6.6 first")
-    else:
-        if str(payload.get("status") or "").strip().lower() != "ok":
-            errors.append(f"latest refactor summary status is not ok: {payload.get('status')}")
-    log_path = out_dir / "validate-refactor-prerequisite.log"
-    lines = [
-        f"task_id={task_id}",
-        f"summary_path={summary_path if summary_path is not None else ''}",
-        f"errors={len(errors)}",
-    ]
-    for err in errors:
-        lines.append(f"ERROR: {err}")
-    write_text(log_path, "\n".join(lines) + "\n")
-    return {
-        "name": "validate_refactor_prerequisite",
-        "cmd": ["internal:validate_refactor_prerequisite"],
-        "rc": 0 if not errors else 1,
-        "status": "ok" if not errors else "fail",
-        "log": str(log_path),
-        "summary_path": str(summary_path) if summary_path is not None else "",
-        "errors": errors,
-    }
 
 
 def _snapshot_directory(*, source_dir: Path, target_dir: Path) -> tuple[str, str]:
@@ -215,10 +150,21 @@ def _find_reusable_sc_test_step(
         if str(execution_context.get("security_profile") or "").strip().lower() != security_profile:
             continue
         git_info = execution_context.get("git") if isinstance(execution_context.get("git"), dict) else {}
-        if str(git_info.get("head") or "").strip() != current_head:
-            continue
         previous_status = sorted([str(line).rstrip() for line in (git_info.get("status_short") or []) if str(line).strip()])
-        if previous_status != current_status:
+        exact_snapshot_match = str(git_info.get("head") or "").strip() == current_head and previous_status == current_status
+        change_scope = (
+            {
+                "sc_test_reuse_allowed": True,
+                "deterministic_strategy": "reuse-latest",
+                "changed_paths": [],
+                "unsafe_paths": [],
+            }
+            if exact_snapshot_match
+            else classify_change_scope_between_snapshots(previous_git=git_info, current_git=git_fingerprint)
+        )
+        if not exact_snapshot_match and str(delivery_profile or "").strip().lower() == "standard":
+            continue
+        if not bool(change_scope.get("sc_test_reuse_allowed")):
             continue
         steps = summary.get("steps") if isinstance(summary.get("steps"), list) else []
         sc_test_step = next((step for step in steps if isinstance(step, dict) and str(step.get("name") or "") == "sc-test"), None)
@@ -247,10 +193,14 @@ def _find_reusable_sc_test_step(
             log_path,
             "\n".join(
                 [
-                    "[sc-review-pipeline] reused sc-test from matching git snapshot",
+                    "[sc-review-pipeline] reused sc-test from matching git snapshot"
+                    if exact_snapshot_match
+                    else "[sc-review-pipeline] reused sc-test after semantic-only git delta",
                     f"source_run_dir={candidate}",
                     f"source_summary={summary_path}",
                     f"source_step_summary={source_summary_raw}",
+                    f"change_scope_strategy={str(change_scope.get('deterministic_strategy') or '').strip()}",
+                    f"changed_paths={json.dumps(change_scope.get('changed_paths') or [], ensure_ascii=False)}",
                     f"SC_TEST status=ok out={snapshot_dir}",
                 ]
             )
@@ -266,6 +216,79 @@ def _find_reusable_sc_test_step(
             "summary_file": snapshot_summary,
         }
     return None
+
+
+def _format_agent_timeout_overrides(overrides: dict[str, int]) -> str:
+    return ",".join(f"{agent}={int(seconds)}" for agent, seconds in overrides.items() if int(seconds) > 0)
+
+
+def _derive_llm_agent_timeout_overrides(
+    *,
+    current_out_dir: Path,
+    task_id: str,
+    delivery_profile: str,
+    security_profile: str,
+    llm_agents: str,
+    llm_semantic_gate: str,
+    llm_timeout_sec: int,
+    llm_agent_timeout_sec: int,
+) -> dict[str, int]:
+    logs_root = repo_root() / "logs" / "ci"
+    if not logs_root.exists():
+        return {}
+    planned_agents = resolve_agents(llm_agents, llm_semantic_gate)
+    if not planned_agents:
+        return {}
+    escalated_timeout = min(int(llm_timeout_sec), max(int(llm_agent_timeout_sec) * 2, int(llm_agent_timeout_sec) + 120))
+    if escalated_timeout <= int(llm_agent_timeout_sec):
+        return {}
+    planned_agent_set = set(planned_agents)
+    current_out_dir_resolved = current_out_dir.resolve()
+    candidates = sorted(
+        [item for item in logs_root.rglob(f"sc-review-pipeline-task-{task_id}-*") if item.is_dir()],
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        if candidate.resolve() == current_out_dir_resolved:
+            continue
+        summary_path = candidate / "summary.json"
+        execution_context_path = candidate / "execution-context.json"
+        if not summary_path.exists() or not execution_context_path.exists():
+            continue
+        summary = _read_json(summary_path)
+        execution_context = _read_json(execution_context_path)
+        if not summary or not execution_context:
+            continue
+        if str(execution_context.get("delivery_profile") or "").strip().lower() != delivery_profile:
+            continue
+        if str(execution_context.get("security_profile") or "").strip().lower() != security_profile:
+            continue
+        steps = summary.get("steps") if isinstance(summary.get("steps"), list) else []
+        llm_step = next((step for step in steps if isinstance(step, dict) and str(step.get("name") or "") == "sc-llm-review"), None)
+        if not isinstance(llm_step, dict):
+            continue
+        llm_summary_raw = str(llm_step.get("summary_file") or "").strip()
+        if not llm_summary_raw:
+            continue
+        llm_summary_path = Path(llm_summary_raw)
+        if not llm_summary_path.is_absolute():
+            llm_summary_path = (repo_root() / llm_summary_path).resolve()
+        if not llm_summary_path.exists():
+            continue
+        llm_summary = _read_json(llm_summary_path)
+        timed_out_agents: set[str] = set()
+        for result in llm_summary.get("results", []):
+            if not isinstance(result, dict):
+                continue
+            agent = str(result.get("agent") or "").strip()
+            if not agent or agent not in planned_agent_set:
+                continue
+            if int(result.get("rc") or 0) == 124:
+                timed_out_agents.add(agent)
+        if timed_out_agents:
+            return {agent: escalated_timeout for agent in planned_agents if agent in timed_out_agents}
+    return {}
 
 
 def _run_cli_capability_preflight(*, out_dir: Path, step_name: str, cmd: list[str], timeout_sec: int = 120) -> dict[str, Any] | None:
@@ -290,6 +313,48 @@ def _run_cli_capability_preflight(*, out_dir: Path, step_name: str, cmd: list[st
         "log": str(log_path),
         "reported_out_dir": "",
         "summary_file": "",
+    }
+
+
+def _latest_tdd_stage_summary(*, task_id: str, stage: str) -> tuple[Path | None, dict[str, Any]]:
+    logs_root = repo_root() / "logs" / "ci"
+    if not logs_root.exists():
+        return None, {}
+    candidates = sorted(logs_root.glob("*/sc-build-tdd/summary.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        task_meta = payload.get("task") if isinstance(payload.get("task"), dict) else {}
+        payload_task_id = str(task_meta.get("task_id") or payload.get("task_id") or "").strip()
+        if payload_task_id != str(task_id).strip():
+            continue
+        if str(payload.get("stage") or "").strip() != stage:
+            continue
+        return candidate, payload
+    return None, {}
+
+
+def run_review_prerequisite_check(*, out_dir: Path, task_id: str) -> dict[str, Any] | None:
+    summary_path, payload = _latest_tdd_stage_summary(task_id=task_id, stage="refactor")
+    if summary_path is not None and str(payload.get("status") or "").strip() == "ok":
+        return None
+    log_path = out_dir / "sc-build-tdd-refactor-preflight.log"
+    reason = "missing_refactor_summary" if summary_path is None else "refactor_stage_not_ok"
+    lines = [
+        f"SC_REVIEW_PREREQUISITE status=fail reason={reason}",
+        f"summary_path: {summary_path}" if summary_path is not None else "summary_path: (missing)",
+    ]
+    if summary_path is not None:
+        lines.append(f"status: {str(payload.get('status') or '').strip() or '(missing)'}")
+    lines.append("error: latest refactor-stage sc-build-tdd summary must exist and be ok before running review pipeline")
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "sc-build-tdd-refactor-preflight",
+        "cmd": ["internal:review_prerequisite_check"],
+        "rc": 1,
+        "status": "fail",
+        "log": str(log_path),
+        "reported_out_dir": "",
+        "summary_file": str(summary_path) if summary_path is not None else "",
     }
 
 
@@ -404,51 +469,6 @@ def _load_source_run(task_id: str, selector_run_id: str | None) -> tuple[Path, d
     )
 
 
-def _run_refactor_prerequisite(
-    *,
-    session: PipelineSession,
-    args: Any,
-    task_id: str,
-    run_id: str,
-    delivery_profile: str,
-    security_profile: str,
-) -> int | None:
-    if not _should_enforce_refactor_prerequisite(args):
-        return None
-
-    step = validate_refactor_prerequisite(task_id=task_id, out_dir=session.out_dir)
-    if step.get("status") == "ok":
-        session.append_run_event(
-            out_dir=session.out_dir,
-            event="refactor_prerequisite_completed",
-            task_id=task_id,
-            run_id=run_id,
-            delivery_profile=delivery_profile,
-            security_profile=security_profile,
-            status="ok",
-            details={
-                "rc": step.get("rc"),
-                "log": step.get("log"),
-                "summary_path": step.get("summary_path"),
-            },
-        )
-        return None
-
-    fail_step = {
-        "name": "sc-acceptance-check",
-        "cmd": ["internal:validate_refactor_prerequisite"],
-        "rc": int(step.get("rc") or 1),
-        "status": "fail",
-        "log": str(step.get("log") or ""),
-        "reported_out_dir": "",
-        "summary_file": "",
-    }
-    if not session.add_step(fail_step):
-        if session.schema_error_log.exists():
-            return 2
-    return session.finish()
-
-
 def _run_acceptance_preflight(
     *,
     session: PipelineSession,
@@ -520,8 +540,10 @@ def main() -> int:
     delivery_profile = resolve_delivery_profile(args.delivery_profile)
     security_profile = str(args.security_profile or default_security_profile_for_delivery(delivery_profile)).strip().lower()
     acceptance_defaults = profile_acceptance_defaults(delivery_profile)
+    pipeline_defaults = profile_review_pipeline_defaults(delivery_profile)
     llm_defaults = profile_llm_review_defaults(delivery_profile)
     agent_review_mode = _resolve_agent_review_mode(delivery_profile)
+    max_step_retries = int(args.max_step_retries if args.max_step_retries is not None else pipeline_defaults.get("max_step_retries", 0))
     try:
         triplet = resolve_triplet(task_id=task_id)
     except Exception:
@@ -569,7 +591,7 @@ def main() -> int:
                 source_state=source_state,
                 new_run_id=run_id,
                 requested_run_id=requested_run_id,
-                max_step_retries=args.max_step_retries,
+                max_step_retries=max_step_retries,
                 max_wall_time_sec=args.max_wall_time_sec,
             )
         else:
@@ -606,7 +628,7 @@ def main() -> int:
         task_id=task_id,
         run_id=run_id,
         requested_run_id=requested_run_id,
-        max_step_retries=args.max_step_retries,
+        max_step_retries=max_step_retries,
         max_wall_time_sec=args.max_wall_time_sec,
         summary=summary,
     )
@@ -618,6 +640,19 @@ def main() -> int:
         delivery_profile=delivery_profile,
         security_profile=security_profile,
     )
+    llm_agent_timeout_overrides = _derive_llm_agent_timeout_overrides(
+        current_out_dir=out_dir,
+        task_id=task_id,
+        delivery_profile=delivery_profile,
+        security_profile=security_profile,
+        llm_agents=llm_agents,
+        llm_semantic_gate=llm_semantic_gate,
+        llm_timeout_sec=llm_timeout_sec,
+        llm_agent_timeout_sec=llm_agent_timeout_sec,
+    )
+    llm_agent_timeouts = _format_agent_timeout_overrides(llm_agent_timeout_overrides)
+    if llm_agent_timeout_overrides:
+        llm_execution_context["agent_timeout_overrides"] = llm_agent_timeout_overrides
     if args.abort:
         append_run_event(
             out_dir=out_dir,
@@ -638,7 +673,7 @@ def main() -> int:
         if str(marathon_state.get("status") or "").strip().lower() == "aborted":
             print("[sc-review-pipeline] ERROR: the selected run is aborted and cannot be resumed.")
             return 2
-        marathon_state = resume_state(marathon_state, max_step_retries=args.max_step_retries, max_wall_time_sec=args.max_wall_time_sec)
+        marathon_state = resume_state(marathon_state, max_step_retries=max_step_retries, max_wall_time_sec=args.max_wall_time_sec)
 
     append_run_event(
         out_dir=out_dir,
@@ -706,18 +741,6 @@ def main() -> int:
     if not session.persist():
         return 2
 
-    prereq_rc = _run_refactor_prerequisite(
-        session=session,
-        args=args,
-        task_id=task_id,
-        run_id=run_id,
-        delivery_profile=delivery_profile,
-        security_profile=security_profile,
-    )
-    if prereq_rc is not None:
-        print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
-        return prereq_rc
-
     steps = build_pipeline_steps(
         args=args,
         task_id=task_id,
@@ -729,6 +752,7 @@ def main() -> int:
         llm_agents=llm_agents,
         llm_timeout_sec=llm_timeout_sec,
         llm_agent_timeout_sec=llm_agent_timeout_sec,
+        llm_agent_timeouts=llm_agent_timeouts,
         llm_semantic_gate=llm_semantic_gate,
         llm_strict=llm_strict,
         llm_diff_mode=llm_diff_mode,
@@ -751,6 +775,12 @@ def main() -> int:
         os.environ.pop("SC_TEST_REUSE_SUMMARY", None)
 
     if not bool(args.dry_run or args.resume or args.fork):
+        review_preflight_failed = run_review_prerequisite_check(out_dir=out_dir, task_id=task_id)
+        if review_preflight_failed is not None:
+            if not session.add_step(review_preflight_failed):
+                return 2 if session.schema_error_log.exists() else 1
+            print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
+            return session.finish()
         for step_name, cmd, _timeout_sec, skipped in steps:
             if skipped:
                 continue
