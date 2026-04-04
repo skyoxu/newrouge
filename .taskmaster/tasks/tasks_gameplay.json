@@ -3672,25 +3672,15 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "Game.Core.Tests/Tasks/Task55CoverageGateModeSoftHardTests.cs",
-      "Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
-      "Game.Core.Tests/Tasks/Task55CoverageTraceabilityTests.cs",
-      "Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs"
+      "Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs"
     ],
     "acceptance": [
-      "未设置覆盖率环境变量时，scripts/python/run_dotnet.py 与 scripts/python/quality_gates.py 的有效阈值必须为 lines>=90 且 branches>=85，并能从执行产物中核对；任一脚本解析结果不满足该默认值即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "在 Windows 上执行脚本时，临时设置阈值与门禁模式环境变量后，运行结果必须显示已采用非默认有效阈值，且全程无需修改代码；若无法复现或需要改代码才生效则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "overlay 的 Test-Refs 与验收条目必须同时覆盖“阈值可覆盖、soft/hard 行为、摘要产出”三项义务，并与任务语义逐项对齐；缺失任一项即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "当设置覆盖率环境变量时，两脚本必须以环境变量值作为有效阈值（覆盖默认 lines>=90、branches>=85），并可通过一次不改代码的运行验证覆盖生效；若仍使用默认阈值则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "两脚本必须支持 soft/hard gate 选择：覆盖率低于有效阈值时，soft 模式以退出码 0 完成且记录 warning，hard 模式以非 0 退出；覆盖率达到或超过有效阈值时，两种模式均以退出码 0 完成。 Refs: Game.Core.Tests/Tasks/Task55CoverageGateModeSoftHardTests.cs",
-      "覆盖率检查必须生成单一机器可读 JSON 摘要，至少包含 measured line/branch coverage、环境变量覆盖后的有效阈值、gate mode 与 pass/fail，并分别产出到 logs/unit/<date>/summary.json 与 logs/ci/<date>/quality-gates/summary.json；任一字段或路径缺失即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageSummaryJsonEmissionTests.cs",
-      "产出文档或记录必须可追溯到 ADR-0005 与 CH07，且本任务验收范围仅限覆盖率阈值配置、门禁行为与摘要产出；若出现无关新增要求则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageTraceabilityTests.cs Game.Core.Tests/Tasks/Task55CoverageScopeGuardTests.cs",
-      "overlay 验收清单必须显式标注 ADR-0005 与 CH07 的关联，并保持条目范围与本任务一致；缺少关联或引入超范围条目即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "在 Windows 上执行 dotnet test，并通过临时环境变量分别验证阈值覆盖与 soft/hard 门禁分支；若同一套输入无法稳定复现结果或无法区分两种模式行为则判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "overlay 文档必须记录 ADR-0005 与 CH07 的可追溯信息，并覆盖 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md 与 docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-Quality-Metrics.md 两处；任一缺失即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "验收条目必须显式列出并可审计绑定以下 Test-Refs：Tests/CI/CoverageThresholdOverridesTests.cs、Tests/CI/CoverageGateModeSoftHardTests.cs、Tests/CI/CoverageSummaryJsonEmissionTests.cs；缺失任一文件路径即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs",
-      "三份指定测试在执行记录中必须可逐项对应到“阈值可覆盖”“soft/hard 行为”“摘要 JSON 产出”三类义务，且任一义务缺少对应验证即判定失败。 Refs: Game.Core.Tests/Tasks/Task55CoverageThresholdOverridesTests.cs"
+      "In scripts/python/run_dotnet.py and scripts/python/quality_gates.py, default coverage thresholds are lines>=90 and branches>=85, and those defaults must be used when no override environment variables are provided. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs",
+      "Coverage threshold environment overrides must be resolved and applied in both scripts, and each script must evaluate gates using its effective thresholds so non-default threshold runs are achievable without code changes. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs",
+      "Both scripts must expose semantically consistent soft/hard gate behavior: for identical measured coverage below effective thresholds, soft returns exit code 0 with warning and hard returns non-zero; when measured coverage meets or exceeds effective thresholds, both return 0. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs",
+      "A single machine-readable coverage summary contract must be used for CI outputs; emitted summaries at logs/unit/<date>/summary.json and logs/ci/<date>/quality-gates/summary.json must both include measured line/branch coverage, effective thresholds (after env overrides), gate mode, and pass/fail with identical field semantics. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs",
+      "For the same environment overrides, run_dotnet.py and quality_gates.py must resolve equivalent effective threshold values (lines/branches) before gate evaluation. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs",
+      "Gate-mode selection semantics must remain consistent between run_dotnet.py and quality_gates.py for identical measured/effective coverage inputs. Refs: Game.Core.Tests/Tasks/Task55CoverageScriptEntrypointBindingTests.cs"
     ],
     "test_strategy": [
       "Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars."

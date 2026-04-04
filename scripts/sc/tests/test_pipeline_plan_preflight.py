@@ -13,6 +13,7 @@ SC_DIR = REPO_ROOT / "scripts" / "sc"
 if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
+from _pipeline_helpers import build_parser  # noqa: E402
 from _pipeline_plan import build_acceptance_command, build_pipeline_steps  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
@@ -109,6 +110,12 @@ class PipelinePlanPreflightTests(unittest.TestCase):
 
         test_cmd = steps[0][1]
         self.assertIn("--allow-full-unit-fallback", test_cmd)
+
+    def test_build_parser_help_should_render_allow_full_unit_fallback_text(self) -> None:
+        help_text = build_parser().format_help()
+
+        self.assertIn("--allow-full-unit-fallback", help_text)
+        self.assertIn("coverage is 0.0%", help_text)
 
     def test_build_acceptance_command_preflight_should_only_include_deterministic_groups(self) -> None:
         cmd = build_acceptance_command(

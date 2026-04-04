@@ -1,0 +1,21 @@
+# task55-needs-fix-followup
+
+- Title: task55-needs-fix-followup
+- Status: active
+- Branch: task/T55
+- Git Head: 889e5df734e40601c10e37d6f11fd86f5b95b4bf
+- Goal: Close Task55 reviewer findings by aligning real script behavior/tests and acceptance semantics.
+- Scope: TODO: define scope
+- Current step: Collect actionable deltas from reviewer outputs and map to code/test/acceptance patches.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: TODO: define stop-loss boundary
+- Next action: Patch run_dotnet/quality_gates coverage contract and replace self-contained Task55 tests with script-level assertions.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 55 --resume`
+- Open questions: none recorded yet
+- Exit criteria: 6.8 returns no Needs Fix or all residual items are downgraded with explicit decision-log rationale.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `55`
+- Related run id: `335ffd47d8894266b4427c130d999635`
+- Related latest.json: `logs/ci/2026-04-04/sc-review-pipeline-task-55/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-04/sc-review-pipeline-task-55-335ffd47d8894266b4427c130d999635`
