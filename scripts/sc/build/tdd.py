@@ -430,14 +430,20 @@ def run_green_gate(
     coverage_branches_min: int,
     green_scope: str,
 ) -> dict[str, Any]:
+    prev_lines_min = os.environ.get("COVERAGE_LINES_MIN")
+    prev_branches_min = os.environ.get("COVERAGE_BRANCHES_MIN")
+    prev_gate_mode = os.environ.get("COVERAGE_GATE_MODE")
+
     coverage_gate_enabled = (green_scope == "all") and bool(coverage_gate)
     if coverage_gate_enabled:
         os.environ["COVERAGE_LINES_MIN"] = str(max(0, int(coverage_lines_min)))
         os.environ["COVERAGE_BRANCHES_MIN"] = str(max(0, int(coverage_branches_min)))
+        os.environ["COVERAGE_GATE_MODE"] = "hard"
     else:
         # Task-scoped green should validate correctness quickly without global denominator drift.
         os.environ.pop("COVERAGE_LINES_MIN", None)
         os.environ.pop("COVERAGE_BRANCHES_MIN", None)
+        os.environ["COVERAGE_GATE_MODE"] = "soft"
 
     cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
     filter_expr = ""
@@ -453,7 +459,21 @@ def run_green_gate(
     inner_timeout_ms = max(60_000, inner_timeout_ms)
     outer_timeout_sec = max(1_800, int(inner_timeout_ms / 1000) + 120)
 
-    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=outer_timeout_sec)
+    try:
+        rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=outer_timeout_sec)
+    finally:
+        if prev_lines_min is None:
+            os.environ.pop("COVERAGE_LINES_MIN", None)
+        else:
+            os.environ["COVERAGE_LINES_MIN"] = prev_lines_min
+        if prev_branches_min is None:
+            os.environ.pop("COVERAGE_BRANCHES_MIN", None)
+        else:
+            os.environ["COVERAGE_BRANCHES_MIN"] = prev_branches_min
+        if prev_gate_mode is None:
+            os.environ.pop("COVERAGE_GATE_MODE", None)
+        else:
+            os.environ["COVERAGE_GATE_MODE"] = prev_gate_mode
     log_path = out_dir / "run_dotnet.log"
     write_text(log_path, out)
     return {

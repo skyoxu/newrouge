@@ -1,0 +1,21 @@
+# task9 chapter6 daily loop
+
+- Title: task9 chapter6 daily loop
+- Status: active
+- Branch: task/T9
+- Git Head: 46ce386ce60200fd93cfd3eddbd6c0fb31caf9b2
+- Goal: Execute workflow chapter 6 for Task 9 with deterministic evidence and efficient 6.7/6.8 retries
+- Scope: Task 9 only
+- Current step: 6.3 TDD preflight
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: TODO: define stop-loss boundary
+- Next action: Run check_tdd_execution_plan then 6.4 red-first
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 9 --resume`
+- Open questions: none recorded yet
+- Exit criteria: 6.7+6.8 completed; 6.9 local hard checks finished
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `9`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)

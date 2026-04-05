@@ -21,9 +21,18 @@ def run_unit(
     cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
     task_cs_refs = task_scoped_cs_refs(task_id=task_id)
     task_filter = build_dotnet_filter_from_cs_refs(task_cs_refs)
+    prev_gate_mode = os.environ.get("COVERAGE_GATE_MODE")
     if task_filter:
         cmd += ["--filter", task_filter]
-    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
+        # Task-scoped filtered runs should not be blocked by repo-wide coverage denominator drift.
+        os.environ["COVERAGE_GATE_MODE"] = "soft"
+    try:
+        rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
+    finally:
+        if prev_gate_mode is None:
+            os.environ.pop("COVERAGE_GATE_MODE", None)
+        else:
+            os.environ["COVERAGE_GATE_MODE"] = prev_gate_mode
     zero_coverage_failure = (
         bool(task_filter)
         and int(rc) == 2

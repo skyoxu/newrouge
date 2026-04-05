@@ -14,6 +14,9 @@ Test-Refs:
   - logs/ci/2026-02-12/docs-utf8-gate/summary.json
   - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
   - logs/ci/2026-02-14/sc-semantic-gate-all/summary.json
+  - Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs
+  - Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs
+  - Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs
 ---
 
 # 08章验收清单（M1: Warrior）
@@ -144,3 +147,8 @@ Test-Refs:
 - RelicInstance serialized keys must be exactly: `instance_id`, `modifiers`.
 - Missing required keys or renamed keys must fail acceptance (`ACC:T30.1`).
 - Refs: `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`
+
+## Task9 Governance Evidence (Non-semantic)
+- This block is governance traceability evidence only and is not a Task 9 RNG behavior acceptance condition.
+- ADR-0032 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0032-backlink.json
+- ADR-0021 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0021-backlink.json
