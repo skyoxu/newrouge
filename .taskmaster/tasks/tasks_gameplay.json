@@ -605,18 +605,14 @@
     "acceptance": [
       "提供可按名称获取与管理的确定性 RNG 流注册表，且至少包含 run、combat、event、loot、shop、offer 六个命名流；确定性系统的随机取样必须来自这些已注册命名流。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
       "每个命名 RNG 流的种子、当前状态与流位置（步数）必须可序列化并反序列化；从序列化状态恢复后继续取样时，输出应与未中断运行在相同步数的结果一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "若存在 Overlay 验收清单，其 Test-Refs 必须明确指向本任务对应的 xUnit 用例（流隔离、状态序列化/恢复、UI 不推进 RNG），用于证明与本任务语义一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
       "在相同初始种子下，同一命名流在相同步数必须产生完全一致的输出；推进任一命名流后，其他命名流的后续输出不得被改变（流间隔离）。 Refs: Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs",
       "当仅发生 UI 交互且未触发游戏逻辑时，任何 RNG 流都不得前进；可观测结果为操作前后全部命名流的状态与位置（步数）保持不变。 Refs: Tests.Godot/tests/UI/test_hud_ui_only_actions_do_not_advance_rng.gd",
       "将运行中 RNG 状态序列化并恢复后，下一次取样结果必须与未中断运行到同一步数时一致，且之后的序列继续保持一致。 Refs: Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs",
-      "必须有 xUnit 用例验证流隔离：推进一个命名流后，另一个命名流的状态、位置与输出保持预期不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "必须有 xUnit 用例验证种子/状态序列化与恢复一致性：恢复后在相同步数的取样结果与基线运行一致。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "必须有 xUnit 用例验证 UI 行为不推进 RNG：执行纯 UI 操作前后，所有命名流的状态与位置保持不变。 Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "Task 9 acceptance must explicitly trace implementation and tests to ADR-0032 and ADR-0021; missing either ADR linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs",
-      "Overlay acceptance checklist must include ADR back-link checks for ADR-0032 and ADR-0021 with auditable evidence paths; any missing ADR link fails acceptance. Refs: Game.Core.Tests/Tasks/Task9AdrBacklinkEvidenceTests.cs"
+      "Sampling an unregistered RNG stream name must be rejected with an explicit error, and must not change any registered stream state or position. Refs: Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs"
     ],
     "test_strategy": [
-      "xUnit tests for stream isolation, seed/state serialization, and non-advancing UI actions. Refs: ADR-0032."
+      "xUnit tests for stream isolation, seed/state serialization, and non-advancing UI actions. Refs: ADR-0032.",
+      "Governance traceability for ADR and overlay backlinks is audited separately and does not define Task 9 RNG behavior acceptance semantics."
     ],
     "taskmaster_id": 9,
     "taskmaster_exported": true,

@@ -1,0 +1,21 @@
+# task9 chapter6 execution strategy
+
+- Title: task9 chapter6 execution strategy
+- Date: 2026-04-04
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T9
+- Git Head: 46ce386ce60200fd93cfd3eddbd6c0fb31caf9b2
+- Why now: Task 9 starts without existing pipeline artifacts and must follow chapter 6 sequentially
+- Context: Apply minimal-repeat strategy for 6.7/6.8 while preserving hard-gate integrity
+- Decision: Use fast-ship as default; run full 6.7 once, then 6.8 with rerun-failing-only and max-rounds=1 when needed
+- Consequences: Lower repeated LLM/runtime cost while keeping deterministic gates mandatory
+- Recovery impact: TODO: describe recovery impact
+- Validation: Chapter 6 summaries and logs under logs/ci/<date>
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `9`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
