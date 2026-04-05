@@ -1,0 +1,21 @@
+# task8-ch6-daily-loop
+
+- Title: task8-ch6-daily-loop
+- Status: active
+- Branch: task/T8
+- Git Head: f9bdb32274378d6c703fa380a8e22a751ee1a43c
+- Goal: TODO: describe goal
+- Scope: TODO: define scope
+- Current step: TODO: define current step
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: TODO: define stop-loss boundary
+- Next action: TODO: define next action
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 8 --resume`
+- Open questions: none recorded yet
+- Exit criteria: TODO: define exit criteria
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `8`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
