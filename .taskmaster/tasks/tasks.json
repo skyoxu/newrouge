@@ -349,7 +349,7 @@
         "id": 11,
         "title": "Implement combat resolution pipeline (core)",
         "description": "Implement card play pipeline and validation steps in core combat logic.",
-        "details": "Implement CombatService PlayCard pipeline: Validate, ComputeCost, PayCost, BeforePlay, ResolveEffect, AfterPlay, MoveCard, DeathCheck (pipeline hooks). Focus on deterministic ordering. Refs: ADR-0021, ADR-0032.\n",
+        "details": "Implement CombatService PlayCard pipeline: Validate, ComputeCost, PayCost, BeforePlay, ResolveEffect, AfterPlay, MoveCard, DeathCheck (pipeline hooks). Focus on deterministic ordering, and require PayCost to consume exactly the ComputeCost output exactly once on successful paths. Refs: ADR-0021, ADR-0032.\n",
         "testStrategy": "xUnit tests for pipeline step ordering and deterministic execution with fixed inputs. Refs: ADR-0032.\n",
         "priority": "medium",
         "dependencies": [

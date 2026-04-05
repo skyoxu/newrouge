@@ -1,0 +1,21 @@
+# task11-ch6-daily-loop
+
+- Title: task11-ch6-daily-loop
+- Status: active
+- Branch: task/T11
+- Git Head: b012af119f428f368008861cafa910de26d593f9
+- Goal: Execute workflow Chapter 6 for Task 11 end-to-end with no step skipping, while minimizing unnecessary reruns in 6.7/6.8.
+- Scope: Task 11 only; run 6.1-6.9 in order, use task-scoped evidence and keep deterministic/LLM gates auditable.
+- Current step: 6.4 red-first generation and red verification.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: If any hard precondition gate fails (6.4->6.5, 6.5->6.6, 6.6->6.7), stop advancing and repair the failed stage first.
+- Next action: Run `llm_generate_tests_from_acceptance_refs.py` for Task 11 with `--tdd-stage red-first --verify unit`, then proceed to 6.5.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 11 --resume`
+- Open questions: none recorded yet
+- Exit criteria: 6.7 completed, 6.8 resolved to acceptable state for fast-ship, and 6.9 local hard checks completed.
+- Related ADRs: ADR-0021, ADR-0032
+- Related decision logs: none yet
+- Related task id(s): `11`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
