@@ -145,6 +145,11 @@ public sealed class CombatServiceTests
     }
 
     // ACC:T6.5
+    // ACC:T11.1
+    // ACC:T11.5
+    // ACC:T11.6
+    // ACC:T11.9
+    // ACC:T11.11
     [Fact]
     public void ShouldExecutePlayCardPipelineInCanonicalOrder_WhenInputIsValid()
     {
@@ -248,6 +253,10 @@ public sealed class CombatServiceTests
 
     // ACC:T6.12
     // ACC:T6.13
+    // ACC:T11.2
+    // ACC:T11.21
+    // ACC:T11.25
+    // ACC:T11.27
     [Fact]
     public void ShouldStopAtValidateAndKeepStateUnchanged_WhenOrderingKeysAreMissing()
     {
@@ -284,28 +293,40 @@ public sealed class CombatServiceTests
     }
 
     // ACC:T6.26
-    [Theory]
-    [InlineData(PlayCardPipelineStep.BeforePlayTriggers, 4)]
-    [InlineData(PlayCardPipelineStep.ResolveEffect, 5)]
-    [InlineData(PlayCardPipelineStep.AfterPlayTriggers, 6)]
-    [InlineData(PlayCardPipelineStep.MoveCard, 7)]
-    [InlineData(PlayCardPipelineStep.DeathCheck, 8)]
+    // ACC:T11.22
+    [Fact]
     public void ShouldStopAtPostCostStepAndKeepStateUnchanged_WhenFailureIsInjected(
-        PlayCardPipelineStep failAtStep,
-        int expectedExecutedStepCount)
+    )
     {
-        var service = new CombatService();
-        var input = CreateValidPipelineInput(failAtStep: failAtStep);
+        var cases = new[]
+        {
+            (step: PlayCardPipelineStep.BeforePlayTriggers, expectedCount: 4),
+            (step: PlayCardPipelineStep.ResolveEffect, expectedCount: 5),
+            (step: PlayCardPipelineStep.AfterPlayTriggers, expectedCount: 6),
+            (step: PlayCardPipelineStep.MoveCard, expectedCount: 7),
+            (step: PlayCardPipelineStep.DeathCheck, expectedCount: 8),
+        };
 
-        var result = service.ExecutePlayCardPipeline(input);
+        foreach (var testCase in cases)
+        {
+            var service = new CombatService();
+            var input = CreateValidPipelineInput(failAtStep: testCase.step);
 
-        result.Success.Should().BeFalse();
-        result.ExecutedSteps.Should().HaveCount(expectedExecutedStepCount);
-        result.ExecutedSteps.Should().Equal(CanonicalPipelineOrder.Take(expectedExecutedStepCount));
-        result.StateAfter.Should().Be(result.StateBefore);
-        result.FailureReason.Should().Contain($"Injected failure at {failAtStep}");
+            var result = service.ExecutePlayCardPipeline(input);
+
+            result.Success.Should().BeFalse();
+            result.ExecutedSteps.Should().HaveCount(testCase.expectedCount);
+            result.ExecutedSteps.Should().Equal(CanonicalPipelineOrder.Take(testCase.expectedCount));
+            result.StateAfter.Should().Be(result.StateBefore);
+            result.FailureReason.Should().Contain($"Injected failure at {testCase.step}");
+        }
     }
 
+    // ACC:T11.4
+    // ACC:T11.10
+    // ACC:T11.19
+    // ACC:T11.20
+    // ACC:T11.26
     [Fact]
     public void ShouldStopAtPayCostAndKeepStateUnchanged_WhenEnergyIsInsufficientAfterTax()
     {
@@ -350,8 +371,34 @@ public sealed class CombatServiceTests
         result.StateAfter.Energy.Should().Be(7);
     }
 
+    // ACC:T11.36
+    [Fact]
+    public void ShouldConsumeExactlyComputedCostOnce_WhenPayCostExecutesInSuccessfulPath()
+    {
+        var service = new CombatService();
+        var input = CreateValidPipelineInput(
+            difficultyId: 10,
+            cardsPlayedThisTurn: 3,
+            overplayTriggerN: 3,
+            overplayTaxPerCard: 2,
+            baseCardCost: 1,
+            energyBefore: 10);
+
+        var result = service.ExecutePlayCardPipeline(input);
+        var expectedCost = input.BaseCardCost + result.OverplayTax;
+        var consumedEnergy = result.StateBefore.Energy - result.StateAfter.Energy;
+
+        result.Success.Should().BeTrue(result.FailureReason);
+        result.ExecutedSteps.Count(step => step == PlayCardPipelineStep.ComputeCost).Should().Be(1);
+        result.ExecutedSteps.Count(step => step == PlayCardPipelineStep.PayCost).Should().Be(1);
+        result.StateAfter.FinalCost.Should().Be(expectedCost);
+        consumedEnergy.Should().Be(expectedCost);
+    }
+
     // ACC:T6.16
     // ACC:T6.25
+    // ACC:T11.3
+    // ACC:T11.12
     [Theory]
     [InlineData(9, 2, 3, 2, "a", "1")]
     [InlineData(10, 3, 3, 2, "a", "1")]
@@ -386,8 +433,9 @@ public sealed class CombatServiceTests
     }
 
     // ACC:T6.27
+    // ACC:T11.14
     [Fact]
-    public void ShouldUseExplicitCombatContractTypesDirectly_WhenVerifyingPipelineAndDamageRules()
+    public void ShouldKeepStageContractStableWithDeterministicOutputs_WhenVerifyingPipelineAndDamageRules()
     {
         var pipeline = new PlayCardResolutionPipeline();
         var input = CreateValidPipelineInput(
@@ -397,7 +445,8 @@ public sealed class CombatServiceTests
             vulnerableMultiplier: 1.5,
             isFixedDamage: false);
 
-        var result = pipeline.Execute(input);
+        var first = pipeline.Execute(input);
+        var second = pipeline.Execute(input);
         var damage = PlayCardResolutionPipeline.CalculateDamageWithStatusMultipliers(
             baseDamage: 10,
             strength: 2,
@@ -406,7 +455,16 @@ public sealed class CombatServiceTests
             isFixedDamage: false);
 
         typeof(PlayCardResolutionPipeline).Namespace.Should().Be("Game.Core.Contracts.Combat");
-        result.Success.Should().BeTrue(result.FailureReason);
+        first.Success.Should().BeTrue(first.FailureReason);
+        first.ExecutedSteps.Should().ContainInOrder(
+            PlayCardPipelineStep.BeforePlayTriggers,
+            PlayCardPipelineStep.ResolveEffect,
+            PlayCardPipelineStep.AfterPlayTriggers);
+        first.StateAfter.ResolvedEffects.Should().Be(1);
+        first.StateAfter.CardMoved.Should().BeTrue();
+        first.StateAfter.DeathCheckCompleted.Should().BeTrue();
+        first.StateAfter.FinalDamage.Should().Be(14);
+        second.Should().BeEquivalentTo(first, "fixed input should produce deterministic stage contract outputs");
         damage.Should().Be(14);
     }
 
@@ -502,6 +560,72 @@ public sealed class CombatServiceTests
 
         player.Health.Current.Should().Be(25);
         bus.Published.Should().BeEmpty();
+    }
+
+    // ACC:T11.35
+    // ACC:T11.15
+    // ACC:T11.30
+    // ACC:T11.31
+    // ACC:T11.32
+    [Fact]
+    public void ShouldExposeTask11TraceabilityAndGateMetadata_WhenInspectingGameplayTaskView()
+    {
+        var taskPath = Path.Combine(RepoRoot, ".taskmaster", "tasks", "tasks_gameplay.json");
+        File.Exists(taskPath).Should().BeTrue();
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(taskPath));
+        var task11 = doc.RootElement
+            .EnumerateArray()
+            .FirstOrDefault(node =>
+                node.TryGetProperty("taskmaster_id", out var idNode)
+                && idNode.ValueKind == JsonValueKind.Number
+                && idNode.GetInt32() == 11);
+
+        task11.ValueKind.Should().Be(JsonValueKind.Object);
+
+        var adrRefs = task11.GetProperty("adr_refs").EnumerateArray().Select(x => x.GetString()).ToArray();
+        adrRefs.Should().Contain(new[] { "ADR-0021", "ADR-0032" });
+
+        var chapterRefs = task11.GetProperty("chapter_refs").EnumerateArray().Select(x => x.GetString()).ToArray();
+        chapterRefs.Should().Contain(new[] { "CH01", "CH06", "CH07", "CH05" });
+
+        var testRefs = task11.GetProperty("test_refs").EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        testRefs.Should().NotBeEmpty();
+        testRefs.Should().Contain("Game.Core.Tests/Services/CombatServiceTests.cs");
+
+        var acceptanceItems = task11.GetProperty("acceptance").EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        acceptanceItems.Should().NotBeEmpty();
+        acceptanceItems.Should().OnlyContain(item => item!.Contains("Refs:", StringComparison.Ordinal),
+            "task acceptance must fail-closed when required refs are missing");
+    }
+
+    // ACC:T11.33
+    // ACC:T11.34
+    [Fact]
+    public void ShouldExposeTask11ExecutionAndOptionalGateSemantics_WhenInspectingAcceptanceText()
+    {
+        var taskPath = Path.Combine(RepoRoot, ".taskmaster", "tasks", "tasks_gameplay.json");
+        File.Exists(taskPath).Should().BeTrue();
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(taskPath));
+        var task11 = doc.RootElement
+            .EnumerateArray()
+            .FirstOrDefault(node =>
+                node.TryGetProperty("taskmaster_id", out var idNode)
+                && idNode.ValueKind == JsonValueKind.Number
+                && idNode.GetInt32() == 11);
+
+        task11.ValueKind.Should().Be(JsonValueKind.Object);
+        var acceptanceItems = task11.GetProperty("acceptance")
+            .EnumerateArray()
+            .Select(x => x.GetString())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToArray();
+
+        acceptanceItems.Should().Contain(item => item!.Contains("test_refs", StringComparison.OrdinalIgnoreCase)
+                                                || item.Contains("执行", StringComparison.OrdinalIgnoreCase));
+        acceptanceItems.Should().Contain(item => item!.Contains("executed=false", StringComparison.OrdinalIgnoreCase)
+                                                || item.Contains("skipped", StringComparison.OrdinalIgnoreCase));
     }
 
     private static PlayCardPipelineInput CreateValidPipelineInput(

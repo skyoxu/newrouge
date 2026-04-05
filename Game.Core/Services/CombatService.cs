@@ -1,8 +1,8 @@
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
+using Game.Core.Contracts;
 using Game.Core.Contracts.Combat;
 using Game.Core.Contracts.Interfaces;
-using System.Text.Json;
 
 namespace Game.Core.Services;
 
@@ -25,8 +25,8 @@ public class CombatService
     {
         // Placeholder for future type-based mitigation; for now apply raw amount
         player.TakeDamage(damage.EffectiveAmount);
-        var payload = JsonSerializer.Serialize(new { amount = damage.EffectiveAmount, type = damage.Type.ToString(), critical = damage.IsCritical });
-        _ = _bus?.PublishAsync(new Contracts.DomainEvent(
+        var payload = BuildDamagePayload(damage.EffectiveAmount, damage.Type.ToString(), damage.IsCritical);
+        _ = _bus?.PublishAsync(new DomainEvent(
             Type: "player.damaged",
             Source: nameof(CombatService),
             DataJson: payload,
@@ -58,8 +58,8 @@ public class CombatService
     {
         var final = CalculateDamage(damage, config);
         player.TakeDamage(final);
-        var payload = JsonSerializer.Serialize(new { amount = final, type = damage.Type.ToString(), critical = damage.IsCritical });
-        _ = _bus?.PublishAsync(new Contracts.DomainEvent(
+        var payload = BuildDamagePayload(final, damage.Type.ToString(), damage.IsCritical);
+        _ = _bus?.PublishAsync(new DomainEvent(
             Type: "player.damaged",
             Source: nameof(CombatService),
             DataJson: payload,
@@ -70,7 +70,14 @@ public class CombatService
 
     public PlayCardPipelineResult ExecutePlayCardPipeline(PlayCardPipelineInput input)
     {
-        return _playCardPipeline.Execute(input);
+        var result = _playCardPipeline.Execute(input);
+        PublishPipelineAuditTrail(result);
+        return result;
+    }
+
+    public PlayCardPipelineResult PlayCard(PlayCardPipelineInput input)
+    {
+        return ExecutePlayCardPipeline(input);
     }
 
     public static int CalculateDamageWithStatusMultipliers(
@@ -104,5 +111,44 @@ public class CombatService
     public static IReadOnlyList<CombatantOrderKey> OrderCombatantsDeterministically(IEnumerable<CombatantOrderKey> items)
     {
         return PlayCardResolutionPipeline.SortByDeterministicOrder(items);
+    }
+
+    private void PublishPipelineAuditTrail(PlayCardPipelineResult result)
+    {
+        if (_bus is null)
+        {
+            return;
+        }
+
+        foreach (var step in result.ExecutedSteps)
+        {
+            var phase = step switch
+            {
+                PlayCardPipelineStep.BeforePlayTriggers => "BeforePlayTriggers",
+                PlayCardPipelineStep.ResolveEffect => "ResolveEffect",
+                PlayCardPipelineStep.AfterPlayTriggers => "AfterPlayTriggers",
+                _ => null,
+            };
+
+            if (phase is null)
+            {
+                continue;
+            }
+
+            var payload = $"{{\"phase\":\"{phase}\"}}";
+            _ = _bus.PublishAsync(new DomainEvent(
+                Type: EventTypes.AuditLogged,
+                Source: nameof(CombatService),
+                DataJson: payload,
+                Timestamp: DateTimeOffset.UtcNow,
+                Id: $"audit-{phase}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"));
+        }
+    }
+
+    private static string BuildDamagePayload(int amount, string type, bool critical)
+    {
+        var escapedType = type.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        var criticalLiteral = critical ? "true" : "false";
+        return $"{{\"amount\":{amount},\"type\":\"{escapedType}\",\"critical\":{criticalLiteral}}}";
     }
 }
