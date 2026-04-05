@@ -189,6 +189,63 @@ class LocalHardChecksHarnessTests(unittest.TestCase):
             self.assertFalse((out_dir / "gdunit-hard.log").exists())
             self.assertFalse((out_dir / "smoke-strict.log").exists())
 
+    def test_run_dotnet_coverage_failed_should_be_soft_for_fast_ship(self) -> None:
+        commands: list[list[str]] = []
+        rc_by_index = [0, 0, 2]
+
+        def runner(cmd: list[str]) -> int:
+            commands.append(list(cmd))
+            return rc_by_index[len(commands) - 1]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "local-hard-checks-demo"
+            with mock.patch.object(
+                local_hard_checks_harness,
+                "_should_soft_pass_coverage_failure",
+                return_value=True,
+            ):
+                rc = local_hard_checks_harness.run_local_hard_checks(
+                    delivery_profile="fast-ship",
+                    run_id="local-demo",
+                    out_dir=str(out_dir),
+                    run_fn=runner,
+                )
+
+            self.assertEqual(0, rc)
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("ok", summary["status"])
+            self.assertEqual("", summary["failed_step"])
+            self.assertEqual("run-dotnet", summary["steps"][-1]["name"])
+            self.assertEqual(2, summary["steps"][-1]["rc"])
+            self.assertEqual("ok", summary["steps"][-1]["status"])
+
+    def test_run_dotnet_coverage_failed_should_fail_for_standard(self) -> None:
+        commands: list[list[str]] = []
+        rc_by_index = [0, 0, 2]
+
+        def runner(cmd: list[str]) -> int:
+            commands.append(list(cmd))
+            return rc_by_index[len(commands) - 1]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "local-hard-checks-demo"
+            with mock.patch.object(
+                local_hard_checks_harness,
+                "_should_soft_pass_coverage_failure",
+                return_value=False,
+            ):
+                rc = local_hard_checks_harness.run_local_hard_checks(
+                    delivery_profile="standard",
+                    run_id="local-demo",
+                    out_dir=str(out_dir),
+                    run_fn=runner,
+                )
+
+            self.assertEqual(2, rc)
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("fail", summary["status"])
+            self.assertEqual("run-dotnet", summary["failed_step"])
+
     def test_invalid_summary_should_write_invalid_payload_and_return_two(self) -> None:
         def runner(cmd: list[str]) -> int:
             return 0

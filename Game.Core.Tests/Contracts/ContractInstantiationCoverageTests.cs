@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text.Json;
 using FluentAssertions;
 using Game.Core.Contracts;
+using Game.Core.Contracts.Cards;
 using Game.Core.Domain;
+using Game.Core.Services;
 using Game.Core.Utilities;
 using Xunit;
 
@@ -55,6 +57,8 @@ public class ContractInstantiationCoverageTests
         created.Should().BeGreaterThan(0);
     }
 
+    // ACC:T8.14
+    // ACC:T8.16
     [Fact]
     public void ShouldNonEventContractRecordsShouldBeInstantiableWithSupportedConstructorShapes_WhenExecuted()
     {
@@ -89,6 +93,44 @@ public class ContractInstantiationCoverageTests
 
         unsupported.Should().BeEmpty("all contract records/classes should be constructible with deterministic sample values");
         created.Should().BeGreaterThan(0);
+
+        var service = new CardService();
+        var definition = new CardDefinition(
+            CardId: "warrior.coverage",
+            NameKey: "card.warrior.coverage",
+            DefaultForm: CardForm.Base,
+            IsCurse: false,
+            IsUpgradeable: true,
+            IsUltimateEligible: true);
+        var createdInstance = service.CreateCardInstance(definition, "inst-coverage");
+        var actualProperties = typeof(CardInstance).GetProperties()
+            .Select(property => property.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        createdInstance.InstanceId.Should().Be("inst-coverage");
+        createdInstance.CardId.Should().Be(definition.CardId);
+        createdInstance.Form.Should().Be(CardForm.Base);
+        createdInstance.Route.Should().BeNull();
+        createdInstance.UpgradeTier.Should().Be(0);
+        createdInstance.PermanentCardInstanceModifiers.Should().BeEmpty();
+        actualProperties.Should().BeEquivalentTo(
+            "CardId",
+            "Form",
+            "InstanceId",
+            "IsUltimate",
+            "PermanentCardInstanceModifiers",
+            "Route",
+            "UpgradeTier");
+
+        Action illegalTierRoute = () => _ = new CardInstance(
+            instanceId: "inst-coverage-illegal",
+            cardId: definition.CardId,
+            form: CardForm.U1A,
+            route: null,
+            upgradeTier: 1,
+            permanentCardInstanceModifiers: Array.Empty<CardInstanceModifier>());
+        illegalTierRoute.Should().Throw<ArgumentException>();
     }
 
     [Fact]

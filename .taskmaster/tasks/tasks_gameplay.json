@@ -544,7 +544,9 @@
       "Route values must be restricted to A/B; any other route input is rejected with a stable error code. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O8] U1 升级仅允许 upgrade_route=A 或 upgrade_route=B，并明确各路线可接受输入集合。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
       "[OBL:T8.O8] 对 route A/B 分别给出可断言的通过条件与拒绝条件，拒绝时返回固定错误码。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
-      "[OBL:T8.O8] U1 升级必须显式定义并可审计 route A/B 选择规则。 Refs: Game.Core.Tests/Services/CardServiceTests.cs"
+      "[OBL:T8.O8] U1 升级必须显式定义并可审计 route A/B 选择规则。 Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "[OBL:T8.O16] Creating CardInstance via CardService must reject invalid required inputs deterministically (fixed failure signature) and must not produce observable partial instance state. Refs: Game.Core.Tests/Services/CardServiceTests.cs",
+      "[OBL:T8.O17] Ultimate promotion must enforce legal preconditions; requests from Base or any non-eligible state must fail deterministically and leave form/tier/route/modifiers unchanged. Refs: Game.Core.Tests/Services/CardServiceTests.cs"
     ],
     "test_strategy": [
       "Write xUnit tests in Game.Core.Tests/Cards for card identity, upgrade paths, and modifier inheritance. Reference ADR-0033 in test descriptions. Refs: ADR-0033."

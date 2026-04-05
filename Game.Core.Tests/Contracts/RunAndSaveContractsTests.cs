@@ -18,6 +18,7 @@ namespace Game.Core.Tests.Contracts;
 [Trait("adr", "ADR-0023")]
 public sealed class RunAndSaveContractsTests
 {
+    // ACC:T8.26
     [Fact]
     public void ShouldKeepRunTransitionStateAndCorrelationId_WhenComposingCommandDrivenContracts()
     {

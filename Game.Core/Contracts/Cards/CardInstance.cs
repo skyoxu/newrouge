@@ -17,6 +17,16 @@ public sealed record CardInstance
         IReadOnlyList<CardInstanceModifier> permanentCardInstanceModifiers
     )
     {
+        if (upgradeTier is < 0 or > 2)
+        {
+            throw new ArgumentException("upgradeTier must be between 0 and 2.", nameof(upgradeTier));
+        }
+
+        if (upgradeTier == 1 && (form == CardForm.U1A || form == CardForm.U1B) && route is null)
+        {
+            throw new ArgumentException("when tier is 1 and form is U1A/U1B, route is required.", nameof(route));
+        }
+
         if (upgradeTier == 2 && route is not null)
         {
             throw new ArgumentException("when tier is 2, route must be null.", nameof(route));
@@ -36,7 +46,9 @@ public sealed record CardInstance
         this.Form = form;
         this.Route = route;
         this.UpgradeTier = upgradeTier;
-        this.PermanentCardInstanceModifiers = permanentCardInstanceModifiers ?? Array.Empty<CardInstanceModifier>();
+        this.PermanentCardInstanceModifiers = permanentCardInstanceModifiers is null
+            ? Array.Empty<CardInstanceModifier>()
+            : permanentCardInstanceModifiers.ToArray();
     }
 
     public string InstanceId { get; }
