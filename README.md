@@ -1,61 +1,96 @@
-# NewRouge (Godot 4.5.1 + C#)
+# newrouge (Godot 4.5.1 + C#)
 
-`newrouge` 是一个 Windows-only 的 Godot 4.5.1 + C#（.NET 8）单机项目模板。
+`newrouge` is a Windows-only single-player game project built with Godot 4.5.1 and C# (.NET 8).
 
-## 项目姿态
+## Project Posture
 
 - Delivery profile: `fast-ship`
 - Security profile: `host-safe`
-- 运行平台: Windows Desktop
+- Primary runtime: Windows desktop only
+- Primary PRD-ID: `PRD-NEWROUGE-GAME-0001`
 
 ## Quick Links
 
-- 项目健康面板: `docs/workflows/project-health-dashboard.md`
-- 脚本入口索引: `docs/workflows/script-entrypoints-index.md`
-- 稳定公共入口: `docs/workflows/stable-public-entrypoints.md`
-- 原型工作流: `docs/workflows/prototype-lane.md`
-- 本地硬检查: `docs/workflows/local-hard-checks.md`
+- Agents index: `docs/agents/00-index.md`
+- Session recovery: `docs/agents/01-session-recovery.md`
+- Project docs index: `docs/PROJECT_DOCUMENTATION_INDEX.md`
+- Project health dashboard: `docs/workflows/project-health-dashboard.md`
+- Stable public entrypoints: `docs/workflows/stable-public-entrypoints.md`
+- Script entrypoints index: `docs/workflows/script-entrypoints-index.md`
+- Prototype lane: `docs/workflows/prototype-lane.md`
 
-## 快速开始（Windows）
+## Quick Start (Windows)
 
-1. 安装 Godot .NET 4.5.1 与 .NET 8 SDK。
-2. 设置 Godot 可执行路径。
-   - PowerShell: `$env:GODOT_BIN = "C:\\Godot\\Godot_v4.5.1-stable_mono_win64.exe"`
-3. 恢复并构建。
+1. Install Godot .NET 4.5.1 and .NET 8 SDK.
+2. Set Godot binary path in shell:
+   - PowerShell: `$env:GODOT_BIN = "C:\Godot\Godot_v4.5.1-stable_mono_win64.exe"`
+3. Restore and build:
    - `dotnet restore NewRouge.sln`
    - `dotnet build NewRouge.sln -c Debug`
-4. 可选：执行本地硬检查。
+4. Optional local hard checks:
    - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
 
-## 核心命令
+## Recovery First
 
-- 任务恢复（推荐入口）:
-  - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
-- 任务级评审流水线:
-  - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "$env:GODOT_BIN"`
-- 门禁聚合（仅 hard）:
-  - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+When resuming a task after a reset or another session, do not guess from scattered logs first.
 
-## 核心路径
+1. Read `docs/agents/01-session-recovery.md`
+2. Run `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
+3. Only if that is still insufficient, run `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <task-id>`
 
-- Taskmaster 三联文件:
+Before paying for another full `6.7`, read these signals first:
+
+- `Latest reason`
+- `Latest run type`
+- `Latest reuse mode`
+- `Latest artifact integrity`
+- `Chapter6 blocked by`
+- `Chapter6 stop-loss note`
+- `recommended_action_why`
+
+Recovery stop-loss rules:
+
+- `run_type = planned-only` or `reason = planned_only_incomplete`: treat the bundle as evidence only; do not reopen `6.7` or `6.8` from it
+- `Chapter6 blocked by = artifact_integrity`: fall back to the previous real producer bundle before any rerun choice
+- `rerun_guard`: deterministic cost should not be paid again blindly
+- `llm_retry_stop_loss`: prefer narrow LLM-only closure, not another full rerun
+- `sc_test_retry_stop_loss`: same-run unit retry already proved wasteful; fix unit root cause first
+- `waste_signals`: engine-lane cost was already wasted after a known unit/root-cause failure
+- `recommended_action = needs-fix-fast`: deterministic evidence is already good enough for targeted closure; do not reopen a full rerun first
+
+## Core Repositories and Files
+
+- Taskmaster triplet:
   - `.taskmaster/tasks/tasks.json`
   - `.taskmaster/tasks/tasks_back.json`
   - `.taskmaster/tasks/tasks_gameplay.json`
-- PRD 输入:
+- PRD input:
   - `.taskmaster/docs/prd.txt`
   - `docs/prd/**`
-- 架构与决策:
+- Architecture:
   - `docs/architecture/base/**`
-- `docs/architecture/overlays/<PRD-ID>/08/**`
-  - `docs/adr/ADR-*.md`
-- 运行日志与证据:
-  - `logs/**`
+  - `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/**`
+- ADR index:
+  - `docs/architecture/ADR_INDEX_GODOT.md`
 
-## 工程基线
+## Commands
 
-- 契约 SSoT: `Game.Core/Contracts/**`
-- 契约仅允许 BCL，不允许引用 `Godot.*`
-- 领域逻辑放在 `Game.Core/**`
-- 引擎适配放在 `Game.Godot/**`
-- 文档与任务通过 ADR + Base + Overlay + Refs 保持回链一致
+- Local hard checks:
+  - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "<godot-bin>"`
+  - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
+- Task recovery (canonical):
+  - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
+  - `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <task-id>`
+- Gate bundle only:
+  - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+- Task review pipeline:
+  - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "<godot-bin>"`
+  - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "$env:GODOT_BIN"`
+
+## Engineering Rules
+
+- Contracts SSoT: `Game.Core/Contracts/**`
+- Contract code stays BCL-only, no `Godot.*` references.
+- Domain logic in `Game.Core/**`; engine integration in `Game.Godot/**`.
+- Logs and evidence go to `logs/**`.
+- Keep docs and tasks aligned through ADR + Base + Overlay + Task refs.

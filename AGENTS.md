@@ -75,6 +75,13 @@
 - 门禁聚合:
   - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
 
+## Recovery Stop-Loss Signals
+
+- `rerun_guard`: 确定性路径已经给出停止信号，不要盲目重开 `6.7`。
+- `llm_retry_stop_loss`: 确定性已绿，且首轮长时 LLM 已超时；优先走窄化收敛而非全量重跑。
+- `sc_test_retry_stop_loss`: 同一运行内重复单测重试已证明无效；先修单测根因再继续。
+- `waste_signals`: 在已知单测/根因失败后仍发生引擎链路消耗；应先止损再执行后续步骤。
+
 ## 架构与契约规则
 
 - 契约 SSoT 在 `Game.Core/Contracts/**`。

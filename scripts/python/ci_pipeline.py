@@ -4,7 +4,7 @@ CI pipeline driver (Python): dotnet tests+coverage (soft gate), Godot self-check
 
 Usage (Windows):
   py -3 scripts/python/ci_pipeline.py all \
-    --configuration Debug \
+    --solution auto --configuration Debug \
     --godot-bin "C:\\Godot\\Godot_v4.5.1-stable_mono_win64_console.exe" \
     --build-solutions
 
@@ -17,10 +17,11 @@ import datetime as dt
 import io
 import json
 import os
-import shutil
+import re
 import subprocess
 import sys
-import time
+
+from solution_target import resolve_test_solution_arg
 
 
 def run_cmd(args, cwd=None, timeout=900_000):
@@ -35,62 +36,6 @@ def run_cmd(args, cwd=None, timeout=900_000):
     return p.returncode, out
 
 
-def _resolve_default_solution(root: str | None = None) -> str:
-    """Resolve default solution path with stable priority."""
-    resolved_root = root or os.getcwd()
-    repo_name = os.path.basename(os.path.normpath(resolved_root))
-    try:
-        candidates = sorted(
-            entry
-            for entry in os.listdir(resolved_root)
-            if entry.lower().endswith(".sln")
-        )
-    except OSError:
-        return "Game.sln"
-    if not candidates:
-        return "Game.sln"
-    by_name = {item.lower(): item for item in candidates}
-    preferred_names = (
-        f"{repo_name}.sln",
-        "NewRouge.sln",
-        "GodotGame.sln",
-        "Game.sln",
-    )
-    for preferred in preferred_names:
-        matched = by_name.get(preferred.lower())
-        if matched is not None:
-            return matched
-    return candidates[0]
-
-
-def _safe_int(raw, default):
-    try:
-        return int(str(raw).strip())
-    except Exception:
-        return int(default)
-
-
-def resolve_dotnet_stage_timeout_ms(cli_value):
-    """
-    Resolve outer timeout for run_dotnet stage.
-    Priority:
-      1) CLI --dotnet-stage-timeout-ms
-      2) env CI_DOTNET_STAGE_TIMEOUT_MS
-      3) derived default = max(60m, DOTNET_TEST_TIMEOUT_MS + 5m)
-    """
-    dotnet_test_timeout_ms = max(60_000, _safe_int(os.environ.get('DOTNET_TEST_TIMEOUT_MS', '1800000'), 1_800_000))
-    derived_default = max(3_600_000, dotnet_test_timeout_ms + 300_000)
-
-    if cli_value is not None:
-        candidate = _safe_int(cli_value, derived_default)
-    else:
-        env_value = os.environ.get('CI_DOTNET_STAGE_TIMEOUT_MS', '')
-        candidate = _safe_int(env_value, derived_default) if str(env_value).strip() else derived_default
-
-    # Clamp to [5m, 3h] to avoid accidental 0/negative and runaway values.
-    return max(300_000, min(candidate, 10_800_000))
-
-
 def read_json(path):
     try:
         with io.open(path, 'r', encoding='utf-8') as f:
@@ -99,89 +44,89 @@ def read_json(path):
         return None
 
 
-def run_env_evidence_preflight(root: str, godot_bin: str):
-    """
-    Generate deterministic environment evidence artifacts before unit tests.
-    This keeps cold CI workspaces aligned with acceptance test expectations.
-    """
-    sc_dir = os.path.join(root, 'scripts', 'sc')
-    if not os.path.isdir(sc_dir):
-        return 1, {'status': 'fail', 'reason': f'missing scripts/sc: {sc_dir}'}
-
-    added_path = False
-    if sc_dir not in sys.path:
-        sys.path.insert(0, sc_dir)
-        added_path = True
-
+def copy_if_exists(src_path: str, dst_path: str) -> bool:
+    if not src_path or not os.path.exists(src_path):
+        return False
     try:
-        from _env_evidence_preflight import step_env_evidence_preflight
-        from _util import ci_dir
-
-        step = step_env_evidence_preflight(ci_dir('ci-pipeline-env-preflight'), godot_bin=godot_bin, task_id='1')
-        details = dict(getattr(step, 'details', {}) or {})
-        details.update(
-            {
-                'name': getattr(step, 'name', 'env-evidence-preflight'),
-                'status': getattr(step, 'status', 'fail'),
-                'rc': getattr(step, 'rc', 1),
-                'log': getattr(step, 'log', None),
-            }
-        )
-        return int(getattr(step, 'rc', 1)), details
-    except Exception as exc:
-        return 1, {'status': 'fail', 'reason': f'env preflight import/exec error: {exc}'}
-    finally:
-        if added_path:
-            try:
-                sys.path.remove(sc_dir)
-            except ValueError:
-                pass
+        with io.open(src_path, 'r', encoding='utf-8', errors='ignore') as rf:
+            content = rf.read()
+        with io.open(dst_path, 'w', encoding='utf-8') as wf:
+            wf.write(content)
+        return True
+    except Exception:
+        return False
 
 
-def run_env_evidence_preflight_with_retry(root: str, godot_bin: str):
+def extract_failed_tests(dotnet_test_output: str):
     """
-    Retry preflight once to reduce transient CI flakiness (cold workspace/path race).
+    Parse failed test names from dotnet test console output.
+    Compatible with common VSTest/xUnit output lines, for example:
+      Failed Namespace.Class.TestName [123 ms]
+      [FAIL] Namespace.Class.TestName
     """
-    rc, details = run_env_evidence_preflight(root, godot_bin)
-    if rc == 0:
-        return rc, details, 1
-    time.sleep(2.0)
-    rc2, details2 = run_env_evidence_preflight(root, godot_bin)
-    return rc2, details2, 2
+    if not dotnet_test_output:
+        return []
+
+    failed = []
+    for raw in dotnet_test_output.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        # Pattern: "Failed Namespace.Class.Test [123 ms]"
+        m = re.match(r'^Failed\s+(.+?)\s+\[[0-9]+(?:\.[0-9]+)?\s*ms\]$', line)
+        if m:
+            failed.append(m.group(1).strip())
+            continue
+
+        # Pattern: "[FAIL] Namespace.Class.Test"
+        m = re.match(r'^\[FAIL\]\s+(.+)$', line)
+        if m:
+            failed.append(m.group(1).strip())
+            continue
+
+        # Pattern: "X Namespace.Class.Test [123ms]"
+        m = re.match(r'^[xX]\s+(.+?)\s+\[[0-9]+(?:\.[0-9]+)?\s*ms\]$', line)
+        if m:
+            failed.append(m.group(1).strip())
+
+    # Stable de-duplication, keep first occurrence.
+    seen = set()
+    deduped = []
+    for item in failed:
+        if item in seen:
+            continue
+        seen.add(item)
+        deduped.append(item)
+    return deduped
 
 
-def main(argv=None):
+def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
     ap_all = sub.add_parser('all')
-    ap_all.add_argument('--solution', default='', help='solution path; auto-resolved when omitted')
+    ap_all.add_argument('--solution', default='')
     ap_all.add_argument('--configuration', default='Debug')
     ap_all.add_argument('--godot-bin', required=True)
     ap_all.add_argument('--project', default='project.godot')
     ap_all.add_argument('--build-solutions', action='store_true')
-    ap_all.add_argument(
-        '--dotnet-stage-timeout-ms',
-        type=int,
-        default=None,
-        help='Outer timeout for run_dotnet stage in milliseconds. Default derives from DOTNET_TEST_TIMEOUT_MS and is at least 3600000.',
-    )
 
-    args = ap.parse_args(argv)
+    args = ap.parse_args()
     if args.cmd != 'all':
         print('Unsupported command')
         return 1
 
     root = os.getcwd()
-    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution(root)
+    resolved_solution = resolve_test_solution_arg(args.solution)
     date = dt.date.today().strftime('%Y-%m-%d')
     ci_dir = os.path.join('logs', 'ci', date)
     os.makedirs(ci_dir, exist_ok=True)
 
     summary = {
+        'solution': resolved_solution,
+        'solution_input': args.solution,
         'manual_triplet_examples': {},
         'whitelist_expiry_warning': {},
-        'preflight_env_evidence': {},
-        'preflight_task1': {},
         'dotnet': {},
         'selfcheck': {},
         'encoding': {},
@@ -189,26 +134,14 @@ def main(argv=None):
     }
     hard_fail = False
 
-    # Keep preflight/test environment deterministic.
-    os.environ['GODOT_BIN'] = args.godot_bin
-
     # 0) Enforce unified task-level entrypoint command policy (hard gate)
-    rc0, out0 = run_cmd(
-        [
-            'py',
-            '-3',
-            'scripts/python/forbid_manual_sc_triplet_examples.py',
-            '--root',
-            '.',
-            '--mode',
-            'all',
-            '--whitelist',
-            'docs/workflows/unified-pipeline-command-whitelist.txt',
-            '--whitelist-metadata',
-            'require',
-        ],
-        cwd=root,
-    )
+    rc0, out0 = run_cmd([
+        'py', '-3', 'scripts/python/forbid_manual_sc_triplet_examples.py',
+        '--root', '.',
+        '--mode', 'all',
+        '--whitelist', 'docs/workflows/unified-pipeline-command-whitelist.txt',
+        '--whitelist-metadata', 'require',
+    ], cwd=root)
     with io.open(os.path.join(ci_dir, 'forbid-manual-sc-triplet-examples.log'), 'w', encoding='utf-8') as f:
         f.write(out0)
     manual_sum = read_json(os.path.join('logs', 'ci', date, 'forbid-manual-sc-triplet-examples.json')) or {}
@@ -223,18 +156,11 @@ def main(argv=None):
         hard_fail = True
 
     # 0.5) Soft warning: whitelist expiry horizon.
-    rcw, outw = run_cmd(
-        [
-            'py',
-            '-3',
-            'scripts/python/warn_whitelist_expiry.py',
-            '--root',
-            '.',
-            '--whitelist',
-            'docs/workflows/unified-pipeline-command-whitelist.txt',
-        ],
-        cwd=root,
-    )
+    rcw, outw = run_cmd([
+        'py', '-3', 'scripts/python/warn_whitelist_expiry.py',
+        '--root', '.',
+        '--whitelist', 'docs/workflows/unified-pipeline-command-whitelist.txt',
+    ], cwd=root)
     with io.open(os.path.join(ci_dir, 'whitelist-expiry-warning.log'), 'w', encoding='utf-8') as f:
         f.write(outw)
     warn_sum = read_json(os.path.join('logs', 'ci', date, 'whitelist-expiry-warning.json')) or {}
@@ -246,70 +172,45 @@ def main(argv=None):
         'warn_days': warn_sum.get('warn_days'),
     }
 
-    # 1) Environment preflight artifacts (hard gate, with one retry for transient failures)
-    preflight_rc, preflight_details, preflight_attempts = run_env_evidence_preflight_with_retry(root, args.godot_bin)
-    preflight_details = dict(preflight_details or {})
-    preflight_details['attempts'] = preflight_attempts
-    summary['preflight_env_evidence'] = preflight_details
-    summary['preflight_task1'] = preflight_details
-    if preflight_rc != 0:
-        hard_fail = True
-
-    # 2) Dotnet tests + coverage (soft gate on coverage)
-    dotnet_stage_timeout_ms = resolve_dotnet_stage_timeout_ms(args.dotnet_stage_timeout_ms)
+    # 1) Dotnet tests + coverage (soft gate on coverage)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
                        '--solution', resolved_solution,
-                       '--configuration', args.configuration], cwd=root, timeout=dotnet_stage_timeout_ms)
-    with io.open(os.path.join(ci_dir, 'dotnet-run-dotnet-stdout.txt'), 'w', encoding='utf-8') as f:
+                       '--configuration', args.configuration], cwd=root)
+    with io.open(os.path.join(ci_dir, 'run-dotnet-console.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
-    dotnet_status = dotnet_sum.get('status')
-    if rc == 124 and not dotnet_status:
-        dotnet_status = 'timeout'
-    timeout_reason = None
-    if rc == 124:
-        timeout_reason = 'ci_pipeline_dotnet_stage_timeout'
-        tail = '\n'.join((out or '').splitlines()[-120:])
-        with io.open(os.path.join(ci_dir, 'dotnet-timeout-tail.txt'), 'w', encoding='utf-8') as f:
-            f.write(tail)
+    dotnet_out_dir = dotnet_sum.get('out_dir') if isinstance(dotnet_sum, dict) else None
+    dotnet_test_output_src = os.path.join(dotnet_out_dir, 'dotnet-test-output.txt') if dotnet_out_dir else ''
+    dotnet_test_output_ci = os.path.join(ci_dir, 'dotnet-test-output.txt')
+    copied_test_output = copy_if_exists(dotnet_test_output_src, dotnet_test_output_ci)
+    dotnet_test_output_text = ''
+    if copied_test_output:
+        try:
+            with io.open(dotnet_test_output_ci, 'r', encoding='utf-8', errors='ignore') as f:
+                dotnet_test_output_text = f.read()
+        except Exception:
+            dotnet_test_output_text = ''
+    failed_tests = extract_failed_tests(dotnet_test_output_text)
     summary['dotnet'] = {
-        'solution': resolved_solution,
         'rc': rc,
-        'stage_timeout_ms': dotnet_stage_timeout_ms,
-        'timed_out': rc == 124,
-        'reason': timeout_reason,
         'line_pct': (dotnet_sum.get('coverage') or {}).get('line_pct'),
         'branch_pct': (dotnet_sum.get('coverage') or {}).get('branch_pct'),
-        'status': dotnet_status,
-        'test_attempts': dotnet_sum.get('test_attempts') or [],
-        'failure_excerpt': dotnet_sum.get('failure_excerpt') or [],
+        'status': dotnet_sum.get('status'),
+        'run_dotnet_console_log': os.path.join(ci_dir, 'run-dotnet-console.txt'),
+        'dotnet_test_output_log': dotnet_test_output_ci if copied_test_output else None,
+        'failed_tests_count': len(failed_tests),
+        'failed_tests': failed_tests[:50],
     }
-    # Persist dotnet detailed outputs into logs/ci for artifact-based diagnosis.
-    try:
-        unit_dir = os.path.join('logs', 'unit', date)
-        for file_name in ('dotnet-test-output.txt', 'dotnet-restore.log', 'summary.json'):
-            src = os.path.join(unit_dir, file_name)
-            if os.path.exists(src):
-                shutil.copyfile(src, os.path.join(ci_dir, f'dotnet-{file_name}'))
-        attempt_files = [name for name in os.listdir(unit_dir) if name.startswith('dotnet-test-output-attempt-')]
-        for attempt_name in attempt_files:
-            src = os.path.join(unit_dir, attempt_name)
-            if os.path.exists(src):
-                shutil.copyfile(src, os.path.join(ci_dir, attempt_name))
-    except Exception:
-        pass
     if rc not in (0, 2) or summary['dotnet']['status'] == 'tests_failed':
         hard_fail = True
 
-    # 3) Godot self-check (hard gate, with one retry to reduce transient launch flakiness)
+    # 2) Godot self-check (hard gate)
     # ensure autoload fixed (explicit project path)
     _ = run_cmd(['py', '-3', 'scripts/python/godot_selfcheck.py', 'fix-autoload', '--project', args.project], cwd=root)
-    sc_args_base = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
-    sc_args = list(sc_args_base)
+    sc_args = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
     if args.build_solutions:
         sc_args.append('--build-solutions')
     rc2, out2 = run_cmd(sc_args, cwd=root, timeout=600_000)
-    sc_attempts = 1
     # persist raw stdout for diagnosis
     os.makedirs(os.path.join('logs', 'ci', date), exist_ok=True)
     with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout.txt'), 'w', encoding='utf-8') as f:
@@ -344,30 +245,11 @@ def main(argv=None):
         pass
 
     sc_ok = (sc_sum.get('status') == 'ok') or (rc2 == 0)
-    if not sc_ok:
-        time.sleep(2.0)
-        rc_retry, out_retry = run_cmd(sc_args_base, cwd=root, timeout=600_000)
-        with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout-retry.txt'), 'w', encoding='utf-8') as f:
-            f.write(out_retry)
-        sc_attempts = 2
-        if rc_retry == 0:
-            rc2 = rc_retry
-            out2 = out_retry
-            sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or {'status': 'ok', 'note': 'retry_rc_zero'}
-            sc_ok = True
-        else:
-            # Keep latest status payload if it became available during retry.
-            sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or sc_sum
-            sc_ok = (sc_sum.get('status') == 'ok') or (rc_retry == 0)
-            rc2 = rc_retry
-            out2 = out_retry
-    sc_sum = dict(sc_sum or {})
-    sc_sum['attempts'] = sc_attempts
     summary['selfcheck'] = sc_sum or {'status': 'fail', 'note': 'no-summary'}
     if not sc_ok:
         hard_fail = True
 
-    # 4) Encoding scan (soft gate)
+    # 3) Encoding scan (soft gate)
     rc3, out3 = run_cmd(['py', '-3', 'scripts/python/check_encoding.py', '--since-today'], cwd=root)
     enc_sum = read_json(os.path.join('logs', 'ci', date, 'encoding', 'session-summary.json')) or {}
     summary['encoding'] = enc_sum
@@ -377,18 +259,10 @@ def main(argv=None):
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
     print(
-        "CI_PIPELINE status={status} manual_examples={manual_examples} whitelist_expiry={whitelist_expiry} "
-        "dotnet={dotnet} dotnet_rc={dotnet_rc} dotnet_timeout_ms={dotnet_timeout_ms} "
-        "selfcheck={selfcheck} encoding_bad={encoding_bad}".format(
-            status=summary['status'],
-            manual_examples=summary['manual_triplet_examples'].get('status'),
-            whitelist_expiry=summary['whitelist_expiry_warning'].get('status'),
-            dotnet=summary['dotnet'].get('status'),
-            dotnet_rc=summary['dotnet'].get('rc'),
-            dotnet_timeout_ms=summary['dotnet'].get('stage_timeout_ms'),
-            selfcheck=summary['selfcheck'].get('status'),
-            encoding_bad=summary['encoding'].get('bad', 'n/a'),
-        )
+        f"CI_PIPELINE status={summary['status']} manual_examples={summary['manual_triplet_examples'].get('status')} "
+        f"whitelist_expiry={summary['whitelist_expiry_warning'].get('status')} "
+        f"dotnet={summary['dotnet'].get('status')} selfcheck={summary['selfcheck'].get('status')} "
+        f"encoding_bad={summary['encoding'].get('bad', 'n/a')}"
     )
     return 0 if not hard_fail else 1
 

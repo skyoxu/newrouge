@@ -5,6 +5,9 @@ Execution planning and orchestration helpers for acceptance_check.
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 from typing import Any, Callable
 
 from _acceptance_evidence_steps import (
@@ -33,6 +36,68 @@ from _acceptance_steps import (
     step_ui_event_security,
 )
 from _env_evidence_preflight import step_env_evidence_preflight
+
+
+_REUSABLE_REGISTRY_STEP_GROUPS: dict[str, list[str]] = {
+    "adr": ["adr-compliance"],
+    "links": ["task-links-validate", "task-test-refs", "acceptance-refs", "acceptance-anchors"],
+    "subtasks": ["subtasks-coverage"],
+    "overlay": ["validate-task-overlays"],
+    "contracts": ["validate-contracts"],
+    "arch": ["architecture-boundary"],
+    "build": ["dotnet-build-warnaserror"],
+}
+
+
+def _load_acceptance_reuse_summary_from_env() -> tuple[Path | None, dict[str, Any] | None]:
+    raw_path = str(os.environ.get("SC_ACCEPTANCE_REUSE_SUMMARY") or "").strip()
+    if not raw_path:
+        return None, None
+    summary_path = Path(raw_path)
+    if not summary_path.exists():
+        return None, None
+    try:
+        payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    except Exception:
+        return summary_path, None
+    return summary_path, payload if isinstance(payload, dict) else None
+
+
+def _build_reused_registry_steps(*, group: str, source_summary_path: Path, payload: dict[str, Any]) -> list[StepResult] | None:
+    if str(payload.get("status") or "").strip().lower() != "ok":
+        return None
+    required_step_names = _REUSABLE_REGISTRY_STEP_GROUPS.get(group) or []
+    if not required_step_names:
+        return None
+    step_rows = payload.get("steps") if isinstance(payload.get("steps"), list) else []
+    step_map = {
+        str(row.get("name") or "").strip(): row
+        for row in step_rows
+        if isinstance(row, dict) and str(row.get("name") or "").strip()
+    }
+    reused_steps: list[StepResult] = []
+    for step_name in required_step_names:
+        source_row = step_map.get(step_name)
+        if not isinstance(source_row, dict):
+            return None
+        if str(source_row.get("status") or "").strip().lower() != "ok":
+            return None
+        if int(source_row.get("rc") or 0) != 0:
+            return None
+        details = dict(source_row.get("details") or {}) if isinstance(source_row.get("details"), dict) else {}
+        details["reused"] = True
+        details["source_summary_file"] = str(source_summary_path)
+        reused_steps.append(
+            StepResult(
+                name=step_name,
+                status="ok",
+                rc=0,
+                cmd=list(source_row.get("cmd") or []) or None,
+                log=str(source_row.get("log") or "").strip() or None,
+                details=details,
+            )
+        )
+    return reused_steps
 
 
 def is_enabled(only_steps: set[str] | None, key: str) -> bool:
@@ -152,6 +217,7 @@ def run_registry_steps(
     godot_bin: str | None,
 ) -> list[StepResult]:
     steps: list[StepResult] = []
+    reuse_summary_path, reuse_summary_payload = _load_acceptance_reuse_summary_from_env()
 
     if is_enabled(only_steps, "tests") and needs_env_preflight:
         steps.append(step_env_evidence_preflight(out_dir, godot_bin=godot_bin, task_id=str(triplet.task_id)))
@@ -200,7 +266,17 @@ def run_registry_steps(
 
     for key, run in handlers:
         if is_enabled(only_steps, key):
-            steps.extend(run())
+            reused_steps = None
+            if reuse_summary_path is not None and isinstance(reuse_summary_payload, dict):
+                reused_steps = _build_reused_registry_steps(
+                    group=key,
+                    source_summary_path=reuse_summary_path,
+                    payload=reuse_summary_payload,
+                )
+            if reused_steps is not None:
+                steps.extend(reused_steps)
+            else:
+                steps.extend(run())
     return steps
 
 

@@ -22,6 +22,7 @@ from _project_health_common import (
     unit_test_files,
     write_project_health_record,
 )
+from solution_resolver import resolve_solution_path
 
 
 def detect_project_stage(root: Path | str | None = None) -> dict[str, Any]:
@@ -107,6 +108,8 @@ def doctor_project(root: Path | str | None = None) -> dict[str, Any]:
     resolved_root = resolve_root(root)
     real_triplet = task_triplet_paths(resolved_root, Path(".taskmaster") / "tasks")
     example_triplet = task_triplet_paths(resolved_root, Path("examples") / "taskmaster")
+    resolved_solution_name = resolve_solution_path("auto", repo_root=resolved_root)
+    resolved_solution_path = resolved_root / resolved_solution_name
 
     checks = [
         doctor_check(
@@ -132,10 +135,10 @@ def doctor_project(root: Path | str | None = None) -> dict[str, Any]:
         ),
         doctor_check(
             check_id="solution",
-            status="ok" if (resolved_root / "Game.sln").exists() else "fail",
-            path="Game.sln",
-            summary="solution exists" if (resolved_root / "Game.sln").exists() else "Game.sln is missing",
-            recommendation="keep the .NET solution in repo root" if (resolved_root / "Game.sln").exists() else "restore or create Game.sln",
+            status="ok" if resolved_solution_path.exists() else "fail",
+            path=resolved_solution_name,
+            summary="solution exists" if resolved_solution_path.exists() else f"{resolved_solution_name} is missing",
+            recommendation="keep the .NET solution in repo root" if resolved_solution_path.exists() else f"restore or create {resolved_solution_name}",
         ),
         doctor_check(
             check_id="core-tests-csproj",
@@ -317,7 +320,7 @@ def check_directory_boundaries(root: Path | str | None = None) -> dict[str, Any]
             {
                 "rule_id": "root-taskdoc-not-tracked",
                 "path": tracked,
-                "summary": "root taskdoc should not be git-tracked in the template repo",
+                "summary": "root taskdoc should not be git-tracked in this repository",
             }
         )
 
