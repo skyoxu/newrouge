@@ -371,6 +371,33 @@ Chapter 6 的正确升级单位是：
   - `sc-test.log`
   - `child-artifacts/sc-acceptance-check/summary.json`
 
+### 7.1 Fast mode 最省时执行模板
+
+推荐命令顺序：
+
+1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+2. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
+3. `py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify unit`
+4. `py -3 scripts/sc/build.py tdd --task-id <id> --stage green`
+5. `py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor`
+6. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
+7. 只有出现 `Needs Fix` 时，再跑 `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1`
+8. `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
+
+省时原则：
+
+- 6.4 首轮用轻验证，不先上 `--verify all`。
+- 6.7 先判断故障归属，不把仓库级噪音当成当前任务问题。
+- 6.8 只为新修复的 reviewer 锚点再付一次 LLM 成本。
+- deterministic 已 clean 但只剩 P2/P3 证据问题时，默认记录并止损。
+
+基于 T14 的补充止损规则：
+
+- 6.4 首轮如果新建 `.gd` 测试文件较多，不要直接上 `--verify all`；先用最便宜的 red 验证口径拿到干净证据。
+- 6.7 首轮若在 `sc-test` 就暴露仓库级噪音、锁进程或 `rc=124` 超时，先停下来查 `run-events.jsonl`、`child-artifacts/sc-test/summary.json`、`sc-test.log`，不要连续多次 `--resume`。
+- 同一个 run 连续两次在 `sc-test` 失败时，默认判定这个 run 已经没有继续价值；修根因后新开 run。
+- 6.8 只有在本轮改动直接命中上一轮 reviewer 锚点时才值得立刻重跑；如果 deterministic 已经稳定通过，剩余只是 P2/P3 证据强度问题，默认记录并止损，不再重复支付 LLM 成本。
+
 ## 8. 最终结论
 
 基于 T56 日志驱动的这轮优化后，本仓第六章已经具备以下性质：

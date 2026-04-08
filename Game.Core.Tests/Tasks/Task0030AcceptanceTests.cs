@@ -314,12 +314,12 @@ public sealed class Task0030AcceptanceTests
         var index = checklist.IndexOf(section, StringComparison.Ordinal);
         index.Should().BeGreaterOrEqualTo(0, "checklist must include Task30 ADR Mapping section");
 
-        var slice = checklist[index..];
+        var nextHeading = checklist.IndexOf("\n## ", index + section.Length, StringComparison.Ordinal);
+        var slice = nextHeading > index ? checklist[index..nextHeading] : checklist[index..];
+        var adrRegex = new Regex(@"ADR-\d{4}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         return slice
             .Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.StartsWith("- ADR-", StringComparison.OrdinalIgnoreCase))
-            .Select(line => line.TrimStart('-').Trim().ToUpperInvariant())
+            .SelectMany(line => adrRegex.Matches(line).Cast<Match>().Select(m => m.Value.ToUpperInvariant()))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 

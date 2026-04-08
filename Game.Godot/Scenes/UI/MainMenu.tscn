@@ -18,15 +18,21 @@ offset_top = 40.0
 offset_right = 300.0
 offset_bottom = 240.0
 
-[node name="BtnPlay" type="Button" parent="VBox"]
+[node name="BtnNewRun" type="Button" parent="VBox"]
 layout_mode = 2
-text = "ui.menu.start"
+text = "ui.menu.new_run"
 
-[node name="BtnSettings" type="Button" parent="VBox"]
+[node name="BtnContinue" type="Button" parent="VBox"]
 layout_mode = 2
-text = "ui.menu.settings"
+text = "ui.menu.continue"
 
 [node name="BtnQuit" type="Button" parent="VBox"]
 layout_mode = 2
 text = "ui.menu.quit"
+
+[node name="OverwriteConfirmDialog" type="ConfirmationDialog" parent="."]
+title = "ui.menu.confirm_overwrite.title"
+dialog_text = "ui.menu.confirm_overwrite.body"
+ok_button_text = "ui.menu.confirm"
+cancel_button_text = "ui.menu.cancel"
 

@@ -261,3 +261,20 @@ py -3 scripts/python/run_single_task_light_lane_batch.py --task-id-start 101 --t
 - 当 `run_review_pipeline.py` 已存在时，不要手工串 test + acceptance + llm review
 - 新仓不要等到第一笔业务提交前，才第一次跑 `run-local-hard-checks`
 
+## PR#61 增量入口（建议）
+
+- 当你改了 acceptance wording、`Refs:`、anchors 或测试映射时，先做轻量预检，再进 6.7/6.8：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-acceptance-preflight --task-id <id>
+```
+
+- 进入完整 6.9 前，先跑轻量硬门前置：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profile fast-ship
+```
+
+- `run_review_pipeline.py` 可显式传 `--llm-agent-timeouts`，并与自动超时推导合并（显式值优先）。
+- `llm_review_needs_fix_fast.py` 在 fast-ship 小 diff 中间回合会优先做 `code-reviewer` 定向扩时；当最近完整 pipeline 已 clean 且是 docs-only 变更时允许 clean-skip。
+

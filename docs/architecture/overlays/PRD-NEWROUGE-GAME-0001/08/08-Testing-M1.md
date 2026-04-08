@@ -80,3 +80,19 @@ Test-Refs:
   - valid JSON maps `schema_version/act_id/node_graph/pools/encounters`
   - missing or unsupported `schema_version` must fail with assertable error code/message
   - read/deserialize failure must return deterministic failure result
+
+
+## 7. Task14 Test-Refs
+- Task: `T14 / GM-0114`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0014_acceptance.gd`
+  - `Tests.Godot/tests/UI/test_main_menu_scene.gd`
+  - `Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd`
+  - `Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd`
+  - `Tests.Godot/tests/UI/test_main_menu_translations.gd`
+  - `Tests.Godot/tests/UI/test_main_menu_events.gd`
+- Gate focus:
+  - Main menu scene loads and remains visible
+  - New Run/Continue/Quit flow checks are covered
+  - Visible UI text is resolved from translations
+  - Traceability includes ADR-0032 and ADR-0010

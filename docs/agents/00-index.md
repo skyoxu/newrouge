@@ -16,6 +16,17 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 10. Newest files in `execution-plans/` and `decision-logs/`
 11. `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` only when the recovery summary still needs deeper inspection
 
+## Chapter 6 Fast-Ship Card
+
+Use this when you need the cheapest safe daily loop for a single task. Full details live in [workflow.md](../../workflow.md).
+
+1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+2. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
+3. `6.4 -> 6.5 -> 6.6` in order, keeping the first red run as light as possible
+4. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
+5. Only run `6.8` when the current edits directly hit the previous reviewer anchors
+6. If `sc-test` fails twice in the same run, stop resuming and fix the root cause before starting a new run
+
 ## By Topic
 - Project overview, startup, stack, and legacy AGENTS background sections:
   - [14-startup-stack-and-template-structure.md](14-startup-stack-and-template-structure.md)
