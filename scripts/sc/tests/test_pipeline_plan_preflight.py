@@ -140,6 +140,25 @@ class PipelinePlanPreflightTests(unittest.TestCase):
         self.assertNotIn("--require-headless-e2e", cmd)
         self.assertNotIn("--perf-p95-ms", cmd)
 
+    def test_build_acceptance_command_preflight_should_include_subtasks_when_enabled(self) -> None:
+        cmd = build_acceptance_command(
+            args=self._args(),
+            task_id="56",
+            run_id="d" * 32,
+            delivery_profile="fast-ship",
+            security_profile="host-safe",
+            acceptance_defaults={
+                "require_task_test_refs": True,
+                "subtasks_coverage": "warn",
+            },
+            preflight=True,
+        )
+
+        self.assertIn("--only", cmd)
+        self.assertEqual("adr,links,subtasks,overlay,contracts,arch,build", cmd[cmd.index("--only") + 1])
+        self.assertIn("--subtasks-coverage", cmd)
+        self.assertEqual("warn", cmd[cmd.index("--subtasks-coverage") + 1])
+
 
 if __name__ == "__main__":
     unittest.main()

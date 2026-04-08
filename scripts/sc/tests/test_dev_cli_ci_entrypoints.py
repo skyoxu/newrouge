@@ -106,25 +106,6 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
         self.assertIn("--configuration", legacy_cmd)
         self.assertIn("Release", legacy_cmd)
 
-    def test_run_ci_basic_should_resolve_solution_when_legacy_preflight_omits_solution(self) -> None:
-        with mock.patch.object(dev_cli, "_resolve_default_solution", return_value="NewRouge.sln") as resolver_mock, \
-            mock.patch.object(dev_cli, "run", side_effect=[0, 0]) as run_mock:
-            rc = dev_cli.main(
-                [
-                    "run-ci-basic",
-                    "--legacy-preflight",
-                    "--godot-bin",
-                    "C:/Godot/Godot.exe",
-                ]
-            )
-
-        self.assertEqual(0, rc)
-        self.assertEqual(2, run_mock.call_count)
-        resolver_mock.assert_called_once_with()
-        legacy_cmd = run_mock.call_args_list[1][0][0]
-        self.assertIn("--solution", legacy_cmd)
-        self.assertIn("NewRouge.sln", legacy_cmd)
-
     def test_run_quality_gates_should_delegate_to_quality_gates_entrypoint(self) -> None:
         with mock.patch.object(dev_cli, "run", return_value=0) as run_mock:
             rc = dev_cli.main(
@@ -157,17 +138,6 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
         self.assertEqual("--task-file", cmd[task_files_index + 2])
         self.assertEqual("custom/tasks_gameplay.json", cmd[task_files_index + 3])
         self.assertNotIn("--godot-bin", cmd)
-
-    def test_run_quality_gates_should_resolve_solution_when_omitted(self) -> None:
-        with mock.patch.object(dev_cli, "_resolve_default_solution", return_value="NewRouge.sln") as resolver_mock, \
-            mock.patch.object(dev_cli, "run", return_value=0) as run_mock:
-            rc = dev_cli.main(["run-quality-gates"])
-
-        self.assertEqual(0, rc)
-        resolver_mock.assert_called_once_with()
-        cmd = run_mock.call_args[0][0]
-        self.assertIn("--solution", cmd)
-        self.assertIn("NewRouge.sln", cmd)
 
     def test_run_quality_gates_should_forward_optional_godot_steps(self) -> None:
         with mock.patch.object(dev_cli, "run", return_value=0) as run_mock:
@@ -212,7 +182,7 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
         self.assertEqual(0, rc)
         run_mock.assert_not_called()
         harness_mock.assert_called_once_with(
-            solution="NewRouge.sln",
+            solution=dev_cli.resolve_test_solution_path("auto"),
             configuration="Debug",
             godot_bin="C:/Godot/Godot.exe",
             delivery_profile="standard",
@@ -229,24 +199,7 @@ class DevCliCiEntrypointsTests(unittest.TestCase):
 
         self.assertEqual(7, rc)
         harness_mock.assert_called_once_with(
-            solution="NewRouge.sln",
-            configuration="Debug",
-            godot_bin="",
-            delivery_profile="",
-            task_files=dev_cli.DEFAULT_GATE_BUNDLE_TASK_FILES,
-            out_dir="",
-            run_id="",
-            timeout_sec=5,
-            run_fn=dev_cli.run,
-        )
-
-    def test_run_local_hard_checks_should_preserve_explicit_solution(self) -> None:
-        with mock.patch.object(dev_cli, "run_local_hard_checks", create=True, return_value=0) as harness_mock:
-            rc = dev_cli.main(["run-local-hard-checks", "--solution", "Game.sln"])
-
-        self.assertEqual(0, rc)
-        harness_mock.assert_called_once_with(
-            solution="Game.sln",
+            solution=dev_cli.resolve_test_solution_path("auto"),
             configuration="Debug",
             godot_bin="",
             delivery_profile="",

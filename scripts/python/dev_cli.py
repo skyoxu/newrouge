@@ -36,6 +36,7 @@ from dev_cli_builders import (
     build_smoke_strict_cmd,
 )
 from local_hard_checks_harness import run_local_hard_checks
+from solution_resolver import resolve_solution_path, resolve_test_solution_path
 
 
 def run(cmd: list[str]) -> int:
@@ -44,36 +45,6 @@ def run(cmd: list[str]) -> int:
     print(f"[dev_cli] running: {' '.join(cmd)}")
     proc = subprocess.run(cmd, text=True)
     return proc.returncode
-
-
-def _resolve_default_solution() -> str:
-    """Resolve default solution path for local hard checks.
-
-    Priority:
-    1) <repo-name>.sln
-    2) NewRouge.sln
-    3) GodotGame.sln
-    4) Game.sln
-    5) first discovered *.sln
-    6) fallback to Game.sln
-    """
-
-    root = Path(__file__).resolve().parents[2]
-    candidates = sorted(root.glob("*.sln"))
-    if not candidates:
-        return "Game.sln"
-    by_name = {item.name.lower(): item for item in candidates}
-    preferred_names = (
-        f"{root.name}.sln",
-        "NewRouge.sln",
-        "GodotGame.sln",
-        "Game.sln",
-    )
-    for preferred in preferred_names:
-        matched = by_name.get(preferred.lower())
-        if matched is not None:
-            return matched.name
-    return candidates[0].name
 
 
 def cmd_run_ci_basic(args: argparse.Namespace) -> int:
@@ -95,10 +66,10 @@ def cmd_run_ci_basic(args: argparse.Namespace) -> int:
         print("[dev_cli] error: --godot-bin is required when --legacy-preflight is enabled", file=sys.stderr)
         return 2
 
-    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
+    solution = resolve_test_solution_path(args.solution)
     return run(
         build_legacy_ci_pipeline_cmd(
-            solution=resolved_solution,
+            solution=solution,
             configuration=args.configuration,
             godot_bin=args.godot_bin,
         )
@@ -108,10 +79,10 @@ def cmd_run_ci_basic(args: argparse.Namespace) -> int:
 def cmd_run_quality_gates(args: argparse.Namespace) -> int:
     """Run quality_gates.py all with optional hard GdUnit and smoke."""
 
-    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
+    solution = resolve_test_solution_path(args.solution)
     return run(
         build_quality_gates_cmd(
-            solution=resolved_solution,
+            solution=solution,
             configuration=args.configuration,
             build_solutions=bool(args.build_solutions),
             godot_bin=args.godot_bin,
@@ -144,7 +115,7 @@ def cmd_run_preflight(args: argparse.Namespace) -> int:
 
 
 def _acceptance_preflight_out_dir(task_id: str, stage: str, out_dir: str) -> Path:
-    """Resolve output directory for acceptance preflight artifacts."""
+    """Resolve the output directory for acceptance preflight artifacts."""
 
     if str(out_dir or "").strip():
         return Path(out_dir)
@@ -170,7 +141,7 @@ def _build_acceptance_preflight_cmd(script_name: str, *, task_id: str, stage: st
 
 
 def cmd_run_acceptance_preflight(args: argparse.Namespace) -> int:
-    """Run lightweight acceptance refs + anchors preflight."""
+    """Run the lightweight acceptance refs + anchors preflight."""
 
     out_dir = _acceptance_preflight_out_dir(task_id=args.task_id, stage=args.stage, out_dir=args.out_dir)
     refs_cmd = _build_acceptance_preflight_cmd(
@@ -196,9 +167,9 @@ def cmd_run_local_hard_checks(args: argparse.Namespace) -> int:
     """Run local hard checks via the protocolized harness wrapper."""
 
     task_files = list(args.task_file or DEFAULT_GATE_BUNDLE_TASK_FILES)
-    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
+    solution = resolve_test_solution_path(args.solution)
     return run_local_hard_checks(
-        solution=resolved_solution,
+        solution=solution,
         configuration=args.configuration,
         godot_bin=args.godot_bin,
         delivery_profile=args.delivery_profile,
@@ -211,7 +182,7 @@ def cmd_run_local_hard_checks(args: argparse.Namespace) -> int:
 
 
 def cmd_run_local_hard_checks_preflight(args: argparse.Namespace) -> int:
-    """Run lightweight 6.9 preflight: gate bundle + run_dotnet only."""
+    """Run the lightweight 6.9 preflight: gate bundle + dotnet only."""
 
     task_files = list(args.task_file or DEFAULT_GATE_BUNDLE_TASK_FILES)
     gate_rc = run(
@@ -225,8 +196,8 @@ def cmd_run_local_hard_checks_preflight(args: argparse.Namespace) -> int:
     if gate_rc != 0:
         return gate_rc
 
-    resolved_solution = str(args.solution or "").strip() or _resolve_default_solution()
-    return run(build_run_dotnet_cmd(solution=resolved_solution, configuration=args.configuration))
+    solution = resolve_test_solution_path(args.solution)
+    return run(build_run_dotnet_cmd(solution=solution, configuration=args.configuration))
 
 
 def cmd_run_smoke_strict(args: argparse.Namespace) -> int:
@@ -294,7 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-ci-basic",
         help="run hard gate bundle first; optionally append legacy ci_pipeline preflight",
     )
-    p_ci.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
+    p_ci.add_argument("--solution", default="auto")
     p_ci.add_argument("--configuration", default="Debug")
     p_ci.add_argument("--godot-bin", default="")
     p_ci.add_argument("--delivery-profile", default="")
@@ -306,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # run-quality-gates
     p_qg = sub.add_parser("run-quality-gates", help="run quality_gates.py all with optional GdUnit hard and smoke")
-    p_qg.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
+    p_qg.add_argument("--solution", default="auto")
     p_qg.add_argument("--configuration", default="Debug")
     p_qg.add_argument("--build-solutions", action="store_true")
     p_qg.add_argument("--godot-bin", default="")
@@ -323,7 +294,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-local-hard-checks",
         help="run gate bundle hard + run_dotnet, and append gdunit/smoke when --godot-bin is provided",
     )
-    p_lh.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
+    p_lh.add_argument("--solution", default="auto")
     p_lh.add_argument("--configuration", default="Debug")
     p_lh.add_argument("--godot-bin", default="")
     p_lh.add_argument("--delivery-profile", default="")
@@ -338,7 +309,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-local-hard-checks-preflight",
         help="run only gate bundle hard + run_dotnet before the full local-hard-checks harness",
     )
-    p_lhp.add_argument("--solution", default="", help="solution path; auto-resolved when omitted")
+    p_lhp.add_argument("--solution", default="auto")
     p_lhp.add_argument("--configuration", default="Debug")
     p_lhp.add_argument("--delivery-profile", default="")
     p_lhp.add_argument("--task-file", action="append", default=[])

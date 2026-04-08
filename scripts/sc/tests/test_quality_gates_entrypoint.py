@@ -29,6 +29,14 @@ quality_gates = _load_module("quality_gates_module", "scripts/python/quality_gat
 
 
 class QualityGatesEntrypointTests(unittest.TestCase):
+    def test_all_should_resolve_test_solution_when_auto(self) -> None:
+        with mock.patch.object(quality_gates, "resolve_test_solution_arg", return_value="Game.sln") as resolve_mock, \
+                mock.patch.object(quality_gates, "run_gate_bundle_hard", return_value=0):
+            rc = quality_gates.main(["all", "--solution", "auto"])
+
+        self.assertEqual(0, rc)
+        resolve_mock.assert_called_once_with("auto")
+
     def test_all_should_delegate_to_gate_bundle_hard_by_default(self) -> None:
         with mock.patch.object(quality_gates, "run_gate_bundle_hard", return_value=0) as bundle_mock, \
                 mock.patch.object(quality_gates, "run_gdunit_hard") as gdunit_mock, \

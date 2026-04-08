@@ -17,13 +17,16 @@ import json
 import os
 import re
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 
 def _bootstrap_imports() -> None:
-    # scripts/sc/build/tdd.py -> scripts/sc/build -> scripts/sc
+    # scripts/sc/build/tdd.py -> scripts/sc/build -> scripts/sc and scripts/python
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
 
 
 _bootstrap_imports()
@@ -35,6 +38,7 @@ from _delivery_profile import (  # noqa: E402
     resolve_delivery_profile,
 )
 from _security_profile import resolve_security_profile  # noqa: E402
+from solution_target import resolve_test_solution_arg  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _util import ci_dir, repo_root, run_cmd, today_str, write_json, write_text  # noqa: E402
 from _tdd_shared import (  # noqa: E402
@@ -45,6 +49,16 @@ from _tdd_shared import (  # noqa: E402
 )
 
 DELIVERY_PROFILE_CHOICES = tuple(sorted(known_delivery_profiles()))
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _finalize_summary(summary: dict[str, Any], *, start_monotonic: float) -> dict[str, Any]:
+    summary["finished_at"] = _utc_now_iso()
+    summary["elapsed_sec"] = round(max(0.0, time.monotonic() - start_monotonic), 3)
+    return summary
 
 
 def resolve_tdd_runtime(*, delivery_profile: str | None, security_profile: str | None, no_coverage_gate: bool) -> dict[str, Any]:
@@ -66,7 +80,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="sc-build tdd gatekeeper")
     ap.add_argument("--stage", choices=["red", "green", "refactor"], default="green")
     ap.add_argument("--task-id", default=None, help="task id; defaults to first status=in-progress in tasks.json")
-    ap.add_argument("--solution", default="Game.sln")
+    ap.add_argument(
+        "--solution",
+        default="auto",
+        help="test solution target; default auto prefers a solution that contains test projects",
+    )
     ap.add_argument("--configuration", default="Debug")
     ap.add_argument(
         "--delivery-profile",
@@ -215,83 +233,6 @@ def run_sc_analyze_task_context(*, task_id: str, out_dir: Path) -> dict[str, Any
     return {"name": "sc-analyze", "cmd": cmd, "rc": rc, "log": str(log_path), "status": "ok" if rc == 0 else "fail"}
 
 
-def validate_task_context_required_fields(*, task_id: str, stage: str, out_dir: Path) -> dict[str, Any]:
-    # Hard gate: TDD stages MUST use the full triplet semantics (master/back/gameplay) captured by sc-analyze.
-    ctx_path = repo_root() / "logs" / "ci" / today_str() / "sc-analyze" / f"task_context.{task_id}.json"
-
-    cmd = [
-        "py",
-        "-3",
-        "scripts/python/validate_task_context_required_fields.py",
-        "--task-id",
-        str(task_id),
-        "--stage",
-        str(stage),
-        "--context",
-        str(ctx_path),
-        "--out",
-        str(out_dir / "task-context-required.json"),
-    ]
-    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=60)
-    log_path = out_dir / "validate-task-context-required.log"
-    write_text(log_path, out)
-    return {"name": "validate_task_context_required_fields", "cmd": cmd, "rc": rc, "log": str(log_path), "status": "ok" if rc == 0 else "fail"}
-
-
-def run_task_preflight(*, triplet: Any, out_dir: Path) -> dict[str, Any]:
-    errors: list[str] = []
-    warnings: list[str] = []
-
-    task_id = str(getattr(triplet, "task_id", "") or "").strip()
-    master = dict(getattr(triplet, "master", {}) or {})
-    back = dict(getattr(triplet, "back", {}) or {})
-    gameplay = dict(getattr(triplet, "gameplay", {}) or {})
-
-    if not task_id:
-        errors.append("missing task_id in triplet")
-    if not str(master.get("title") or "").strip():
-        errors.append("missing master.title")
-    if not isinstance(back.get("acceptance"), list):
-        warnings.append("missing back.acceptance list")
-    if not isinstance(gameplay.get("acceptance"), list):
-        warnings.append("missing gameplay.acceptance list")
-
-    payload = {
-        "task_id": task_id,
-        "errors": errors,
-        "warnings": warnings,
-        "status": "ok" if not errors else "fail",
-    }
-    out_json = out_dir / "task-preflight.json"
-    write_json(out_json, payload)
-    log_path = out_dir / "task-preflight.log"
-    if errors:
-        write_text(log_path, "\n".join([f"ERROR: {item}" for item in errors]) + "\n")
-        return {
-            "name": "task_preflight",
-            "cmd": ["internal:task_preflight"],
-            "rc": 1,
-            "log": str(log_path),
-            "status": "fail",
-            "errors": errors,
-            "warnings": warnings,
-            "out": str(out_json),
-        }
-
-    lines = [f"OK: task_id={task_id}", f"warnings={len(warnings)}"]
-    lines.extend([f"WARN: {item}" for item in warnings])
-    write_text(log_path, "\n".join(lines) + "\n")
-    return {
-        "name": "task_preflight",
-        "cmd": ["internal:task_preflight"],
-        "rc": 0,
-        "log": str(log_path),
-        "status": "ok",
-        "warnings": warnings,
-        "out": str(out_json),
-    }
-
-
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -415,6 +356,83 @@ def validate_refactor_green_prerequisite(*, task_id: str, out_dir: Path) -> dict
         "status": "ok" if not errors else "fail",
         "summary_path": str(summary_path) if summary_path is not None else "",
         "errors": errors,
+    }
+
+
+def validate_task_context_required_fields(*, task_id: str, stage: str, out_dir: Path) -> dict[str, Any]:
+    # Hard gate: TDD stages MUST use the full triplet semantics (master/back/gameplay) captured by sc-analyze.
+    ctx_path = repo_root() / "logs" / "ci" / today_str() / "sc-analyze" / f"task_context.{task_id}.json"
+
+    cmd = [
+        "py",
+        "-3",
+        "scripts/python/validate_task_context_required_fields.py",
+        "--task-id",
+        str(task_id),
+        "--stage",
+        str(stage),
+        "--context",
+        str(ctx_path),
+        "--out",
+        str(out_dir / "task-context-required.json"),
+    ]
+    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=60)
+    log_path = out_dir / "validate-task-context-required.log"
+    write_text(log_path, out)
+    return {"name": "validate_task_context_required_fields", "cmd": cmd, "rc": rc, "log": str(log_path), "status": "ok" if rc == 0 else "fail"}
+
+
+def run_task_preflight(*, triplet: Any, out_dir: Path) -> dict[str, Any]:
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    task_id = str(getattr(triplet, "task_id", "") or "").strip()
+    master = dict(getattr(triplet, "master", {}) or {})
+    back = dict(getattr(triplet, "back", {}) or {})
+    gameplay = dict(getattr(triplet, "gameplay", {}) or {})
+
+    if not task_id:
+        errors.append("missing task_id in triplet")
+    if not str(master.get("title") or "").strip():
+        errors.append("missing master.title")
+    if not isinstance(back.get("acceptance"), list):
+        warnings.append("missing back.acceptance list")
+    if not isinstance(gameplay.get("acceptance"), list):
+        warnings.append("missing gameplay.acceptance list")
+
+    payload = {
+        "task_id": task_id,
+        "errors": errors,
+        "warnings": warnings,
+        "status": "ok" if not errors else "fail",
+    }
+    out_json = out_dir / "task-preflight.json"
+    write_json(out_json, payload)
+    log_path = out_dir / "task-preflight.log"
+    if errors:
+        write_text(log_path, "\n".join([f"ERROR: {item}" for item in errors]) + "\n")
+        return {
+            "name": "task_preflight",
+            "cmd": ["internal:task_preflight"],
+            "rc": 1,
+            "log": str(log_path),
+            "status": "fail",
+            "errors": errors,
+            "warnings": warnings,
+            "out": str(out_json),
+        }
+
+    lines = [f"OK: task_id={task_id}", f"warnings={len(warnings)}"]
+    lines.extend([f"WARN: {item}" for item in warnings])
+    write_text(log_path, "\n".join(lines) + "\n")
+    return {
+        "name": "task_preflight",
+        "cmd": ["internal:task_preflight"],
+        "rc": 0,
+        "log": str(log_path),
+        "status": "ok",
+        "warnings": warnings,
+        "out": str(out_json),
     }
 
 
@@ -606,6 +624,7 @@ def run_refactor_checks(out_dir: Path, *, task_id: str) -> list[dict[str, Any]]:
 
 
 def main() -> int:
+    start_monotonic = time.monotonic()
     args = build_parser().parse_args()
     runtime = resolve_tdd_runtime(
         delivery_profile=args.delivery_profile,
@@ -625,8 +644,11 @@ def main() -> int:
         "security_profile": str(runtime["security_profile"]),
         "allow_contract_changes": bool(args.allow_contract_changes),
         "status": "fail",
+        "started_at": _utc_now_iso(),
         "steps": [],
     }
+    resolved_solution = resolve_test_solution_arg(args.solution, root=repo_root())
+    summary["solution"] = resolved_solution
 
     triplet = resolve_triplet(task_id=args.task_id)
     summary["task"] = {
@@ -643,7 +665,7 @@ def main() -> int:
         preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
         summary["steps"].append(preflight_step)
         if preflight_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -651,7 +673,7 @@ def main() -> int:
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="red", out_dir=out_dir)
         summary["steps"].append(ctx_step)
         if ctx_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -663,13 +685,13 @@ def main() -> int:
             out_dir=out_dir,
         )
         if not test_path:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print("[sc-build-tdd] ERROR: no task-scoped test found. Use --generate-red-test to create one.")
             return 2
 
         step = run_dotnet_test_filtered(
             triplet.task_id,
-            solution=args.solution,
+            solution=resolved_solution,
             configuration=args.configuration,
             out_dir=out_dir,
         )
@@ -677,7 +699,7 @@ def main() -> int:
 
         # In red stage, we EXPECT a failure.
         summary["status"] = "ok" if step["rc"] != 0 else "unexpected_green"
-        write_json(out_dir / "summary.json", summary)
+        write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
         print(f"SC_BUILD_TDD status={summary['status']} out={out_dir}")
         assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
         return 0 if summary["status"] == "ok" else 1
@@ -686,7 +708,7 @@ def main() -> int:
         prereq_step = validate_green_red_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
         summary["steps"].append(prereq_step)
         if prereq_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -694,7 +716,7 @@ def main() -> int:
         preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
         summary["steps"].append(preflight_step)
         if preflight_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -702,15 +724,14 @@ def main() -> int:
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="green", out_dir=out_dir)
         summary["steps"].append(ctx_step)
         if ctx_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
-
         step = run_green_gate(
             task_id=triplet.task_id,
             triplet=triplet,
-            solution=args.solution,
+            solution=resolved_solution,
             configuration=args.configuration,
             out_dir=out_dir,
             coverage_gate=bool(runtime["coverage_gate"]),
@@ -722,7 +743,7 @@ def main() -> int:
         if step["rc"] == 2:
             summary["steps"].append(write_coverage_hotspots(ci_out_dir=out_dir, run_dotnet_output=step.get("stdout") or ""))
         summary["status"] = "ok" if step["rc"] == 0 else "fail"
-        write_json(out_dir / "summary.json", summary)
+        write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
         print(f"SC_BUILD_TDD status={summary['status']} out={out_dir}")
         assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
         return 0 if step["rc"] == 0 else 1
@@ -731,7 +752,7 @@ def main() -> int:
         prereq_step = validate_refactor_green_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
         summary["steps"].append(prereq_step)
         if prereq_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -739,7 +760,7 @@ def main() -> int:
         preflight_step = run_task_preflight(triplet=triplet, out_dir=out_dir)
         summary["steps"].append(preflight_step)
         if preflight_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -747,7 +768,7 @@ def main() -> int:
         ctx_step = validate_task_context_required_fields(task_id=triplet.task_id, stage="refactor", out_dir=out_dir)
         summary["steps"].append(ctx_step)
         if ctx_step["rc"] != 0:
-            write_json(out_dir / "summary.json", summary)
+            write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
             print(f"SC_BUILD_TDD status=fail out={out_dir}")
             assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
             return 1
@@ -755,7 +776,7 @@ def main() -> int:
         steps = run_refactor_checks(out_dir, task_id=triplet.task_id)
         summary["steps"].extend(steps)
         summary["status"] = "ok" if all(s["rc"] == 0 for s in steps) else "fail"
-        write_json(out_dir / "summary.json", summary)
+        write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
 
         if summary["status"] != "ok":
             failed = [s for s in steps if s.get("rc") != 0]
@@ -789,7 +810,7 @@ def main() -> int:
         assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))
         return 0 if summary["status"] == "ok" else 1
 
-    write_json(out_dir / "summary.json", summary)
+    write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
     return 1
 
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import subprocess
 import sys
 import uuid
@@ -28,6 +27,7 @@ from local_hard_checks_support import (
     write_latest_index,
     write_step_log,
 )
+from solution_target import resolve_test_solution_arg
 
 try:
     from _delivery_profile import default_security_profile_for_delivery, resolve_delivery_profile
@@ -54,34 +54,9 @@ def _run_step_default(cmd: list[str]) -> int:
     return proc.returncode
 
 
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _should_soft_pass_coverage_failure(
-    *,
-    step_name: str,
-    step_rc: int,
-    delivery_profile: str,
-    artifacts: dict[str, Any],
-) -> bool:
-    if step_name != "run-dotnet" or step_rc != 2:
-        return False
-    if delivery_profile == "standard":
-        return False
-    summary_file = str(artifacts.get("summary_file") or "").strip()
-    if not summary_file:
-        return True
-    payload = _read_json(Path(summary_file))
-    return str(payload.get("status") or "").strip().lower() == "coverage_failed"
-
-
 def run_local_hard_checks(
     *,
-    solution: str = "Game.sln",
+    solution: str = "",
     configuration: str = "Debug",
     godot_bin: str = "",
     delivery_profile: str = "",
@@ -91,6 +66,7 @@ def run_local_hard_checks(
     timeout_sec: int = 5,
     run_fn: Callable[[list[str]], int] | None = None,
 ) -> int:
+    resolved_solution = resolve_test_solution_arg(solution)
     resolved_delivery_profile = resolve_delivery_profile(delivery_profile or None)
     security_profile = default_security_profile_for_delivery(resolved_delivery_profile)
     requested_run_id = str(run_id or "").strip() or uuid.uuid4().hex
@@ -119,7 +95,7 @@ def run_local_hard_checks(
         delivery_profile=resolved_delivery_profile,
         security_profile=security_profile,
         status="running",
-        details={"requested_run_id": requested_run_id, "cmd": CMD_NAME},
+        details={"requested_run_id": requested_run_id, "cmd": CMD_NAME, "solution": resolved_solution},
     )
 
     summary: dict[str, Any] = {
@@ -145,7 +121,7 @@ def run_local_hard_checks(
         task_files=task_file_list,
         out_dir=resolved_out_dir,
         run_id=resolved_run_id,
-        solution=solution,
+        solution=resolved_solution,
         configuration=configuration,
         godot_bin=godot_bin,
         timeout_sec=timeout_sec,
@@ -166,14 +142,7 @@ def run_local_hard_checks(
             details={"cmd": cmd},
         )
         step_rc = int(runner(cmd))
-        soft_coverage_failure = _should_soft_pass_coverage_failure(
-            step_name=name,
-            step_rc=step_rc,
-            delivery_profile=resolved_delivery_profile,
-            artifacts=artifacts,
-        )
-        step_failed = step_rc != 0 and not soft_coverage_failure
-        step_status = "ok" if not step_failed else "fail"
+        step_status = "ok" if step_rc == 0 else "fail"
         write_step_log(step_log, cmd=cmd, rc=step_rc, status=step_status, artifacts=artifacts)
         append_run_event(
             out_dir=resolved_out_dir,
@@ -184,12 +153,7 @@ def run_local_hard_checks(
             security_profile=security_profile,
             step_name=name,
             status=step_status,
-            details={
-                "rc": step_rc,
-                "soft_coverage_failure": soft_coverage_failure,
-                "log": str(step_log).replace("\\", "/"),
-                **artifacts,
-            },
+            details={"rc": step_rc, "log": str(step_log).replace("\\", "/"), **artifacts},
         )
         summary["steps"].append(
             {
@@ -201,7 +165,7 @@ def run_local_hard_checks(
                 **artifacts,
             }
         )
-        if step_failed:
+        if step_rc != 0:
             rc = step_rc
             summary["status"] = "fail"
             summary["failed_step"] = name

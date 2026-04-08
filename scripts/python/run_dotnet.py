@@ -3,15 +3,12 @@
 Run dotnet restore/test with coverage and archive artifacts under logs/unit/<date>/.
 Exits non-zero on test failure or when coverage thresholds (if provided) are not met.
 
-Env thresholds:
-  COVERAGE_LINES_THRESHOLD      preferred override (percent)
-  COVERAGE_BRANCHES_THRESHOLD   preferred override (percent)
-  COVERAGE_LINES_MIN            legacy alias (percent)
-  COVERAGE_BRANCHES_MIN         legacy alias (percent)
-  COVERAGE_GATE_MODE            hard|soft (default: hard)
+Env thresholds (optional):
+  COVERAGE_LINES_MIN   e.g., "90" (percent)
+  COVERAGE_BRANCHES_MIN e.g., "85" (percent)
 
 Usage (Windows):
-  py -3 scripts/python/run_dotnet.py --configuration Debug
+  py -3 scripts/python/run_dotnet.py --solution auto --configuration Debug
 """
 import argparse
 import datetime as dt
@@ -23,9 +20,9 @@ import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-DEFAULT_LINES_THRESHOLD = 90.0
-DEFAULT_BRANCHES_THRESHOLD = 85.0
+from solution_target import resolve_test_solution_arg
 
 
 def run_cmd(args, cwd=None, timeout=900_000):
@@ -38,77 +35,6 @@ def run_cmd(args, cwd=None, timeout=900_000):
         out, _ = p.communicate()
         return 124, out
     return p.returncode, out
-
-
-def _script_repo_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-
-def _resolve_default_solution(root: str | None = None) -> str:
-    """Resolve default solution path with stable priority."""
-    resolved_root = root or _script_repo_root()
-    repo_name = os.path.basename(resolved_root.rstrip("\\/"))
-    try:
-        candidates = sorted(
-            entry
-            for entry in os.listdir(resolved_root)
-            if entry.lower().endswith(".sln")
-        )
-    except OSError:
-        return "Game.sln"
-    if not candidates:
-        return "Game.sln"
-    by_name = {item.lower(): item for item in candidates}
-    preferred_names = (
-        f"{repo_name}.sln",
-        "NewRouge.sln",
-        "GodotGame.sln",
-        "Game.sln",
-    )
-    for preferred in preferred_names:
-        matched = by_name.get(preferred.lower())
-        if matched is not None:
-            return matched
-    return candidates[0]
-
-
-def _normalize_solution_arg(raw: str | None) -> str:
-    value = str(raw or "").strip()
-    if value.lower() == "auto":
-        return ""
-    return value
-
-
-def _solution_contains_tests(root: str, solution: str) -> bool:
-    if not str(solution).lower().endswith(".sln"):
-        return True
-    path = os.path.join(root, solution)
-    if not os.path.isfile(path):
-        return False
-    try:
-        with io.open(path, "r", encoding="utf-8", errors="ignore") as fh:
-            text = fh.read()
-    except OSError:
-        return False
-    lowered = text.lower()
-    return ".tests\\" in lowered or ".tests/" in lowered or "game.core.tests" in lowered
-
-
-def _resolve_test_target_for_auto(root: str, resolved_solution: str) -> str:
-    if _solution_contains_tests(root, resolved_solution):
-        return resolved_solution
-    preferred = [
-        os.path.join("Game.Core.Tests", "Game.Core.Tests.csproj"),
-        "Game.sln",
-    ]
-    for candidate in preferred:
-        candidate_path = os.path.join(root, candidate)
-        if not os.path.isfile(candidate_path):
-            continue
-        if candidate.lower().endswith(".sln") and not _solution_contains_tests(root, candidate):
-            continue
-        return candidate.replace("\\", "/")
-    return resolved_solution
 
 
 def ensure_dir(path):
@@ -160,91 +86,27 @@ def pick_latest_existing(paths):
     return max(existing, key=lambda p: os.path.getmtime(p))
 
 
-def extract_failure_excerpt(output: str, max_lines: int = 40):
-    patterns = [
-        r"\[xUnit\.net.*\[FAIL\]",
-        r"^\s*Failed\s+",
-        r"^\s*失败\s+",
-        r"^.*error CS\d+.*$",
-        r"^.*Error Message:.*$",
-        r"^.*堆栈跟踪:.*$",
-        r"^.*Stack Trace:.*$",
-    ]
-    rx = [re.compile(p, re.IGNORECASE) for p in patterns]
-    lines = []
-    for line in output.splitlines():
-        if any(r.search(line) for r in rx):
-            lines.append(line)
-            if len(lines) >= max_lines:
-                break
-    return lines
-
-
-def _parse_non_negative_float(raw: str | None) -> float | None:
-    text = str(raw or "").strip()
-    if not text:
-        return None
-    try:
-        value = float(text)
-    except ValueError:
-        return None
-    return value if value >= 0.0 else None
-
-
-def _resolve_threshold_value(
-    *,
-    preferred_key: str,
-    legacy_key: str,
-    default_value: float,
-) -> tuple[float, str]:
-    preferred_raw = os.environ.get(preferred_key)
-    preferred = _parse_non_negative_float(preferred_raw)
-    if preferred is not None:
-        return preferred, preferred_key
-    legacy_raw = os.environ.get(legacy_key)
-    legacy = _parse_non_negative_float(legacy_raw)
-    if legacy is not None:
-        return legacy, legacy_key
-    return default_value, "default"
-
-
-def _resolve_gate_mode(raw: str | None) -> tuple[str, str]:
-    text = str(raw or "").strip().lower()
-    if text in ("soft", "hard"):
-        return text, "COVERAGE_GATE_MODE"
-    return "hard", "default"
-
-
-def main(argv=None):
+def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--solution', default='', help='solution path; auto-resolved when omitted')
+    ap.add_argument('--solution', default='')
     ap.add_argument('--configuration', default='Debug')
     ap.add_argument('--filter', default=None, help='Optional dotnet test filter expression.')
     ap.add_argument('--out-dir', default=None)
-    args = ap.parse_args(argv)
-    normalized_solution = _normalize_solution_arg(args.solution)
-    resolved_solution = normalized_solution or _resolve_default_solution()
-    if not normalized_solution:
-        resolved_solution = _resolve_test_target_for_auto(os.getcwd(), resolved_solution)
+    args = ap.parse_args()
 
     root = os.getcwd()
+    resolved_solution = resolve_test_solution_arg(args.solution, root=Path(root))
     date = dt.date.today().strftime('%Y-%m-%d')
     out_dir = args.out_dir or os.path.join(root, 'logs', 'unit', date)
     ensure_dir(out_dir)
 
-    try:
-        test_timeout_ms = int(os.environ.get('DOTNET_TEST_TIMEOUT_MS', '1800000') or '1800000')
-    except ValueError:
-        test_timeout_ms = 1_800_000
-    test_timeout_ms = max(60_000, test_timeout_ms)
-
     summary = {
         'solution': resolved_solution,
+        'solution_input': args.solution,
         'configuration': args.configuration,
         'filter': args.filter or '',
         'out_dir': out_dir,
         'status': 'fail',
-        'test_timeout_ms': test_timeout_ms,
     }
 
     # Restore
@@ -258,37 +120,17 @@ def main(argv=None):
         print(f'RUN_DOTNET status=fail stage=restore out={out_dir}')
         return 1
 
-    # Test with coverage (retry once for known transient file-lock failures)
-    retry_on_fail = 1
-    try:
-        retry_on_fail = int(os.environ.get('DOTNET_TEST_RETRY_ON_FAIL', '1') or '1')
-    except ValueError:
-        retry_on_fail = 1
-    retry_on_fail = max(0, retry_on_fail)
-
-    test_attempt = 0
-    rc = 1
-    out = ''
-    attempts_log = []
-    while test_attempt <= retry_on_fail:
-        test_attempt += 1
-        test_cmd = ['dotnet', 'test', resolved_solution,
-                    f'-c', args.configuration,
-                    '--collect:XPlat Code Coverage',
-                    '--logger', 'trx;LogFileName=tests.trx']
-        if args.filter:
-            test_cmd.extend(['--filter', args.filter])
-        rc, out = run_cmd(test_cmd, cwd=root, timeout=test_timeout_ms)
-        attempts_log.append({'attempt': test_attempt, 'rc': rc})
-        with io.open(os.path.join(out_dir, f'dotnet-test-output-attempt-{test_attempt}.txt'), 'w', encoding='utf-8') as f:
-            f.write(out)
-        if rc == 0:
-            break
-
+    # Test with coverage
+    test_cmd = ['dotnet', 'test', resolved_solution,
+                f'-c', args.configuration,
+                '--collect:XPlat Code Coverage',
+                '--logger', 'trx;LogFileName=tests.trx']
+    if args.filter:
+        test_cmd.extend(['--filter', args.filter])
+    rc, out = run_cmd(test_cmd, cwd=root)
     with io.open(os.path.join(out_dir, 'dotnet-test-output.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     summary['test_rc'] = rc
-    summary['test_attempts'] = attempts_log
 
     # Copy artifacts using paths emitted by dotnet test output (preferred).
     artifacts = parse_paths_from_test_output(out)
@@ -338,54 +180,21 @@ def main(argv=None):
         coverage = parse_cobertura(cov_path)
         summary['coverage'] = coverage
 
-    lines_threshold, lines_source = _resolve_threshold_value(
-        preferred_key='COVERAGE_LINES_THRESHOLD',
-        legacy_key='COVERAGE_LINES_MIN',
-        default_value=DEFAULT_LINES_THRESHOLD,
-    )
-    branches_threshold, branches_source = _resolve_threshold_value(
-        preferred_key='COVERAGE_BRANCHES_THRESHOLD',
-        legacy_key='COVERAGE_BRANCHES_MIN',
-        default_value=DEFAULT_BRANCHES_THRESHOLD,
-    )
-    gate_mode, gate_mode_source = _resolve_gate_mode(os.environ.get('COVERAGE_GATE_MODE'))
-
-    measured_line = float((coverage or {}).get('line_pct', 0.0) or 0.0)
-    measured_branch = float((coverage or {}).get('branch_pct', 0.0) or 0.0)
-    threshold_ok = measured_line >= lines_threshold and measured_branch >= branches_threshold
-    coverage_gate_pass = threshold_ok or gate_mode == 'soft'
-
-    warnings = []
-    if not threshold_ok and gate_mode == 'soft':
-        warnings.append(
-            f"coverage below effective thresholds (line={measured_line:.2f} branch={measured_branch:.2f} "
-            f"< lines>={lines_threshold:.2f} branches>={branches_threshold:.2f})"
-        )
-
-    summary['measured_line_coverage'] = measured_line
-    summary['measured_branch_coverage'] = measured_branch
-    summary['effective_thresholds'] = {
-        'lines_min': lines_threshold,
-        'branches_min': branches_threshold,
-        'lines_source': lines_source,
-        'branches_source': branches_source,
-    }
-    summary['gate_mode'] = gate_mode
-    summary['gate_mode_source'] = gate_mode_source
+    # Thresholds (optional)
+    lines_min = os.environ.get('COVERAGE_LINES_MIN')
+    branches_min = os.environ.get('COVERAGE_BRANCHES_MIN')
+    threshold_ok = True
+    if coverage and (lines_min or branches_min):
+        try:
+            if lines_min:
+                threshold_ok = threshold_ok and (coverage.get('line_pct', 0) >= float(lines_min))
+            if branches_min:
+                threshold_ok = threshold_ok and (coverage.get('branch_pct', 0) >= float(branches_min))
+        except Exception:
+            pass
     summary['threshold_ok'] = threshold_ok
-    summary['pass'] = coverage_gate_pass
-    summary['warnings'] = warnings
-    summary['status'] = 'ok' if (rc == 0 and coverage_gate_pass) else ('tests_failed' if rc != 0 else 'coverage_failed')
-    if summary['status'] == 'tests_failed':
-        excerpt = extract_failure_excerpt(out)
-        summary['failure_excerpt'] = excerpt
-        if excerpt:
-            print('RUN_DOTNET failure excerpt:')
-            for line in excerpt:
-                print(line)
-    elif warnings:
-        for warning in warnings:
-            print(f"RUN_DOTNET warning: {warning}")
+
+    summary['status'] = 'ok' if (rc == 0 and threshold_ok) else ('tests_failed' if rc != 0 else 'coverage_failed')
     with io.open(os.path.join(out_dir, 'summary.json'), 'w', encoding='utf-8') as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 

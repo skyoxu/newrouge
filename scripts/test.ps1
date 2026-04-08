@@ -7,7 +7,7 @@ param(
 if ($IncludeDemo) { $env:TEMPLATE_DEMO = '1' }
 
 Write-Host '=== Running .NET tests ==='
-& "$PSScriptRoot/ci/run_dotnet_tests.ps1" -Solution 'Game.sln'
+& "$PSScriptRoot/ci/run_dotnet_tests.ps1" -Solution 'auto'
 $dotnetExit = $LASTEXITCODE
 
 Write-Host '=== Running GdUnit4 tests ==='

@@ -214,6 +214,71 @@ class BuildTddOrchestrationTests(unittest.TestCase):
             summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(["validate_refactor_green_prerequisite"], [item["name"] for item in summary["steps"]])
 
+    def test_run_green_gate_should_restore_coverage_environment_after_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "sc-build-tdd"
+            previous = {
+                "COVERAGE_LINES_MIN": "33",
+                "COVERAGE_BRANCHES_MIN": "22",
+                "COVERAGE_GATE_MODE": "legacy",
+            }
+            observed: dict[str, str | None] = {}
+
+            def _fake_run_cmd(cmd, cwd, timeout_sec):
+                observed["lines"] = tdd_script.os.environ.get("COVERAGE_LINES_MIN")
+                observed["branches"] = tdd_script.os.environ.get("COVERAGE_BRANCHES_MIN")
+                observed["mode"] = tdd_script.os.environ.get("COVERAGE_GATE_MODE")
+                return 0, "ok"
+
+            with mock.patch.dict(tdd_script.os.environ, previous, clear=False), \
+                mock.patch.object(tdd_script, "run_cmd", side_effect=_fake_run_cmd):
+                step = tdd_script.run_green_gate(
+                    task_id="14",
+                    triplet=_FakeTriplet(),
+                    solution="NewRouge.sln",
+                    configuration="Debug",
+                    out_dir=out_dir,
+                    coverage_gate=True,
+                    coverage_lines_min=70,
+                    coverage_branches_min=60,
+                    green_scope="all",
+                )
+                self.assertEqual("33", tdd_script.os.environ.get("COVERAGE_LINES_MIN"))
+                self.assertEqual("22", tdd_script.os.environ.get("COVERAGE_BRANCHES_MIN"))
+                self.assertEqual("legacy", tdd_script.os.environ.get("COVERAGE_GATE_MODE"))
+
+            self.assertEqual(0, step["rc"])
+            self.assertEqual("70", observed["lines"])
+            self.assertEqual("60", observed["branches"])
+            self.assertEqual("hard", observed["mode"])
+
+    def test_green_should_resolve_test_solution_when_auto(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "sc-build-tdd"
+            argv = ["tdd.py", "--stage", "green", "--task-id", "14"]
+            prereq_step = {"name": "validate_green_red_prerequisite", "rc": 0, "status": "ok", "log": str(out_dir / "prereq.log")}
+            preflight_step = {"name": "task_preflight", "rc": 0, "status": "ok", "log": str(out_dir / "task-preflight.log")}
+            analyze_step = {"name": "sc-analyze", "rc": 0, "status": "ok", "log": str(out_dir / "sc-analyze.log")}
+            ctx_step = {"name": "validate_task_context_required_fields", "rc": 0, "status": "ok", "log": str(out_dir / "ctx.log")}
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(tdd_script, "ci_dir", return_value=out_dir), \
+                mock.patch.object(tdd_script, "resolve_triplet", return_value=_FakeTriplet()), \
+                mock.patch.object(tdd_script, "resolve_test_solution_arg", return_value="Game.sln") as solution_mock, \
+                mock.patch.object(tdd_script, "validate_green_red_prerequisite", return_value=prereq_step), \
+                mock.patch.object(tdd_script, "run_task_preflight", return_value=preflight_step), \
+                mock.patch.object(tdd_script, "run_sc_analyze_task_context", return_value=analyze_step), \
+                mock.patch.object(tdd_script, "validate_task_context_required_fields", return_value=ctx_step), \
+                mock.patch.object(tdd_script, "run_green_gate", return_value={"name": "run_dotnet", "rc": 0, "status": "ok", "log": str(out_dir / "run.log")}) as green_mock, \
+                mock.patch.object(tdd_script, "assert_no_new_contract_files", return_value=None):
+                rc = tdd_script.main()
+
+            self.assertEqual(0, rc)
+            solution_mock.assert_called_once()
+            self.assertEqual("Game.sln", green_mock.call_args.kwargs["solution"])
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("Game.sln", summary["solution"])
+
 
 if __name__ == "__main__":
     unittest.main()

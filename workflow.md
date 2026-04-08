@@ -20,9 +20,20 @@
 按以下顺序恢复：
 
 1. 先读 `AGENTS.md` 和 `docs/agents/00-index.md`
-2. 如果存在，先读 `logs/ci/active-tasks/task-<id>.active.md`
-3. 执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
-4. 只有当 recovery summary 仍然不够时，再执行 `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <id>`
+2. 先执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+3. 如果 recovery summary 仍然不够，再读 `logs/ci/active-tasks/task-<id>.active.md`
+4. 只有当 `resume-task` 与 `active-task` 仍不足以判断时，再执行 `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <id>`
+
+补充说明：
+- `resume-task` 现在会汇总 `Latest reason`、`Latest run type`、`Latest reuse mode`、`Latest artifact integrity`、`Chapter6 next action`、`Chapter6 can skip 6.7`、`Chapter6 can go to 6.8`、`Chapter6 blocked by`。
+- `resume-task` also surfaces `recommended_action_why`; if it already says `recommended_action = needs-fix-fast`, prefer targeted closure before any full rerun.
+- `inspect_run.py --kind pipeline` 也会导出同一组 `latest_summary_signals` / `chapter6_hints`，用于判断是继续 `6.7`、转 `6.8`，还是先修 deterministic 根因。
+- `run_review_pipeline.py --dry-run` 仍会在本次 `out_dir` 写 `summary/execution-context/repair-guide`，但不再发布 `latest.json` 或 `active-task` sidecars；不要把 dry-run 当作恢复指针。
+- `inspect_run.py --kind pipeline --task-id <id>` 在解析自动恢复指针时，会跳过只来自 dry-run 的更新候选，回退到最近一轮真实可恢复 run。
+
+- Recovery order now requires reading `Latest reason`, `Latest run type`, `Latest reuse mode`, and `Latest artifact integrity` before trusting the newest `latest.json` pointer.
+- `logs/ci/active-tasks/task-<id>.active.md` 现在是 `resume-task` 之后的短指针补充视图；只有当 recovery summary 还需要更快的人读入口时再看它，并继续结合 `Latest reason`、`Latest run type`、`Latest artifact integrity` 与 `Diagnostics artifact_integrity` 一起判断。
+- If recovery shows `Latest run type = planned-only`, `Latest reason = planned_only_incomplete`, or `Chapter6 blocked by = artifact_integrity`, treat the bundle as evidence only; do not reopen `6.7` or `6.8` from it.
 
 ### 1.2 先选 Delivery Profile
 
@@ -432,6 +443,18 @@ py -3 scripts/python/inspect_run.py --kind pipeline --task-id <id> --out-json lo
 - `run-events.jsonl`
 - `logs/ci/active-tasks/task-<id>.active.md`
 
+Recovery decision order:
+
+1. Read `Latest reason`, `Latest run type`, `Latest reuse mode`, and `Latest artifact integrity` first.
+2. Then read `Chapter6 next action`, `Chapter6 can skip 6.7`, `Chapter6 can go to 6.8`, and `Chapter6 blocked by`.
+3. Only then decide whether to reopen the current run, move to 6.8, or start a fresh real run.
+
+Hard stop-loss:
+
+- If `Latest run type = planned-only` and `Latest reason = planned_only_incomplete`, treat it as a `planned-only terminal bundle`; it is not a resumable producer run.
+- If `Chapter6 blocked by = artifact_integrity`, fall back to the previous real bundle first; if none exists, start a fresh real `6.7` instead of continuing `--resume` from the planned-only terminal state.
+- If `active-task` or `inspect_run` reports `artifact_integrity_planned_only_incomplete`, do not enter `6.7` or `6.8` yet; fix artifact integrity first.
+
 ### 6.2 只有在有价值时才创建 recovery documents
 
 Execution plan：
@@ -625,18 +648,35 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 这个 pipeline 会写 sidecars、latest pointers、active-task summaries、repair guidance，以及 technical debt sync outputs。
 - review pipeline 启动前还会检查最近一次同任务 `sc-build-tdd` 的 refactor summary，要求 `stage = refactor` 且 `status = ok`；如果 6.6 失败，先修 6.6。
 - 如果 6.7 首轮失败，先判断是“仓库级噪音”还是“当前任务问题”。与当前任务无关的 unit 红灯、锁进程、全仓历史失败，不要继续按当前任务的 6.7/6.8 节奏推进。
+- 如果上一轮 6.7 已经证明 `sc-test = ok` 且 `sc-acceptance-check = ok`，只有 `sc-llm-review` 超时或失败，而你本轮只改了 review / acceptance / overlay / task 语义文本，不要再手工重付完整 deterministic 成本；优先复用已通过的 deterministic，只重跑 LLM。
+- 当最近一轮已经是 `sc-test = ok + sc-acceptance-check = ok + sc-llm-review != clean`，且本轮没有命中 deterministic 相关文件时，默认不要再开一轮完整 6.7；优先进入 6.8 或 `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship`。只有在你明确需要完整重跑时，才显式传 `--allow-full-rerun`。
+- 当最近两轮 6.7 都停在同一类 `sc-test` 失败指纹时，默认先修根因，不要第三次原参数重跑；只有在你明确接受重复 deterministic 成本时，才显式传 `--allow-repeat-deterministic-failures`。
+- 重跑前先读最近一轮 `summary.json` 和 `latest.json` 里的 `reason`、`reuse_mode` 与 `diagnostics`；这些字段会明确标出 `rerun_guard`、`reuse_decision`、`acceptance_preflight`、`llm_timeout_memory`。
+- 如果同一轮里已经出现“`sc-test` / `sc-acceptance-check` 通过，但 `sc-llm-review` 首次长等待超时”的情况，pipeline 会在当前轮直接止损，不再继续第二次长等待；证据写入 `diagnostics.llm_retry_stop_loss`。
+- `active-task` 的 `Chapter6 blocked by` 现在会区分 `rerun_guard`、`llm_retry_stop_loss`、`sc_test_retry_stop_loss`、`waste_signals`：前者表示不要再重复付 deterministic 成本，第二项表示优先走 llm-only follow-up，第三项表示同 run 的 unit 重试已经止损，最后一项表示先停掉无效 engine lane 成本并修 unit/root-cause。
+- reviewer 超时扩时现在会继承最近同任务 / 同 profile 的 agent 级超时历史；继续 timeout 时只定向放大该 reviewer，而不是整体抬高全部 reviewer。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
   - `fast-ship`：默认 `max_step_retries = 1`，首轮 review 聚焦 `code-reviewer + security-auditor + semantic-equivalence-auditor`。
   - `standard`：默认 `max_step_retries = 0`，保留更重的收口姿态，不自动帮你放宽执行节奏。
+- 新开 `6.7` 时，默认会继承最近同任务成功解析出来的 `delivery/security profile` 组合；如果你明确要切换 profile，必须显式传 `--reselect-profile`，否则会因 task 级 profile lock 失败。
 - 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
+- `--llm-base` 的默认值现在是 `origin/main`；除非你明确需要对比别的基线，否则不要手工改回 `main`。
 - 只有当最近两轮 6.7 都出现总超时，或大部分 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
 - 不要把大超时当作默认配置；首选仍然是“先按默认预算跑，再对命中过 timeout 的 reviewer 定向补时”。
 - 如果首轮 6.7 在 `sc-test` 阶段就出现 `rc=124`，且此前没有稳定的 task-scoped 成功样本，不要连续多次 `--resume` 硬撞；先看 `run-events.jsonl`、`child-artifacts/sc-test/summary.json`、`sc-test.log`，修完根因再继续。
 - 如果同一个 run 已经连续两次在 `sc-test` 失败，默认视为“当前 run 无继续价值”；优先修问题后重新开新 run，而不是在同一个 run 上反复 resume。
+- 如果当前同一轮 `sc-test` 已经明确是 `unit` 失败，pipeline 现在会直接停掉同 run 的第二次同参重试；这类失败默认视为“已知根因”，先修 unit 再开新 run，不要指望同参数重试自愈。
+- 每次决定重跑 6.7 之前，先看最近一轮的：
+  - `summary.json`
+  - `repair-guide.md`
+  - `run-events.jsonl`
+  - `child-artifacts/sc-test/summary.json`
+  - `child-artifacts/sc-acceptance-check/summary.json`
+- 没读工件前，不要直接再开一轮完整 6.7。
 - 更进一步的 `sc-test` task-scope 化只在 `playable-ea` / `fast-ship` 自动启用；`standard` 只接受“完全相同 git snapshot”的 `sc-test` 复用。
 - 触发这条放宽路径的前提是：最近一次同任务 pipeline 已经有可复用的 `sc-test`，并且本轮相对上轮的变化只落在文档/任务语义层，例如 `docs/**`、`.taskmaster/**`、`examples/taskmaster/**`、`execution-plans/**`、`decision-logs/**`、`AGENTS.md`、`README.md`、`workflow*.md`。
-- 一旦变化触及代码、脚本、contracts、测试文件、Godot 运行时资源，6.7 会自动回退到正常 `sc-test`，不会继续走放宽路径。
+- 一旦变化触及代码、脚本、contracts、测试文件、Godot 运行时资源，6.7 会自动回退到正常 `sc-test`，不会继续走放宽路径；这里至少包括 `Game.Core/**`、`Game.Godot/**`、`Game.Core/Contracts/**`、`Game.Core.Tests/**`、`Tests.Godot/**`、`scripts/sc/**`、`scripts/python/**`、`project.godot`、`*.sln`、`*.csproj`、`*.cs`、`*.gd`、`*.tscn`、`*.tres`。
 - 如果变化属于 task semantics，例如 taskmaster / overlay / ADR / PRD 文本，6.7 只复用 `sc-test`；后续 `acceptance_check` 仍会重跑，避免“假绿”。
 - 如果你明确要保留旧行为，可以显式传：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile> --allow-full-unit-fallback`。
 - 这个开关只建议用于定位“task-scoped unit coverage = 0.0%”是否由 filter 过窄引起；默认不要开，否则会把任务级失败放大成全仓 `dotnet test`，拖慢单轮时长。
@@ -703,6 +743,9 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-diff-mode summary --context-refresh-after-diff-lines 400 --context-refresh-after-diff-categories 4
 ```
 
+- Before rerunning 6.7, read `run_type` and `artifact_integrity` in addition to `reason`, `reuse_mode`, and `diagnostics`; a `planned-only` / `planned_only_incomplete` / `artifact_integrity` signal means the bundle is not a resumable producer run.
+- In that case, use the current bundle only for `summary / repair-guide / run-events` evidence, then fall back to the previous real producer run or start a fresh real 6.7.
+
 ### 6.8 清理 Needs Fix
 
 快速可玩验证：
@@ -734,16 +777,22 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
 - 只有当本轮改动直接命中了上一轮 reviewer 给出的锚点问题时，才值得立刻再跑 6.8。没有新修复内容时，重复跑 6.8 只是重复支付 LLM 成本。
+- 如果上一轮 6.8 的 LLM 回合是超时退出、没有新的可执行 finding、`final_needs_fix_agents` 仍为空，默认先停下来读工件并记录，不要立刻重复同参数再跑一轮。
+- 如果上一轮只剩 `Unknown/timeout`，而本轮改动没有命中 reviewer 相关锚点（代码、测试、contracts、tasks/overlays/ADR、review 模板），默认直接止损，不再重复支付 6.8。
+- 6.8 的 round 摘要现在会额外记录 `timeout_agents` 与 `failure_kind`；当出现 `timeout-no-summary` 时，优先把它当“观测不足”，而不是把 `status=ok` 误判为 clean。
 - 首轮 reviewer 会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，自动收缩到真正命中的 reviewer；拿不到稳定信号时才回退到 profile 默认 reviewer 集合。
 - deterministic 复用不再只看“当天 latest.json”，会跨日查找最近可复用的同任务 pipeline 产物。
-- 如果当前变化只是非任务语义文档，例如 `README.md`、`AGENTS.md`、`docs/agents/**`，`playable-ea` / `fast-ship` 会直接复用上一轮 deterministic 结果，不再重跑整条链路。
-- 如果当前变化只落在 task semantics 文档，例如 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`，`playable-ea` / `fast-ship` 会切到最小 acceptance 子集，只重跑 `adr,links,overlay`，必要时再补 `subtasks`。
+- 如果当前变化只是非任务语义文档，例如 `README.md`、`AGENTS.md`、`docs/agents/**`，`playable-ea` / `fast-ship` 才会直接复用上一轮 deterministic 结果，不再重跑整条链路。
+- 如果当前变化只落在 task semantics 文档，例如 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`workflow*.md`、`execution-plans/**`、`decision-logs/**`，不要把它当成真正的 docs-only clean reuse；`playable-ea` / `fast-ship` 默认最多只复用 `sc-test`，仍要重跑 `acceptance_check`，并切到最小 acceptance 子集，只重跑 `adr,links,overlay`，必要时再补 `subtasks`。
 - 这条最小子集路径还带 change fingerprint；同一任务、同一 profile、同一变更指纹会优先复用上一次已经成功的最小 acceptance 结果。
 - `standard` 不启用上述两条放宽路径；在 `standard` 下，除了完全相同 git snapshot 的复用，其他情况都会回到完整 deterministic 链路。
 - 新增预算守门：如果 deterministic 之后剩余预算低于 profile 下限，就直接 fail-fast，不再白白开启一轮新的 LLM 回合。
 - `--skip-sc-test` 仍然只建议用于“本轮只修 review / acceptance 文本，没有改实现和测试”的场景；不要把它当作常规默认。
 - 如果 deterministic 已经稳定 `ok`，剩余 `Needs Fix` 主要是证据强度、文案粒度、ADR/overlay 回链这类 P2/P3 问题，`fast-ship` 下一般只跑一轮 6.8；第二轮仍然是同主题命中时，默认转为记录和后续跟踪，而不是继续循环。
+- 6.8 的 reviewer 默认要按问题类别定向收缩，而不是整套重开：代码实现类优先 `code-reviewer`，语义 / acceptance / task-view / overlay 类优先 `semantic-equivalence-auditor`，安全边界类才补 `security-auditor`。只有无法稳定归类时，才回退到 profile 默认 reviewer 集合。
+- 如果连续两轮 6.8 都给出同类 `Needs Fix`，且严重度、命中锚点、建议动作基本不变，默认直接止损并记录，不要再开第三轮同口径 reviewer 重跑。
 - 如果剩余问题属于 P1 且会影响任务可交付判断，再决定是否补第二轮 6.8 或升级到 `standard --final-pass`；不要用重复快跑替代问题分级。
+- 纯 `.cs` 任务默认保持 unit 路径；只有当 task views 明确声明 `.gd` test refs，或本轮显式走 `verify=all|e2e`，才把它拉入 Godot / GdUnit 重路径。
 
 - 如果这是典型的“中间收敛回合”，而且你只想重跑上一轮真正命中的 reviewer，一般直接把轮数压到 1：
 
@@ -780,6 +829,8 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 如果最后一轮改动已经超出 Needs Fix 修补范围，例如重新改了实现、测试、contracts、Godot 资源或 review sidecars 已明显过期，就不要只跑 `--final-pass`；应回到完整 `6.7 standard`，必要时再补一轮 6.8。
 - 实用顺序：中间回合多用 6.8 快路径，最后收口在“`6.8 --final-pass`”和“完整 `6.7 standard`”之间二选一；然后统一进入 6.9 仓库级硬检查。
 
+- If `resume-task`, `inspect_run`, or `active-task` already shows `run_type = planned-only`, `reason = planned_only_incomplete`, or `Chapter6 blocked by = artifact_integrity`, do not enter 6.8 directly; return to a real deterministic bundle first.
+
 ### 6.9 Commit 前的仓库级验证
 
 ```powershell
@@ -815,8 +866,9 @@ py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profi
 ```
 
 - `run_review_pipeline.py` 支持显式 `--llm-agent-timeouts`；会与自动推导超时合并，显式值优先。
-- 当最近一轮完整 pipeline 已 clean 且当前仅为 docs-only / non-task-semantic 变更时，6.7 允许整轮 clean reuse（刷新本轮 sidecars，不重开重步骤）。
+- 当最近一轮完整 pipeline 已 clean 且当前仅为 docs-only / non-task-semantic 变更时，6.7 才允许整轮 clean reuse（刷新本轮 sidecars，不重开重步骤）；task semantics 变更不属于这条。
 - `llm_review_needs_fix_fast.py` 在 fast-ship 小 diff 中间回合可只对 `code-reviewer` 做定向扩时；如果最近完整 pipeline 已 clean，也允许 clean-skip。
+- 如果最近一轮完整 pipeline 不是完全 clean，但 deterministic 已经通过、失败仅剩 `sc-llm-review`，当前脚本也应优先走“复用 deterministic + 只重跑 LLM”的窄路径，而不是重新支付 `sc-test + acceptance_check`。
 
 ### 6.11 Fast mode 最省时执行模板
 
