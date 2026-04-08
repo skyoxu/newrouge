@@ -442,11 +442,45 @@ def _resolve_coverage_gate_summary(date: str) -> dict[str, object]:
     }
 
 
-def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict[str, dict[str, object]], ci_rc: int, smoke_rc: int | None, smoke_enabled: bool, invalid_suites: list[str], junit_artifact: dict[str, object], coverage_gate: dict[str, object]) -> dict[str, object]:
+def _write_quality_summary(
+    *,
+    date: str,
+    security_profile: str,
+    suite_runs: dict[str, dict[str, object]],
+    ci_rc: int,
+    smoke_rc: int | None,
+    smoke_enabled: bool,
+    invalid_suites: list[str],
+    junit_artifact: dict[str, object],
+    coverage_gate: dict[str, object],
+    audit_validation: dict[str, object] | None = None,
+) -> dict[str, object]:
+    audit_validation = audit_validation or {}
+    audit_enabled = bool(audit_validation.get("enabled"))
+    audit_executed = bool(audit_validation.get("executed"))
+    audit_rc_raw = audit_validation.get("rc")
+    audit_rc = int(audit_rc_raw) if isinstance(audit_rc_raw, int) else None
+    audit_pass_fail = str(audit_validation.get("pass_fail") or "skipped")
+    if not audit_enabled:
+        audit_status = "skipped"
+    elif audit_pass_fail == "pass":
+        audit_status = "passed"
+    elif audit_pass_fail == "fail":
+        audit_status = "failed"
+    else:
+        audit_status = "skipped"
+
     suites: dict[str, dict[str, object]] = {
         "ci_pipeline": _suite_record(gate_level="hard", selected=True, executed=True, status="passed" if ci_rc == 0 else "failed", rc=ci_rc),
         "adapters_security": _group_status(suite_runs, HARD_GDUNIT_SUITES, "hard"),
         "integration_ui": _group_status(suite_runs, SOFT_GDUNIT_SUITES, "soft"),
+        "audit_validation": _suite_record(
+            gate_level="hard",
+            selected=audit_enabled,
+            executed=audit_executed,
+            status=audit_status,
+            rc=audit_rc,
+        ),
         "coverage_gate": _suite_record(
             gate_level=str(coverage_gate.get("gate_mode") or "hard"),
             selected=True,
@@ -462,7 +496,10 @@ def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict
             rc=smoke_rc if smoke_enabled else None,
         ),
     }
-    hard_failed = any(suites[name]["status"] == "failed" for name in ("ci_pipeline", "adapters_security", "smoke_headless"))
+    hard_failed = any(
+        suites[name]["status"] == "failed"
+        for name in ("ci_pipeline", "adapters_security", "audit_validation", "smoke_headless")
+    )
     if str(coverage_gate.get("gate_mode") or "hard") == "hard" and suites["coverage_gate"]["status"] in ("failed", "missing"):
         hard_failed = True
     summary_path = _quality_summary_path(date)
@@ -484,6 +521,7 @@ def _write_quality_summary(*, date: str, security_profile: str, suite_runs: dict
         "suites": suites,
         "gdunit_suites": {s: suite_runs[s] for s in ALL_GDUNIT_SUITES},
         "junit_artifact": junit_artifact,
+        "audit_validation": audit_validation,
     }
     _write_text(summary_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     return payload
@@ -581,6 +619,7 @@ def main(argv=None) -> int:
         invalid_suites=invalid_suites,
         junit_artifact=junit_artifact,
         coverage_gate=coverage_gate,
+        audit_validation=audit_validation,
     )
     hard_failed = str(summary_payload.get("overall_gate_conclusion") or "pass") != "pass"
     provisional_exit_code = 1 if hard_failed else 0

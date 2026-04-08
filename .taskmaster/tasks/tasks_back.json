@@ -440,7 +440,7 @@
     "story_id": "BACKLOG-M1",
     "title": "Create main menu scene with new run and continue options",
     "description": "Implement MainMenu.tscn with New Run, Continue (single slot), and Quit buttons per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -479,20 +479,24 @@
       "Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd",
       "Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
       "Tests.Godot/tests/UI/test_main_menu_translations.gd",
-      "Tests.Godot/tests/UI/test_main_menu_events.gd"
+      "Tests.Godot/tests/UI/test_main_menu_events.gd",
+      "Game.Core.Tests/Tasks/Task0014ContractRefsTests.cs"
     ],
     "acceptance": [
       "GdUnit4 验收用例必须通过，且覆盖主菜单按钮交互流程（New Run/Continue/Quit/覆盖确认）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "GdUnit4 用例必须通过，并验证按钮与对话框可见文本来自翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "Overlay 08 的 Test-Refs 已包含本任务测试路径且可追溯。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "Game.Godot/Scenes/MainMenu.tscn 必须存在且可加载，运行时可见 New Run、Continue、Quit 三个按钮。 Refs: Tests.Godot/tests/UI/test_main_menu_scene.gd",
-      "Continue 仅按单一 autosave 槽位状态判定：无有效 autosave 时禁用，有效 autosave 时可用。 Refs: Tests.Godot/tests/Adapters/Db/test_savegame_unique_slot_per_user.gd",
+      "MainMenu must initialize Continue from the persisted single-slot autosave file: Continue stays disabled when autosave is missing, corrupt, or unparseable, and becomes enabled only for a valid autosave envelope. Refs: Tests.Godot/tests/UI/test_main_menu_events.gd Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "存在有效 autosave 时点击 New Run 必须弹出覆盖确认对话框，默认焦点在取消；选择取消时 autosave 保持不变。 Refs: Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd Tests.Godot/tests/UI/test_main_menu_confirm_dialog_focus.gd",
       "所有可见文本（按钮与对话框）必须来自翻译资源，界面不得展示硬编码文本。 Refs: Tests.Godot/tests/UI/test_main_menu_translations.gd",
       "点击 Quit 必须触发退出流程并关闭应用，不得无动作停留在主菜单。 Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
       "必须提供主菜单 UI 流程的手动测试记录，覆盖 New Run 覆盖确认与 Continue 有效 autosave。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
       "手动测试记录必须可审计（文件或清单可访问）。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
-      "验收项需检查 ADR-0032 与 ADR-0010 的引用或回链。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd"
+      "验收项需检查 ADR-0032 与 ADR-0010 的引用或回链。 Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "When no valid autosave exists, clicking New Run must start a new run directly and must not open overwrite confirmation dialog. Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
+      "Continue with a valid autosave must resume the autosave-backed single slot directly and must not present any slot-selection UI. Refs: Tests.Godot/tests/UI/test_main_menu_events.gd",
+      "When valid autosave exists and the player confirms overwrite, New Run must start from the overwrite-confirm flow without presenting any slot-selection UI. Refs: Tests.Godot/tests/Integration/test_main_menu_new_run_overwrite_cancel.gd"
     ],
     "test_strategy": [
       "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010."

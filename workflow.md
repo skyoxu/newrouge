@@ -556,10 +556,14 @@ py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd
 
 说明：
 
+- 新建测试文件较多时，首轮 red 要优先走最便宜的验证口径；不要因为“反正后面还要 green/refactor/review”就第一轮直接上重验证。
+- 如果本轮新建 `.gd` 测试文件 `>= 2`，或任务明显属于 UI / scene flow / Godot 交互路径，默认先用 `--verify unit`；只有当你明确需要 Godot-aware red 证据时，才升级到 `--verify auto`。
+- 不要把 `--verify all` 当作首轮 red 默认值。它只适用于：你已经有稳定的 task-scoped `.gd` refs，且前一轮 red 已经证明最小验证口径不够。
 - 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
 - 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
 - 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
+- 如果首轮 6.4 出现 `unexpected_green`、大批量新建 GdUnit 同时失败，或外层直接超时，不要原命令重跑；先缩小验证范围，再重新生成干净 red 证据。
 
 ### 6.5 Green stage
 
@@ -620,6 +624,7 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 除非你明确要覆盖默认映射，否则不要手工传 `--security-profile`。
 - 这个 pipeline 会写 sidecars、latest pointers、active-task summaries、repair guidance，以及 technical debt sync outputs。
 - review pipeline 启动前还会检查最近一次同任务 `sc-build-tdd` 的 refactor summary，要求 `stage = refactor` 且 `status = ok`；如果 6.6 失败，先修 6.6。
+- 如果 6.7 首轮失败，先判断是“仓库级噪音”还是“当前任务问题”。与当前任务无关的 unit 红灯、锁进程、全仓历史失败，不要继续按当前任务的 6.7/6.8 节奏推进。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
   - `fast-ship`：默认 `max_step_retries = 1`，首轮 review 聚焦 `code-reviewer + security-auditor + semantic-equivalence-auditor`。
@@ -627,6 +632,8 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
 - 只有当最近两轮 6.7 都出现总超时，或大部分 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
 - 不要把大超时当作默认配置；首选仍然是“先按默认预算跑，再对命中过 timeout 的 reviewer 定向补时”。
+- 如果首轮 6.7 在 `sc-test` 阶段就出现 `rc=124`，且此前没有稳定的 task-scoped 成功样本，不要连续多次 `--resume` 硬撞；先看 `run-events.jsonl`、`child-artifacts/sc-test/summary.json`、`sc-test.log`，修完根因再继续。
+- 如果同一个 run 已经连续两次在 `sc-test` 失败，默认视为“当前 run 无继续价值”；优先修问题后重新开新 run，而不是在同一个 run 上反复 resume。
 - 更进一步的 `sc-test` task-scope 化只在 `playable-ea` / `fast-ship` 自动启用；`standard` 只接受“完全相同 git snapshot”的 `sc-test` 复用。
 - 触发这条放宽路径的前提是：最近一次同任务 pipeline 已经有可复用的 `sc-test`，并且本轮相对上轮的变化只落在文档/任务语义层，例如 `docs/**`、`.taskmaster/**`、`examples/taskmaster/**`、`execution-plans/**`、`decision-logs/**`、`AGENTS.md`、`README.md`、`workflow*.md`。
 - 一旦变化触及代码、脚本、contracts、测试文件、Godot 运行时资源，6.7 会自动回退到正常 `sc-test`，不会继续走放宽路径。
@@ -651,6 +658,8 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 ```powershell
 py -3 scripts/sc/run_review_pipeline.py --task-id <id> --resume
 ```
+
+- `--resume` 默认只用于“外部中断后继续”或“已确认根因已修完的同 run 继续”，不要把它当作 deterministic 失败后的习惯性下一步。
 
 - 如果你想保留旧 run 作为证据，同时从同一基线分叉继续试另一套修复路径，用 `--fork`；默认会 fork 最近一次匹配的 run，必要时再配 `--fork-from-run-id <run_id>`：
 
@@ -724,6 +733,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 快速清理脚本会把 `--delivery-profile` 继续透传给内部 `run_review_pipeline.py`，避免第 6.8 里外 profile 漂移。
 - 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
+- 只有当本轮改动直接命中了上一轮 reviewer 给出的锚点问题时，才值得立刻再跑 6.8。没有新修复内容时，重复跑 6.8 只是重复支付 LLM 成本。
 - 首轮 reviewer 会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，自动收缩到真正命中的 reviewer；拿不到稳定信号时才回退到 profile 默认 reviewer 集合。
 - deterministic 复用不再只看“当天 latest.json”，会跨日查找最近可复用的同任务 pipeline 产物。
 - 如果当前变化只是非任务语义文档，例如 `README.md`、`AGENTS.md`、`docs/agents/**`，`playable-ea` / `fast-ship` 会直接复用上一轮 deterministic 结果，不再重跑整条链路。
@@ -732,6 +742,8 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - `standard` 不启用上述两条放宽路径；在 `standard` 下，除了完全相同 git snapshot 的复用，其他情况都会回到完整 deterministic 链路。
 - 新增预算守门：如果 deterministic 之后剩余预算低于 profile 下限，就直接 fail-fast，不再白白开启一轮新的 LLM 回合。
 - `--skip-sc-test` 仍然只建议用于“本轮只修 review / acceptance 文本，没有改实现和测试”的场景；不要把它当作常规默认。
+- 如果 deterministic 已经稳定 `ok`，剩余 `Needs Fix` 主要是证据强度、文案粒度、ADR/overlay 回链这类 P2/P3 问题，`fast-ship` 下一般只跑一轮 6.8；第二轮仍然是同主题命中时，默认转为记录和后续跟踪，而不是继续循环。
+- 如果剩余问题属于 P1 且会影响任务可交付判断，再决定是否补第二轮 6.8 或升级到 `standard --final-pass`；不要用重复快跑替代问题分级。
 
 - 如果这是典型的“中间收敛回合”，而且你只想重跑上一轮真正命中的 reviewer，一般直接把轮数压到 1：
 
@@ -787,6 +799,131 @@ py -3 scripts/python/dev_cli.py serve-project-health
 py -3 scripts/python/dev_cli.py project-health-scan --serve --port 8877
 py -3 scripts/python/dev_cli.py serve-project-health --port 8877
 ```
+
+### 6.10 PR#61 增量快用
+
+- 当本轮改动包含 acceptance wording、`Refs:`、anchors 或相关测试映射时，先跑轻量预检再进入 6.7/6.8：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-acceptance-preflight --task-id <id>
+```
+
+- 在进入完整 6.9 前，先跑轻量硬门前置（`gate-bundle-hard + run-dotnet`）：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profile fast-ship
+```
+
+- `run_review_pipeline.py` 支持显式 `--llm-agent-timeouts`；会与自动推导超时合并，显式值优先。
+- 当最近一轮完整 pipeline 已 clean 且当前仅为 docs-only / non-task-semantic 变更时，6.7 允许整轮 clean reuse（刷新本轮 sidecars，不重开重步骤）。
+- `llm_review_needs_fix_fast.py` 在 fast-ship 小 diff 中间回合可只对 `code-reviewer` 做定向扩时；如果最近完整 pipeline 已 clean，也允许 clean-skip。
+
+### 6.11 Fast mode 最省时执行模板
+
+适用前提：
+
+- 日常单任务循环
+- 默认 `DELIVERY_PROFILE=fast-ship`
+- 不手工覆盖默认 `SECURITY_PROFILE`
+- 已正确设置 `$env:GODOT_BIN`
+
+推荐顺序：
+
+1. 恢复上下文：
+
+```powershell
+py -3 scripts/python/dev_cli.py resume-task --task-id <id>
+```
+
+2. TDD preflight：
+
+```powershell
+py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft
+```
+
+3. 6.4 red-first：
+
+```powershell
+py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify unit
+```
+
+- 只有明确需要 Godot-aware red 证据时，才升级为：
+
+```powershell
+py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify auto --godot-bin "$env:GODOT_BIN"
+```
+
+4. 6.5 green：
+
+```powershell
+py -3 scripts/sc/build.py tdd --task-id <id> --stage green
+```
+
+5. 6.6 refactor：
+
+```powershell
+py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
+```
+
+6. 6.7 review pipeline：
+
+```powershell
+py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship
+```
+
+7. 只有真的出现 `Needs Fix` 再进 6.8：
+
+```powershell
+py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1
+```
+
+8. 6.9 仓库级硬检查：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
+py -3 scripts/python/inspect_run.py --kind local-hard-checks
+```
+
+省时规则：
+
+- `6.4` 首轮默认 `unit`，不要先上 `--verify all`。
+- `6.7` 首轮若暴露仓库级噪音、锁进程或 `sc-test rc=124`，先修根因，不要连续 `--resume`。
+- 同一个 run 连续两次卡在 `sc-test`，默认放弃该 run；修完后新开 run。
+- `6.8` 只在“本轮改动命中上一轮 reviewer 锚点”时才值得重跑。
+- 如果 deterministic 已经稳定 `ok`，剩下只是 P2/P3 证据强度问题，默认记录并止损，不再重复支付 LLM 成本。
+
+何时可以 `--resume`：
+
+- 外部中断
+- 机器重启
+- 已确认根因修完，只想继续同一个 run
+
+何时不要 `--resume`：
+
+- `sc-test` 连续失败
+- 首轮就暴露仓库级历史红灯
+- 还没先看 `run-events.jsonl`、`sc-test.log`、`child-artifacts/sc-test/summary.json`
+
+中间收敛回合的 6.8 快路径：
+
+```powershell
+py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1
+```
+
+只改了 review / acceptance 文本、没动实现和测试时：
+
+```powershell
+py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --skip-sc-test --rerun-failing-only --max-rounds 1
+```
+
+失败后优先看：
+
+- `summary.json`
+- `repair-guide.md`
+- `run-events.jsonl`
+- `sc-test.log`
+- `child-artifacts/sc-acceptance-check/summary.json`
+
 
 ## 7. Profile 快速指引
 

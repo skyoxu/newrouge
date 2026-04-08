@@ -520,7 +520,7 @@
         "dependencies": [
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -536,7 +536,7 @@
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Create main menu scene with new run and continue options.",
-        "updatedAt": null
+        "updatedAt": "2026-04-06T11:56:49.523270+00:00"
       },
       {
         "id": 15,
