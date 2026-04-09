@@ -10,3 +10,25 @@ ui.menu.confirm,Overwrite
 ui.menu.cancel,Cancel
 ui.settings.language,Language
 ui.player.greeting,Welcome {name}!
+ui.difficulty.title,Select Difficulty
+ui.difficulty.confirm,Confirm Difficulty
+ui.difficulty.1,Difficulty 1
+ui.difficulty.2,Difficulty 2
+ui.difficulty.3,Difficulty 3
+ui.difficulty.4,Difficulty 4
+ui.difficulty.5,Difficulty 5
+ui.difficulty.6,Difficulty 6
+ui.difficulty.7,Difficulty 7
+ui.difficulty.8,Difficulty 8
+ui.difficulty.9,Difficulty 9
+ui.difficulty.10,Difficulty 10
+ui.difficulty.1.desc,Challenge level 1 of 10 with light pressure.
+ui.difficulty.2.desc,Challenge level 2 of 10 with modest pressure.
+ui.difficulty.3.desc,Challenge level 3 of 10 with steady pressure.
+ui.difficulty.4.desc,Challenge level 4 of 10 with rising pressure.
+ui.difficulty.5.desc,Challenge level 5 of 10 with balanced pressure.
+ui.difficulty.6.desc,Challenge level 6 of 10 with notable pressure.
+ui.difficulty.7.desc,Challenge level 7 of 10 with strong pressure.
+ui.difficulty.8.desc,Challenge level 8 of 10 with severe pressure.
+ui.difficulty.9.desc,Challenge level 9 of 10 with intense pressure.
+ui.difficulty.10.desc,Challenge level 10 of 10 with maximum pressure.

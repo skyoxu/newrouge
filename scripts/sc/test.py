@@ -73,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--smoke-scene", default="res://Game.Godot/Scenes/Main.tscn", help="Main scene for smoke test")
     ap.add_argument("--timeout-sec", type=int, default=600)
     ap.add_argument("--skip-smoke", action="store_true")
+    ap.add_argument("--skip-csharp-test-conventions", action="store_true", help="skip csharp test naming gate (used by strict red-first preflight)")
     ap.add_argument("--no-coverage-gate", action="store_true", help="do not enforce default coverage thresholds")
     ap.add_argument("--no-coverage-report", action="store_true", help="skip HTML coverage report generation")
     ap.add_argument(
@@ -309,12 +310,23 @@ def main() -> int:
         if step["rc"] != 0:
             hard_fail = True
         else:
-            conventions = run_csharp_test_conventions(out_dir, task_id=args.task_id)
-            summary["steps"].append(conventions)
-            if not _persist_summary():
-                return 2
-            if conventions["rc"] != 0:
-                hard_fail = True
+            if bool(args.skip_csharp_test_conventions):
+                summary["steps"].append(
+                    _skipped_step(
+                        name="csharp-test-conventions",
+                        reason="disabled_by_flag",
+                        cmd=["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
+                    )
+                )
+                if not _persist_summary():
+                    return 2
+            else:
+                conventions = run_csharp_test_conventions(out_dir, task_id=args.task_id)
+                summary["steps"].append(conventions)
+                if not _persist_summary():
+                    return 2
+                if conventions["rc"] != 0:
+                    hard_fail = True
         if not hard_fail and not args.no_coverage_report:
             cov = run_coverage_report(out_dir, Path(step["artifacts_dir"]))
             summary["steps"].append(cov)

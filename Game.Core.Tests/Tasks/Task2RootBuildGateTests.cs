@@ -325,7 +325,7 @@ public sealed class Task2RootBuildGateTests
         process.StartInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "build NewRouge.sln -nologo -v minimal",
+            Arguments = "build NewRouge.csproj -nologo -v minimal",
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

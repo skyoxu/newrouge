@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewRouge", "NewRouge.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Game.Core", "Game.Core\\Game.Core.csproj", "{C4E1D5B0-4C29-4D4C-AF7C-9F9E3A1C8D77}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Game.Core.Tests", "Game.Core.Tests\\Game.Core.Tests.csproj", "{521CDF14-544F-4765-8451-840EE574A22B}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
         {C4E1D5B0-4C29-4D4C-AF7C-9F9E3A1C8D77}.Debug|Any CPU.Build.0 = Debug|Any CPU
         {C4E1D5B0-4C29-4D4C-AF7C-9F9E3A1C8D77}.Release|Any CPU.ActiveCfg = Release|Any CPU
         {C4E1D5B0-4C29-4D4C-AF7C-9F9E3A1C8D77}.Release|Any CPU.Build.0 = Release|Any CPU
+        {521CDF14-544F-4765-8451-840EE574A22B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {521CDF14-544F-4765-8451-840EE574A22B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {521CDF14-544F-4765-8451-840EE574A22B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {521CDF14-544F-4765-8451-840EE574A22B}.Release|Any CPU.Build.0 = Release|Any CPU
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE

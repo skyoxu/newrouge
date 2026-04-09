@@ -1,0 +1,21 @@
+# task15-p2-needs-fix-followup
+
+- Title: task15-p2-needs-fix-followup
+- Status: active
+- Branch: task/T15
+- Git Head: 39691ec052a62c02d8323e6513419834ba36bf04
+- Goal: Close remaining Task 15 P2 reviewer findings without reopening already-green deterministic gates.
+- Scope: `Tests.Godot/tests/Tasks/test_task0015_acceptance.gd`, `Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd`, `Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd`, and Task 15 acceptance wording only.
+- Current step: P2 deferred recording completed; waiting for a dedicated polishing round after core task chain continues.
+- Last completed step: Ran Chapter 6 through 6.8 and reduced reviewer severity to P2-only (no P0/P1).
+- Stop-loss: If two consecutive 6.8 rounds return the same P2 signature without new code deltas, stop reruns and keep evidence only.
+- Next action: In follow-up slot, remove `GetControlShapeForTest()`-style weak assertion and add keyboard-only / mouse-only / gamepad-only confirm tests.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 15 --resume`
+- Open questions: none recorded yet
+- Exit criteria: Latest reviewer bundle reports no P0/P1 and the remaining P2 signature is either fixed or intentionally re-recorded with updated evidence.
+- Related ADRs: none yet
+- Related decision logs: decision-logs/2026-04-09-task15-p2-needs-fix-followup.md
+- Related task id(s): `15`
+- Related run id: `8010b6524c66402b98500caf68cf7304`
+- Related latest.json: `logs/ci/2026-04-09/sc-review-pipeline-task-15-8010b6524c66402b98500caf68cf7304/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-09/sc-review-pipeline-task-15-8010b6524c66402b98500caf68cf7304`

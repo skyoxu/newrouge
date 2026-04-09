@@ -102,6 +102,12 @@ class AcceptanceTestgenRedTests(unittest.TestCase):
             root = Path(tmpdir)
             out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
             _write_json(
+                root / "logs" / "unit" / "2026-03-20" / "summary.json",
+                {
+                    "status": "ok",
+                },
+            )
+            _write_json(
                 root / "logs" / "e2e" / "2026-03-20" / "sc-test" / "gdunit-hard" / "run-summary.json",
                 {
                     "results": {

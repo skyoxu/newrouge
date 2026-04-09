@@ -1051,16 +1051,17 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0015ContractRefsTests.cs",
       "Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd",
       "Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd"
     ],
     "acceptance": [
-      "进入难度选择界面后，难度选择控件必须可见且可操作，难度选项数量恒为10个（不是9或11）；用户在界面内切换选项时，当前选中状态必须即时可见。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
-      "10个难度选项都必须显示说明文本；说明文本仅表达数值挑战强度，不得暗示与天赋树强绑定；显示文本必须来自本地化/翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
-      "用户确认难度后，所选难度必须写入全局状态；再次进入难度选择界面或相关界面时必须读取并显示该值；在未进行新的确认选择前，该值不得自行变化。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "进入难度选择界面后，难度选择功能必须由场景文件 Game.Godot/Scenes/UI/DifficultySelect.tscn 承载并可直接实例化；难度选择控件必须可见且可操作，难度选项数量恒为10个（不是9或11）；用户在界面内切换选项时，当前选中状态必须即时可见。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "10个难度选项都必须显示说明文本；每个说明文本必须体现可比较的数值挑战梯度（至少能区分相邻档位强弱，不可语义等价），且不得暗示与天赋树强绑定；显示文本必须来自本地化/翻译资源。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "用户确认难度后，所选难度必须写入全局状态；再次进入难度选择界面或相关界面时必须读取并显示该值；在未进行新的确认选择前，该值不得自行变化。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd Game.Core.Tests/Tasks/Task0015ContractRefsTests.cs",
       "必须支持键盘/鼠标或手柄在10个难度选项间导航并完成确认；确认后界面当前选中项与最终生效难度必须一致。 Refs: Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd",
       "难度选择交互形态必须为按钮组或滑块之一，且该控件必须能够覆盖并选中全部10级难度。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
-      "必须提供UI导航测试用例，覆盖键盘/鼠标/手柄输入下的难度选择流程，并对导航结果与确认结果进行断言。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "在键盘/鼠标/手柄任一输入路径下，导航到目标难度并确认后，最终生效难度必须等于确认时UI选中项。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd Tests.Godot/tests/UI/test_difficulty_select_input_navigation.gd Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd",
       "必须提供难度持久化测试用例，验证确认选择后重新进入界面仍读取并显示已选难度，且在无新选择时不会被静默重置为默认值。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
       "必须提供可审计用例，验证说明文本不暗示与天赋树强绑定，并可在UI或本地化资源层定位并检查对应文本。 Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd"
     ],

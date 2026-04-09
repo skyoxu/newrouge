@@ -127,6 +127,35 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
         self.assertEqual(0, step["rc"])
         self.assertIn("--no-coverage-gate", seen_cmd)
         self.assertIn("--no-coverage-report", seen_cmd)
+        self.assertIn("--skip-csharp-test-conventions", seen_cmd)
+
+    def test_run_verify_should_disable_coverage_for_all_in_strict_red_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            seen_cmd: list[str] = []
+
+            def fake_run_cmd(cmd, cwd, timeout_sec):  # noqa: ANN001, ARG001
+                seen_cmd.extend(cmd)
+                return 1, "SC_TEST status=fail\n"
+
+            mode, step = flow_helpers.run_verify(
+                verify="all",
+                task_id="15",
+                any_gd=True,
+                godot_bin="C:/godot.exe",
+                out_dir=out_dir,
+                strict_red=True,
+                red_first=True,
+                run_cmd_fn=fake_run_cmd,
+                repo_root_fn=lambda: Path(tmpdir),
+                write_text_fn=lambda path, text: path.write_text(text, encoding="utf-8"),
+            )
+
+        self.assertEqual("all", mode)
+        self.assertEqual(1, step["rc"])
+        self.assertIn("--no-coverage-gate", seen_cmd)
+        self.assertIn("--no-coverage-report", seen_cmd)
+        self.assertIn("--skip-csharp-test-conventions", seen_cmd)
 
     def test_extract_acceptance_refs_with_anchors_should_tag_each_item(self) -> None:
         refs = gen_script._extract_acceptance_refs_with_anchors(
