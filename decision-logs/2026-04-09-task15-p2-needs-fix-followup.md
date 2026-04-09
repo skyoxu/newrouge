@@ -1,0 +1,21 @@
+# task15-p2-needs-fix-followup
+
+- Title: task15-p2-needs-fix-followup
+- Date: 2026-04-09
+- Status: proposed
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T15
+- Git Head: 39691ec052a62c02d8323e6513419834ba36bf04
+- Why now: Task 15 Chapter-6 loop reached deterministic `ok`, and latest 6.8 reviewer results no longer report P0/P1 but still report P2 improvements.
+- Context: Latest reviewer bundle keeps two P2 themes: ACC:T15.5 still relies on `GetControlShapeForTest()` constant-style assertion; ACC:T15.6 lacks three isolated input-path confirms (keyboard-only/mouse-only/gamepad-only).
+- Decision: Accept Task 15 as non-blocking for fast-ship delivery while deferring the remaining P2 items to a follow-up refinement cycle, and keep explicit evidence links for replay.
+- Consequences: Current acceptance evidence is sufficient for functional closure and gate passage, but test-strength debt remains and can hide UI-regression edge cases.
+- Recovery impact: If this area regresses, resume from the latest Task 15 review bundle first; do not restart full 6.7 blindly.
+- Validation: Confirmed by `sc-test` task-scoped pass and latest 6.8 reviewer output at `logs/ci/2026-04-09/sc-review-pipeline-task-15-8010b6524c66402b98500caf68cf7304/child-artifacts/sc-llm-review/summary.json`.
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-04-09-task15-p2-needs-fix-followup.md
+- Related task id(s): `15`
+- Related run id: `8010b6524c66402b98500caf68cf7304`
+- Related latest.json: `logs/ci/2026-04-09/sc-review-pipeline-task-15-8010b6524c66402b98500caf68cf7304/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-09/sc-review-pipeline-task-15-8010b6524c66402b98500caf68cf7304`

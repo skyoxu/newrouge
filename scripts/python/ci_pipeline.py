@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 from solution_target import resolve_test_solution_arg
 
@@ -101,6 +102,25 @@ def extract_failed_tests(dotnet_test_output: str):
     return deduped
 
 
+def _resolve_default_solution(root: str | None = None) -> str:
+    resolved_root = Path(root or os.getcwd())
+    candidates = sorted(item.name for item in resolved_root.glob("*.sln"))
+    if not candidates:
+        return "Game.sln"
+    by_name = {item.lower(): item for item in candidates}
+    preferred_names = (
+        f"{resolved_root.name}.sln",
+        "NewRouge.sln",
+        "GodotGame.sln",
+        "Game.sln",
+    )
+    for preferred in preferred_names:
+        matched = by_name.get(preferred.lower())
+        if matched is not None:
+            return matched
+    return candidates[0]
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -117,7 +137,13 @@ def main():
         return 1
 
     root = os.getcwd()
-    resolved_solution = resolve_test_solution_arg(args.solution)
+    normalized_solution = str(args.solution or "").strip()
+    if normalized_solution.lower() == "auto":
+        normalized_solution = ""
+    if normalized_solution:
+        resolved_solution = resolve_test_solution_arg(normalized_solution)
+    else:
+        resolved_solution = _resolve_default_solution(root)
     date = dt.date.today().strftime('%Y-%m-%d')
     ci_dir = os.path.join('logs', 'ci', date)
     os.makedirs(ci_dir, exist_ok=True)

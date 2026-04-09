@@ -100,12 +100,12 @@ def run_verify(
             str(resolved_godot_bin),
         ]
         if strict_red:
-            cmd.append("--skip-smoke")
+            cmd += ["--skip-smoke", "--no-coverage-gate", "--no-coverage-report", "--skip-csharp-test-conventions"]
     else:
         cmd = ["py", "-3", "scripts/sc/test.py", "--type", "unit", "--task-id", task_id]
         # Red-first verify should stay lightweight even when no new files were created.
         if strict_red or red_first:
-            cmd += ["--no-coverage-gate", "--no-coverage-report"]
+            cmd += ["--no-coverage-gate", "--no-coverage-report", "--skip-csharp-test-conventions"]
     # In strict red-first mode with Godot tests, enforce raw gdUnit exit code
     # so red failures cannot be normalized to success.
     original_gdunit_strict = os.environ.get("GDUNIT_STRICT_EXIT_CODE")
