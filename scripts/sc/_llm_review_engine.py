@@ -13,6 +13,7 @@ from _acceptance_artifacts import build_acceptance_evidence
 from _deterministic_review import DETERMINISTIC_AGENTS, build_deterministic_review
 from _llm_review_acceptance import build_acceptance_semantic_context, read_text, strip_emoji, truncate
 from _llm_review_cli import (
+    apply_delivery_profile_defaults,
     apply_prompt_budget,
     build_parser,
     parse_agent_timeout_overrides,
@@ -170,7 +171,7 @@ def _run_dry_plan(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    args = build_parser().parse_args()
+    args = apply_delivery_profile_defaults(build_parser().parse_args())
     if bool(args.self_check):
         return _run_self_check(args)
     if bool(args.dry_run_plan):
