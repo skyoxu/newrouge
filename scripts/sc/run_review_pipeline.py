@@ -71,6 +71,7 @@ from _pipeline_support import (
 )
 from _llm_review_cli import parse_agent_timeout_overrides, resolve_agents
 from _change_scope import classify_change_scope_between_snapshots
+from _pipeline_history import collect_recent_failure_summary
 from _repair_guidance import build_execution_context, build_repair_guide, render_repair_guide_markdown
 from _risk_profile_floor import derive_delivery_profile_floor
 from _taskmaster import resolve_triplet
@@ -627,6 +628,42 @@ def _find_repeated_deterministic_failure_guard(
         "recommended_path": "fix-before-rerun",
         "fingerprint": str(matches[0].get("fingerprint") or ""),
         "recent_runs": matches,
+    }
+
+
+def _find_repeated_review_needs_fix_guard(
+    *,
+    task_id: str,
+    delivery_profile: str,
+    security_profile: str,
+) -> dict[str, Any] | None:
+    recent_failure_summary = collect_recent_failure_summary(
+        task_id=task_id,
+        delivery_profile=delivery_profile,
+        security_profile=security_profile,
+        root=repo_root(),
+        limit=3,
+    )
+    if not bool(recent_failure_summary.get("stop_full_rerun_recommended")):
+        return None
+    latest_family = str(recent_failure_summary.get("latest_failure_family") or "").strip()
+    if not latest_family.startswith("review-needs-fix|"):
+        return None
+    same_family_count = int(recent_failure_summary.get("same_family_count") or 0)
+    if same_family_count < 2:
+        return None
+    return {
+        "kind": "repeat_review_needs_fix",
+        "blocked": True,
+        "recommended_path": "needs-fix-fast",
+        "family": latest_family,
+        "same_family_count": same_family_count,
+        "same_family_run_ids": [
+            str(item).strip()
+            for item in list(recent_failure_summary.get("same_family_run_ids") or [])
+            if str(item).strip()
+        ],
+        "allow_override_flag": "--allow-full-rerun",
     }
 
 
@@ -1814,18 +1851,42 @@ def main() -> int:
         llm_diff_mode=llm_diff_mode,
     )
     force_full_rerun = False
-    if not bool(args.resume or args.fork or args.dry_run or args.skip_test or args.skip_acceptance or args.skip_llm_review):
+    skip_deterministic = bool(args.skip_test and args.skip_acceptance and not args.skip_llm_review)
+    if not bool(args.resume or args.fork or args.dry_run or args.skip_llm_review):
         diagnostics = session.marathon_state.setdefault("diagnostics", {})
         if isinstance(diagnostics, dict):
-            rerun_guard = _find_recent_deterministic_green_llm_not_clean_run(
-                current_out_dir=out_dir,
-                task_id=task_id,
-                delivery_profile=delivery_profile,
-                security_profile=security_profile,
-                git_fingerprint=current_git,
-            )
+            rerun_guard: dict[str, Any] | None = None
+            if skip_deterministic:
+                rerun_guard = _find_repeated_review_needs_fix_guard(
+                    task_id=task_id,
+                    delivery_profile=delivery_profile,
+                    security_profile=security_profile,
+                )
+            else:
+                rerun_guard = _find_recent_deterministic_green_llm_not_clean_run(
+                    current_out_dir=out_dir,
+                    task_id=task_id,
+                    delivery_profile=delivery_profile,
+                    security_profile=security_profile,
+                    git_fingerprint=current_git,
+                )
+                if rerun_guard is None:
+                    repeat_guard = _find_repeated_deterministic_failure_guard(
+                        current_out_dir=out_dir,
+                        task_id=task_id,
+                        delivery_profile=delivery_profile,
+                        security_profile=security_profile,
+                    )
+                    if repeat_guard is not None:
+                        if bool(args.allow_repeat_deterministic_failures):
+                            repeat_guard = {
+                                **repeat_guard,
+                                "blocked": False,
+                                "override": "allow-repeat-deterministic-failures",
+                            }
+                        rerun_guard = repeat_guard
             if rerun_guard is not None:
-                if bool(args.allow_full_rerun):
+                if bool(args.allow_full_rerun) and str(rerun_guard.get("kind") or "").strip() != "repeat_deterministic_failure":
                     rerun_guard = {
                         **rerun_guard,
                         "blocked": False,
@@ -1834,24 +1895,8 @@ def main() -> int:
                     force_full_rerun = True
                 diagnostics["rerun_guard"] = rerun_guard
             else:
-                repeat_guard = _find_repeated_deterministic_failure_guard(
-                    current_out_dir=out_dir,
-                    task_id=task_id,
-                    delivery_profile=delivery_profile,
-                    security_profile=security_profile,
-                )
-                if repeat_guard is not None:
-                    if bool(args.allow_repeat_deterministic_failures):
-                        repeat_guard = {
-                            **repeat_guard,
-                            "blocked": False,
-                            "override": "allow-repeat-deterministic-failures",
-                        }
-                    diagnostics["rerun_guard"] = repeat_guard
-                else:
-                    diagnostics.pop("rerun_guard", None)
-            active_guard = diagnostics.get("rerun_guard") if isinstance(diagnostics.get("rerun_guard"), dict) else None
-            if active_guard is None:
+                diagnostics.pop("rerun_guard", None)
+            if rerun_guard is None:
                 change_scope_guard = diagnostics.get("change_scope_ceiling") if isinstance(diagnostics.get("change_scope_ceiling"), dict) else None
                 if change_scope_guard is not None:
                     if bool(args.allow_large_change_scope_rerun):
@@ -1861,7 +1906,7 @@ def main() -> int:
                             "override": "allow-large-change-scope-rerun",
                         }
                     diagnostics["rerun_guard"] = change_scope_guard
-                    active_guard = change_scope_guard
+                    rerun_guard = change_scope_guard
             active_guard = diagnostics.get("rerun_guard") if isinstance(diagnostics.get("rerun_guard"), dict) else None
             rerun_forbidden = _derive_rerun_forbidden_payload(active_guard)
             if rerun_forbidden is not None:

@@ -347,6 +347,45 @@ def _candidate_commands(task_id: str, latest: str) -> dict[str, str]:
     return commands
 
 
+def _recommended_command(
+    recommended_action: str,
+    commands: dict[str, str],
+    chapter6_hints: dict[str, Any],
+) -> str:
+    hinted_action = str(chapter6_hints.get("next_action") or "").strip().lower().replace("_", "-")
+    action = hinted_action or str(recommended_action or "").strip().lower().replace("_", "-")
+    if action == "needs-fix-fast":
+        return str(commands.get("needs_fix_fast") or "").strip()
+    if action in {"resume", "fix-and-resume"}:
+        return str(commands.get("resume") or "").strip()
+    if action == "fork":
+        return str(commands.get("fork") or "").strip()
+    if action == "rerun":
+        return str(commands.get("rerun") or "").strip()
+    if action == "inspect":
+        return str(commands.get("inspect") or "").strip()
+    return ""
+
+
+def _forbidden_commands(
+    *,
+    recommended_action: str,
+    commands: dict[str, str],
+    chapter6_hints: dict[str, Any],
+) -> list[str]:
+    forbidden: list[str] = []
+    action = str(recommended_action or "").strip().lower().replace("_", "-")
+    if bool(chapter6_hints.get("rerun_forbidden")) and str(commands.get("rerun") or "").strip():
+        forbidden.append(str(commands.get("rerun") or "").strip())
+    if action == "needs-fix-fast" and str(commands.get("resume") or "").strip():
+        forbidden.append(str(commands.get("resume") or "").strip())
+    unique: list[str] = []
+    for item in forbidden:
+        if item and item not in unique:
+            unique.append(item)
+    return unique
+
+
 def build_resume_payload(
     *,
     repo_root: Path,
@@ -427,6 +466,8 @@ def build_resume_payload(
     plans = _find_related_docs(repo_root, "execution-plans", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     logs = _find_related_docs(repo_root, "decision-logs", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     active_task_snapshot = _normalized_active_task_snapshot(active_task, inspection_latest=latest_rel)
+    chapter6_hints = dict(inspection.get("chapter6_hints") or {}) if isinstance(inspection.get("chapter6_hints"), dict) else {}
+    candidate_commands = _candidate_commands(resolved_task_id, latest or latest_rel)
     payload: dict[str, Any] = {
         "task_id": resolved_task_id,
         "run_id": resolved_run_id,
@@ -436,7 +477,13 @@ def build_resume_payload(
         "blocking_signals": blocking_signals,
         "recommendation_source": recommendation_source,
         "recommendation_reason": recommendation_reason,
-        "candidate_commands": _candidate_commands(resolved_task_id, latest or latest_rel),
+        "candidate_commands": candidate_commands,
+        "recommended_command": _recommended_command(recommended_action, candidate_commands, chapter6_hints),
+        "forbidden_commands": _forbidden_commands(
+            recommended_action=recommended_action,
+            commands=candidate_commands,
+            chapter6_hints=chapter6_hints,
+        ),
         "inspection_exit_code": inspection_rc,
         "inspection": inspection,
         "recent_failure_summary": recent_failure_summary,
@@ -447,7 +494,7 @@ def build_resume_payload(
             "artifact_integrity_kind": latest_artifact_integrity_kind,
             "diagnostics_keys": latest_diagnostics_keys,
         },
-        "chapter6_hints": dict(inspection.get("chapter6_hints") or {}) if isinstance(inspection.get("chapter6_hints"), dict) else {},
+        "chapter6_hints": chapter6_hints,
         "related_execution_plans": plans,
         "latest_execution_plan": plans[0] if plans else "",
         "related_decision_logs": logs,
@@ -470,6 +517,18 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     commands = payload.get("candidate_commands") or {}
     latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
     chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+    recommended_command = str(payload.get("recommended_command") or "").strip() or _recommended_command(
+        str(payload.get("recommended_action") or ""),
+        commands,
+        chapter6_hints,
+    )
+    forbidden_commands = [str(item).strip() for item in list(payload.get("forbidden_commands") or []) if str(item).strip()]
+    if not forbidden_commands:
+        forbidden_commands = _forbidden_commands(
+            recommended_action=str(payload.get("recommended_action") or ""),
+            commands=commands,
+            chapter6_hints=chapter6_hints,
+        )
     recent_failure_summary = payload.get("recent_failure_summary") if isinstance(payload.get("recent_failure_summary"), dict) else {}
     stop_loss_note = _chapter6_stop_loss_note(chapter6_hints, latest_summary_signals)
     def _line(key: str, value: str) -> str:
@@ -486,6 +545,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         _line("Recommendation reason", str(payload.get("recommendation_reason") or "n/a")),
         _line("Inspection status", str(inspection.get("status") or "unknown")),
         _line("Failure code", str(failure.get("code") or "unknown")),
+        _line("Recommended command", f"`{recommended_command}`" if recommended_command else "n/a"),
+        _line("Forbidden commands", ", ".join(f"`{item}`" for item in forbidden_commands) if forbidden_commands else "none"),
         _line("Latest pointer", f"`{paths.get('latest')}`" if paths.get("latest") else "n/a"),
         _line("Latest reason", str(latest_summary_signals.get("reason") or "n/a")),
         _line("Latest run type", str(latest_summary_signals.get("run_type") or "n/a")),

@@ -10,6 +10,8 @@ def chapter6_stop_loss_note(chapter6_hints: dict[str, Any], latest_summary_signa
     artifact_integrity_kind = str(latest_summary_signals.get("artifact_integrity_kind") or "").strip().lower()
     if not blocked_by and reason.startswith("rerun_blocked:deterministic_green_llm_not_clean"):
         blocked_by = "rerun_guard"
+    elif not blocked_by and reason.startswith("rerun_blocked:repeat_review_needs_fix"):
+        blocked_by = "rerun_guard"
     elif not blocked_by and reason.startswith("rerun_blocked:repeat_deterministic_failure"):
         blocked_by = "rerun_guard"
     elif not blocked_by and (
@@ -23,6 +25,8 @@ def chapter6_stop_loss_note(chapter6_hints: dict[str, Any], latest_summary_signa
     if blocked_by == "rerun_guard":
         if reason.startswith("rerun_blocked:deterministic_green_llm_not_clean"):
             return "Deterministic evidence is already green; do not pay for another full 6.7. Continue with 6.8 or needs-fix-fast."
+        if reason.startswith("rerun_blocked:repeat_review_needs_fix"):
+            return "Recent reviewer-only reruns already repeated the same Needs Fix family; switch to needs-fix-fast or record the remaining findings instead of reopening 6.7."
         if reason.startswith("rerun_blocked:repeat_deterministic_failure"):
             return "Recent deterministic failures already repeated with the same fingerprint; inspect and fix the root cause before rerunning 6.7."
         if (
