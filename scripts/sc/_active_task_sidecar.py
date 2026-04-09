@@ -278,6 +278,12 @@ def _signal_driven_recommendation(
                 "Rerun guard blocked another full 6.7 because deterministic steps are already green; continue with the narrow llm-only closure path.",
                 "rerun_guard",
             )
+        if kind == "repeat_review_needs_fix":
+            return (
+                "needs-fix-fast",
+                "Rerun guard blocked another reviewer-only rerun because recent runs already repeat the same Needs Fix family; continue with needs-fix-fast or record the remaining findings instead of reopening 6.7.",
+                "rerun_guard",
+            )
         if kind == "repeat_deterministic_failure":
             return (
                 "inspect",

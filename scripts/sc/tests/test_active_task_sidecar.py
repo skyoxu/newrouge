@@ -185,6 +185,65 @@ class ActiveTaskSidecarTests(unittest.TestCase):
             self.assertEqual("--allow-full-rerun", payload["chapter6_hints"]["rerun_override_flag"])
             self.assertIn("rerun guard", payload["recommended_action_why"].lower())
 
+    def test_build_active_task_payload_should_prefer_needs_fix_fast_when_rerun_guard_blocks_repeat_review_needs_fix(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out_dir, latest_path = self._build_bundle(
+                root=root,
+                summary_payload={
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "14",
+                    "run_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "status": "fail",
+                    "reason": "rerun_blocked:repeat_review_needs_fix",
+                    "reuse_mode": "none",
+                    "steps": [
+                        {"name": "sc-llm-review", "status": "ok"},
+                    ],
+                },
+                execution_context_payload={
+                    "schema_version": "1.0.0",
+                    "cmd": "sc-review-pipeline",
+                    "date": "2026-04-07",
+                    "task_id": "14",
+                    "requested_run_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "run_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "status": "fail",
+                    "delivery_profile": "fast-ship",
+                    "security_profile": "host-safe",
+                    "failed_step": "",
+                    "paths": {},
+                    "git": {},
+                    "recovery": {},
+                    "marathon": {},
+                    "agent_review": {},
+                    "llm_review": {},
+                    "approval": {},
+                    "diagnostics": {
+                        "rerun_guard": {
+                            "kind": "repeat_review_needs_fix",
+                            "blocked": True,
+                            "recommended_path": "needs-fix-fast",
+                        }
+                    },
+                },
+            )
+
+            payload = active_task_sidecar.build_active_task_payload(
+                task_id="14",
+                run_id="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                status="fail",
+                out_dir=out_dir,
+                latest_json_path=latest_path,
+                root=root,
+            )
+
+            self.assertEqual("needs-fix-fast", payload["recommended_action"])
+            self.assertEqual("rerun_guard", payload["chapter6_hints"]["blocked_by"])
+            self.assertTrue(payload["chapter6_hints"]["can_skip_6_7"])
+            self.assertTrue(payload["chapter6_hints"]["can_go_to_6_8"])
+            self.assertIn("needs fix family", payload["recommended_action_why"].lower())
+
     def test_build_active_task_payload_should_block_planned_only_terminal_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

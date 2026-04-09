@@ -406,6 +406,15 @@ def _derive_chapter6_hints(*, failure: dict[str, Any], latest_summary_signals: d
             "rerun_forbidden": True,
             "rerun_override_flag": "--allow-full-rerun",
         }
+    if reason.startswith("rerun_blocked:repeat_review_needs_fix"):
+        return {
+            "next_action": "needs-fix-fast",
+            "can_skip_6_7": True,
+            "can_go_to_6_8": True,
+            "blocked_by": "rerun_guard",
+            "rerun_forbidden": True,
+            "rerun_override_flag": "--allow-full-rerun",
+        }
     if reason.startswith("rerun_blocked:repeat_deterministic_failure"):
         return {
             "next_action": "inspect",
@@ -522,6 +531,8 @@ def _derive_recommended_action_why(
     if blocked_by == "rerun_guard":
         if reason.startswith("rerun_blocked:deterministic_green_llm_not_clean"):
             return "Deterministic evidence is already green; do not pay for another full 6.7. Continue with 6.8 or needs-fix-fast."
+        if reason.startswith("rerun_blocked:repeat_review_needs_fix"):
+            return "Recent reviewer-only reruns already repeated the same Needs Fix family; continue with needs-fix-fast or record the remaining findings instead of reopening 6.7."
         if reason.startswith("rerun_blocked:repeat_deterministic_failure"):
             return "Recent deterministic failures already repeated with the same fingerprint; inspect and fix the root cause before rerunning 6.7."
         if (

@@ -1310,6 +1310,94 @@ class RunReviewPipelinePreflightTests(unittest.TestCase):
             self.assertTrue(summary["diagnostics"]["rerun_guard"]["blocked"])
             self.assertTrue(str(summary["diagnostics"]["rerun_guard"]["fingerprint"]).startswith("sc-test|unit|2|compile_error"))
 
+    def test_main_should_block_repeated_review_needs_fix_before_llm_only_rerun(self) -> None:
+        run_id = uuid.uuid4().hex
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_root = Path(tmpdir)
+            for suffix in ("older", "latest"):
+                previous_out_dir = tmp_root / "logs" / "ci" / "2026-04-06" / f"sc-review-pipeline-task-56-{suffix}"
+                previous_out_dir.mkdir(parents=True, exist_ok=True)
+                (previous_out_dir / "summary.json").write_text(
+                    json.dumps(
+                        {
+                            "cmd": "sc-review-pipeline",
+                            "task_id": "56",
+                            "requested_run_id": suffix,
+                            "run_id": suffix,
+                            "status": "ok",
+                            "reason": "pipeline_clean",
+                            "steps": [
+                                {"name": "sc-test", "status": "ok", "rc": 0, "log": str(previous_out_dir / "sc-test.log")},
+                                {
+                                    "name": "sc-acceptance-check",
+                                    "status": "ok",
+                                    "rc": 0,
+                                    "log": str(previous_out_dir / "sc-acceptance-check.log"),
+                                },
+                                {
+                                    "name": "sc-llm-review",
+                                    "status": "ok",
+                                    "rc": 0,
+                                    "log": str(previous_out_dir / "sc-llm-review.log"),
+                                },
+                            ],
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (previous_out_dir / "repair-guide.json").write_text(
+                    json.dumps({"status": "needs-fix"}, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                (previous_out_dir / "execution-context.json").write_text(
+                    json.dumps(
+                        {
+                            "run_id": suffix,
+                            "delivery_profile": "fast-ship",
+                            "security_profile": "host-safe",
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            out_dir = tmp_root / "logs" / "ci" / "2026-04-07" / f"sc-review-pipeline-task-56-{run_id}"
+            latest_path = tmp_root / "logs" / "ci" / "2026-04-07" / "sc-review-pipeline-task-56" / "latest.json"
+            argv = [
+                str(SCRIPT),
+                "--task-id",
+                "56",
+                "--run-id",
+                run_id,
+                "--delivery-profile",
+                "fast-ship",
+                "--skip-test",
+                "--skip-acceptance",
+            ]
+            with (
+                mock.patch.dict(os.environ, _stable_env(), clear=False),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(run_review_pipeline_module, "_pipeline_run_dir", return_value=out_dir),
+                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path),
+                mock.patch.object(run_review_pipeline_module, "repo_root", return_value=tmp_root),
+                mock.patch.object(run_review_pipeline_module, "resolve_triplet", return_value=self._triplet()),
+                mock.patch.object(run_review_pipeline_module, "_run_step") as run_step_mock,
+            ):
+                rc = run_review_pipeline_module.main()
+
+            self.assertEqual(1, rc)
+            run_step_mock.assert_not_called()
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("rerun_blocked:repeat_review_needs_fix", summary["reason"])
+            self.assertEqual("repeat_review_needs_fix", summary["diagnostics"]["rerun_guard"]["kind"])
+            self.assertTrue(summary["diagnostics"]["rerun_guard"]["blocked"])
+            self.assertEqual("needs-fix-fast", summary["diagnostics"]["rerun_guard"]["recommended_path"])
+
 
 if __name__ == "__main__":
     unittest.main()

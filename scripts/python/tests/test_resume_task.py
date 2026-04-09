@@ -255,6 +255,14 @@ class ResumeTaskTests(unittest.TestCase):
                 "rerun_override_flag": "--allow-full-rerun",
             },
         )
+        self.assertEqual(
+            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            payload["recommended_command"],
+        )
+        self.assertIn(
+            "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+            payload["forbidden_commands"],
+        )
 
     def test_render_markdown_should_surface_latest_reason_and_diagnostics_first(self) -> None:
         payload = {
@@ -324,6 +332,8 @@ class ResumeTaskTests(unittest.TestCase):
         self.assertIn("- Chapter6 rerun forbidden: yes", text)
         self.assertIn("- Chapter6 rerun override: --allow-full-rerun", text)
         self.assertIn("- Chapter6 stop-loss note: Deterministic evidence is already green; do not pay for another full 6.7. Continue with 6.8 or needs-fix-fast.", text)
+        self.assertIn("- Recommended command: `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1`", text)
+        self.assertIn("- Forbidden commands: `py -3 scripts/sc/run_review_pipeline.py --task-id 14`", text)
         self.assertIn("- Recent same-family count: 2", text)
         self.assertIn("- Recent stop-full-rerun: yes", text)
 
