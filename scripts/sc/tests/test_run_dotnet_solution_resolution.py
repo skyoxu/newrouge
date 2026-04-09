@@ -31,7 +31,7 @@ run_dotnet = _load_module("run_dotnet_test_module", "scripts/python/run_dotnet.p
 
 
 class RunDotnetSolutionResolutionTests(unittest.TestCase):
-    def test_main_should_resolve_test_solution_when_auto(self) -> None:
+    def test_main_should_resolve_repo_named_solution_when_auto(self) -> None:
         commands: list[list[str]] = []
 
         def _fake_run_cmd(args, cwd=None, timeout=900_000):
@@ -53,9 +53,9 @@ class RunDotnetSolutionResolutionTests(unittest.TestCase):
                 rc = run_dotnet.main()
 
             self.assertEqual(1, rc)
-            self.assertEqual(["dotnet", "restore", "Game.sln"], commands[0])
+            self.assertEqual(["dotnet", "restore", "NewRouge.sln"], commands[0])
             summary = json.loads((root / "logs" / "unit" / run_dotnet.dt.date.today().strftime("%Y-%m-%d") / "summary.json").read_text(encoding="utf-8"))
-            self.assertEqual("Game.sln", summary["solution"])
+            self.assertEqual("NewRouge.sln", summary["solution"])
 
 
 if __name__ == "__main__":

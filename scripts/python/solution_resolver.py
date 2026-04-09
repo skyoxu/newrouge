@@ -6,6 +6,15 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def _pick_by_preferred_name(candidates: list[Path], preferred_names: tuple[str, ...]) -> str | None:
+    by_name = {candidate.name.lower(): candidate.name for candidate in candidates}
+    for preferred in preferred_names:
+        hit = by_name.get(preferred.lower())
+        if hit:
+            return hit
+    return None
+
+
 def resolve_solution_path(requested_solution: str | None, *, repo_root: Path | None = None) -> str:
     """Resolve solution path with project-first preference.
 
@@ -53,12 +62,13 @@ def _looks_like_test_solution(candidate: Path) -> bool:
 
 
 def resolve_test_solution_path(requested_solution: str | None, *, repo_root: Path | None = None) -> str:
-    """Resolve solution path with test-bearing preference for test-oriented entrypoints.
+    """Resolve solution path for test-oriented entrypoints.
 
     Priority:
     1) explicit --solution when it exists
-    2) first solution that looks like it contains test projects, preferring Game.sln
-    3) fallback to resolve_solution_path(...)
+    2) <repo-name>.sln when present
+    3) first solution that looks like it contains test projects, preferring Game.sln
+    4) fallback to resolve_solution_path(...)
     """
 
     root = Path(repo_root or Path.cwd())
@@ -74,9 +84,16 @@ def resolve_test_solution_path(requested_solution: str | None, *, repo_root: Pat
     if not candidates:
         return requested or "Game.sln"
 
+    repo_named = _pick_by_preferred_name(
+        candidates,
+        (f"{root.name}.sln".lower(), f"{root.name.lower()}.sln"),
+    )
+    if repo_named:
+        return repo_named
+
     test_candidates = [candidate for candidate in candidates if _looks_like_test_solution(candidate)]
     if test_candidates:
-        preferred_names = ("game.sln", f"{root.name}.sln".lower(), "godotgame.sln")
+        preferred_names = ("game.sln", "godotgame.sln")
         by_name = {c.name.lower(): c.name for c in test_candidates}
         for pref in preferred_names:
             if pref in by_name:

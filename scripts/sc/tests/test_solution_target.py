@@ -49,7 +49,7 @@ class SolutionTargetTests(unittest.TestCase):
             resolved = solution_target.resolve_solution_arg("auto", root=root)
             self.assertEqual("Game.sln", resolved)
 
-    def test_test_auto_should_prefer_solution_with_test_projects(self) -> None:
+    def test_test_auto_should_prefer_repo_named_solution_even_when_game_sln_has_tests(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
             root = Path(tmpdir) / "newrouge"
             root.mkdir(parents=True, exist_ok=True)
@@ -62,7 +62,7 @@ class SolutionTargetTests(unittest.TestCase):
                 encoding="utf-8",
             )
             resolved = solution_target.resolve_test_solution_arg("auto", root=root)
-            self.assertEqual("Game.sln", resolved)
+            self.assertEqual("NewRouge.sln", resolved)
 
     def test_test_auto_should_fallback_to_normal_resolution_without_test_projects(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
