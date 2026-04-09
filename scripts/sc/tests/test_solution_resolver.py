@@ -43,12 +43,12 @@ class SolutionResolverTests(unittest.TestCase):
 
         self.assertEqual("NewRouge.sln", resolved)
 
-    def test_auto_should_prefer_test_bearing_solution_for_test_entrypoints(self) -> None:
+    def test_auto_should_prefer_repo_named_test_bearing_solution_for_test_entrypoints(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
             root = Path(tmpdir) / "newrouge"
             root.mkdir(parents=True, exist_ok=True)
             (root / "NewRouge.sln").write_text(
-                'Project("{x}") = "NewRouge", "NewRouge.csproj", "{1}"\nEndProject\n',
+                'Project("{x}") = "Game.Core.Tests", "Game.Core.Tests\\\\Game.Core.Tests.csproj", "{1}"\nEndProject\n',
                 encoding="utf-8",
             )
             (root / "Game.sln").write_text(
@@ -58,7 +58,7 @@ class SolutionResolverTests(unittest.TestCase):
 
             resolved = solution_resolver.resolve_test_solution_path("auto", repo_root=root)
 
-        self.assertEqual("Game.sln", resolved)
+        self.assertEqual("NewRouge.sln", resolved)
 
 
 if __name__ == "__main__":
