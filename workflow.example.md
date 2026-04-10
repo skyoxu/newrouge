@@ -21,7 +21,7 @@
 
 ```powershell
 py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
-py -3 scripts/python/inspect_run.py --kind local-hard-checks
+py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
 可选：启动本地 project-health 页面：
@@ -114,10 +114,10 @@ py -3 scripts/python/dev_cli.py resume-task --task-id <id>
 如果 recovery summary 仍然不够，再执行二级恢复入口：
 
 ```powershell
-py -3 scripts/python/inspect_run.py --kind pipeline --task-id <id>
+py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>
 ```
 
-- `inspect_run.py --kind pipeline` 会输出同一组 `latest_summary_signals` / `chapter6_hints`，适合在真正重跑前确认是继续 `6.7` 还是转 `6.8`。
+- `dev_cli.py inspect-run --kind pipeline` 会输出同一组 `latest_summary_signals` / `chapter6_hints`，适合在真正重跑前确认是继续 `6.7` 还是转 `6.8`。
 - 如果这里已经显示 `run_type = planned-only`、`reason = planned_only_incomplete`，或 `Chapter6 blocked by = artifact_integrity`，把该 bundle 只当证据看，不要直接从它 reopen `6.7` / `6.8`。
 
 只有任务很长或跨切面时，才创建 execution plan：
@@ -234,7 +234,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 ```powershell
 py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profile fast-ship
 py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
-py -3 scripts/python/inspect_run.py --kind local-hard-checks
+py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
 - `run-local-hard-checks-preflight` 先挡 `gate-bundle-hard` / `run-dotnet` 的快失败；通过后再跑完整 6.9。

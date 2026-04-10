@@ -68,6 +68,8 @@
   - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin <godot-bin>`
 - 任务恢复（规范入口）:
   - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
+- 第六章重跑路由（先读工件再决定 6.7/6.8/止损）:
+  - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`
 - 任务级统一评审流水线:
   - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin <godot-bin>`
 - 恢复文档校验:

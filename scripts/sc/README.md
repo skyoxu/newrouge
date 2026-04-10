@@ -33,7 +33,7 @@
 
 - 先读 `logs/ci/active-tasks/task-<id>.active.md`，它是最短恢复摘要。
 - 再执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`，读取 `Latest reason`、`Latest run type`、`Latest reuse mode`、`Latest artifact integrity`、`Chapter6 next action`、`Chapter6 blocked by`。
-- 需要深挖时，再执行 `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <id>`。
+- 需要深挖时，再执行 `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>`。
 
 高价值止损口径：
 

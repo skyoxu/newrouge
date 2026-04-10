@@ -23,7 +23,9 @@ The goal is deterministic local recovery, not platform-grade remote orchestratio
 - Repo-scoped producer entry: `scripts/python/local_hard_checks_harness.py`
 - Stable CLI entry for repo-scoped runs: `py -3 scripts/python/dev_cli.py run-local-hard-checks`
 - Reviewer rebuild entry: `scripts/sc/agent_to_agent_review.py`
-- Local inspect entry: `scripts/python/inspect_run.py`
+- Stable local inspect entry: `py -3 scripts/python/dev_cli.py inspect-run --kind <kind>`
+- Stable Chapter 6 route entry: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
+- Underlying inspect implementation: `scripts/python/inspect_run.py`
 - Task-scoped sidecar schemas: `sc-review-execution-context.schema.json`, `sc-review-repair-guide.schema.json`, `sc-review-latest-index.schema.json`
 - Repo-scoped sidecar schemas: `sc-local-hard-checks-execution-context.schema.json`, `sc-local-hard-checks-repair-guide.schema.json`, `sc-local-hard-checks-latest-index.schema.json`
 - Shared failure taxonomy: `scripts/sc/_failure_taxonomy.py`
@@ -105,8 +107,9 @@ Repo-scoped pointer:
 
 - `scripts/sc/agent_to_agent_review.py` consumes and validates task-scoped `latest.json`, `execution-context.json`, and `repair-guide.json` before trusting reviewer-side recovery decisions.
 - `scripts/python/_recovery_doc_scaffold.py` consumes and validates task-scoped `latest.json` before backfilling `execution-plans/` and `decision-logs/`.
-- `scripts/python/inspect_run.py` consumes `latest.json`, `summary.json`, `execution-context.json`, and `repair-guide.json` for both task-scoped review runs and repo-scoped local hard checks.
+- `py -3 scripts/python/dev_cli.py inspect-run --kind <kind>` wraps `scripts/python/inspect_run.py` and consumes `latest.json`, `summary.json`, `execution-context.json`, and `repair-guide.json` for both task-scoped review runs and repo-scoped local hard checks.
 - `scripts/python/resume_task.py` consumes `inspect_run.py` output plus `active-task` sidecars, and now derives a recovery-facing stop-loss note from `latest_summary_signals` / `chapter6_hints` before recommending another `6.7`.
+- `scripts/python/chapter6_route.py` consumes the same recovery artifacts and classifies `run-6.7`, `run-6.8`, `fix-deterministic`, `inspect-first`, `repo-noise-stop`, or residual-recording paths before a fresh rerun pays deterministic or LLM cost.
 - `summary.json` remains producer-owned. Consumer contracts should only require fields they actually read.
 - New shared sidecar fields are not allowed unless a real consumer needs them and the executable schema plus regression coverage are updated in the same change.
 
@@ -190,18 +193,20 @@ Before deciding to reopen `6.7`, read `latest.json.reason`, `latest.json.run_typ
 
 If recovery already shows `run_type = planned-only`, `reason = planned_only_incomplete`, or `chapter6_hints.blocked_by = artifact_integrity`, treat that bundle as evidence only and fall back to the previous real producer run before reopening `6.7` or `6.8`.
 If recovery readers also expose `recommended_action_why`, treat it as the shortest explanation of whether the next move is `inspect`, `resume`, or `needs-fix-fast`; `needs-fix-fast` means targeted closure should happen before any full rerun.
+If the same recovery surface also exposes `chapter6_route_lane` or `repo_noise_reason` through project-health or `active-task`, treat them as dashboard-level hints that should agree with the canonical `chapter6-route` result, not as a replacement for the task-scoped route command itself.
 
 ## Local Inspect Entry
 
-Use `scripts/python/inspect_run.py` as the stable local replay/inspect entrypoint:
+Use `py -3 scripts/python/dev_cli.py inspect-run` as the stable local replay/inspect entrypoint:
 
-- Task-scoped latest pointer: `py -3 scripts/python/inspect_run.py --task-id <task-id>`
-- Explicit task-scoped bundle: `py -3 scripts/python/inspect_run.py --latest logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
-- Explicit repo-scoped bundle: `py -3 scripts/python/inspect_run.py --kind local-hard-checks --latest logs/ci/<date>/local-hard-checks-latest.json`
-- Persist one stable inspection payload: `py -3 scripts/python/inspect_run.py --task-id <task-id> --out-json logs/ci/<date>/inspect-task-<task-id>.json`
+- Task-scoped latest pointer: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>`
+- Quick task-scoped recommendation-only read: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id> --recommendation-only`
+- Explicit task-scoped bundle: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
+- Explicit repo-scoped bundle: `py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks --latest logs/ci/<date>/local-hard-checks-latest.json`
+- Persist one stable inspection payload: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id> --out-json logs/ci/<date>/inspect-task-<task-id>.json`
 
 The command returns `0` only when the inspected run is fully usable for recovery. Any broken pointer, schema drift, or failed step returns non-zero and emits one stable JSON payload.
-When `inspect_run.py --task-id <task-id>` resolves the latest task-scoped bundle automatically, it now skips both dry-run-only pointers and newer `planned-only` terminal bundles, then falls back to the newest real producer run.
+When `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>` resolves the latest task-scoped bundle automatically, it now skips both dry-run-only pointers and newer `planned-only` terminal bundles, then falls back to the newest real producer run.
 For task-scoped review runs, that payload now also exposes:
 
 - `latest_summary_signals.reason`

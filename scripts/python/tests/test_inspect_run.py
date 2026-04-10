@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -38,6 +41,91 @@ inspect_run = _load_module("inspect_run_module", "scripts/python/inspect_run.py"
 
 
 class InspectRunTests(unittest.TestCase):
+    def test_inspect_run_artifacts_should_fallback_to_repair_guide_route_recommendation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            latest = root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-15" / "latest.json"
+            out_dir = root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-15-run-15"
+            _write_json(
+                latest,
+                {
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "15",
+                    "run_id": "run-15",
+                    "status": "fail",
+                    "latest_out_dir": str(out_dir),
+                    "summary_path": str(out_dir / "summary.json"),
+                    "execution_context_path": str(out_dir / "execution-context.json"),
+                    "repair_guide_json_path": str(out_dir / "repair-guide.json"),
+                },
+            )
+            _write_json(
+                out_dir / "summary.json",
+                {
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "15",
+                    "run_id": "run-15",
+                    "status": "fail",
+                    "reason": "rerun_blocked:chapter6_route_run_6_8",
+                    "steps": [],
+                    "latest_summary_signals": {
+                        "reason": "rerun_blocked:chapter6_route_run_6_8",
+                    },
+                    "chapter6_hints": {
+                        "next_action": "",
+                        "blocked_by": "rerun_guard",
+                    },
+                },
+            )
+            _write_json(
+                out_dir / "execution-context.json",
+                {
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "15",
+                    "run_id": "run-15",
+                    "status": "fail",
+                    "delivery_profile": "fast-ship",
+                    "security_profile": "host-safe",
+                    "diagnostics": {
+                        "rerun_guard": {
+                            "kind": "chapter6_route_run_6_8",
+                            "blocked": True,
+                            "recommended_path": "run-6.8",
+                        }
+                    },
+                },
+            )
+            _write_json(
+                out_dir / "repair-guide.json",
+                {
+                    "status": "needs-fix",
+                    "task_id": "15",
+                    "summary_status": "fail",
+                    "failed_step": "",
+                    "recommendations": [
+                        {
+                            "id": "chapter6-route-run-6-8",
+                            "title": "Use the narrow 6.8 lane instead of reopening a full 6.7 rerun",
+                            "why": "The latest route already proved deterministic evidence is sufficient for this task. Continue with the targeted Needs Fix closure lane.",
+                            "commands": [
+                                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1"
+                            ],
+                            "files": [],
+                        }
+                    ],
+                },
+            )
+
+            rc, payload = inspect_run.inspect_run_artifacts(repo_root=root, kind="pipeline", task_id="15")
+
+            self.assertEqual(1, rc)
+            self.assertEqual("needs-fix-fast", payload["recommended_action"])
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                payload["recommended_command"],
+            )
+            self.assertIn("deterministic evidence is sufficient", payload["recommended_action_why"].lower())
+
     def test_inspect_run_artifacts_should_surface_planned_only_recovery_hints(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -189,6 +277,113 @@ class InspectRunTests(unittest.TestCase):
 
             resolved = inspect_run._resolve_latest_path(root, latest="", kind="pipeline", task_id="14", run_id="")
             self.assertEqual(real_latest.resolve(), resolved)
+
+    def test_render_recommendation_only_should_surface_compact_recovery_fields(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "recommended_action_why": "Deterministic evidence is already sufficient.",
+            "latest_summary_signals": {
+                "reason": "rerun_blocked:repeat_review_needs_fix",
+            },
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+                "blocked_by": "rerun_guard",
+            },
+            "failure": {
+                "code": "review-needs-fix",
+            },
+        }
+
+        text = inspect_run._render_recommendation_only(payload)
+
+        self.assertIn("task_id=15", text)
+        self.assertIn("run_id=run-15", text)
+        self.assertIn("failure_code=review-needs-fix", text)
+        self.assertIn("recommended_action=needs-fix-fast", text)
+        self.assertIn(
+            "recommended_command=py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            text,
+        )
+        self.assertIn("forbidden_commands=py -3 scripts/sc/run_review_pipeline.py --task-id 15", text)
+        self.assertIn("latest_reason=rerun_blocked:repeat_review_needs_fix", text)
+        self.assertIn("chapter6_next_action=needs-fix-fast", text)
+        self.assertIn("blocked_by=rerun_guard", text)
+
+    def test_main_recommendation_only_should_print_compact_text(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "recommended_action_why": "Deterministic evidence is already sufficient.",
+            "latest_summary_signals": {"reason": "rerun_blocked:repeat_review_needs_fix"},
+            "chapter6_hints": {"next_action": "needs-fix-fast", "blocked_by": "rerun_guard"},
+            "failure": {"code": "review-needs-fix"},
+        }
+        stdout = io.StringIO()
+        argv = [
+            "--repo-root",
+            str(REPO_ROOT),
+            "--kind",
+            "pipeline",
+            "--task-id",
+            "15",
+            "--recommendation-only",
+        ]
+        with (
+            mock.patch.object(inspect_run, "inspect_run_artifacts", return_value=(1, payload)),
+            mock.patch.object(sys, "argv", ["inspect_run.py", *argv]),
+            redirect_stdout(stdout),
+        ):
+            rc = inspect_run.main()
+
+        self.assertEqual(1, rc)
+        output = stdout.getvalue()
+        self.assertIn("task_id=15", output)
+        self.assertIn("recommended_action=needs-fix-fast", output)
+        self.assertNotIn('"recommended_action": "needs-fix-fast"', output)
+
+    def test_main_recommendation_only_json_should_print_compact_json(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "recommended_action_why": "Deterministic evidence is already sufficient.",
+            "latest_summary_signals": {"reason": "rerun_blocked:repeat_review_needs_fix"},
+            "chapter6_hints": {"next_action": "needs-fix-fast", "blocked_by": "rerun_guard"},
+            "failure": {"code": "review-needs-fix"},
+        }
+        stdout = io.StringIO()
+        argv = [
+            "--repo-root",
+            str(REPO_ROOT),
+            "--kind",
+            "pipeline",
+            "--task-id",
+            "15",
+            "--recommendation-only",
+            "--recommendation-format",
+            "json",
+        ]
+        with (
+            mock.patch.object(inspect_run, "inspect_run_artifacts", return_value=(1, payload)),
+            mock.patch.object(sys, "argv", ["inspect_run.py", *argv]),
+            redirect_stdout(stdout),
+        ):
+            rc = inspect_run.main()
+
+        self.assertEqual(1, rc)
+        compact = json.loads(stdout.getvalue())
+        self.assertEqual("15", compact["task_id"])
+        self.assertEqual("review-needs-fix", compact["failure_code"])
+        self.assertEqual("rerun_guard", compact["blocked_by"])
 
 
 if __name__ == "__main__":

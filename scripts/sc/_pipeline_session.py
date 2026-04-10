@@ -9,6 +9,28 @@ from typing import Any, Callable
 from _pipeline_helpers import has_materialized_pipeline_steps
 
 
+def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_payload: dict[str, Any]) -> None:
+    for key in (
+        "latest_summary_signals",
+        "chapter6_hints",
+        "recommended_action",
+        "recommended_action_why",
+        "candidate_commands",
+        "recommended_command",
+        "forbidden_commands",
+    ):
+        value = active_task_payload.get(key)
+        if value is None:
+            summary.pop(key, None)
+            continue
+        if isinstance(value, dict):
+            summary[key] = dict(value)
+        elif isinstance(value, list):
+            summary[key] = list(value)
+        else:
+            summary[key] = value
+
+
 @dataclass
 class PipelineSession:
     args: Any
@@ -148,12 +170,44 @@ class PipelineSession:
                 out_dir=self.out_dir,
                 status=str(self.summary.get("status", "fail")),
             )
-            self.write_active_task_sidecar(
+            sidecar_paths = self.write_active_task_sidecar(
                 task_id=self.task_id,
                 run_id=self.run_id,
                 out_dir=self.out_dir,
                 status=str(self.summary.get("status", "fail")),
             )
+            if isinstance(sidecar_paths, tuple) and sidecar_paths:
+                active_task_json_path = Path(sidecar_paths[0])
+                if active_task_json_path.exists():
+                    try:
+                        active_task_payload = json.loads(active_task_json_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        active_task_payload = {}
+                    if isinstance(active_task_payload, dict):
+                        _sync_summary_recovery_recommendation(self.summary, active_task_payload)
+                        try:
+                            self.validate_pipeline_summary(self.summary)
+                        except self.summary_schema_error as exc:
+                            self.write_text(self.schema_error_log, f"{exc}\n")
+                            self.write_json(self.out_dir / "summary.invalid.json", self.summary)
+                            print(f"[sc-review-pipeline] ERROR: summary schema validation failed after active-task sync. details={self.schema_error_log}")
+                            return False
+                        self.write_json(self.out_dir / "summary.json", self.summary)
+                        self.write_json(
+                            self.out_dir / "execution-context.json",
+                            self.build_execution_context(
+                                task_id=self.task_id,
+                                requested_run_id=self.requested_run_id,
+                                run_id=self.run_id,
+                                out_dir=self.out_dir,
+                                delivery_profile=self.delivery_profile,
+                                security_profile=self.security_profile,
+                                llm_review_context=self.llm_review_context,
+                                summary=self.summary,
+                                marathon_state=self.marathon_state,
+                                approval_state=approval_state,
+                            ),
+                        )
         return True
 
     def add_step(self, step: dict[str, Any]) -> bool:

@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -264,6 +266,192 @@ class ResumeTaskTests(unittest.TestCase):
             payload["forbidden_commands"],
         )
 
+    def test_build_resume_payload_should_prefer_pipeline_summary_recommendation_over_active_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            summary_path = repo_root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-14-run-14" / "summary.json"
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "cmd": "sc-review-pipeline",
+                        "task_id": "14",
+                        "requested_run_id": "run-14",
+                        "run_id": "run-14",
+                        "allow_overwrite": False,
+                        "force_new_run_id": False,
+                        "status": "fail",
+                        "steps": [
+                            {
+                                "name": "sc-test",
+                                "cmd": ["py", "-3", "scripts/sc/test.py"],
+                                "rc": 0,
+                                "status": "ok",
+                                "log": "logs/ci/2026-04-10/sc-review-pipeline-task-14-run-14/sc-test.log",
+                            }
+                        ],
+                        "started_at_utc": "2026-04-10T00:00:00+00:00",
+                        "finished_at_utc": "2026-04-10T00:00:05+00:00",
+                        "elapsed_sec": 5,
+                        "run_type": "full",
+                        "reason": "rerun_blocked:repeat_review_needs_fix",
+                        "reuse_mode": "deterministic-only-reuse",
+                        "latest_summary_signals": {
+                            "reason": "rerun_blocked:repeat_review_needs_fix",
+                            "run_type": "full",
+                            "reuse_mode": "deterministic-only-reuse",
+                            "artifact_integrity_kind": "",
+                            "diagnostics_keys": ["rerun_guard"],
+                        },
+                        "chapter6_hints": {
+                            "next_action": "needs-fix-fast",
+                            "can_skip_6_7": True,
+                            "can_go_to_6_8": True,
+                            "blocked_by": "rerun_guard",
+                            "rerun_forbidden": True,
+                            "rerun_override_flag": "--allow-full-rerun",
+                        },
+                        "recommended_action": "needs-fix-fast",
+                        "recommended_action_why": "repeat reviewer family",
+                        "candidate_commands": {
+                            "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                            "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+                        },
+                        "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                        "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            active_task_path = repo_root / "logs" / "ci" / "active-tasks" / "task-14.active.json"
+            active_task_path.parent.mkdir(parents=True, exist_ok=True)
+            active_task_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "14",
+                        "run_id": "stale-run",
+                        "status": "ok",
+                        "recommended_action": "continue",
+                        "recommended_action_why": "stale active task recommendation",
+                        "paths": {
+                            "latest_json": "logs/ci/2026-04-09/sc-review-pipeline-task-14/latest.json",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            inspection = {
+                "task_id": "14",
+                "run_id": "run-14",
+                "failure": {"code": "review-needs-fix"},
+                "paths": {
+                    "latest": "logs/ci/2026-04-10/sc-review-pipeline-task-14/latest.json",
+                    "out_dir": "logs/ci/2026-04-10/sc-review-pipeline-task-14-run-14",
+                    "summary": "logs/ci/2026-04-10/sc-review-pipeline-task-14-run-14/summary.json",
+                },
+                "latest_summary_signals": {
+                    "reason": "from-inspection",
+                    "run_type": "deterministic-only",
+                    "reuse_mode": "inspection-reuse",
+                    "diagnostics_keys": ["from_inspection"],
+                },
+                "chapter6_hints": {
+                    "next_action": "continue",
+                    "can_skip_6_7": False,
+                    "can_go_to_6_8": False,
+                    "blocked_by": "",
+                    "rerun_forbidden": False,
+                    "rerun_override_flag": "",
+                },
+            }
+            with mock.patch.object(resume_task, "inspect_run_artifacts", return_value=(1, inspection)):
+                _, payload = resume_task.build_resume_payload(
+                    repo_root=repo_root,
+                    task_id="14",
+                    latest="",
+                    run_id="",
+                )
+
+        self.assertEqual("pipeline-summary", payload["decision_basis"])
+        self.assertEqual("pipeline-summary", payload["recommendation_source"])
+        self.assertEqual("needs-fix-fast", payload["recommended_action"])
+        self.assertEqual("repeat reviewer family", payload["recommended_action_why"])
+        self.assertEqual(
+            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            payload["recommended_command"],
+        )
+        self.assertEqual(
+            ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"],
+            payload["forbidden_commands"],
+        )
+        self.assertEqual(
+            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            payload["candidate_commands"]["needs_fix_fast"],
+        )
+        self.assertIn("pipeline_summary.recommended_action=needs-fix-fast", payload["blocking_signals"])
+
+    def test_build_resume_payload_should_prefer_inspection_recommendation_fields_over_summary_reload(self) -> None:
+        inspection = {
+            "task_id": "14",
+            "run_id": "run-14",
+            "failure": {"code": "review-needs-fix"},
+            "paths": {
+                "latest": "logs/ci/2026-04-10/sc-review-pipeline-task-14/latest.json",
+                "out_dir": "logs/ci/2026-04-10/sc-review-pipeline-task-14-run-14",
+                "summary": "logs/ci/2026-04-10/sc-review-pipeline-task-14-run-14/summary.json",
+            },
+            "latest_summary_signals": {
+                "reason": "rerun_blocked:repeat_review_needs_fix",
+                "run_type": "full",
+                "reuse_mode": "deterministic-only-reuse",
+                "artifact_integrity_kind": "",
+                "diagnostics_keys": ["rerun_guard"],
+            },
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+                "can_skip_6_7": True,
+                "can_go_to_6_8": True,
+                "blocked_by": "rerun_guard",
+                "rerun_forbidden": True,
+                "rerun_override_flag": "--allow-full-rerun",
+            },
+            "recommended_action": "needs-fix-fast",
+            "recommended_action_why": "inspection already knows the recommendation",
+            "candidate_commands": {
+                "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+            },
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"],
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir, mock.patch.object(resume_task, "inspect_run_artifacts", return_value=(1, inspection)):
+            _, payload = resume_task.build_resume_payload(
+                repo_root=Path(tmp_dir),
+                task_id="14",
+                latest="",
+                run_id="",
+            )
+
+        self.assertEqual("inspection", payload["decision_basis"])
+        self.assertEqual("inspection", payload["recommendation_source"])
+        self.assertEqual("needs-fix-fast", payload["recommended_action"])
+        self.assertEqual("inspection already knows the recommendation", payload["recommended_action_why"])
+        self.assertEqual(
+            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            payload["recommended_command"],
+        )
+        self.assertEqual(
+            ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"],
+            payload["forbidden_commands"],
+        )
+        self.assertIn("inspection.recommended_action=needs-fix-fast", payload["blocking_signals"])
+
     def test_render_markdown_should_surface_latest_reason_and_diagnostics_first(self) -> None:
         payload = {
             "task_id": "14",
@@ -275,7 +463,7 @@ class ResumeTaskTests(unittest.TestCase):
             "recommendation_reason": "latest diagnostics say deterministic_ok_llm_not_clean",
             "blocking_signals": ["active_task.clean_state=deterministic_ok_llm_not_clean"],
             "candidate_commands": {
-                "inspect": "py -3 scripts/python/inspect_run.py --kind pipeline --task-id 14",
+                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 14",
                 "resume": "py -3 scripts/sc/run_review_pipeline.py --task-id 14 --resume",
                 "fork": "py -3 scripts/sc/run_review_pipeline.py --task-id 14 --fork",
                 "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
@@ -615,6 +803,131 @@ class ResumeTaskTests(unittest.TestCase):
             "- Latest pointer: `logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json`",
             repaired_md,
         )
+
+    def test_render_recommendation_only_should_surface_core_recovery_fields(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "latest_summary_signals": {
+                "reason": "rerun_blocked:repeat_review_needs_fix",
+            },
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+            },
+        }
+
+        text = resume_task._render_recommendation_only(payload)
+
+        self.assertIn("task_id=15", text)
+        self.assertIn("run_id=run-15", text)
+        self.assertIn("recommended_action=needs-fix-fast", text)
+        self.assertIn(
+            "recommended_command=py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            text,
+        )
+        self.assertIn("forbidden_commands=py -3 scripts/sc/run_review_pipeline.py --task-id 15", text)
+        self.assertIn("latest_reason=rerun_blocked:repeat_review_needs_fix", text)
+        self.assertIn("chapter6_next_action=needs-fix-fast", text)
+
+    def test_main_recommendation_only_should_print_compact_text_without_default_outputs(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "inspection": {
+                "paths": {
+                    "latest": "logs/ci/2026-04-10/sc-review-pipeline-task-15/latest.json",
+                }
+            },
+            "latest_summary_signals": {
+                "reason": "rerun_blocked:repeat_review_needs_fix",
+            },
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+            },
+            "active_task": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            stdout = io.StringIO()
+            with (
+                mock.patch.object(resume_task, "build_resume_payload", return_value=(1, payload)),
+                mock.patch.object(resume_task, "_repair_active_task_latest_pointer", return_value={"repaired": False}),
+                redirect_stdout(stdout),
+            ):
+                rc = resume_task.main(
+                    [
+                        "--repo-root",
+                        str(repo_root),
+                        "--task-id",
+                        "15",
+                        "--recommendation-only",
+                    ]
+                )
+
+            default_json, default_md = resume_task._default_output_paths(repo_root, "15")
+
+        self.assertEqual(0, rc)
+        output = stdout.getvalue()
+        self.assertIn("task_id=15", output)
+        self.assertIn("recommended_action=needs-fix-fast", output)
+        self.assertFalse(default_json.exists())
+        self.assertFalse(default_md.exists())
+
+    def test_main_recommendation_only_json_should_print_compact_json_without_default_outputs(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "inspection": {
+                "paths": {
+                    "latest": "logs/ci/2026-04-10/sc-review-pipeline-task-15/latest.json",
+                }
+            },
+            "latest_summary_signals": {
+                "reason": "rerun_blocked:repeat_review_needs_fix",
+            },
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+            },
+            "active_task": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            stdout = io.StringIO()
+            with (
+                mock.patch.object(resume_task, "build_resume_payload", return_value=(1, payload)),
+                mock.patch.object(resume_task, "_repair_active_task_latest_pointer", return_value={"repaired": False}),
+                redirect_stdout(stdout),
+            ):
+                rc = resume_task.main(
+                    [
+                        "--repo-root",
+                        str(repo_root),
+                        "--task-id",
+                        "15",
+                        "--recommendation-only",
+                        "--recommendation-format",
+                        "json",
+                    ]
+                )
+
+            default_json, default_md = resume_task._default_output_paths(repo_root, "15")
+
+        self.assertEqual(0, rc)
+        compact = json.loads(stdout.getvalue())
+        self.assertEqual("15", compact["task_id"])
+        self.assertEqual("needs-fix-fast", compact["recommended_action"])
+        self.assertEqual("rerun_blocked:repeat_review_needs_fix", compact["latest_reason"])
+        self.assertFalse(default_json.exists())
+        self.assertFalse(default_md.exists())
 
 
 if __name__ == "__main__":

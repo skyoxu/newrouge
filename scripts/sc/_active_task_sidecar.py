@@ -380,6 +380,75 @@ def _chapter6_rerun_policy(*, blocked_by: str, diagnostics: dict[str, Any]) -> t
     return False, ""
 
 
+def _candidate_commands(*, task_id: str, latest_json_rel: str) -> dict[str, str]:
+    inspect_cmd = ["py", "-3", "scripts/python/dev_cli.py", "inspect-run", "--kind", "pipeline"]
+    latest_pointer = str(latest_json_rel or "").strip()
+    if latest_pointer:
+        inspect_cmd += ["--latest", latest_pointer]
+    elif str(task_id or "").strip():
+        inspect_cmd += ["--task-id", str(task_id).strip()]
+    commands = {
+        "inspect": " ".join(inspect_cmd),
+        "resume": "",
+        "fork": "",
+        "rerun": "",
+        "needs_fix_fast": "",
+        "resume_summary": "",
+    }
+    normalized_task_id = str(task_id or "").strip()
+    if normalized_task_id:
+        commands["resume"] = f"py -3 scripts/sc/run_review_pipeline.py --task-id {normalized_task_id} --resume"
+        commands["fork"] = f"py -3 scripts/sc/run_review_pipeline.py --task-id {normalized_task_id} --fork"
+        commands["rerun"] = f"py -3 scripts/sc/run_review_pipeline.py --task-id {normalized_task_id}"
+        commands["needs_fix_fast"] = (
+            f"py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id {normalized_task_id} "
+            "--delivery-profile fast-ship --rerun-failing-only --max-rounds 1"
+        )
+        commands["resume_summary"] = f"py -3 scripts/python/dev_cli.py resume-task --task-id {normalized_task_id}"
+    return commands
+
+
+def _recommended_command(
+    recommended_action: str,
+    commands: dict[str, str],
+    chapter6_hints: dict[str, Any],
+) -> str:
+    hinted_action = str(chapter6_hints.get("next_action") or "").strip().lower().replace("_", "-")
+    action = hinted_action or str(recommended_action or "").strip().lower().replace("_", "-")
+    if action == "needs-fix-fast":
+        return str(commands.get("needs_fix_fast") or "").strip()
+    if action in {"resume", "fix-and-resume"}:
+        return str(commands.get("resume") or "").strip()
+    if action == "fork":
+        return str(commands.get("fork") or "").strip()
+    if action == "rerun":
+        return str(commands.get("rerun") or "").strip()
+    if action == "inspect":
+        return str(commands.get("resume_summary") or commands.get("inspect") or "").strip()
+    if action == "continue":
+        return str(commands.get("resume_summary") or commands.get("inspect") or "").strip()
+    return ""
+
+
+def _forbidden_commands(
+    *,
+    recommended_action: str,
+    commands: dict[str, str],
+    chapter6_hints: dict[str, Any],
+) -> list[str]:
+    forbidden: list[str] = []
+    action = str(recommended_action or "").strip().lower().replace("_", "-")
+    if bool(chapter6_hints.get("rerun_forbidden")) and str(commands.get("rerun") or "").strip():
+        forbidden.append(str(commands.get("rerun") or "").strip())
+    if action == "needs-fix-fast" and str(commands.get("resume") or "").strip():
+        forbidden.append(str(commands.get("resume") or "").strip())
+    unique: list[str] = []
+    for item in forbidden:
+        if item and item not in unique:
+            unique.append(item)
+    return unique
+
+
 
 
 def _derive_latest_summary_signals(
@@ -529,6 +598,14 @@ def build_active_task_payload(
         "rerun_forbidden": rerun_forbidden,
         "rerun_override_flag": rerun_override_flag,
     }
+    latest_json_rel = _repo_rel(latest_json_path, root=resolved_root)
+    candidate_commands = _candidate_commands(task_id=str(task_id).strip(), latest_json_rel=latest_json_rel)
+    recommended_command = _recommended_command(recommended_action, candidate_commands, chapter6_hints)
+    forbidden_commands = _forbidden_commands(
+        recommended_action=recommended_action,
+        commands=candidate_commands,
+        chapter6_hints=chapter6_hints,
+    )
     return {
         "cmd": "active-task-sidecar",
         "task_id": str(task_id).strip(),
@@ -536,7 +613,7 @@ def build_active_task_payload(
         "status": effective_status,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(),
         "paths": {
-            "latest_json": _repo_rel(latest_json_path, root=resolved_root),
+            "latest_json": latest_json_rel,
             "out_dir": _repo_rel(effective_out_dir, root=resolved_root),
             "summary_json": _repo_rel(summary_path, root=resolved_root),
             "execution_context_json": _repo_rel(execution_context_path, root=resolved_root),
@@ -550,13 +627,9 @@ def build_active_task_payload(
         "chapter6_hints": chapter6_hints,
         "recommended_action": recommended_action,
         "recommended_action_why": recommended_why,
-        "candidate_commands": {
-            "resume": f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --resume",
-            "fork": f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id} --fork",
-            "rerun": f"py -3 scripts/sc/run_review_pipeline.py --task-id {task_id}",
-            "needs_fix_fast": f"py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id {task_id} --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
-            "resume_summary": f"py -3 scripts/python/dev_cli.py resume-task --task-id {task_id}",
-        },
+        "candidate_commands": candidate_commands,
+        "recommended_command": recommended_command,
+        "forbidden_commands": forbidden_commands,
         "repair_status": str(repair_guide.get("status") or "").strip(),
         "agent_review_recommended_action": str(
             ((execution_context.get("agent_review") or {}).get("recommended_action")) or ""
@@ -608,7 +681,10 @@ def render_active_task_markdown(payload: dict[str, Any]) -> str:
         f"- Chapter6 rerun forbidden: {bool(chapter6_hints.get('rerun_forbidden'))}",
         f"- Chapter6 rerun override: {chapter6_hints.get('rerun_override_flag') or 'n/a'}",
         f"- Chapter6 stop-loss note: {chapter6_stop_loss_note or 'n/a'}",
+        f"- Recommended command: `{payload.get('recommended_command')}`" if payload.get("recommended_command") else "- Recommended command: n/a",
+        f"- Forbidden commands: {', '.join(f'`{item}`' for item in list(payload.get('forbidden_commands') or []))}" if list(payload.get("forbidden_commands") or []) else "- Forbidden commands: none",
         f"- Resume summary command: `{commands.get('resume_summary')}`" if commands.get("resume_summary") else "- Resume summary command: n/a",
+        f"- Inspect command: `{commands.get('inspect')}`" if commands.get("inspect") else "- Inspect command: n/a",
         f"- Resume command: `{commands.get('resume')}`" if commands.get("resume") else "- Resume command: n/a",
         f"- Fork command: `{commands.get('fork')}`" if commands.get("fork") else "- Fork command: n/a",
         f"- Rerun command: `{commands.get('rerun')}`" if commands.get("rerun") else "- Rerun command: n/a",

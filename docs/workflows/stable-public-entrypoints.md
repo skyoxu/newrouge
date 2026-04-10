@@ -61,6 +61,9 @@ Why this is stable:
 
 ### `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
 
+Quick read variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
+Automation variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only --recommendation-format json`
+
 Use when:
 - resuming a task after context reset
 - returning to a task after another session or another day
@@ -79,7 +82,10 @@ Why this is stable:
 - it now also emits a `Chapter6 stop-loss note`, so the recovery summary explains why a fresh full `6.7` would be wasteful
 - it also surfaces `recommended_action_why`, and `recommended_action = needs-fix-fast` is the cue to prefer targeted closure over another full rerun
 
-### `py -3 scripts/python/inspect_run.py --kind <kind> [--task-id <id>]`
+### `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>]`
+
+Quick read variant: `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>] --recommendation-only`
+Automation variant: `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>] --recommendation-only --recommendation-format json`
 
 Use when:
 - `resume-task` is still not enough
@@ -96,6 +102,26 @@ Why this is stable:
 - inspection is also where you confirm `planned_only_incomplete` / `artifact_integrity`, repeated same-family failures via `recent_failure_summary`, and whether the next move should be inspect-first instead of reopening `6.7`
 - when automatic latest resolution sees a newer dry-run-only pipeline pointer, it now skips that candidate and falls back to the newest real recoverable run
 - when automatic latest resolution sees a newer planned-only terminal bundle, it also skips that evidence-only candidate and falls back to the newest real producer run
+
+### `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id>`
+
+Quick read variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
+Automation variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only --recommendation-format json`
+
+Use when:
+- you already have recovery artifacts and need a cheap go/no-go decision before reopening `6.7`
+- you need to decide whether `6.8` is worth paying for this round
+- you want a stable route for `repo-noise-stop`, `fix-deterministic`, `run-6.8`, `run-6.7`, or residual recording
+
+Prerequisites:
+- task-scoped recovery artifacts under `logs/ci/**`
+
+Why this is stable:
+- it reads recovery artifacts first, instead of relying on operator memory
+- it classifies high-confidence `repo-noise` vs `task-issue` for the first failed `6.7` round
+- it only recommends `6.8` when current edits hit the previous reviewer anchors
+- it can record residual low-priority findings into `decision-logs/**` and `execution-plans/**` instead of paying for another same-shape rerun
+- `scripts/sc/llm_review_needs_fix_fast.py` now consumes the same route preflight before spending deterministic / LLM budget when prior review artifacts exist; run `chapter6-route --recommendation-only` manually when you want the cheapest read-only go/no-go before touching 6.8.
 
 ## Task Delivery Loop
 
@@ -115,6 +141,7 @@ Why this is stable:
 - it is the default task-level main entrypoint
 - it replaces manually stitching lower-level review commands together
 - it now carries rerun stop-loss signals so repeated full reruns are blocked when deterministic is already green or when recent `sc-test` failures share the same fingerprint
+- it now consumes the same `chapter6-route` signal before a fresh full rerun, so `inspect-first`, `repo-noise-stop`, `fix-deterministic`, and `run-6.8` recommendations are enforced before refactor preflight and downstream cost
 - when the same invocation already proved a known `sc-test` unit root cause, it records `diagnostics.sc_test_retry_stop_loss` and stops the same-run retry instead of paying that cost again
 - exceptional overrides stay explicit: `--allow-full-rerun` and `--allow-repeat-deterministic-failures`
 - a fresh run now inherits the latest task-scoped profile lock unless you explicitly pass `--reselect-profile`

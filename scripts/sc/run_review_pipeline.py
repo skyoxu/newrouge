@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import shutil
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -664,6 +665,45 @@ def _find_repeated_review_needs_fix_guard(
             if str(item).strip()
         ],
         "allow_override_flag": "--allow-full-rerun",
+    }
+
+
+def _derive_chapter6_route_guard(
+    *,
+    task_id: str,
+    delivery_profile: str,
+    security_profile: str,
+) -> dict[str, Any] | None:
+    python_dir = repo_root() / "scripts" / "python"
+    if str(python_dir) not in sys.path:
+        sys.path.insert(0, str(python_dir))
+    try:
+        from chapter6_route import route_chapter6  # noqa: WPS433
+    except Exception:
+        return None
+
+    try:
+        _rc, payload = route_chapter6(
+            repo_root=repo_root(),
+            task_id=task_id,
+            record_residual=False,
+        )
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    run_id = str(payload.get("run_id") or "").strip()
+    if not run_id:
+        return None
+    preferred_lane = str(payload.get("preferred_lane") or "").strip()
+    if preferred_lane in {"", "run-6.7"}:
+        return None
+
+    kind_suffix = preferred_lane.replace("-", "_")
+    return {
+        "kind": f"chapter6_route_{kind_suffix}",
+        "blocked": True,
+        "recommended_path": preferred_lane,
     }
 
 
@@ -1349,7 +1389,7 @@ def _derive_pipeline_run_type(summary: dict[str, Any]) -> str:
     return _derive_pipeline_run_type_impl(summary)
 
 
-def _write_active_task_sidecar(*, task_id: str, run_id: str, out_dir: Path, status: str) -> None:
+def _write_active_task_sidecar(*, task_id: str, run_id: str, out_dir: Path, status: str) -> tuple[Path, Path]:
     effective_status = status
     latest_path = _pipeline_latest_index_path(task_id)
     if latest_path.exists():
@@ -1361,7 +1401,7 @@ def _write_active_task_sidecar(*, task_id: str, run_id: str, out_dir: Path, stat
                     effective_status = latest_status
         except Exception:
             pass
-    _write_active_task_sidecar_impl(
+    return _write_active_task_sidecar_impl(
         task_id=task_id,
         run_id=run_id,
         out_dir=out_dir,
@@ -1885,6 +1925,12 @@ def main() -> int:
                                 "override": "allow-repeat-deterministic-failures",
                             }
                         rerun_guard = repeat_guard
+                if rerun_guard is None:
+                    rerun_guard = _derive_chapter6_route_guard(
+                        task_id=task_id,
+                        delivery_profile=delivery_profile,
+                        security_profile=security_profile,
+                    )
             if rerun_guard is not None:
                 if bool(args.allow_full_rerun) and str(rerun_guard.get("kind") or "").strip() != "repeat_deterministic_failure":
                     rerun_guard = {

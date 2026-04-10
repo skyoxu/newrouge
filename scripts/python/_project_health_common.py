@@ -203,6 +203,42 @@ def _normalize_report_value(value: Any, *, limit: int = 240) -> str:
     return text[:limit]
 
 
+_REPO_NOISE_TOKENS = (
+    "being used by another process",
+    "sharing violation",
+    "file is locked",
+    "access is denied",
+    "permission denied",
+    "could not find a part of the path",
+    "network path was not found",
+    "connection reset",
+    "connection aborted",
+    "unable to write to the transport connection",
+)
+
+
+def _contains_repo_noise_token(value: Any) -> bool:
+    text = str(value or "").strip().lower()
+    if not text:
+        return False
+    return any(token in text for token in _REPO_NOISE_TOKENS)
+
+
+def _derive_project_health_route_fields(*, rerun_guard: dict[str, Any], recent_failure_summary: dict[str, Any]) -> tuple[str, str]:
+    guard_kind = str(rerun_guard.get("kind") or "").strip().lower()
+    recommended_path = str(rerun_guard.get("recommended_path") or "").strip()
+    if guard_kind.startswith("chapter6_route_"):
+        lane = recommended_path or guard_kind.removeprefix("chapter6_route_").replace("_", "-")
+        if guard_kind == "chapter6_route_repo_noise_stop":
+            return lane, "prior chapter6-route already classified this run as repo-noise"
+        return lane, ""
+    latest_family = str(recent_failure_summary.get("latest_failure_family") or "").strip()
+    recommendation_basis = str(recent_failure_summary.get("recommendation_basis") or "").strip()
+    if _contains_repo_noise_token(latest_family) or _contains_repo_noise_token(recommendation_basis):
+        return "", "recent failure family repeats a repo-noise signature"
+    return "", ""
+
+
 def _normalize_llm_verdict(value: Any) -> str:
     raw = str(value or "").strip().lower()
     if raw in {"ok", "pass", "passed"}:
@@ -370,6 +406,33 @@ def _derive_deterministic_bundle_from_summary(summary_path: Path | None, *, root
     }
 
 
+def _derive_recovery_recommendation_from_summary(summary_path: Path | None) -> dict[str, Any]:
+    if summary_path is None or not summary_path.exists():
+        return {}
+    try:
+        summary = read_json(summary_path)
+    except Exception:
+        return {}
+    if not isinstance(summary, dict) or str(summary.get("cmd") or "").strip() != "sc-review-pipeline":
+        return {}
+    latest_summary_signals = summary.get("latest_summary_signals") if isinstance(summary.get("latest_summary_signals"), dict) else {}
+    chapter6_hints = summary.get("chapter6_hints") if isinstance(summary.get("chapter6_hints"), dict) else {}
+    candidate_commands = summary.get("candidate_commands") if isinstance(summary.get("candidate_commands"), dict) else {}
+    return {
+        "recommended_action": str(summary.get("recommended_action") or "").strip(),
+        "recommended_action_why": str(summary.get("recommended_action_why") or "").strip(),
+        "recommended_command": str(summary.get("recommended_command") or "").strip(),
+        "forbidden_commands": [str(item).strip() for item in list(summary.get("forbidden_commands") or []) if str(item).strip()],
+        "candidate_commands": {
+            str(key).strip(): str(value).strip()
+            for key, value in candidate_commands.items()
+            if str(key).strip() and str(value).strip()
+        },
+        "latest_summary_signals": dict(latest_summary_signals),
+        "chapter6_hints": dict(chapter6_hints),
+    }
+
+
 def _compact_extract_family_actions(items: Any, *, limit: int = 6) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if not isinstance(items, list):
@@ -494,25 +557,67 @@ def load_active_task_records(root: Path, *, limit: int = 16) -> list[dict[str, A
         sc_test_retry_stop_loss = diagnostics.get("sc_test_retry_stop_loss") if isinstance(diagnostics.get("sc_test_retry_stop_loss"), dict) else {}
         artifact_integrity = diagnostics.get("artifact_integrity") if isinstance(diagnostics.get("artifact_integrity"), dict) else {}
         recent_failure_summary = diagnostics.get("recent_failure_summary") if isinstance(diagnostics.get("recent_failure_summary"), dict) else {}
+        chapter6_route_lane, repo_noise_reason = _derive_project_health_route_fields(
+            rerun_guard=rerun_guard,
+            recent_failure_summary=recent_failure_summary,
+        )
         summary_path = _resolve_report_path(paths.get("summary_json"), root=root)
         if not waste_signals:
             waste_signals = _derive_waste_signals_from_summary(
                 summary_path,
                 root=root,
             )
+        summary_recommendation = _derive_recovery_recommendation_from_summary(summary_path)
         latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
+        if isinstance(summary_recommendation.get("latest_summary_signals"), dict) and summary_recommendation.get("latest_summary_signals"):
+            latest_summary_signals = dict(summary_recommendation.get("latest_summary_signals") or {})
         chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+        if isinstance(summary_recommendation.get("chapter6_hints"), dict) and summary_recommendation.get("chapter6_hints"):
+            chapter6_hints = dict(summary_recommendation.get("chapter6_hints") or {})
         rerun_forbidden = bool(chapter6_hints.get("rerun_forbidden"))
         rerun_override_flag = _normalize_report_value(chapter6_hints.get("rerun_override_flag"), limit=60)
         deterministic_bundle = _derive_deterministic_bundle_from_summary(summary_path, root=root)
+        recommended_action = _normalize_report_value(
+            summary_recommendation.get("recommended_action") or payload.get("recommended_action"),
+            limit=40,
+        )
+        recommended_action_why = _normalize_report_value(
+            summary_recommendation.get("recommended_action_why") or payload.get("recommended_action_why"),
+            limit=200,
+        )
+        recommended_command = _normalize_report_value(
+            summary_recommendation.get("recommended_command") or payload.get("recommended_command"),
+            limit=240,
+        )
+        forbidden_commands_source = (
+            list(summary_recommendation.get("forbidden_commands") or [])
+            if list(summary_recommendation.get("forbidden_commands") or [])
+            else list(payload.get("forbidden_commands") or [])
+        )
+        candidate_commands_source = (
+            dict(summary_recommendation.get("candidate_commands") or {})
+            if dict(summary_recommendation.get("candidate_commands") or {})
+            else dict(payload.get("candidate_commands") or {})
+        )
         records.append(
             {
                 "task_id": _normalize_report_value(payload.get("task_id"), limit=20),
                 "run_id": _normalize_report_value(payload.get("run_id"), limit=40),
                 "status": _normalize_report_value(payload.get("status"), limit=20),
                 "updated_at_utc": _normalize_report_value(payload.get("updated_at_utc"), limit=40),
-                "recommended_action": _normalize_report_value(payload.get("recommended_action"), limit=40),
-                "recommended_action_why": _normalize_report_value(payload.get("recommended_action_why"), limit=200),
+                "recommended_action": recommended_action,
+                "recommended_action_why": recommended_action_why,
+                "recommended_command": recommended_command,
+                "forbidden_commands": [
+                    _normalize_report_value(item, limit=240)
+                    for item in forbidden_commands_source[:6]
+                    if _normalize_report_value(item, limit=240)
+                ],
+                "candidate_commands": {
+                    _normalize_report_value(key, limit=40): _normalize_report_value(value, limit=240)
+                    for key, value in candidate_commands_source.items()
+                    if _normalize_report_value(key, limit=40) and _normalize_report_value(value, limit=240)
+                },
                 "clean_state": {
                     "state": _normalize_report_value(clean_state.get("state"), limit=40),
                     "deterministic_ok": bool(clean_state.get("deterministic_ok")),
@@ -609,6 +714,8 @@ def load_active_task_records(root: Path, *, limit: int = 16) -> list[dict[str, A
                     "rerun_forbidden": rerun_forbidden,
                     "rerun_override_flag": rerun_override_flag,
                 },
+                "chapter6_route_lane": _normalize_report_value(chapter6_route_lane, limit=40),
+                "repo_noise_reason": _normalize_report_value(repo_noise_reason, limit=160),
                 "latest_json": _normalize_report_value(paths.get("latest_json"), limit=200),
                 "reported_latest_json": _normalize_report_value(payload.get("reported_latest_json"), limit=200),
                 "latest_json_mismatch": bool(payload.get("latest_json_mismatch")),
@@ -920,6 +1027,13 @@ def dashboard_html(
         diagnostics = item.get("diagnostics") if isinstance(item.get("diagnostics"), dict) else {}
         latest_summary_signals = item.get("latest_summary_signals") if isinstance(item.get("latest_summary_signals"), dict) else {}
         chapter6_hints = item.get("chapter6_hints") if isinstance(item.get("chapter6_hints"), dict) else {}
+        candidate_commands = item.get("candidate_commands") if isinstance(item.get("candidate_commands"), dict) else {}
+        recommended_command = str(item.get("recommended_command") or "").strip()
+        forbidden_commands = [
+            str(command).strip()
+            for command in list(item.get("forbidden_commands") or [])
+            if str(command).strip()
+        ]
         profile_drift = diagnostics.get("profile_drift") if isinstance(diagnostics.get("profile_drift"), dict) else {}
         waste_signals = diagnostics.get("waste_signals") if isinstance(diagnostics.get("waste_signals"), dict) else {}
         rerun_guard = diagnostics.get("rerun_guard") if isinstance(diagnostics.get("rerun_guard"), dict) else {}
@@ -990,6 +1104,8 @@ def dashboard_html(
                     f"<div class=\"meta\">llm_status: {html.escape(str(clean_state.get('llm_status') or 'unknown'))}</div>",
                     f"<div class=\"meta\">recommended_action: {html.escape(str(item.get('recommended_action') or 'inspect'))}</div>",
                     f"<div class=\"meta\">recommended_action_why: {html.escape(str(item.get('recommended_action_why') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">recommended_command: {html.escape(recommended_command or 'n/a')}</div>",
+                    f"<div class=\"meta\">forbidden_commands: {html.escape(','.join(forbidden_commands) or 'none')}</div>",
                     f"<div class=\"meta\">latest_reason: {html.escape(str(latest_summary_signals.get('reason') or 'n/a'))}</div>",
                     f"<div class=\"meta\">latest_run_type: {html.escape(str(latest_summary_signals.get('run_type') or 'n/a'))}</div>",
                     f"<div class=\"meta\">latest_reuse_mode: {html.escape(str(latest_summary_signals.get('reuse_mode') or 'n/a'))}</div>",
@@ -999,11 +1115,19 @@ def dashboard_html(
                     f"<div class=\"meta\">chapter6_can_skip_6_7: {html.escape(str(bool(chapter6_hints.get('can_skip_6_7'))).lower())}</div>",
                     f"<div class=\"meta\">chapter6_can_go_to_6_8: {html.escape(str(bool(chapter6_hints.get('can_go_to_6_8'))).lower())}</div>",
                     f"<div class=\"meta\">chapter6_blocked_by: {html.escape(str(chapter6_hints.get('blocked_by') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">chapter6_route_lane: {html.escape(str(item.get('chapter6_route_lane') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">repo_noise_reason: {html.escape(str(item.get('repo_noise_reason') or 'n/a'))}</div>",
                     f"<div class=\"meta\">chapter6_rerun_override: {html.escape(str(chapter6_hints.get('rerun_override_flag') or 'n/a'))}</div>",
                     f"<div class=\"meta\">latest_json: {html.escape(str(item.get('latest_json') or 'n/a'))}</div>",
                     f"<div class=\"meta\">reported_latest_json: {html.escape(str(item.get('reported_latest_json') or 'n/a'))}</div>",
                     f"<div class=\"meta\">latest_json_mismatch: {html.escape(str(bool(item.get('latest_json_mismatch'))).lower())}</div>",
                     f"<div class=\"meta\">latest_json_repaired: {html.escape(str(bool(item.get('latest_json_repaired'))).lower())}</div>",
+                    f"<div class=\"meta\">resume_summary_command: {html.escape(str(candidate_commands.get('resume_summary') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">inspect_command: {html.escape(str(candidate_commands.get('inspect') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">resume_command: {html.escape(str(candidate_commands.get('resume') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">fork_command: {html.escape(str(candidate_commands.get('fork') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">rerun_command: {html.escape(str(candidate_commands.get('rerun') or 'n/a'))}</div>",
+                    f"<div class=\"meta\">needs_fix_command: {html.escape(str(candidate_commands.get('needs_fix_fast') or 'n/a'))}</div>",
                     f"<div class=\"meta\">needs_fix_agents: {html.escape(','.join(str(x) for x in list(clean_state.get('needs_fix_agents') or [])) or 'none')}</div>",
                     f"<div class=\"meta\">unknown_agents: {html.escape(','.join(str(x) for x in list(clean_state.get('unknown_agents') or [])) or 'none')}</div>",
                     f"<div class=\"meta\">timeout_agents: {html.escape(','.join(str(x) for x in list(clean_state.get('timeout_agents') or [])) or 'none')}</div>",

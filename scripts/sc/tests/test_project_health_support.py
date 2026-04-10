@@ -162,6 +162,19 @@ class ProjectHealthSupportTests(unittest.TestCase):
                         "updated_at_utc": "2026-04-06T09:18:04+00:00",
                         "recommended_action": "needs-fix-fast",
                         "recommended_action_why": "Deterministic steps are green but llm_review is not clean.",
+                        "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                        "forbidden_commands": [
+                            "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+                            "py -3 scripts/sc/run_review_pipeline.py --task-id 14 --resume",
+                        ],
+                        "candidate_commands": {
+                            "resume_summary": "py -3 scripts/python/dev_cli.py resume-task --task-id 14",
+                            "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json",
+                            "resume": "py -3 scripts/sc/run_review_pipeline.py --task-id 14 --resume",
+                            "fork": "py -3 scripts/sc/run_review_pipeline.py --task-id 14 --fork",
+                            "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+                            "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                        },
                         "latest_summary_signals": {
                             "reason": "rerun_blocked:deterministic_green_llm_not_clean",
                             "run_type": "deterministic-only",
@@ -408,6 +421,12 @@ class ProjectHealthSupportTests(unittest.TestCase):
             self.assertEqual(1, latest_index["active_task_summary"]["deterministic_bundle_available"])
             self.assertEqual(1, latest_index["active_task_summary"]["run_type_deterministic_only"])
             self.assertEqual(1, latest_index["active_task_summary"]["next_action_needs_fix_fast"])
+            top_record = latest_index["active_task_summary"]["top_records"][0]
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                top_record["recommended_command"],
+            )
+            self.assertEqual(2, len(top_record["forbidden_commands"]))
             self.assertIn("triplet missing", latest_html)
             self.assertIn("doctor ok", latest_html)
             self.assertIn("boundary fail", latest_html)
@@ -451,6 +470,17 @@ class ProjectHealthSupportTests(unittest.TestCase):
             )
             self.assertIn("deterministic_bundle", latest_html)
             self.assertIn("recommended_action_why", latest_html)
+            self.assertIn("recommended_command", latest_html)
+            self.assertIn("forbidden_commands", latest_html)
+            self.assertIn("resume_summary_command", latest_html)
+            self.assertIn("inspect_command", latest_html)
+            self.assertIn("needs_fix_command", latest_html)
+            self.assertIn("py -3 scripts/python/dev_cli.py resume-task --task-id 14", latest_html)
+            self.assertIn("py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json", latest_html)
+            self.assertIn("py -3 scripts/sc/run_review_pipeline.py --task-id 14 --resume", latest_html)
+            self.assertIn("py -3 scripts/sc/run_review_pipeline.py --task-id 14 --fork", latest_html)
+            self.assertIn("py -3 scripts/sc/run_review_pipeline.py --task-id 14", latest_html)
+            self.assertIn("py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1", latest_html)
             self.assertIn("llm_retry_stop_loss_blocked", latest_html)
             self.assertIn("sc_test_retry_stop_loss_blocked", latest_html)
             self.assertIn("artifact_integrity_blocked", latest_html)
@@ -521,6 +551,209 @@ class ProjectHealthSupportTests(unittest.TestCase):
             latest_index = json.loads((root / "logs" / "ci" / "project-health" / "latest.json").read_text(encoding="utf-8"))
             self.assertEqual(2, latest_index["active_task_summary"]["total"])
             self.assertEqual(1, len(latest_index["active_task_summary"]["top_records"]))
+
+    def test_write_project_health_record_should_prefer_summary_recommendation_over_stale_active_task_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _write(
+                root / "logs" / "ci" / "active-tasks" / "task-22.active.json",
+                json.dumps(
+                    {
+                        "cmd": "active-task-sidecar",
+                        "task_id": "22",
+                        "run_id": "run-22",
+                        "status": "fail",
+                        "updated_at_utc": "2026-04-10T09:18:04+00:00",
+                        "recommended_action": "continue",
+                        "recommended_action_why": "stale active-task recommendation",
+                        "chapter6_hints": {
+                            "next_action": "continue",
+                            "can_skip_6_7": False,
+                            "can_go_to_6_8": False,
+                            "blocked_by": "",
+                            "rerun_forbidden": False,
+                            "rerun_override_flag": "",
+                        },
+                        "paths": {
+                            "latest_json": "logs/ci/2026-04-10/sc-review-pipeline-task-22/latest.json",
+                            "summary_json": "logs/ci/2026-04-10/sc-review-pipeline-task-22-run-22/summary.json",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+            )
+            _write(
+                root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-22" / "latest.json",
+                json.dumps(
+                    {
+                        "task_id": "22",
+                        "run_id": "run-22",
+                        "status": "fail",
+                        "latest_out_dir": str(root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-22-run-22"),
+                        "summary_path": str(root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-22-run-22" / "summary.json"),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+            )
+            _write(
+                root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-22-run-22" / "summary.json",
+                json.dumps(
+                    {
+                        "cmd": "sc-review-pipeline",
+                        "task_id": "22",
+                        "requested_run_id": "run-22",
+                        "run_id": "run-22",
+                        "allow_overwrite": False,
+                        "force_new_run_id": False,
+                        "status": "fail",
+                        "started_at_utc": "2026-04-10T00:00:00+00:00",
+                        "finished_at_utc": "2026-04-10T00:01:00+00:00",
+                        "elapsed_sec": 60,
+                        "run_type": "full",
+                        "reason": "rerun_blocked:repeat_review_needs_fix",
+                        "reuse_mode": "deterministic-only-reuse",
+                        "steps": [
+                            {
+                                "name": "sc-test",
+                                "cmd": ["py", "-3", "scripts/sc/test.py"],
+                                "rc": 0,
+                                "status": "ok",
+                                "log": "logs/ci/2026-04-10/sc-review-pipeline-task-22-run-22/sc-test.log",
+                            }
+                        ],
+                        "latest_summary_signals": {
+                            "reason": "rerun_blocked:repeat_review_needs_fix",
+                            "run_type": "full",
+                            "reuse_mode": "deterministic-only-reuse",
+                            "artifact_integrity_kind": "",
+                            "diagnostics_keys": ["rerun_guard"],
+                        },
+                        "chapter6_hints": {
+                            "next_action": "needs-fix-fast",
+                            "can_skip_6_7": True,
+                            "can_go_to_6_8": True,
+                            "blocked_by": "rerun_guard",
+                            "rerun_forbidden": True,
+                            "rerun_override_flag": "--allow-full-rerun",
+                        },
+                        "recommended_action": "needs-fix-fast",
+                        "recommended_action_why": "summary recommendation should win",
+                        "candidate_commands": {
+                            "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 22 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                            "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 22",
+                        },
+                        "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 22 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                        "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 22"],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+            )
+
+            project_health.write_project_health_record(
+                root=root,
+                kind="detect-project-stage",
+                payload={"kind": "detect-project-stage", "status": "ok", "summary": "stage ok"},
+            )
+
+            latest_index = json.loads((root / "logs" / "ci" / "project-health" / "latest.json").read_text(encoding="utf-8"))
+            top_record = latest_index["active_task_summary"]["top_records"][0]
+            latest_html = (root / "logs" / "ci" / "project-health" / "latest.html").read_text(encoding="utf-8")
+
+            self.assertEqual("needs-fix-fast", top_record["recommended_action"])
+            self.assertEqual("summary recommendation should win", top_record["recommended_action_why"])
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 22 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                top_record["recommended_command"],
+            )
+            self.assertEqual(
+                ["py -3 scripts/sc/run_review_pipeline.py --task-id 22"],
+                top_record["forbidden_commands"],
+            )
+            self.assertEqual("needs-fix-fast", top_record["chapter6_hints"]["next_action"])
+            self.assertEqual("rerun_blocked:repeat_review_needs_fix", top_record["latest_summary_signals"]["reason"])
+            self.assertIn("summary recommendation should win", latest_html)
+            self.assertIn("py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 22 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1", latest_html)
+
+    def test_write_project_health_record_should_render_chapter6_route_lane_and_repo_noise_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _write(
+                root / "logs" / "ci" / "active-tasks" / "task-31.active.json",
+                json.dumps(
+                    {
+                        "cmd": "active-task-sidecar",
+                        "task_id": "31",
+                        "run_id": "run-31",
+                        "status": "fail",
+                        "updated_at_utc": "2026-04-10T09:18:04+00:00",
+                        "recommended_action": "inspect",
+                        "recommended_action_why": "route preflight classified the failure as repo noise",
+                        "chapter6_hints": {
+                            "next_action": "inspect",
+                            "can_skip_6_7": True,
+                            "can_go_to_6_8": False,
+                            "blocked_by": "rerun_guard",
+                            "rerun_forbidden": True,
+                            "rerun_override_flag": "--allow-full-rerun",
+                        },
+                        "paths": {
+                            "latest_json": "logs/ci/2026-04-10/sc-review-pipeline-task-31/latest.json",
+                            "summary_json": "logs/ci/2026-04-10/sc-review-pipeline-task-31-run-31/summary.json",
+                        },
+                        "diagnostics": {
+                            "rerun_guard": {
+                                "kind": "chapter6_route_repo_noise_stop",
+                                "blocked": True,
+                                "recommended_path": "repo-noise-stop",
+                            },
+                            "recent_failure_summary": {
+                                "latest_failure_family": "transport: file is locked by another process",
+                                "same_family_count": 2,
+                                "stop_full_rerun_recommended": True,
+                            },
+                        },
+                        "clean_state": {
+                            "state": "not_clean",
+                            "deterministic_ok": False,
+                            "llm_status": "unknown",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+            )
+            _write(
+                root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-31" / "latest.json",
+                json.dumps({"task_id": "31", "run_id": "run-31"}, ensure_ascii=False, indent=2) + "\n",
+            )
+
+            project_health.write_project_health_record(
+                root=root,
+                kind="detect-project-stage",
+                payload={"kind": "detect-project-stage", "status": "ok", "summary": "stage ok"},
+            )
+
+            latest_index = json.loads((root / "logs" / "ci" / "project-health" / "latest.json").read_text(encoding="utf-8"))
+            latest_html = (root / "logs" / "ci" / "project-health" / "latest.html").read_text(encoding="utf-8")
+            top_record = latest_index["active_task_summary"]["top_records"][0]
+
+            self.assertEqual("repo-noise-stop", top_record["chapter6_route_lane"])
+            self.assertEqual(
+                "prior chapter6-route already classified this run as repo-noise",
+                top_record["repo_noise_reason"],
+            )
+            self.assertIn("chapter6_route_lane: repo-noise-stop", latest_html)
+            self.assertIn(
+                "repo_noise_reason: prior chapter6-route already classified this run as repo-noise",
+                latest_html,
+            )
 
 
 if __name__ == "__main__":
