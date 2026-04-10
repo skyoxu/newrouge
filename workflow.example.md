@@ -108,6 +108,7 @@ py -3 scripts/python/dev_cli.py resume-task --task-id <id>
 ```
 
 - `resume-task` 会直接带出 `Latest reason`、`Latest reuse mode`、`Chapter6 next action`、`Chapter6 can skip 6.7`、`Chapter6 can go to 6.8`、`Chapter6 blocked by`。
+- 它现在还会带出 `Approval required action`、`Approval status`、`Approval decision`、`Approval reason`；先看这些字段，再决定是继续修复、进入 `pause`，还是允许 `fork`。
 - `resume-task` also surfaces `recommended_action_why`; if it already says `recommended_action = needs-fix-fast`, prefer targeted closure instead of a full rerun.
 - 恢复判断先看 `reason / run_type / reuse_mode / artifact_integrity`，不要只按最新 `latest.json` 时间戳决定是否重跑。
 
@@ -117,6 +118,8 @@ py -3 scripts/python/dev_cli.py resume-task --task-id <id>
 py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>
 ```
 
+- approval 路由现在也是确定性的：`pending -> pause`、`approved -> fork`、`denied -> resume`、`invalid/mismatched -> inspect`。
+- 如果要确认 producer 真正停在哪个 item，先读 `run-events.jsonl` 的 `turn_id`、`item_kind`、`item_id`、`event_family`，不要只看事件名文本。
 - `dev_cli.py inspect-run --kind pipeline` 会输出同一组 `latest_summary_signals` / `chapter6_hints`，适合在真正重跑前确认是继续 `6.7` 还是转 `6.8`。
 - 如果这里已经显示 `run_type = planned-only`、`reason = planned_only_incomplete`，或 `Chapter6 blocked by = artifact_integrity`，把该 bundle 只当证据看，不要直接从它 reopen `6.7` / `6.8`。
 
@@ -276,6 +279,8 @@ py -3 scripts/python/run_single_task_light_lane_batch.py --task-id-start 101 --t
 ## 止损规则（Stop-Loss）
 
 - 不要把 `examples/taskmaster/**` 当成业务仓 SSoT
+- 不要把 `run-events.jsonl` 当自由文本日志；恢复自动化应按 `turn_id` / `item_kind` / `item_id` / `event_family` 消费。
+- 当 approval sidecar 已显示 `pending`、`invalid` 或 `mismatched` 时，不要硬开 `--resume` / `--fork`。
 - 在真实 triplet 存在前，不要开始 overlays
 - 默认不要运行重型 obligations freeze tooling
 - 在读取 sidecars 前，不要从聊天记录恢复状态

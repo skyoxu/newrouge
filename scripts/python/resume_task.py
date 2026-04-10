@@ -19,6 +19,7 @@ from inspect_run import inspect_run_artifacts  # noqa: E402
 from validate_recovery_docs import extract_repo_paths, is_readme, is_template, parse_fields  # noqa: E402
 from _active_task_sidecar import write_active_task_sidecar  # noqa: E402
 from _chapter6_recovery_common import (  # noqa: E402
+    compact_recommendation_fields,
     candidate_commands as _shared_candidate_commands,
     chapter6_stop_loss_note as _chapter6_stop_loss_note,
     forbidden_commands as _shared_forbidden_commands,
@@ -388,8 +389,9 @@ def _recommended_command(
     recommended_action: str,
     commands: dict[str, str],
     chapter6_hints: dict[str, Any],
+    approval: dict[str, Any] | None = None,
 ) -> str:
-    return _shared_recommended_command(recommended_action, commands, chapter6_hints)
+    return _shared_recommended_command(recommended_action, commands, chapter6_hints, approval)
 
 
 def _forbidden_commands(
@@ -397,11 +399,13 @@ def _forbidden_commands(
     recommended_action: str,
     commands: dict[str, str],
     chapter6_hints: dict[str, Any],
+    approval: dict[str, Any] | None = None,
 ) -> list[str]:
     return _shared_forbidden_commands(
         recommended_action=recommended_action,
         commands=commands,
         chapter6_hints=chapter6_hints,
+        approval=approval,
     )
 
 
@@ -511,10 +515,12 @@ def build_resume_payload(
     plans = _find_related_docs(repo_root, "execution-plans", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     logs = _find_related_docs(repo_root, "decision-logs", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     active_task_snapshot = _normalized_active_task_snapshot(active_task, inspection_latest=latest_rel)
+    approval = inspection.get("approval") if isinstance(inspection.get("approval"), dict) else {}
     recommended_command = str(inspection.get("recommended_command") or "").strip() or str(pipeline_summary.get("recommended_command") or "").strip() or _recommended_command(
         recommended_action,
         candidate_commands,
         chapter6_hints,
+        approval,
     )
     forbidden_commands = [str(item).strip() for item in list(inspection.get("forbidden_commands") or []) if str(item).strip()]
     if not forbidden_commands:
@@ -524,6 +530,7 @@ def build_resume_payload(
             recommended_action=recommended_action,
             commands=candidate_commands,
             chapter6_hints=chapter6_hints,
+            approval=approval,
         )
     payload: dict[str, Any] = {
         "task_id": resolved_task_id,
@@ -539,6 +546,7 @@ def build_resume_payload(
         "forbidden_commands": forbidden_commands,
         "inspection_exit_code": inspection_rc,
         "inspection": inspection,
+        "approval": approval,
         "recent_failure_summary": recent_failure_summary,
         "latest_summary_signals": {
             "reason": latest_reason,
@@ -570,10 +578,12 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     commands = payload.get("candidate_commands") or {}
     latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
     chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+    approval = payload.get("approval") if isinstance(payload.get("approval"), dict) else {}
     recommended_command = str(payload.get("recommended_command") or "").strip() or _recommended_command(
         str(payload.get("recommended_action") or ""),
         commands,
         chapter6_hints,
+        approval,
     )
     forbidden_commands = [str(item).strip() for item in list(payload.get("forbidden_commands") or []) if str(item).strip()]
     if not forbidden_commands:
@@ -581,6 +591,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
             recommended_action=str(payload.get("recommended_action") or ""),
             commands=commands,
             chapter6_hints=chapter6_hints,
+            approval=approval,
         )
     recent_failure_summary = payload.get("recent_failure_summary") if isinstance(payload.get("recent_failure_summary"), dict) else {}
     stop_loss_note = _chapter6_stop_loss_note(chapter6_hints, latest_summary_signals)
@@ -618,6 +629,19 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         _line("Chapter6 rerun forbidden", "yes" if bool(chapter6_hints.get("rerun_forbidden")) else "no"),
         _line("Chapter6 rerun override", str(chapter6_hints.get("rerun_override_flag") or "n/a")),
         _line("Chapter6 stop-loss note", stop_loss_note or "n/a"),
+        _line("Approval required action", str(approval.get("required_action") or "n/a")),
+        _line("Approval status", str(approval.get("status") or "n/a")),
+        _line("Approval decision", str(approval.get("decision") or "n/a")),
+        _line("Approval recommended action", str(approval.get("recommended_action") or "n/a")),
+        _line(
+            "Approval allowed actions",
+            ", ".join(str(item).strip() for item in list(approval.get("allowed_actions") or []) if str(item).strip()) or "none",
+        ),
+        _line(
+            "Approval blocked actions",
+            ", ".join(str(item).strip() for item in list(approval.get("blocked_actions") or []) if str(item).strip()) or "none",
+        ),
+        _line("Approval reason", str(approval.get("reason") or "n/a")),
         _line(
             "Recent failure family",
             str(recent_failure_summary.get("latest_failure_family") or "n/a"),
@@ -688,18 +712,7 @@ def _render_recommendation_only(payload: dict[str, Any]) -> str:
 
 
 def _compact_recommendation_payload(payload: dict[str, Any]) -> dict[str, str]:
-    latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
-    chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
-    forbidden_commands = [str(item).strip() for item in list(payload.get("forbidden_commands") or []) if str(item).strip()]
-    return {
-        "task_id": str(payload.get("task_id") or "").strip() or "n/a",
-        "run_id": str(payload.get("run_id") or "").strip() or "n/a",
-        "recommended_action": str(payload.get("recommended_action") or "").strip() or "none",
-        "recommended_command": str(payload.get("recommended_command") or "").strip() or "n/a",
-        "forbidden_commands": " | ".join(forbidden_commands) if forbidden_commands else "none",
-        "latest_reason": str(latest_summary_signals.get("reason") or "").strip() or "n/a",
-        "chapter6_next_action": str(chapter6_hints.get("next_action") or "").strip() or "n/a",
-    }
+    return compact_recommendation_fields(payload)
 
 
 def build_parser() -> argparse.ArgumentParser:

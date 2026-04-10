@@ -151,6 +151,9 @@ def build_execution_context(
             "request_id": str((approval_state or {}).get("request_id") or ""),
             "request_path": str((approval_state or {}).get("request_path") or ""),
             "response_path": str((approval_state or {}).get("response_path") or ""),
+            "recommended_action": str((approval_state or {}).get("recommended_action") or "continue"),
+            "allowed_actions": [str(item).strip() for item in list((approval_state or {}).get("allowed_actions") or []) if str(item).strip()],
+            "blocked_actions": [str(item).strip() for item in list((approval_state or {}).get("blocked_actions") or []) if str(item).strip()],
         },
         "diagnostics": dict(diagnostics) if isinstance(diagnostics, dict) else {},
     }
@@ -249,9 +252,16 @@ def render_repair_guide_markdown(payload: dict[str, Any]) -> str:
         lines.append(f"- required_action: {approval.get('required_action', '')}")
         lines.append(f"- status: {approval_status}")
         lines.append(f"- decision: {approval.get('decision', '')}")
+        lines.append(f"- recommended_action: {approval.get('recommended_action', '')}")
         reason = str(approval.get("reason") or "").strip()
         if reason:
             lines.append(f"- reason: {reason}")
+        allowed_actions = [str(item).strip() for item in list(approval.get("allowed_actions") or []) if str(item).strip()]
+        blocked_actions = [str(item).strip() for item in list(approval.get("blocked_actions") or []) if str(item).strip()]
+        if allowed_actions:
+            lines.append(f"- allowed_actions: {', '.join(allowed_actions)}")
+        if blocked_actions:
+            lines.append(f"- blocked_actions: {', '.join(blocked_actions)}")
         request_path = str(approval.get("request_path") or "").strip()
         response_path = str(approval.get("response_path") or "").strip()
         if request_path:

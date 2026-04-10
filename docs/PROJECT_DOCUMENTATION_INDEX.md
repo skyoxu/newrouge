@@ -40,6 +40,7 @@ This file is the top-level navigation for project docs.
 
 ## Recovery And Stop-Loss
 
+- Workflow golden examples index: `docs/workflows/examples/README.md`
 - Canonical recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
 - Quick recovery recommendation: `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id> --recommendation-only`
 - Quick deep-inspect recommendation: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id> --recommendation-only`

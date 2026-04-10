@@ -34,7 +34,6 @@
 - `dev_cli.py inspect-run --recommendation-only` prints a compact block (`task_id`, `run_id`, `failure_code`, `recommended_action`, `recommended_command`, `forbidden_commands`, `latest_reason`, `chapter6_next_action`, `blocked_by`) when you only need a stop-loss / next-step decision and do not want the full JSON dumped to the console. Add `--recommendation-format json` when another script should consume the result directly.
 - `run_review_pipeline.py --dry-run` still writes `summary/execution-context/repair-guide` under the current `out_dir`, but it no longer publishes `latest.json` or `active-task` sidecars; do not treat dry-run output as a recovery pointer. Real runs now also mirror `recommended_action` / `candidate_commands` / `recommended_command` / `forbidden_commands` into `execution-context.json` for downstream consumers.
 - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>` 在解析自动恢复指针时，会跳过只来自 dry-run 的更新候选，回退到最近一轮真实可恢复 run。
-
 - Recovery order now requires reading `Latest reason`, `Latest run type`, `Latest reuse mode`, and `Latest artifact integrity` before trusting the newest `latest.json` pointer.
 - `logs/ci/active-tasks/task-<id>.active.md` remains the short follow-up view after `resume-task`; read it only when the recovery summary is still not enough, and use it together with `Latest reason`, `Latest run type`, `Latest artifact integrity`, and `Diagnostics artifact_integrity`. `resume-task` now prefers the recommendation fields already present in the inspection payload, so `active-task` should be treated as the fallback evidence view, not the primary recommendation source. The active-task sidecar still exposes `Recommended command` / `Forbidden commands` for parity.
 - If recovery shows `Latest run type = planned-only`, `Latest reason = planned_only_incomplete`, or `Chapter6 blocked by = artifact_integrity`, treat the bundle as evidence only; do not reopen `6.7` or `6.8` from it.
@@ -455,11 +454,15 @@ Recovery decision order:
 
 1. Read `Latest reason`, `Latest run type`, `Latest reuse mode`, and `Latest artifact integrity` first.
 2. Then read `Chapter6 next action`, `Chapter6 can skip 6.7`, `Chapter6 can go to 6.8`, and `Chapter6 blocked by`.
-3. Only then decide whether to reopen the current run, move to 6.8, or start a fresh real run.
+3. Then read `Approval required action`, `Approval status`, `Approval decision`, and `Approval reason` when they exist.
+4. Only then decide whether to reopen the current run, move to 6.8, enter `pause`, or start a fresh real run.
+5. If you need to know exactly where the producer stopped, read `run-events.jsonl` by `turn_id`, `item_kind`, `item_id`, and `event_family` instead of scraping event names.
 
 Hard stop-loss:
 
 - If `Latest run type = planned-only` and `Latest reason = planned_only_incomplete`, treat it as a `planned-only terminal bundle`; it is not a resumable producer run.
+- Approval routing is deterministic now: `pending -> pause`, `approved -> fork`, `denied -> resume`, `invalid/mismatched -> inspect`.
+- Do not force `--resume` when approval is `pending|approved|invalid|mismatched`; do not force `--fork` when approval is `pending|denied|invalid|mismatched`.
 - If `Chapter6 blocked by = artifact_integrity`, fall back to the previous real bundle first; if none exists, start a fresh real `6.7` instead of continuing `--resume` from the planned-only terminal state.
 - If `active-task` or `inspect_run` reports `artifact_integrity_planned_only_incomplete`, do not enter `6.7` or `6.8` yet; fix artifact integrity first.
 
@@ -658,6 +661,7 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - `repo-noise-stop` now uses prior route reason, repeated recent failure family, and lock/process/transport contention signals instead of relying only on message keywords.
 - `run_review_pipeline.py` now consumes the same route signal before a fresh full rerun. If recovery already routes to `inspect-first`, `repo-noise-stop`, `fix-deterministic`, or `run-6.8`, the script stops before refactor preflight and downstream cost.
 - `repair-guide.json` / `repair-guide.md` now surface the same Chapter 6 route stop-loss families, so blocked reruns tell you whether to inspect first, fix deterministic failure, stop for repo noise, or switch to `6.8`.
+- The same recovery chain now carries approval-sidecar decisions too: `resume-task` / `inspect-run` expose `Approval required action` / `Approval status` / `Approval decision` / `Approval reason`, and a `pending -> pause` state means stop and handle approval before spending more Chapter 6 cost.
 - review pipeline 启动前还会检查最近一次同任务 `sc-build-tdd` 的 refactor summary，要求 `stage = refactor` 且 `status = ok`；如果 6.6 失败，先修 6.6。
 - 如果 6.7 首轮失败，先判断是“仓库级噪音”还是“当前任务问题”。与当前任务无关的 unit 红灯、锁进程、全仓历史失败，不要继续按当前任务的 6.7/6.8 节奏推进。
 - 如果上一轮 6.7 已经证明 `sc-test = ok` 且 `sc-acceptance-check = ok`，只有 `sc-llm-review` 超时或失败，而你本轮只改了 review / acceptance / overlay / task 语义文本，不要再手工重付完整 deterministic 成本；优先复用已通过的 deterministic，只重跑 LLM。
@@ -1039,6 +1043,8 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 在 triplet 有效前，不要开始 overlays
 - 默认不要跑重型 obligations freeze toolchain
 - 在读取 sidecars 前，不要用聊天记录恢复
+- 不要把 `run-events.jsonl` 当自由文本日志；恢复自动化必须消费 `turn_id`、`item_kind`、`item_id`、`event_family`。
+- 当 approval sidecar 已进入 `pending`、`invalid` 或 `mismatched` 时，不要硬开 `--resume` / `--fork` 试图绕过恢复状态机。
 - 不要在 `standard` 上强行传 `--security-profile host-safe`；除非你明确要覆盖默认映射，否则让它自然落到 `strict`
 - 不要为 `llm_fill_acceptance_refs.py` 虚构 `--dry-run` 参数；不带 `--write` 就是 dry-run
 - 不要因为 Serena 暂时不可用就阻塞整项工作

@@ -42,6 +42,9 @@ def _validate_common_approval(payload: Any, *, base_path: str) -> list[str]:
         "request_id": str,
         "request_path": str,
         "response_path": str,
+        "recommended_action": str,
+        "allowed_actions": list,
+        "blocked_actions": list,
     }
     if not isinstance(payload, dict):
         return [f"{base_path}: must be object"]
@@ -55,6 +58,9 @@ def _validate_common_approval(payload: Any, *, base_path: str) -> list[str]:
         if typ is bool:
             if not isinstance(value, bool):
                 errors.append(f"{base_path}.{key}: must be boolean")
+        elif typ is list:
+            if not isinstance(value, list) or any(not _is_non_empty_string(item) for item in value):
+                errors.append(f"{base_path}.{key}: must be array of non-empty strings")
         elif not isinstance(value, str):
             errors.append(f"{base_path}.{key}: must be string")
     return errors

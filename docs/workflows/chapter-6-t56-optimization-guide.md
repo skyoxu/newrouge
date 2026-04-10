@@ -220,13 +220,18 @@
 - 如果当前同一轮 `sc-test` 已经从 child summary 证明是 `unit` 失败，`run_review_pipeline.py` 会直接停掉同 run 的第二次同参重试；证据写入 `diagnostics.sc_test_retry_stop_loss`，避免把“已知 unit 根因”再付一轮 engine lane 成本。
 - 新开 run 默认继承最近同任务的 `delivery/security profile` 组合；如果确实要改 profile，必须显式传 `--reselect-profile`，否则以 profile drift 失败。
 - `resume-task` / `dev_cli.py inspect-run --kind pipeline` / active-task sidecar expose the same `latest_summary_signals` and `chapter6_hints`, so operators do not need to guess before reopening a run. They now also expose `Recommended command` / `Forbidden commands` directly. `dev_cli.py inspect-run --kind pipeline` forwards the latest pipeline recommendation fields into its payload, `resume-task` prefers those inspection fields first, and the producer-side `execution-context.json` now mirrors the same recommendation fields for downstream consumers.
+- `resume-task` 现在还会带出 approval 恢复字段：`Approval required action`、`Approval status`、`Approval decision`、`Approval reason`。这让操作者在看摘要时就能区分“继续修复”“进入 pause 等审批”“已经允许 fork”三种路径。
+- `inspect-run` 对 approval response 的消费现在是确定性的：`pending -> pause`、`approved -> fork`、`denied -> resume`、`invalid/mismatched -> inspect`。它不再把 approval 只当作软提示。
+- `run_review_pipeline.py --resume` / `--fork` 也已经接入 approval hard block：`resume` 会阻断 `pending|approved|invalid|mismatched`，`fork` 会阻断 `pending|denied|invalid|mismatched`，避免操作者跳过审批状态机。
 - `resume-task --recommendation-only` is the cheapest read path when you only need the next Chapter 6 action; it prints the compact recommendation block and skips default JSON/Markdown writes unless you explicitly request outputs. Add `--recommendation-format json` when the result should be consumed by another script.
 - `dev_cli.py inspect-run --recommendation-only` is the fallback compact read path when `resume-task` is still not enough; it prints the next-action block without dumping the full inspection JSON to the terminal. Add `--recommendation-format json` when automation needs the same fields.
 - Read `recommended_action_why` whenever it is available; if the action is already `needs-fix-fast`, prefer targeted closure instead of reopening a full `6.7`. If `Recommended command` already points to `needs-fix-fast`, do not reopen a full rerun against that recommendation.
+- `run-events.jsonl` 不再只是 append-only 日志；它现在带稳定 taxonomy：`turn_id`、`item_kind`、`item_id`、`event_family`。恢复代理和自动化脚本应按这些字段判断 run/step/sidecar/approval/reviewer 的位置，而不是继续解析自由文本事件名。
 - LLM reviewer 超时扩时不再只看“上一轮是否 timeout”，还会记住最近同任务 / 同 profile 的 agent 级有效超时，继续 timeout 时只定向抬高对应 reviewer。
 
 - 读取 `summary.json` / `latest.json` 时，必须同时看 `run_type` 和 `artifact_integrity`；只看 `reason` 和 `reuse_mode` 会漏掉 planned-only terminal bundle。
 - 如果恢复链显示 `run_type = planned-only`、`reason = planned_only_incomplete`，或 `Chapter6 blocked by = artifact_integrity`，该 run 只能当作 `planned-only terminal bundle` 证据，不能作为 reopen `6.7` / `6.8` 的 producer run。
+- 如果要判断 run 真正停在哪个 item，先读 `run-events.jsonl` 的 taxonomy 字段：`turn_id` 用于区分一次 run 生命周期内的恢复轮次，`item_kind` / `item_id` 用于定位具体 step 或 approval sidecar，`event_family` 用于快速区分 run / step / sidecar / approval / reviewer。
 - 对 `planned-only terminal bundle`，应先读 `summary.json`、`repair-guide.md`、`run-events.jsonl` 和 active-task sidecars，然后回退到上一轮真实 bundle，或直接新开真实 run，不要继续 `--resume`。
 
 ## 5. 其他 AI 代码助手只读第六章，能否正确操作
@@ -258,6 +263,8 @@ AI 助手要正确执行第六章，必须遵守这些约束：
 3. 如果手工传 `--run-id`，必须是 32 位十六进制
 4. 不把 `acceptance_check` 的模板 smoke marker 当 perf 证据
 5. 不跳过 `6.1` 和 `6.3`
+6. 不在 approval sidecar 为 `pending|invalid|mismatched` 时强行 `--resume` / `--fork`
+7. 不把 `run-events.jsonl` 当自由文本日志；恢复自动化必须消费 `turn_id`、`item_kind`、`item_id`、`event_family`
 
 ## 6. 旧项目如何升级到本仓当前的第六章能力
 
@@ -286,17 +293,24 @@ Chapter 6 的正确升级单位是：
 - `scripts/sc/llm_review.py`
 - `scripts/sc/llm_review_needs_fix_fast.py`
 - `scripts/sc/check_tdd_execution_plan.py`
+- `scripts/python/inspect_run.py`
+- `scripts/python/resume_task.py`
 
-#### B. Pipeline / acceptance / test helper
+#### B. Pipeline / acceptance / recovery helper
 
 - `scripts/sc/_pipeline_plan.py`
 - `scripts/sc/_pipeline_support.py`
 - `scripts/sc/_pipeline_helpers.py`
 - `scripts/sc/_pipeline_session.py`
+- `scripts/sc/_pipeline_events.py`
 - `scripts/sc/_acceptance_runtime.py`
 - `scripts/sc/_acceptance_steps.py`
 - `scripts/sc/_acceptance_steps_quality.py`
 - `scripts/sc/_sc_test_steps.py`
+- `scripts/sc/_approval_contract.py`
+- `scripts/sc/_repair_approval.py`
+- `scripts/sc/_sidecar_schema.py`
+- `scripts/python/_chapter6_recovery_common.py`
 
 #### C. LLM review helper 与 profile 配置
 
@@ -337,10 +351,14 @@ Chapter 6 的正确升级单位是：
 - `scripts/sc/tests/test_run_review_pipeline_marathon.py`
 - `scripts/sc/tests/test_pipeline_plan_preflight.py`
 - `scripts/sc/tests/test_pipeline_support_snapshots.py`
+- `scripts/sc/tests/test_pipeline_sidecar_protocol.py`
+- `scripts/sc/tests/test_pipeline_approval.py`
 - `scripts/sc/tests/test_llm_review_tier.py`
 - `scripts/sc/tests/test_llm_review_prompt_shaping.py`
 - `scripts/sc/tests/test_llm_review_needs_fix_fast.py`
 - `scripts/sc/tests/test_validate_task_overlays_scope.py`
+- `scripts/python/tests/test_inspect_run.py`
+- `scripts/python/tests/test_resume_task.py`
 
 #### G. 文档与入口索引
 
@@ -349,6 +367,9 @@ Chapter 6 的正确升级单位是：
 - `docs/workflows/stable-public-entrypoints.md`
 - `docs/workflows/script-entrypoints-index.md`
 - `docs/workflows/run-protocol.md`
+- `docs/workflows/local-hard-checks.md`
+- `docs/agents/03-persistent-harness.md`
+- `docs/agents/06-harness-marathon.md`
 - `docs/PROJECT_DOCUMENTATION_INDEX.md`
 - 本文档：`docs/workflows/chapter-6-t56-optimization-guide.md`
 
@@ -359,7 +380,8 @@ Chapter 6 的正确升级单位是：
 1. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --dry-run --skip-test --skip-acceptance --skip-agent-review`
 2. `py -3 -m unittest scripts.sc.tests.test_run_review_pipeline_preflight`
 3. `py -3 -m unittest scripts.sc.tests.test_sc_test_orchestration`
-4. 如需真实验证，再执行一次 `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN"`
+4. `py -3 -m unittest scripts.sc.tests.test_pipeline_sidecar_protocol scripts.sc.tests.test_pipeline_approval scripts.python.tests.test_inspect_run scripts.python.tests.test_resume_task`
+5. 如需真实验证，再执行一次 `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN"`
 6. `py -3 -m unittest scripts.sc.tests.test_acceptance_steps_quality`
 7. 选一个已有 task，连续真实跑两次 `run_review_pipeline.py`
 
@@ -403,6 +425,7 @@ Chapter 6 的正确升级单位是：
   - `child-artifacts/sc-acceptance-check/summary.json`
 
 - During recovery, read `reason`, `run_type`, `reuse_mode`, and `artifact_integrity` first, then decide whether to reopen `6.7` or continue with `6.8`. If you only need a stop-loss / next-step decision, use `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id> --recommendation-only` for the narrow read.
+- `resume-task` and `inspect-run` now surface approval routing too: `pending -> pause`、`approved -> fork`、`denied -> resume`、`invalid/mismatched -> inspect`。如果摘要已经进入 `pause`，下一步应处理审批 sidecar，而不是继续脚本重跑。
 - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only` is now the stable go/no-go router for this decision. It reads the same recovery artifacts first, then tells you whether to reopen `6.7`, narrow to `6.8`, stop for repo noise, or record residual P2/P3 findings.
 - The repo-noise lane now uses three inputs in order: prior route reason, repeated recent failure family, then high-confidence lock/transport/process tokens. This reduces false positives where a task-local deterministic failure used to look like generic inspect-first noise.
 - 如果 `active-task` 或 `inspect_run` 已显示 `planned_only_incomplete` / `artifact_integrity`，该 bundle 只能当作证据，不能继续用来做收敛步骤。

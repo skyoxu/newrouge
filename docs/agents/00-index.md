@@ -18,12 +18,16 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 
 Recovery shortcut:
 - `resume-task` and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` now expose `latest_summary_signals` and `chapter6_hints`; use those fields before deciding whether to reopen `6.7` or narrow to `6.8`.
+- `inspect-run --recommendation-only` now also surfaces the latest turn summary (`latest_turn`, `turn_count`) plus the approval route (`approval_recommended_action`, `approval_allowed_actions`, `approval_blocked_actions`), so the shortest CLI view can still tell you whether the task is paused, fork-ready, or resume-ready.
+- `resume-task --recommendation-only` now uses the same compact field set as `inspect-run --recommendation-only`; if the two disagree, treat that as a bug instead of normal drift.
 - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only` is the cheapest Chapter 6 go/no-go router: it consumes recovery artifacts first, then tells you whether to reopen `6.7`, narrow to `6.8`, stop for repo noise, or record residual P2/P3 findings.
 - Recovery decisions now require reading `reason`, `run_type`, `reuse_mode`, and `artifact_integrity` together before trusting the newest pointer.
 - `active-task` now also classifies `Chapter6 blocked by` for `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, and `artifact_integrity`, but it should be read after `resume-task`, not before the canonical recovery summary.
 - If recovery shows `run_type = planned-only`, `reason = planned_only_incomplete`, or `Chapter6 blocked by = artifact_integrity`, treat that bundle as evidence only; do not reopen `6.7` or `6.8` from it.
 - `run_review_pipeline.py --dry-run` no longer publishes `latest.json` or `active-task` sidecars, and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` automatically skips dry-run-only latest candidates when resolving the next real recovery pointer.
 - `active-task` now follows the real bundle pointed to by `latest.json`; when `out_dir` and `latest.json` disagree, trust `latest.json` first.
+- `active-task` and project-health now also surface the latest `run-events` turn summary (`turn_id`, reviewer/sidecar/approval activity) plus the resolved approval contract (`recommended_action`, `allowed_actions`, `blocked_actions`), so you can distinguish `pause` vs `fork` vs `resume` before reopening Chapter 6.
+- `active-task` and project-health also compare the latest two `run-events` turns (`previous_turn`, `turn_family_delta`, `new_reviewers`, `new_sidecars`, `approval_changed`), so stop-loss decisions can tell whether a rerun actually produced new reviewer/sidecar/approval movement instead of repeating the same turn shape.
 - If recovery also exposes `recommended_action_why`, read it before choosing between reopen, narrow closure, or stop-loss; `recommended_action = needs-fix-fast` means targeted closure is cheaper than another full rerun.
 
 ## Chapter 6 Fast-Ship Card

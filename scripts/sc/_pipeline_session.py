@@ -37,6 +37,8 @@ class PipelineSession:
     out_dir: Path
     task_id: str
     run_id: str
+    turn_id: str
+    turn_seq: int
     requested_run_id: str
     delivery_profile: str
     security_profile: str
@@ -75,6 +77,41 @@ class PipelineSession:
     def _should_publish_recovery_sidecars(self) -> bool:
         return not bool(getattr(self.args, "dry_run", False)) and has_materialized_pipeline_steps(self.summary)
 
+    def _append_sidecar_event(self, *, event: str, sidecar: str, path: Path | None = None, status: str | None = None) -> None:
+        details: dict[str, Any] = {"sidecar": sidecar}
+        if path is not None:
+            details["path"] = str(path)
+        self.append_run_event(
+            out_dir=self.out_dir,
+            event=event,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            turn_id=self.turn_id,
+            turn_seq=self.turn_seq,
+            delivery_profile=self.delivery_profile,
+            security_profile=self.security_profile,
+            item_kind="sidecar",
+            item_id=sidecar,
+            status=status,
+            details=details,
+        )
+
+    def _append_reviewer_event(self, *, status: str, details: dict[str, Any]) -> None:
+        self.append_run_event(
+            out_dir=self.out_dir,
+            event="reviewer_completed",
+            task_id=self.task_id,
+            run_id=self.run_id,
+            turn_id=self.turn_id,
+            turn_seq=self.turn_seq,
+            delivery_profile=self.delivery_profile,
+            security_profile=self.security_profile,
+            item_kind="reviewer",
+            item_id="artifact-reviewer",
+            status=status,
+            details=details,
+        )
+
     def persist(self) -> bool:
         self.refresh_summary_meta(self.summary)
         self.marathon_state = self.apply_runtime_policy(self.marathon_state)
@@ -109,6 +146,12 @@ class PipelineSession:
             delivery_profile=self.delivery_profile,
             security_profile=self.security_profile,
         )
+        self._append_sidecar_event(
+            event="sidecar_harness_capabilities_synced",
+            sidecar="harness-capabilities.json",
+            path=self.out_dir / "harness-capabilities.json",
+            status="ok",
+        )
         self.write_json(self.out_dir / "summary.json", self.summary)
         self.save_marathon_state(self.out_dir, self.marathon_state)
         provisional_repair_guide = self.build_repair_guide(
@@ -135,6 +178,12 @@ class PipelineSession:
         )
         self.write_json(self.out_dir / "repair-guide.json", repair_guide)
         self.write_text(self.out_dir / "repair-guide.md", self.render_repair_guide_markdown(repair_guide))
+        self._append_sidecar_event(
+            event="sidecar_repair_guide_synced",
+            sidecar="repair-guide.json",
+            path=self.out_dir / "repair-guide.json",
+            status="ok",
+        )
         self.write_json(
             self.out_dir / "execution-context.json",
             self.build_execution_context(
@@ -150,6 +199,12 @@ class PipelineSession:
                 approval_state=approval_state,
             ),
         )
+        self._append_sidecar_event(
+            event="sidecar_execution_context_synced",
+            sidecar="execution-context.json",
+            path=self.out_dir / "execution-context.json",
+            status="ok",
+        )
         for event_payload in approval_state.get("events") or []:
             if not isinstance(event_payload, dict):
                 continue
@@ -158,6 +213,8 @@ class PipelineSession:
                 event=str(event_payload.get("event") or "approval_updated"),
                 task_id=self.task_id,
                 run_id=self.run_id,
+                turn_id=self.turn_id,
+                turn_seq=self.turn_seq,
                 delivery_profile=self.delivery_profile,
                 security_profile=self.security_profile,
                 status=str(event_payload.get("status") or "") or None,
@@ -170,6 +227,11 @@ class PipelineSession:
                 out_dir=self.out_dir,
                 status=str(self.summary.get("status", "fail")),
             )
+            self._append_sidecar_event(
+                event="sidecar_latest_index_synced",
+                sidecar="latest.json",
+                status=str(self.summary.get("status") or "fail"),
+            )
             sidecar_paths = self.write_active_task_sidecar(
                 task_id=self.task_id,
                 run_id=self.run_id,
@@ -177,6 +239,12 @@ class PipelineSession:
                 status=str(self.summary.get("status", "fail")),
             )
             if isinstance(sidecar_paths, tuple) and sidecar_paths:
+                self._append_sidecar_event(
+                    event="sidecar_active_task_synced",
+                    sidecar="task-active",
+                    path=Path(sidecar_paths[0]),
+                    status=str(self.summary.get("status") or "fail"),
+                )
                 active_task_json_path = Path(sidecar_paths[0])
                 if active_task_json_path.exists():
                     try:
@@ -217,6 +285,8 @@ class PipelineSession:
             out_dir=self.out_dir,
             task_id=self.task_id,
             run_id=self.run_id,
+            turn_id=self.turn_id,
+            turn_seq=self.turn_seq,
             delivery_profile=self.delivery_profile,
             security_profile=self.security_profile,
             step=step,
@@ -296,6 +366,8 @@ class PipelineSession:
                         event="wall_time_exceeded",
                         task_id=self.task_id,
                         run_id=self.run_id,
+                        turn_id=self.turn_id,
+                        turn_seq=self.turn_seq,
                         delivery_profile=self.delivery_profile,
                         security_profile=self.security_profile,
                         status="fail",
@@ -347,6 +419,17 @@ class PipelineSession:
                 mode=self.agent_review_mode,
                 marathon_state=self.marathon_state,
             )
+            agent_review = (self.marathon_state.get("agent_review") or {}) if isinstance(self.marathon_state, dict) else {}
+            reviewer_status = "ok" if post_hook_rc == 0 else "fail"
+            self._append_reviewer_event(
+                status=reviewer_status,
+                details={
+                    "mode": self.agent_review_mode,
+                    "rc": post_hook_rc,
+                    "review_verdict": str(agent_review.get("review_verdict") or ""),
+                    "recommended_action": str(agent_review.get("recommended_action") or ""),
+                },
+            )
             if not self.persist():
                 return 2
             self._append_run_completed(agent_review_rc=post_hook_rc)
@@ -368,6 +451,8 @@ class PipelineSession:
             event="run_completed",
             task_id=self.task_id,
             run_id=self.run_id,
+            turn_id=self.turn_id,
+            turn_seq=self.turn_seq,
             delivery_profile=self.delivery_profile,
             security_profile=self.security_profile,
             status=str(self.summary.get("status") or "fail"),

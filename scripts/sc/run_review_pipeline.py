@@ -49,7 +49,7 @@ from _marathon_state import (
     step_is_already_complete,
 )
 from _pipeline_approval import sync_soft_approval_sidecars
-from _pipeline_events import append_run_event
+from _pipeline_events import append_run_event, build_turn_id
 from _pipeline_helpers import allocate_out_dir as _allocate_out_dir_impl
 from _pipeline_helpers import append_step_event as _append_step_event_impl
 from _pipeline_helpers import build_parser as _build_parser_impl
@@ -73,6 +73,7 @@ from _pipeline_support import (
 from _llm_review_cli import parse_agent_timeout_overrides, resolve_agents
 from _change_scope import classify_change_scope_between_snapshots
 from _pipeline_history import collect_recent_failure_summary
+from _repair_approval import resolve_approval_state
 from _repair_guidance import build_execution_context, build_repair_guide, render_repair_guide_markdown
 from _risk_profile_floor import derive_delivery_profile_floor
 from _taskmaster import resolve_triplet
@@ -1445,6 +1446,8 @@ def _append_step_event(
     out_dir: Path,
     task_id: str,
     run_id: str,
+    turn_id: str | None,
+    turn_seq: int | None,
     delivery_profile: str,
     security_profile: str,
     step: dict[str, Any],
@@ -1453,6 +1456,8 @@ def _append_step_event(
         out_dir=out_dir,
         task_id=task_id,
         run_id=run_id,
+        turn_id=turn_id,
+        turn_seq=turn_seq,
         delivery_profile=delivery_profile,
         security_profile=security_profile,
         step=step,
@@ -1479,6 +1484,36 @@ def _load_source_run(task_id: str, selector_run_id: str | None) -> tuple[Path, d
         load_existing_summary_fn=_load_existing_summary,
         load_marathon_state_fn=load_marathon_state,
     )
+
+
+def _approval_block_message(*, action: str, approval: dict[str, Any]) -> str:
+    status = str(approval.get("status") or "").strip().lower()
+    if action == "resume" and status == "pending":
+        return "fork approval is pending; pause recovery until approval is approved or denied."
+    if action == "resume" and status == "approved":
+        return "fork approval is approved; resume is blocked, use --fork."
+    if action == "fork" and status == "denied":
+        return "fork approval was denied; fork is blocked, use --resume instead."
+    if action in {"resume", "fork"} and status in {"invalid", "mismatched"}:
+        return "approval sidecars are invalid or mismatched; inspect the approval artifacts before continuing."
+    if action == "fork" and status == "pending":
+        return "fork approval is pending; wait for approval before using --fork."
+    return ""
+
+
+def _enforce_approval_contract(*, action: str, source_out_dir: Path, source_execution_context: dict[str, Any] | None) -> tuple[bool, str]:
+    execution_approval = {}
+    if isinstance(source_execution_context, dict) and isinstance(source_execution_context.get("approval"), dict):
+        execution_approval = source_execution_context.get("approval") or {}
+    approval = resolve_approval_state(out_dir=source_out_dir, approval_state=execution_approval)
+    if str(approval.get("required_action") or "").strip().lower() != "fork":
+        return False, ""
+    status = str(approval.get("status") or "").strip().lower()
+    if action == "resume" and status in {"pending", "approved", "invalid", "mismatched"}:
+        return True, _approval_block_message(action=action, approval=approval)
+    if action == "fork" and status in {"pending", "denied", "invalid", "mismatched"}:
+        return True, _approval_block_message(action=action, approval=approval)
+    return False, ""
 
 
 def _run_acceptance_preflight(
@@ -1521,6 +1556,8 @@ def _run_acceptance_preflight(
                 event="acceptance_preflight_skipped",
                 task_id=task_id,
                 run_id=run_id,
+                turn_id=session.turn_id,
+                turn_seq=session.turn_seq,
                 delivery_profile=delivery_profile,
                 security_profile=security_profile,
                 status="skipped",
@@ -1555,6 +1592,8 @@ def _run_acceptance_preflight(
             event="acceptance_preflight_completed",
             task_id=task_id,
             run_id=run_id,
+            turn_id=session.turn_id,
+            turn_seq=session.turn_seq,
             delivery_profile=delivery_profile,
             security_profile=security_profile,
             status="ok",
@@ -1596,11 +1635,28 @@ def main() -> int:
         if args.resume or args.abort:
             out_dir, summary, marathon_state = _load_source_run(task_id, (args.run_id or "").strip() or None)
             source_execution_context = _read_execution_context(out_dir)
+            if args.resume:
+                blocked, message = _enforce_approval_contract(
+                    action="resume",
+                    source_out_dir=out_dir,
+                    source_execution_context=source_execution_context,
+                )
+                if blocked:
+                    print(f"[sc-review-pipeline] ERROR: {message}")
+                    return 2
             run_id = str(summary.get("run_id") or "").strip() or run_id
             requested_run_id = str(summary.get("requested_run_id") or run_id).strip() or run_id
         elif args.fork:
             source_out_dir, source_summary, source_state = _load_source_run(task_id, (args.fork_from_run_id or "").strip() or None)
             source_execution_context = _read_execution_context(source_out_dir)
+            blocked, message = _enforce_approval_contract(
+                action="fork",
+                source_out_dir=source_out_dir,
+                source_execution_context=source_execution_context,
+            )
+            if blocked:
+                print(f"[sc-review-pipeline] ERROR: {message}")
+                return 2
             source_delivery_profile, _source_security_profile = _resolve_pipeline_profiles(
                 requested_delivery_profile=args.delivery_profile,
                 requested_security_profile=args.security_profile,
@@ -1782,12 +1838,16 @@ def main() -> int:
         llm_execution_context["requested_agent_timeout_overrides"] = requested_llm_agent_timeout_overrides
     if llm_agent_timeout_overrides:
         llm_execution_context["agent_timeout_overrides"] = llm_agent_timeout_overrides
+    current_turn_seq = max(1, int((marathon_state or {}).get("resume_count") or 1))
+    current_turn_id = build_turn_id(run_id=run_id, turn_seq=current_turn_seq)
     if args.abort:
         append_run_event(
             out_dir=out_dir,
             event="run_aborted",
             task_id=task_id,
             run_id=run_id,
+            turn_id=current_turn_id,
+            turn_seq=current_turn_seq,
             delivery_profile=delivery_profile,
             security_profile=security_profile,
             status="aborted",
@@ -1803,12 +1863,16 @@ def main() -> int:
             print("[sc-review-pipeline] ERROR: the selected run is aborted and cannot be resumed.")
             return 2
         marathon_state = resume_state(marathon_state, max_step_retries=max_step_retries, max_wall_time_sec=args.max_wall_time_sec)
+        current_turn_seq = max(1, int((marathon_state or {}).get("resume_count") or 1))
+        current_turn_id = build_turn_id(run_id=run_id, turn_seq=current_turn_seq)
 
     append_run_event(
         out_dir=out_dir,
         event="run_resumed" if args.resume else "run_forked" if args.fork else "run_started",
         task_id=task_id,
         run_id=run_id,
+        turn_id=current_turn_id,
+        turn_seq=current_turn_seq,
         delivery_profile=delivery_profile,
         security_profile=security_profile,
         status=str(summary.get("status") or "ok"),
@@ -1827,6 +1891,8 @@ def main() -> int:
         out_dir=out_dir,
         task_id=task_id,
         run_id=run_id,
+        turn_id=current_turn_id,
+        turn_seq=current_turn_seq,
         requested_run_id=requested_run_id,
         delivery_profile=delivery_profile,
         security_profile=security_profile,
@@ -1970,6 +2036,8 @@ def main() -> int:
                     event="rerun_blocked",
                     task_id=task_id,
                     run_id=run_id,
+                    turn_id=current_turn_id,
+                    turn_seq=current_turn_seq,
                     delivery_profile=delivery_profile,
                     security_profile=security_profile,
                     status="fail",
@@ -1982,6 +2050,8 @@ def main() -> int:
                     event="run_completed",
                     task_id=task_id,
                     run_id=run_id,
+                    turn_id=current_turn_id,
+                    turn_seq=current_turn_seq,
                     delivery_profile=delivery_profile,
                     security_profile=security_profile,
                     status="fail",

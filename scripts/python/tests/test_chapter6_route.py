@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -38,6 +40,33 @@ chapter6_route = _load_module("chapter6_route_module", "scripts/python/chapter6_
 
 
 class Chapter6RouteTests(unittest.TestCase):
+    def _build_run_68_route_payload(self) -> dict[str, object]:
+        return {
+            "task_id": "15",
+            "run_id": "run-15",
+            "preferred_lane": "run-6.8",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
+            "reviewer_anchor_hit": True,
+            "changed_paths": ["docs/architecture/overlays/PRD-1/08/overview.md"],
+            "six_eight_worthwhile": True,
+            "full_67_recommended": False,
+            "repo_noise_classification": "task-issue",
+            "repo_noise_reason": "",
+            "recommended_action": "needs-fix-fast",
+            "recommended_action_why": "",
+            "latest_reason": "rerun_blocked:repeat_review_needs_fix",
+            "chapter6_next_action": "needs-fix-fast",
+            "blocked_by": "rerun_guard",
+            "residual_recording": {
+                "eligible": False,
+                "reason": "no_low_priority_findings",
+                "performed": False,
+                "decision_log_path": "",
+                "execution_plan_path": "",
+            },
+        }
+
     def test_should_route_to_68_when_reviewer_anchor_fix_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -384,6 +413,56 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertFalse(record["performed"])
             self.assertFalse((root / "decision-logs").exists())
             self.assertFalse((root / "execution-plans").exists())
+
+    def test_compact_payload_should_match_example_json(self) -> None:
+        expected_path = REPO_ROOT / "docs" / "workflows" / "examples" / "sc-chapter6-route-compact.example.json"
+        expected = json.loads(expected_path.read_text(encoding="utf-8"))
+
+        actual = chapter6_route._compact_payload(self._build_run_68_route_payload())
+
+        self.assertEqual(expected, actual)
+
+    def test_main_recommendation_only_json_should_match_example(self) -> None:
+        expected_path = REPO_ROOT / "docs" / "workflows" / "examples" / "sc-chapter6-route-compact.example.json"
+        expected = json.loads(expected_path.read_text(encoding="utf-8"))
+        stdout = io.StringIO()
+
+        with (
+            mock.patch.object(chapter6_route, "route_chapter6", return_value=(0, self._build_run_68_route_payload())),
+            redirect_stdout(stdout),
+        ):
+            exit_code = chapter6_route.main(
+                [
+                    "--task-id",
+                    "15",
+                    "--recommendation-only",
+                    "--recommendation-format",
+                    "json",
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual(expected, json.loads(stdout.getvalue()))
+
+    def test_main_recommendation_only_kv_should_match_example(self) -> None:
+        expected_path = REPO_ROOT / "docs" / "workflows" / "examples" / "sc-chapter6-route-compact.stdout.example.txt"
+        expected = expected_path.read_text(encoding="utf-8")
+        stdout = io.StringIO()
+
+        with (
+            mock.patch.object(chapter6_route, "route_chapter6", return_value=(0, self._build_run_68_route_payload())),
+            redirect_stdout(stdout),
+        ):
+            exit_code = chapter6_route.main(
+                [
+                    "--task-id",
+                    "15",
+                    "--recommendation-only",
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual(expected, stdout.getvalue())
 
 
 if __name__ == "__main__":

@@ -31,14 +31,28 @@ py -3 scripts/python/serve_project_health.py
 Every command refreshes the same stable latest records:
 
 - `logs/ci/project-health/report-catalog.latest.json`
+- Schema: `scripts/sc/schemas/sc-project-health-report-catalog.schema.json`
+- Example: `docs/workflows/examples/sc-project-health-report-catalog.example.json`
 - `logs/ci/project-health/server.json`
+- Schema: `scripts/sc/schemas/sc-project-health-server.schema.json`
+- Example: `docs/workflows/examples/sc-project-health-server.example.json`
 - `logs/ci/project-health/detect-project-stage.latest.json`
+- Schema: `scripts/sc/schemas/sc-project-health-record.schema.json`
+- Example: `docs/workflows/examples/sc-project-health-detect-project-stage.example.json`
+- `logs/ci/project-health/detect-project-stage.latest.md`
 - `logs/ci/project-health/doctor-project.latest.json`
+- `logs/ci/project-health/doctor-project.latest.md`
 - `logs/ci/project-health/check-directory-boundaries.latest.json`
+- `logs/ci/project-health/check-directory-boundaries.latest.md`
+- `logs/ci/project-health/project-health-scan.latest.json`
+- Schema: `scripts/sc/schemas/sc-project-health-scan.schema.json`
+- Example: `docs/workflows/examples/sc-project-health-scan.example.json`
 - `logs/ci/project-health/latest.json`
 - `logs/ci/project-health/latest.html`
+- Aggregate example: `docs/workflows/examples/sc-project-health-scan.example.json`
 
 Historical snapshots are written under `logs/ci/<YYYY-MM-DD>/project-health/`.
+Each latest JSON record also has a companion `*.latest.md` summary generated from the same payload shape. Example: `docs/workflows/examples/sc-project-health-record.example.md`.
 
 ## Visual Page
 
@@ -62,12 +76,27 @@ The active-task aggregate counters also track Chapter 6 KPI-style fields such as
 - `artifact_integrity_blocked`
 - `artifact_integrity_planned_only_incomplete`
 - `deterministic_bundle_available`
+- `run_events_available`
+- `multi_turn_runs`
+- `reviewer_activity_present`
+- `sidecar_activity_present`
+- `approval_activity_present`
+- `approval_contract_present`
+- `approval_pause_required`
+- `approval_fork_ready`
+- `approval_resume_ready`
+- `approval_inspect_required`
 - `next_action_needs_fix_fast`
 - `next_action_inspect`
 - `next_action_resume`
 - `next_action_continue`
 The active-task summary row now also counts `llm_retry_stop_loss_blocked`, `sc_test_retry_stop_loss_blocked`, `artifact_integrity_blocked`, `recent_failure_summary_blocked`, `latest_json_mismatch`, and `latest_json_repaired`, so repeated timeout-driven waste, known unit-root-cause retries, stale/incomplete recovery bundles, repeated same-family failure stop-loss signals, and repaired latest-pointer drift are visible without opening raw artifacts.
+It also counts `turn_diff_available`, `turn_diff_reviewer_change`, `turn_diff_sidecar_change`, and `turn_diff_approval_change`, so operators can see whether recent runs are producing new Chapter 6 signal instead of just accumulating more logs.
 Each active-task card now prints `recommended_action_why`, `chapter6_stop_loss_note`, plus explicit diagnostic rows for `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `recent_failure_summary`, and `artifact_integrity` when those stop-loss or recovery-integrity signals are present.
+The card also reads the task-scoped `run-events.jsonl` and summarizes the protocol fields instead of relying only on flattened sidecar fields: `run_events_latest_turn`, `run_events_latest_event`, `run_events_families`, `run_events_latest_turn_families`, `reviewer_activity`, `sidecar_activity`, and `approval_activity`. This makes reviewer / sidecar / approval progress visible from the dashboard without opening the raw event log first.
+The same summary now compares the latest two turns when available: `run_events_previous_turn`, `run_events_previous_turn_families`, `run_events_turn_family_delta`, `run_events_new_reviewers`, `run_events_new_sidecars`, and `run_events_approval_changed`. This is the shortest dashboard-level signal for deciding whether a rerun produced genuinely new movement or only replayed the same failure shape.
+The card also reads the resolved approval contract from `execution-context.json`, exposing `approval_required_action`, `approval_status`, `approval_decision`, `approval_recommended_action`, `approval_allowed_actions`, `approval_blocked_actions`, and `approval_reason`. This lets operators distinguish an approval-pending pause from a fork-ready or resume-ready state without leaving the dashboard.
+These summaries are derived from the canonical event taxonomy (`turn_id`, `turn_seq`, `item_kind`, `item_id`, `event_family`) and the consumer-driven approval contract (`recommended_action`, `allowed_actions`, `blocked_actions`), so they stay aligned with the Chapter 6 recovery protocol even after additional sidecar events are appended after `run_completed`.
 When the latest pointer is only a planned-only terminal bundle, the card also emits `planned_only_terminal_bundle: true` so operators can distinguish stale planning artifacts from real completed producer runs at a glance.
 
 ## Recovery Reading Hints

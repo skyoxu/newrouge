@@ -63,6 +63,8 @@ Why this is stable:
 
 Quick read variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 Automation variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only --recommendation-format json`
+- Example compact JSON: `docs/workflows/examples/sc-resume-task-compact.example.json`
+- Example compact stdout: `docs/workflows/examples/sc-resume-task-compact.stdout.example.txt`
 
 Use when:
 - resuming a task after context reset
@@ -80,6 +82,7 @@ Why this is stable:
 - it now surfaces `Chapter6 next action`, `Chapter6 can skip 6.7`, `Chapter6 can go to 6.8`, and `Chapter6 blocked by`
 - `Chapter6 blocked by` now explicitly distinguishes `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, `recent_failure_summary`, and `artifact_integrity`, so recovery can choose between full-stop, narrow llm-only follow-up, known-unit-root-cause stop, repeated-failure-family stop-loss, stale-bundle fallback, or root-cause-first repair
 - it now also emits a `Chapter6 stop-loss note`, so the recovery summary explains why a fresh full `6.7` would be wasteful
+- it now surfaces approval contract fields (`Approval required action`, `Approval status`, `Approval decision`, `Approval reason`) so recovery can distinguish `pause`, `fork`, `resume`, and inspect-first approval failures without reopening the whole pipeline
 - it also surfaces `recommended_action_why`, and `recommended_action = needs-fix-fast` is the cue to prefer targeted closure over another full rerun
 
 ### `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>]`
@@ -99,7 +102,7 @@ Why this is stable:
 - it is the canonical sidecar inspection entrypoint
 - it now exposes `latest_summary_signals` and `chapter6_hints` in one place for rerun/stop-loss decisions
 - `chapter6_hints.blocked_by` now covers `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, `recent_failure_summary`, and `artifact_integrity`
-- inspection is also where you confirm `planned_only_incomplete` / `artifact_integrity`, repeated same-family failures via `recent_failure_summary`, and whether the next move should be inspect-first instead of reopening `6.7`
+- inspection is also where you confirm `planned_only_incomplete` / `artifact_integrity`, repeated same-family failures via `recent_failure_summary`, approval contract states (`pending|approved|denied|invalid|mismatched`), and whether the next move should be inspect-first instead of reopening `6.7`
 - when automatic latest resolution sees a newer dry-run-only pipeline pointer, it now skips that candidate and falls back to the newest real recoverable run
 - when automatic latest resolution sees a newer planned-only terminal bundle, it also skips that evidence-only candidate and falls back to the newest real producer run
 
@@ -107,6 +110,8 @@ Why this is stable:
 
 Quick read variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 Automation variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only --recommendation-format json`
+- Example compact JSON: `docs/workflows/examples/sc-chapter6-route-compact.example.json`
+- Example compact stdout: `docs/workflows/examples/sc-chapter6-route-compact.stdout.example.txt`
 
 Use when:
 - you already have recovery artifacts and need a cheap go/no-go decision before reopening `6.7`
@@ -142,6 +147,7 @@ Why this is stable:
 - it replaces manually stitching lower-level review commands together
 - it now carries rerun stop-loss signals so repeated full reruns are blocked when deterministic is already green or when recent `sc-test` failures share the same fingerprint
 - it now consumes the same `chapter6-route` signal before a fresh full rerun, so `inspect-first`, `repo-noise-stop`, `fix-deterministic`, and `run-6.8` recommendations are enforced before refactor preflight and downstream cost
+- `--resume` and `--fork` also enforce the approval sidecar contract before step execution: pending approval pauses recovery, approved approval redirects to `--fork`, denied approval redirects to `--resume`, and invalid or mismatched approval evidence forces inspection first
 - when the same invocation already proved a known `sc-test` unit root cause, it records `diagnostics.sc_test_retry_stop_loss` and stops the same-run retry instead of paying that cost again
 - exceptional overrides stay explicit: `--allow-full-rerun` and `--allow-repeat-deterministic-failures`
 - a fresh run now inherits the latest task-scoped profile lock unless you explicitly pass `--reselect-profile`

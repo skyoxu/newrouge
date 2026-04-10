@@ -25,6 +25,9 @@ def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | No
         "request_id": "",
         "request_path": "",
         "response_path": "",
+        "recommended_action": "continue",
+        "allowed_actions": [],
+        "blocked_actions": [],
     }
     if isinstance(approval_state, dict):
         for key in state:
@@ -35,6 +38,7 @@ def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | No
     response_path = out_dir / "approval-response.json"
     request_payload = _read_json(request_path)
     response_payload = _read_json(response_path)
+    request_id_from_request = ""
 
     if request_payload is not None:
         state["soft_gate"] = True
@@ -42,23 +46,94 @@ def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | No
         state["status"] = str(request_payload.get("status") or state["status"] or "pending").strip()
         state["reason"] = str(request_payload.get("reason") or state["reason"] or "").strip()
         state["request_id"] = str(request_payload.get("request_id") or state["request_id"] or "").strip()
+        request_id_from_request = state["request_id"]
         state["request_path"] = str(request_path)
 
     if response_payload is not None:
         state["soft_gate"] = True
-        state["decision"] = str(response_payload.get("decision") or state["decision"] or "").strip()
-        state["reason"] = str(response_payload.get("reason") or state["reason"] or "").strip()
-        state["request_id"] = str(response_payload.get("request_id") or state["request_id"] or "").strip()
+        response_decision = str(response_payload.get("decision") or state["decision"] or "").strip()
+        response_reason = str(response_payload.get("reason") or state["reason"] or "").strip()
+        response_request_id = str(response_payload.get("request_id") or state["request_id"] or "").strip()
+        response_task_id = str(response_payload.get("task_id") or "").strip()
+        response_run_id = str(response_payload.get("run_id") or "").strip()
+        response_action = str(response_payload.get("action") or "").strip()
+        state["decision"] = response_decision
+        state["reason"] = response_reason
         state["response_path"] = str(response_path)
-        if state["decision"] in {"approved", "denied"}:
-            state["status"] = state["decision"]
+        if not request_id_from_request:
+            state["status"] = "invalid"
+            state["reason"] = response_reason or "Approval response exists without a matching approval request."
+        elif response_action and response_action != state["required_action"]:
+            state["status"] = "invalid"
+            state["reason"] = (
+                f"Approval response action '{response_action}' does not match current request action '{state['required_action']}'."
+            )
+        elif response_task_id and request_payload is not None and response_task_id != str(request_payload.get("task_id") or "").strip():
+            state["status"] = "invalid"
+            state["reason"] = (
+                f"Approval response task_id '{response_task_id}' does not match current request task_id '{str(request_payload.get('task_id') or '').strip()}'."
+            )
+        elif response_run_id and request_payload is not None and response_run_id != str(request_payload.get("run_id") or "").strip():
+            state["status"] = "invalid"
+            state["reason"] = (
+                f"Approval response run_id '{response_run_id}' does not match current request run_id '{str(request_payload.get('run_id') or '').strip()}'."
+            )
+        elif request_id_from_request and response_request_id and response_request_id != request_id_from_request:
+            state["status"] = "mismatched"
+            mismatch_reason = (
+                f"Approval response request_id '{response_request_id}' does not match current request '{request_id_from_request}'."
+            )
+            state["reason"] = f"{mismatch_reason} {response_reason}".strip() if response_reason else mismatch_reason
+        elif response_decision in {"approved", "denied"}:
+            state["status"] = response_decision
+            state["request_id"] = response_request_id
         elif state["status"] == "not-needed":
             state["status"] = "invalid"
+            if response_reason:
+                state["reason"] = response_reason
+        if state["status"] in {"invalid", "mismatched"}:
+            state["request_id"] = request_id_from_request or response_request_id
 
-    for key in ("required_action", "status", "decision", "reason", "request_id", "request_path", "response_path"):
+    for key in ("required_action", "status", "decision", "reason", "request_id", "request_path", "response_path", "recommended_action"):
         state[key] = str(state.get(key) or "").strip()
+    state["allowed_actions"] = [str(item).strip() for item in list(state.get("allowed_actions") or []) if str(item).strip()]
+    state["blocked_actions"] = [str(item).strip() for item in list(state.get("blocked_actions") or []) if str(item).strip()]
     state["soft_gate"] = bool(state.get("soft_gate") or False)
+    _apply_approval_action_contract(state)
     return state
+
+
+def _apply_approval_action_contract(state: dict[str, Any]) -> None:
+    required_action = str(state.get("required_action") or "").strip().lower()
+    status = str(state.get("status") or "").strip().lower() or "not-needed"
+    if required_action != "fork":
+        state["recommended_action"] = "continue" if status == "not-needed" else "inspect"
+        state["allowed_actions"] = ["continue"] if status == "not-needed" else ["inspect"]
+        state["blocked_actions"] = []
+        return
+    if status == "pending":
+        state["recommended_action"] = "pause"
+        state["allowed_actions"] = ["inspect", "pause"]
+        state["blocked_actions"] = ["fork", "resume", "rerun"]
+        return
+    if status == "approved":
+        state["recommended_action"] = "fork"
+        state["allowed_actions"] = ["fork", "inspect"]
+        state["blocked_actions"] = ["resume", "rerun"]
+        return
+    if status == "denied":
+        state["recommended_action"] = "resume"
+        state["allowed_actions"] = ["resume", "inspect"]
+        state["blocked_actions"] = ["fork"]
+        return
+    if status in {"invalid", "mismatched"}:
+        state["recommended_action"] = "inspect"
+        state["allowed_actions"] = ["inspect"]
+        state["blocked_actions"] = ["fork", "resume", "rerun"]
+        return
+    state["recommended_action"] = "inspect"
+    state["allowed_actions"] = ["inspect"]
+    state["blocked_actions"] = []
 
 
 def _approval_recommendation(*, rec_id: str, title: str, why: str, commands: list[str], files: list[str]) -> dict[str, Any]:
