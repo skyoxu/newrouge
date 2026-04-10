@@ -1,0 +1,14 @@
+{
+  "task_id": 11,
+  "adr_refs": [
+    "ADR-0021",
+    "ADR-0032"
+  ],
+  "chapter_refs": [
+    "CH01",
+    "CH06",
+    "CH07",
+    "CH05"
+  ],
+  "source": "task-11-green-baseline"
+}
