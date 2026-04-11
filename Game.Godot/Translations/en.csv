@@ -32,3 +32,12 @@ ui.difficulty.7.desc,Challenge level 7 of 10 with strong pressure.
 ui.difficulty.8.desc,Challenge level 8 of 10 with severe pressure.
 ui.difficulty.9.desc,Challenge level 9 of 10 with intense pressure.
 ui.difficulty.10.desc,Challenge level 10 of 10 with maximum pressure.
+ui.character.select.title,Character Select
+ui.character.warrior,Warrior
+ui.character.mage,Mage
+ui.character.rogue,Rogue
+ui.character.selected,selected
+ui.character.not_open,not open
+ui.character.warrior.summary.rage_buff,Rage acts as a combat state buff that grows pressure over time.
+ui.character.warrior.summary.power_window,Heavy attack has a short power window where timing matters most.
+ui.character.warrior.summary.cost_burst,Rage drain is a cost that enables explosive burst damage.

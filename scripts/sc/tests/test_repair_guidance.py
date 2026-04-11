@@ -71,6 +71,33 @@ class RepairGuidanceTests(unittest.TestCase):
             self.assertEqual("rerun_blocked:repeat_review_needs_fix", payload["latest_summary_signals"]["reason"])
             self.assertEqual("needs-fix-fast", payload["chapter6_hints"]["next_action"])
 
+    def test_build_execution_context_should_omit_empty_recommended_command_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            payload = build_execution_context(
+                task_id="1",
+                requested_run_id="abc",
+                run_id="def",
+                out_dir=out_dir,
+                delivery_profile="fast-ship",
+                security_profile="host-safe",
+                llm_review_context={},
+                summary={
+                    "status": "ok",
+                    "steps": [],
+                    "recommended_action": "",
+                    "recommended_action_why": "",
+                    "recommended_command": "",
+                    "candidate_commands": {},
+                    "forbidden_commands": [],
+                },
+                marathon_state={},
+            )
+
+            self.assertNotIn("recommended_action", payload)
+            self.assertNotIn("recommended_action_why", payload)
+            self.assertNotIn("recommended_command", payload)
+
     def test_build_repair_guide_should_mark_not_needed_when_no_failed_step(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir)
