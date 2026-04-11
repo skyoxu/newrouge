@@ -411,11 +411,36 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs
 py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs/ci/<date>/sc-llm-obligations-jitter-batch5x3-raw.json --require-judgable --require-freeze-pass --approve-promote
 ```
 
-## 6. Phase 4：单任务日常循环（Single Task Daily Loop）
+## 6. Phase 4: Single Task Daily Loop
 
-这是主日常路径。
+This chapter is the main daily loop for a single task: recovery inspection, TDD, review pipeline, Needs Fix convergence, and pre-commit hard checks.
 
-如需理解本章在 `T56` 实战中做过哪些优化、哪些脚本必须成批升级、以及旧项目如何完整对齐，请先读 `docs/workflows/chapter-6-t56-optimization-guide.md`。
+If you want the background for the T56-based optimization and stop-loss rules, read `docs/workflows/chapter-6-t56-optimization-guide.md` first.
+
+### 6.0 Choose The Chapter 6 Entrypoint First
+
+Default to the top-level orchestrator instead of manually chaining `6.3 -> 6.9` every time.
+
+Recommended entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship
+```
+
+Default convergence by delivery profile:
+- `playable-ea`: enforce `P0` only by default; record or defer `P1/P2/P3`.
+- `fast-ship`: enforce `P0/P1` by default; record or defer `P2/P3`.
+- `standard`: also enforce `P0/P1` by default; only add `--fix-through P2` for an explicit pre-release final convergence pass.
+
+Prefer the top-level orchestrator when:
+- You want one stable path that includes `resume-task`, `chapter6-route`, `6.3`, `6.7`, `6.8`, and `6.9`.
+- You want the script to decide whether `6.8` is worth paying for.
+- You want route stop-loss, approval sidecars, and recovery sidecars applied automatically.
+
+Switch to manual step-by-step execution when:
+- You need to target a single step such as `6.4`, `6.7`, or `6.8`.
+- You intentionally want to override the default route with flags like `--allow-full-rerun` or `--allow-repeat-deterministic-failures`.
+- You are debugging the workflow itself and need every artifact in sequence.
 
 ### 6.1 先恢复状态
 
@@ -457,6 +482,15 @@ Recovery decision order:
 3. Then read `Approval required action`, `Approval status`, `Approval decision`, and `Approval reason` when they exist.
 4. Only then decide whether to reopen the current run, move to 6.8, enter `pause`, or start a fresh real run.
 5. If you need to know exactly where the producer stopped, read `run-events.jsonl` by `turn_id`, `item_kind`, `item_id`, and `event_family` instead of scraping event names.
+
+Recovery protocol invariants:
+
+- `run-events.jsonl` is a structured producer log, not free text. Recovery consumers must treat `turn_id -> item_kind -> item_id -> event_family` as the stable taxonomy, and treat concrete event names as best-effort detail only.
+- New `item_kind` or `event_family` values must be backward-compatible extensions. Do not repurpose an existing value with a new meaning inside the same recovery contract.
+- Sidecars follow a consumer-driven schema. `summary.json`, `execution-context.json`, `repair-guide.json`, `agent-review.json`, and `active-task` should be consumed by declared protocol fields first; only fall back to prose when the protocol fields are missing.
+- When `summary.json` or `execution-context.json` already carries canonical recommendation fields, downstream tools should reuse those fields instead of re-deriving state from side observations. Recovery should rely on protocol, not convention.
+- Approval sidecar is part of the same contract: `pending -> pause`, `approved -> fork`, `denied -> resume`, `invalid/mismatched -> inspect`. Treat these as protocol states, not soft hints.
+- If approval remains unresolved, keep the task in `pause` and wait for a new decision. Do not pay `6.7` or `6.8` cost by guessing around the approval state machine.
 
 Hard stop-loss:
 
@@ -892,133 +926,141 @@ py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profi
 - `llm_review_needs_fix_fast.py` 在 fast-ship 小 diff 中间回合可只对 `code-reviewer` 做定向扩时；如果最近完整 pipeline 已 clean，也允许 clean-skip。
 - 如果最近一轮完整 pipeline 不是完全 clean，但 deterministic 已经通过、失败仅剩 `sc-llm-review`，当前脚本也应优先走“复用 deterministic + 只重跑 LLM”的窄路径，而不是重新支付 `sc-test + acceptance_check`。
 
-### 6.11 Fast mode 最省时执行模板
+### 6.11 Fast Mode Fastest Template
 
-如果你不想手工串 `6.3 -> 6.9`，也可以直接走单任务顶层编排：
+If you accept the default Chapter 6 route, the cheapest daily path is the top-level orchestrator:
 
 ```powershell
 py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship
 ```
 
-说明：
-- 这个入口会先跑 `resume-task` 与 `chapter6-route`，再决定是进入完整 `6.3 -> 6.9`，还是直接走 `6.8` 快路径。
-- 默认策略是：
-  - `playable-ea` 只强收 `P0`
-  - `fast-ship` 强收 `P0/P1`
-  - `standard` 当前默认也强收 `P0/P1`
-- `P2/P3` 默认走记录与止损，不在这个顶层脚本里自动持续追打。
+Common variants:
 
-适用前提：
+```powershell
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile playable-ea
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile standard
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile standard --fix-through P2
+```
 
-- 日常单任务循环
-- 默认 `DELIVERY_PROFILE=fast-ship`
-- 不手工覆盖默认 `SECURITY_PROFILE`
-- 已正确设置 `$env:GODOT_BIN`
+Notes:
+- The orchestrator runs `resume-task` and `chapter6-route` first, then decides whether to enter `6.3 -> 6.9` and whether `6.8` is worth paying for.
+- Default enforcement:
+  - `playable-ea`: `P0`
+  - `fast-ship`: `P0/P1`
+  - `standard`: `P0/P1`
+- `P2/P3` are record-and-stop-loss by default.
+- Only add `--fix-through P2` for an explicit pre-release final convergence pass.
+- Use self-check first if you only want to verify routing, profile resolution, planned steps, and output wiring:
 
-推荐顺序：
+```powershell
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --self-check
+```
 
-1. 恢复上下文：
+Prerequisites:
+- Python is available.
+- `DELIVERY_PROFILE=fast-ship` is set, or `--delivery-profile` is passed explicitly.
+- `SECURITY_PROFILE` is set when needed.
+- `$env:GODOT_BIN` is configured.
 
+Manual step-by-step template:
+
+1. Recovery inspection:
 ```powershell
 py -3 scripts/python/dev_cli.py resume-task --task-id <id>
 # quick recommendation-only read
 py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only
 ```
 
-2. TDD preflight：
+2. TDD preflight:
 
 ```powershell
 py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft
 ```
 
-3. 6.4 red-first：
+3. 6.4 red-first:
 
 ```powershell
 py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify unit
 ```
 
-- 只有明确需要 Godot-aware red 证据时，才升级为：
+- Upgrade to Godot-aware red evidence only when required:
 
 ```powershell
 py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify auto --godot-bin "$env:GODOT_BIN"
 ```
 
-4. 6.5 green：
+4. 6.5 green:
 
 ```powershell
 py -3 scripts/sc/build.py tdd --task-id <id> --stage green
 ```
 
-5. 6.6 refactor：
+5. 6.6 refactor:
 
 ```powershell
 py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
 ```
 
-6. 6.7 review pipeline：
+6. 6.7 review pipeline:
 
 ```powershell
 py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship
 ```
-7. 先用路由判断是否值得继续付 6.8：
+
+7. Ask the route whether 6.8 is worth paying for:
 
 ```powershell
 py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only
 ```
 
-8. 只有路由明确给出 `preferred_lane = run-6.8` 时，再进 6.8：
+8. Enter 6.8 only when the route says `preferred_lane = run-6.8`:
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1
 ```
 
-9. 6.9 仓库级硬检查：
+9. 6.9 repository hard checks:
 
 ```powershell
 py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
 py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
-省时规则：
+Time-saving rules:
+- Keep `6.4` on `unit` first; do not start with `--verify all`.
+- If `6.7` first exposes repo noise, process locks, or `sc-test rc=124`, fix the root cause before chaining more `--resume` attempts.
+- If the same run gets stuck on `sc-test` twice, abandon that run and open a new one after the fix.
+- Only pay for `6.8` when this round actually hits the previous reviewer anchors.
+- If deterministic is already stable `ok` and only `P2/P3` evidence-strength findings remain, record and stop instead of paying repeated LLM cost.
 
-- `6.4` 首轮默认 `unit`，不要先上 `--verify all`。
-- `6.7` 首轮若暴露仓库级噪音、锁进程或 `sc-test rc=124`，先修根因，不要连续 `--resume`。
-- 同一个 run 连续两次卡在 `sc-test`，默认放弃该 run；修完后新开 run。
-- `6.8` 只在“本轮改动命中上一轮 reviewer 锚点”时才值得重跑。
-- 如果 deterministic 已经稳定 `ok`，剩下只是 P2/P3 证据强度问题，默认记录并止损，不再重复支付 LLM 成本。
+Use `--resume` when:
+- The run was interrupted externally.
+- The machine restarted.
+- The root cause is fixed and you only want to continue the same run.
 
-何时可以 `--resume`：
+Do not use `--resume` when:
+- `sc-test` keeps failing.
+- The first round already exposed repo-level historical red failures.
+- You have not read `run-events.jsonl`, `sc-test.log`, and `child-artifacts/sc-test/summary.json` yet.
 
-- 外部中断
-- 机器重启
-- 已确认根因修完，只想继续同一个 run
-
-何时不要 `--resume`：
-
-- `sc-test` 连续失败
-- 首轮就暴露仓库级历史红灯
-- 还没先看 `run-events.jsonl`、`sc-test.log`、`child-artifacts/sc-test/summary.json`
-
-中间收敛回合的 6.8 快路径：
+Fast 6.8 path for an intermediate convergence round:
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1
 ```
 
-只改了 review / acceptance 文本、没动实现和测试时：
+If this round only changes review / acceptance text and does not touch implementation or tests:
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --skip-sc-test --rerun-failing-only --max-rounds 1
 ```
 
-失败后优先看：
-
+Inspect these first after a failure:
 - `summary.json`
 - `repair-guide.md`
 - `run-events.jsonl`
 - `sc-test.log`
 - `child-artifacts/sc-acceptance-check/summary.json`
-
 
 ## 7. Profile 快速指引
 
