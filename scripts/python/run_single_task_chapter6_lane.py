@@ -164,6 +164,12 @@ def build_review_pipeline_cmd(task_id: str, *, profile_policy: dict[str, str], g
     return cmd
 
 
+def build_fork_review_pipeline_cmd(task_id: str, *, profile_policy: dict[str, str], godot_bin: str) -> list[str]:
+    cmd = build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)
+    cmd.append("--fork")
+    return cmd
+
+
 def build_needs_fix_fast_cmd(task_id: str, *, profile_policy: dict[str, str]) -> list[str]:
     return [
         "py",
@@ -224,12 +230,24 @@ def _route_lane(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("preferred_lane") or "").strip().lower() or "inspect-first"
 
 
+def _normalize_action(value: Any) -> str:
+    return str(value or "").strip().lower().replace("_", "-")
+
+
 def _route_run_id(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("run_id") or "").strip().lower()
 
 
 def _route_latest_reason(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("latest_reason") or "").strip().lower()
+
+
+def _route_recommended_action(route_payload: dict[str, Any] | None) -> str:
+    return _normalize_action((route_payload or {}).get("recommended_action"))
+
+
+def _route_next_action(route_payload: dict[str, Any] | None) -> str:
+    return _normalize_action((route_payload or {}).get("chapter6_next_action"))
 
 
 def _initial_route_has_recovery_signal(route_payload: dict[str, Any] | None) -> bool:
@@ -241,8 +259,54 @@ def _route_is_blocking(route_payload: dict[str, Any] | None) -> bool:
     return _route_lane(route_payload) in {"repo-noise-stop", "fix-deterministic"}
 
 
-def _route_requires_needs_fix(route_payload: dict[str, Any] | None) -> bool:
-    return _route_lane(route_payload) == "run-6.8"
+def _route_stop_reason(route_payload: dict[str, Any] | None) -> str:
+    lane = _route_lane(route_payload)
+    if lane in {"repo-noise-stop", "fix-deterministic", "record-residual"}:
+        return lane
+    return ""
+
+
+def _resume_approval(resume_payload: dict[str, Any] | None) -> dict[str, Any]:
+    approval = (resume_payload or {}).get("approval")
+    return dict(approval) if isinstance(approval, dict) else {}
+
+
+def _resume_recommended_action(resume_payload: dict[str, Any] | None) -> str:
+    return _normalize_action((resume_payload or {}).get("recommended_action"))
+
+
+def _resume_next_action(resume_payload: dict[str, Any] | None) -> str:
+    hints = (resume_payload or {}).get("chapter6_hints")
+    return _normalize_action((hints or {}).get("next_action")) if isinstance(hints, dict) else ""
+
+
+def _approval_stop_reason(resume_payload: dict[str, Any] | None) -> str:
+    approval = _resume_approval(resume_payload)
+    if _normalize_action(approval.get("required_action")) != "fork":
+        return ""
+    status = _normalize_action(approval.get("status"))
+    if status == "pending":
+        return "approval_pending"
+    if status in {"invalid", "mismatched"}:
+        return f"approval_{status}"
+    return ""
+
+
+def _approval_requires_fork(resume_payload: dict[str, Any] | None) -> bool:
+    approval = _resume_approval(resume_payload)
+    return _normalize_action(approval.get("required_action")) == "fork" and _normalize_action(approval.get("status")) == "approved"
+
+
+def _route_requires_needs_fix(route_payload: dict[str, Any] | None, *, resume_payload: dict[str, Any] | None = None) -> bool:
+    if _route_lane(route_payload) == "run-6.8":
+        return True
+    actions = {
+        _route_recommended_action(route_payload),
+        _route_next_action(route_payload),
+        _resume_recommended_action(resume_payload),
+        _resume_next_action(resume_payload),
+    }
+    return "needs-fix-fast" in actions
 
 
 def _build_step(name: str, cmd: list[str]) -> dict[str, Any]:
@@ -254,6 +318,7 @@ def build_execution_plan(
     task_id: str,
     godot_bin: str,
     profile_policy: dict[str, str],
+    resume_payload: dict[str, Any] | None,
     initial_route: dict[str, Any],
     post_review_route: dict[str, Any],
     final_route: dict[str, Any],
@@ -263,28 +328,85 @@ def build_execution_plan(
         _build_step("resume-task", build_resume_task_cmd(task_id)),
         _build_step("chapter6-route-initial", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
     ]
-    if _route_is_blocking(initial_route) and _initial_route_has_recovery_signal(initial_route):
+    approval_stop_reason = _approval_stop_reason(resume_payload)
+    if approval_stop_reason:
         return {
             "status": "blocked",
-            "stop_reason": _route_lane(initial_route),
+            "stop_reason": approval_stop_reason,
             "steps": steps,
         }
 
-    if _route_requires_needs_fix(initial_route) and _initial_route_has_recovery_signal(initial_route):
+    initial_stop_reason = _route_stop_reason(initial_route)
+    if initial_stop_reason and _initial_route_has_recovery_signal(initial_route):
+        return {
+            "status": "blocked",
+            "stop_reason": initial_stop_reason,
+            "steps": steps,
+        }
+
+    if _approval_requires_fork(resume_payload) and _initial_route_has_recovery_signal(initial_route):
+        steps.extend(
+            [
+                _build_step("fork-review-pipeline", build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
+                _build_step("chapter6-route-post-fork", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+            ]
+        )
+        post_fork_stop_reason = _route_stop_reason(post_review_route)
+        if post_fork_stop_reason:
+            return {
+                "status": "blocked",
+                "stop_reason": post_fork_stop_reason,
+                "steps": steps,
+            }
+        if _route_requires_needs_fix(post_review_route):
+            steps.extend(
+                [
+                    _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
+                    _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+                ]
+            )
+            final_stop_reason = _route_stop_reason(final_route)
+            if final_stop_reason or _route_requires_needs_fix(final_route):
+                return {
+                    "status": "blocked",
+                    "stop_reason": final_stop_reason or _route_lane(final_route),
+                    "steps": steps,
+                }
+        steps.extend(
+            [
+                _build_step("local-hard-checks-preflight", build_local_hard_checks_preflight_cmd(profile_policy=profile_policy)),
+                _build_step("local-hard-checks", build_local_hard_checks_cmd(profile_policy=profile_policy, godot_bin=godot_bin)),
+                _build_step("inspect-local-hard-checks", build_inspect_local_hard_checks_cmd()),
+            ]
+        )
+        return {
+            "status": "planned",
+            "stop_reason": "",
+            "steps": steps,
+        }
+
+    if _route_requires_needs_fix(initial_route, resume_payload=resume_payload) and _initial_route_has_recovery_signal(initial_route):
         steps.extend(
             [
                 _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
                 _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
         )
-        if not _route_is_blocking(final_route):
+        final_stop_reason = _route_stop_reason(final_route)
+        if not final_stop_reason:
             steps.extend(
                 [
                     _build_step("local-hard-checks-preflight", build_local_hard_checks_preflight_cmd(profile_policy=profile_policy)),
                     _build_step("local-hard-checks", build_local_hard_checks_cmd(profile_policy=profile_policy, godot_bin=godot_bin)),
                     _build_step("inspect-local-hard-checks", build_inspect_local_hard_checks_cmd()),
-                ]
-            )
+            ]
+        )
+        else:
+            return {
+                "status": "blocked",
+                "stop_reason": final_stop_reason,
+                "steps": steps,
+            }
         return {
             "status": "planned",
             "stop_reason": "",
@@ -309,13 +431,23 @@ def build_execution_plan(
                 _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
         )
-        if _route_is_blocking(final_route):
+        final_stop_reason = _route_stop_reason(final_route)
+        if final_stop_reason or _route_requires_needs_fix(final_route):
             return {
                 "status": "blocked",
-                "stop_reason": _route_lane(final_route),
+                "stop_reason": final_stop_reason or _route_lane(final_route),
                 "steps": steps,
             }
-    elif _route_is_blocking(post_review_route):
+    else:
+        post_review_stop_reason = _route_stop_reason(post_review_route)
+        if post_review_stop_reason:
+            return {
+                "status": "blocked",
+                "stop_reason": post_review_stop_reason,
+                "steps": steps,
+            }
+
+    if _route_is_blocking(post_review_route):
         return {
             "status": "blocked",
             "stop_reason": _route_lane(post_review_route),
@@ -372,8 +504,34 @@ def _parse_json_stdout(stdout: str) -> dict[str, Any]:
     text = str(stdout or "").strip()
     if not text:
         return {}
-    payload = json.loads(text)
-    return payload if isinstance(payload, dict) else {}
+    try:
+        payload = json.loads(text)
+        return payload if isinstance(payload, dict) else {}
+    except json.JSONDecodeError:
+        pass
+
+    # Some dev_cli commands print a JSON line plus extra diagnostics lines.
+    # Prefer the first/last JSON object line if full-blob parsing fails.
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for candidate in lines:
+        if not (candidate.startswith("{") and candidate.endswith("}")):
+            continue
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    for candidate in reversed(lines):
+        if not (candidate.startswith("{") and candidate.endswith("}")):
+            continue
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return {}
 
 
 def _run_json_step(out_dir: Path, *, name: str, cmd: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -438,6 +596,7 @@ def main() -> int:
             task_id=task_id,
             godot_bin=str(args.godot_bin),
             profile_policy=profile_policy,
+            resume_payload={},
             initial_route=placeholder_route,
             post_review_route={"preferred_lane": "inspect-first"},
             final_route={"preferred_lane": "inspect-first"},
@@ -498,6 +657,7 @@ def main() -> int:
         task_id=task_id,
         godot_bin=str(args.godot_bin),
         profile_policy=profile_policy,
+        resume_payload=resume_payload,
         initial_route=initial_route,
         post_review_route={"preferred_lane": "inspect-first"},
         final_route={"preferred_lane": "inspect-first"},
@@ -537,15 +697,42 @@ def main() -> int:
             return None
         return payload
 
-    if _route_requires_needs_fix(initial_route) and _initial_route_has_recovery_signal(initial_route):
+    if _approval_requires_fork(resume_payload) and _initial_route_has_recovery_signal(initial_route):
+        if not _run_required("fork-review-pipeline", build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))):
+            return 1
+        post_fork_route = _run_route("chapter6-route-post-fork")
+        if post_fork_route is None:
+            return 1
+        post_fork_stop_reason = _route_stop_reason(post_fork_route)
+        if post_fork_stop_reason:
+            summary["status"] = "blocked"
+            summary["stop_reason"] = post_fork_stop_reason
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+            return 1
+        if _route_requires_needs_fix(post_fork_route):
+            if not _run_required("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)):
+                return 1
+            final_route = _run_route("chapter6-route-post-needs-fix")
+            if final_route is None:
+                return 1
+            final_stop_reason = _route_stop_reason(final_route)
+            if final_stop_reason or _route_requires_needs_fix(final_route):
+                summary["status"] = "blocked"
+                summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return 1
+    elif _route_requires_needs_fix(initial_route, resume_payload=resume_payload) and _initial_route_has_recovery_signal(initial_route):
         if not _run_required("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)):
             return 1
         final_route = _run_route("chapter6-route-post-needs-fix")
         if final_route is None:
             return 1
-        if _route_is_blocking(final_route) or _route_requires_needs_fix(final_route):
+        final_stop_reason = _route_stop_reason(final_route)
+        if final_stop_reason or _route_requires_needs_fix(final_route):
             summary["status"] = "blocked"
-            summary["stop_reason"] = _route_lane(final_route)
+            summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return 1
@@ -563,9 +750,10 @@ def main() -> int:
         post_review_route = _run_route("chapter6-route-post-review")
         if post_review_route is None:
             return 1
-        if _route_is_blocking(post_review_route):
+        post_review_stop_reason = _route_stop_reason(post_review_route)
+        if post_review_stop_reason:
             summary["status"] = "blocked"
-            summary["stop_reason"] = _route_lane(post_review_route)
+            summary["stop_reason"] = post_review_stop_reason
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return 1
@@ -575,9 +763,10 @@ def main() -> int:
             final_route = _run_route("chapter6-route-post-needs-fix")
             if final_route is None:
                 return 1
-            if _route_is_blocking(final_route) or _route_requires_needs_fix(final_route):
+            final_stop_reason = _route_stop_reason(final_route)
+            if final_stop_reason or _route_requires_needs_fix(final_route):
                 summary["status"] = "blocked"
-                summary["stop_reason"] = _route_lane(final_route)
+                summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
                 _write_json(out_dir / "summary.json", summary)
                 print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
                 return 1
