@@ -7,23 +7,15 @@
 - Superseded by: none
 - Branch: task/T16
 - Git Head: 294f19f575498401a5107047b8e4746a6580b477
-- Why now: Chapter 6 run for Task 16 reached a deterministic failure at sc-test, then the pipeline emitted rtifact_integrity with approval sidecar 
-equired_action=fork and status=pending.
-- Context: 
-esume-task, chapter6-route, and inspect-run now converge on chapter6_next_action=pause, locked_by=approval_pending, pproval_allowed_actions=inspect | pause, and pproval_blocked_actions=fork | resume | rerun.
-- Decision: Pause Chapter 6 progression for Task 16. Do not execute 
-erun, 
-esume, ork, or 6.8 until approval state transitions out of pending.
-- Consequences: Task 16 cannot be considered complete in this turn. Deterministic root cause remains open (csharp-test-conventions: task has contract_refs_present but no .cs test refs).
-- Recovery impact: Follow approval state machine strictly (pending -> pause, pproved -> fork, denied -> resume, invalid/mismatched -> inspect) before paying any extra Chapter 6 cost.
-- Validation:
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/summary.json
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/repair-guide.md
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/run-events.jsonl
-  - logs/ci/active-tasks/task-16.active.md
+- Why now: A Task 16 Chapter 6 deterministic run failed at `sc-test`, and the associated recovery bundle reported artifact-integrity concerns plus an approval sidecar that required protocol handling.
+- Context: `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/summary.json` records `status=fail`, `reason=step_failed:sc-test`, `chapter6_hints.blocked_by=artifact_integrity`, and `recommended_action=rerun`; the paired repair and event artifacts preserve the inspection context for that stop-loss point.
+- Decision: Pause forward Chapter 6 progression for this run state until artifacts are inspected and the approval protocol allows a real next action; do not treat stale sidecars as permission to force `resume`, `fork`, `rerun`, or 6.8.
+- Consequences: Task 16 could not be considered complete at that stop-loss point, and the deterministic blocker had to be resolved before any additional review-lane cost was justified.
+- Recovery impact: Recovery must consume `summary.json`, `repair-guide.md`, and `run-events.jsonl` first, then follow the approval state machine exactly instead of inferring permission from chat history.
+- Validation: `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/summary.json`; `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/repair-guide.md`; `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/run-events.jsonl`; `logs/ci/active-tasks/task-16.active.md`
 - Related ADRs: none yet
-- Related execution plans: execution-plans/2026-04-11-task16-chapter6-stoploss-followup.md
+- Related execution plans: `execution-plans/2026-04-11-task16-chapter6-stoploss-followup.md`
 - Related task id(s): 16
 - Related run id: e0d6aac1acf1412a990f0ab8a1793b95
-- Related latest.json: logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json
-- Related pipeline artifacts: logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95
+- Related latest.json: `logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95`

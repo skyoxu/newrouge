@@ -5,40 +5,17 @@
 - Branch: task/T16
 - Git Head: 294f19f575498401a5107047b8e4746a6580b477
 - Goal: Resume Task 16 Chapter 6 with minimum cost while respecting approval and artifact-integrity contracts.
-- Scope: Task 16 deterministic failure bundle e0d6aac1acf1412a990f0ab8a1793b95.
-- Completed steps:
-  - Recovery inspection (no previous latest run index)
-  - 6.3 TDD preflight
-  - 6.4 red-first generation
-  - 6.5 green
-  - 6.6 refactor (after anchor fix ACC:T16.5)
-  - 6.7 first run (failed at sc-test)
-  - 6.8 route decision (blocked: approval pending)
-- Current step: Pause by approval contract.
-- Last completed step: 6.8 route decision (recommendation-only)
-- Stop-loss: Do not run --resume, --fork, 
-erun, or llm_review_needs_fix_fast while approval status is pending.
-- Next action:
-  - Inspect only: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 16 --recommendation-only --recommendation-format json
-  - If approval becomes pproved: py -3 scripts/sc/run_review_pipeline.py --task-id 16 --fork
-  - If approval becomes denied: py -3 scripts/sc/run_review_pipeline.py --task-id 16 --resume
-  - If approval becomes invalid/mismatched: inspect approval artifacts first, then re-run recovery commands.
-  - Before any new 6.7 cost, fix deterministic blocker from child-artifacts/sc-test/summary.json + logs/ci/2026-04-11/sc-test/csharp-test-conventions.log.
-- Recovery command: py -3 scripts/python/dev_cli.py resume-task --task-id 16 --recommendation-only --recommendation-format json
-- Evidence paths:
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json
-  - logs/ci/active-tasks/task-16.active.json
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/summary.json
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/repair-guide.md
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95/run-events.jsonl
-- Open questions:
-  - Add task-scoped .cs test refs or adjust contract/test-convention expectations for Task 16.
-- Exit criteria:
-  - Approval state leaves pending and an allowed action is executed.
-  - Deterministic lane reaches clean status before any 6.8 consideration.
+- Scope: Task 16 deterministic failure bundle `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95` and its approval sidecar state.
+- Current step: Paused after approval contract inspection because the recorded sidecar state required inspection-only handling before any new Chapter 6 cost.
+- Last completed step: Chapter 6 route inspection completed against `summary.json`, `repair-guide.md`, and `run-events.jsonl` for run `e0d6aac1acf1412a990f0ab8a1793b95`.
+- Stop-loss: Do not execute `--resume`, `--fork`, `rerun`, or any 6.8 closure lane while approval is pending or artifact integrity remains unresolved; inspect artifacts first.
+- Next action: Run `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 16 --recommendation-only --recommendation-format json`, then follow the approval state machine exactly: pending -> pause, approved -> fork, denied -> resume, invalid/mismatched -> inspect.
+- Recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id 16 --recommendation-only --recommendation-format json`
+- Open questions: Whether Task 16 should satisfy contract-test reference expectations by adding task-scoped `.cs` refs or by adjusting the acceptance-contract metadata.
+- Exit criteria: Approval state leaves pending with a protocol-allowed action executed, and the deterministic blocker evidenced by the run artifacts is resolved before any 6.8 consideration.
 - Related ADRs: none yet
-- Related decision logs: decision-logs/2026-04-11-task16-approval-pending-artifact-integrity-stoploss.md
+- Related decision logs: `decision-logs/2026-04-11-task16-approval-pending-artifact-integrity-stoploss.md`
 - Related task id(s): 16
 - Related run id: e0d6aac1acf1412a990f0ab8a1793b95
-- Related latest.json: logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json
-- Related pipeline artifacts: logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95
+- Related latest.json: `logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-11/sc-review-pipeline-task-16-e0d6aac1acf1412a990f0ab8a1793b95`
