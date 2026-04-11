@@ -1,0 +1,21 @@
+# Task 16 Implement character selection UI for Warrior only acceptance-test generation plan
+
+- Title: Task 16 Implement character selection UI for Warrior only acceptance-test generation plan
+- Status: active
+- Branch: task/T16
+- Git Head: 294f19f575498401a5107047b8e4746a6580b477
+- Goal: Control acceptance-driven test generation complexity for task 16.
+- Scope: 3 missing refs across 1 test roots; seed refs: Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd, Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd, Tests.Godot/tests/Tasks/test_task0016_acceptance.gd
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 16 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `16`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)

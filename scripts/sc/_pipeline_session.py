@@ -10,6 +10,7 @@ from _pipeline_helpers import has_materialized_pipeline_steps
 
 
 def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_payload: dict[str, Any]) -> None:
+    non_empty_optional_keys = {"recommended_action", "recommended_action_why", "recommended_command"}
     for key in (
         "latest_summary_signals",
         "chapter6_hints",
@@ -21,6 +22,9 @@ def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_p
     ):
         value = active_task_payload.get(key)
         if value is None:
+            summary.pop(key, None)
+            continue
+        if key in non_empty_optional_keys and not str(value).strip():
             summary.pop(key, None)
             continue
         if isinstance(value, dict):

@@ -228,6 +228,136 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
             self.assertIn("sidecar_latest_index_synced", event_names)
             self.assertIn("sidecar_active_task_synced", event_names)
 
+    def test_pipeline_session_should_ignore_empty_recommended_command_after_active_task_sync(self) -> None:
+        run_id = uuid.uuid4().hex
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_root = Path(tmpdir)
+            out_dir = tmp_root / f"sc-review-pipeline-task-1-{run_id}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            emitted_events: list[dict[str, object]] = []
+            active_task_json = tmp_root / "task-1.active.json"
+            active_task_md = tmp_root / "task-1.active.md"
+            active_task_json.write_text(
+                json.dumps(
+                    {
+                        "latest_summary_signals": {
+                            "reason": "pipeline_clean",
+                            "run_type": "full",
+                            "reuse_mode": "none",
+                            "artifact_integrity_kind": "artifact_incomplete",
+                            "diagnostics_keys": ["artifact_integrity"],
+                        },
+                        "chapter6_hints": {
+                            "next_action": "pause",
+                            "can_skip_6_7": False,
+                            "can_go_to_6_8": False,
+                            "blocked_by": "approval_pending",
+                            "rerun_forbidden": False,
+                            "rerun_override_flag": "",
+                        },
+                        "recommended_action": "pause",
+                        "recommended_action_why": "approval pending",
+                        "candidate_commands": {
+                            "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 1",
+                        },
+                        "recommended_command": "",
+                        "forbidden_commands": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            active_task_md.write_text("# active\n", encoding="utf-8")
+
+            session = PipelineSession(
+                args=type("Args", (), {"dry_run": False, "fork": False})(),
+                out_dir=out_dir,
+                task_id="1",
+                run_id=run_id,
+                turn_id=f"{run_id}:turn-1",
+                turn_seq=1,
+                requested_run_id=run_id,
+                delivery_profile="fast-ship",
+                security_profile="host-safe",
+                llm_review_context={},
+                summary={
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "1",
+                    "requested_run_id": run_id,
+                    "run_id": run_id,
+                    "allow_overwrite": False,
+                    "force_new_run_id": False,
+                    "status": "ok",
+                    "steps": [
+                        {
+                            "name": "sc-test",
+                            "cmd": ["py", "-3", "scripts/sc/test.py"],
+                            "rc": 0,
+                            "status": "ok",
+                            "log": str(out_dir / "sc-test.log"),
+                        }
+                    ],
+                    "started_at_utc": "2026-04-10T00:00:00+00:00",
+                    "finished_at_utc": "2026-04-10T00:00:05+00:00",
+                    "elapsed_sec": 5,
+                    "run_type": "full",
+                    "reason": "pipeline_clean",
+                    "reuse_mode": "none",
+                },
+                marathon_state={"steps": {}, "diagnostics": {}, "agent_review": {}},
+                agent_review_mode="off",
+                schema_error_log=out_dir / "summary-schema-validation-error.log",
+                apply_runtime_policy=lambda state: state,
+                apply_agent_review_signal=lambda state, _review: state,
+                validate_pipeline_summary=validate_pipeline_summary,
+                summary_schema_error=SummarySchemaError,
+                write_harness_capabilities=lambda **_: None,
+                write_json=lambda path, payload: path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"),
+                write_text=lambda path, content: path.write_text(content, encoding="utf-8"),
+                save_marathon_state=lambda _out_dir, _state: None,
+                build_repair_guide=lambda *_args, **_kwargs: {
+                    "schema_version": "1.0.0",
+                    "status": "not-needed",
+                    "task_id": "1",
+                    "summary_status": "ok",
+                    "failed_step": "",
+                    "approval": {},
+                    "generated_from": {},
+                    "recommendations": [],
+                },
+                sync_soft_approval_sidecars=lambda **_: {"events": []},
+                build_execution_context=lambda **kwargs: {
+                    "schema_version": "1.0.0",
+                    "recommended_action": str((kwargs.get("summary") or {}).get("recommended_action") or ""),
+                    "recommended_command": str((kwargs.get("summary") or {}).get("recommended_command") or ""),
+                    "forbidden_commands": list((kwargs.get("summary") or {}).get("forbidden_commands") or []),
+                    "chapter6_hints": dict((kwargs.get("summary") or {}).get("chapter6_hints") or {}),
+                },
+                render_repair_guide_markdown=lambda _payload: "# repair\n",
+                append_run_event=lambda **kwargs: emitted_events.append(dict(kwargs)),
+                write_latest_index=lambda **_: None,
+                write_active_task_sidecar=lambda **_: (active_task_json, active_task_md),
+                record_step_result=lambda state, _step: state,
+                upsert_step=lambda _summary, _step: None,
+                append_step_event=lambda **_: None,
+                run_step=lambda **_: {},
+                can_retry_failed_step=lambda *_: False,
+                step_is_already_complete=lambda *_: False,
+                wall_time_exceeded=lambda *_: False,
+                mark_wall_time_exceeded=lambda state: state,
+                cap_step_timeout=lambda timeout, _state: timeout,
+                run_agent_review_post_hook=lambda **_: (0, {}),
+                refresh_summary_meta=lambda _summary: None,
+            )
+
+            persisted = session.persist()
+
+            self.assertTrue(persisted)
+            summary_payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertNotIn("recommended_command", summary_payload)
+
     def test_pipeline_session_finish_should_emit_reviewer_event(self) -> None:
         run_id = uuid.uuid4().hex
         with tempfile.TemporaryDirectory() as tmpdir:

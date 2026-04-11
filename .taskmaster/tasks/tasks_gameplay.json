@@ -1114,7 +1114,8 @@
       "Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
       "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd",
       "Tests.Godot/tests/UI/test_settings_locale.gd",
-      "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd"
+      "Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd",
+      "Game.Core.Tests/Tasks/Task16RunCharacterSelectedContractTests.cs"
     ],
     "acceptance": [
       "在 CharacterSelect.tscn 中仅 Warrior 可进入可选/选中状态；其余角色必须隐藏或置灰并显示“not open”标签，且尝试交互时这些角色状态不发生变化。 Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",

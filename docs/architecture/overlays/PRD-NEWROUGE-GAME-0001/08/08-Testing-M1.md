@@ -96,3 +96,17 @@ Test-Refs:
   - New Run/Continue/Quit flow checks are covered
   - Visible UI text is resolved from translations
   - Traceability includes ADR-0032 and ADR-0010
+
+## 8. Task16 Test-Refs
+- Task: `T16 / GM-0116`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0016_acceptance.gd`
+  - `Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_warrior_summary.gd`
+  - `Tests.Godot/tests/Scenes/CharacterSelect/test_character_select_locked_characters_unselectable.gd`
+  - `Tests.Godot/tests/UI/test_settings_locale.gd`
+  - `Game.Core.Tests/Tasks/Task16RunCharacterSelectedContractTests.cs`
+- Gate focus:
+  - only Warrior stays selectable; mage/rogue remain locked with `ui.character.not_open`
+  - scene `res://Game.Godot/Scenes/UI/CharacterSelect.tscn` loads and supports Warrior selection flow
+  - warrior summary stays at three visible localized lines (`rage_buff`, `power_window`, `cost_burst`)
+

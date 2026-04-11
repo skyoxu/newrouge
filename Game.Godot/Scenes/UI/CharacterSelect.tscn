@@ -1,0 +1,84 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game.Godot/Scripts/UI/CharacterSelect.cs" id="1"]
+
+[node name="CharacterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 30.0
+offset_right = 760.0
+offset_bottom = 420.0
+theme_override_constants/separation = 16
+
+[node name="LblTitle" type="Label" parent="VBox"]
+layout_mode = 2
+text = "ui.character.select.title"
+
+[node name="CharacterRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="WarriorPanel" type="VBoxContainer" parent="VBox/CharacterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BtnWarrior" type="Button" parent="VBox/CharacterRow/WarriorPanel"]
+layout_mode = 2
+text = "ui.character.warrior"
+
+[node name="LblWarriorState" type="Label" parent="VBox/CharacterRow/WarriorPanel"]
+layout_mode = 2
+text = "ui.character.selected"
+
+[node name="MagePanel" type="VBoxContainer" parent="VBox/CharacterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BtnMage" type="Button" parent="VBox/CharacterRow/MagePanel"]
+layout_mode = 2
+text = "ui.character.mage"
+
+[node name="LblMageLock" type="Label" parent="VBox/CharacterRow/MagePanel"]
+layout_mode = 2
+text = "ui.character.not_open"
+
+[node name="RoguePanel" type="VBoxContainer" parent="VBox/CharacterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BtnRogue" type="Button" parent="VBox/CharacterRow/RoguePanel"]
+layout_mode = 2
+text = "ui.character.rogue"
+
+[node name="LblRogueLock" type="Label" parent="VBox/CharacterRow/RoguePanel"]
+layout_mode = 2
+text = "ui.character.not_open"
+
+[node name="Summary" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LblSummaryLine1" type="Label" parent="VBox/Summary"]
+layout_mode = 2
+autowrap_mode = 2
+text = "ui.character.warrior.summary.rage_buff"
+
+[node name="LblSummaryLine2" type="Label" parent="VBox/Summary"]
+layout_mode = 2
+autowrap_mode = 2
+text = "ui.character.warrior.summary.power_window"
+
+[node name="LblSummaryLine3" type="Label" parent="VBox/Summary"]
+layout_mode = 2
+autowrap_mode = 2
+text = "ui.character.warrior.summary.cost_burst"

@@ -10,3 +10,12 @@ ui.menu.new_run,???
 ui.menu.continue,??
 ui.menu.confirm,??
 ui.menu.cancel,??
+ui.character.select.title,Character Select (ZH)
+ui.character.warrior,Warrior (ZH)
+ui.character.mage,Mage (ZH)
+ui.character.rogue,Rogue (ZH)
+ui.character.selected,selected (ZH)
+ui.character.not_open,not open (ZH)
+ui.character.warrior.summary.rage_buff,Rage state buff keeps pressure rising (ZH).
+ui.character.warrior.summary.power_window,Heavy attack timing window defines power spike (ZH).
+ui.character.warrior.summary.cost_burst,Resource cost trades into explosive burst output (ZH).
