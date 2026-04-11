@@ -669,6 +669,9 @@ class InspectRunTests(unittest.TestCase):
 
             self.assertEqual(1, rc)
             self.assertEqual("rerun_blocked:repeat_review_needs_fix", payload["latest_summary_signals"]["reason"])
+
+            self.assertEqual("needs-fix-fast", payload["recommended_action"])
+
             self.assertEqual(
                 {
                     "next_action": "needs-fix-fast",
@@ -681,6 +684,65 @@ class InspectRunTests(unittest.TestCase):
                 payload["chapter6_hints"],
             )
             self.assertIn("needs-fix-fast", payload["recommended_action_why"])
+
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                payload["recommended_command"],
+            )
+            self.assertIn(
+                "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+                payload["forbidden_commands"],
+            )
+
+    def test_inspect_run_should_prefer_summary_recommendation_fields_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            latest_path, out_dir = _write_pipeline_bundle(
+                root,
+                task_id="14",
+                run_id="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                status="fail",
+            )
+            summary = _read_json(out_dir / "summary.json")
+            summary["reason"] = "rerun_blocked:repeat_review_needs_fix"
+            summary["recommended_action"] = "needs-fix-fast"
+            summary["recommended_action_why"] = "summary owns the recommendation"
+            summary["candidate_commands"] = {
+                "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 14",
+            }
+            summary["recommended_command"] = "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1"
+            summary["forbidden_commands"] = ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"]
+            summary["chapter6_hints"] = {
+                "next_action": "needs-fix-fast",
+                "can_skip_6_7": True,
+                "can_go_to_6_8": True,
+                "blocked_by": "rerun_guard",
+                "rerun_forbidden": True,
+                "rerun_override_flag": "--allow-full-rerun",
+            }
+            (out_dir / "summary.json").write_text(
+                json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            rc, payload = inspect_run.inspect_run_artifacts(repo_root=root, latest=str(latest_path))
+
+            self.assertEqual(1, rc)
+            self.assertEqual("needs-fix-fast", payload["recommended_action"])
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                payload["recommended_command"],
+            )
+            self.assertEqual(
+                ["py -3 scripts/sc/run_review_pipeline.py --task-id 14"],
+                payload["forbidden_commands"],
+            )
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                payload["candidate_commands"]["needs_fix_fast"],
+            )
+
 
     def test_inspect_run_should_route_llm_retry_stop_loss_from_execution_context_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as td:

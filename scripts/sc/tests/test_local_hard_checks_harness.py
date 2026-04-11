@@ -108,6 +108,18 @@ class LocalHardChecksHarnessTests(unittest.TestCase):
             self.assertEqual("ok", latest["status"])
             self.assertEqual("run_started", events[0]["event"])
             self.assertEqual("run_completed", events[-1]["event"])
+            self.assertEqual("local-demo", events[0]["item_id"])
+            self.assertEqual("run", events[0]["item_kind"])
+            self.assertEqual("local-demo:turn-1", events[0]["turn_id"])
+            self.assertEqual(1, events[0]["turn_seq"])
+            self.assertTrue(
+                str(summary["steps"][0]["summary_file"]).endswith("logs/ci/project-health/project-health-scan.latest.json")
+            )
+            self.assertTrue(str(summary["steps"][0]["reported_out_dir"]).endswith("logs/ci/project-health"))
+            started_step = next(item for item in events if item["event"] == "step_started")
+            self.assertEqual("step", started_step["item_kind"])
+            self.assertEqual("step", started_step["event_family"])
+            self.assertEqual("project-health-scan", started_step["item_id"])
 
             for name in (
                 "summary.json",

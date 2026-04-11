@@ -40,8 +40,12 @@ This file is the top-level navigation for project docs.
 
 ## Recovery And Stop-Loss
 
+- Workflow golden examples index: `docs/workflows/examples/README.md`
 - Canonical recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
-- Deep inspection command: `py -3 scripts/python/inspect_run.py --kind pipeline --task-id <task-id>`
+- Quick recovery recommendation: `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id> --recommendation-only`
+- Quick deep-inspect recommendation: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id> --recommendation-only`
+- Chapter 6 go/no-go route: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`
+- Deep inspection command: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>`
 - Recovery reading order: `docs/agents/01-session-recovery.md`
 - Stable recovery/entry routing: `docs/workflows/stable-public-entrypoints.md`
 - Sidecar and consumer contract: `docs/workflows/run-protocol.md`
@@ -61,6 +65,7 @@ High-value interpretation rules:
 - `run_type = planned-only` or `reason = planned_only_incomplete` means the newest bundle is evidence-only, not a resumable producer run.
 - `artifact_integrity` means you should fall back to the previous real producer bundle before rerunning Chapter 6.
 - `recommended_action = needs-fix-fast` usually means the deterministic evidence is already good enough and you should close targeted anchors instead of paying for another full rerun.
+- `chapter6-route` is the stable place to turn those signals into an explicit lane decision before you reopen `6.7` or pay for `6.8`.
 
 Current stop-loss families:
 
