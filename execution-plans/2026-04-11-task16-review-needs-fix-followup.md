@@ -3,39 +3,19 @@
 - Title: Task 16 review-needs-fix follow-up
 - Status: paused
 - Branch: task/T16
-- Goal: close remaining reviewer needs-fix without violating rerun_guard or approval state-machine contracts.
-- Scope: Task 16 run 50472dadff5745f79dd7401371bc6d19 after turn-6.
-- Completed steps:
-  - deterministic root cause fixed (CharacterSelect scene/script + Task16 gdunit tests)
-  - standalone `sc-test --task-id 16 --run-id 50472...` green
-  - pipeline resume to turn-5 completed deterministic + acceptance steps green
-  - reviewer findings inspected and corresponding test-strengthening patches landed
-- Current step: stop-loss pause on rerun_guard with inspect-first routing.
-- Last completed step: turn-6 resume inspection.
-- Stop-loss:
-  - do not force full rerun while `chapter6-route` keeps `preferred_lane=inspect-first`
-  - do not enter 6.8 unless route explicitly reports `preferred_lane=run-6.8`
-- Next action:
-  - py -3 scripts/python/dev_cli.py resume-task --task-id 16 --recommendation-only --recommendation-format json
-  - py -3 scripts/python/dev_cli.py chapter6-route --task-id 16 --recommendation-only --recommendation-format json
-  - py -3 scripts/python/dev_cli.py inspect-run --task-id 16 --recommendation-only --recommendation-format json
-- Optional final convergence (only when explicitly approved):
-  - py -3 scripts/sc/run_review_pipeline.py --task-id 16 --resume --allow-full-rerun
-- Evidence paths:
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19/summary.json
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19/repair-guide.md
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19/run-events.jsonl
-  - logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19/agent-review.md
-  - logs/ci/2026-04-11/sc-llm-review-task-16/review-code-reviewer.md
-- Exit criteria:
-  - reviewer verdict no longer `needs-fix`
-  - `resume-task` / `chapter6-route` no longer require needs-fix loop
-
-## Update after controlled full-rerun attempt
-- Executed once: `run_review_pipeline --resume --allow-full-rerun`.
-- Outcome: no convergence; turn-7 still returns `review-needs-fix` with same reviewer bundle.
-- Follow-up guard:
-  - keep `inspect-first` lane
-  - do not enter 6.8 unless route flips to `preferred_lane=run-6.8`
-  - do not keep chaining `--resume` without new routing signal.
-
+- Git Head: n/a (historical follow-up note was repaired after the fact and the exact commit recorded at authoring time was not preserved in the original invalid document)
+- Goal: Close remaining reviewer needs-fix findings for Task 16 without violating rerun-guard or approval-state contracts.
+- Scope: Task 16 review-needs-fix bundle `logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19` plus the later active-task/latest sidecars showing the same closure state.
+- Current step: Stop-loss pause on inspect-first routing because deterministic steps are already green and the route does not justify another blind full rerun.
+- Last completed step: Recovery inspection of the Task 16 review-needs-fix bundle and reviewer outputs completed, including the controlled full-rerun attempt note.
+- Stop-loss: Do not force full reruns while `chapter6-route` keeps `preferred_lane=inspect-first`, and do not enter 6.8 unless the route explicitly flips to `preferred_lane=run-6.8`.
+- Next action: Re-check `resume-task`, `chapter6-route`, and `inspect-run` recommendation outputs first; only consider `py -3 scripts/sc/run_review_pipeline.py --task-id 16 --resume --allow-full-rerun` when an explicit final-convergence override is justified by new routing evidence.
+- Recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id 16 --recommendation-only --recommendation-format json`
+- Open questions: Whether any remaining reviewer findings require only residual recording versus a bounded 6.8 fast-path once the route changes from inspect-first.
+- Exit criteria: Reviewer verdict no longer reports `needs-fix`, and `resume-task` or `chapter6-route` no longer require a needs-fix loop for Task 16.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-11-task16-review-needs-fix-rerun-guard-stoploss.md`
+- Related task id(s): 16
+- Related run id: 50472dadff5745f79dd7401371bc6d19
+- Related latest.json: `logs/ci/2026-04-11/sc-review-pipeline-task-16/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-11/sc-review-pipeline-task-16-50472dadff5745f79dd7401371bc6d19`; `logs/ci/2026-04-11/sc-review-pipeline-task-16-e35507cf154f4b90b7fa1cd9d54064da`
