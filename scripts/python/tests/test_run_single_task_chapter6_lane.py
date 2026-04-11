@@ -299,6 +299,51 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("blocked", plan["status"])
         self.assertEqual("record-residual", plan["stop_reason"])
 
+    def test_plan_should_stop_on_artifact_integrity_even_when_lane_is_inspect_first(self) -> None:
+        initial_route = {
+            "preferred_lane": "inspect-first",
+            "run_id": "run-15",
+            "latest_reason": "planned_only_incomplete",
+            "blocked_by": "artifact_integrity",
+        }
+
+        plan = lane.build_execution_plan(
+            task_id="15",
+            godot_bin="C:/Godot/Godot.exe",
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            resume_payload=self._resume_payload(),
+            initial_route=initial_route,
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual(["resume-task", "chapter6-route-initial"], [step["name"] for step in plan["steps"]])
+        self.assertEqual("blocked", plan["status"])
+        self.assertEqual("artifact_integrity", plan["stop_reason"])
+
+    def test_plan_should_stop_when_full_rerun_command_is_forbidden(self) -> None:
+        initial_route = {
+            "preferred_lane": "run-6.7",
+            "run_id": "run-15",
+            "latest_reason": "rerun",
+            "blocked_by": "",
+            "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15 --delivery-profile fast-ship --security-profile host-safe --godot-bin C:/Godot/Godot.exe"],
+        }
+
+        plan = lane.build_execution_plan(
+            task_id="15",
+            godot_bin="C:/Godot/Godot.exe",
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            resume_payload=self._resume_payload(),
+            initial_route=initial_route,
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual(["resume-task", "chapter6-route-initial"], [step["name"] for step in plan["steps"]])
+        self.assertEqual("blocked", plan["status"])
+        self.assertEqual("forbidden_command", plan["stop_reason"])
+
     def test_route_command_should_record_residual_by_default_for_p1_policy(self) -> None:
         cmd = lane.build_chapter6_route_cmd(task_id="15", record_residual=True)
 
@@ -423,6 +468,51 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 [step["name"] for step in payload["steps"]],
             )
             self.assertNotIn("check-tdd-plan", payload["planned_steps"])
+
+    def test_main_should_stop_before_execution_when_initial_route_has_artifact_integrity(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out_dir = root / "logs" / "ci" / "chapter6-artifact-integrity"
+            argv = [
+                "run_single_task_chapter6_lane.py",
+                "--task-id",
+                "15",
+                "--godot-bin",
+                "C:/Godot/Godot.exe",
+                "--delivery-profile",
+                "fast-ship",
+                "--out-dir",
+                str(out_dir),
+            ]
+
+            def fake_json_step(_out_dir: Path, *, name: str, cmd: list[str]):
+                step = {"name": name, "cmd": list(cmd), "rc": 0, "stdout_tail": "", "stderr_tail": "", "log": f"{name}.log"}
+                if name == "resume-task":
+                    return (step, self._resume_payload())
+                if name == "chapter6-route-initial":
+                    return (
+                        step,
+                        {
+                            "preferred_lane": "inspect-first",
+                            "run_id": "run-15",
+                            "latest_reason": "planned_only_incomplete",
+                            "blocked_by": "artifact_integrity",
+                        },
+                    )
+                raise AssertionError(f"unexpected json step: {name}")
+
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(lane, "_repo_root", return_value=root),
+                mock.patch.object(lane, "_run_json_step", side_effect=fake_json_step),
+                mock.patch.object(lane, "_run_plain_step", side_effect=AssertionError("plain step should not run")),
+            ):
+                rc = lane.main()
+
+            self.assertEqual(1, rc)
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("blocked", payload["status"])
+            self.assertEqual("artifact_integrity", payload["stop_reason"])
 
 
 if __name__ == "__main__":

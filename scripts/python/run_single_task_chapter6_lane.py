@@ -234,6 +234,15 @@ def _normalize_action(value: Any) -> str:
     return str(value or "").strip().lower().replace("_", "-")
 
 
+def _split_compact_items(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    text = str(value or "").strip()
+    if not text or text.lower() == "none":
+        return []
+    return [item.strip() for item in text.split("|") if item.strip()]
+
+
 def _route_run_id(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("run_id") or "").strip().lower()
 
@@ -247,7 +256,23 @@ def _route_recommended_action(route_payload: dict[str, Any] | None) -> str:
 
 
 def _route_next_action(route_payload: dict[str, Any] | None) -> str:
-    return _normalize_action((route_payload or {}).get("chapter6_next_action"))
+    route = route_payload or {}
+    hints = route.get("chapter6_hints")
+    if isinstance(hints, dict):
+        value = hints.get("next_action")
+        if value:
+            return _normalize_action(value)
+    return _normalize_action(route.get("chapter6_next_action"))
+
+
+def _route_blocked_by(route_payload: dict[str, Any] | None) -> str:
+    route = route_payload or {}
+    hints = route.get("chapter6_hints")
+    if isinstance(hints, dict):
+        value = hints.get("blocked_by")
+        if value:
+            return str(value).strip().lower()
+    return str(route.get("blocked_by") or "").strip().lower()
 
 
 def _initial_route_has_recovery_signal(route_payload: dict[str, Any] | None) -> bool:
@@ -263,12 +288,29 @@ def _route_stop_reason(route_payload: dict[str, Any] | None) -> str:
     lane = _route_lane(route_payload)
     if lane in {"repo-noise-stop", "fix-deterministic", "record-residual"}:
         return lane
+    blocked_by = _route_blocked_by(route_payload)
+    latest_reason = _route_latest_reason(route_payload)
+    if blocked_by == "artifact_integrity" or latest_reason == "planned_only_incomplete":
+        return "artifact_integrity"
     return ""
 
 
 def _resume_approval(resume_payload: dict[str, Any] | None) -> dict[str, Any]:
-    approval = (resume_payload or {}).get("approval")
-    return dict(approval) if isinstance(approval, dict) else {}
+    payload = resume_payload or {}
+    approval = payload.get("approval")
+    if isinstance(approval, dict):
+        return dict(approval)
+    status = str(payload.get("approval_status") or "").strip()
+    required_action = str(payload.get("approval_required_action") or "fork").strip()
+    if not status:
+        return {}
+    return {
+        "required_action": required_action,
+        "status": status,
+        "recommended_action": str(payload.get("approval_recommended_action") or "").strip(),
+        "allowed_actions": _split_compact_items(payload.get("approval_allowed_actions")),
+        "blocked_actions": _split_compact_items(payload.get("approval_blocked_actions")),
+    }
 
 
 def _resume_recommended_action(resume_payload: dict[str, Any] | None) -> str:
@@ -276,8 +318,83 @@ def _resume_recommended_action(resume_payload: dict[str, Any] | None) -> str:
 
 
 def _resume_next_action(resume_payload: dict[str, Any] | None) -> str:
-    hints = (resume_payload or {}).get("chapter6_hints")
-    return _normalize_action((hints or {}).get("next_action")) if isinstance(hints, dict) else ""
+    payload = resume_payload or {}
+    hints = payload.get("chapter6_hints")
+    if isinstance(hints, dict):
+        value = hints.get("next_action")
+        if value:
+            return _normalize_action(value)
+    return _normalize_action(payload.get("chapter6_next_action"))
+
+
+def _payload_forbidden_commands(*payloads: dict[str, Any] | None) -> list[str]:
+    out: list[str] = []
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        value = payload.get("forbidden_commands")
+        items = _split_compact_items(value)
+        for item in items:
+            if item not in out:
+                out.append(item)
+    return out
+
+
+def _normalize_cmd_text(cmd: list[str] | str) -> str:
+    if isinstance(cmd, list):
+        text = " ".join(str(item) for item in cmd)
+    else:
+        text = str(cmd or "")
+    return " ".join(text.strip().lower().split())
+
+
+def _command_is_forbidden(cmd: list[str], *payloads: dict[str, Any] | None) -> bool:
+    normalized_cmd = _normalize_cmd_text(cmd)
+    if not normalized_cmd:
+        return False
+    return any(_normalize_cmd_text(item) == normalized_cmd for item in _payload_forbidden_commands(*payloads))
+
+
+def _guard_forbidden_command(cmd: list[str], *payloads: dict[str, Any] | None) -> str:
+    return "forbidden_command" if _command_is_forbidden(cmd, *payloads) else ""
+
+
+def _decide_initial_action(
+    *,
+    resume_payload: dict[str, Any] | None,
+    initial_route: dict[str, Any] | None,
+    review_pipeline_cmd: list[str],
+) -> dict[str, str]:
+    approval_stop_reason = _approval_stop_reason(resume_payload)
+    if approval_stop_reason:
+        return {"mode": "blocked", "reason": approval_stop_reason}
+
+    initial_stop_reason = _route_stop_reason(initial_route)
+    if initial_stop_reason and _initial_route_has_recovery_signal(initial_route):
+        return {"mode": "blocked", "reason": initial_stop_reason}
+
+    if _initial_route_has_recovery_signal(initial_route):
+        if _approval_requires_fork(resume_payload):
+            return {"mode": "fork", "reason": ""}
+        if _route_requires_needs_fix(initial_route, resume_payload=resume_payload):
+            return {"mode": "needs-fix-fast", "reason": ""}
+        if _route_lane(initial_route) == "inspect-first":
+            return {"mode": "blocked", "reason": "inspect-first"}
+
+    forbidden_reason = _guard_forbidden_command(review_pipeline_cmd, resume_payload, initial_route)
+    if forbidden_reason:
+        return {"mode": "blocked", "reason": forbidden_reason}
+
+    return {"mode": "full", "reason": ""}
+
+
+def _decide_followup_action(route_payload: dict[str, Any] | None) -> dict[str, str]:
+    stop_reason = _route_stop_reason(route_payload)
+    if stop_reason:
+        return {"mode": "blocked", "reason": stop_reason}
+    if _route_requires_needs_fix(route_payload):
+        return {"mode": "needs-fix-fast", "reason": ""}
+    return {"mode": "continue", "reason": ""}
 
 
 def _approval_stop_reason(resume_payload: dict[str, Any] | None) -> str:
@@ -324,52 +441,65 @@ def build_execution_plan(
     final_route: dict[str, Any],
 ) -> dict[str, Any]:
     record_residual = str(profile_policy.get("record_residual") or "").strip().lower() == "true"
+    review_pipeline_cmd = build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)
     steps: list[dict[str, Any]] = [
         _build_step("resume-task", build_resume_task_cmd(task_id)),
         _build_step("chapter6-route-initial", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
     ]
-    approval_stop_reason = _approval_stop_reason(resume_payload)
-    if approval_stop_reason:
+    initial_decision = _decide_initial_action(
+        resume_payload=resume_payload,
+        initial_route=initial_route,
+        review_pipeline_cmd=review_pipeline_cmd,
+    )
+    if initial_decision["mode"] == "blocked":
         return {
             "status": "blocked",
-            "stop_reason": approval_stop_reason,
+            "stop_reason": initial_decision["reason"],
             "steps": steps,
         }
 
-    initial_stop_reason = _route_stop_reason(initial_route)
-    if initial_stop_reason and _initial_route_has_recovery_signal(initial_route):
-        return {
-            "status": "blocked",
-            "stop_reason": initial_stop_reason,
-            "steps": steps,
-        }
-
-    if _approval_requires_fork(resume_payload) and _initial_route_has_recovery_signal(initial_route):
+    if initial_decision["mode"] == "fork":
+        fork_cmd = build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)
+        forbidden_reason = _guard_forbidden_command(fork_cmd, resume_payload, initial_route)
+        if forbidden_reason:
+            return {
+                "status": "blocked",
+                "stop_reason": forbidden_reason,
+                "steps": steps,
+            }
         steps.extend(
             [
-                _build_step("fork-review-pipeline", build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
+                _build_step("fork-review-pipeline", fork_cmd),
                 _build_step("chapter6-route-post-fork", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
         )
-        post_fork_stop_reason = _route_stop_reason(post_review_route)
-        if post_fork_stop_reason:
+        post_fork_decision = _decide_followup_action(post_review_route)
+        if post_fork_decision["mode"] == "blocked":
             return {
                 "status": "blocked",
-                "stop_reason": post_fork_stop_reason,
+                "stop_reason": post_fork_decision["reason"],
                 "steps": steps,
             }
-        if _route_requires_needs_fix(post_review_route):
+        if post_fork_decision["mode"] == "needs-fix-fast":
+            needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+            forbidden_reason = _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route, post_review_route)
+            if forbidden_reason:
+                return {
+                    "status": "blocked",
+                    "stop_reason": forbidden_reason,
+                    "steps": steps,
+                }
             steps.extend(
                 [
-                    _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
+                    _build_step("needs-fix-fast", needs_fix_cmd),
                     _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
                 ]
             )
-            final_stop_reason = _route_stop_reason(final_route)
-            if final_stop_reason or _route_requires_needs_fix(final_route):
+            final_decision = _decide_followup_action(final_route)
+            if final_decision["mode"] != "continue":
                 return {
                     "status": "blocked",
-                    "stop_reason": final_stop_reason or _route_lane(final_route),
+                    "stop_reason": final_decision["reason"] or _route_lane(final_route),
                     "steps": steps,
                 }
         steps.extend(
@@ -385,15 +515,23 @@ def build_execution_plan(
             "steps": steps,
         }
 
-    if _route_requires_needs_fix(initial_route, resume_payload=resume_payload) and _initial_route_has_recovery_signal(initial_route):
+    if initial_decision["mode"] == "needs-fix-fast":
+        needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+        forbidden_reason = _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route)
+        if forbidden_reason:
+            return {
+                "status": "blocked",
+                "stop_reason": forbidden_reason,
+                "steps": steps,
+            }
         steps.extend(
             [
-                _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
+                _build_step("needs-fix-fast", needs_fix_cmd),
                 _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
         )
-        final_stop_reason = _route_stop_reason(final_route)
-        if not final_stop_reason:
+        final_decision = _decide_followup_action(final_route)
+        if final_decision["mode"] == "continue":
             steps.extend(
                 [
                     _build_step("local-hard-checks-preflight", build_local_hard_checks_preflight_cmd(profile_policy=profile_policy)),
@@ -404,7 +542,7 @@ def build_execution_plan(
         else:
             return {
                 "status": "blocked",
-                "stop_reason": final_stop_reason,
+                "stop_reason": final_decision["reason"] or _route_lane(final_route),
                 "steps": steps,
             }
         return {
@@ -419,38 +557,38 @@ def build_execution_plan(
             _build_step("red-first", build_red_first_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
             _build_step("green", build_build_tdd_cmd(task_id, stage="green", profile_policy=profile_policy)),
             _build_step("refactor", build_build_tdd_cmd(task_id, stage="refactor", profile_policy=profile_policy)),
-            _build_step("review-pipeline", build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
+            _build_step("review-pipeline", review_pipeline_cmd),
             _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
         ]
     )
 
-    if _route_requires_needs_fix(post_review_route):
+    post_review_decision = _decide_followup_action(post_review_route)
+    if post_review_decision["mode"] == "needs-fix-fast":
+        needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+        forbidden_reason = _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route, post_review_route)
+        if forbidden_reason:
+            return {
+                "status": "blocked",
+                "stop_reason": forbidden_reason,
+                "steps": steps,
+            }
         steps.extend(
             [
-                _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
+                _build_step("needs-fix-fast", needs_fix_cmd),
                 _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
         )
-        final_stop_reason = _route_stop_reason(final_route)
-        if final_stop_reason or _route_requires_needs_fix(final_route):
+        final_decision = _decide_followup_action(final_route)
+        if final_decision["mode"] != "continue":
             return {
                 "status": "blocked",
-                "stop_reason": final_stop_reason or _route_lane(final_route),
+                "stop_reason": final_decision["reason"] or _route_lane(final_route),
                 "steps": steps,
             }
-    else:
-        post_review_stop_reason = _route_stop_reason(post_review_route)
-        if post_review_stop_reason:
-            return {
-                "status": "blocked",
-                "stop_reason": post_review_stop_reason,
-                "steps": steps,
-            }
-
-    if _route_is_blocking(post_review_route):
+    elif post_review_decision["mode"] == "blocked":
         return {
             "status": "blocked",
-            "stop_reason": _route_lane(post_review_route),
+            "stop_reason": post_review_decision["reason"],
             "steps": steps,
         }
 
@@ -697,46 +835,73 @@ def main() -> int:
             return None
         return payload
 
-    if _approval_requires_fork(resume_payload) and _initial_route_has_recovery_signal(initial_route):
-        if not _run_required("fork-review-pipeline", build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))):
+    initial_decision = _decide_initial_action(
+        resume_payload=resume_payload,
+        initial_route=initial_route,
+        review_pipeline_cmd=build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin)),
+    )
+
+    if initial_decision["mode"] == "fork":
+        fork_cmd = build_fork_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))
+        if _guard_forbidden_command(fork_cmd, resume_payload, initial_route):
+            summary["status"] = "blocked"
+            summary["stop_reason"] = "forbidden_command"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+            return 1
+        if not _run_required("fork-review-pipeline", fork_cmd):
             return 1
         post_fork_route = _run_route("chapter6-route-post-fork")
         if post_fork_route is None:
             return 1
-        post_fork_stop_reason = _route_stop_reason(post_fork_route)
-        if post_fork_stop_reason:
+        post_fork_decision = _decide_followup_action(post_fork_route)
+        if post_fork_decision["mode"] == "blocked":
             summary["status"] = "blocked"
-            summary["stop_reason"] = post_fork_stop_reason
+            summary["stop_reason"] = post_fork_decision["reason"]
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return 1
-        if _route_requires_needs_fix(post_fork_route):
-            if not _run_required("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)):
+        if post_fork_decision["mode"] == "needs-fix-fast":
+            needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+            if _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route, post_fork_route):
+                summary["status"] = "blocked"
+                summary["stop_reason"] = "forbidden_command"
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return 1
+            if not _run_required("needs-fix-fast", needs_fix_cmd):
                 return 1
             final_route = _run_route("chapter6-route-post-needs-fix")
             if final_route is None:
                 return 1
-            final_stop_reason = _route_stop_reason(final_route)
-            if final_stop_reason or _route_requires_needs_fix(final_route):
+            final_decision = _decide_followup_action(final_route)
+            if final_decision["mode"] != "continue":
                 summary["status"] = "blocked"
-                summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
+                summary["stop_reason"] = final_decision["reason"] or _route_lane(final_route)
                 _write_json(out_dir / "summary.json", summary)
                 print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
                 return 1
-    elif _route_requires_needs_fix(initial_route, resume_payload=resume_payload) and _initial_route_has_recovery_signal(initial_route):
-        if not _run_required("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)):
+    elif initial_decision["mode"] == "needs-fix-fast":
+        needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+        if _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route):
+            summary["status"] = "blocked"
+            summary["stop_reason"] = "forbidden_command"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+            return 1
+        if not _run_required("needs-fix-fast", needs_fix_cmd):
             return 1
         final_route = _run_route("chapter6-route-post-needs-fix")
         if final_route is None:
             return 1
-        final_stop_reason = _route_stop_reason(final_route)
-        if final_stop_reason or _route_requires_needs_fix(final_route):
+        final_decision = _decide_followup_action(final_route)
+        if final_decision["mode"] != "continue":
             summary["status"] = "blocked"
-            summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
+            summary["stop_reason"] = final_decision["reason"] or _route_lane(final_route)
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return 1
-    else:
+    elif initial_decision["mode"] == "full":
         full_path_steps = [
             ("check-tdd-plan", build_check_tdd_plan_cmd(task_id, profile_policy=profile_policy)),
             ("red-first", build_red_first_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))),
@@ -745,31 +910,50 @@ def main() -> int:
             ("review-pipeline", build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))),
         ]
         for name, cmd in full_path_steps:
+            if _guard_forbidden_command(cmd, resume_payload, initial_route):
+                summary["status"] = "blocked"
+                summary["stop_reason"] = "forbidden_command"
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return 1
             if not _run_required(name, cmd):
                 return 1
         post_review_route = _run_route("chapter6-route-post-review")
         if post_review_route is None:
             return 1
-        post_review_stop_reason = _route_stop_reason(post_review_route)
-        if post_review_stop_reason:
+        post_review_decision = _decide_followup_action(post_review_route)
+        if post_review_decision["mode"] == "blocked":
             summary["status"] = "blocked"
-            summary["stop_reason"] = post_review_stop_reason
+            summary["stop_reason"] = post_review_decision["reason"]
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return 1
-        if _route_requires_needs_fix(post_review_route):
-            if not _run_required("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)):
+        if post_review_decision["mode"] == "needs-fix-fast":
+            needs_fix_cmd = build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)
+            if _guard_forbidden_command(needs_fix_cmd, resume_payload, initial_route, post_review_route):
+                summary["status"] = "blocked"
+                summary["stop_reason"] = "forbidden_command"
+                _write_json(out_dir / "summary.json", summary)
+                print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+                return 1
+            if not _run_required("needs-fix-fast", needs_fix_cmd):
                 return 1
             final_route = _run_route("chapter6-route-post-needs-fix")
             if final_route is None:
                 return 1
-            final_stop_reason = _route_stop_reason(final_route)
-            if final_stop_reason or _route_requires_needs_fix(final_route):
+            final_decision = _decide_followup_action(final_route)
+            if final_decision["mode"] != "continue":
                 summary["status"] = "blocked"
-                summary["stop_reason"] = final_stop_reason or _route_lane(final_route)
+                summary["stop_reason"] = final_decision["reason"] or _route_lane(final_route)
                 _write_json(out_dir / "summary.json", summary)
                 print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
                 return 1
+    else:
+        summary["status"] = "blocked"
+        summary["stop_reason"] = initial_decision["reason"] or "inspect-first"
+        _write_json(out_dir / "summary.json", summary)
+        print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+        return 1
 
     if not _run_required("local-hard-checks-preflight", build_local_hard_checks_preflight_cmd(profile_policy=profile_policy)):
         return 1
