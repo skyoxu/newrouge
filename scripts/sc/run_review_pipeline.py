@@ -73,7 +73,9 @@ from _pipeline_support import (
 from _llm_review_cli import parse_agent_timeout_overrides, resolve_agents
 from _change_scope import classify_change_scope_between_snapshots
 from _pipeline_history import collect_recent_failure_summary
+
 from _repair_approval import resolve_approval_state
+
 from _repair_guidance import build_execution_context, build_repair_guide, render_repair_guide_markdown
 from _risk_profile_floor import derive_delivery_profile_floor
 from _taskmaster import resolve_triplet
@@ -669,6 +671,7 @@ def _find_repeated_review_needs_fix_guard(
     }
 
 
+
 def _derive_chapter6_route_guard(
     *,
     task_id: str,
@@ -706,6 +709,7 @@ def _derive_chapter6_route_guard(
         "blocked": True,
         "recommended_path": preferred_lane,
     }
+
 
 
 def _derive_summary_reason(summary: dict[str, Any]) -> str:
@@ -1991,12 +1995,14 @@ def main() -> int:
                                 "override": "allow-repeat-deterministic-failures",
                             }
                         rerun_guard = repeat_guard
+
                 if rerun_guard is None:
                     rerun_guard = _derive_chapter6_route_guard(
                         task_id=task_id,
                         delivery_profile=delivery_profile,
                         security_profile=security_profile,
                     )
+
             if rerun_guard is not None:
                 if bool(args.allow_full_rerun) and str(rerun_guard.get("kind") or "").strip() != "repeat_deterministic_failure":
                     rerun_guard = {

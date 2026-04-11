@@ -407,6 +407,7 @@ class ResumeTaskTests(unittest.TestCase):
             payload["forbidden_commands"],
         )
 
+
     def test_build_resume_payload_should_prefer_pipeline_summary_recommendation_over_active_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo_root = Path(tmp_dir)
@@ -592,6 +593,7 @@ class ResumeTaskTests(unittest.TestCase):
             payload["forbidden_commands"],
         )
         self.assertIn("inspection.recommended_action=needs-fix-fast", payload["blocking_signals"])
+
 
     def test_render_markdown_should_surface_latest_reason_and_diagnostics_first(self) -> None:
         payload = {

@@ -56,6 +56,7 @@ class Chapter6RecoveryCommonTests(unittest.TestCase):
         )
         self.assertIn("reviewer-only reruns", note)
 
+
     def test_should_explain_route_run_6_8_rerun_guard(self) -> None:
         note = recovery_common.chapter6_stop_loss_note(
             {},
@@ -69,6 +70,7 @@ class Chapter6RecoveryCommonTests(unittest.TestCase):
             {"reason": "rerun_blocked:chapter6_route_repo_noise_stop", "artifact_integrity_kind": ""},
         )
         self.assertIn("repo noise or process contention", note)
+
 
 
 if __name__ == "__main__":

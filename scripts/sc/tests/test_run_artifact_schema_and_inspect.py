@@ -669,7 +669,9 @@ class InspectRunTests(unittest.TestCase):
 
             self.assertEqual(1, rc)
             self.assertEqual("rerun_blocked:repeat_review_needs_fix", payload["latest_summary_signals"]["reason"])
+
             self.assertEqual("needs-fix-fast", payload["recommended_action"])
+
             self.assertEqual(
                 {
                     "next_action": "needs-fix-fast",
@@ -682,6 +684,7 @@ class InspectRunTests(unittest.TestCase):
                 payload["chapter6_hints"],
             )
             self.assertIn("needs-fix-fast", payload["recommended_action_why"])
+
             self.assertEqual(
                 "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
                 payload["recommended_command"],
@@ -739,6 +742,7 @@ class InspectRunTests(unittest.TestCase):
                 "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 14 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
                 payload["candidate_commands"]["needs_fix_fast"],
             )
+
 
     def test_inspect_run_should_route_llm_retry_stop_loss_from_execution_context_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as td:

@@ -371,6 +371,7 @@ class ActiveTaskSidecarTests(unittest.TestCase):
             self.assertIn(payload["candidate_commands"]["resume"], payload["forbidden_commands"])
             self.assertIn("rerun guard", payload["recommended_action_why"].lower())
 
+
     def test_build_active_task_payload_should_emit_resume_summary_command_for_continue_action(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -661,6 +662,7 @@ class ActiveTaskSidecarTests(unittest.TestCase):
             self.assertIn("- Sidecar activity: execution-context.json:ok/sidecar_execution_context_synced", markdown)
             self.assertIn(f"- Approval activity: pending/approval_request_written action=fork request_id={run_id}:fork transition=created", markdown)
 
+
     def test_build_active_task_payload_should_prefer_needs_fix_fast_when_rerun_guard_blocks_repeat_review_needs_fix(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -718,8 +720,10 @@ class ActiveTaskSidecarTests(unittest.TestCase):
             self.assertEqual("rerun_guard", payload["chapter6_hints"]["blocked_by"])
             self.assertTrue(payload["chapter6_hints"]["can_skip_6_7"])
             self.assertTrue(payload["chapter6_hints"]["can_go_to_6_8"])
+
             self.assertEqual(payload["candidate_commands"]["needs_fix_fast"], payload["recommended_command"])
             self.assertIn(payload["candidate_commands"]["rerun"], payload["forbidden_commands"])
+
             self.assertIn("needs fix family", payload["recommended_action_why"].lower())
 
     def test_build_active_task_payload_should_block_planned_only_terminal_bundle(self) -> None:

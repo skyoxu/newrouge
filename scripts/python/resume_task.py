@@ -515,6 +515,7 @@ def build_resume_payload(
     plans = _find_related_docs(repo_root, "execution-plans", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     logs = _find_related_docs(repo_root, "decision-logs", task_id=resolved_task_id, run_id=resolved_run_id, latest_rel=latest_rel)
     active_task_snapshot = _normalized_active_task_snapshot(active_task, inspection_latest=latest_rel)
+
     approval = inspection.get("approval") if isinstance(inspection.get("approval"), dict) else {}
     recommended_command = str(inspection.get("recommended_command") or "").strip() or str(pipeline_summary.get("recommended_command") or "").strip() or _recommended_command(
         recommended_action,
@@ -532,6 +533,7 @@ def build_resume_payload(
             chapter6_hints=chapter6_hints,
             approval=approval,
         )
+
     payload: dict[str, Any] = {
         "task_id": resolved_task_id,
         "run_id": resolved_run_id,
@@ -542,8 +544,10 @@ def build_resume_payload(
         "recommendation_source": recommendation_source,
         "recommendation_reason": recommendation_reason,
         "candidate_commands": candidate_commands,
+
         "recommended_command": recommended_command,
         "forbidden_commands": forbidden_commands,
+
         "inspection_exit_code": inspection_rc,
         "inspection": inspection,
         "approval": approval,
@@ -578,12 +582,16 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     commands = payload.get("candidate_commands") or {}
     latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
     chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+
     approval = payload.get("approval") if isinstance(payload.get("approval"), dict) else {}
+
     recommended_command = str(payload.get("recommended_command") or "").strip() or _recommended_command(
         str(payload.get("recommended_action") or ""),
         commands,
         chapter6_hints,
+
         approval,
+
     )
     forbidden_commands = [str(item).strip() for item in list(payload.get("forbidden_commands") or []) if str(item).strip()]
     if not forbidden_commands:
@@ -591,7 +599,9 @@ def _render_markdown(payload: dict[str, Any]) -> str:
             recommended_action=str(payload.get("recommended_action") or ""),
             commands=commands,
             chapter6_hints=chapter6_hints,
+
             approval=approval,
+
         )
     recent_failure_summary = payload.get("recent_failure_summary") if isinstance(payload.get("recent_failure_summary"), dict) else {}
     stop_loss_note = _chapter6_stop_loss_note(chapter6_hints, latest_summary_signals)
