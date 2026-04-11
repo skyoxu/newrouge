@@ -894,6 +894,20 @@ py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profi
 
 ### 6.11 Fast mode 最省时执行模板
 
+如果你不想手工串 `6.3 -> 6.9`，也可以直接走单任务顶层编排：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship
+```
+
+说明：
+- 这个入口会先跑 `resume-task` 与 `chapter6-route`，再决定是进入完整 `6.3 -> 6.9`，还是直接走 `6.8` 快路径。
+- 默认策略是：
+  - `playable-ea` 只强收 `P0`
+  - `fast-ship` 强收 `P0/P1`
+  - `standard` 当前默认也强收 `P0/P1`
+- `P2/P3` 默认走记录与止损，不在这个顶层脚本里自动持续追打。
+
 适用前提：
 
 - 日常单任务循环

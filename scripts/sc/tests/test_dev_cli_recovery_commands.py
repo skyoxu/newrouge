@@ -203,6 +203,37 @@ class DevCliRecoveryCommandsTests(unittest.TestCase):
         self.assertIn("json", cmd)
         self.assertIn("--record-residual", cmd)
 
+    def test_run_single_task_chapter6_should_forward_arguments(self) -> None:
+        with mock.patch.object(dev_cli, "run", return_value=0) as run_mock:
+            rc = dev_cli.main(
+                [
+                    "run-single-task-chapter6",
+                    "--task-id",
+                    "15",
+                    "--godot-bin",
+                    "C:/Godot/Godot.exe",
+                    "--delivery-profile",
+                    "standard",
+                    "--fix-through",
+                    "P2",
+                    "--out-dir",
+                    "logs/ci/demo/chapter6-task-15",
+                ]
+            )
+
+        self.assertEqual(0, rc)
+        cmd = run_mock.call_args[0][0]
+        self.assertEqual(["py", "-3", "scripts/python/run_single_task_chapter6_lane.py"], cmd[:3])
+        self.assertIn("--task-id", cmd)
+        self.assertIn("15", cmd)
+        self.assertIn("--godot-bin", cmd)
+        self.assertIn("C:/Godot/Godot.exe", cmd)
+        self.assertIn("--delivery-profile", cmd)
+        self.assertIn("standard", cmd)
+        self.assertIn("--fix-through", cmd)
+        self.assertIn("P2", cmd)
+        self.assertIn("--out-dir", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()

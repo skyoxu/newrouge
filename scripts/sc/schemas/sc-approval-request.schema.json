@@ -61,6 +61,27 @@
       "enum": [
         "pending"
       ]
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "inspect",
+        "pause"
+      ]
+    },
+    "allowed_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "blocked_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   }
 }

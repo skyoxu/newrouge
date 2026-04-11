@@ -132,8 +132,8 @@ Repo-scoped pointer:
 | `marathon-state.json` | producer pipeline | checkpoint, retry, wall-time, refresh, fork metadata; task-scoped review runs only |
 | `run-events.jsonl` | producer pipeline | append-only lifecycle and step timeline |
 | `harness-capabilities.json` | producer pipeline | machine-readable protocol capabilities |
-| `approval-request.json` | producer pipeline | soft approval request for risky fork/recovery flows; task-scoped review runs only |
-| `approval-response.json` | operator or follow-up tool | approval decision envelope; recovery consumers validate it against the current request before allowing `resume` / `fork`; task-scoped review runs only |
+| `approval-request.json` | producer pipeline | soft approval request for risky fork/recovery flows; pending fork requests also carry an explicit recovery contract (`recommended_action = pause`, plus `allowed_actions` / `blocked_actions`); task-scoped review runs only |
+| `approval-response.json` | operator or follow-up tool | approval decision envelope; approved or denied fork responses may also carry `recommended_action` / `allowed_actions` / `blocked_actions`, and recovery consumers validate that contract against the current request before allowing `resume` / `fork`; task-scoped review runs only |
 | `agent-review.json` | reviewer sidecar | normalized reviewer verdict and recommended action; task-scoped review runs only |
 | `agent-review.md` | reviewer sidecar | human-readable reviewer summary; task-scoped review runs only |
 | `latest.json` | producer pipeline and reviewer sidecar | task-scoped pointer to newest run artifacts, including recovery-facing `reason`, `run_type`, `reuse_mode`, `artifact_integrity`, and selected diagnostics |
@@ -142,6 +142,8 @@ Repo-scoped pointer:
 ## Consumer-Driven Sidecar Contract
 
 - Approval consumers (`inspect_run.py`, `resume_task.py`, and `run_review_pipeline.py`) now treat `pending`, `approved`, `denied`, `invalid`, and `mismatched` as executable recovery states rather than soft hints only.
+- `approval-request.json` now carries the pending-side recovery contract (`pause`, `allowed_actions`, `blocked_actions`) so a paused fork request is protocolized before any response file exists.
+- `approval-response.json` may now carry an explicit recovery contract (`recommended_action`, `allowed_actions`, `blocked_actions`) for approved or denied fork requests; consumers validate that contract instead of treating the response as a free-form note.
 - `scripts/sc/agent_to_agent_review.py` consumes and validates task-scoped `latest.json`, `execution-context.json`, and `repair-guide.json` before trusting reviewer-side recovery decisions.
 - `scripts/python/_recovery_doc_scaffold.py` consumes and validates task-scoped `latest.json` before backfilling `execution-plans/` and `decision-logs/`.
 - `py -3 scripts/python/dev_cli.py inspect-run --kind <kind>` wraps `scripts/python/inspect_run.py` and consumes `latest.json`, `summary.json`, `execution-context.json`, and `repair-guide.json` for both task-scoped review runs and repo-scoped local hard checks.

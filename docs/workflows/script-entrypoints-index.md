@@ -41,6 +41,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/project_health_scan.py`
 - `scripts/python/serve_project_health.py`
 - `scripts/python/resume_task.py`
+- `scripts/python/run_single_task_chapter6_lane.py`
 
 ### Repo hard gates
 
@@ -63,6 +64,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/sc/llm_generate_tests_from_acceptance_refs.py`
 - `scripts/python/run_single_task_light_lane_batch.py`
 - `scripts/python/run_single_task_light_lane.py`
+- `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/python/merge_single_task_light_lane_summaries.py`
 
 ### Taskmaster / semantics / overlay
@@ -179,6 +181,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/project_health_scan.py`
 - `scripts/python/quality_gates.py`
 - `scripts/python/resume_task.py`
+- `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/python/run_dotnet.py`
 - `scripts/python/run_gate_bundle.py`
 - `scripts/python/run_gdunit.py`
@@ -199,6 +202,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/sc/llm_generate_red_test.py`
 - `scripts/sc/llm_generate_tests_from_acceptance_refs.py`
 - `scripts/python/run_single_task_light_lane.py`
+- `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/sc/llm_review.py`
 - `scripts/sc/llm_review_needs_fix_fast.py`
 - `scripts/sc/run_review_pipeline.py`
@@ -903,8 +907,8 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 
 - Direct local deps: `scripts/python/dev_cli_builders.py`, `scripts/python/local_hard_checks_harness.py`
 - Transitive local deps: `scripts/python/dev_cli_builders.py`, `scripts/python/local_hard_checks_harness.py`, `scripts/python/local_hard_checks_support.py`
-- Subcommands: `run-ci-basic`, `run-quality-gates`, `run-local-hard-checks`, `run-local-hard-checks-preflight`, `run-gdunit-hard`, `run-gdunit-full`, `run-preflight`, `run-acceptance-preflight`, `run-smoke-strict`, `new-execution-plan`, `new-decision-log`, `resume-task`, `inspect-run`, `chapter6-route`, `detect-project-stage`, `doctor-project`, `check-directory-boundaries`, `project-health-scan`, `serve-project-health`
-- Declared args: `--solution`, `--configuration`, `--godot-bin`, `--delivery-profile`, `--task-file`, `--out-dir`, `--run-id`, `--legacy-preflight`, `--build-solutions`, `--gdunit-hard`, `--smoke`, `--timeout-sec`, `--test-project`, `--title`, `--status`, `--goal`, `--scope`, `--current-step`, `--stop-loss`, `--next-action`, `--exit-criteria`, `--adr`, `--decision-log`, `--task-id`, `--stage`, `--latest-json`, `--output`, `--why-now`, `--context`, `--decision`, `--consequences`, `--recovery-impact`, `--validation`, `--supersedes`, `--superseded-by`, `--execution-plan`, `--repo-root`, `--latest`, `--kind`, `--record-residual`, `--out-json`, `--out-md`, `--recommendation-only`, `--recommendation-format`, `--serve`, `--port`
+- Subcommands: `run-ci-basic`, `run-quality-gates`, `run-local-hard-checks`, `run-local-hard-checks-preflight`, `run-gdunit-hard`, `run-gdunit-full`, `run-preflight`, `run-acceptance-preflight`, `run-smoke-strict`, `new-execution-plan`, `new-decision-log`, `resume-task`, `inspect-run`, `chapter6-route`, `run-single-task-chapter6`, `detect-project-stage`, `doctor-project`, `check-directory-boundaries`, `project-health-scan`, `serve-project-health`
+- Declared args: `--solution`, `--configuration`, `--godot-bin`, `--delivery-profile`, `--security-profile`, `--fix-through`, `--task-file`, `--out-dir`, `--run-id`, `--legacy-preflight`, `--build-solutions`, `--gdunit-hard`, `--smoke`, `--timeout-sec`, `--test-project`, `--title`, `--status`, `--goal`, `--scope`, `--current-step`, `--stop-loss`, `--next-action`, `--exit-criteria`, `--adr`, `--decision-log`, `--task-id`, `--stage`, `--latest-json`, `--output`, `--why-now`, `--context`, `--decision`, `--consequences`, `--recovery-impact`, `--validation`, `--supersedes`, `--superseded-by`, `--execution-plan`, `--repo-root`, `--latest`, `--kind`, `--record-residual`, `--out-json`, `--out-md`, `--recommendation-only`, `--recommendation-format`, `--serve`, `--port`, `--self-check`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Engine-side options require a local Godot .NET console binary; without it, Godot/GdUnit/smoke stages will skip or fail depending on the script.
@@ -958,6 +962,20 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require real recovery artifacts under `logs/ci/**`.
+
+#### `scripts/python/run_single_task_chapter6_lane.py`
+
+- Direct local deps: None.
+- Transitive local deps: None.
+- Subcommands: None.
+- Declared args: `--task-id`, `--godot-bin`, `--delivery-profile`, `--security-profile`, `--fix-through`, `--out-dir`, `--self-check`
+- Behavior notes: starts from `resume-task` and `chapter6-route`, then routes to either the full `6.3 -> 6.9` path or the narrower `6.8` closure path based on recovery artifacts.
+- Behavior notes: default policy is `playable-ea -> fix-through P0`, `fast-ship -> fix-through P1`, `standard -> fix-through P1`; residual `P2/P3` findings are recorded by default instead of being auto-reopened.
+- Behavior notes: `--self-check` writes the resolved command plan without executing the Chapter 6 tools.
+- Parameter prerequisites:
+  - Windows PowerShell + `py -3` from repo root.
+  - Task-scoped parameters require a Taskmaster triplet and normal Chapter 6 entrypoint availability.
+  - `--godot-bin` is strongly recommended because the lane includes repo-level hard checks and may need engine-side verification.
 
 #### `scripts/python/new_decision_log.py`
 

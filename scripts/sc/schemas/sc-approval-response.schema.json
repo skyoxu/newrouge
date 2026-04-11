@@ -48,6 +48,29 @@
     "reason": {
       "type": "string",
       "minLength": 1
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "fork",
+        "inspect",
+        "pause",
+        "resume"
+      ]
+    },
+    "allowed_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "blocked_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   }
 }

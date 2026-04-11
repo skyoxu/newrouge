@@ -1033,10 +1033,16 @@ class ApprovalContractTests(unittest.TestCase):
         validate_approval_response_payload(response)
 
         self.assertEqual("pending", request["status"])
+        self.assertEqual("pause", request["recommended_action"])
+        self.assertEqual(["inspect", "pause"], request["allowed_actions"])
+        self.assertEqual(["fork", "resume", "rerun"], request["blocked_actions"])
         self.assertEqual("approved", response["decision"])
         self.assertEqual("fork", response["action"])
         self.assertEqual("1", response["task_id"])
         self.assertEqual("run-1", response["run_id"])
+        self.assertEqual("fork", response["recommended_action"])
+        self.assertEqual(["fork", "inspect"], response["allowed_actions"])
+        self.assertEqual(["resume", "rerun"], response["blocked_actions"])
 
     def test_build_approval_request_should_reject_unknown_action(self) -> None:
         from _approval_contract import build_approval_request

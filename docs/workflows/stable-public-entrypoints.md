@@ -130,6 +130,24 @@ Why this is stable:
 
 ## Task Delivery Loop
 
+### `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`
+
+Use when:
+- you want one top-level Chapter 6 orchestrator instead of manually stitching `6.3 -> 6.9`
+- you want recovery-first routing before paying for `6.7` or `6.8`
+- you want profile-aware defaults where `playable-ea` defaults to `fix-through=P0` and `fast-ship` / `standard` default to `fix-through=P1`
+
+Prerequisites:
+- task triplet available
+- `GODOT_BIN` for engine-side steps and repo-level hard checks
+
+Why this is stable:
+- it is the single-task Chapter 6 top-level entrypoint
+- it always starts from `resume-task` and `chapter6-route` instead of assuming a fresh run
+- it only jumps directly to `6.8` when recovery artifacts already prove that this is the cheapest valid lane
+- by default it records residual `P2/P3` findings instead of repeatedly paying for the same-shape closure loop
+- it keeps `6.9` behind the same orchestrator, so repo-level hard checks are still part of the normal closeout path
+
 ### `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`
 
 Use when:

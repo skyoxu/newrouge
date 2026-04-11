@@ -12,5 +12,15 @@
   "requested_commands": [
     "py -3 scripts/sc/run_review_pipeline.py --task-id 10 --fork"
   ],
-  "status": "pending"
+  "status": "pending",
+  "recommended_action": "pause",
+  "allowed_actions": [
+    "inspect",
+    "pause"
+  ],
+  "blocked_actions": [
+    "fork",
+    "resume",
+    "rerun"
+  ]
 }

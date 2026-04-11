@@ -164,6 +164,13 @@ def _validate_approval_request_fallback(payload: dict[str, Any]) -> list[str]:
         errors.append("$.action: expected 'fork'")
     if str(payload.get("status") or "").strip() != "pending":
         errors.append("$.status: expected 'pending'")
+    if "recommended_action" in payload:
+        recommended_action = payload.get("recommended_action")
+        if recommended_action not in {"inspect", "pause"}:
+            errors.append("$.recommended_action: expected 'inspect' or 'pause'")
+    for key in ("allowed_actions", "blocked_actions"):
+        if key in payload:
+            _require_string_list(payload, key, errors)
     return errors
 
 
@@ -178,6 +185,13 @@ def _validate_approval_response_fallback(payload: dict[str, Any]) -> list[str]:
         errors.append("$.action: expected 'fork'")
     if str(payload.get("decision") or "").strip() not in {"approved", "denied"}:
         errors.append("$.decision: expected 'approved' or 'denied'")
+    if "recommended_action" in payload:
+        recommended_action = payload.get("recommended_action")
+        if recommended_action not in {"fork", "inspect", "pause", "resume"}:
+            errors.append("$.recommended_action: expected 'fork', 'inspect', 'pause', or 'resume'")
+    for key in ("allowed_actions", "blocked_actions"):
+        if key in payload:
+            _require_string_list(payload, key, errors)
     return errors
 
 

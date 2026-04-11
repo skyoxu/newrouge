@@ -15,6 +15,66 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _normalized_action_list(value: Any) -> list[str]:
+    return [str(item).strip() for item in list(value or []) if str(item).strip()]
+
+
+def _expected_contract(*, required_action: str, status: str) -> dict[str, Any]:
+    state = {
+        "required_action": str(required_action or "").strip(),
+        "status": str(status or "").strip(),
+        "recommended_action": "",
+        "allowed_actions": [],
+        "blocked_actions": [],
+    }
+    _apply_approval_action_contract(state)
+    return {
+        "recommended_action": str(state.get("recommended_action") or "").strip(),
+        "allowed_actions": _normalized_action_list(state.get("allowed_actions")),
+        "blocked_actions": _normalized_action_list(state.get("blocked_actions")),
+    }
+
+
+def _response_contract_error(*, response_payload: dict[str, Any], required_action: str, status: str) -> str:
+    has_contract_fields = any(key in response_payload for key in ("recommended_action", "allowed_actions", "blocked_actions"))
+    if not has_contract_fields:
+        return ""
+    if not all(key in response_payload for key in ("recommended_action", "allowed_actions", "blocked_actions")):
+        return "Approval response contract is incomplete; expected recommended_action, allowed_actions, and blocked_actions together."
+    expected = _expected_contract(required_action=required_action, status=status)
+    actual = {
+        "recommended_action": str(response_payload.get("recommended_action") or "").strip(),
+        "allowed_actions": _normalized_action_list(response_payload.get("allowed_actions")),
+        "blocked_actions": _normalized_action_list(response_payload.get("blocked_actions")),
+    }
+    if actual != expected:
+        return (
+            "Approval response contract does not match the current request/decision state. "
+            f"expected={expected} actual={actual}"
+        )
+    return ""
+
+
+def _request_contract_error(*, request_payload: dict[str, Any], required_action: str, status: str) -> str:
+    has_contract_fields = any(key in request_payload for key in ("recommended_action", "allowed_actions", "blocked_actions"))
+    if not has_contract_fields:
+        return ""
+    if not all(key in request_payload for key in ("recommended_action", "allowed_actions", "blocked_actions")):
+        return "Approval request contract is incomplete; expected recommended_action, allowed_actions, and blocked_actions together."
+    expected = _expected_contract(required_action=required_action, status=status)
+    actual = {
+        "recommended_action": str(request_payload.get("recommended_action") or "").strip(),
+        "allowed_actions": _normalized_action_list(request_payload.get("allowed_actions")),
+        "blocked_actions": _normalized_action_list(request_payload.get("blocked_actions")),
+    }
+    if actual != expected:
+        return (
+            "Approval request contract does not match the current request state. "
+            f"expected={expected} actual={actual}"
+        )
+    return ""
+
+
 def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | None = None) -> dict[str, Any]:
     state = {
         "soft_gate": False,
@@ -48,6 +108,14 @@ def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | No
         state["request_id"] = str(request_payload.get("request_id") or state["request_id"] or "").strip()
         request_id_from_request = state["request_id"]
         state["request_path"] = str(request_path)
+        request_contract_error = _request_contract_error(
+            request_payload=request_payload,
+            required_action=state["required_action"],
+            status=state["status"],
+        )
+        if request_contract_error:
+            state["status"] = "invalid"
+            state["reason"] = request_contract_error
 
     if response_payload is not None:
         state["soft_gate"] = True
@@ -91,6 +159,16 @@ def resolve_approval_state(*, out_dir: Path, approval_state: dict[str, Any] | No
             state["status"] = "invalid"
             if response_reason:
                 state["reason"] = response_reason
+        contract_error = ""
+        if state["status"] in {"approved", "denied"}:
+            contract_error = _response_contract_error(
+                response_payload=response_payload,
+                required_action=state["required_action"],
+                status=state["status"],
+            )
+        if contract_error:
+            state["status"] = "invalid"
+            state["reason"] = contract_error
         if state["status"] in {"invalid", "mismatched"}:
             state["request_id"] = request_id_from_request or response_request_id
 

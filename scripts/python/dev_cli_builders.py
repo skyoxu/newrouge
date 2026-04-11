@@ -343,6 +343,29 @@ def build_chapter6_route_cmd(args) -> list[str]:
     return cmd
 
 
+def build_run_single_task_chapter6_cmd(args) -> list[str]:
+    cmd = [
+        "py",
+        "-3",
+        "scripts/python/run_single_task_chapter6_lane.py",
+        "--task-id",
+        args.task_id,
+    ]
+    if args.godot_bin:
+        cmd += ["--godot-bin", args.godot_bin]
+    if args.delivery_profile:
+        cmd += ["--delivery-profile", args.delivery_profile]
+    if args.security_profile:
+        cmd += ["--security-profile", args.security_profile]
+    if args.fix_through:
+        cmd += ["--fix-through", args.fix_through]
+    if args.out_dir:
+        cmd += ["--out-dir", args.out_dir]
+    if getattr(args, "self_check", False):
+        cmd.append("--self-check")
+    return cmd
+
+
 def build_detect_project_stage_cmd(args) -> list[str]:
     cmd = [
         "py",

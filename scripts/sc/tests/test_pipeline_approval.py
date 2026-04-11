@@ -47,6 +47,81 @@ class PipelineApprovalTests(unittest.TestCase):
             self.assertEqual(["resume", "rerun"], approval["blocked_actions"])
             self.assertEqual("apr-20260321-001", approval["request_id"])
 
+    def test_resolve_approval_state_should_reject_inconsistent_request_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-15-run1"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "approval-request.json").write_text(
+                (
+                    "{\n"
+                    '  "schema_version": "1.0.0",\n'
+                    '  "request_id": "run1:fork",\n'
+                    '  "task_id": "15",\n'
+                    '  "run_id": "run1",\n'
+                    '  "action": "fork",\n'
+                    '  "reason": "Fork was requested.",\n'
+                    '  "requested_files": [],\n'
+                    '  "requested_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15 --fork"],\n'
+                    '  "status": "pending",\n'
+                    '  "recommended_action": "inspect",\n'
+                    '  "allowed_actions": ["inspect"],\n'
+                    '  "blocked_actions": ["fork", "resume", "rerun"]\n'
+                    "}\n"
+                ),
+                encoding="utf-8",
+            )
+
+            approval = repair_approval.resolve_approval_state(out_dir=out_dir)
+
+            self.assertEqual("invalid", approval["status"])
+            self.assertEqual("inspect", approval["recommended_action"])
+            self.assertIn("request contract does not match", approval["reason"])
+
+    def test_resolve_approval_state_should_reject_inconsistent_response_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-15-run1"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "approval-request.json").write_text(
+                (
+                    "{\n"
+                    '  "schema_version": "1.0.0",\n'
+                    '  "request_id": "run1:fork",\n'
+                    '  "task_id": "15",\n'
+                    '  "run_id": "run1",\n'
+                    '  "action": "fork",\n'
+                    '  "reason": "Fork was requested.",\n'
+                    '  "requested_files": [],\n'
+                    '  "requested_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15 --fork"],\n'
+                    '  "status": "pending"\n'
+                    "}\n"
+                ),
+                encoding="utf-8",
+            )
+            (out_dir / "approval-response.json").write_text(
+                (
+                    "{\n"
+                    '  "schema_version": "1.0.0",\n'
+                    '  "task_id": "15",\n'
+                    '  "run_id": "run1",\n'
+                    '  "action": "fork",\n'
+                    '  "request_id": "run1:fork",\n'
+                    '  "decision": "approved",\n'
+                    '  "reviewer": "human",\n'
+                    '  "reason": "Approved but with the wrong contract.",\n'
+                    '  "recommended_action": "resume",\n'
+                    '  "allowed_actions": ["resume", "inspect"],\n'
+                    '  "blocked_actions": ["fork"]\n'
+                    "}\n"
+                ),
+                encoding="utf-8",
+            )
+
+            approval = repair_approval.resolve_approval_state(out_dir=out_dir)
+
+            self.assertEqual("invalid", approval["status"])
+            self.assertEqual("inspect", approval["recommended_action"])
+            self.assertIn("does not match", approval["reason"])
+
     def test_sync_soft_approval_sidecars_should_preserve_pending_request_without_rewriting(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             out_dir = Path(td) / "logs" / "ci" / "2026-04-07" / "sc-review-pipeline-task-1-run1"

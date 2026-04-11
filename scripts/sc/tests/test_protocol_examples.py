@@ -52,8 +52,14 @@ class ProtocolExamplesTests(unittest.TestCase):
 
         self.assertEqual("fork", request_payload["action"])
         self.assertEqual("pending", request_payload["status"])
+        self.assertEqual("pause", request_payload["recommended_action"])
+        self.assertEqual(["inspect", "pause"], request_payload["allowed_actions"])
+        self.assertEqual(["fork", "resume", "rerun"], request_payload["blocked_actions"])
         self.assertEqual(request_payload["request_id"], response_payload["request_id"])
         self.assertEqual("approved", response_payload["decision"])
+        self.assertEqual("fork", response_payload["recommended_action"])
+        self.assertEqual(["fork", "inspect"], response_payload["allowed_actions"])
+        self.assertEqual(["resume", "rerun"], response_payload["blocked_actions"])
 
         validate_approval_request_payload(request_payload)
         validate_approval_response_payload(response_payload)
