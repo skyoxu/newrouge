@@ -278,6 +278,12 @@
               "additionalProperties": {
                 "type": "integer"
               }
+            },
+            "planned_agents": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         },
@@ -285,10 +291,16 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "kind": {
+              "type": "string"
+            },
             "blocked": {
               "type": "boolean"
             },
             "timed_out_step": {
+              "type": "string"
+            },
+            "step_name": {
               "type": "string"
             },
             "retry_count": {
@@ -296,6 +308,24 @@
             },
             "deterministic_ok": {
               "type": "boolean"
+            }
+          }
+        },
+        "sc_test_retry_stop_loss": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "blocked": {
+              "type": "boolean"
+            },
+            "step_name": {
+              "type": "string"
+            },
+            "retry_count": {
+              "type": "integer"
             }
           }
         }
