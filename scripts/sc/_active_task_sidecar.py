@@ -17,6 +17,8 @@ if str(REPO_ROOT / "scripts" / "python") not in sys.path:
 from _chapter6_recovery_common import (
     candidate_commands as _shared_candidate_commands,
     chapter6_stop_loss_note as _chapter6_stop_loss_note,
+    extract_bottleneck_fields as _extract_bottleneck_fields,
+    format_metric_map as _format_metric_map,
     forbidden_commands as _shared_forbidden_commands,
     recommended_command as _shared_recommended_command,
 )
@@ -129,8 +131,12 @@ def _summarize_run_events(run_events_path: Path | None) -> dict[str, Any]:
     previous_turn_events: list[dict[str, Any]] = []
     previous_turn_seq = 0
     if latest_turn_seq > 1:
-        previous_turn_seq = max(int(item.get("turn_seq") or 1) for item in normalized if int(item.get("turn_seq") or 1) < latest_turn_seq)
-        previous_turn_events = [item for item in normalized if int(item.get("turn_seq") or 1) == previous_turn_seq]
+        prior_turns = sorted(
+            {int(item.get("turn_seq") or 1) for item in normalized if int(item.get("turn_seq") or 1) < latest_turn_seq}
+        )
+        if prior_turns:
+            previous_turn_seq = prior_turns[-1]
+            previous_turn_events = [item for item in normalized if int(item.get("turn_seq") or 1) == previous_turn_seq]
     previous_turn_id = str(previous_turn_events[-1].get("turn_id") or "").strip() if previous_turn_events else ""
     previous_turn_family_counts: dict[str, int] = {}
     previous_reviewers = {
@@ -638,6 +644,7 @@ def build_active_task_payload(
     if any(bool(value) for value in waste_signals.values()):
         diagnostics["waste_signals"] = waste_signals
     summary_status = str(summary.get("status") or effective_status).strip().lower()
+    summary_reason = str(summary.get("reason") or "").strip().lower()
     has_run_completed = _has_run_completed_event(run_events_path=run_events_path, run_id=effective_run_id)
     artifact_integrity: dict[str, Any] | None = None
     if str(summary.get("run_type") or "").strip().lower() == "planned-only" and (
@@ -647,7 +654,7 @@ def build_active_task_payload(
             "kind": "planned_only_incomplete",
             "blocked": True,
         }
-    if summary_status in {"ok", "fail", "aborted"}:
+    if summary_status in {"ok", "fail", "aborted"} and not summary_reason.startswith("rerun_blocked:"):
         if run_events_path is None or not run_events_path.exists():
             artifact_integrity = {
                 "kind": "artifact_missing",
@@ -701,6 +708,7 @@ def build_active_task_payload(
     }
     approval = execution_context.get("approval") if isinstance(execution_context.get("approval"), dict) else {}
     run_event_summary = _summarize_run_events(run_events_path)
+    bottleneck_fields = _extract_bottleneck_fields(summary)
     latest_json_rel = _repo_rel(latest_json_path, root=resolved_root)
     candidate_commands = _candidate_commands(task_id=str(task_id).strip(), latest_json_rel=latest_json_rel)
     recommended_command = _recommended_command(recommended_action, candidate_commands, chapter6_hints, approval)
@@ -740,6 +748,7 @@ def build_active_task_payload(
         ).strip(),
         "approval": approval,
         "run_event_summary": run_event_summary,
+        **bottleneck_fields,
     }
 
 
@@ -759,6 +768,9 @@ def render_active_task_markdown(payload: dict[str, Any]) -> str:
     run_event_summary = payload.get("run_event_summary") if isinstance(payload.get("run_event_summary"), dict) else {}
     latest_summary_signals = payload.get("latest_summary_signals") if isinstance(payload.get("latest_summary_signals"), dict) else {}
     chapter6_hints = payload.get("chapter6_hints") if isinstance(payload.get("chapter6_hints"), dict) else {}
+    step_duration_totals = payload.get("step_duration_totals") if isinstance(payload.get("step_duration_totals"), dict) else {}
+    step_duration_avg = payload.get("step_duration_avg") if isinstance(payload.get("step_duration_avg"), dict) else {}
+    round_failure_kind_counts = payload.get("round_failure_kind_counts") if isinstance(payload.get("round_failure_kind_counts"), dict) else {}
     chapter6_stop_loss_note = _chapter6_stop_loss_note(chapter6_hints, latest_summary_signals)
     lines = [
         "# Active Task Summary",
@@ -782,6 +794,10 @@ def render_active_task_markdown(payload: dict[str, Any]) -> str:
         f"- Latest reuse mode: {latest_summary_signals.get('reuse_mode') or 'n/a'}",
         f"- Latest artifact integrity: {latest_summary_signals.get('artifact_integrity_kind') or 'none'}",
         f"- Latest diagnostics keys: {', '.join(latest_summary_signals.get('diagnostics_keys') or []) or 'none'}",
+        f"- Dominant cost phase: {payload.get('dominant_cost_phase') or 'n/a'}",
+        f"- Step duration totals: {_format_metric_map(step_duration_totals) or 'none'}",
+        f"- Step duration avg: {_format_metric_map(step_duration_avg) or 'none'}",
+        f"- Round failure kind counts: {_format_metric_map(round_failure_kind_counts) or 'none'}",
         f"- Chapter6 next action: {chapter6_hints.get('next_action') or 'n/a'}",
         f"- Chapter6 can skip 6.7: {bool(chapter6_hints.get('can_skip_6_7'))}",
         f"- Chapter6 can go to 6.8: {bool(chapter6_hints.get('can_go_to_6_8'))}",

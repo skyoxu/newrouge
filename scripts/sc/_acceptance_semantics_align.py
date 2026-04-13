@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
-import subprocess
 import sys
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,8 +18,8 @@ def bootstrap_imports() -> None:
 bootstrap_imports()
 
 from _taskmaster import default_paths, iter_master_tasks, load_json  # noqa: E402
+from _llm_backend import run_llm_exec  # noqa: E402
 from _util import repo_root, write_text  # noqa: E402
-from _acceptance_semantic_scope import is_governance_acceptance_line  # noqa: E402
 
 
 REFS_RE = re.compile(r"\bRefs\s*:\s*(.+)$", flags=re.IGNORECASE)
@@ -54,44 +53,6 @@ def split_refs(line: str) -> tuple[str, str | None]:
     prefix = text[: m.start()].rstrip()
     refs_blob = m.group(0).strip()  # keep exact "Refs: ..." substring
     return prefix.strip(), refs_blob
-
-
-def compose_line_with_refs(prefix: str, refs_blob: str | None) -> str:
-    head = str(prefix or "").strip()
-    tail = str(refs_blob or "").strip()
-    if head and tail:
-        return f"{head} {tail}".strip()
-    return head or tail
-
-
-def restore_existing_refs(*, view_inputs: list[ViewInput], out_obj: dict[str, Any]) -> list[str]:
-    restored: list[str] = []
-    for v in view_inputs:
-        payload = out_obj.get(v.view)
-        if not isinstance(payload, dict):
-            continue
-        acc = payload.get("acceptance")
-        if not isinstance(acc, list):
-            continue
-        changed = False
-        next_acc: list[str] = []
-        for idx, new_line in enumerate(acc):
-            new_s = str(new_line or "").strip()
-            if idx >= len(v.acceptance):
-                next_acc.append(new_s)
-                continue
-            old = v.acceptance[idx]
-            old_refs = split_refs(old)[1]
-            new_prefix, new_refs = split_refs(new_s)
-            if old_refs and new_refs != old_refs:
-                next_acc.append(compose_line_with_refs(new_prefix, old_refs))
-                restored.append(f"{v.view}:{idx + 1}")
-                changed = True
-            else:
-                next_acc.append(new_s)
-        if changed:
-            payload["acceptance"] = next_acc
-    return restored
 
 
 def normalize_acceptance_lines(lines: list[Any]) -> list[str]:
@@ -200,7 +161,6 @@ def render_task_context(
     lines.append("- Preserve existing Refs: suffix tokens verbatim for existing items.")
     lines.append("- Prefer wording that is observable/testable (state/event/output), avoid binding to implementation internals.")
     lines.append("- Avoid no-op loopholes: acceptance should be falsifiable; if applicable, include an explicit refusal/unchanged-state clause.")
-    lines.append("- Governance acceptance items (ADR/checklist/traceability/marker refs) are NOT semantic obligations and should remain unchanged.")
     lines.append("- Do not introduce new obligations unrelated to the master description/details.")
     lines.append(f"- Mode: {mode}")
     lines.append(f"- Align view descriptions to master: {bool(align_view_descriptions)}")
@@ -216,16 +176,15 @@ def render_task_context(
             lines.append("  (empty)")
         for i, a in enumerate(v.acceptance, 1):
             prefix, refs = split_refs(a)
-            marker = " [governance]" if is_governance_acceptance_line(a) else ""
             if refs:
-                lines.append(f"  {i}. {prefix} {refs}{marker}")
+                lines.append(f"  {i}. {prefix} {refs}")
             else:
-                lines.append(f"  {i}. {prefix}{marker}")
+                lines.append(f"  {i}. {prefix}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 
 
-def build_prompt(task_context: str) -> str:
+def build_prompt(task_context: str, delivery_profile_context: str = "") -> str:
     blocks: list[str] = []
     blocks.append("Role: acceptance-semantics-aligner")
     blocks.append("")
@@ -236,7 +195,6 @@ def build_prompt(task_context: str) -> str:
     blocks.append("- Do NOT add new Refs: tokens in this step (acceptance-only phase).")
     blocks.append("- If the task contains subtasks, acceptance must cover those obligations; if mode prevents it, explain in notes.")
     blocks.append("- Prefer falsifiable statements: avoid wording that can be satisfied by doing nothing.")
-    blocks.append("- Keep governance-only acceptance items unchanged (ADR/checklist/traceability/marker refs are non-semantic).")
     blocks.append("")
     blocks.append("Mode rules:")
     blocks.append('- rewrite-only: for each view, output acceptance array with EXACT SAME LENGTH as input and do NOT reorder items.')
@@ -251,43 +209,24 @@ def build_prompt(task_context: str) -> str:
     blocks.append('  "notes": [<string>...]')
     blocks.append("}")
     blocks.append("")
+    if str(delivery_profile_context or "").strip():
+        blocks.append("Delivery profile context:")
+        blocks.append(str(delivery_profile_context).strip())
+        blocks.append("")
     blocks.append("Task context:")
     blocks.append(task_context)
     return "\n".join(blocks).strip() + "\n"
 
 
-def run_codex_exec(*, prompt: str, out_last_message: Path, timeout_sec: int) -> tuple[int, str]:
-    exe = shutil.which("codex")
-    if not exe:
-        return 127, "codex executable not found in PATH\n"
-    cmd = [
-        exe,
-        "exec",
-        "-s",
-        "read-only",
-        "-C",
-        str(repo_root()),
-        "--output-last-message",
-        str(out_last_message),
-        "-",
-    ]
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=prompt,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-            cwd=str(repo_root()),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=timeout_sec,
-        )
-    except subprocess.TimeoutExpired:
-        return 124, "codex exec timeout\n"
-    except Exception as exc:  # noqa: BLE001
-        return 1, f"codex exec failed to start: {exc}\n"
-    return proc.returncode or 0, proc.stdout or ""
+def run_codex_exec(*, backend: str = "codex-cli", prompt: str, out_last_message: Path, timeout_sec: int) -> tuple[int, str]:
+    rc, trace, _cmd = run_llm_exec(
+        backend=backend,
+        root=repo_root(),
+        prompt=prompt,
+        output_last_message=out_last_message,
+        timeout_sec=timeout_sec,
+    )
+    return rc, trace
 
 
 def safe_parse_json(text: str) -> dict[str, Any] | None:
@@ -305,7 +244,6 @@ def validate_output(
     view_inputs: list[ViewInput],
     out_obj: dict[str, Any],
     align_view_descriptions: bool,
-    refs_restore_items: list[str] | None = None,
 ) -> tuple[bool, str]:
     if int(out_obj.get("task_id") or -1) != int(task_id):
         return False, "task_id_mismatch"
@@ -337,22 +275,57 @@ def validate_output(
             if i < len(v.acceptance):
                 old = v.acceptance[i]
                 _old_prefix, old_refs = split_refs(old)
-                new_prefix, new_refs = split_refs(new_s)
-                effective_new_s = new_s
+                _new_prefix, new_refs = split_refs(new_s)
                 if old_refs and new_refs != old_refs:
-                    if refs_restore_items is not None:
-                        refs_restore_items.append(f"{key}:{i+1}")
-                    effective_new_s = compose_line_with_refs(new_prefix, old_refs)
+                    return False, f"{key}:refs_changed_at_{i+1}"
                 if (not old_refs) and new_refs:
                     return False, f"{key}:unexpected_refs_added_at_{i+1}"
-                if is_governance_acceptance_line(old) and str(effective_new_s).strip() != str(old).strip():
-                    return False, f"{key}:governance_item_changed_at_{i+1}"
             else:
                 _p, refs = split_refs(new_s)
                 if refs:
                     return False, f"{key}:unexpected_refs_in_appended_item_{i+1}"
 
     return True, "ok"
+
+
+def restore_existing_refs(
+    *,
+    view_inputs: list[ViewInput],
+    out_obj: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    restored_obj = deepcopy(out_obj)
+    restored_items: list[dict[str, Any]] = []
+    for v in view_inputs:
+        payload = restored_obj.get(v.view)
+        if not isinstance(payload, dict):
+            continue
+        acc = payload.get("acceptance")
+        if not isinstance(acc, list):
+            continue
+        changed = False
+        new_acc = list(acc)
+        for i, new_line in enumerate(new_acc):
+            if i >= len(v.acceptance):
+                break
+            old_line = v.acceptance[i]
+            old_prefix, old_refs = split_refs(old_line)
+            new_prefix, new_refs = split_refs(str(new_line))
+            if old_refs and new_refs != old_refs:
+                prefix = new_prefix or old_prefix
+                restored_line = f"{prefix} {old_refs}".strip() if prefix else old_refs
+                new_acc[i] = restored_line
+                restored_items.append(
+                    {
+                        "view": v.view,
+                        "index": i + 1,
+                        "old_refs": old_refs,
+                        "new_refs": new_refs,
+                    }
+                )
+                changed = True
+        if changed:
+            payload["acceptance"] = new_acc
+    return restored_obj, restored_items
 
 
 def apply_acceptance(entry: dict[str, Any], new_acceptance: list[str]) -> None:

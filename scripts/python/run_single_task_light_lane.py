@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ _TIMEOUT_BUFFER_SEC = 120
 _RETRY_TIMEOUT_BOOST_SEC = 240
 _RETRYABLE_TIMEOUT_STEPS = {"extract", "align"}
 _FILL_REF_STEP_NAMES = {"fill_refs_dry", "fill_refs_write", "fill_refs_verify"}
+_EARLY_GUARD_STEP_NAMES = {"preflight_extract_guard"}
 _SKIP_SOFT_STEP_NAMES = {"coverage", "semantic_gate", *_FILL_REF_STEP_NAMES}
 _EXTRACT_FAIL_FAMILY_AUTO_SKIP_ALL = {
     "timeout",
@@ -134,6 +136,8 @@ def _delivery_profile_defaults(root: Path, delivery_profile: str) -> dict[str, A
 
 
 def _profile_step_llm_timeout_sec(root: Path, *, step_name: str, delivery_profile: str) -> int:
+    if step_name == "preflight_extract_guard":
+        return 60
     profile = _delivery_profile_defaults(root, delivery_profile)
     if step_name == "extract":
         llm_obligations = profile.get("llm_obligations") or {}
@@ -301,6 +305,16 @@ def _steps(*, align_apply: bool, delivery_profile: str, llm_timeout_sec: int | N
 
     steps: list[tuple[str, list[str]]] = [
         (
+            "preflight_extract_guard",
+            [
+                "py",
+                "-3",
+                "scripts/python/preflight_acceptance_extract_guard.py",
+                "--task-id",
+                "{id}",
+            ],
+        ),
+        (
             "extract",
             [
                 "py",
@@ -434,6 +448,280 @@ def _resolve_batch_lane(mode: str, *, selected_count: int) -> str:
     return str(mode)
 
 
+def _build_wrapper_command(
+    *,
+    selected: list[int],
+    delivery_profile: str,
+    align_apply: bool,
+    fill_refs_after_extract_fail: str,
+    fill_refs_mode: str,
+    downstream_on_extract_fail: str,
+    downstream_on_extract_family_fail: str,
+    batch_lane: str,
+    wrapper_timeout_sec: int | None,
+    llm_timeout_sec: int | None,
+    resume_failed_task_from: str | None = None,
+) -> str:
+    cmd: list[str] = [
+        "py",
+        "-3",
+        "scripts/python/run_single_task_light_lane.py",
+        "--task-ids",
+        ",".join(str(task_id) for task_id in selected),
+        "--delivery-profile",
+        str(delivery_profile),
+        "--fill-refs-after-extract-fail",
+        str(fill_refs_after_extract_fail),
+        "--fill-refs-mode",
+        str(fill_refs_mode),
+        "--downstream-on-extract-fail",
+        str(downstream_on_extract_fail),
+        "--downstream-on-extract-family-fail",
+        str(downstream_on_extract_family_fail),
+        "--batch-lane",
+        str(batch_lane),
+    ]
+    if not bool(align_apply):
+        cmd.append("--no-align-apply")
+    if wrapper_timeout_sec is not None:
+        cmd.extend(["--timeout-sec", str(int(wrapper_timeout_sec))])
+    if llm_timeout_sec is not None:
+        cmd.extend(["--llm-timeout-sec", str(int(llm_timeout_sec))])
+    if str(resume_failed_task_from or "").strip():
+        cmd.extend(["--resume-failed-task-from", str(resume_failed_task_from)])
+    return " ".join(cmd)
+
+
+def _boosted_llm_timeout_sec(
+    *,
+    root: Path,
+    delivery_profile: str,
+    llm_timeout_sec: int | None,
+) -> int:
+    base_timeout = int(llm_timeout_sec) if llm_timeout_sec is not None else _profile_step_llm_timeout_sec(
+        root,
+        step_name="extract",
+        delivery_profile=delivery_profile,
+    )
+    return max(1, int(base_timeout)) + _RETRY_TIMEOUT_BOOST_SEC
+
+
+def _derive_route_contract(
+    summary: dict[str, Any],
+    *,
+    selected: list[int],
+    delivery_profile: str,
+    align_apply: bool,
+    fill_refs_after_extract_fail: str,
+    fill_refs_mode: str,
+    downstream_on_extract_fail: str,
+    downstream_on_extract_family_fail: str,
+    batch_lane: str,
+    wrapper_timeout_sec: int | None,
+    llm_timeout_sec: int | None,
+    root: Path,
+) -> dict[str, Any]:
+    base_command = _build_wrapper_command(
+        selected=selected,
+        delivery_profile=delivery_profile,
+        align_apply=align_apply,
+        fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+        fill_refs_mode=fill_refs_mode,
+        downstream_on_extract_fail=downstream_on_extract_fail,
+        downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+        batch_lane=batch_lane,
+        wrapper_timeout_sec=wrapper_timeout_sec,
+        llm_timeout_sec=llm_timeout_sec,
+    )
+    failure_category_counts = summary.get("failure_category_counts") if isinstance(summary.get("failure_category_counts"), dict) else {}
+    categories = {str(key).strip() for key, value in failure_category_counts.items() if str(key).strip() and int(value or 0) > 0}
+    processed_tasks = int(summary.get("processed_tasks") or 0)
+    failed_tasks = int(summary.get("failed_tasks") or 0)
+
+    preferred_lane = "run-5.1"
+    recommended_action = "continue"
+    recommended_command = base_command
+    forbidden_commands: list[str] = []
+    latest_reason = "lane_clean"
+    blocked_by = ""
+    artifact_integrity = ""
+    residual_recording = "no"
+
+    if processed_tasks <= 0:
+        preferred_lane = "inspect-first"
+        recommended_action = "inspect"
+        recommended_command = ""
+        latest_reason = "no_processed_tasks"
+        blocked_by = "n/a"
+    elif failed_tasks <= 0:
+        preferred_lane = "run-5.1"
+        recommended_action = "continue"
+        latest_reason = "lane_clean"
+    elif "timeout" in categories:
+        preferred_lane = "timeout-backoff-then-rerun"
+        recommended_action = "rerun"
+        recommended_command = _build_wrapper_command(
+            selected=selected,
+            delivery_profile=delivery_profile,
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+            fill_refs_mode=fill_refs_mode,
+            downstream_on_extract_fail=downstream_on_extract_fail,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+            batch_lane=batch_lane,
+            wrapper_timeout_sec=wrapper_timeout_sec,
+            llm_timeout_sec=_boosted_llm_timeout_sec(root=root, delivery_profile=delivery_profile, llm_timeout_sec=llm_timeout_sec),
+            resume_failed_task_from="first-failed-step",
+        )
+        forbidden_commands = [base_command]
+        latest_reason = "extract_timeout"
+    elif categories and categories <= {"model-fail"}:
+        preferred_lane = "retry-extract-only"
+        recommended_action = "rerun"
+        recommended_command = _build_wrapper_command(
+            selected=selected,
+            delivery_profile=delivery_profile,
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+            fill_refs_mode=fill_refs_mode,
+            downstream_on_extract_fail=downstream_on_extract_fail,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+            batch_lane=batch_lane,
+            wrapper_timeout_sec=wrapper_timeout_sec,
+            llm_timeout_sec=llm_timeout_sec,
+            resume_failed_task_from="first-failed-step",
+        )
+        latest_reason = "extract_model_fail"
+    elif categories and categories <= {"coverage-gap", "semantic-needs-fix"}:
+        preferred_lane = "retry-soft-steps-only"
+        recommended_action = "rerun"
+        recommended_command = _build_wrapper_command(
+            selected=selected,
+            delivery_profile=delivery_profile,
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+            fill_refs_mode=fill_refs_mode,
+            downstream_on_extract_fail=downstream_on_extract_fail,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+            batch_lane=batch_lane,
+            wrapper_timeout_sec=wrapper_timeout_sec,
+            llm_timeout_sec=llm_timeout_sec,
+            resume_failed_task_from="first-failed-step",
+        )
+        latest_reason = "soft_steps_failed"
+    elif categories and categories <= {"preflight-gap"}:
+        preferred_lane = "inspect-first"
+        recommended_action = "inspect"
+        recommended_command = ""
+        latest_reason = "preflight_gap"
+        blocked_by = "deterministic_failure"
+    elif failed_tasks > 0:
+        preferred_lane = "inspect-first"
+        recommended_action = "inspect"
+        recommended_command = ""
+        latest_reason = "mixed_failure_families"
+        blocked_by = "recent_failure_summary"
+
+    return {
+        "preferred_lane": preferred_lane,
+        "recommended_action": recommended_action,
+        "recommended_command": recommended_command,
+        "forbidden_commands": forbidden_commands,
+        "latest_reason": latest_reason,
+        "blocked_by": blocked_by,
+        "artifact_integrity": artifact_integrity,
+        "residual_recording": residual_recording,
+    }
+
+
+def _derive_route_explanation(route_contract: dict[str, Any]) -> str:
+    reason = str(route_contract.get("latest_reason") or "").strip().lower()
+    if reason == "lane_clean":
+        return "Current summary is clean; continue with the normal 5.1 lane."
+    if reason == "extract_timeout":
+        return "Extract timed out; rerun failed tasks from the first failed step with a larger LLM timeout."
+    if reason == "extract_model_fail":
+        return "Only model-family extract failures were observed; rerun failed tasks from the first failed step."
+    if reason == "soft_steps_failed":
+        return "Only coverage or semantic soft steps failed; rerun failed tasks from the first failed step."
+    if reason == "preflight_gap":
+        return "Deterministic acceptance preflight failed; inspect task views and refs before rerunning 5.1."
+    if reason == "mixed_failure_families":
+        return "Mixed failure families were observed; inspect the latest summary before spending more LLM cost."
+    if reason == "no_processed_tasks":
+        return "No task has been processed yet."
+    return "Inspect the latest summary before deciding whether to rerun 5.1."
+
+
+def _refresh_route_contract(
+    summary: dict[str, Any],
+    *,
+    root: Path,
+    selected: list[int],
+    delivery_profile: str,
+    align_apply: bool,
+    fill_refs_after_extract_fail: str,
+    fill_refs_mode: str,
+    downstream_on_extract_fail: str,
+    downstream_on_extract_family_fail: str,
+    batch_lane: str,
+    wrapper_timeout_sec: int | None,
+    llm_timeout_sec: int | None,
+    planning_mode: bool = False,
+) -> dict[str, Any]:
+    if planning_mode:
+        route_contract = {
+            "preferred_lane": "run-5.1",
+            "recommended_action": "continue",
+            "recommended_command": _build_wrapper_command(
+                selected=selected,
+                delivery_profile=delivery_profile,
+                align_apply=align_apply,
+                fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+                fill_refs_mode=fill_refs_mode,
+                downstream_on_extract_fail=downstream_on_extract_fail,
+                downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+                batch_lane=batch_lane,
+                wrapper_timeout_sec=wrapper_timeout_sec,
+                llm_timeout_sec=llm_timeout_sec,
+            ),
+            "forbidden_commands": [],
+            "latest_reason": "self_check",
+            "blocked_by": "n/a",
+            "artifact_integrity": "",
+            "residual_recording": "no",
+        }
+    else:
+        route_contract = _derive_route_contract(
+            summary,
+            selected=selected,
+            delivery_profile=delivery_profile,
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=fill_refs_after_extract_fail,
+            fill_refs_mode=fill_refs_mode,
+            downstream_on_extract_fail=downstream_on_extract_fail,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail,
+            batch_lane=batch_lane,
+            wrapper_timeout_sec=wrapper_timeout_sec,
+            llm_timeout_sec=llm_timeout_sec,
+            root=root,
+        )
+    summary["preferred_lane"] = str(route_contract.get("preferred_lane") or "").strip()
+    summary["recommended_action"] = str(route_contract.get("recommended_action") or "").strip()
+    summary["recommended_command"] = str(route_contract.get("recommended_command") or "").strip()
+    summary["forbidden_commands"] = [
+        str(item).strip()
+        for item in list(route_contract.get("forbidden_commands") or [])
+        if str(item).strip()
+    ]
+    summary["latest_reason"] = str(route_contract.get("latest_reason") or "").strip()
+    summary["blocked_by"] = str(route_contract.get("blocked_by") or "").strip()
+    summary["artifact_integrity"] = str(route_contract.get("artifact_integrity") or "").strip()
+    summary["residual_recording"] = str(route_contract.get("residual_recording") or "").strip() or "no"
+    summary["recommended_action_why"] = _derive_route_explanation(route_contract)
+    return route_contract
+
+
 def _skip_reason_for_step_after_extract_fail(
     step_name: str,
     *,
@@ -516,25 +804,38 @@ def _rebuild_counts(summary: dict[str, Any]) -> None:
     semantic_gate_budget_hits: list[dict[str, Any]] = []
     skipped_step_counts: dict[str, int] = {}
     skipped_step_reason_counts: dict[str, int] = {}
+    step_duration_totals: dict[str, float] = {}
+    step_duration_counts: dict[str, int] = {}
+    slowest_tasks: list[dict[str, Any]] = []
     passed_tasks = 0
     failed_tasks = 0
     for row in results:
         task_raw = str(row.get("task_id") or "").strip()
+        task_duration_total = 0.0
         for step in row.get("steps", []) or []:
             if not isinstance(step, dict):
                 continue
+            step_name = str(step.get("step") or "").strip()
+            try:
+                duration_sec = float(step.get("duration_sec")) if step.get("duration_sec") is not None else None
+            except Exception:
+                duration_sec = None
+            if step_name and duration_sec is not None and duration_sec >= 0:
+                step_duration_totals[step_name] = step_duration_totals.get(step_name, 0.0) + duration_sec
+                step_duration_counts[step_name] = step_duration_counts.get(step_name, 0) + 1
+                task_duration_total += duration_sec
             if bool(step.get("skipped")):
-                key = str(step.get("step") or "").strip()
+                key = step_name
                 reason = str(step.get("skip_reason") or "").strip()
                 if key:
                     skipped_step_counts[key] = skipped_step_counts.get(key, 0) + 1
                 if reason:
                     skipped_step_reason_counts[reason] = skipped_step_reason_counts.get(reason, 0) + 1
             if int(step.get("rc") or 0) == 124:
-                key = str(step.get("step") or "").strip()
+                key = step_name
                 if key:
                     timeout_step_counts[key] = timeout_step_counts.get(key, 0) + 1
-            if str(step.get("step") or "").strip() == "semantic_gate":
+            if step_name == "semantic_gate":
                 inner_summary = step.get("inner_summary")
                 if isinstance(inner_summary, dict) and bool(inner_summary.get("prompt_trimmed")) and task_raw.isdigit():
                     task_id = int(task_raw)
@@ -548,7 +849,7 @@ def _rebuild_counts(summary: dict[str, Any]) -> None:
                                 "prompt_chars": inner_summary.get("prompt_chars"),
                             }
                         )
-            if str(step.get("step") or "").strip() == "extract" and int(step.get("rc") or 0) != 0 and task_raw.isdigit():
+            if step_name == "extract" and int(step.get("rc") or 0) != 0 and task_raw.isdigit():
                 bucket = _classify_extract_fail_bucket(step)
                 if bucket:
                     extract_fail_bucket_counts[bucket] = extract_fail_bucket_counts.get(bucket, 0) + 1
@@ -566,18 +867,27 @@ def _rebuild_counts(summary: dict[str, Any]) -> None:
                         extract_fail_family_by_task[task_raw] = family
         if bool(row.get("ok")):
             passed_tasks += 1
-            continue
-        failed_tasks += 1
-        category = _classify_failed_task(row)
-        if category and task_raw.isdigit():
-            failure_category_counts[category] = failure_category_counts.get(category, 0) + 1
-            failure_category_task_ids.setdefault(category, []).append(int(task_raw))
-            failure_category_by_task[task_raw] = category
-        for step in row.get("failed_steps", []) or []:
-            key = str(step).strip()
-            if not key:
-                continue
-            failed_step_counts[key] = failed_step_counts.get(key, 0) + 1
+        else:
+            failed_tasks += 1
+            category = _classify_failed_task(row)
+            if category and task_raw.isdigit():
+                failure_category_counts[category] = failure_category_counts.get(category, 0) + 1
+                failure_category_task_ids.setdefault(category, []).append(int(task_raw))
+                failure_category_by_task[task_raw] = category
+            for step in row.get("failed_steps", []) or []:
+                key = str(step).strip()
+                if not key:
+                    continue
+                failed_step_counts[key] = failed_step_counts.get(key, 0) + 1
+        if task_raw.isdigit() and task_duration_total > 0:
+            slowest_tasks.append(
+                {
+                    "task_id": int(task_raw),
+                    "duration_sec": round(task_duration_total, 3),
+                    "first_failed_step": str(row.get("first_failed_step") or "").strip(),
+                    "ok": bool(row.get("ok")),
+                }
+            )
     summary["processed_tasks"] = len(results)
     summary["passed_tasks"] = passed_tasks
     summary["failed_tasks"] = failed_tasks
@@ -622,6 +932,75 @@ def _rebuild_counts(summary: dict[str, Any]) -> None:
     summary["semantic_gate_budget_hits"] = semantic_gate_budget_hits
     summary["skipped_step_counts"] = skipped_step_counts
     summary["skipped_step_reason_counts"] = skipped_step_reason_counts
+    summary["step_duration_totals"] = {
+        key: round(value, 3) for key, value in sorted(step_duration_totals.items(), key=lambda item: item[0])
+    }
+    summary["step_duration_avg"] = {
+        key: round(step_duration_totals[key] / max(1, int(step_duration_counts.get(key) or 1)), 3)
+        for key in sorted(step_duration_totals)
+    }
+    summary["step_duration_task_counts"] = {
+        key: int(step_duration_counts.get(key) or 0) for key in sorted(step_duration_counts)
+    }
+    summary["slowest_tasks"] = sorted(
+        slowest_tasks,
+        key=lambda item: (-float(item.get("duration_sec") or 0.0), int(item.get("task_id") or 0)),
+    )[:10]
+    next_action = _derive_summary_next_action(summary)
+    summary["recommended_next_action"] = str(next_action.get("action") or "")
+    summary["recommended_next_action_why"] = str(next_action.get("why") or "")
+
+
+def _derive_summary_next_action(summary: dict[str, Any]) -> dict[str, str]:
+    if int(summary.get("failed_tasks") or 0) <= 0:
+        return {
+            "action": "continue-next-selected-slice",
+            "why": "Current 5.1 slice is clean; continue to the next selected task range or lane.",
+        }
+    extract_buckets = summary.get("extract_fail_bucket_counts") if isinstance(summary.get("extract_fail_bucket_counts"), dict) else {}
+    failure_categories = summary.get("failure_category_counts") if isinstance(summary.get("failure_category_counts"), dict) else {}
+    timeout_steps = summary.get("timeout_step_counts") if isinstance(summary.get("timeout_step_counts"), dict) else {}
+    failed_step_counts = summary.get("failed_step_counts") if isinstance(summary.get("failed_step_counts"), dict) else {}
+    top_family = ""
+    top_families = summary.get("extract_fail_top_families")
+    if isinstance(top_families, list) and top_families:
+        first = top_families[0]
+        if isinstance(first, dict):
+            top_family = str(first.get("family") or "").strip()
+    if int(extract_buckets.get("hard_uncovered") or 0) > 0:
+        return {
+            "action": "fix-acceptance-then-rerun-extract",
+            "why": "Extract reported hard uncovered obligations; complete required acceptance/refs before rerunning downstream steps.",
+        }
+    if int(timeout_steps.get("extract") or 0) > 0:
+        return {
+            "action": "retry-extract-only-with-timeout-backoff",
+            "why": "Extract timed out; retry extract first with a larger timeout or smaller task slice before spending more downstream work.",
+        }
+    if int(failure_categories.get("coverage-gap") or 0) > 0:
+        return {
+            "action": "fix-coverage-then-rerun-coverage",
+            "why": "Coverage gaps were detected; add or align task coverage before rerunning semantic checks.",
+        }
+    if int(failure_categories.get("semantic-needs-fix") or 0) > 0:
+        return {
+            "action": "fix-semantic-findings-then-rerun-soft-steps",
+            "why": "Semantic gate returned needs-fix; repair the flagged task text or refs, then rerun from the first soft failure.",
+        }
+    if top_family:
+        return {
+            "action": "inspect-dominant-extract-family",
+            "why": f"Most failures cluster under extract family '{top_family}'; inspect that family first and rerun only the affected slice.",
+        }
+    if int(failed_step_counts.get("align") or 0) > 0:
+        return {
+            "action": "resume-from-align",
+            "why": "Align is the first failing deterministic step; rerun from align instead of replaying the whole slice.",
+        }
+    return {
+        "action": "inspect-failed-tasks",
+        "why": "Failures are mixed; inspect the failed task rows before choosing a narrower rerun strategy.",
+    }
 
 
 def _select_task_ids(root: Path, args: argparse.Namespace) -> list[int]:
@@ -705,6 +1084,11 @@ def _summarize_inner_summary(step_name: str, payload: dict[str, Any]) -> dict[st
                 "triggered": bool(auto_escalate.get("triggered")),
                 "reasons": list(auto_escalate.get("reasons") or []),
             }
+    elif step_name == "preflight_extract_guard":
+        for key in ("issue_count", "issue_ids", "acceptance_item_counts", "views_present"):
+            value = payload.get(key)
+            if value is not None:
+                summary[key] = value
     elif step_name.startswith("fill_refs"):
         for key in ("task_count", "changed_tasks", "written_tasks", "skipped_tasks"):
             value = payload.get(key)
@@ -769,6 +1153,12 @@ def _classify_failed_task(row: dict[str, Any]) -> str | None:
     for step in steps:
         if isinstance(step, dict) and int(step.get("rc") or 0) == 124:
             return "timeout"
+
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        if str(step.get("step") or "").strip() == "preflight_extract_guard" and int(step.get("rc") or 0) != 0:
+            return "preflight-gap"
 
     for step in steps:
         if not isinstance(step, dict):
@@ -1064,6 +1454,23 @@ def _run_named_steps_for_task(
 ) -> list[str]:
     failed_steps: list[str] = []
     for step_name, template in step_items:
+        guard_step = next(
+            (
+                step_map.get(name)
+                for name in _EARLY_GUARD_STEP_NAMES
+                if isinstance(step_map.get(name), dict)
+                and not bool(step_map.get(name, {}).get("skipped"))
+                and int(step_map.get(name, {}).get("rc") or 0) != 0
+            ),
+            None,
+        )
+        if isinstance(guard_step, dict) and str(guard_step.get("step") or "").strip() != step_name:
+            step_map[step_name] = _make_skipped_step(step_name, skip_reason="preflight_extract_guard_failed")
+            issue_ids = list((guard_step.get("inner_summary") or {}).get("issue_ids") or [])
+            if issue_ids:
+                step_map[step_name]["preflight_issue_ids"] = issue_ids
+            continue
+
         extract_step = step_map.get("extract")
         extract_failed = isinstance(extract_step, dict) and not bool(extract_step.get("skipped")) and int(extract_step.get("rc") or 0) != 0
         if extract_failed:
@@ -1085,6 +1492,8 @@ def _run_named_steps_for_task(
                 continue
 
         cmd = [part.format(id=task_id) for part in template]
+        step_started = dt.datetime.now()
+        step_started_monotonic = time.monotonic()
         rc, stdout, stderr, retry_meta = _run_step_with_retry(
             root=root,
             cmd=cmd,
@@ -1093,6 +1502,7 @@ def _run_named_steps_for_task(
             explicit_timeout_sec=explicit_timeout_sec,
             llm_timeout_sec=llm_timeout_sec,
         )
+        duration_sec = round(max(0.0, time.monotonic() - step_started_monotonic), 3)
         log_path = out_dir / f"t{task_id:04d}--{step_name}.log"
         attempts = retry_meta.get("attempts") or []
         if isinstance(attempts, list) and attempts:
@@ -1133,6 +1543,8 @@ def _run_named_steps_for_task(
         step_map[step_name] = {
             "step": step_name,
             "rc": rc,
+            "started_at": step_started.isoformat(timespec="seconds"),
+            "duration_sec": duration_sec,
             "log": _relative_to_root(root, log_path),
             "stdout_tail": stdout.strip().splitlines()[-1] if stdout.strip() else "",
             "stderr_tail": stderr.strip().splitlines()[-1] if stderr.strip() else "",
@@ -1245,7 +1657,7 @@ def main() -> int:
     if batch_lane_resolved == "extract-first" and downstream_on_extract_fail_resolved == "continue":
         downstream_on_extract_fail_resolved = "skip-soft"
     step_lookup = {name: cmd for name, cmd in steps}
-    phase1_step_names = [name for name in ["extract", "align"] if name in step_lookup]
+    phase1_step_names = [name for name in ["preflight_extract_guard", "extract", "align"] if name in step_lookup]
     phase2_step_names = [name for name, _cmd in steps if name not in phase1_step_names]
     step_names = [name for name, _ in steps]
     resume_scope = _build_resume_scope(
@@ -1282,6 +1694,24 @@ def main() -> int:
             "phase1_step_names": phase1_step_names,
             "phase2_step_names": phase2_step_names,
         }
+        _refresh_route_contract(
+            payload,
+            root=root,
+            selected=selected,
+            delivery_profile=str(args.delivery_profile),
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=str(args.fill_refs_after_extract_fail),
+            fill_refs_mode=fill_refs_mode_resolved,
+            downstream_on_extract_fail=downstream_on_extract_fail_resolved,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail_resolved,
+            batch_lane=batch_lane_resolved,
+            wrapper_timeout_sec=args.timeout_sec,
+            llm_timeout_sec=args.llm_timeout_sec,
+            planning_mode=True,
+        )
+        next_action = _derive_summary_next_action(payload)
+        payload["recommended_next_action"] = str(next_action.get("action") or "")
+        payload["recommended_next_action_why"] = str(next_action.get("why") or "")
         _write_json(summary_path, payload)
         print(
             f"SINGLE_TASK_LIGHT_LANE_SELF_CHECK status=ok tasks={len(selected)} "
@@ -1334,6 +1764,20 @@ def main() -> int:
         summary["last_task_id"] = last_task_id
         summary["last_updated_at"] = dt.datetime.now().isoformat(timespec="seconds")
         summary["skipped_completed_tasks"] = skipped_completed
+        _refresh_route_contract(
+            summary,
+            root=root,
+            selected=selected,
+            delivery_profile=str(args.delivery_profile),
+            align_apply=align_apply,
+            fill_refs_after_extract_fail=str(args.fill_refs_after_extract_fail),
+            fill_refs_mode=fill_refs_mode_resolved,
+            downstream_on_extract_fail=downstream_on_extract_fail_resolved,
+            downstream_on_extract_family_fail=downstream_on_extract_family_fail_resolved,
+            batch_lane=batch_lane_resolved,
+            wrapper_timeout_sec=args.timeout_sec,
+            llm_timeout_sec=args.llm_timeout_sec,
+        )
         _write_json(summary_path, summary)
 
     if batch_lane_resolved == "extract-first" and len(selected) > 1:
@@ -1474,6 +1918,20 @@ def main() -> int:
     summary["status"] = "ok" if int(summary.get("failed_tasks", 0)) == 0 else "fail"
     summary["finished_at"] = dt.datetime.now().isoformat(timespec="seconds")
     summary["skipped_completed_tasks"] = skipped_completed
+    _refresh_route_contract(
+        summary,
+        root=root,
+        selected=selected,
+        delivery_profile=str(args.delivery_profile),
+        align_apply=align_apply,
+        fill_refs_after_extract_fail=str(args.fill_refs_after_extract_fail),
+        fill_refs_mode=fill_refs_mode_resolved,
+        downstream_on_extract_fail=downstream_on_extract_fail_resolved,
+        downstream_on_extract_family_fail=downstream_on_extract_family_fail_resolved,
+        batch_lane=batch_lane_resolved,
+        wrapper_timeout_sec=args.timeout_sec,
+        llm_timeout_sec=args.llm_timeout_sec,
+    )
     _write_json(summary_path, summary)
     print(
         "SINGLE_TASK_LIGHT_LANE "

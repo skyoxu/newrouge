@@ -19,6 +19,10 @@
 - Latest reuse mode: deterministic-only-reuse
 - Latest artifact integrity: none
 - Latest diagnostics keys: none
+- Dominant cost phase: n/a
+- Step duration totals: none
+- Step duration avg: none
+- Round failure kind counts: none
 - Chapter6 next action: needs-fix-fast
 - Chapter6 can skip 6.7: True
 - Chapter6 can go to 6.8: True

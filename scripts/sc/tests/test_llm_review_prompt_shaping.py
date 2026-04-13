@@ -13,7 +13,7 @@ if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
 from _llm_review_acceptance import build_acceptance_semantic_context  # noqa: E402
-from _llm_review_engine import _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
+from _llm_review_engine import _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
 from _llm_review_prompting import build_task_context  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
@@ -27,16 +27,16 @@ def _triplet() -> TaskmasterTriplet:
             "description": "A" * 1200,
             "details": "B" * 2400,
             "adrRefs": ["ADR-0032"],
-            "archRefs": ["docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"],
+            "archRefs": ["docs/architecture/overlays/PRD-X/08/_index.md"],
         },
         back={
             "taskmaster_id": "56",
             "description": "C" * 900,
             "details": "D" * 1400,
             "acceptance": [
-                "Load must succeed and preserve audit semantics. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs",
+                "Load must succeed and preserve audit semantics. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
             ],
-            "overlay_refs": ["docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"],
+            "overlay_refs": ["docs/architecture/overlays/PRD-X/08/_index.md"],
         },
         gameplay={
             "taskmaster_id": "56",
@@ -45,11 +45,11 @@ def _triplet() -> TaskmasterTriplet:
             "acceptance": [
                 "Godot adapter must route denied writes to audit log. Refs: Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
             ],
-            "overlay_refs": ["docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"],
+            "overlay_refs": ["docs/architecture/overlays/PRD-X/08/_index.md"],
         },
-        tasks_json_path=".taskmaster/tasks/tasks.json",
-        tasks_back_path=".taskmaster/tasks/tasks_back.json",
-        tasks_gameplay_path=".taskmaster/tasks/tasks_gameplay.json",
+        tasks_json_path="examples/taskmaster/tasks.json",
+        tasks_back_path="examples/taskmaster/tasks_back.json",
+        tasks_gameplay_path="examples/taskmaster/tasks_gameplay.json",
         taskdoc_path=None,
     )
 
@@ -74,7 +74,7 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         compact_text, compact_meta = build_acceptance_semantic_context(triplet, profile="compact")
 
         self.assertEqual("compact", compact_meta.get("profile"))
-        self.assertIn("Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs", compact_text)
+        self.assertIn("Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs", compact_text)
         self.assertIn("Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd", compact_text)
         self.assertNotIn("[anchor=ACC:T56.1]", compact_text)
         self.assertLess(len(compact_text), len(full_text))
@@ -90,6 +90,34 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         self.assertEqual("semantic", semantic["task_context_mode"])
         self.assertEqual("semantic", semantic["acceptance_semantic_profile"])
         self.assertEqual("tail", semantic["diff_position"])
+
+    def test_prompt_shape_should_drop_acceptance_semantic_for_low_risk_narrow_reviewers(self) -> None:
+        normal = _prompt_shape_for_agent(
+            "code-reviewer",
+            delivery_profile="fast-ship",
+            resolved_agents=["code-reviewer", "security-auditor"],
+            semantic_gate="warn",
+        )
+
+        self.assertEqual("compact", normal["task_context_mode"])
+        self.assertEqual("none", normal["acceptance_semantic_profile"])
+        self.assertEqual("before_acceptance_semantic", normal["diff_position"])
+
+    def test_prompt_shape_should_drop_acceptance_semantic_for_primary_stage_when_semantic_reviewer_is_deferred(self) -> None:
+        execution_plan = _build_agent_execution_plan(
+            ["code-reviewer", "semantic-equivalence-auditor", "security-auditor"]
+        )
+
+        normal = _prompt_shape_for_agent(
+            "code-reviewer",
+            delivery_profile="fast-ship",
+            resolved_agents=list(execution_plan["primary_llm_agents"]),
+            semantic_gate="warn",
+        )
+
+        self.assertTrue(bool(execution_plan["semantic_deferred"]))
+        self.assertEqual(["code-reviewer", "security-auditor"], execution_plan["primary_llm_agents"])
+        self.assertEqual("none", normal["acceptance_semantic_profile"])
 
     def test_fit_prompt_context_should_fallback_to_summary_diff_before_budget_truncation(self) -> None:
         prompt, meta = _fit_prompt_context(

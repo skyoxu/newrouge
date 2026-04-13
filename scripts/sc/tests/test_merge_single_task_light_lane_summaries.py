@@ -51,8 +51,8 @@ class MergeSingleTaskLightLaneSummariesTests(unittest.TestCase):
                         "failed_tasks": 1,
                         "status": "fail",
                         "results": [
-                            {"task_id": 11, "ok": False, "failed_steps": ["extract"], "first_failed_step": "extract", "steps": [{"step": "extract", "rc": 1}]},
-                            {"task_id": 12, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0}]},
+                            {"task_id": 11, "ok": False, "failed_steps": ["extract"], "first_failed_step": "extract", "steps": [{"step": "extract", "rc": 1, "duration_sec": 9.0}]},
+                            {"task_id": 12, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0, "duration_sec": 3.0}]},
                         ],
                     },
                     ensure_ascii=False,
@@ -73,8 +73,8 @@ class MergeSingleTaskLightLaneSummariesTests(unittest.TestCase):
                         "failed_tasks": 0,
                         "status": "ok",
                         "results": [
-                            {"task_id": 11, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0}]},
-                            {"task_id": 13, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0}]},
+                            {"task_id": 11, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0, "duration_sec": 5.0}]},
+                            {"task_id": 13, "ok": True, "failed_steps": [], "first_failed_step": "", "steps": [{"step": "extract", "rc": 0, "duration_sec": 7.0}]},
                         ],
                     },
                     ensure_ascii=False,
@@ -96,6 +96,17 @@ class MergeSingleTaskLightLaneSummariesTests(unittest.TestCase):
             self.assertEqual("ok", merged["status"])
             self.assertEqual(0, merged["validation"]["hard_issue_count"])
             self.assertEqual([11], merged["validation"]["overlapping_task_ids"])
+            self.assertEqual({"extract": 15.0}, merged["step_duration_totals"])
+            self.assertEqual({"extract": 5.0}, merged["step_duration_avg"])
+            self.assertEqual({"extract": 3}, merged["step_duration_task_counts"])
+            self.assertEqual(
+                [
+                    {"task_id": 13, "duration_sec": 7.0, "first_failed_step": "", "ok": True},
+                    {"task_id": 11, "duration_sec": 5.0, "first_failed_step": "", "ok": True},
+                    {"task_id": 12, "duration_sec": 3.0, "first_failed_step": "", "ok": True},
+                ],
+                merged["slowest_tasks"],
+            )
             self.assertEqual(
                 {
                     "extract": 0,

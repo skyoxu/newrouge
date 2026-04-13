@@ -5,3 +5,4 @@ docs/workflows/acceptance-check-and-llm-review.md|arch-team|2026-12-31|Legacy wo
 docs/workflows/task-semantics-gates-evolution.md|arch-team|2026-12-31|Evolution doc preserves historical command timeline; pending full consolidation.
 docs/acceptance-check-list.md|qa-team|2026-12-31|Checklist keeps legacy examples for compatibility during rollout.
 docs/adr/ADR-0005-quality-gates.md|arch-team|2026-12-31|ADR history references old commands as prior state evidence.
+docs/workflows/template-bootstrap-checklist.md|platform-team|2026-12-31|OpenAI backend bootstrap keeps explicit self-check commands for direct transport readiness validation.
