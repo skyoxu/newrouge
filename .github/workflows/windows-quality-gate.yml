@@ -196,12 +196,11 @@ jobs:
         run: |
           $env:Path = "$HOME\.dotnet;" + $env:Path
           $env:GODOT_DOTNET_CLI = (Get-Command dotnet).Path
+          $repoName = Split-Path -Leaf (Resolve-Path .)
           $preferredTargets = @(
-            "NewRouge.sln",
-            "GodotGame.sln",
+            "$repoName.sln",
             "Game.sln",
-            "NewRouge.csproj",
-            "GodotGame.csproj",
+            "$repoName.csproj",
             "Game.csproj"
           )
           $dotnetTarget = $null

@@ -33,9 +33,11 @@
 7. `docs/testing-framework.md`
 8. `docs/agents/16-directory-responsibilities.md`
 9. `docs/workflows/prototype-lane.md`
-10. `execution-plans/` 最新文件
-11. `decision-logs/` 最新文件
-12. 若已有审查流水线结果，读取 `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
+10. `docs/workflows/prototype-lane-playbook.md`
+11. `docs/workflows/prototype-tdd.md`
+12. `execution-plans/` 最新文件
+13. `decision-logs/` 最新文件
+14. 若已有审查流水线结果，读取 `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
 
 ## 权威来源
 
@@ -76,6 +78,9 @@
   - `py -3 scripts/python/validate_recovery_docs.py --dir all`
 - 门禁聚合:
   - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+- Prototype lane（实验入口）:
+  - `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage <red|green|refactor> --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
+  - 细节与边界规则见：`docs/workflows/prototype-lane.md`、`docs/workflows/prototype-lane-playbook.md`、`docs/workflows/prototype-tdd.md`
 
 ## Recovery Stop-Loss Signals
 

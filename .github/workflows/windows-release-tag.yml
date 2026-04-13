@@ -70,12 +70,11 @@ jobs:
           $env:Path = "$HOME\.dotnet;" + $env:Path
           & "$env:GODOT_BIN" --headless --path . --quit
           & "$env:GODOT_BIN" --headless --path . --build-solutions --verbose --quit
+          $repoName = Split-Path -Leaf (Resolve-Path .)
           $preferredTargets = @(
-            "NewRouge.sln",
-            "GodotGame.sln",
+            "$repoName.sln",
             "Game.sln",
-            "NewRouge.csproj",
-            "GodotGame.csproj",
+            "$repoName.csproj",
             "Game.csproj"
           )
           $dotnetTarget = $null

@@ -155,8 +155,23 @@ function Invoke-Export([string]$mode) {
 }
 
 # Skip --build-solutions when a solution is already present to reduce flakiness in CI
-$sln = Join-Path $ProjectDir 'NewRouge.sln'
-if (Test-Path $sln) {
+function Resolve-SolutionTarget() {
+  $repoName = Split-Path -Leaf $ProjectDir
+  $preferred = @(
+    "$repoName.sln",
+    'Game.sln'
+  )
+  foreach ($name in $preferred) {
+    $candidate = Join-Path $ProjectDir $name
+    if (Test-Path $candidate) { return $candidate }
+  }
+  $firstSln = Get-ChildItem -Path $ProjectDir -Filter *.sln -File -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($firstSln) { return $firstSln.FullName }
+  return $null
+}
+
+$sln = Resolve-SolutionTarget
+if ($sln) {
   Add-Content -Encoding UTF8 -Path $glog -Value "Solution detected at $sln, skipping --build-solutions."
 } else {
   $buildCode = Invoke-BuildSolutions
