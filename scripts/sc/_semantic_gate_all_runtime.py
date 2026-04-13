@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from _util import repo_root
-from _acceptance_semantic_scope import split_acceptance_scope
 
 
 PROMPT_HEADER = """Role: semantic-equivalence-auditor (batch)
@@ -16,7 +15,6 @@ PROMPT_HEADER = """Role: semantic-equivalence-auditor (batch)
 Goal: for each task below, judge whether the acceptance set is semantically equivalent to the task description.
 Scope: stage-2 only. Do NOT re-check deterministic gates (refs existence, anchors, ADR/security/static scans).
 Important: DO NOT infer requirements from any test file names/paths; treat refs as non-semantic metadata.
-Important: Governance-only acceptance items (ADR/checklist/traceability/marker refs) are excluded from semantic equivalence.
 
 Output format (STRICT, no markdown fences):
 For each task, output exactly one TSV line:
@@ -53,6 +51,33 @@ def _truncate(text: str, *, max_chars: int) -> str:
     return s[: max_chars - 3] + "..."
 
 
+def _truncate_keep_ends(text: str, *, max_chars: int) -> str:
+    s = str(text or "")
+    limit = max(80, int(max_chars))
+    if len(s) <= limit:
+        return s
+    marker = "\n...[TRUNCATED_FOR_BUDGET]...\n"
+    if len(marker) >= limit:
+        return s[:limit]
+    tail_keep = min(max(80, limit // 3), max(1, limit - len(marker) - 40))
+    head_keep = max(40, limit - len(marker) - tail_keep)
+    if head_keep + len(marker) + tail_keep > limit:
+        tail_keep = max(1, limit - len(marker) - head_keep)
+    return s[:head_keep] + marker + s[-tail_keep:]
+
+
+def _limit_items_keep_ends(items: list[str], *, max_items: int) -> list[str]:
+    if max_items <= 0 or len(items) <= max_items:
+        return list(items)
+    if max_items == 1:
+        return [items[-1]]
+    head_count = max(1, max_items // 2)
+    tail_count = max(1, max_items - head_count)
+    if head_count + tail_count > max_items:
+        tail_count = max(1, max_items - head_count)
+    return list(items[:head_count]) + list(items[-tail_count:])
+
+
 def _view_items_as_list(view_obj: Any) -> list[dict[str, Any]]:
     if isinstance(view_obj, list):
         return [x for x in view_obj if isinstance(x, dict)]
@@ -63,9 +88,20 @@ def _view_items_as_list(view_obj: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _taskmaster_file(root: Path, name: str) -> Path:
+    candidates = [
+        root / ".taskmaster" / "tasks" / name,
+        root / "examples" / "taskmaster" / name,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 def load_task_maps() -> tuple[list[int], dict[int, dict[str, Any]], dict[int, dict[str, Any]], dict[int, dict[str, Any]]]:
     root = repo_root()
-    tasks_json = _read_json(root / ".taskmaster" / "tasks" / "tasks.json")
+    tasks_json = _read_json(_taskmaster_file(root, "tasks.json"))
     tasks = (tasks_json.get("master") or {}).get("tasks") or []
     master_by_id: dict[int, dict[str, Any]] = {}
     ids: list[int] = []
@@ -92,8 +128,8 @@ def load_task_maps() -> tuple[list[int], dict[int, dict[str, Any]], dict[int, di
             out[tid] = item
         return out
 
-    back_by_id = _load_view_map(root / ".taskmaster" / "tasks" / "tasks_back.json")
-    gameplay_by_id = _load_view_map(root / ".taskmaster" / "tasks" / "tasks_gameplay.json")
+    back_by_id = _load_view_map(_taskmaster_file(root, "tasks_back.json"))
+    gameplay_by_id = _load_view_map(_taskmaster_file(root, "tasks_gameplay.json"))
     return sorted(set(ids)), master_by_id, back_by_id, gameplay_by_id
 
 
@@ -120,16 +156,13 @@ def _task_brief(
                 out.append(s)
         return out
 
-    def _acc(entry: dict[str, Any]) -> tuple[list[str], list[str]]:
+    def _acc(entry: dict[str, Any]) -> list[str]:
         raw = entry.get("acceptance") or []
         if not isinstance(raw, list):
-            return ([], [])
-        semantic_raw, governance_raw = split_acceptance_scope(raw)
-        semantic_items = [_strip_refs_clause(x) for x in semantic_raw]
-        governance_items = [_strip_refs_clause(x) for x in governance_raw]
-        semantic = [s for s in semantic_items if s][:max_acceptance_items]
-        governance = [s for s in governance_items if s][:max_acceptance_items]
-        return semantic, governance
+            return []
+        items = [_strip_refs_clause(x) for x in raw]
+        filtered = [s for s in items if s]
+        return _limit_items_keep_ends(filtered, max_items=max_acceptance_items)
 
     lines = [
         f"### Task {task_id}: {str(master.get('title') or '').strip()}",
@@ -147,19 +180,17 @@ def _task_brief(
         lines.append(f"- contractRefs: {', '.join(contract_refs[:20])}{' ...' if len(contract_refs) > 20 else ''}")
     if labels:
         lines.append(f"- labels: {', '.join(labels[:20])}{' ...' if len(labels) > 20 else ''}")
-    back_acc, back_governance = _acc(back)
-    gameplay_acc, gameplay_governance = _acc(gameplay)
-    if back_acc:
-        lines.append("- acceptance (view=back):")
-        lines.extend([f"  - {a}" for a in back_acc])
-    if back_governance:
-        lines.append(f"- governance_acceptance_ignored (view=back): {len(back_governance)}")
-    if gameplay_acc:
-        lines.append("- acceptance (view=gameplay):")
-        lines.extend([f"  - {a}" for a in gameplay_acc])
-    if gameplay_governance:
-        lines.append(f"- governance_acceptance_ignored (view=gameplay): {len(gameplay_governance)}")
-    if not back_acc and not gameplay_acc:
+    back_acc = _acc(back)
+    gameplay_acc = _acc(gameplay)
+    if back_acc or gameplay_acc:
+        lines.append("- acceptance (interleaved by view):")
+        total = max(len(back_acc), len(gameplay_acc))
+        for idx in range(total):
+            if idx < len(back_acc):
+                lines.append(f"  - back:{idx + 1}: {back_acc[idx]}")
+            if idx < len(gameplay_acc):
+                lines.append(f"  - gameplay:{idx + 1}: {gameplay_acc[idx]}")
+    else:
         lines.append("- acceptance: (missing in both views)")
     return "\n".join(lines).strip()
 
@@ -169,15 +200,14 @@ def _build_batch_prompt(
     batch: list[int],
     max_acceptance_items: int,
     max_task_brief_chars: int,
-    delivery_profile_context: str = "",
+    delivery_profile_context: str,
     master_by_id: dict[int, dict[str, Any]],
     back_by_id: dict[int, dict[str, Any]],
     gameplay_by_id: dict[int, dict[str, Any]],
 ) -> str:
     blocks = [PROMPT_HEADER, ""]
-    profile_line = str(delivery_profile_context or "").strip()
-    if profile_line:
-        blocks.extend([profile_line, ""])
+    if str(delivery_profile_context or "").strip():
+        blocks.extend(["Delivery profile context:", str(delivery_profile_context).strip(), ""])
     for tid in batch:
         brief = _task_brief(
             tid,
@@ -186,7 +216,7 @@ def _build_batch_prompt(
             back=back_by_id.get(tid),
             gameplay=gameplay_by_id.get(tid),
         )
-        blocks.append(_truncate(brief, max_chars=max_task_brief_chars))
+        blocks.append(_truncate_keep_ends(brief, max_chars=max_task_brief_chars))
         blocks.append("")
     return "\n".join(blocks).strip() + "\n"
 
@@ -202,9 +232,10 @@ def build_prompt_with_budget(
     gameplay_by_id: dict[int, dict[str, Any]],
 ) -> tuple[str, bool, int]:
     budget = 3200
+    item_limit = max(1, int(max_acceptance_items))
     prompt = _build_batch_prompt(
         batch=batch,
-        max_acceptance_items=max_acceptance_items,
+        max_acceptance_items=item_limit,
         max_task_brief_chars=budget,
         delivery_profile_context=delivery_profile_context,
         master_by_id=master_by_id,
@@ -218,7 +249,7 @@ def build_prompt_with_budget(
     header_len = len(
         _build_batch_prompt(
             batch=[],
-            max_acceptance_items=max_acceptance_items,
+            max_acceptance_items=item_limit,
             max_task_brief_chars=budget,
             delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,
@@ -230,7 +261,7 @@ def build_prompt_with_budget(
     for _ in range(6):
         prompt = _build_batch_prompt(
             batch=batch,
-            max_acceptance_items=max_acceptance_items,
+            max_acceptance_items=item_limit,
             max_task_brief_chars=budget,
             delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,
@@ -239,11 +270,13 @@ def build_prompt_with_budget(
         )
         if len(prompt) <= max_prompt_chars:
             break
+        if item_limit > 4:
+            item_limit = max(4, int(item_limit * 0.75))
         budget = max(120, int(budget * 0.8))
     if len(prompt) > max_prompt_chars:
         prompt = _build_batch_prompt(
             batch=batch,
-            max_acceptance_items=max_acceptance_items,
+            max_acceptance_items=min(item_limit, 4),
             max_task_brief_chars=120,
             delivery_profile_context=delivery_profile_context,
             master_by_id=master_by_id,

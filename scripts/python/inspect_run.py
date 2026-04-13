@@ -28,6 +28,7 @@ from _pipeline_history import collect_recent_failure_summary  # noqa: E402
 from _chapter6_recovery_common import (  # noqa: E402
     compact_recommendation_fields,
     candidate_commands as build_candidate_commands,
+    extract_bottleneck_fields,
     forbidden_commands as build_forbidden_commands,
     recommended_command as build_recommended_command,
 )
@@ -447,6 +448,14 @@ def _extract_latest_summary_signals(
         "reason": reason,
         "run_type": run_type,
         "reuse_mode": str(source.get("reuse_mode") or "").strip(),
+        "failure_kind": str(
+            execution_context_payload.get("failure_kind")
+            or summary_payload.get("failure_kind")
+            or raw_summary_payload.get("failure_kind")
+            or raw_latest_payload.get("failure_kind")
+            or latest_payload.get("failure_kind")
+            or ""
+        ).strip(),
         "artifact_integrity_kind": artifact_integrity_kind,
         "diagnostics_keys": sorted(str(key).strip() for key in diagnostics.keys() if str(key).strip()),
     }
@@ -931,12 +940,15 @@ def inspect_run_artifacts(
             "run_events": _to_posix(root, sidecar_paths.get("run_events")),
         },
     }
+    payload.update(extract_bottleneck_fields(summary))
     payload["chapter6_hints"] = _derive_chapter6_hints(
         failure=failure,
         latest_summary_signals=payload["latest_summary_signals"],
         recent_failure_summary=recent_failure_summary,
         approval=approval,
     )
+    if not str((payload.get("latest_summary_signals") or {}).get("failure_kind") or "").strip():
+        payload["latest_summary_signals"]["failure_kind"] = str(failure.get("code") or "").strip()
     summary_candidate_commands = summary.get("candidate_commands") if isinstance(summary.get("candidate_commands"), dict) else {}
     repair_action, repair_why, repair_command = _repair_guide_recommendation(repair_guide)
     if detected_kind == "local-hard-checks":

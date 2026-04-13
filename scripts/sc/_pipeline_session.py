@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from _failure_taxonomy import derive_producer_failure_kind
 from _pipeline_helpers import has_materialized_pipeline_steps
 
 
 def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_payload: dict[str, Any]) -> None:
-    non_empty_optional_keys = {"recommended_action", "recommended_action_why", "recommended_command"}
     for key in (
         "latest_summary_signals",
         "chapter6_hints",
@@ -24,7 +24,7 @@ def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_p
         if value is None:
             summary.pop(key, None)
             continue
-        if key in non_empty_optional_keys and not str(value).strip():
+        if key in {"recommended_command", "recommended_action_why"} and not str(value).strip():
             summary.pop(key, None)
             continue
         if isinstance(value, dict):
@@ -180,6 +180,11 @@ class PipelineSession:
             marathon_state=self.marathon_state,
             approval_state=approval_state,
         )
+        self.summary["failure_kind"] = derive_producer_failure_kind(
+            summary_payload=self.summary,
+            repair_payload=repair_guide,
+        )
+        self.write_json(self.out_dir / "summary.json", self.summary)
         self.write_json(self.out_dir / "repair-guide.json", repair_guide)
         self.write_text(self.out_dir / "repair-guide.md", self.render_repair_guide_markdown(repair_guide))
         self._append_sidecar_event(
@@ -188,21 +193,22 @@ class PipelineSession:
             path=self.out_dir / "repair-guide.json",
             status="ok",
         )
-        self.write_json(
-            self.out_dir / "execution-context.json",
-            self.build_execution_context(
-                task_id=self.task_id,
-                requested_run_id=self.requested_run_id,
-                run_id=self.run_id,
-                out_dir=self.out_dir,
-                delivery_profile=self.delivery_profile,
-                security_profile=self.security_profile,
-                llm_review_context=self.llm_review_context,
-                summary=self.summary,
-                marathon_state=self.marathon_state,
-                approval_state=approval_state,
-            ),
+        execution_context_payload = self.build_execution_context(
+            task_id=self.task_id,
+            requested_run_id=self.requested_run_id,
+            run_id=self.run_id,
+            out_dir=self.out_dir,
+            delivery_profile=self.delivery_profile,
+            security_profile=self.security_profile,
+            llm_review_context=self.llm_review_context,
+            summary=self.summary,
+            repair_guide=repair_guide,
+            marathon_state=self.marathon_state,
+            approval_state=approval_state,
         )
+        if isinstance(execution_context_payload, dict) and str(self.summary.get("failure_kind") or "").strip():
+            execution_context_payload["failure_kind"] = str(self.summary.get("failure_kind") or "").strip()
+        self.write_json(self.out_dir / "execution-context.json", execution_context_payload)
         self._append_sidecar_event(
             event="sidecar_execution_context_synced",
             sidecar="execution-context.json",
@@ -267,7 +273,8 @@ class PipelineSession:
                         self.write_json(self.out_dir / "summary.json", self.summary)
                         self.write_json(
                             self.out_dir / "execution-context.json",
-                            self.build_execution_context(
+                            {
+                                **self.build_execution_context(
                                 task_id=self.task_id,
                                 requested_run_id=self.requested_run_id,
                                 run_id=self.run_id,
@@ -276,9 +283,12 @@ class PipelineSession:
                                 security_profile=self.security_profile,
                                 llm_review_context=self.llm_review_context,
                                 summary=self.summary,
+                                repair_guide=repair_guide,
                                 marathon_state=self.marathon_state,
                                 approval_state=approval_state,
-                            ),
+                                ),
+                                "failure_kind": str(self.summary.get("failure_kind") or "").strip(),
+                            },
                         )
         return True
 

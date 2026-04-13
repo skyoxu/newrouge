@@ -84,6 +84,19 @@
         "mixed-reuse"
       ]
     },
+    "failure_kind": {
+      "type": "string",
+      "enum": [
+        "schema-invalid",
+        "stale-latest",
+        "artifact-missing",
+        "artifact-incomplete",
+        "aborted",
+        "step-failed",
+        "review-needs-fix",
+        "ok"
+      ]
+    },
     "diagnostics": {
       "type": "object"
     },
@@ -110,6 +123,23 @@
       "items": {
         "type": "string"
       }
+    },
+    "step_duration_totals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "step_duration_avg": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "dominant_cost_phase": {
+      "type": "string"
     },
     "steps": {
       "type": "array",
@@ -157,6 +187,10 @@
             "skipped",
             "planned"
           ]
+        },
+        "duration_sec": {
+          "type": "number",
+          "minimum": 0
         },
         "log": {
           "type": "string"

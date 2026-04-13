@@ -65,6 +65,24 @@
 如果工作仍处于探索阶段、尚未准备进入正式 Taskmaster 跟踪，请先走 prototype lane。
 参考：`docs/workflows/prototype-lane.md`
 
+最短入口：
+
+```powershell
+py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage red --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>
+```
+
+使用 prototype-TDD 而不是正式 `6.3 -> 6.4 -> 6.5 -> 6.6` 的典型场景：
+
+- 你现在要回答的是“这套机制值不值得继续做”，而不是“这个正式任务是否已经达到交付标准”
+- 你还没有准备好写真实 `.taskmaster/tasks/*.json`、acceptance refs、overlay refs
+- 你希望保留 `red -> green -> refactor` 节奏，但暂时不想引入正式 review pipeline sidecars
+
+硬边界：
+
+- prototype 证据不能直接当成正式任务证据
+- prototype 被保留后，仍要回到正式 `6.3 -> 6.4 -> 6.5 -> 6.6` 重新走一遍
+- prototype lane 可以放宽 task/review/acceptance 编排，但不能绕过当前安全边界
+
 ## 2. Phase 0：仓库初始化（Repository Bootstrap）
 
 从模板创建新仓后，先执行这一阶段。
@@ -131,6 +149,21 @@ py -3 scripts/python/dev_cli.py project-health-scan --serve
 - 默认端口范围是 `8765-8799`
 - 同仓存在活跃服务时会复用
 - 选中的 URL 和 PID 会写入 `logs/ci/project-health/server.json`
+
+### 2.5 可选：OpenAI backend bootstrap
+
+只有当仓库明确要试点 `openai-api`，并且你希望把部分 LLM 脚本从 `codex-cli` 切到 API transport 时，才进入这一步。
+
+这里不要在 `workflow.md` 里重复维护底层脚本自检命令，统一按以下文档执行：
+
+- `docs/workflows/template-bootstrap-checklist.md`
+
+最短口径：
+
+- `openai-api` 仍然是显式 opt-in，不是默认 backend
+- 先让 checklist 里的 backend 自检通过，再考虑 test generation 或接 CI
+- `llm_generate_tests_from_acceptance_refs.py` 没有 deterministic `--self-check`，只适合在前面的 backend 自检已经稳定后再做 spot check
+- 如果 checklist 里的自检还没干净，不要把 `openai-api` 接进正式 CI 或日常默认命令
 
 ## 3. Phase 1：任务三联（Task Triplet）初始化
 
@@ -258,6 +291,12 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 
 ### 5.1 单任务轻量 lane
 
+第五章的顶层编排入口分两类：
+
+- 单任务或很小批次：`py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-profile <profile>`
+- 长区间、多任务、需要自动分 shard 与汇总：`py -3 scripts/python/run_single_task_light_lane_batch.py --task-id-start <start> --task-id-end <end> --batch-preset <preset> --delivery-profile <profile>`
+
+
 这一组脚本的目标不是“把所有语义脚本都再跑一遍”，而是用最小必要的包装，快速判断某个任务或一段任务是否值得继续投入语义修复。
 
 建议把 5.1 理解成三层：`核心必用`、`高级可选`、`内部机制`。日常使用时，只记住核心层即可。
@@ -381,11 +420,22 @@ py -3 scripts/python/run_single_task_light_lane.py --task-ids <id> --delivery-pr
 - 调整 extract prompt 或范围
 - 调整 timeout / shard size
 - 用 dashboard 看 `extract_family_recommended_actions`，而不是继续往 5.1 里堆逻辑
+
+何时不要继续加预算，而应直接止损：
+
+- 如果 `extract_fail_bucket_counts.hard_uncovered > 0`，不要先加 `--llm-timeout-sec`；先补 acceptance / refs / obligations，再重跑 `extract`。
+- 如果 `failure_category_counts` 的主导项不是 `timeout`，而是 `model-fail` / `coverage-gap` / `semantic-needs-fix`，默认先修内容，不要把 timeout 当通用解法。
+- 如果 batch summary 已经出现稳定的 `family_hotspots` 或 `quarantine_ranges`，优先切分任务段或只重跑热点 shard，不要整段继续扩预算。
+- 如果 `prompt_trimmed_count = 0` 且 `semantic_gate_budget_hits = []`，说明这轮瓶颈通常不在 semantic gate 预算；不要误把问题归因到 prompt 长度。
+- 只有当失败主因明确是 `extract timeout`，并且没有 `hard_uncovered` / `schema_error` / obligations fail 这类确定性问题时，才值得调大 timeout 或缩 shard size。
 ### 5.2 Batch instability lane
 
 补充口径：
 - 5.2 里每个任务在进入 `extract` 前，同样会先经过 `preflight_acceptance_extract_guard`
 - preflight fail-fast 只是为了节省批量耗时，不替代后续真正的质量判定
+- 读 batch summary 的最短路径：先看 `recommended_next_action` / `recommended_next_action_why`，再看 `extract_family_recommended_actions` / `failure_category_counts`，最后才看 `step_duration_totals` / `step_duration_avg` / `slowest_tasks`。
+- 如果 `recommended_next_action` 已经明确指向“补 acceptance / obligations / task context”或“切热点 shard / quarantine range”，不要先调大 timeout。
+
 
 只有当多个任务都表现出 obligations extraction 不稳定时才使用。
 
@@ -707,13 +757,16 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - reviewer 超时扩时现在会继承最近同任务 / 同 profile 的 agent 级超时历史；继续 timeout 时只定向放大该 reviewer，而不是整体抬高全部 reviewer。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
-  - `fast-ship`：默认 `max_step_retries = 1`，首轮 review 聚焦 `code-reviewer + security-auditor + semantic-equivalence-auditor`。
+  - `fast-ship`：默认 `max_step_retries = 1`。低风险任务的 `minimal / targeted` tier 首轮 review 聚焦 `code-reviewer + security-auditor`；只有升到 `full` 或显式覆写 reviewer 时，才默认带上 `semantic-equivalence-auditor`。
   - `standard`：默认 `max_step_retries = 0`，保留更重的收口姿态，不自动帮你放宽执行节奏。
+- 当最近一轮已经是 `sc-test = ok + sc-acceptance-check = ok + sc-llm-review != clean`，且这轮改动只落在 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`execution-plans/**`、`decision-logs/**`、`workflow*.md`、`scripts/sc/templates/llm_review/**` 这类 reviewer/语义侧文件时，6.7 现在会自动把 reviewer 缩窄到“上一轮真正非 OK 的 agents”；显式传了 `--llm-agents` 时不启用这条自动收窄。
 - 新开 `6.7` 时，默认会继承最近同任务成功解析出来的 `delivery/security profile` 组合；如果你明确要切换 profile，必须显式传 `--reselect-profile`，否则会因 task 级 profile lock 失败。
 - 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
 - `--llm-base` 的默认值现在是 `origin/main`；除非你明确需要对比别的基线，否则不要手工改回 `main`。
 - 只有当最近两轮 6.7 都出现总超时，或大部分 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
 - 不要把大超时当作默认配置；首选仍然是“先按默认预算跑，再对命中过 timeout 的 reviewer 定向补时”。
+- 如果最近一轮已经写出 `diagnostics.llm_retry_stop_loss`、`diagnostics.sc_test_retry_stop_loss`，或 `Chapter6 blocked by` 明确要求止损，不要试图靠加预算绕过 stop-loss；先修 deterministic 根因，或切到 6.8 / residual。
+- 如果失败主因是 `artifact_integrity`、`planned_only_incomplete`、重复 deterministic failure family、repo noise、锁进程，这些都不是“再加 300 秒”能解决的问题；直接止损，先处理根因。
 - 如果首轮 6.7 在 `sc-test` 阶段就出现 `rc=124`，且此前没有稳定的 task-scoped 成功样本，不要连续多次 `--resume` 硬撞；先看 `run-events.jsonl`、`child-artifacts/sc-test/summary.json`、`sc-test.log`，修完根因再继续。
 - 如果同一个 run 已经连续两次在 `sc-test` 失败，默认视为“当前 run 无继续价值”；优先修问题后重新开新 run，而不是在同一个 run 上反复 resume。
 - 如果当前同一轮 `sc-test` 已经明确是 `unit` 失败，pipeline 现在会直接停掉同 run 的第二次同参重试；这类失败默认视为“已知根因”，先修 unit 再开新 run，不要指望同参数重试自愈。
@@ -825,6 +878,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
   - `playable-ea`：`agents=code-reviewer,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=1`，`time_budget_min=20`。
   - `fast-ship`：`agents=code-reviewer,security-auditor,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=2`，`time_budget_min=30`。
   - `standard`：`agents=all`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
+- 注意区分 6.7 和 6.8：上面的 `fast-ship` 三 reviewer 是 `llm_review_needs_fix_fast.py` 的默认闭环集合；而 6.7 `run_review_pipeline.py` 在低风险 `minimal / targeted` tier 下会先收窄为 `code-reviewer + security-auditor`，只有升级到 `full` 或你显式传 reviewer 时，才会默认补 `semantic-equivalence-auditor`。
 - 快速清理脚本会把 `--delivery-profile` 继续透传给内部 `run_review_pipeline.py`，避免第 6.8 里外 profile 漂移。
 - 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
@@ -874,7 +928,18 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --step-timeout-sec 900 --min-llm-budget-min 8
 ```
 
+- 读 6.8 summary 的最短路径：先看 `reason` / `route_preflight.preferred_lane`，再看 `final_needs_fix_agents` / `final_unknown_agents` / `round_failure_kind_counts`，最后才看 `dominant_cost_phase` / `step_duration_totals` / `step_duration_avg`。
+- 如果 `round_failure_kind_counts` 的主导项不是 timeout，而是 `timeout-no-summary` 之外的内容型失败，默认先修 reviewer 命中的问题，不要先调预算。
+- 如果 `dominant_cost_phase` 不是 `pipeline-llm-round`，说明时间主要不耗在 reviewer round，本轮优先排查 deterministic 或路由侧问题。
+何时不要继续加预算，而应直接止损：
+
+- 如果上一轮 `final_needs_fix_agents = []` 且 `final_unknown_agents` 仍然主导，尤其是 `failure_kind = timeout-no-summary`，优先把它当观测不足；先看 sidecar，再决定是否换 lane，不要重复同参重跑。
+- 如果本轮改动没有命中上一轮 reviewer anchors，或 `chapter6-route --recommendation-only` 已给出 `record-residual` / `inspect-first`，不要靠加 `--step-timeout-sec` 继续硬跑 6.8。
+- 如果最近一轮已经是 clean pipeline，而当前只是 docs-only / 非任务语义变更，6.8 应直接复用 clean 结果；这时继续加预算属于重复付费。
+- 只有当 `timeout_agents` 稳定集中在少数 reviewer，且 deterministic 已 clean、这一轮又确实命中了对应 reviewer 的锚点修复时，才值得做定向扩时。
+
 - 如果这是最后一次收口，直接执行：
+
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile standard --final-pass
@@ -1060,7 +1125,7 @@ Inspect these first after a failure:
 - `repair-guide.md`
 - `run-events.jsonl`
 - `sc-test.log`
-- `child-artifacts/sc-acceptance-check/summary.json`
+- 读 6.7 summary 的最短路径：先看 `reason` / `diagnostics.rerun_guard` / `diagnostics.rerun_forbidden`，再看 `dominant_cost_phase` / `step_duration_totals`，最后再决定是否需要加 reviewer 或 step timeout。
 
 ## 7. Profile 快速指引
 
