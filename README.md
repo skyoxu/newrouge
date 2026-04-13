@@ -18,6 +18,8 @@
 - Stable public entrypoints: `docs/workflows/stable-public-entrypoints.md`
 - Script entrypoints index: `docs/workflows/script-entrypoints-index.md`
 - Prototype lane: `docs/workflows/prototype-lane.md`
+- Prototype lane playbook: `docs/workflows/prototype-lane-playbook.md`
+- Prototype TDD guide: `docs/workflows/prototype-tdd.md`
 
 ## Quick Start (Windows)
 
@@ -89,6 +91,9 @@ Recovery stop-loss rules:
 - Task review pipeline:
   - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "<godot-bin>"`
   - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "$env:GODOT_BIN"`
+- Prototype lane:
+  - `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage red --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
+  - `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --create-record-only --hypothesis "<what are you proving>"`
 
 ## Engineering Rules
 

@@ -13,9 +13,11 @@ This file is the top-level navigation for project docs.
 7. `docs/testing-framework.md`
 8. `docs/agents/16-directory-responsibilities.md`
 9. `docs/workflows/prototype-lane.md`
-10. Newest file in `execution-plans/`
-11. Newest file in `decision-logs/`
-12. If available: `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
+10. `docs/workflows/prototype-lane-playbook.md`
+11. `docs/workflows/prototype-tdd.md`
+12. Newest file in `execution-plans/`
+13. Newest file in `decision-logs/`
+14. If available: `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
 
 ## Authoritative Sources
 
@@ -37,6 +39,10 @@ This file is the top-level navigation for project docs.
 - Local hard checks: `docs/workflows/local-hard-checks.md`
 - Stable entrypoint index: `docs/workflows/stable-public-entrypoints.md`
 - Script entrypoint index: `docs/workflows/script-entrypoints-index.md`
+- Prototype lane overview: `docs/workflows/prototype-lane.md`
+- Prototype lane playbook: `docs/workflows/prototype-lane-playbook.md`
+- Prototype TDD details: `docs/workflows/prototype-tdd.md`
+- Prototype lane entrypoint: `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage <red|green|refactor> --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
 
 ## Recovery And Stop-Loss
 

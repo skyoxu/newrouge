@@ -4,6 +4,12 @@ Purpose: separate **exploration work** from **formal delivery work**.
 
 Prototype lane is **not** another `DELIVERY_PROFILE`. Delivery profiles control how strict a formal task run should be. Prototype lane controls whether the work should enter the formal task/review/acceptance pipeline at all.
 
+## Companion Docs and Entrypoint
+- Overview: `docs/workflows/prototype-lane.md`
+- Playbook: `docs/workflows/prototype-lane-playbook.md`
+- Prototype TDD guide: `docs/workflows/prototype-tdd.md`
+- Canonical command: `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage <red|green|refactor> --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
+
 ## What Prototype Lane Is For
 Use prototype lane when the question is still:
 - Is this mechanic worth building?
@@ -67,6 +73,13 @@ Promotion should add or update:
 
 ## Recommended Operator Flow
 1. Create the prototype with a written hypothesis.
-2. Run only the minimum checks needed to keep the repo safe.
-3. Decide `discard`, `archive`, or `promote` quickly.
-4. If promoted, rewrite or relocate the result into the formal task pipeline instead of treating the prototype artifact as done.
+2. Start from a record or red stage with `run-prototype-tdd`.
+3. Run only the minimum checks needed to keep the repo safe.
+4. Use prototype evidence to decide `discard`, `archive`, or `promote` quickly.
+5. If promoted, rewrite or relocate the result into the formal task pipeline instead of treating the prototype artifact as done.
+
+Minimal command examples:
+- `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --create-record-only --hypothesis "<what are you proving>"`
+- `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage red --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
+- `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage green --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
+- `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage refactor --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
