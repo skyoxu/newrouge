@@ -665,11 +665,8 @@
       "Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
     ],
     "acceptance": [
-      "当状态服务对目标执行 apply 时：若目标不存在该状态则新增，若已存在则按既定叠加规则更新（例如持续时间 +N）；持续时间仅在 owner_end_of_turn_cleanup 触发时衰减；执行 dispel 时仅移除 Debuff，若目标仅有 Buff 则状态结果保持不变。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
-      "提供可失败的 xUnit 单元测试断言，覆盖叠加规则、持续时间仅在 owner_end_of_turn_cleanup 的衰减触发时机、以及驱散边界（Debuff 被移除且 Buff 不被移除）。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
-      "Overlay 的 Test-Refs 必须包含并指向本任务相关测试文件，并可从文档追溯到任务 10 的对应测试实现。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
-      "Task 10 implementation and tests must explicitly trace to ADR-0021 and ADR-0029 (via refs fields, test annotations, or checklist mapping); missing either ADR reference fails acceptance. Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
-      "Overlay acceptance entries for Task 10 must include ADR-0021 and ADR-0029 and resolve to concrete test artifacts; unresolved linkage fails acceptance. Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
+      "当状态服务对目标执行 apply 时：若目标不存在该状态则新增并保留传入状态语义（StatusId/Type/Duration）；若已存在则按既定叠加规则更新（例如持续时间 +N）。持续时间仅在 owner_end_of_turn_cleanup 触发时衰减；执行 dispel 时仅移除 Debuff，Buff 与 RuleModifier 保持不变。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs",
+      "当状态在 owner_end_of_turn_cleanup 衰减后持续时间降至 0 时，必须从目标状态集中移除；非该时机不得提前移除。测试需覆盖可失败的 xUnit 行为断言，包含 add-vs-stack、decay/expiry removal、以及 dispel 边界。 Refs: Game.Core.Tests/Tasks/Task0010AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for stacking, duration decay, and dispel boundaries. Refs: ADR-0029."
