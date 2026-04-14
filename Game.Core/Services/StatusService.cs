@@ -6,8 +6,18 @@ namespace Game.Core.Services;
 /// <summary>
 /// Default status lifecycle service.
 /// </summary>
+/// <remarks>
+/// ADR refs: ADR-0033, ADR-0021.
+/// </remarks>
 public sealed class StatusService : IStatusService
 {
+    private static readonly HashSet<string> RageAllowedSources = new(StringComparer.Ordinal)
+    {
+        "card.warrior.rage_surge",
+        "card.warrior.bloodrush",
+        "card.warrior.battlecry",
+    };
+
     public StatusInstance Apply(StatusInstance current, StatusInstance incoming)
     {
         if (incoming.Stacks <= 0 && incoming.DurationTurns <= 0)
@@ -73,5 +83,45 @@ public sealed class StatusService : IStatusService
         {
             targetStatuses[status.StatusId] = status;
         }
+    }
+
+    public bool TryApplyRage(IDictionary<string, StatusInstance> targetStatuses, int stacks, string sourceId)
+    {
+        ArgumentNullException.ThrowIfNull(targetStatuses);
+
+        if (stacks <= 0 || !RageAllowedSources.Contains(sourceId))
+        {
+            return false;
+        }
+
+        ApplyToTarget(
+            targetStatuses,
+            new StatusInstance(
+                StableId: "stable.status.rage",
+                StatusId: StatusOperations.RageStatusId,
+                StatusType: StatusType.Buff,
+                Stacks: stacks,
+                DurationTurns: 0,
+                SourceId: sourceId,
+                ExpiresTiming: ExpiresTiming.Never,
+                Strength: 0));
+        return true;
+    }
+
+    public int GetRageStacks(IReadOnlyDictionary<string, StatusInstance> targetStatuses)
+    {
+        ArgumentNullException.ThrowIfNull(targetStatuses);
+        if (!targetStatuses.TryGetValue(StatusOperations.RageStatusId, out var rage))
+        {
+            return 0;
+        }
+
+        return Math.Max(0, rage.Stacks);
+    }
+
+    public void ResetCombatOnlyStatuses(IDictionary<string, StatusInstance> targetStatuses)
+    {
+        ArgumentNullException.ThrowIfNull(targetStatuses);
+        targetStatuses.Remove(StatusOperations.RageStatusId);
     }
 }
