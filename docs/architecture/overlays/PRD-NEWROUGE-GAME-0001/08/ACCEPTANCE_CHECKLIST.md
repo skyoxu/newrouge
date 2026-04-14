@@ -152,3 +152,14 @@ Test-Refs:
 - This block is governance traceability evidence only and is not a Task 9 RNG behavior acceptance condition.
 - ADR-0032 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0032-backlink.json
 - ADR-0021 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0021-backlink.json
+
+
+## Task26 Difficulty Contract And Immutability Evidence
+- Task 26 / T26 traceability scope: difficulty configuration contract and run-start immutability.
+- ADR-Refs: `ADR-0023`, `ADR-0032`, `ADR-0021`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0026_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs`
+- Checklist:
+  - run metadata persists `difficulty_id`, `label_key`, `description_key`, `ruleset_id` from selected difficulty snapshot
+  - post-start mutation requests are rejected or leave stored values unchanged
