@@ -12,5 +12,9 @@ namespace Game.Core.Contracts.Interfaces;
 public interface IStatusService
 {
     StatusInstance Apply(StatusInstance current, StatusInstance incoming);
+    void ApplyToTarget(IDictionary<string, StatusInstance> targetStatuses, StatusInstance incoming);
     StatusInstance Tick(StatusInstance current, ExpiresTiming timing);
+    void ProcessTurnPhase(IDictionary<string, StatusInstance> targetStatuses, ExpiresTiming timing);
+    IReadOnlyList<StatusInstance> Dispel(IEnumerable<StatusInstance> statuses);
+    void DispelDebuffs(IDictionary<string, StatusInstance> targetStatuses);
 }

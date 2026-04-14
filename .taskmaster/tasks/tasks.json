@@ -322,8 +322,8 @@
         "id": 10,
         "title": "Implement status application, stacking, and decay",
         "description": "Create status operations: apply, stack, decay, and dispel boundaries.",
-        "details": "Implement StatusService core operations: apply status, stack rules (e.g., duration + N), decay timing at owner_end_of_turn_cleanup, and dispel only Debuffs. Refs: ADR-0021, ADR-0029.\n",
-        "testStrategy": "xUnit tests for stacking, duration decay, and dispel boundaries. Refs: ADR-0029.\n",
+        "details": "Implement StatusService core operations: apply status (add when missing and stack when existing), stack rules (e.g., duration + N), decay timing at owner_end_of_turn_cleanup, and dispel only Debuffs. When decay consumes duration to 0, the status must be removed from target state. Refs: ADR-0021, ADR-0029.\n",
+        "testStrategy": "xUnit tests must cover add-vs-stack apply behavior, duration decay timing and expiry-removal at owner_end_of_turn_cleanup, plus dispel boundaries (remove Debuff, keep Buff/RuleModifier). Refs: ADR-0029.\n",
         "priority": "medium",
         "dependencies": [
           "5"

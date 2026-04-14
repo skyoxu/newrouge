@@ -19,7 +19,7 @@ public static class StatusOperations
             return false;
         }
 
-        return true;
+        return status.StatusType == StatusType.Debuff;
     }
 
     public static IReadOnlyList<StatusInstance> SortByStableId(IEnumerable<StatusInstance> statuses)

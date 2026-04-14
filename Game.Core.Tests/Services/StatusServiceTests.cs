@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using FluentAssertions;
 using Game.Core.Contracts.Status;
 using Game.Core.Services;
@@ -65,12 +67,66 @@ public sealed class StatusServiceTests
         result.DurationTurns.Should().Be(3);
     }
 
+    [Fact]
+    public void ShouldAddThenStack_WhenApplyToTargetIsCalledWithSameStatusId()
+    {
+        var service = new StatusService();
+        var statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal);
+
+        service.ApplyToTarget(statuses, CreateStatus(stacks: 1, durationTurns: 3, timing: ExpiresTiming.OwnerEndOfTurnCleanup));
+        service.ApplyToTarget(statuses, CreateStatus(stacks: 2, durationTurns: 2, timing: ExpiresTiming.OwnerEndOfTurnCleanup));
+
+        statuses.Should().ContainKey("status.poison");
+        statuses["status.poison"].Stacks.Should().Be(3);
+        statuses["status.poison"].DurationTurns.Should().Be(5);
+    }
+
+    [Fact]
+    public void ShouldRemoveExpiredStatus_WhenProcessTurnPhaseConsumesLastTurn()
+    {
+        var service = new StatusService();
+        var statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal)
+        {
+            ["status.poison"] = CreateStatus(stacks: 1, durationTurns: 1, timing: ExpiresTiming.OwnerEndOfTurnCleanup),
+        };
+
+        service.ProcessTurnPhase(statuses, ExpiresTiming.OwnerEndOfTurnCleanup);
+
+        statuses.Should().NotContainKey("status.poison");
+    }
+
+    [Fact]
+    public void ShouldDispelOnlyDebuffs_WhenDispelDebuffsIsCalled()
+    {
+        var service = new StatusService();
+        var statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal)
+        {
+            ["status.poison"] = CreateStatus(stacks: 1, durationTurns: 2, timing: ExpiresTiming.OwnerEndOfTurnCleanup),
+            ["status.shield"] = CreateStatus("status.shield", StatusType.Buff, stacks: 1, durationTurns: 4, timing: ExpiresTiming.OwnerEndOfTurnCleanup),
+        };
+
+        service.DispelDebuffs(statuses);
+
+        statuses.Should().NotContainKey("status.poison");
+        statuses.Should().ContainKey("status.shield");
+    }
+
     private static StatusInstance CreateStatus(int stacks, int durationTurns, ExpiresTiming timing)
+    {
+        return CreateStatus("status.poison", StatusType.Debuff, stacks, durationTurns, timing);
+    }
+
+    private static StatusInstance CreateStatus(
+        string statusId,
+        StatusType statusType,
+        int stacks,
+        int durationTurns,
+        ExpiresTiming timing)
     {
         return new StatusInstance(
             StableId: "combatant-1",
-            StatusId: "status.poison",
-            StatusType: StatusType.Debuff,
+            StatusId: statusId,
+            StatusType: statusType,
             Stacks: stacks,
             DurationTurns: durationTurns,
             SourceId: "source-1",
