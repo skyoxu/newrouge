@@ -128,7 +128,8 @@ public sealed record PlayCardPipelineInput(
     bool IsFixedDamage,
     string CombatantId,
     string StableId,
-    PlayCardPipelineStep? FailAtStep = null);
+    PlayCardPipelineStep? FailAtStep = null,
+    int RageStacks = 0);
 
 /// <summary>
 /// Snapshot state for pipeline before/after comparison.
@@ -226,7 +227,8 @@ public sealed class PlayCardResolutionPipeline
         int strength,
         double weakMultiplier,
         double vulnerableMultiplier,
-        bool isFixedDamage)
+        bool isFixedDamage,
+        int rageStacks = 0)
     {
         var normalizedBase = Math.Max(0, baseDamage);
         if (isFixedDamage)
@@ -234,7 +236,8 @@ public sealed class PlayCardResolutionPipeline
             return normalizedBase;
         }
 
-        var mutable = Math.Max(0, normalizedBase + strength);
+        var rageBonus = Math.Max(0, rageStacks);
+        var mutable = Math.Max(0, normalizedBase + strength + rageBonus);
         var weak = Math.Max(0.0, weakMultiplier);
         var vulnerable = Math.Max(0.0, vulnerableMultiplier);
         var product = mutable * weak * vulnerable;
@@ -322,7 +325,8 @@ public sealed class PlayCardResolutionPipeline
                         strength: input.Strength,
                         weakMultiplier: input.WeakMultiplier,
                         vulnerableMultiplier: input.VulnerableMultiplier,
-                        isFixedDamage: input.IsFixedDamage);
+                        isFixedDamage: input.IsFixedDamage,
+                        rageStacks: input.RageStacks);
                     resolvedEffects = 1;
                     break;
 

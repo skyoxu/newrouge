@@ -6,6 +6,7 @@ namespace Game.Core.Contracts.Status;
 public static class StatusOperations
 {
     public const string StrengthStatusId = "status.strength";
+    public const string RageStatusId = "status.rage";
 
     public static bool CanDispel(StatusInstance status)
     {
@@ -20,6 +21,11 @@ public static class StatusOperations
         }
 
         return status.StatusType == StatusType.Debuff;
+    }
+
+    public static bool IsRage(StatusInstance status)
+    {
+        return string.Equals(status.StatusId, RageStatusId, StringComparison.Ordinal);
     }
 
     public static IReadOnlyList<StatusInstance> SortByStableId(IEnumerable<StatusInstance> statuses)
