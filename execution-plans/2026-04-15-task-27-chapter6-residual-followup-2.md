@@ -8,7 +8,7 @@
 - Scope: One P2 only (security-auditor) on acceptance evidence strength.
 - Current step: Residual recorded after full pipeline run proved deterministic green and no P0/P1 findings.
 - Last completed step: Full 6.7 fork run completed (`eb613b53b8cb4677906a03678e95e127`) with reviewer residual only.
-- Stop-loss: 
+- Stop-loss: Keep chapter6 stop-loss active; no same-shape rerun without new anchor-hit evidence.
   - Do not reopen full 6.7 while `forbidden_commands` blocks rerun and no new anchor-hit change exists.
   - Do not repeat 6.8 when `chapter6-route` keeps `preferred_lane=inspect-first` / `six_eight_worthwhile=no`.
 - Next action: When explicitly choosing to burn P2 closure cost, update Task0027 acceptance tests to read real acceptance summary artifacts and rerun reviewer closure.
