@@ -72,6 +72,7 @@ public sealed class SaveService : ISaveService
     public async Task WriteAutosaveAsync(AutosaveSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        await ValidateDifficultySnapshotSemanticsAsync(snapshot).ConfigureAwait(false);
 
         var envelope = BuildEnvelope(snapshot);
         var serializedEnvelope = JsonSerializer.Serialize(envelope, _serializerOptions);
@@ -87,6 +88,50 @@ public sealed class SaveService : ISaveService
         }
 
         await PublishSaveWriteSucceededAsync(envelope).ConfigureAwait(false);
+    }
+
+    private async Task ValidateDifficultySnapshotSemanticsAsync(AutosaveSnapshot snapshot)
+    {
+        var payloadContainsDifficulty = ContainsAnyDifficultySnapshotField(snapshot.StateJson);
+        if (!payloadContainsDifficulty)
+        {
+            return;
+        }
+
+        if (!TryReadCompleteDifficultySnapshot(snapshot.StateJson, out var requestedSnapshot))
+        {
+            throw CreateDifficultyValidationException(
+                reasonCode: "difficulty_snapshot_incomplete",
+                action: "validate_difficulty_snapshot_fields",
+                snapshot: snapshot,
+                existingSnapshot: null,
+                requestedSnapshot: null,
+                message: "Difficulty snapshot must provide difficulty_id, label_key, description_key, and ruleset_id.");
+        }
+
+        var existingEnvelope = await ReadEnvelopeAsync(publishLoadedEvent: false).ConfigureAwait(false);
+        if (existingEnvelope is null || !string.Equals(existingEnvelope.RunId, snapshot.RunId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!TryReadCompleteDifficultySnapshot(existingEnvelope.StateJson, out var existingSnapshot))
+        {
+            return;
+        }
+
+        if (existingSnapshot == requestedSnapshot)
+        {
+            return;
+        }
+
+        throw CreateDifficultyValidationException(
+            reasonCode: "difficulty_immutable",
+            action: "validate_difficulty_snapshot_immutable",
+            snapshot: snapshot,
+            existingSnapshot: existingSnapshot,
+            requestedSnapshot: requestedSnapshot,
+            message: "Run difficulty snapshot is immutable after run start.");
     }
 
     public async Task<AutosaveSnapshot?> ReadAutosaveAsync()
@@ -105,11 +150,17 @@ public sealed class SaveService : ISaveService
     public async Task<ContinueMetadata?> ReadContinueMetadataAsync()
     {
         var envelope = await ReadEnvelopeAsync(publishLoadedEvent: false).ConfigureAwait(false);
+        var difficultySnapshot = envelope is null
+            ? DifficultySnapshot.Default
+            : ResolveDifficultySnapshot(envelope.StateJson);
         return envelope is null
             ? null
             : new ContinueMetadata(
                 RunId: envelope.RunId,
-                DifficultyId: 0,
+                DifficultyId: difficultySnapshot.DifficultyId,
+                LabelKey: difficultySnapshot.LabelKey,
+                DescriptionKey: difficultySnapshot.DescriptionKey,
+                RulesetId: difficultySnapshot.RulesetId,
                 Act: 0,
                 NodeId: envelope.SavePointId,
                 IntegrityHash: envelope.IntegrityHash,
@@ -279,6 +330,156 @@ public sealed class SaveService : ISaveService
             StateJson: snapshot.StateJson,
             OfferLocks: offerLocks,
             IntegrityHash: ComputeHash(snapshot.StateJson));
+    }
+
+    private static DifficultySnapshot ResolveDifficultySnapshot(string stateJson)
+    {
+        return TryReadCompleteDifficultySnapshot(stateJson, out var snapshot)
+            ? snapshot
+            : DifficultySnapshot.Default;
+    }
+
+    private static bool ContainsAnyDifficultySnapshotField(string stateJson)
+    {
+        if (string.IsNullOrWhiteSpace(stateJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(stateJson);
+            var source = ResolveDifficultySnapshotSource(document.RootElement);
+
+            return source.TryGetProperty("difficulty_id", out _)
+                || source.TryGetProperty("label_key", out _)
+                || source.TryGetProperty("description_key", out _)
+                || source.TryGetProperty("ruleset_id", out _);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryReadCompleteDifficultySnapshot(string stateJson, out DifficultySnapshot snapshot)
+    {
+        snapshot = DifficultySnapshot.Default;
+        if (string.IsNullOrWhiteSpace(stateJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(stateJson);
+            var source = ResolveDifficultySnapshotSource(document.RootElement);
+
+            if (!TryReadIntValue(source, "difficulty_id", out var difficultyId))
+            {
+                return false;
+            }
+
+            if (!TryReadStringValue(source, "label_key", out var labelKey)
+                || !TryReadStringValue(source, "description_key", out var descriptionKey)
+                || !TryReadStringValue(source, "ruleset_id", out var rulesetId))
+            {
+                return false;
+            }
+
+            if (difficultyId < 1 || difficultyId > 10)
+            {
+                return false;
+            }
+
+            snapshot = new DifficultySnapshot(difficultyId, labelKey, descriptionKey, rulesetId);
+            return true;
+        }
+        catch (JsonException)
+        {
+            snapshot = DifficultySnapshot.Default;
+            return false;
+        }
+    }
+
+    private static JsonElement ResolveDifficultySnapshotSource(JsonElement root)
+    {
+        if (root.TryGetProperty("difficulty", out var difficultyNode) && difficultyNode.ValueKind == JsonValueKind.Object)
+        {
+            return difficultyNode;
+        }
+
+        return root;
+    }
+
+    private static bool TryReadIntValue(JsonElement source, string propertyName, out int value)
+    {
+        value = default;
+        if (!source.TryGetProperty(propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.Number => property.TryGetInt32(out value),
+            JsonValueKind.String => int.TryParse(property.GetString(), out value),
+            _ => false,
+        };
+    }
+
+    private static bool TryReadStringValue(JsonElement source, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!source.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var candidate = property.GetString();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        value = candidate;
+        return true;
+    }
+
+    private InvalidOperationException CreateDifficultyValidationException(
+        string reasonCode,
+        string action,
+        AutosaveSnapshot snapshot,
+        DifficultySnapshot? existingSnapshot,
+        DifficultySnapshot? requestedSnapshot,
+        string message)
+    {
+        var exception = new InvalidOperationException(
+            $"{message} reason_code={reasonCode} run_id={snapshot.RunId} save_point_id={snapshot.SavePointId}");
+        exception.Data["reason"] = reasonCode;
+        exception.Data["action"] = action;
+        exception.Data["target"] = _userSavePath;
+        exception.Data["caller"] = nameof(SaveService);
+        exception.Data["run_id"] = snapshot.RunId;
+        exception.Data["schema_version"] = snapshot.SchemaVersion;
+        exception.Data["save_point_id"] = snapshot.SavePointId;
+        if (existingSnapshot is not null)
+        {
+            exception.Data["existing_difficulty_id"] = existingSnapshot.DifficultyId;
+            exception.Data["existing_label_key"] = existingSnapshot.LabelKey;
+            exception.Data["existing_description_key"] = existingSnapshot.DescriptionKey;
+            exception.Data["existing_ruleset_id"] = existingSnapshot.RulesetId;
+        }
+
+        if (requestedSnapshot is not null)
+        {
+            exception.Data["requested_difficulty_id"] = requestedSnapshot.DifficultyId;
+            exception.Data["requested_label_key"] = requestedSnapshot.LabelKey;
+            exception.Data["requested_description_key"] = requestedSnapshot.DescriptionKey;
+            exception.Data["requested_ruleset_id"] = requestedSnapshot.RulesetId;
+        }
+
+        return exception;
     }
 
     private static bool IsEnvelopeUsable(SaveEnvelope? envelope)
@@ -485,4 +686,17 @@ public sealed class SaveService : ISaveService
         [property: JsonPropertyName("state_json")] string StateJson,
         [property: JsonPropertyName("offer_locks")] string[] OfferLocks,
         [property: JsonPropertyName("integrity_hash")] string IntegrityHash);
+
+    private sealed record DifficultySnapshot(
+        int DifficultyId,
+        string LabelKey,
+        string DescriptionKey,
+        string RulesetId)
+    {
+        public static DifficultySnapshot Default { get; } = new(
+            DifficultyId: 1,
+            LabelKey: "difficulty.label.default",
+            DescriptionKey: "difficulty.description.default",
+            RulesetId: "ruleset.default");
+    }
 }

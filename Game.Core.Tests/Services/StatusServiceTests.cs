@@ -111,6 +111,55 @@ public sealed class StatusServiceTests
         statuses.Should().ContainKey("status.shield");
     }
 
+    [Fact]
+    public void ShouldApplyAndStackRageOnlyForAllowedSources_WhenTryApplyRageIsCalled()
+    {
+        var service = new StatusService();
+        var statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal);
+
+        var applied = service.TryApplyRage(statuses, stacks: 2, sourceId: "card.warrior.rage_surge");
+        var blocked = service.TryApplyRage(statuses, stacks: 2, sourceId: "card.unknown");
+        var stacked = service.TryApplyRage(statuses, stacks: 1, sourceId: "card.warrior.battlecry");
+
+        applied.Should().BeTrue();
+        blocked.Should().BeFalse();
+        stacked.Should().BeTrue();
+        statuses.Should().ContainKey(StatusOperations.RageStatusId);
+        statuses[StatusOperations.RageStatusId].StatusType.Should().Be(StatusType.Buff);
+        statuses[StatusOperations.RageStatusId].ExpiresTiming.Should().Be(ExpiresTiming.Never);
+        statuses[StatusOperations.RageStatusId].Stacks.Should().Be(3);
+        service.GetRageStacks(statuses).Should().Be(3);
+    }
+
+    [Fact]
+    public void ShouldResetOnlyRage_WhenResetCombatOnlyStatusesIsCalled()
+    {
+        var service = new StatusService();
+        var statuses = new Dictionary<string, StatusInstance>(StringComparer.Ordinal)
+        {
+            [StatusOperations.RageStatusId] = new StatusInstance(
+                StableId: "stable.status.rage",
+                StatusId: StatusOperations.RageStatusId,
+                StatusType: StatusType.Buff,
+                Stacks: 2,
+                DurationTurns: 0,
+                SourceId: "card.warrior.rage_surge",
+                ExpiresTiming: ExpiresTiming.Never,
+                Strength: 0),
+            ["status.shield"] = CreateStatus(
+                statusId: "status.shield",
+                statusType: StatusType.Buff,
+                stacks: 1,
+                durationTurns: 3,
+                timing: ExpiresTiming.OwnerEndOfTurnCleanup),
+        };
+
+        service.ResetCombatOnlyStatuses(statuses);
+
+        statuses.Should().NotContainKey(StatusOperations.RageStatusId);
+        statuses.Should().ContainKey("status.shield");
+    }
+
     private static StatusInstance CreateStatus(int stacks, int durationTurns, ExpiresTiming timing)
     {
         return CreateStatus("status.poison", StatusType.Debuff, stacks, durationTurns, timing);

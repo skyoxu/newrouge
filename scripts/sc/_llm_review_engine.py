@@ -437,6 +437,11 @@ def main() -> int:
         output_path = out_dir / f"review-{agent}.md"
         trace_path = out_dir / f"trace-{agent}.log"
         write_text(prompt_path, prompt_used)
+        if output_path.exists():
+            try:
+                output_path.unlink()
+            except OSError:
+                pass
 
         if bool(args.prompts_only):
             had_warnings = True

@@ -57,6 +57,9 @@ public sealed class RunAndSaveContractsTests
         var metadata = new ContinueMetadata(
             RunId: autosave.RunId,
             DifficultyId: 7,
+            LabelKey: "difficulty.label.hard",
+            DescriptionKey: "difficulty.description.hard",
+            RulesetId: "ruleset.hard",
             Act: 1,
             NodeId: "N-2",
             IntegrityHash: "ABC123",
@@ -65,17 +68,16 @@ public sealed class RunAndSaveContractsTests
 
         var difficulty = new DifficultyConfig(
             DifficultyId: 7,
-            Name: "D7",
-            BaseEnergyPerTurn: 3,
-            BaseDrawPerTurn: 4,
-            OverplayTriggerN: 12,
-            EnableOverplayTax: false,
-            IsUnlocked: true
+            LabelKey: "difficulty.label.hard",
+            DescriptionKey: "difficulty.description.hard",
+            RulesetId: "ruleset.hard"
         );
 
         metadata.RunId.Should().Be(autosave.RunId);
-        difficulty.BaseEnergyPerTurn.Should().Be(3);
-        difficulty.BaseDrawPerTurn.Should().Be(4);
+        metadata.DifficultyId.Should().Be(difficulty.DifficultyId);
+        metadata.LabelKey.Should().Be(difficulty.LabelKey);
+        metadata.DescriptionKey.Should().Be(difficulty.DescriptionKey);
+        metadata.RulesetId.Should().Be(difficulty.RulesetId);
     }
 
     // ACC:T12.16
