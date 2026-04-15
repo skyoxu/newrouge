@@ -267,6 +267,51 @@
             },
             "fingerprint": {
               "type": "string"
+            },
+            "deterministic_strategy": {
+              "type": "string"
+            },
+            "changed_paths_count": {
+              "type": "integer"
+            },
+            "unsafe_paths_count": {
+              "type": "integer"
+            },
+            "allow_override_flag": {
+              "type": "string"
+            },
+            "changed_paths_sample": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unsafe_paths_sample": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "profile_drift_present": {
+              "type": "boolean"
+            },
+            "ceilings": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "changed_paths": {
+                  "type": "integer"
+                },
+                "unsafe_paths": {
+                  "type": "integer"
+                },
+                "profile_drift_changed_paths": {
+                  "type": "integer"
+                },
+                "profile_drift_unsafe_paths": {
+                  "type": "integer"
+                }
+              }
             }
           }
         },

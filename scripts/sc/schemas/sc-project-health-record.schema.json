@@ -100,7 +100,6 @@
         { "$ref": "#/$defs/commonRecord" },
         {
           "type": "object",
-          "additionalProperties": false,
           "required": [
             "kind",
             "stage",
@@ -156,7 +155,6 @@
         { "$ref": "#/$defs/commonRecord" },
         {
           "type": "object",
-          "additionalProperties": false,
           "required": [
             "kind",
             "counts",
@@ -187,7 +185,6 @@
         { "$ref": "#/$defs/commonRecord" },
         {
           "type": "object",
-          "additionalProperties": false,
           "required": [
             "kind",
             "violations",
