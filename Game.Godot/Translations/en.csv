@@ -41,3 +41,7 @@ ui.character.not_open,not open
 ui.character.warrior.summary.rage_buff,Rage acts as a combat state buff that grows pressure over time.
 ui.character.warrior.summary.power_window,Heavy attack has a short power window where timing matters most.
 ui.character.warrior.summary.cost_burst,Rage drain is a cost that enables explosive burst damage.
+event.abyss_toll.title,Abyss Toll
+event.abyss_toll.description,Pay now and leave with a mark.
+event.option.lose_hp,Bleed for speed
+event.option.take_curse,Take a curse card

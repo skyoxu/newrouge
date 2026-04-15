@@ -19,3 +19,7 @@ ui.character.not_open,not open (ZH)
 ui.character.warrior.summary.rage_buff,Rage state buff keeps pressure rising (ZH).
 ui.character.warrior.summary.power_window,Heavy attack timing window defines power spike (ZH).
 ui.character.warrior.summary.cost_burst,Resource cost trades into explosive burst output (ZH).
+event.abyss_toll.title,深渊代价
+event.abyss_toll.description,付出代价后才能继续前行。
+event.option.lose_hp,流血换取速度
+event.option.take_curse,加入一张诅咒牌
