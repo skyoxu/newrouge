@@ -11,17 +11,33 @@ using Xunit;
 
 namespace Game.Core.Tests.State;
 
-internal sealed class InMemoryDataStore : IDataStore
-{
-    private readonly Dictionary<string,string> _dict = new();
-    public Task SaveAsync(string key, string json) { _dict[key] = json; return Task.CompletedTask; }
-    public Task<string?> LoadAsync(string key) { _dict.TryGetValue(key, out var v); return Task.FromResult(v); }
-    public Task DeleteAsync(string key) { _dict.Remove(key); return Task.CompletedTask; }
-    public IReadOnlyDictionary<string,string> Snapshot => _dict;
-}
-
 public class GameStateManagerTests
 {
+    private sealed class InMemoryDataStore : IDataStore
+    {
+        private readonly Dictionary<string, string> _dict = new();
+
+        public Task SaveAsync(string key, string json)
+        {
+            _dict[key] = json;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> LoadAsync(string key)
+        {
+            _dict.TryGetValue(key, out var value);
+            return Task.FromResult(value);
+        }
+
+        public Task DeleteAsync(string key)
+        {
+            _dict.Remove(key);
+            return Task.CompletedTask;
+        }
+
+        public IReadOnlyDictionary<string, string> Snapshot => _dict;
+    }
+
     private static GameState MakeState(int level=1, int score=0)
         => new(
             Id: Guid.NewGuid().ToString(),
