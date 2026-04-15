@@ -1,0 +1,30 @@
+# task-27-chapter6-residual-needs-fix-2
+
+- Title: task-27-chapter6-residual-needs-fix-2
+- Date: 2026-04-15
+- Status: accepted
+- Supersedes: decision-logs/2026-04-15-task-27-chapter6-residual-needs-fix.md
+- Superseded by: none
+- Branch: task/T27
+- Git Head: 73e37f02cc2b20afe7fe217c66e6dbce3381f56a
+- Why now: Chapter 6 closure reached deterministic green and cleared schema-invalid / approval-loop blockers, but the latest reviewer still reports one low-priority finding.
+- Context: Latest full pipeline run `eb613b53b8cb4677906a03678e95e127` is `pipeline_clean` with `failure_kind=review-needs-fix`. Reviewer findings now contain only one `P2` from security-auditor.
+- Decision: Stop fast-ship closure loop at residual recording. Do not spend another same-shape 6.7/6.8 run for this P2-only evidence-strength finding.
+- Consequences: Task 27 is deliverable under fast-ship (`P0/P1 clear`), with one tracked `P2` follow-up item.
+- Recovery impact: Future recovery should first check whether new changes hit the recorded reviewer anchor before paying new reviewer cost.
+- Validation: 
+  - `py -3 scripts/sc/run_review_pipeline.py --task-id 27 --fork`
+  - `py -3 scripts/python/dev_cli.py resume-task --task-id 27 --recommendation-only --recommendation-format json`
+  - `py -3 scripts/python/dev_cli.py chapter6-route --task-id 27 --recommendation-only --recommendation-format json`
+- Residual finding summary:
+  - Severity: `P2`
+  - Reviewer: `security-auditor`
+  - Evidence: `logs/ci/2026-04-15/sc-llm-review-task-27/review-security-auditor.md`
+  - Anchor: `Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs` (`ACC:T27.7~T27.11` still based on locally assembled gate summary)
+  - Suggested follow-up: bind assertions to real `sc-acceptance-check-task-27/summary.json` (and fail-closed negative cases on missing/invalid fields)
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-04-15-task-27-chapter6-residual-followup-2.md
+- Related task id(s): `27`
+- Related run id: `eb613b53b8cb4677906a03678e95e127`
+- Related latest.json: `logs/ci/2026-04-15/sc-review-pipeline-task-27/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-15/sc-review-pipeline-task-27-eb613b53b8cb4677906a03678e95e127`

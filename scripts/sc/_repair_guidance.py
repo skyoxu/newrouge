@@ -64,7 +64,7 @@ def build_execution_context(
     diagnostics = (marathon_state or {}).get("diagnostics")
     candidate_commands = summary.get("candidate_commands") if isinstance(summary.get("candidate_commands"), dict) else {}
     failure_kind = derive_producer_failure_kind(summary_payload=summary, repair_payload=repair_guide)
-    return {
+    payload = {
         "schema_version": "1.0.0",
         "cmd": "sc-review-pipeline",
         "date": today_str(),
@@ -141,7 +141,6 @@ def build_execution_context(
             for key, value in candidate_commands.items()
             if str(key).strip() and str(value).strip()
         },
-        "recommended_command": str(summary.get("recommended_command") or "").strip(),
         "forbidden_commands": [str(item).strip() for item in list(summary.get("forbidden_commands") or []) if str(item).strip()],
         "latest_summary_signals": dict(summary.get("latest_summary_signals") or {}) if isinstance(summary.get("latest_summary_signals"), dict) else {},
         "chapter6_hints": dict(summary.get("chapter6_hints") or {}) if isinstance(summary.get("chapter6_hints"), dict) else {},
@@ -161,6 +160,10 @@ def build_execution_context(
         },
         "diagnostics": dict(diagnostics) if isinstance(diagnostics, dict) else {},
     }
+    recommended_command = str(summary.get("recommended_command") or "").strip()
+    if recommended_command:
+        payload["recommended_command"] = recommended_command
+    return payload
 
 
 def _load_marathon_state(out_dir: Path) -> dict[str, Any] | None:
