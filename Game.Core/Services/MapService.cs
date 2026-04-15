@@ -104,6 +104,11 @@ public sealed class MapService
             return BranchSelectionResult.FromRejected("invalid-branch", GetSnapshot());
         }
 
+        if (!string.IsNullOrEmpty(nodePreEnterId) && string.Equals(branchId, nodePreEnterId, StringComparison.Ordinal))
+        {
+            return BranchSelectionResult.FromRejected("backtrack-blocked", GetSnapshot());
+        }
+
         var transitions = new List<string>(capacity: 2)
         {
             "MapNodeSelected",
