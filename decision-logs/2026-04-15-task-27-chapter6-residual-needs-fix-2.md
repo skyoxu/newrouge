@@ -12,7 +12,7 @@
 - Decision: Stop fast-ship closure loop at residual recording. Do not spend another same-shape 6.7/6.8 run for this P2-only evidence-strength finding.
 - Consequences: Task 27 is deliverable under fast-ship (`P0/P1 clear`), with one tracked `P2` follow-up item.
 - Recovery impact: Future recovery should first check whether new changes hit the recorded reviewer anchor before paying new reviewer cost.
-- Validation: 
+- Validation: Evidence-only validation completed from pipeline artifacts and protocol outputs; no additional rerun required for this residual-only record.
   - `py -3 scripts/sc/run_review_pipeline.py --task-id 27 --fork`
   - `py -3 scripts/python/dev_cli.py resume-task --task-id 27 --recommendation-only --recommendation-format json`
   - `py -3 scripts/python/dev_cli.py chapter6-route --task-id 27 --recommendation-only --recommendation-format json`
