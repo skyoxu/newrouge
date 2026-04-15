@@ -1304,7 +1304,9 @@
       "ci"
     ],
     "owner": "architecture",
-    "test_refs": [],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs"
+    ],
     "acceptance": [
       "在覆盖多个敌人且包含不同战斗状态的样例中，意图选择结果必须由“敌人规则 + 当前战斗状态”共同决定并可断言验证；若同一敌人在不同状态下始终返回同一意图，则验收失败。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
       "在敌人、RNG流输入、战斗状态三者完全相同的前提下，重复执行意图选择必须得到完全一致结果；当仅RNG流输入或战斗状态任一发生变化时，必须基于新输入重新计算，并在至少一组样例中出现可验证的结果差异。 Refs: Game.Core.Tests/Tasks/Task0052AcceptanceTests.cs",
