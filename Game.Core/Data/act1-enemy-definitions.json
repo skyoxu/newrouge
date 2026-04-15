@@ -1,0 +1,45 @@
+﻿{
+  "act_id": 1,
+  "enemy_definitions": [
+    {
+      "id": "act1-slime-scout",
+      "category": "normal",
+      "stats": {
+        "hp": 18,
+        "attack": 5,
+        "defense": 2
+      },
+      "intentPools": [
+        "light_attack",
+        "guard"
+      ]
+    },
+    {
+      "id": "act1-bandit-enforcer",
+      "category": "elite",
+      "stats": {
+        "hp": 34,
+        "attack": 9,
+        "defense": 4
+      },
+      "intentPools": [
+        "heavy_attack",
+        "buff_attack"
+      ]
+    },
+    {
+      "id": "act1-ruin-warden",
+      "category": "boss",
+      "stats": {
+        "hp": 90,
+        "attack": 14,
+        "defense": 7
+      },
+      "intentPools": [
+        "slam",
+        "fortify",
+        "summon_guard"
+      ]
+    }
+  ]
+}
