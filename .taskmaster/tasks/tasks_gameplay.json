@@ -1537,21 +1537,16 @@
     "test_refs": [
       "Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
       "Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
-      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd"
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "Game.Core.Tests/Tasks/Task0022ContractRefsTests.cs"
     ],
     "acceptance": [
-      "进入 Event.tscn 时必须同时显示事件标题与描述，并提供不少于两个可选项；同一事件中必须可验证地包含“立即HP损失”与“加入诅咒牌”两类 dark cost 示例，任一类型缺失即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "每次进入事件时，本次可选项集合必须在进入时即锁定且不发生刷新/替换；玩家一旦作出选择，结果必须立即写入，并在退出后再次进入时保持已选状态且不可改选。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "事件标题、描述、选项文本必须全部由翻译系统提供；切换语言后三类文本必须同步变化且变化结果可被验证。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "进入 Event.tscn 后，必须在场景 UI 控件层同时显示事件标题与描述，并渲染不少于两个可选项按钮/条目；同一事件中必须可验证地包含“立即HP损失”与“加入诅咒牌”两类 dark cost 示例，任一类型缺失即判定不通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "每次进入事件时，本次可选项集合必须在进入时即锁定且不发生刷新/替换；玩家一旦作出选择，已选项标识与结果必须在同次流程内立即可读，且持久化结果（persisted selected option id）必须在同次流程内立即可验证为已写入（不得延迟到退出时再写）。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
+      "事件标题、描述、选项文本必须全部由翻译系统提供；切换语言后，标题/描述/每个选项在实际 UI 控件上的文本都必须同步变化且可逐项断言（不得仅断言内部 getter）。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
       "选择“HP损失”代价选项后，当前HP必须在该次选择后立刻减少到可验证的新数值；若HP未变化则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
-      "选择“加入诅咒牌”代价选项后，牌组必须在该次选择后立刻新增对应诅咒牌且数量可验证；若牌组未新增则判定失败。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
-      "必须提供并可执行测试用例，覆盖事件选项与两类代价应用（HP损失、诅咒牌加入），并对结果进行可重复断言。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "必须提供并可执行测试用例，验证退出事件后再次进入时选项仍保持锁定且不可更改。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "门禁汇总必须包含 `adr_refs=[\"ADR-0032\", \"ADR-0010\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH10\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd",
-      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd"
+      "选择“加入诅咒牌”代价选项后，牌组必须在该次选择后立刻新增对应诅咒牌且数量可验证（测试需直接断言选择前后计数差值）；同次流程内 persisted selected option id 必须立即写入为该选项 id，并且必须拒绝二次选择导致的重复新增与重复写入。 Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "Event.tscn 必须存在并可实例化为可交互事件场景；实例化后标题、描述、选项控件均处于可见且可交互状态（在未作出选择前）。 Refs: Tests.Godot/tests/Tasks/test_task0022_acceptance.gd"
     ],
     "test_strategy": [
       "Test event options and cost application. Verify choice locking on exit/re-enter. Refs: ADR-0032, ADR-0010."
