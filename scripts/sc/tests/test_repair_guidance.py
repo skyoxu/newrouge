@@ -93,6 +93,30 @@ class RepairGuidanceTests(unittest.TestCase):
 
             self.assertEqual("review-needs-fix", payload["failure_kind"])
 
+    def test_build_execution_context_should_omit_empty_recommended_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            payload = build_execution_context(
+                task_id="1",
+                requested_run_id="abc",
+                run_id="def",
+                out_dir=out_dir,
+                delivery_profile="fast-ship",
+                security_profile="host-safe",
+                llm_review_context={},
+                repair_guide={"status": "needs-fix"},
+                summary={
+                    "status": "ok",
+                    "steps": [{"name": "sc-test", "status": "ok"}],
+                    "recommended_command": "",
+                    "candidate_commands": {
+                        "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 1",
+                    },
+                },
+            )
+
+            self.assertNotIn("recommended_command", payload)
+
     def test_build_repair_guide_should_mark_not_needed_when_no_failed_step(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir)

@@ -1,0 +1,23 @@
+# task-27-chapter6-residual-followup-2
+
+- Title: task-27-chapter6-residual-followup-2
+- Status: active
+- Branch: task/T27
+- Git Head: 73e37f02cc2b20afe7fe217c66e6dbce3381f56a
+- Goal: Close the remaining P2 reviewer finding for Task 27 without reopening unnecessary full pipeline loops.
+- Scope: One P2 only (security-auditor) on acceptance evidence strength.
+- Current step: Residual recorded after full pipeline run proved deterministic green and no P0/P1 findings.
+- Last completed step: Full 6.7 fork run completed (`eb613b53b8cb4677906a03678e95e127`) with reviewer residual only.
+- Stop-loss: 
+  - Do not reopen full 6.7 while `forbidden_commands` blocks rerun and no new anchor-hit change exists.
+  - Do not repeat 6.8 when `chapter6-route` keeps `preferred_lane=inspect-first` / `six_eight_worthwhile=no`.
+- Next action: When explicitly choosing to burn P2 closure cost, update Task0027 acceptance tests to read real acceptance summary artifacts and rerun reviewer closure.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 27 --fork`
+- Open questions: none recorded
+- Exit criteria: Either security-auditor clears the evidence-strength finding, or a later run supersedes this residual record.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-15-task-27-chapter6-residual-needs-fix-2.md`
+- Related task id(s): `27`
+- Related run id: `eb613b53b8cb4677906a03678e95e127`
+- Related latest.json: `logs/ci/2026-04-15/sc-review-pipeline-task-27/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-15/sc-review-pipeline-task-27-eb613b53b8cb4677906a03678e95e127`
