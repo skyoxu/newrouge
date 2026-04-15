@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[node name="MapRoot" type="Node"]
+
+[node name="combat_icon" type="Node" parent="."]
+groups = ["map_node_combat"]
+
+[node name="event_icon" type="Node" parent="."]
+groups = ["map_node_event"]
+
+[node name="shop_icon" type="Node" parent="."]
+groups = ["map_node_shop"]
+
+[node name="rest_icon" type="Node" parent="."]
+groups = ["map_node_rest"]
