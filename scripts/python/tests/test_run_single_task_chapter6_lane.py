@@ -225,10 +225,10 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
     def test_decision_should_require_needs_fix_after_post_review_run_68(self) -> None:
         decision = lane.build_orchestration_decision(
             initial_route={
-                "preferred_lane": "run-6.7",
-                "run_id": "run-15",
-                "latest_reason": "step_failed:sc-test",
-                "blocked_by": "",
+                "preferred_lane": "inspect-first",
+                "run_id": "n/a",
+                "latest_reason": "n/a",
+                "blocked_by": "n/a",
             },
             post_review_route={
                 "preferred_lane": "run-6.8",
@@ -241,6 +241,21 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
 
         self.assertEqual("full-path", decision["initial_phase"]["action"])
         self.assertEqual("needs-fix-fast", decision["post_review_phase"]["action"])
+
+    def test_decision_should_stop_initial_phase_when_route_requests_run_67_recovery(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "run-6.7",
+                "run_id": "run-15",
+                "latest_reason": "step_failed:sc-test",
+                "blocked_by": "",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("run-6.7", decision["initial_phase"]["stop_reason"])
 
     def test_decision_should_stop_initial_phase_when_needs_fix_path_has_no_increment(self) -> None:
         decision = lane.build_orchestration_decision(
@@ -289,7 +304,7 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("blocked", decision["initial_phase"]["action"])
         self.assertEqual("approval_pending", decision["initial_phase"]["stop_reason"])
 
-    def test_decision_should_allow_initial_phase_when_fork_approval_was_denied(self) -> None:
+    def test_decision_should_defer_to_route_when_fork_approval_was_denied(self) -> None:
         decision = lane.build_orchestration_decision(
             initial_route={
                 "preferred_lane": "run-6.7",
@@ -310,7 +325,29 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual("full-path", decision["initial_phase"]["action"])
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("run-6.7", decision["initial_phase"]["stop_reason"])
+
+    def test_plan_should_stop_after_run_67_recovery_signal(self) -> None:
+        initial_route = {
+            "preferred_lane": "run-6.7",
+            "run_id": "run-15",
+            "latest_reason": "step_failed:sc-test",
+            "blocked_by": "",
+        }
+
+        plan = lane.build_execution_plan(
+            task_id="15",
+            godot_bin="C:/Godot/Godot.exe",
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            initial_route=initial_route,
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual(["resume-task", "chapter6-route-initial"], [step["name"] for step in plan["steps"]])
+        self.assertEqual("blocked", plan["status"])
+        self.assertEqual("run-6.7", plan["stop_reason"])
 
     def test_main_self_check_should_write_summary(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -340,7 +377,7 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             self.assertEqual("P1", payload["profile_policy"]["fix_through"])
             self.assertEqual("check-tdd-plan", payload["steps"][2]["name"])
 
-    def test_main_should_stop_before_running_forbidden_review_pipeline_command(self) -> None:
+    def test_main_should_stop_early_when_route_requests_run_67_recovery(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             out_dir = root / "logs" / "ci" / "chapter6-forbidden"
@@ -355,11 +392,6 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 "--out-dir",
                 str(out_dir),
             ]
-            review_cmd = lane.build_review_pipeline_cmd(
-                "15",
-                profile_policy=lane.resolve_profile_policy("fast-ship"),
-                godot_bin="C:/Godot/Godot.exe",
-            )
             executed_steps: list[str] = []
 
             json_steps = iter(
@@ -389,7 +421,7 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                             "run_id": "run-15",
                             "latest_reason": "step_failed:sc-test",
                             "blocked_by": "",
-                            "forbidden_commands": [" ".join(review_cmd)],
+                            "forbidden_commands": [],
                         },
                     ),
                 ]
@@ -418,10 +450,10 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 rc = lane.main()
 
             self.assertEqual(1, rc)
-            self.assertEqual(["check-tdd-plan", "red-first", "green", "refactor"], executed_steps)
+            self.assertEqual([], executed_steps)
             payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual("blocked", payload["status"])
-            self.assertEqual("forbidden-command:review-pipeline", payload["stop_reason"])
+            self.assertEqual("run-6.7", payload["stop_reason"])
 
     def test_main_should_stop_before_expensive_steps_when_no_increment_converged(self) -> None:
         with tempfile.TemporaryDirectory() as td:

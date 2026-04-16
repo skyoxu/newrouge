@@ -267,7 +267,7 @@ def _route_stop_reason(route_payload: dict[str, Any] | None) -> str:
         return "artifact-integrity"
     if blocked_by in {"approval_pending", "approval_approved", "approval_invalid"}:
         return blocked_by
-    if lane in {"repo-noise-stop", "fix-deterministic", "inspect-first", "record-residual"}:
+    if lane in {"run-6.7", "repo-noise-stop", "fix-deterministic", "inspect-first", "record-residual"}:
         return lane
     return ""
 
@@ -350,17 +350,17 @@ def _decide_phase(
     allow_needs_fix: bool,
     resume_payload: dict[str, Any] | None = None,
 ) -> dict[str, str]:
-    stop_reason = _route_stop_reason(route_payload)
-    if stop_reason:
-        return {
-            "action": "blocked",
-            "stop_reason": stop_reason,
-        }
     approval_stop_reason = _approval_stop_reason(resume_payload, desired_action="resume")
     if approval_stop_reason:
         return {
             "action": "blocked",
             "stop_reason": approval_stop_reason,
+        }
+    stop_reason = _route_stop_reason(route_payload)
+    if stop_reason:
+        return {
+            "action": "blocked",
+            "stop_reason": stop_reason,
         }
     no_increment_stop_reason = _no_increment_stop_reason(resume_payload, route_payload)
     if no_increment_stop_reason:
@@ -388,11 +388,6 @@ def build_orchestration_decision(
 ) -> dict[str, Any]:
     initial_phase = _decide_phase(initial_route, allow_needs_fix=True, resume_payload=resume_payload)
     if initial_phase["action"] == "continue" and not _initial_route_has_recovery_signal(initial_route):
-        initial_phase = {
-            "action": "full-path",
-            "stop_reason": "",
-        }
-    elif initial_phase["action"] == "continue":
         initial_phase = {
             "action": "full-path",
             "stop_reason": "",
