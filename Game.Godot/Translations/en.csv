@@ -11,6 +11,7 @@ ui.menu.cancel,Cancel
 ui.settings.language,Language
 ui.player.greeting,Welcome {name}!
 ui.difficulty.title,Select Difficulty
+ui.difficulty.select,Select
 ui.difficulty.confirm,Confirm Difficulty
 ui.difficulty.1,Difficulty 1
 ui.difficulty.2,Difficulty 2
