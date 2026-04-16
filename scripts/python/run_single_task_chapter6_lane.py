@@ -224,6 +224,10 @@ def _route_lane(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("preferred_lane") or "").strip().lower() or "inspect-first"
 
 
+def _route_next_action(route_payload: dict[str, Any] | None) -> str:
+    return _normalize_action((route_payload or {}).get("chapter6_next_action"))
+
+
 def _route_run_id(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("run_id") or "").strip().lower()
 
@@ -262,11 +266,16 @@ def _route_stop_reason(route_payload: dict[str, Any] | None) -> str:
     latest_reason = _route_latest_reason(route_payload)
     latest_run_type = _route_run_type(route_payload)
     lane = _route_lane(route_payload)
+    next_action = _route_next_action(route_payload)
 
     if blocked_by == "artifact_integrity" or latest_reason == "planned_only_incomplete" or latest_run_type == "planned-only":
         return "artifact-integrity"
     if blocked_by in {"approval_pending", "approval_approved", "approval_invalid"}:
         return blocked_by
+    if next_action == "continue":
+        return ""
+    if next_action in {"pause", "fork", "resume", "inspect", "rerun"}:
+        return next_action
     if lane in {"run-6.7", "repo-noise-stop", "fix-deterministic", "inspect-first", "record-residual"}:
         return lane
     return ""
@@ -277,6 +286,9 @@ def _route_is_blocking(route_payload: dict[str, Any] | None) -> bool:
 
 
 def _route_requires_needs_fix(route_payload: dict[str, Any] | None) -> bool:
+    next_action = _route_next_action(route_payload)
+    if next_action == "needs-fix-fast":
+        return True
     return _route_lane(route_payload) == "run-6.8"
 
 
@@ -368,6 +380,11 @@ def _decide_phase(
             "action": "blocked",
             "stop_reason": no_increment_stop_reason,
         }
+    if _route_next_action(route_payload) == "continue":
+        return {
+            "action": "complete",
+            "stop_reason": "continue",
+        }
     if allow_needs_fix and _route_requires_needs_fix(route_payload):
         return {
             "action": "needs-fix-fast",
@@ -431,6 +448,12 @@ def build_execution_plan(
         return {
             "status": "blocked",
             "stop_reason": str(decision["initial_phase"]["stop_reason"] or ""),
+            "steps": steps,
+        }
+    if decision["initial_phase"]["action"] == "complete":
+        return {
+            "status": "complete",
+            "stop_reason": str(decision["initial_phase"]["stop_reason"] or "continue"),
             "steps": steps,
         }
 
@@ -687,6 +710,12 @@ def main() -> int:
         _write_json(out_dir / "summary.json", summary)
         print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={plan['stop_reason']}")
         return 1
+    if plan["status"] == "complete":
+        summary["status"] = "complete"
+        summary["stop_reason"] = str(plan["stop_reason"] or "continue")
+        _write_json(out_dir / "summary.json", summary)
+        print(f"SINGLE_TASK_CHAPTER6 status=complete task={task_id} stop={summary['stop_reason']}")
+        return 0
 
     post_review_route: dict[str, Any] = {}
     final_route: dict[str, Any] = {}
