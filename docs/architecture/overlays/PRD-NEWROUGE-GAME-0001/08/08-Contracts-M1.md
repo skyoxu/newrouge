@@ -375,6 +375,8 @@ Test-Refs:
   - `Game.Core/Contracts/Run/RunTransition.cs`
   - `Game.Core/Contracts/Save/AutosaveSnapshot.cs`
   - `Game.Core/Contracts/Save/ContinueMetadata.cs`
+  - `Game.Core/Contracts/Save/ContinueGateDecision.cs`
+  - `Game.Core/Contracts/Save/SaveMigrationResult.cs`
 - 配置与内容
   - `Game.Core/Contracts/Config/DifficultyConfig.cs`
   - `Game.Core/Contracts/Config/ActConfig.cs`
@@ -392,6 +394,7 @@ Test-Refs:
 - `Game.Core/Contracts/Interfaces/IOfferService.cs`
 - `Game.Core/Contracts/Interfaces/IStatusService.cs`
 - `Game.Core/Contracts/Interfaces/ISaveService.cs`
+- `Game.Core/Contracts/Interfaces/ISaveMigrationService.cs`
 - `Game.Core/Contracts/Interfaces/IRunCommandHandler.cs`
 - `Game.Core/Contracts/Interfaces/IDifficultyProvider.cs`
 - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
