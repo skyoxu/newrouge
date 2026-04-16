@@ -45,3 +45,33 @@ event.abyss_toll.title,Abyss Toll
 event.abyss_toll.description,Pay now and leave with a mark.
 event.option.lose_hp,Bleed for speed
 event.option.take_curse,Take a curse card
+card.warrior.cleave.name,Cleave
+card.warrior.guard.name,Guard
+card.warrior.rage_surge.name,Rage Surge
+card.warrior.bloodrush.name,Bloodrush
+card.warrior.taunt.name,Taunt
+card.warrior.shield_wall.name,Shield Wall
+card.warrior.overpower.name,Overpower
+card.warrior.battlecry.name,Battlecry
+card.warrior.crush.name,Crush
+card.warrior.relentless.name,Relentless
+relic.name.ashen_hourglass,Ashen Hourglass
+relic.name.obsidian_mirror,Obsidian Mirror
+relic.name.blood_oath,Blood Oath
+relic.name.rusted_compass,Rusted Compass
+relic.name.twilight_coin,Twilight Coin
+relic.name.embershard,Embershard
+relic.name.frostbite_ring,Frostbite Ring
+relic.name.gale_charm,Gale Charm
+relic.name.iron_vow,Iron Vow
+relic.name.moonlit_compass,Moonlit Compass
+relic.name.nightwatch_lantern,Nightwatch Lantern
+relic.name.oaken_talisman,Oaken Talisman
+relic.name.phantom_quill,Phantom Quill
+relic.name.quicksilver_seal,Quicksilver Seal
+relic.name.raven_feather,Raven Feather
+relic.name.sunken_idol,Sunken Idol
+relic.name.thorn_crown,Thorn Crown
+relic.name.umbral_shard,Umbral Shard
+relic.name.vigilant_emblem,Vigilant Emblem
+relic.name.warden_mark,Warden Mark

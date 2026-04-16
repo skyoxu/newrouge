@@ -539,8 +539,8 @@ def _write_step_log(out_dir: Path, *, name: str, cmd: list[str], stdout: str, st
 
 
 def _parse_json_stdout(stdout: str) -> dict[str, Any]:
-    text = str(stdout or "").strip()
-    if not text:
+    text = str(stdout or "")
+    if not text.strip():
         return {}
     decoder = json.JSONDecoder()
     start = -1

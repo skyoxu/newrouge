@@ -2660,18 +2660,14 @@
     ],
     "owner": "gameplay",
     "test_refs": [
+      "Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs",
       "Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
     ],
     "acceptance": [
-      "M1 卡牌、遗物、事件涉及的每个可见文本都具备 en 与 zh-CN 翻译键，且对应键可在翻译资源中检索到；任一文本缺键或任一语言条目缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "UI 提示/按钮/弹窗等可见文本在运行时必须由翻译键解析得到；检测到任一直接硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "PRD-NEWROUGE-GAME-0001 overlay 的 Test-Refs 指向本任务验收用例，且可追溯到翻译键存在性与冒烟检查 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "所有 UI 提示/按钮/弹窗等可见文本均补齐 en 与 zh-CN 翻译键并写入翻译资源，任一缺失即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "存在并可执行 GdUnit4 冒烟用例，覆盖翻译键加载与基础 UI 渲染；用例缺失或执行失败即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "提供可复现的脚本或手动检查流程，用于验证所有被引用的翻译键均存在；流程缺失或检查结果出现缺键即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "在卡牌/遗物/事件及相关 UI 场景中，所有可见文本必须通过翻译键渲染；运行时发现任一硬编码可见文本即不通过 Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "Task 39 artifacts must include explicit ADR-0010 traceability (refs/checklist/test annotation) with auditable linkage points; missing ADR-0010 linkage fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "Gate must reject progression when PRD overlay or related tests lack ADR-0010 linkage evidence for Task 39. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
+      "Task 39 must extract the complete M1 visible-text key baseline from real sources (warrior cards, relic definitions, event keys, and runtime-visible M1 UI text, not prompts-only), and every extracted key must exist in both en and zh-CN resources with valid values (non-empty, non-key-echo, non-placeholder-garbled). Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "In Task39-scoped M1 cards/relics/events data and all runtime-visible M1 UI text (including prompts, menu labels, button texts, event option texts, and other player-facing labels), text must render via translation keys; any hardcoded human-readable visible literal fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "M1 locale output correctness is acceptance-critical: for en and zh-CN, runtime-visible M1 UI text must resolve to non-empty, non-key-echo, non-placeholder values from translation resources; locale-switch refresh timing/mechanism is out of scope for Task 39. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "M1 visible-text coverage must be reproducible from source extraction: required_keys must be derived from cards/relics/events/runtime-visible UI sources, and missing_keys must be empty for both en and zh-CN. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd"
     ],
     "test_strategy": [
       "Script or manual checks to ensure all referenced keys exist; GdUnit4 smoke. Refs: ADR-0010."

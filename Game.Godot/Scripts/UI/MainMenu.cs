@@ -26,6 +26,7 @@ public partial class MainMenu : Control
     private Callable _quitRequestCallbackForTest;
     private string _lastDialogFocusPreferenceForTest = string.Empty;
     private static Dictionary<string, string>? _menuTextFallbacks;
+    private string _lastLocaleForRuntimeRefresh = string.Empty;
 
     public override void _Ready()
     {
@@ -45,6 +46,21 @@ public partial class MainMenu : Control
             _overwriteConfirmDialog.Confirmed += OnOverwriteConfirmed;
             _overwriteConfirmDialog.Canceled += OnOverwriteCanceled;
         }
+
+        _lastLocaleForRuntimeRefresh = NormalizeLocale(TranslationServer.GetLocale());
+    }
+
+    public override void _Process(double _delta)
+    {
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        if (string.Equals(locale, _lastLocaleForRuntimeRefresh, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _lastLocaleForRuntimeRefresh = locale;
+        _menuTextFallbacks = null;
+        LocalizeVisibleText();
     }
 
     public void ShowMenu() => Visible = true;
@@ -79,6 +95,12 @@ public partial class MainMenu : Control
     {
         _quitRequestCallbackForTest = callback;
         _hasQuitRequestCallbackForTest = true;
+    }
+
+    public void RefreshVisibleTextForTest()
+    {
+        _menuTextFallbacks = null;
+        LocalizeVisibleText();
     }
 
     private void LocalizeVisibleText()
@@ -129,7 +151,16 @@ public partial class MainMenu : Control
     private static Dictionary<string, string> LoadMenuTextFallbacks()
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        var path = "res://Game.Godot/Translations/en.csv";
+        var locale = TranslationServer.GetLocale();
+        var preferred = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? "res://Game.Godot/Translations/zh-CN.csv"
+            : "res://Game.Godot/Translations/en.csv";
+        var path = preferred;
+        if (!FileAccess.FileExists(path))
+        {
+            path = "res://Game.Godot/Translations/en.csv";
+        }
+
         if (!FileAccess.FileExists(path))
         {
             return map;
@@ -165,6 +196,16 @@ public partial class MainMenu : Control
         }
 
         return map;
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
     }
 
     private void Publish(string type, string source, string dataJson = "{}")
