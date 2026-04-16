@@ -17,7 +17,7 @@ public sealed class ContinueGateService
 
     public ContinueGateDecision Evaluate(AutosaveSnapshot snapshot)
     {
-        var migrationResult = migrationService.TryMigrate(snapshot.SchemaVersion);
+        var migrationResult = migrationService.AssessSchema(snapshot.SchemaVersion);
         if (migrationResult.Succeeded)
         {
             return new ContinueGateDecision(

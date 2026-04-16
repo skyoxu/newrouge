@@ -204,7 +204,7 @@ public sealed class Task0050AcceptanceTests
 
         public IList<string> ObservedSchemaVersions { get; } = new List<string>();
 
-        public SaveMigrationResult TryMigrate(string schemaVersion)
+        public SaveMigrationResult AssessSchema(string schemaVersion)
         {
             ObservedSchemaVersions.Add(schemaVersion);
             if (schemaResults.TryGetValue(schemaVersion, out var result))
@@ -225,7 +225,7 @@ public sealed class Task0050AcceptanceTests
 
         public SaveMigrationResult NextResult { get; set; }
 
-        public SaveMigrationResult TryMigrate(string schemaVersion)
+        public SaveMigrationResult AssessSchema(string schemaVersion)
         {
             return NextResult;
         }
