@@ -1253,18 +1253,19 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
+      "Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0018ContractRefsTests.cs"
     ],
     "acceptance": [
-      "加载 Combat.tscn 后，场景内必须存在且默认可见用于手牌、能量、抽牌堆、弃牌堆与回合控制（开始/结束或等价控制）的 HUD 元素，并可被自动化测试稳定定位。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "当注入核心战斗状态快照时，Combat.tscn 的 UI 显示必须与状态逐项一致：手牌列表、当前能量值、抽牌堆数量、弃牌堆数量均可被逐项断言；若显示固定占位值或与快照不一致则验收失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "当核心战斗状态发生变化（如手牌增减、能量变化、牌堆计数变化）时，现有 UI 必须同步反映新值；相同输入状态必须产生相同显示结果，且可通过可观察输出或自动化断言验证。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "本场景仅负责回合控制 UI 外壳与命令派发边界：交互事件必须路由至命令处理器，场景层不得直接变更核心状态、执行规则结算或推进完整回合；在无外部流程接管或动作为无效时，状态保持不变且不得自行推进回合。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
-      "提供 GdUnit4 用例，至少覆盖 Combat.tscn 关键 UI 组件存在性与默认可见、对核心状态读取与变更同步、回合控制交互派发与无效动作阻止、可见文本通过本地化键解析，以及 headless 冒烟可执行路径。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
-      "Task 18 的验收必须包含可审计的架构边界检查并对齐 ADR-0022 与 ADR-0010（UI shell boundary、state-binding boundary、no scene-responsibility overflow）；缺失任一检查即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
-      "Task 18 的验收必须包含可审计的测试策略检查并对齐 ADR-0025（test layering、assertion granularity、failure output quality、reproducible gates）；缺少策略证据即验收失败。 Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd"
+      "Loading Combat.tscn must expose default-visible HUD nodes for hand cards, energy, draw pile, discard pile, and turn controls that can be located by automated tests. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When a core combat HUD snapshot contract payload is applied, Combat.tscn must map hand cards, energy, draw pile count, and discard pile count to UI values exactly; placeholder values or divergent mapping fail acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When core combat HUD snapshots change, valid snapshots must update UI deterministically; invalid snapshots must be rejected and keep prior UI state unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The scene must keep turn-control command-dispatch boundaries: interactions route to command handlers, the scene does not mutate core state or run full combat flow, and invalid/unhandled actions keep state unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
+      "Visible turn-control text must resolve from localization keys, and combat UI tests must include a headless smoke-ready path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_turn_control_localization_smoke.gd",
+      "Task 18 acceptance must include auditable architecture-boundary checks aligned with ADR-0022 and ADR-0010 (ui shell boundary, state-binding boundary, no scene-responsibility overflow); missing any check fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd",
+      "Task 18 acceptance must include auditable test-strategy checks aligned with ADR-0025 (test layering, assertion granularity, failure output quality, reproducible gates); missing strategy evidence fails acceptance. Refs: Tests.Godot/tests/Tasks/test_task0018_acceptance.gd"
     ],
     "test_strategy": [
       "GdUnit4 tests for UI presence and bindings to state. Refs: ADR-0025."

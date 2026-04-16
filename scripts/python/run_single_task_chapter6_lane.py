@@ -542,7 +542,18 @@ def _parse_json_stdout(stdout: str) -> dict[str, Any]:
     text = str(stdout or "").strip()
     if not text:
         return {}
-    payload = json.loads(text)
+    decoder = json.JSONDecoder()
+    start = -1
+    for marker in ("{", "["):
+        idx = text.find(marker)
+        if idx >= 0 and (start < 0 or idx < start):
+            start = idx
+    if start < 0:
+        return {}
+    try:
+        payload, _ = decoder.raw_decode(text[start:])
+    except json.JSONDecodeError:
+        return {}
     return payload if isinstance(payload, dict) else {}
 
 
