@@ -4,22 +4,52 @@ ui.menu.settings,设置
 ui.menu.quit,退出
 ui.settings.language,语言
 ui.player.greeting,欢迎你 {name}！
-ui.menu.confirm_overwrite.title,????
-ui.menu.confirm_overwrite.body,??????????????????
-ui.menu.new_run,???
-ui.menu.continue,??
-ui.menu.confirm,??
-ui.menu.cancel,??
-ui.character.select.title,Character Select (ZH)
-ui.character.warrior,Warrior (ZH)
-ui.character.mage,Mage (ZH)
-ui.character.rogue,Rogue (ZH)
-ui.character.selected,selected (ZH)
-ui.character.not_open,not open (ZH)
-ui.character.warrior.summary.rage_buff,Rage state buff keeps pressure rising (ZH).
-ui.character.warrior.summary.power_window,Heavy attack timing window defines power spike (ZH).
-ui.character.warrior.summary.cost_burst,Resource cost trades into explosive burst output (ZH).
+ui.menu.confirm_overwrite.title,覆盖存档
+ui.menu.confirm_overwrite.body,检测到已有自动存档，是否开始新一局？
+ui.menu.new_run,新游戏
+ui.menu.continue,继续
+ui.menu.confirm,确认
+ui.menu.cancel,取消
+ui.character.select.title,角色选择
+ui.character.warrior,战士
+ui.character.mage,法师
+ui.character.rogue,游侠
+ui.character.selected,已选择
+ui.character.not_open,尚未开放
+ui.character.warrior.summary.rage_buff,怒气会持续积累并提升战斗压制力。
+ui.character.warrior.summary.power_window,重击有短暂的爆发窗口，需要精准时机。
+ui.character.warrior.summary.cost_burst,消耗怒气换取高额爆发伤害。
 event.abyss_toll.title,深渊代价
 event.abyss_toll.description,付出代价后才能继续前行。
 event.option.lose_hp,流血换取速度
 event.option.take_curse,加入一张诅咒牌
+card.warrior.cleave.name,劈砍
+card.warrior.guard.name,格挡
+card.warrior.rage_surge.name,怒潮
+card.warrior.bloodrush.name,血袭
+card.warrior.taunt.name,嘲讽
+card.warrior.shield_wall.name,盾墙
+card.warrior.overpower.name,压制
+card.warrior.battlecry.name,战合
+card.warrior.crush.name,粉碎
+card.warrior.relentless.name,不屈
+relic.name.ashen_hourglass,灰烬沙漏
+relic.name.obsidian_mirror,黑曜镜
+relic.name.blood_oath,血誓
+relic.name.rusted_compass,锈蚀罗盘
+relic.name.twilight_coin,薄暮硬币
+relic.name.embershard,余烬碎片
+relic.name.frostbite_ring,霜咬戒指
+relic.name.gale_charm,疾风护符
+relic.name.iron_vow,钢铁誓约
+relic.name.moonlit_compass,月光罗盘
+relic.name.nightwatch_lantern,守夜灯
+relic.name.oaken_talisman,橡木护符
+relic.name.phantom_quill,幻羽笔
+relic.name.quicksilver_seal,水银印记
+relic.name.raven_feather,渡鸦羽
+relic.name.sunken_idol,沉没神像
+relic.name.thorn_crown,荆棘王冠
+relic.name.umbral_shard,幽影碎片
+relic.name.vigilant_emblem,警戒徽记
+relic.name.warden_mark,守卫印记

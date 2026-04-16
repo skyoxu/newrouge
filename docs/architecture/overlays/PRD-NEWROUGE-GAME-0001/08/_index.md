@@ -51,7 +51,7 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-16T10:45:29.822317+00:00",
+  "generated_at": "2026-04-16T11:59:59+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
@@ -68,8 +68,8 @@ Test-Refs:
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "b89b6920d8cc1dd128f62b1ce5618f0911acc68f2a647d0d2585aa4494262640",
-      "bytes": 236962
+      "sha256": "d0bb57bc420961b3b154d820f3df8e8a159558eb3bfc9e788a3c0f6c4efb1a1b",
+      "bytes": 236464
     }
   ]
 }
@@ -117,3 +117,12 @@ Test-Refs:
   - `Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs`
   - `Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd`
   - `Game.Core.Tests/Tasks/Task32AcceptanceTests.cs`
+
+## Task39 Translation Traceability
+- Task: `T39 Populate translations for M1 cards, relics, events`
+- ADR-Refs: `ADR-0010`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0039_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs`
+- Evidence script:
+  - `scripts/python/verify_m1_translations.py`

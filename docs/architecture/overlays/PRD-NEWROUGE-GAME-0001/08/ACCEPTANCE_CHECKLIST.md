@@ -153,6 +153,23 @@ Test-Refs:
 - ADR-0032 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0032-backlink.json
 - ADR-0021 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0021-backlink.json
 
+## Task39 Translation Traceability
+- Task: `T39 Populate translations for M1 cards, relics, events`
+- ADR-Refs: `ADR-0010`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0039_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs`
+- Evidence script:
+  - `scripts/python/verify_m1_translations.py`
+
+
+
+- Task39 Acceptance:
+- `ACC:T39.1`: Extract complete M1 visible-text baseline from real sources (cards/relics/events/runtime-visible M1 UI text, not prompts-only); every extracted key must exist in `en.csv` and `zh-CN.csv` with valid values (non-empty, non-key-echo, non-placeholder-garbled).
+- `ACC:T39.2`: In Task39-scoped cards/relics/events data and all runtime-visible M1 UI text (prompts/menu labels/button texts/event option texts/other player-facing labels), visible text must render via translation keys; hardcoded visible human-readable literals fail acceptance.
+- `ACC:T39.3`: M1 locale output correctness is acceptance-critical: for `en` and `zh-CN`, runtime-visible M1 UI text must resolve to non-empty, non-key-echo, non-placeholder values from translation resources; locale-switch refresh timing/mechanism is out of scope for Task39.
+- `ACC:T39.4`: M1 visible-text coverage must be reproducible from source extraction: `required_keys` derived from cards/relics/events/runtime-visible UI sources, and `missing_keys` must be empty for both `en` and `zh-CN`.
+
 
 ## Task26 Difficulty Contract And Immutability Evidence
 - Task 26 / T26 traceability scope: difficulty configuration contract and run-start immutability.
