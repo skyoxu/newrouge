@@ -11,5 +11,5 @@ namespace Game.Core.Contracts.Interfaces;
 /// </remarks>
 public interface ISaveMigrationService
 {
-    SaveMigrationResult TryMigrate(string schemaVersion);
+    SaveMigrationResult AssessSchema(string schemaVersion);
 }
