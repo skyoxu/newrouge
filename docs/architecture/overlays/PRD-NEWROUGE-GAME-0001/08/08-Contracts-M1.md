@@ -349,6 +349,9 @@ Test-Refs:
   - 契约位置：`Game.Core/Contracts/Events/TraceabilityCheckedEvent.cs`
 
 ### 2.2 DTO 与枚举
+- Combat UI HUD snapshot
+  - `Game.Core/Contracts/Combat/CombatHudSnapshot.cs`
+  - Purpose: adapter-facing immutable read model for hand cards, energy, and pile counters.
 - 卡牌与形态
   - `Game.Core/Contracts/Cards/CardDefinition.cs`
   - `Game.Core/Contracts/Cards/CardForm.cs`

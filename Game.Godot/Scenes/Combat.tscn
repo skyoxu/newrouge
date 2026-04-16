@@ -1,0 +1,75 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game.Godot/Scripts/UI/CombatScene.cs" id="1"]
+
+[node name="Combat" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="HUD" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HandCards" type="ItemList" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 120.0
+offset_right = 420.0
+offset_bottom = 360.0
+
+[node name="EnergyValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 140.0
+offset_bottom = 56.0
+text = "--"
+
+[node name="DrawPileValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 160.0
+offset_top = 24.0
+offset_right = 276.0
+offset_bottom = 56.0
+text = "--"
+
+[node name="DiscardPileValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 296.0
+offset_top = 24.0
+offset_right = 412.0
+offset_bottom = 56.0
+text = "--"
+
+[node name="TurnTitleLabel" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 72.0
+offset_right = 320.0
+offset_bottom = 104.0
+text = "combat.turn.title"
+
+[node name="TurnControls" type="HBoxContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 384.0
+offset_right = 340.0
+offset_bottom = 432.0
+theme_override_constants/separation = 8
+
+[node name="StartTurnButton" type="Button" parent="HUD/TurnControls"]
+layout_mode = 2
+text = "combat.turn.start"
+
+[node name="EndTurnButton" type="Button" parent="HUD/TurnControls"]
+layout_mode = 2
+text = "combat.turn.end"
