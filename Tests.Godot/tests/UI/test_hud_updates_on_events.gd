@@ -27,3 +27,11 @@ func test_hud_updates_on_health_event() -> void:
     await get_tree().process_frame
     assert_str(hp_label.text).contains("77")
 
+# ACC:T34.7
+func test_hud_updates_on_card_played_event() -> void:
+    var hud = await _hud()
+    var hand_label: Label = hud.get_node("BottomBar/HBox/HandLabel")
+    _bus.PublishSimple("core.combat.card.played", "ut", "{\"hand\":2}")
+    await get_tree().process_frame
+    assert_str(hand_label.text).contains("2")
+

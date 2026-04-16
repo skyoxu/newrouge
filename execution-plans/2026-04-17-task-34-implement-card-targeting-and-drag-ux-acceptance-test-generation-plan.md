@@ -1,0 +1,21 @@
+# Task 34 Implement card targeting and drag UX acceptance-test generation plan
+
+- Title: Task 34 Implement card targeting and drag UX acceptance-test generation plan
+- Status: active
+- Branch: task/T34
+- Git Head: b06ceaf52c9b642607f9341c3552eca3a6af8d5e
+- Goal: Control acceptance-driven test generation complexity for task 34.
+- Scope: 4 missing refs across 1 test roots; seed refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd, Tests.Godot/tests/Tasks/test_task0034_acceptance.gd, Tests.Godot/tests/UI/test_card_drag_target_play.gd, ...
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 34 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `34`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
