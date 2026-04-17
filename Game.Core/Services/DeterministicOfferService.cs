@@ -40,6 +40,15 @@ public sealed class DeterministicOfferService : IOfferService
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(provenance);
         ValidateProvenanceRngContext(provenance);
+        if (candidates.Count == 0)
+        {
+            throw new InvalidOperationException("Offer candidates must contain at least one item.");
+        }
+
+        if (_lockedOffers.TryGetValue(offerContextId, out var existingSnapshot))
+        {
+            return existingSnapshot;
+        }
 
         var displayOrder = candidates
             .Select(static candidate => candidate.OfferItemId)

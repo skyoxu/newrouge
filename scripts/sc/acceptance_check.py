@@ -56,6 +56,40 @@ def _collect_metrics(steps: list[StepResult]) -> dict[str, Any]:
     return metrics
 
 
+def _task_test_refs(triplet: Any) -> list[str]:
+    refs: list[str] = []
+    for view in (triplet.back, triplet.gameplay):
+        if not isinstance(view, dict):
+            continue
+        value = view.get("test_refs")
+        if not isinstance(value, list):
+            continue
+        for item in value:
+            text = str(item or "").strip()
+            if text and text not in refs:
+                refs.append(text)
+    return refs
+
+
+def _task_chapter_refs(triplet: Any) -> list[str]:
+    refs: list[str] = []
+    for value in triplet.arch_refs():
+        text = str(value or "").strip()
+        if text and text not in refs:
+            refs.append(text)
+    for view in (triplet.back, triplet.gameplay):
+        if not isinstance(view, dict):
+            continue
+        chapter_refs = view.get("chapter_refs")
+        if not isinstance(chapter_refs, list):
+            continue
+        for value in chapter_refs:
+            text = str(value or "").strip()
+            if text and text not in refs:
+                refs.append(text)
+    return refs
+
+
 def _append_risk_summary(
     *,
     out_dir: Path,
@@ -108,6 +142,9 @@ def _build_summary(
     task_id: str | None = None,
     title: str | None = None,
     steps: list[StepResult] | None = None,
+    adr_refs: list[str] | None = None,
+    chapter_refs: list[str] | None = None,
+    test_refs: list[str] | None = None,
     task_requirements: dict[str, Any] | None = None,
     metrics: dict[str, Any] | None = None,
     risk_summary_rel: str | None = None,
@@ -137,6 +174,12 @@ def _build_summary(
         summary["title"] = title
     if steps is not None:
         summary["steps"] = [s.__dict__ for s in steps]
+    if adr_refs is not None:
+        summary["adr_refs"] = adr_refs
+    if chapter_refs is not None:
+        summary["chapter_refs"] = chapter_refs
+    if test_refs is not None:
+        summary["test_refs"] = test_refs
     if task_requirements:
         summary["task_requirements"] = task_requirements
     if metrics:
@@ -337,6 +380,9 @@ def main() -> int:
         task_id=str(triplet.task_id),
         title=str(triplet.master.get("title") or ""),
         steps=steps,
+        adr_refs=triplet.adr_refs(),
+        chapter_refs=_task_chapter_refs(triplet),
+        test_refs=_task_test_refs(triplet),
         task_requirements={
             "has_gd_refs": has_gd_refs,
             "requires_env_evidence_preflight": needs_env_preflight,
