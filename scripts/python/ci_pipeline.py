@@ -25,8 +25,8 @@ from pathlib import Path
 from solution_target import resolve_test_solution_arg
 
 
-def run_cmd(args, cwd=None, timeout=900_000):
-    p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+def run_cmd(args, cwd=None, timeout=900_000, env=None):
+    p = subprocess.Popen(args, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          text=True, encoding='utf-8', errors='ignore')
     try:
         out, _ = p.communicate(timeout=timeout/1000.0)
@@ -100,6 +100,17 @@ def extract_failed_tests(dotnet_test_output: str):
         seen.add(item)
         deduped.append(item)
     return deduped
+
+
+def _resolve_timeout_ms(env_key: str, default_ms: int) -> int:
+    raw = str(os.environ.get(env_key, "") or "").strip()
+    if not raw:
+        return default_ms
+    try:
+        value = int(raw)
+    except ValueError:
+        return default_ms
+    return max(60_000, value)
 
 
 def _resolve_default_solution(root: str | None = None) -> str:
@@ -199,9 +210,16 @@ def main():
     }
 
     # 1) Dotnet tests + coverage (soft gate on coverage)
-    rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
-                       '--solution', resolved_solution,
-                       '--configuration', args.configuration], cwd=root)
+    dotnet_stage_timeout_ms = _resolve_timeout_ms('CI_DOTNET_STAGE_TIMEOUT_MS', 900_000)
+    dotnet_env = os.environ.copy()
+    if not str(dotnet_env.get('DOTNET_TEST_TIMEOUT_MS', '') or '').strip():
+        dotnet_env['DOTNET_TEST_TIMEOUT_MS'] = str(dotnet_stage_timeout_ms)
+    rc, out = run_cmd(
+        ['py', '-3', '-u', 'scripts/python/run_dotnet.py', '--solution', resolved_solution, '--configuration', args.configuration],
+        cwd=root,
+        timeout=dotnet_stage_timeout_ms,
+        env=dotnet_env,
+    )
     with io.open(os.path.join(ci_dir, 'run-dotnet-console.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
@@ -223,6 +241,8 @@ def main():
         'branch_pct': (dotnet_sum.get('coverage') or {}).get('branch_pct'),
         'status': dotnet_sum.get('status'),
         'run_dotnet_console_log': os.path.join(ci_dir, 'run-dotnet-console.txt'),
+        'stage_timeout_ms': dotnet_stage_timeout_ms,
+        'dotnet_test_timeout_ms': dotnet_env.get('DOTNET_TEST_TIMEOUT_MS'),
         'dotnet_test_output_log': dotnet_test_output_ci if copied_test_output else None,
         'failed_tests_count': len(failed_tests),
         'failed_tests': failed_tests[:50],
