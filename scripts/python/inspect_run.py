@@ -971,19 +971,24 @@ def inspect_run_artifacts(
             candidate_commands=payload["candidate_commands"],
         )
     else:
-        payload["recommended_action"] = str(summary.get("recommended_action") or payload["chapter6_hints"].get("next_action") or "").strip()
+        payload["recommended_action"] = str(payload["chapter6_hints"].get("next_action") or summary.get("recommended_action") or "").strip()
         if not str(payload.get("recommended_action") or "").strip():
             payload["recommended_action"] = repair_action
         payload["candidate_commands"] = _merge_candidate_commands(
             build_candidate_commands(payload["task_id"], payload["paths"]["latest"]),
             summary_candidate_commands,
         )
-        payload["recommended_command"] = str(summary.get("recommended_command") or "").strip() or repair_command or build_recommended_command(
+        resolved_recommended_command = build_recommended_command(
             payload["recommended_action"],
             payload["candidate_commands"],
             payload["chapter6_hints"],
             approval,
         )
+        hinted_action = str((payload.get("chapter6_hints") or {}).get("next_action") or "").strip().lower().replace("_", "-")
+        if resolved_recommended_command or hinted_action == "pause":
+            payload["recommended_command"] = resolved_recommended_command
+        else:
+            payload["recommended_command"] = str(summary.get("recommended_command") or "").strip() or repair_command
         summary_forbidden_commands = [str(item).strip() for item in list(summary.get("forbidden_commands") or []) if str(item).strip()]
         payload["forbidden_commands"] = summary_forbidden_commands or build_forbidden_commands(
             recommended_action=payload["recommended_action"],
