@@ -20,6 +20,7 @@ from _acceptance_runtime import (  # noqa: E402
     should_mark_hard_failure,
     validate_arg_conflicts,
 )
+from _summary_schema_fallback import validate_sc_acceptance_without_jsonschema  # noqa: E402
 
 
 class AcceptanceCheckRuntimeTests(unittest.TestCase):
@@ -95,6 +96,50 @@ class AcceptanceCheckRuntimeTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(20, compute_perf_p95_ms(perf_p95_ms=None, require_perf=True))
             self.assertEqual(0, compute_perf_p95_ms(perf_p95_ms=None, require_perf=False))
+
+    def test_fallback_schema_should_allow_acceptance_refs_fields(self) -> None:
+        payload = {
+            "schema_version": "1.1.0",
+            "cmd": "sc-acceptance-check",
+            "mode": "run",
+            "date": "2026-04-17",
+            "only": "links",
+            "status": "ok",
+            "out_dir": "logs/ci/2026-04-17/sc-acceptance-check",
+            "subtasks_coverage_mode": "skip",
+            "security_profile": {
+                "profile": "host-safe",
+                "gate_defaults": {
+                    "path": "require",
+                    "sql": "require",
+                    "audit_schema": "warn",
+                    "ui_event_json_guards": "skip",
+                    "ui_event_source_verify": "skip",
+                    "audit_evidence": "skip",
+                },
+            },
+            "security_modes": {
+                "path": "require",
+                "sql": "require",
+                "audit_schema": "warn",
+                "ui_event_json_guards": "skip",
+                "ui_event_source_verify": "skip",
+                "audit_evidence": "skip",
+            },
+            "arg_validation": {"errors": [], "valid": True},
+            "run_id": "7a35fdd8d65e49b58d5392fb771be8ed",
+            "task_id": "1",
+            "title": "Set up project environment and dependencies",
+            "steps": [],
+            "adr_refs": ["ADR-0031", "ADR-0011"],
+            "chapter_refs": ["CH01", "CH06", "CH07", "CH10"],
+            "test_refs": [
+                "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+            ],
+        }
+
+        errors = validate_sc_acceptance_without_jsonschema(payload)
+        self.assertEqual([], errors)
 
 
 if __name__ == "__main__":

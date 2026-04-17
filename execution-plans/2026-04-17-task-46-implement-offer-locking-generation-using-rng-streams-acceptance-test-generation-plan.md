@@ -1,0 +1,21 @@
+# Task 46 Implement offer locking generation using RNG streams acceptance-test generation plan
+
+- Title: Task 46 Implement offer locking generation using RNG streams acceptance-test generation plan
+- Status: active
+- Branch: task/T46
+- Git Head: 0db2e88310fdf64be354e042f1be548fa864b7af
+- Goal: Control acceptance-driven test generation complexity for task 46.
+- Scope: 4 missing refs across 1 test roots; seed refs: Game.Core.Tests/Repositories/OfferLockRepositoryTests.cs, Game.Core.Tests/Repositories/OfferProvenanceRepositoryTests.cs, Game.Core.Tests/Services/OfferServiceTests.cs, ...
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 46 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `46`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
