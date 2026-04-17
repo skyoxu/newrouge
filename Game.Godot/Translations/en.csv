@@ -8,9 +8,11 @@ ui.menu.confirm_overwrite.title,Overwrite Save
 ui.menu.confirm_overwrite.body,Existing autosave detected. Start a new run?
 ui.menu.confirm,Overwrite
 ui.menu.cancel,Cancel
+ui.run.summary.title,Run Summary
 ui.settings.language,Language
 ui.player.greeting,Welcome {name}!
 ui.difficulty.title,Select Difficulty
+ui.difficulty.label,Difficulty
 ui.difficulty.select,Select
 ui.difficulty.confirm,Confirm Difficulty
 ui.difficulty.1,Difficulty 1

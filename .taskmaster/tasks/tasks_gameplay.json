@@ -3025,14 +3025,15 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd"
+      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0045AcceptanceTests.cs"
     ],
     "acceptance": [
       "当一次运行开始后，HUD 与 Run Summary 都显示该次运行开局所选难度；两处显示值一致，且在界面上可见、可读取 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
-      "从运行开始到运行结束，难度显示值始终等于开局所选值；任意流程推进或玩家操作都不会导致 HUD 或 Run Summary 的显示值变化 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "从运行开始到运行结束，难度显示值始终等于开局所选值；任意流程推进或玩家操作都不会导致 HUD 或 Run Summary 的显示值变化；若运行中尝试变更难度，系统必须拒绝或忽略该请求，且 HUD 与 Run Summary 继续保持开局难度 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd; Game.Core.Tests/Tasks/Task0045AcceptanceTests.cs",
       "HUD 与 Run Summary 的难度文本通过翻译键解析并渲染；界面中不得直接出现硬编码的难度字面量 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
-      "提供 GdUnit4 用例，验证 HUD 在运行开始后显示的难度等于开局所选难度 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
-      "提供 GdUnit4 用例，验证运行过程中 HUD 的难度显示保持不变 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "HUD must expose a dedicated difficulty label node (DifficultyLabel), and after run start it must display the confirmed run difficulty text. Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "During an active run, if another difficulty-selected event carries a value different from the run-start difficulty, HUD and Run Summary must keep the original displayed value unchanged. Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd; Game.Core.Tests/Tasks/Task0045AcceptanceTests.cs",
       "在结算/总结阶段必须存在并显示 Run Summary 面板（至少一个可见节点）；测试可稳定定位该面板并断言其可见状态 Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd"
     ],
     "test_strategy": [
