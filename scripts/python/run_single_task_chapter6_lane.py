@@ -319,10 +319,38 @@ def _stringify_cmd(cmd: list[str]) -> str:
     return " ".join(str(item).strip() for item in list(cmd) if str(item).strip())
 
 
+def _normalize_cmd_text(text: str) -> str:
+    return " ".join(str(text or "").strip().split())
+
+
+def _contains_ordered_subsequence(haystack: list[str], needle: list[str]) -> bool:
+    if not needle:
+        return False
+    index = 0
+    for token in haystack:
+        if token == needle[index]:
+            index += 1
+            if index == len(needle):
+                return True
+    return False
+
+
 def _command_is_forbidden(route_payload: dict[str, Any] | None, cmd: list[str]) -> bool:
-    cmd_text = _stringify_cmd(cmd)
+    cmd_text = _normalize_cmd_text(_stringify_cmd(cmd))
+    cmd_tokens = [str(item).strip() for item in list(cmd) if str(item).strip()]
     forbidden = _route_forbidden_commands(route_payload)
-    return bool(cmd_text and cmd_text in forbidden)
+    if not cmd_text:
+        return False
+    for item in forbidden:
+        forbidden_text = _normalize_cmd_text(item)
+        if not forbidden_text:
+            continue
+        if cmd_text == forbidden_text or cmd_text.startswith(f"{forbidden_text} "):
+            return True
+        forbidden_tokens = [token for token in forbidden_text.split(" ") if token]
+        if _contains_ordered_subsequence(cmd_tokens, forbidden_tokens):
+            return True
+    return False
 
 
 def _normalize_action(value: Any) -> str:
@@ -692,18 +720,19 @@ def _parse_json_stdout(stdout: str) -> dict[str, Any]:
     if not text.strip():
         return {}
     decoder = json.JSONDecoder()
-    start = -1
-    for marker in ("{", "["):
-        idx = text.find(marker)
-        if idx >= 0 and (start < 0 or idx < start):
-            start = idx
+    start = text.find("{")
     if start < 0:
         return {}
-    try:
-        payload, _ = decoder.raw_decode(text[start:])
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
+    while start >= 0:
+        try:
+            payload, _ = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            start = text.find("{", start + 1)
+            continue
+        if isinstance(payload, dict):
+            return payload
+        start = text.find("{", start + 1)
+    return {}
 
 
 def _run_json_step(out_dir: Path, *, name: str, cmd: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
