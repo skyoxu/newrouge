@@ -289,6 +289,54 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("blocked", decision["initial_phase"]["action"])
         self.assertEqual("resume", decision["initial_phase"]["stop_reason"])
 
+    def test_decision_should_stop_initial_phase_when_next_action_requests_pause(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "inspect-first",
+                "run_id": "run-15",
+                "latest_reason": "review_pending",
+                "blocked_by": "",
+                "chapter6_next_action": "pause",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("pause", decision["initial_phase"]["stop_reason"])
+
+    def test_decision_should_stop_initial_phase_when_next_action_requests_inspect(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "inspect-first",
+                "run_id": "run-15",
+                "latest_reason": "review_pending",
+                "blocked_by": "",
+                "chapter6_next_action": "inspect",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("inspect", decision["initial_phase"]["stop_reason"])
+
+    def test_decision_should_stop_initial_phase_when_next_action_requests_rerun(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "inspect-first",
+                "run_id": "run-15",
+                "latest_reason": "review_pending",
+                "blocked_by": "",
+                "chapter6_next_action": "rerun",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+        )
+
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("rerun", decision["initial_phase"]["stop_reason"])
+
     def test_decision_should_prioritize_needs_fix_next_action_over_inspect_first_lane(self) -> None:
         decision = lane.build_orchestration_decision(
             initial_route={
@@ -344,6 +392,25 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
 
         self.assertEqual("blocked", decision["initial_phase"]["action"])
         self.assertEqual("record-residual", decision["initial_phase"]["stop_reason"])
+
+    def test_command_is_forbidden_should_match_prefix_for_review_pipeline_fork(self) -> None:
+        cmd = lane.build_review_pipeline_fork_cmd(
+            "15",
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            godot_bin="C:/Godot/Godot.exe",
+        )
+        route_payload = {
+            "forbidden_commands": "py -3 scripts/sc/run_review_pipeline.py --task-id 15 --fork | py -3 scripts/sc/run_review_pipeline.py --task-id 15 --resume"
+        }
+
+        self.assertTrue(lane._command_is_forbidden(route_payload, cmd))
+
+    def test_parse_json_stdout_should_extract_object_after_bracketed_log_prefix(self) -> None:
+        stdout = 'INFO [retry] waiting for response\n{"k": 2, "v": "ok"}\n'
+
+        payload = lane._parse_json_stdout(stdout)
+
+        self.assertEqual({"k": 2, "v": "ok"}, payload)
 
     def test_decision_should_block_initial_phase_for_pending_fork_approval(self) -> None:
         decision = lane.build_orchestration_decision(
@@ -458,6 +525,30 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
 
         self.assertEqual("fork", decision["initial_phase"]["action"])
         self.assertEqual("fork", decision["initial_phase"]["stop_reason"])
+
+    def test_decision_should_complete_when_approval_is_approved_and_next_action_is_continue(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "inspect-first",
+                "run_id": "run-15",
+                "latest_reason": "pipeline_clean",
+                "blocked_by": "approval_approved",
+                "chapter6_next_action": "continue",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+            resume_payload={
+                "approval": {
+                    "required_action": "fork",
+                    "status": "approved",
+                    "allowed_actions": ["fork", "inspect"],
+                    "blocked_actions": ["resume", "rerun"],
+                }
+            },
+        )
+
+        self.assertEqual("complete", decision["initial_phase"]["action"])
+        self.assertEqual("continue", decision["initial_phase"]["stop_reason"])
 
     def test_plan_should_stop_after_run_67_recovery_signal(self) -> None:
         initial_route = {
@@ -1021,6 +1112,121 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             self.assertIn("--fork", executed_cmds["review-pipeline-fork"])
             payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual("ok", payload["status"])
+
+    def test_main_should_block_fork_when_forbidden_command_matches_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out_dir = root / "logs" / "ci" / "chapter6-fork-forbidden"
+            argv = [
+                "run_single_task_chapter6_lane.py",
+                "--task-id",
+                "15",
+                "--godot-bin",
+                "C:/Godot/Godot.exe",
+                "--delivery-profile",
+                "fast-ship",
+                "--out-dir",
+                str(out_dir),
+            ]
+            executed_steps: list[str] = []
+            json_steps = iter(
+                [
+                    (
+                        {
+                            "name": "resume-task",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "resume.log",
+                        },
+                        {
+                            "task_id": "15",
+                            "approval": {
+                                "required_action": "fork",
+                                "status": "approved",
+                                "allowed_actions": ["fork", "inspect"],
+                                "blocked_actions": ["resume", "rerun"],
+                            },
+                        },
+                    ),
+                    (
+                        {
+                            "name": "chapter6-route-initial",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "route-initial.log",
+                        },
+                        {
+                            "preferred_lane": "inspect-first",
+                            "run_id": "run-15",
+                            "latest_reason": "pipeline_clean",
+                            "blocked_by": "approval_approved",
+                            "chapter6_next_action": "fork",
+                            "forbidden_commands": "py -3 scripts/sc/run_review_pipeline.py --task-id 15 --fork",
+                        },
+                    ),
+                    (
+                        {
+                            "name": "chapter6-route-post-review",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "route-post-review.log",
+                        },
+                        {
+                            "preferred_lane": "inspect-first",
+                            "run_id": "run-15",
+                            "latest_reason": "pipeline_clean",
+                            "blocked_by": "",
+                            "chapter6_next_action": "continue",
+                            "forbidden_commands": [],
+                        },
+                    ),
+                    (
+                        {
+                            "name": "inspect-local-hard-checks",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "inspect-local-hard-checks.log",
+                        },
+                        {"recommended_action": "continue"},
+                    ),
+                ]
+            )
+
+            def fake_run_json_step(*_args, **_kwargs):
+                return next(json_steps)
+
+            def fake_run_plain_step(*_args, name, cmd, **_kwargs):
+                executed_steps.append(str(name))
+                return {
+                    "name": str(name),
+                    "cmd": list(cmd),
+                    "rc": 0,
+                    "stdout_tail": "",
+                    "stderr_tail": "",
+                    "log": f"{name}.log",
+                }
+
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(lane, "_repo_root", return_value=root),
+                mock.patch.object(lane, "_run_json_step", side_effect=fake_run_json_step),
+                mock.patch.object(lane, "_run_plain_step", side_effect=fake_run_plain_step),
+            ):
+                rc = lane.main()
+
+            self.assertEqual(1, rc)
+            self.assertEqual([], executed_steps)
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("blocked", payload["status"])
+            self.assertEqual("forbidden-command:review-pipeline-fork", payload["stop_reason"])
 
     def test_main_should_stop_before_expensive_steps_when_no_increment_converged(self) -> None:
         with tempfile.TemporaryDirectory() as td:
