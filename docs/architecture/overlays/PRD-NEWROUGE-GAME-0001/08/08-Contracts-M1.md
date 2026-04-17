@@ -376,6 +376,7 @@ Test-Refs:
   - `Game.Core/Contracts/Save/AutosaveSnapshot.cs`
   - `Game.Core/Contracts/Save/ContinueMetadata.cs`
   - `Game.Core/Contracts/Save/ContinueGateDecision.cs`
+  - `Game.Core/Contracts/Save/ContinueLoadValidationResult.cs`
   - `Game.Core/Contracts/Save/SaveMigrationResult.cs`
 - 配置与内容
   - `Game.Core/Contracts/Config/DifficultyConfig.cs`
@@ -420,3 +421,4 @@ Test-Refs:
 - **CombatLoopPhase** (`core.combat.loop.phase`)
   - 用途：定义战斗阶段枚举（StartOfTurn, Draw, Main, EndOfTurn）
   - 契约位置：`Game.Core/Contracts/Combat/CombatLoop.cs`
+

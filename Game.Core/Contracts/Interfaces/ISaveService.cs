@@ -15,4 +15,5 @@ public interface ISaveService
     Task WriteAutosaveAsync(AutosaveSnapshot snapshot);
     Task<AutosaveSnapshot?> ReadAutosaveAsync();
     Task<ContinueMetadata?> ReadContinueMetadataAsync();
+    Task<ContinueLoadValidationResult> ValidateContinueLoadAsync();
 }
