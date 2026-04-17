@@ -290,6 +290,11 @@ def _route_stop_reason(route_payload: dict[str, Any] | None) -> str:
         return blocked_by
     if next_action == "continue":
         return ""
+    if next_action == "needs-fix-fast":
+        # Explicit Chapter 6 hint allows narrow closure even when preferred_lane falls back to inspect-first.
+        return ""
+    if next_action == "fix-and-resume":
+        return "fix-deterministic"
     if next_action in {"pause", "fork", "resume", "inspect", "rerun"}:
         return next_action
     if lane in {"run-6.7", "repo-noise-stop", "fix-deterministic", "inspect-first", "record-residual"}:
@@ -305,6 +310,8 @@ def _route_requires_needs_fix(route_payload: dict[str, Any] | None) -> bool:
     next_action = _route_next_action(route_payload)
     if next_action == "needs-fix-fast":
         return True
+    if next_action in {"continue", "inspect", "pause", "fork", "resume", "rerun", "fix-and-resume"}:
+        return False
     return _route_lane(route_payload) == "run-6.8"
 
 
