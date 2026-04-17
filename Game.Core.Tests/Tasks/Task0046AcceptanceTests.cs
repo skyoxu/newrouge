@@ -155,10 +155,18 @@ public sealed class Task0046AcceptanceTests
             .GetProperty("steps")
             .EnumerateArray()
             .Single(step => string.Equals(step.GetProperty("name").GetString(), "subtasks-coverage", StringComparison.Ordinal));
+        var subtasksMode = gateSummary.RootElement.GetProperty("subtasks_coverage_mode").GetString();
+        var reason = subtasksCoverage.GetProperty("details").GetProperty("reason").GetString();
 
         subtasksCoverage.GetProperty("status").GetString().Should().Be("skipped");
         subtasksCoverage.GetProperty("rc").GetInt32().Should().Be(0);
-        subtasksCoverage.GetProperty("details").GetProperty("reason").GetString().Should().Be("no_subtasks");
+        if (string.Equals(subtasksMode, "skip", StringComparison.Ordinal))
+        {
+            reason.Should().Be("subtasks_coverage_skip");
+            return;
+        }
+
+        reason.Should().Be("no_subtasks");
     }
 
     // ACC:T46.13
