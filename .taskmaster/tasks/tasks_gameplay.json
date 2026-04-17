@@ -2530,12 +2530,13 @@
       "Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
     ],
     "acceptance": [
-      "当单槽存档成功保存后，后续加载必须能读取运行元数据（run_id、difficulty_id、act、node_id、timestamp），且 Continue 是否可用必须由该元数据参与判定 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "加载单槽存档时必须执行结构与完整性校验；任一校验失败时必须阻止 Continue、显示错误提示，并保持现有存档内容不被修改 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "Overlay 验收清单中该任务的 Test-Refs 记录保持对齐且不新增引用 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "提供 xUnit 用例覆盖元数据校验与 Continue 门禁的放行/阻止结果 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "相关测试在清单中明确标注为 xUnit Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
-      "交付物需引用 ADR-0032 与 ADR-0029 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
+      "当单槽存档成功保存后，加载元数据必须逐字段等价还原 run_id、difficulty_id、act、node_id、timestamp（与保存时写入值一致），且 Continue 可用性判定必须使用该元数据 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "加载单槽存档时必须在加载入口执行 payload 结构、metadata schema 与 checksum 完整性校验；任一失败时加载结果必须失败并阻止 Continue，返回 invalid_structure / invalid_metadata / invalid_integrity 对应错误（ErrorCode 与可展示 ErrorMessage） Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "Continue gate 在同一 persisted envelope+metadata 上必须给出互斥结果：输入合法返回 ContinueAllowed=true 且 ErrorCode/ErrorMessage 为空；metadata 缺失或关键字段不一致返回 ContinueAllowed=false 且 ErrorCode=invalid_metadata Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "当 metadata schema 校验失败（run_id、difficulty_id、act、node_id、timestamp 任一缺失或非法）时，加载入口必须失败并阻止 Continue，且错误码为 invalid_metadata 并提供可展示错误消息 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "当 payload 结构合法、metadata schema 合法且 checksum 匹配时，加载校验必须返回 ContinueAllowed=true 且 ErrorMessage 为空，并保持已存档内容不被修改 Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "当 payload 结构非法触发 invalid_structure 时，Continue 必须被阻止并返回 invalid_structure，同时已持久化 autosave 原文必须保持不变（与校验前字节等价） Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "Continue 真实加载入口（非仅独立 validator 调用）必须执行与 Continue gate 一致的 metadata schema + integrity 校验；任一失败时加载结果失败、ContinueBlocked=true，并返回可展示 ErrorCode/ErrorMessage（invalid_metadata/invalid_integrity/invalid_structure） Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for metadata validation and Continue gating. Refs: ADR-0032."

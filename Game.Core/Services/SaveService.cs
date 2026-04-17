@@ -32,6 +32,7 @@ public sealed class SaveService : ISaveService
     private readonly string _userSavePath;
     private readonly string? _physicalUserRoot;
     private readonly int _maxPayloadBytes;
+    private readonly ContinueLoadValidationService _continueLoadValidationService = new();
 
     public SaveService(
         IDataStore dataStore,
@@ -165,6 +166,19 @@ public sealed class SaveService : ISaveService
                 NodeId: envelope.SavePointId,
                 IntegrityHash: envelope.IntegrityHash,
                 UpdatedAt: envelope.SavedAt);
+    }
+
+    public async Task<ContinueLoadValidationResult> ValidateContinueLoadAsync()
+    {
+        var metadata = await ReadContinueMetadataAsync().ConfigureAwait(false);
+        var envelope = await ReadEnvelopeAsync(publishLoadedEvent: false).ConfigureAwait(false);
+        if (envelope is null)
+        {
+            return _continueLoadValidationService.Evaluate(null, metadata);
+        }
+
+        var payload = BuildEnvelopeJson(envelope);
+        return _continueLoadValidationService.Evaluate(payload, metadata);
     }
 
     private async Task<SaveEnvelope?> ReadEnvelopeAsync(bool publishLoadedEvent)
@@ -330,6 +344,11 @@ public sealed class SaveService : ISaveService
             StateJson: snapshot.StateJson,
             OfferLocks: offerLocks,
             IntegrityHash: ComputeHash(snapshot.StateJson));
+    }
+
+    private string BuildEnvelopeJson(SaveEnvelope envelope)
+    {
+        return JsonSerializer.Serialize(envelope, _serializerOptions);
     }
 
     private static DifficultySnapshot ResolveDifficultySnapshot(string stateJson)

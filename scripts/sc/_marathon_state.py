@@ -248,6 +248,11 @@ def build_initial_state(
 def build_forked_summary(source_summary: dict[str, Any], *, new_run_id: str, requested_run_id: str) -> dict[str, Any]:
     cloned_steps: list[dict[str, Any]] = []
     for name in STEP_SEQUENCE:
+        # Fork runs should reuse deterministic evidence only.
+        # LLM review must rerun in the new run so needs-fix findings can be re-evaluated
+        # against current edits instead of staying pinned to source-run artifacts.
+        if name == "sc-llm-review":
+            break
         step = _summary_steps_by_name(source_summary).get(name)
         if not isinstance(step, dict):
             break
