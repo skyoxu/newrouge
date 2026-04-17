@@ -368,6 +368,27 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("blocked", decision["initial_phase"]["action"])
         self.assertEqual("approval_pending", decision["initial_phase"]["stop_reason"])
 
+    def test_decision_should_block_initial_phase_for_pending_fork_approval_compact_payload(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "run-6.7",
+                "run_id": "run-15",
+                "latest_reason": "step_failed:sc-test",
+                "blocked_by": "",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+            resume_payload={
+                "approval_required_action": "fork",
+                "approval_status": "pending",
+                "approval_allowed_actions": "inspect | pause",
+                "approval_blocked_actions": "fork | resume | rerun",
+            },
+        )
+
+        self.assertEqual("blocked", decision["initial_phase"]["action"])
+        self.assertEqual("approval_pending", decision["initial_phase"]["stop_reason"])
+
     def test_decision_should_defer_to_route_when_fork_approval_was_denied(self) -> None:
         decision = lane.build_orchestration_decision(
             initial_route={
@@ -410,6 +431,28 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                     "allowed_actions": ["fork", "inspect"],
                     "blocked_actions": ["resume", "rerun"],
                 }
+            },
+        )
+
+        self.assertEqual("fork", decision["initial_phase"]["action"])
+        self.assertEqual("fork", decision["initial_phase"]["stop_reason"])
+
+    def test_decision_should_enter_fork_when_compact_payload_reports_approval_approved(self) -> None:
+        decision = lane.build_orchestration_decision(
+            initial_route={
+                "preferred_lane": "inspect-first",
+                "run_id": "run-15",
+                "latest_reason": "pipeline_clean",
+                "blocked_by": "approval_approved",
+                "chapter6_next_action": "fork",
+            },
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+            resume_payload={
+                "approval_required_action": "fork",
+                "approval_status": "approved",
+                "approval_allowed_actions": "fork | inspect",
+                "approval_blocked_actions": "resume | rerun",
             },
         )
 
@@ -490,6 +533,31 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             ],
             [step["name"] for step in plan["steps"]],
         )
+
+    def test_plan_should_use_resume_next_action_when_initial_route_omits_chapter6_next_action(self) -> None:
+        initial_route = {
+            "preferred_lane": "inspect-first",
+            "run_id": "run-15",
+            "latest_reason": "pipeline_clean",
+            "blocked_by": "",
+        }
+
+        plan = lane.build_execution_plan(
+            task_id="15",
+            godot_bin="C:/Godot/Godot.exe",
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            initial_route=initial_route,
+            post_review_route={"preferred_lane": "inspect-first"},
+            final_route={"preferred_lane": "inspect-first"},
+            resume_payload={
+                "chapter6_next_action": "continue",
+                "blocked_by": "n/a",
+            },
+        )
+
+        self.assertEqual("complete", plan["status"])
+        self.assertEqual("continue", plan["stop_reason"])
+        self.assertEqual(["resume-task", "chapter6-route-initial"], [step["name"] for step in plan["steps"]])
 
     def test_plan_should_run_fork_lane_when_approval_is_approved(self) -> None:
         initial_route = {

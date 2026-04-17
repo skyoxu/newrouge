@@ -329,18 +329,80 @@ def _normalize_action(value: Any) -> str:
     return str(value or "").strip().lower().replace("_", "-")
 
 
-def _approval_stop_reason(resume_payload: dict[str, Any] | None, *, desired_action: str) -> str:
+def _normalize_action_list(raw: Any) -> list[str]:
+    items: list[str] = []
+    if isinstance(raw, list):
+        items = [str(item).strip() for item in raw]
+    elif isinstance(raw, str):
+        text = str(raw).strip()
+        if text:
+            if "|" in text:
+                items = [segment.strip() for segment in text.split("|")]
+            elif "," in text:
+                items = [segment.strip() for segment in text.split(",")]
+            elif text.lower() not in {"none", "n/a"}:
+                items = [text]
+    return [value for value in (_normalize_action(item) for item in items) if value and value not in {"none", "n/a"}]
+
+
+def _extract_approval(resume_payload: dict[str, Any] | None) -> dict[str, Any]:
     payload = resume_payload if isinstance(resume_payload, dict) else {}
-    approval = payload.get("approval") if isinstance(payload.get("approval"), dict) else {}
-    required_action = _normalize_action(approval.get("required_action"))
+    nested = payload.get("approval") if isinstance(payload.get("approval"), dict) else {}
+    required_action = _normalize_action(nested.get("required_action") or payload.get("approval_required_action"))
+    status = _normalize_action(nested.get("status") or payload.get("approval_status")) or "not-needed"
+    allowed_actions = _normalize_action_list(
+        nested.get("allowed_actions")
+        if nested.get("allowed_actions") is not None
+        else payload.get("approval_allowed_actions")
+    )
+    blocked_actions = _normalize_action_list(
+        nested.get("blocked_actions")
+        if nested.get("blocked_actions") is not None
+        else payload.get("approval_blocked_actions")
+    )
+    return {
+        "required_action": required_action,
+        "status": status,
+        "allowed_actions": allowed_actions,
+        "blocked_actions": blocked_actions,
+    }
+
+
+def _merge_initial_route_with_resume(route_payload: dict[str, Any] | None, resume_payload: dict[str, Any] | None) -> dict[str, Any]:
+    route = dict(route_payload or {})
+    resume = resume_payload if isinstance(resume_payload, dict) else {}
+    if _normalize_action(route.get("chapter6_next_action")) in {"", "n/a"}:
+        route_next_action = _normalize_action(resume.get("chapter6_next_action"))
+        if route_next_action not in {"", "n/a"}:
+            route["chapter6_next_action"] = route_next_action
+    if _route_blocked_by(route) in {"", "n/a", "none"}:
+        blocked_by = str(resume.get("blocked_by") or "").strip().lower()
+        if blocked_by not in {"", "n/a", "none"}:
+            route["blocked_by"] = blocked_by
+    if _route_latest_reason(route) in {"", "n/a", "none"}:
+        latest_reason = str(resume.get("latest_reason") or "").strip().lower()
+        if latest_reason not in {"", "n/a", "none"}:
+            route["latest_reason"] = latest_reason
+    if _route_run_id(route) in {"", "n/a"}:
+        run_id = str(resume.get("run_id") or "").strip()
+        if run_id and run_id.lower() not in {"n/a", "none"}:
+            route["run_id"] = run_id
+    if not _route_forbidden_commands(route):
+        forbidden_commands = resume.get("forbidden_commands")
+        if isinstance(forbidden_commands, str) and forbidden_commands.strip():
+            route["forbidden_commands"] = forbidden_commands
+        elif isinstance(forbidden_commands, list):
+            route["forbidden_commands"] = [str(item).strip() for item in forbidden_commands if str(item).strip()]
+    return route
+
+
+def _approval_stop_reason(resume_payload: dict[str, Any] | None, *, desired_action: str) -> str:
+    approval = _extract_approval(resume_payload)
+    required_action = str(approval.get("required_action") or "")
     if required_action != "fork":
         return ""
-    status = _normalize_action(approval.get("status"))
-    allowed_actions = {
-        _normalize_action(item)
-        for item in list(approval.get("allowed_actions") or [])
-        if _normalize_action(item)
-    }
+    status = str(approval.get("status") or "not-needed")
+    allowed_actions = {item for item in list(approval.get("allowed_actions") or []) if item}
     desired = _normalize_action(desired_action) or "resume"
     if desired == "needs-fix-fast":
         desired = "resume"
@@ -433,8 +495,9 @@ def build_orchestration_decision(
     final_route: dict[str, Any],
     resume_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    initial_phase = _decide_phase(initial_route, allow_needs_fix=True, resume_payload=resume_payload)
-    if initial_phase["action"] == "continue" and not _initial_route_has_recovery_signal(initial_route):
+    resolved_initial_route = _merge_initial_route_with_resume(initial_route, resume_payload)
+    initial_phase = _decide_phase(resolved_initial_route, allow_needs_fix=True, resume_payload=resume_payload)
+    if initial_phase["action"] == "continue" and not _initial_route_has_recovery_signal(resolved_initial_route):
         initial_phase = {
             "action": "full-path",
             "stop_reason": "",
