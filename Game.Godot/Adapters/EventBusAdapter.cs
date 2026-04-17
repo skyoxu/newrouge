@@ -15,12 +15,31 @@ public partial class EventBusAdapter : Node, IEventBus
 
     private readonly List<Func<DomainEvent, Task>> _handlers = new();
     private readonly object _gate = new();
+    private bool _isDisposed;
+
+    public override void _ExitTree()
+    {
+        _isDisposed = true;
+        base._ExitTree();
+    }
 
     public async Task PublishAsync(DomainEvent evt)
     {
+        if (_isDisposed || IsQueuedForDeletion())
+        {
+            return;
+        }
+
         // Emit Godot signal for scene-level listeners
         var dataJson = string.IsNullOrWhiteSpace(evt.DataJson) ? "{}" : evt.DataJson;
-        EmitSignal(SignalName.DomainEventEmitted, evt.Type, evt.Source, dataJson, evt.Id, evt.SpecVersion, evt.DataContentType, evt.Timestamp.ToString("o"));
+        try
+        {
+            EmitSignal(SignalName.DomainEventEmitted, evt.Type, evt.Source, dataJson, evt.Id, evt.SpecVersion, evt.DataContentType, evt.Timestamp.ToString("o"));
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
 
         // Notify in-process subscribers
         List<Func<DomainEvent, Task>> snapshot;
@@ -52,6 +71,11 @@ public partial class EventBusAdapter : Node, IEventBus
     // Simple publish for GDScript tests without needing DomainEvent construction
     public void PublishSimple(string type, string source, string data_json)
     {
+        if (_isDisposed || IsQueuedForDeletion())
+        {
+            return;
+        }
+
         var evt = new DomainEvent(type, source, data_json, DateTimeOffset.UtcNow, Guid.NewGuid().ToString("N"));
         _ = PublishAsync(evt);
     }
