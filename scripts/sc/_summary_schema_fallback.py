@@ -321,7 +321,19 @@ def validate_sc_acceptance_without_jsonschema(payload: dict[str, Any]) -> list[s
         "security_modes",
         "arg_validation",
     }
-    allowed = required | {"run_id", "task_id", "title", "steps", "task_requirements", "metrics", "risk_summary", "step_plan"}
+    allowed = required | {
+        "run_id",
+        "task_id",
+        "title",
+        "adr_refs",
+        "chapter_refs",
+        "test_refs",
+        "steps",
+        "task_requirements",
+        "metrics",
+        "risk_summary",
+        "step_plan",
+    }
     for key in required:
         if key not in payload:
             errors.append(f"$.{key}: missing required property")
