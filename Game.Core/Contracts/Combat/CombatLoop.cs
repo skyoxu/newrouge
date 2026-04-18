@@ -112,6 +112,14 @@ public enum PlayCardPipelineStep
 public sealed record CombatantOrderKey(string CombatantId, string StableId);
 
 /// <summary>
+/// Ordering key for deterministic trigger sequencing.
+/// </summary>
+/// <param name="SourceId">Stable trigger source identifier (for example Status.* or Relic.*).</param>
+/// <param name="Priority">Primary ordering priority (ascending).</param>
+/// <param name="RegistrationOrder">Tie-breaker registration order (ascending after source-type rank).</param>
+public sealed record CombatTriggerOrderKey(string SourceId, int Priority, int RegistrationOrder);
+
+/// <summary>
 /// Input contract for one PlayCard pipeline execution.
 /// </summary>
 public sealed record PlayCardPipelineInput(
@@ -194,6 +202,21 @@ public sealed class PlayCardResolutionPipeline
     }
 
     /// <summary>
+    /// Resolves deterministic trigger source order.
+    /// Rule: priority asc, source-type rank (Relic before Status), then registration order asc.
+    /// </summary>
+    public static IReadOnlyList<string> ResolveTriggerOrder(IEnumerable<CombatTriggerOrderKey> triggers)
+    {
+        ArgumentNullException.ThrowIfNull(triggers);
+        return triggers
+            .OrderBy(static trigger => trigger.Priority)
+            .ThenBy(static trigger => GetTriggerSourceRank(trigger.SourceId))
+            .ThenBy(static trigger => trigger.RegistrationOrder)
+            .Select(static trigger => trigger.SourceId)
+            .ToArray();
+    }
+
+    /// <summary>
     /// Computes overplay tax. Enabled only when difficulty >= 10.
     /// </summary>
     public static int CalculateOverplayTax(
@@ -230,12 +253,12 @@ public sealed class PlayCardResolutionPipeline
         bool isFixedDamage,
         int rageStacks = 0)
     {
-        var normalizedBase = Math.Max(0, baseDamage);
         if (isFixedDamage)
         {
-            return normalizedBase;
+            return baseDamage;
         }
 
+        var normalizedBase = Math.Max(0, baseDamage);
         var rageBonus = Math.Max(0, rageStacks);
         var mutable = Math.Max(0, normalizedBase + strength + rageBonus);
         var weak = Math.Max(0.0, weakMultiplier);
@@ -399,5 +422,21 @@ public sealed class PlayCardResolutionPipeline
             state.FinalDamage,
             state.CardsPlayedThisTurn,
             string.Join(">", executed));
+    }
+
+    private static int GetTriggerSourceRank(string sourceId)
+    {
+        var normalized = sourceId ?? string.Empty;
+        if (normalized.StartsWith("Relic.", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        if (normalized.StartsWith("Status.", StringComparison.Ordinal))
+        {
+            return 1;
+        }
+
+        return 2;
     }
 }

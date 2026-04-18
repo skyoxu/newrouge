@@ -195,3 +195,16 @@ Test-Refs:
 - Checklist:
   - run metadata persists `difficulty_id`, `label_key`, `description_key`, `ruleset_id` from selected difficulty snapshot
   - post-start mutation requests are rejected or leave stored values unchanged
+
+
+## Task47 Trigger Ordering And Fixed Damage Evidence
+- Task: `T47 Implement status trigger ordering and fixed damage rules`
+- ADR-Refs: `ADR-0029`, `ADR-0032`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs`
+  - `Game.Core.Tests/Services/StatusTriggerOrderingTests.cs`
+  - `Game.Core.Tests/Services/FixedDamageRulesTests.cs`
+- Checklist:
+  - Trigger ordering determinism: repeated settlements with identical inputs must preserve trigger sequence and final damage.
+  - Trigger ordering correctness: tie-breaker rule is deterministic and verifiable (Relic before Status under equal priority; same-type ties honor registration order).
+  - Fixed damage unmodified: fixed damage remains unchanged by mutable multipliers and by OverplayTax parameter changes.
