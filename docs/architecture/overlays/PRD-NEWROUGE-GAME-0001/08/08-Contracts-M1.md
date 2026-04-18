@@ -357,6 +357,7 @@ Test-Refs:
   - `Game.Core/Contracts/Cards/CardForm.cs`
   - `Game.Core/Contracts/Cards/CardInstance.cs`
   - `Game.Core/Contracts/Cards/CardInstanceModifier.cs`
+  - `Game.Core/Contracts/Cards/CardPoolDefinition.cs`
   - `Game.Core/Contracts/Cards/UpgradeRoute.cs`
 - 奖励候选
   - `Game.Core/Contracts/Offers/OfferItem.cs`

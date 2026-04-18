@@ -720,7 +720,9 @@
       "OfferService在UI展示卡牌选择时不得推进随机数状态；在相同种子与相同输入状态下重复调用必须返回完全一致的选择结果，若结果差异或RNG状态变化则验收失败。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
       "存在可重复通过的xUnit测试，分别验证卡池选择的确定性与稀有度分布稳定性；任一测试不稳定或不通过即验收失败。 Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs Game.Core.Tests/Services/CardPoolRarityDistributionTests.cs",
       "Task 29 implementation acceptance must explicitly validate consistency with ADR-0032 and ADR-0033; missing either ADR trace fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
-      "Task 29 test acceptance must include explicit ADR-0032 traceability check and record pass/fail in task evidence output; missing ADR-0032 gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
+      "Task 29 test acceptance must include explicit ADR-0032 traceability check and record pass/fail in task evidence output; missing ADR-0032 gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "OfferService preview must reject unsupported act values and must not advance RNG-related state; after a rejected call, rerunning the same valid input with the same seed and streamPosition must return identical results. Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs",
+      "OfferService deterministic preview results must be jointly determined by act and encounterType; with the same seed and streamPosition, changing act or encounterType must produce an observably different selection. Refs: Game.Core.Tests/Services/OfferServiceDeterminismTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for pool selection determinism and rarity distribution stability. Refs: ADR-0032."
