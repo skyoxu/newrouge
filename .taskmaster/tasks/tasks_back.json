@@ -632,7 +632,6 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Tasks/test_task0019_acceptance.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
       "Game.Core.Tests/Services/RewardSelectionServiceTests.cs",
@@ -641,7 +640,8 @@
       "Game.Core.Tests/Services/RewardOfferRngStateTests.cs",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_skip_preserves_offer.gd",
       "Tests.Godot/tests/UI/test_reward_ui_translations.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Tests.Godot/tests/Tasks/test_task0019_acceptance.gd"
     ],
     "acceptance": [
       "进入 Reward.tscn 后，界面必须同时且仅出现 3 张可选择卡牌；若数量不等于 3 或任一卡缺少名称、描述、形态标识（Base/U1A/U1B/Ultimate）则不通过。 Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
