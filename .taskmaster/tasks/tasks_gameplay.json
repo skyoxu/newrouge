@@ -1467,7 +1467,8 @@
     "test_refs": [
       "Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
       "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_no_cost_no_resource_deduction.gd",
-      "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd"
+      "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
+      "Game.Core.Tests/Tasks/Task0021AcceptanceTests.cs"
     ],
     "acceptance": [
       "进入 Rest.tscn 时，界面必须同时显示且可选择“升级（免费升级一张卡）”“治疗”“移除诅咒”三项；任一选项缺失、不可见或不可选择即判定失败。 Refs: Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
