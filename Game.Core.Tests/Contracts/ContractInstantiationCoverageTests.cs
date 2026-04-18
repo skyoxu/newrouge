@@ -359,6 +359,24 @@ public class ContractInstantiationCoverageTests
                 value = list;
                 return true;
             }
+
+            if (g == typeof(IReadOnlyDictionary<,>) || g == typeof(IDictionary<,>) || g == typeof(Dictionary<,>))
+            {
+                var keyType = t.GetGenericArguments()[0];
+                var valueType = t.GetGenericArguments()[1];
+                if (!TryCreateValue(keyType, out var keyValue, depth + 1) ||
+                    !TryCreateValue(valueType, out var dictValue, depth + 1))
+                {
+                    value = null;
+                    return false;
+                }
+
+                var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
+                var dict = (System.Collections.IDictionary)Activator.CreateInstance(dictType)!;
+                dict.Add(keyValue, dictValue);
+                value = dict;
+                return true;
+            }
         }
 
         if (type != t && Nullable.GetUnderlyingType(type) is not null)
