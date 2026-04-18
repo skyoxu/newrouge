@@ -368,6 +368,18 @@ def _recommendation_from_pipeline_summary(summary_payload: dict[str, Any]) -> tu
 
 def _recommendation_from_inspection(inspection: dict[str, Any]) -> tuple[str, str, list[str]] | None:
     recommended_action = str(inspection.get("recommended_action") or "").strip().lower()
+    failure = inspection.get("failure") if isinstance(inspection.get("failure"), dict) else {}
+    failure_code = str(failure.get("code") or "").strip().lower()
+    chapter6_hints = inspection.get("chapter6_hints") if isinstance(inspection.get("chapter6_hints"), dict) else {}
+    hinted_action = str(chapter6_hints.get("next_action") or "").strip().lower().replace("_", "-")
+    if hinted_action == "continue" and failure_code == "ok":
+        why = str(inspection.get("recommended_action_why") or "").strip() or "Inspection payload supplied the recovery recommendation."
+        signals = ["inspection.hinted_action=continue"]
+        latest_summary_signals = inspection.get("latest_summary_signals") if isinstance(inspection.get("latest_summary_signals"), dict) else {}
+        reason = str(latest_summary_signals.get("reason") or "").strip()
+        if reason:
+            signals.append(f"inspection.latest_reason={reason}")
+        return "continue", why, signals
     if not recommended_action or recommended_action in {"continue", "none"}:
         return None
     why = str(inspection.get("recommended_action_why") or "").strip()
@@ -376,7 +388,6 @@ def _recommendation_from_inspection(inspection: dict[str, Any]) -> tuple[str, st
     reason = str(latest_summary_signals.get("reason") or "").strip()
     if reason:
         signals.append(f"inspection.latest_reason={reason}")
-    chapter6_hints = inspection.get("chapter6_hints") if isinstance(inspection.get("chapter6_hints"), dict) else {}
     blocked_by = str(chapter6_hints.get("blocked_by") or "").strip()
     if blocked_by:
         signals.append(f"inspection.blocked_by={blocked_by}")
@@ -546,6 +557,9 @@ def build_resume_payload(
             chapter6_hints=chapter6_hints,
             approval=approval,
         )
+    if str(recommended_action or "").strip().lower() == "continue":
+        recommended_command = ""
+        forbidden_commands = []
 
     payload: dict[str, Any] = {
         "task_id": resolved_task_id,
