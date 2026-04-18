@@ -562,6 +562,24 @@ def _derive_chapter6_hints(
     summary_hint_payload = summary_hints if isinstance(summary_hints, dict) else {}
     summary_next_action = str(summary_hint_payload.get("next_action") or "").strip().lower().replace("_", "-")
     summary_blocked_by = str(summary_hint_payload.get("blocked_by") or "").strip().lower()
+    if failure_code == "ok":
+        if summary_next_action == "needs-fix-fast":
+            return {
+                "next_action": summary_next_action,
+                "can_skip_6_7": bool(summary_hint_payload.get("can_skip_6_7")),
+                "can_go_to_6_8": bool(summary_hint_payload.get("can_go_to_6_8")),
+                "blocked_by": summary_blocked_by,
+                "rerun_forbidden": bool(summary_hint_payload.get("rerun_forbidden")),
+                "rerun_override_flag": str(summary_hint_payload.get("rerun_override_flag") or "").strip(),
+            }
+        return {
+            "next_action": "continue",
+            "can_skip_6_7": True,
+            "can_go_to_6_8": False,
+            "blocked_by": "",
+            "rerun_forbidden": False,
+            "rerun_override_flag": "",
+        }
     if summary_next_action:
         return {
             "next_action": summary_next_action,
@@ -685,15 +703,6 @@ def _derive_chapter6_hints(
             "can_skip_6_7": False,
             "can_go_to_6_8": False,
             "blocked_by": "artifact_integrity",
-            "rerun_forbidden": False,
-            "rerun_override_flag": "",
-        }
-    if failure_code == "ok":
-        return {
-            "next_action": "continue",
-            "can_skip_6_7": True,
-            "can_go_to_6_8": False,
-            "blocked_by": "",
             "rerun_forbidden": False,
             "rerun_override_flag": "",
         }
@@ -986,7 +995,11 @@ def inspect_run_artifacts(
             candidate_commands=payload["candidate_commands"],
         )
     else:
-        payload["recommended_action"] = str(summary.get("recommended_action") or payload["chapter6_hints"].get("next_action") or "").strip()
+        hinted_action = str((payload.get("chapter6_hints") or {}).get("next_action") or "").strip().lower().replace("_", "-")
+        if hinted_action:
+            payload["recommended_action"] = hinted_action
+        else:
+            payload["recommended_action"] = str(summary.get("recommended_action") or "").strip()
         if not str(payload.get("recommended_action") or "").strip():
             payload["recommended_action"] = repair_action
         payload["candidate_commands"] = _merge_candidate_commands(
@@ -999,18 +1012,20 @@ def inspect_run_artifacts(
             payload["chapter6_hints"],
             approval,
         )
-        hinted_action = str((payload.get("chapter6_hints") or {}).get("next_action") or "").strip().lower().replace("_", "-")
-        if resolved_recommended_command or hinted_action == "pause":
+        if resolved_recommended_command or hinted_action in {"pause", "continue"}:
             payload["recommended_command"] = resolved_recommended_command
         else:
             payload["recommended_command"] = str(summary.get("recommended_command") or "").strip() or repair_command
         summary_forbidden_commands = [str(item).strip() for item in list(summary.get("forbidden_commands") or []) if str(item).strip()]
-        payload["forbidden_commands"] = summary_forbidden_commands or build_forbidden_commands(
-            recommended_action=payload["recommended_action"],
-            commands=payload["candidate_commands"],
-            chapter6_hints=payload["chapter6_hints"],
-            approval=approval,
-        )
+        if hinted_action == "continue":
+            payload["forbidden_commands"] = []
+        else:
+            payload["forbidden_commands"] = summary_forbidden_commands or build_forbidden_commands(
+                recommended_action=payload["recommended_action"],
+                commands=payload["candidate_commands"],
+                chapter6_hints=payload["chapter6_hints"],
+                approval=approval,
+            )
         payload["recommended_action_why"] = _derive_recommended_action_why(
             failure=failure,
             chapter6_hints=payload["chapter6_hints"],
