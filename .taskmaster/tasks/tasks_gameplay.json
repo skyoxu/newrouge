@@ -1400,7 +1400,8 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd"
+      "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0020AcceptanceTests.cs"
     ],
     "acceptance": [
       "进入商店时必须加载 Shop.tscn，并展示可购买的卡牌与遗物及其价格；该次进入的库存与价格在会话内保持锁定，退出后再次进入时除已购买条目外，其余条目与价格必须与首次锁定结果一致。 Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",

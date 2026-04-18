@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[node name="Shop" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 680.0
+offset_bottom = 420.0
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "shop.title"
+
+[node name="OfferList" type="ItemList" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ServicesRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RemoveButton" type="Button" parent="VBox/ServicesRow"]
+layout_mode = 2
+text = "shop.service.remove"
+
+[node name="ReforgeButton" type="Button" parent="VBox/ServicesRow"]
+layout_mode = 2
+text = "shop.service.reforge"
