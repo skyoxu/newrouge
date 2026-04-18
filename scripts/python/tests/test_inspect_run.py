@@ -440,6 +440,125 @@ class InspectRunTests(unittest.TestCase):
             self.assertEqual(["inspect", "pause"], payload["approval"]["allowed_actions"])
             self.assertIn("approval", payload["recommended_action_why"].lower())
 
+    def test_inspect_run_artifacts_should_prefer_summary_hints_for_needs_fix_fast(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            latest = root / "logs" / "ci" / "2026-04-18" / "sc-review-pipeline-task-58" / "latest.json"
+            out_dir = root / "logs" / "ci" / "2026-04-18" / "sc-review-pipeline-task-58-run-58"
+            _write_json(
+                latest,
+                {
+                    "task_id": "58",
+                    "run_id": "run-58",
+                    "status": "ok",
+                    "latest_out_dir": str(out_dir),
+                    "summary_path": str(out_dir / "summary.json"),
+                    "execution_context_path": str(out_dir / "execution-context.json"),
+                    "repair_guide_json_path": str(out_dir / "repair-guide.json"),
+                    "repair_guide_md_path": str(out_dir / "repair-guide.md"),
+                    "run_events_path": str(out_dir / "run-events.jsonl"),
+                },
+            )
+            _write_json(
+                out_dir / "summary.json",
+                {
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "58",
+                    "requested_run_id": "run-58",
+                    "run_id": "run-58",
+                    "allow_overwrite": False,
+                    "force_new_run_id": False,
+                    "status": "ok",
+                    "run_type": "full",
+                    "reason": "pipeline_clean",
+                    "failure_kind": "review-needs-fix",
+                    "recommended_action": "needs-fix-fast",
+                    "recommended_action_why": "Deterministic is green; rerun only llm closure.",
+                    "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 58 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                    "forbidden_commands": [
+                        "py -3 scripts/sc/run_review_pipeline.py --task-id 58",
+                        "py -3 scripts/sc/run_review_pipeline.py --task-id 58 --resume",
+                    ],
+                    "chapter6_hints": {
+                        "next_action": "needs-fix-fast",
+                        "can_skip_6_7": True,
+                        "can_go_to_6_8": True,
+                        "blocked_by": "rerun_guard",
+                        "rerun_forbidden": True,
+                        "rerun_override_flag": "--allow-full-rerun",
+                    },
+                    "candidate_commands": {
+                        "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-18/sc-review-pipeline-task-58/latest.json",
+                        "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 58 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                    },
+                    "steps": [
+                        {
+                            "name": "sc-test",
+                            "cmd": ["py", "-3", "scripts/sc/test.py", "--task-id", "58"],
+                            "status": "ok",
+                            "rc": 0,
+                            "log": str(out_dir / "sc-test.log"),
+                        },
+                        {
+                            "name": "sc-acceptance-check",
+                            "cmd": ["py", "-3", "scripts/sc/acceptance_check.py", "--task-id", "58"],
+                            "status": "ok",
+                            "rc": 0,
+                            "log": str(out_dir / "sc-acceptance-check.log"),
+                        },
+                        {
+                            "name": "sc-llm-review",
+                            "cmd": ["py", "-3", "scripts/sc/llm_review.py", "--task-id", "58"],
+                            "status": "ok",
+                            "rc": 0,
+                            "log": str(out_dir / "sc-llm-review.log"),
+                        },
+                    ],
+                    "started_at_utc": "2026-04-18T03:46:05+00:00",
+                    "finished_at_utc": "2026-04-18T03:53:11+00:00",
+                },
+            )
+            _write_json(
+                out_dir / "execution-context.json",
+                {
+                    "cmd": "sc-review-pipeline",
+                    "task_id": "58",
+                    "run_id": "run-58",
+                    "status": "ok",
+                    "delivery_profile": "fast-ship",
+                    "security_profile": "host-safe",
+                    "failed_step": "",
+                },
+            )
+            _write_json(
+                out_dir / "repair-guide.json",
+                {
+                    "status": "not-needed",
+                    "task_id": "58",
+                    "summary_status": "ok",
+                    "failed_step": "",
+                    "recommendations": [],
+                },
+            )
+            (out_dir / "repair-guide.md").write_text("# Repair Guide\n", encoding="utf-8")
+            (out_dir / "run-events.jsonl").write_text(
+                json.dumps({"event": "run_completed", "task_id": "58", "run_id": "run-58", "status": "ok"}, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+
+            rc, payload = inspect_run.inspect_run_artifacts(repo_root=root, kind="pipeline", task_id="58")
+
+            self.assertEqual(0, rc)
+            self.assertEqual("needs-fix-fast", payload["recommended_action"])
+            self.assertEqual("needs-fix-fast", payload["chapter6_hints"]["next_action"])
+            self.assertEqual("rerun_guard", payload["chapter6_hints"]["blocked_by"])
+            self.assertEqual(
+                "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 58 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+                payload["recommended_command"],
+            )
+            self.assertIn("py -3 scripts/sc/run_review_pipeline.py --task-id 58", payload["forbidden_commands"])
+
     def test_inspect_run_artifacts_should_require_fork_when_fork_approval_is_approved(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
