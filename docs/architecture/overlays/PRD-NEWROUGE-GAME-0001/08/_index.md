@@ -51,13 +51,13 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-18T08:27:30.575957+00:00",
+  "generated_at": "2026-04-18T08:55:35.574586+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "0ecfb41a8148b0f88392c71192ffcf32b6381966b700bd7db3277f0ccc9e05ed",
-      "bytes": 87421
+      "sha256": "6ad11aab94c120073af7faee61f2489a4e68992f4213965a701228de1efbaf3d",
+      "bytes": 85590
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
