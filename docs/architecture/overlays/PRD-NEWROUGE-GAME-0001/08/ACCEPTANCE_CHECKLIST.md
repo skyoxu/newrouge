@@ -170,6 +170,21 @@ Test-Refs:
 - `ACC:T39.3`: M1 locale output correctness is acceptance-critical: for `en` and `zh-CN`, runtime-visible M1 UI text must resolve to non-empty, non-key-echo, non-placeholder values from translation resources; locale-switch refresh timing/mechanism is out of scope for Task39.
 - `ACC:T39.4`: M1 visible-text coverage must be reproducible from source extraction: `required_keys` derived from cards/relics/events/runtime-visible UI sources, and `missing_keys` must be empty for both `en` and `zh-CN`.
 
+## Task20 Test-Refs (Shop Lock / No Upgrade Context)
+- Task: `T20 Implement shop scene with inventory locking and no upgrade context`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0020_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0020AcceptanceTests.cs`
+- Coverage-Tags:
+  - `shop_purchase`
+  - `shop_inventory_lock`
+  - `shop_no_upgrade_copy`
+  - `reenter_persistence`
+- Checklist:
+  - Must load `Game.Godot/Scenes/Shop.tscn` and keep locked inventory stable across re-enter.
+  - Must reject duplicate purchase and invalid offer id purchase.
+  - Must keep shop UI/service texts free of upgrade context.
+
 
 ## Task26 Difficulty Contract And Immutability Evidence
 - Task 26 / T26 traceability scope: difficulty configuration contract and run-start immutability.
