@@ -3222,15 +3222,13 @@
       "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
     ],
     "acceptance": [
-      "在给定基础伤害与 Strength/Weak/Vulnerable 状态时，最终伤害必须按乘数规则计算为可直接断言的确定数值；同一输入不得产生不同输出。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "当同一 AOE 命中多个目标时，处理顺序必须严格按 combatant_id 升序；若出现非升序、跳过目标或额外目标即判失败。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "多段命中解析必须对每一段产生可观察的执行顺序与结算结果，并可被测试逐段断言；不得以单次合并结算替代逐段结算。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "xUnit 测试必须覆盖 Strength/Weak/Vulnerable 对伤害结算的影响，并对最终输出数值进行期望值断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "xUnit 测试必须覆盖多段命中的结算顺序与结果，并可对顺序和结果分别断言。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "在多段命中中，每一段伤害都必须独立应用 Strength/Weak/Vulnerable 乘数规则并单独结算；任一段未独立应用即判失败。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "xUnit 测试必须断言 AOE 处理顺序为 combatant_id 升序；对同一输入重复执行时，顺序与结算结果都必须保持稳定一致。 Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "Task 48 acceptance outputs must include auditable architecture-decision trace records citing ADR-0021 and ADR-0032 as rule sources; missing either ADR source fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "Review gate must verify damage multiplier and deterministic ordering behavior do not deviate from ADR-0021/ADR-0032 semantics; any deviation fails acceptance and blocks progression. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
+      "Given base damage plus Strength/Weak/Vulnerable states, final damage must be computed by multiplier rules into deterministic expected values; identical inputs must not produce divergent outputs. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "When one AOE hits multiple targets, processing order must be strictly ascending by combatant_id; non-ascending order, skipped targets, or unexpected extra targets must fail. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Multi-hit resolution must emit observable per-hit execution sequence and per-hit settlements; single merged settlement is not an acceptable substitute. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Damage resolution must apply Strength/Weak/Vulnerable together and produce deterministic assertable numeric outputs; missing any multiplier effect must fail. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Multi-hit behavior must satisfy both observable execution order and per-hit settlement outcomes, and order/result deviations must fail independently. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "For multi-hit resolution, each hit must apply Strength/Weak/Vulnerable multipliers independently and settle independently; failure on any hit fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "For repeated runs on identical input, AOE ordering and per-hit settlement outcomes must remain stable and deterministic. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for damage calculations and multi-hit ordering. Refs: ADR-0032."
