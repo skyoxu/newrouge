@@ -1,0 +1,75 @@
+using System;
+using System.Collections.Generic;
+using Game.Core.Contracts.Cards;
+
+namespace Game.Core.Services;
+
+/// <summary>
+/// Built-in card pool catalog for deterministic task-scoped pool selection.
+/// </summary>
+/// <remarks>
+/// ADR refs: ADR-0032, ADR-0033.
+/// </remarks>
+public static class CardPoolCatalog
+{
+    private static readonly IReadOnlyDictionary<string, CardPoolDefinition> Pools =
+        BuildPools();
+
+    public static bool TryGetPool(int actId, string encounterType, out CardPoolDefinition pool)
+    {
+        var key = BuildKey(actId, encounterType);
+        return Pools.TryGetValue(key, out pool!);
+    }
+
+    public static IReadOnlyCollection<CardPoolDefinition> GetAll()
+    {
+        return (IReadOnlyCollection<CardPoolDefinition>)Pools.Values;
+    }
+
+    private static IReadOnlyDictionary<string, CardPoolDefinition> BuildPools()
+    {
+        var map = new Dictionary<string, CardPoolDefinition>(StringComparer.Ordinal);
+        for (var actId = 1; actId <= 3; actId++)
+        {
+            Add(map, BuildPool(actId, "normal", $"act{actId}-normal-pool", $"a{actId}n"));
+            Add(map, BuildPool(actId, "elite", $"act{actId}-elite-pool", $"a{actId}e"));
+            Add(map, BuildPool(actId, "boss", $"act{actId}-boss-pool", $"a{actId}b"));
+            Add(map, BuildPool(actId, "shop", $"act{actId}-shop-pool", $"a{actId}s"));
+            Add(map, BuildPool(actId, "event", $"act{actId}-event-pool", $"a{actId}v"));
+        }
+
+        return map;
+    }
+
+    private static CardPoolDefinition BuildPool(int actId, string encounterType, string poolId, string prefix)
+    {
+        var cardsByRarity = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        {
+            ["common"] = new[] { $"card.{prefix}.c.01", $"card.{prefix}.c.02" },
+            ["uncommon"] = new[] { $"card.{prefix}.u.01", $"card.{prefix}.u.02" },
+            ["rare"] = new[] { $"card.{prefix}.r.01" },
+        };
+
+        return new CardPoolDefinition(
+            ActId: actId,
+            EncounterType: encounterType,
+            PoolId: poolId,
+            CardsByRarity: cardsByRarity);
+    }
+
+    private static void Add(IDictionary<string, CardPoolDefinition> map, CardPoolDefinition pool)
+    {
+        map[BuildKey(pool.ActId, pool.EncounterType)] = pool;
+    }
+
+    private static string BuildKey(int actId, string encounterType)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(encounterType);
+        return actId + ":" + NormalizeEncounterType(encounterType);
+    }
+
+    private static string NormalizeEncounterType(string encounterType)
+    {
+        return encounterType.Trim().ToLowerInvariant();
+    }
+}
