@@ -77,11 +77,14 @@ public class GameStateMachineTests
 
     private static RunCommand CreateCommand(string commandId, string commandType)
     {
+        var payloadJson = commandType == "complete_combat"
+            ? "{\"settlement_completed\":true,\"death_triggers_resolved\":true,\"reward_offer_presented\":true,\"run_state_persisted\":true,\"settlement_stages\":[\"death_triggers_resolved\",\"reward_offer_presented\",\"run_state_persisted\"],\"reward_handoff\":{\"reward_context_id\":\"reward.state-test\",\"offer_ids\":[\"offer.a\",\"offer.b\",\"offer.c\"],\"run_snapshot_id\":\"snapshot.state-test\"}}"
+            : "{}";
         return new RunCommand(
             CommandId: commandId,
             CommandType: commandType,
             Issuer: "state-tests",
-            PayloadJson: "{}",
+            PayloadJson: payloadJson,
             IssuedAt: new DateTimeOffset(2026, 4, 15, 10, 0, 0, TimeSpan.Zero));
     }
 }

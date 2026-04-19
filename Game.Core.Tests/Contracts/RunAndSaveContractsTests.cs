@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Game.Core.Contracts.Config;
@@ -18,6 +19,25 @@ namespace Game.Core.Tests.Contracts;
 [Trait("adr", "ADR-0023")]
 public sealed class RunAndSaveContractsTests
 {
+    private static string RepoRoot => FindRepoRoot();
+
+    private static string FindRepoRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var taskmasterDir = Path.Combine(current.FullName, ".taskmaster");
+            if (Directory.Exists(taskmasterDir))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Cannot locate repository root from test execution directory.");
+    }
+
     // ACC:T8.26
     [Fact]
     public void ShouldKeepRunTransitionStateAndCorrelationId_WhenComposingCommandDrivenContracts()
@@ -80,6 +100,45 @@ public sealed class RunAndSaveContractsTests
         metadata.RulesetId.Should().Be(difficulty.RulesetId);
     }
 
+    // ACC:T51.8
+    [Fact]
+    public void ShouldExposeTask51AdrMappingEntry_WhenInspectingBackTaskMetadata()
+    {
+        var taskPath = Path.Combine(RepoRoot, ".taskmaster", "tasks", "tasks_back.json");
+        File.Exists(taskPath).Should().BeTrue();
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(taskPath));
+        var task51 = doc.RootElement
+            .EnumerateArray()
+            .FirstOrDefault(node =>
+                node.TryGetProperty("taskmaster_id", out var idNode)
+                && idNode.ValueKind == JsonValueKind.Number
+                && idNode.GetInt32() == 51);
+
+        task51.ValueKind.Should().Be(JsonValueKind.Object);
+
+        var adrRefs = task51.GetProperty("adr_refs")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        adrRefs.Should().BeEquivalentTo(new[] { "ADR-0032", "ADR-0025" });
+
+        var acceptanceItems = task51.GetProperty("acceptance")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        acceptanceItems.Should().NotBeEmpty();
+
+        var refsPaths = acceptanceItems
+            .OfType<string>()
+            .SelectMany(ExtractRefPaths)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        refsPaths.Should().Contain("Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs");
+        refsPaths.Should().Contain("Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd");
+    }
+
     // ACC:T12.16
     // ACC:T12.17
     // ACC:T12.18
@@ -116,6 +175,26 @@ public sealed class RunAndSaveContractsTests
             .EnumerateArray()
             .Select(item => item.GetString())
             .Should().Equal(expectedOfferLocks);
+    }
+
+    private static string[] ExtractRefPaths(string acceptanceItem)
+    {
+        if (string.IsNullOrWhiteSpace(acceptanceItem))
+        {
+            return Array.Empty<string>();
+        }
+
+        var markerIndex = acceptanceItem.IndexOf("Refs:", StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var refsSegment = acceptanceItem[(markerIndex + "Refs:".Length)..];
+        return Regex.Matches(refsSegment, @"[A-Za-z0-9._/\-]+\.(cs|gd)")
+            .Select(match => match.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static AutosaveSnapshot CreateSnapshot(string[] offerLocks)

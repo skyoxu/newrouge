@@ -148,6 +148,17 @@ Test-Refs:
 - Missing required keys or renamed keys must fail acceptance (`ACC:T30.1`).
 - Refs: `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`
 
+## Task36 Autosave Trigger Traceability
+- Task: `T36 Implement autosave triggers per determinism policy`
+- ADR-Refs: `ADR-0032`, `ADR-0023`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs`
+- Checklist:
+  - Battle entered initial state triggers one autosave.
+  - Reward first shown triggers one autosave (deduplicated per reward context).
+  - Event choice committed triggers one autosave.
+  - Skip flow start/completed adds no autosave.
+
 ## Task9 Governance Evidence (Non-semantic)
 - This block is governance traceability evidence only and is not a Task 9 RNG behavior acceptance condition.
 - ADR-0032 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0032-backlink.json

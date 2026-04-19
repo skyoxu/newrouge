@@ -18,11 +18,22 @@ public sealed class RunStateMachine : IRunCommandHandler
     }
 
     public RunState CurrentState { get; private set; }
+    public string? LastPersistedRunSnapshotId { get; private set; }
+    public RunState? LastPersistenceSourceState { get; private set; }
 
     public IReadOnlyList<RunTransition> Transitions => _transitions;
 
     public bool TryProcessCommand(RunCommand command, out RunTransition transition)
     {
+        if (command.CommandType == "complete_combat" && CurrentState == RunState.Combat)
+        {
+            if (!TryPersistCombatResolutionMarker(CurrentState, command))
+            {
+                transition = Handle(CurrentState, command);
+                return false;
+            }
+        }
+
         transition = Handle(CurrentState, command);
         if (transition.ToState == CurrentState)
         {
@@ -37,7 +48,7 @@ public sealed class RunStateMachine : IRunCommandHandler
     public RunTransition Handle(RunState currentState, RunCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var nextState = ResolveNextState(currentState, command.CommandType);
+        var nextState = ResolveNextState(currentState, command);
         var reason = nextState == currentState ? "invalid_command_no_transition" : command.CommandType;
         return new RunTransition(
             FromState: currentState,
@@ -53,13 +64,14 @@ public sealed class RunStateMachine : IRunCommandHandler
         _ = signal;
     }
 
-    private static RunState ResolveNextState(RunState currentState, string commandType)
+    private static RunState ResolveNextState(RunState currentState, RunCommand command)
     {
-        return commandType switch
+        return command.CommandType switch
         {
             "enter_node" when currentState == RunState.MainMenu => RunState.NodePreEnter,
             "start_combat" when currentState == RunState.NodePreEnter => RunState.Combat,
-            "complete_combat" when currentState == RunState.Combat => RunState.Reward,
+            "complete_combat" when currentState == RunState.Combat && IsVictorySettlementCompleted(command) => RunState.Reward,
+            "resolve_combat_defeat" when currentState == RunState.Combat => RunState.GameOver,
             "claim_reward" when currentState == RunState.Reward => RunState.NodePreEnter,
             "open_shop" when currentState == RunState.NodePreEnter => RunState.Shop,
             "leave_shop" when currentState == RunState.Shop => RunState.NodePreEnter,
@@ -68,7 +80,35 @@ public sealed class RunStateMachine : IRunCommandHandler
             "open_event" when currentState == RunState.NodePreEnter => RunState.Event,
             "resolve_event" when currentState == RunState.Event => RunState.NodePreEnter,
             "end_run" when currentState != RunState.GameOver => RunState.GameOver,
+            "return_to_menu" when currentState == RunState.GameOver => RunState.MainMenu,
             _ => currentState,
         };
+    }
+
+    private static bool IsVictorySettlementCompleted(RunCommand command)
+    {
+        if (!CombatResolutionCommandPayload.TryParse(command.PayloadJson, out var payload) || payload is null)
+        {
+            return false;
+        }
+
+        return payload.MeetsVictoryTransitionRequirements();
+    }
+
+    private bool TryPersistCombatResolutionMarker(RunState sourceState, RunCommand command)
+    {
+        if (!CombatResolutionCommandPayload.TryParse(command.PayloadJson, out var payload) || payload is null)
+        {
+            return false;
+        }
+
+        if (!payload.MeetsVictoryTransitionRequirements())
+        {
+            return false;
+        }
+
+        LastPersistedRunSnapshotId = payload.RewardHandoff!.RunSnapshotId;
+        LastPersistenceSourceState = sourceState;
+        return true;
     }
 }

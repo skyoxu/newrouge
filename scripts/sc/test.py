@@ -327,9 +327,12 @@ def main() -> int:
             if bool(runtime["coverage_gate"]):
                 os.environ["COVERAGE_LINES_MIN"] = str(runtime["coverage_lines_min"])
                 os.environ["COVERAGE_BRANCHES_MIN"] = str(runtime["coverage_branches_min"])
+                os.environ["COVERAGE_GATE_MODE"] = "hard"
             else:
                 os.environ.pop("COVERAGE_LINES_MIN", None)
                 os.environ.pop("COVERAGE_BRANCHES_MIN", None)
+                # Keep run_dotnet in soft mode so --no-coverage-gate truly disables hard coverage failure.
+                os.environ["COVERAGE_GATE_MODE"] = "soft"
             step = run_unit(
                 out_dir,
                 args.solution,

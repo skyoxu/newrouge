@@ -22,6 +22,8 @@ Arch-Refs:
   - CH09
   - CH10
 Test-Refs:
+  - Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs
+  - Game.Core.Tests/Services/CombatServiceTests.cs
   - logs/ci/2026-02-12/docs-utf8-gate/summary.json
   - logs/ci/2026-02-12/prd-gdd-consistency/summary.json
   - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
@@ -51,25 +53,25 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-19T03:04:38.753823+00:00",
+  "generated_at": "2026-04-19T17:07:02.518940+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "6ad11aab94c120073af7faee61f2489a4e68992f4213965a701228de1efbaf3d",
-      "bytes": 85590
+      "sha256": "e1438249eec5d123093f4787a75a52ccfcc6fd1a8134bdf700b4904749afe753",
+      "bytes": 86174
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "69cc48028527a080b007cf4dadd6a796e808251c225feeb8139919322af27cde",
-      "bytes": 144145
+      "sha256": "0d21490f592cf3f4d55f4e80f4b96b7f1dca0f7c661c17abe4bd9623d572d102",
+      "bytes": 145327
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "fb4c429e2baf1dd84e774b0d37fd88a2151473c8e46a715f586c2ef59ea93d24",
-      "bytes": 236932
+      "sha256": "cc93bd145648fd6f1736d64f0e32e2ffc692b421993b1000ba65f6028a1b3769",
+      "bytes": 237967
     }
   ]
 }
