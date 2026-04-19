@@ -95,6 +95,27 @@ public class CombatService
             isFixedDamage: isFixedDamage);
     }
 
+    public static IReadOnlyList<MultiHitSettlement> ResolveMultiHitSettlements(
+        int baseDamage,
+        IReadOnlyList<int> strengthsPerHit,
+        double weakMultiplier,
+        double vulnerableMultiplier,
+        bool isFixedDamage = false)
+    {
+        ArgumentNullException.ThrowIfNull(strengthsPerHit);
+
+        return strengthsPerHit
+            .Select((strength, index) => new MultiHitSettlement(
+                StepIndex: index + 1,
+                Damage: CalculateDamageWithStatusMultipliers(
+                    baseDamage: baseDamage,
+                    strength: strength,
+                    weakMultiplier: weakMultiplier,
+                    vulnerableMultiplier: vulnerableMultiplier,
+                    isFixedDamage: isFixedDamage)))
+            .ToArray();
+    }
+
     public static int CalculateOverplayTax(
         int difficultyId,
         int cardsPlayedThisTurn,
@@ -111,6 +132,25 @@ public class CombatService
     public static IReadOnlyList<CombatantOrderKey> OrderCombatantsDeterministically(IEnumerable<CombatantOrderKey> items)
     {
         return PlayCardResolutionPipeline.SortByDeterministicOrder(items);
+    }
+
+    public static DeterministicSemanticGateResult EvaluateDeterministicSemanticGate(
+        IReadOnlyList<string> expectedOrderCombatantIds,
+        IReadOnlyList<string> actualOrderCombatantIds,
+        IReadOnlyList<int> expectedPerHitDamages,
+        IReadOnlyList<int> actualPerHitDamages)
+    {
+        ArgumentNullException.ThrowIfNull(expectedOrderCombatantIds);
+        ArgumentNullException.ThrowIfNull(actualOrderCombatantIds);
+        ArgumentNullException.ThrowIfNull(expectedPerHitDamages);
+        ArgumentNullException.ThrowIfNull(actualPerHitDamages);
+
+        var orderMatches = expectedOrderCombatantIds.SequenceEqual(actualOrderCombatantIds);
+        var perHitMatches = expectedPerHitDamages.SequenceEqual(actualPerHitDamages);
+        return new DeterministicSemanticGateResult(
+            IsPass: orderMatches && perHitMatches,
+            OrderMatches: orderMatches,
+            PerHitMatches: perHitMatches);
     }
 
     private void PublishPipelineAuditTrail(PlayCardPipelineResult result)
@@ -152,3 +192,6 @@ public class CombatService
         return $"{{\"amount\":{amount},\"type\":\"{escapedType}\",\"critical\":{criticalLiteral}}}";
     }
 }
+
+public sealed record MultiHitSettlement(int StepIndex, int Damage);
+public sealed record DeterministicSemanticGateResult(bool IsPass, bool OrderMatches, bool PerHitMatches);

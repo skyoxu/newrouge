@@ -121,3 +121,6 @@ node_modules/
 taskdoc/**
 !taskdoc/
 !taskdoc/task-0002-change-set.json
+
+# bmad workspace content
+_bmad/
