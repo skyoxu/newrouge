@@ -2404,13 +2404,9 @@
       "Game.Core.Tests/Services/CombatServiceTests.cs"
     ],
     "acceptance": [
-      "当战斗结果为胜利或失败时，系统必须进入对应的战斗结束结算分支并产生可验证结果（如 run state 变更、场景切换或返回菜单）；若执行后无可观察状态变化则验收失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "在 Windows 环境执行战斗结束结算流程时不得崩溃，且必须能观察到状态改变或场景切换；若流程静默失败或无结果输出则验收失败。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "Overlay 的 Test-Refs 清单必须包含与本任务相关的测试引用，并与本验收项一致。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "胜利结算必须按顺序完成：解析死亡触发、发放奖励、写入 run state、切换到 Reward 场景；任一步骤缺失、跳过或顺序错误均视为失败。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "失败结算必须结束当前 run 并返回主菜单，且不得进入 Reward 场景。 Refs: Game.Core.Tests/Services/CombatServiceTests.cs",
-      "必须提供 xUnit 用例，覆盖战斗结束结算流程及相关状态切换行为。 Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "Task 35 acceptance must explicitly trace and validate ADR-0032 and ADR-0029 consistency; any conflict with either ADR fails acceptance and blocks progression. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs"
+      "When combat ends with victory, the system must deterministically validate settlement markers in order (resolve death triggers -> hand off consumable reward payload -> run state persisted marker) and only then transition from Combat to Reward; acceptance fails if any stage is missing/out of order, if required handoff markers (including run_snapshot_id) are invalid, or if Reward transition occurs before marker validation completes. Refs: Game.Core.Tests/Services/CombatServiceTests.cs, Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "When combat ends with defeat, the system must end the run into GameOver, then require explicit return_to_menu to reach MainMenu, while Reward remains unreachable throughout; acceptance fails if this two-step terminal flow is violated or Reward becomes reachable. Refs: Game.Core.Tests/Services/CombatServiceTests.cs, Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "If any required settlement signal or reward handoff field is invalid (including malformed payload, missing required fields, wrong settlement order, or non-consumable reward payload), the system must fail closed: reject transition and keep Combat state plus existing run data unchanged. Refs: Game.Core.Tests/Services/CombatServiceTests.cs, Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for combat end resolution and state transitions. Refs: ADR-0032."

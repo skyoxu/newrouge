@@ -1143,8 +1143,8 @@
         "id": 35,
         "title": "Implement end-of-combat resolution pipeline",
         "description": "Finalize victory/defeat resolution and reward handoff.",
-        "details": "On victory: resolve death triggers, apply rewards, write run state, and transition to Reward scene. On defeat: end run and return to menu. Refs: ADR-0032, ADR-0029.\n",
-        "testStrategy": "xUnit tests for combat end resolution and state transitions. Refs: ADR-0032.\n",
+        "details": "On victory: resolve death triggers, hand off rewards with a consumable payload, and validate settlement markers in deterministic order (death_triggers_resolved -> reward_offer_presented -> run_state_persisted) before transitioning from Combat to Reward; reject transition when any required signal, stage ordering, or handoff marker (including run_snapshot_id) is invalid. On defeat: end run into GameOver, require explicit return_to_menu transition to MainMenu, and never enter Reward. Refs: ADR-0032, ADR-0029.",
+        "testStrategy": "xUnit tests cover victory/defeat branch exclusivity, deterministic settlement marker ordering, reward handoff marker validation (including run_snapshot_id), fail-closed malformed payload rejection, and defeat flow contract (Combat -> GameOver -> MainMenu) with Reward unreachable invariants. Refs: ADR-0032, ADR-0029.",
         "priority": "high",
         "dependencies": [
           "18",

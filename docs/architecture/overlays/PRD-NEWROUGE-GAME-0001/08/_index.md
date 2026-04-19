@@ -22,6 +22,8 @@ Arch-Refs:
   - CH09
   - CH10
 Test-Refs:
+  - Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs
+  - Game.Core.Tests/Services/CombatServiceTests.cs
   - logs/ci/2026-02-12/docs-utf8-gate/summary.json
   - logs/ci/2026-02-12/prd-gdd-consistency/summary.json
   - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
@@ -51,13 +53,13 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-19T03:04:38.753823+00:00",
+  "generated_at": "2026-04-19T07:18:17.621738+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "6ad11aab94c120073af7faee61f2489a4e68992f4213965a701228de1efbaf3d",
-      "bytes": 85590
+      "sha256": "e1438249eec5d123093f4787a75a52ccfcc6fd1a8134bdf700b4904749afe753",
+      "bytes": 86174
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
@@ -68,8 +70,8 @@ Test-Refs:
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "fb4c429e2baf1dd84e774b0d37fd88a2151473c8e46a715f586c2ef59ea93d24",
-      "bytes": 236932
+      "sha256": "f393b0bb4c1461c9dff6fcf721bc62d67f992de63710ff7f3cc248d66c95b28d",
+      "bytes": 236785
     }
   ]
 }

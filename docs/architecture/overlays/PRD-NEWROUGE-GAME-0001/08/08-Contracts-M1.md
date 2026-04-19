@@ -374,6 +374,7 @@ Test-Refs:
   - `Game.Core/Contracts/Run/RunState.cs`
   - `Game.Core/Contracts/Run/RunCommand.cs`
   - `Game.Core/Contracts/Run/RunTransition.cs`
+  - `Game.Core/Contracts/Run/CombatResolutionCommandPayload.cs`
   - `Game.Core/Contracts/Save/AutosaveSnapshot.cs`
   - `Game.Core/Contracts/Save/ContinueMetadata.cs`
   - `Game.Core/Contracts/Save/ContinueGateDecision.cs`
