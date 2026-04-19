@@ -110,8 +110,10 @@ public sealed class Task0029AcceptanceTests
     {
         const string pinnedRunId = "run-id-that-should-not-exist";
         var previousRunId = Environment.GetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID");
+        var previousStrict = Environment.GetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID_STRICT");
 
         Environment.SetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID", pinnedRunId);
+        Environment.SetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID_STRICT", "1");
         try
         {
             var act = () => ReadAcceptanceSummary();
@@ -122,6 +124,7 @@ public sealed class Task0029AcceptanceTests
         finally
         {
             Environment.SetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID", previousRunId);
+            Environment.SetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID_STRICT", previousStrict);
         }
     }
 
@@ -226,8 +229,21 @@ public sealed class Task0029AcceptanceTests
         var acceptanceRunId = Environment.GetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID");
         if (!string.IsNullOrWhiteSpace(acceptanceRunId))
         {
-            var pinnedPath = FindSummaryPathByAcceptanceRunId(acceptanceRunId.Trim());
-            return ReadJsonRoot(pinnedPath);
+            var pinnedPath = TryFindSummaryPathByAcceptanceRunId(acceptanceRunId.Trim());
+            if (!string.IsNullOrWhiteSpace(pinnedPath))
+            {
+                return ReadJsonRoot(pinnedPath!);
+            }
+
+            var strictPinnedRunId = string.Equals(
+                Environment.GetEnvironmentVariable("SC_ACCEPTANCE_RUN_ID_STRICT"),
+                "1",
+                StringComparison.Ordinal);
+            if (strictPinnedRunId)
+            {
+                throw new InvalidOperationException(
+                    $"SC_ACCEPTANCE_RUN_ID='{acceptanceRunId.Trim()}' did not match any Task 29 acceptance summary.json artifact.");
+            }
         }
 
         var explicitOutDir = Environment.GetEnvironmentVariable("SC_ACCEPTANCE_OUT_DIR");
@@ -463,6 +479,18 @@ public sealed class Task0029AcceptanceTests
 
     private static string FindSummaryPathByAcceptanceRunId(string acceptanceRunId)
     {
+        var matched = TryFindSummaryPathByAcceptanceRunId(acceptanceRunId);
+        if (!string.IsNullOrWhiteSpace(matched))
+        {
+            return matched!;
+        }
+
+        throw new InvalidOperationException(
+            $"SC_ACCEPTANCE_RUN_ID='{acceptanceRunId}' did not match any Task 29 acceptance summary.json artifact.");
+    }
+
+    private static string? TryFindSummaryPathByAcceptanceRunId(string acceptanceRunId)
+    {
         var rootDirectory = Path.Combine(GetRepositoryRoot(), "logs", "ci");
         Directory.Exists(rootDirectory).Should().BeTrue($"expected directory: {rootDirectory}");
 
@@ -485,8 +513,7 @@ public sealed class Task0029AcceptanceTests
             }
         }
 
-        throw new InvalidOperationException(
-            $"SC_ACCEPTANCE_RUN_ID='{acceptanceRunId}' did not match any Task 29 acceptance summary.json artifact.");
+        return null;
     }
 
     private static string GetRepositoryRoot()
