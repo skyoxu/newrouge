@@ -743,6 +743,57 @@ public sealed class CombatServiceTests
         machine.CurrentState.Should().NotBe(RunState.Reward);
     }
 
+    // ACC:T49.4
+    [Fact]
+    public void ShouldRejectAttemptAfterTurnHardCapAndKeepStateUnchanged_WhenCardsPlayedExceeds100()
+    {
+        var service = new CombatService();
+        var overCapInput = CreateValidPipelineInput(cardsPlayedThisTurn: 100, energyBefore: 9);
+
+        var result = service.PlayCard(overCapInput);
+
+        result.Success.Should().BeFalse();
+        result.FailureReason.Should().Contain("HardLimitExceeded");
+        result.ExecutedSteps.Should().BeEmpty("hard-stop path must reject without further pipeline processing");
+        result.StateAfter.Should().Be(result.StateBefore);
+    }
+
+    // ACC:T49.5
+    [Fact]
+    public void ShouldEmitQueryableAuditAndHardStopEntries_WhenHardStopIsTriggered()
+    {
+        var bus = new CapturingEventBus();
+        var service = new CombatService(bus);
+        var overCapInput = CreateValidPipelineInput(cardsPlayedThisTurn: 100, energyBefore: 9);
+
+        var result = service.PlayCard(overCapInput);
+
+        result.Success.Should().BeFalse();
+        var hardStop = bus.Published.Single(evt => evt.Type == EventTypes.CombatLoopHardStopped);
+        var audit = bus.Published.Single(evt => evt.Type == EventTypes.AuditLogged);
+        var blocked = bus.Published.Single(evt => evt.Type == EventTypes.CombatCardInvalidPlayBlocked);
+
+        hardStop.DataJson.Should().Contain("\"reason_code\":\"HardLimitExceeded\"");
+        blocked.DataJson.Should().Contain("\"threshold\":100");
+        audit.DataJson.Should().Contain("\"event\":\"hard-stop-triggered\"");
+    }
+
+    // ACC:T49.6
+    [Fact]
+    public void ShouldReturnExplicitFailureWithoutThrowing_WhenInvalidPlayRequestIsRejectedByHardStop()
+    {
+        var service = new CombatService();
+        var invalidOverCapRequest = CreateValidPipelineInput(cardsPlayedThisTurn: 101, energyBefore: 7);
+
+        var action = () => service.PlayCard(invalidOverCapRequest);
+        action.Should().NotThrow();
+
+        var result = action();
+        result.Success.Should().BeFalse();
+        result.FailureReason.Should().Contain("HardStopAlreadyTriggered");
+        result.StateAfter.Should().Be(result.StateBefore);
+    }
+
     [Fact]
     public void ShouldNotPublishEventForPlainAmountOverload_WhenApplyingRawDamage()
     {
