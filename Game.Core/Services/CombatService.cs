@@ -8,6 +8,7 @@ namespace Game.Core.Services;
 
 public class CombatService
 {
+    private const int HardCapCardsPerTurn = 100;
     private readonly IEventBus? _bus;
     private readonly PlayCardResolutionPipeline _playCardPipeline = new();
 
@@ -70,6 +71,13 @@ public class CombatService
 
     public PlayCardPipelineResult ExecutePlayCardPipeline(PlayCardPipelineInput input)
     {
+        if (input.CardsPlayedThisTurn >= HardCapCardsPerTurn)
+        {
+            var hardStopResult = BuildHardStopResult(input);
+            PublishHardStopAuditTrail(hardStopResult, input.CardsPlayedThisTurn);
+            return hardStopResult;
+        }
+
         var result = _playCardPipeline.Execute(input);
         PublishPipelineAuditTrail(result);
         return result;
@@ -183,6 +191,75 @@ public class CombatService
                 Timestamp: DateTimeOffset.UtcNow,
                 Id: $"audit-{phase}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"));
         }
+    }
+
+    private PlayCardPipelineResult BuildHardStopResult(PlayCardPipelineInput input)
+    {
+        var normalizedEnergy = Math.Max(0, input.EnergyBefore);
+        var normalizedCardsPlayed = Math.Max(0, input.CardsPlayedThisTurn);
+        var orderingKey = $"{input.CombatantId}|{input.StableId}";
+        var stateBefore = new PlayCardPipelineState(
+            Energy: normalizedEnergy,
+            FinalCost: 0,
+            FinalDamage: 0,
+            CardsPlayedThisTurn: normalizedCardsPlayed,
+            ResolvedEffects: 0,
+            CardMoved: false,
+            DeathCheckCompleted: false);
+
+        var failureReason = normalizedCardsPlayed == HardCapCardsPerTurn
+            ? $"HardLimitExceeded: single-turn play-card hard cap {HardCapCardsPerTurn} reached (ADR-0029)."
+            : $"HardStopAlreadyTriggered: single-turn play-card hard cap {HardCapCardsPerTurn} exceeded (ADR-0029).";
+
+        var fingerprint = string.Join(
+            "|",
+            orderingKey,
+            "fail",
+            "hard-stop",
+            normalizedCardsPlayed,
+            normalizedEnergy);
+
+        return new PlayCardPipelineResult(
+            Success: false,
+            FailureReason: failureReason,
+            ExecutedSteps: Array.Empty<PlayCardPipelineStep>(),
+            StateBefore: stateBefore,
+            StateAfter: stateBefore,
+            OverplayTax: 0,
+            OrderingKey: orderingKey,
+            ExecutionFingerprint: fingerprint);
+    }
+
+    private void PublishHardStopAuditTrail(PlayCardPipelineResult result, int cardsPlayedThisTurn)
+    {
+        if (_bus is null)
+        {
+            return;
+        }
+
+        var reasonCode = cardsPlayedThisTurn == HardCapCardsPerTurn ? "HardLimitExceeded" : "HardStopAlreadyTriggered";
+        var hardStoppedPayload = $"{{\"cards_played_this_turn\":{cardsPlayedThisTurn},\"threshold\":{HardCapCardsPerTurn},\"reason_code\":\"{reasonCode}\"}}";
+        _ = _bus.PublishAsync(new DomainEvent(
+            Type: EventTypes.CombatLoopHardStopped,
+            Source: nameof(CombatService),
+            DataJson: hardStoppedPayload,
+            Timestamp: DateTimeOffset.UtcNow,
+            Id: $"combat-loop-hard-stop-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"));
+
+        _ = _bus.PublishAsync(new DomainEvent(
+            Type: EventTypes.CombatCardInvalidPlayBlocked,
+            Source: nameof(CombatService),
+            DataJson: hardStoppedPayload,
+            Timestamp: DateTimeOffset.UtcNow,
+            Id: $"combat-card-invalid-play-blocked-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"));
+
+        var auditPayload = $"{{\"event\":\"hard-stop-triggered\",\"reason_code\":\"{reasonCode}\",\"cards_played_this_turn\":{cardsPlayedThisTurn},\"threshold\":{HardCapCardsPerTurn}}}";
+        _ = _bus.PublishAsync(new DomainEvent(
+            Type: EventTypes.AuditLogged,
+            Source: nameof(CombatService),
+            DataJson: auditPayload,
+            Timestamp: DateTimeOffset.UtcNow,
+            Id: $"audit-hard-stop-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"));
     }
 
     private static string BuildDamagePayload(int amount, string type, bool critical)
