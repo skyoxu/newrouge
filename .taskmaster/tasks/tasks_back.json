@@ -1255,7 +1255,10 @@
       "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
       "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
-      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs"
+      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs",
+      "[ACC:T51.5] At least one cross-restart acceptance case must cover the closed loop: turn-end cleanup completed -> save point persisted -> restore -> legal progression continues. Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "[ACC:T51.6] Acceptance must distinguish and assert three save-point semantics separately: combat-entry auto-save, post turn-end cleanup save, and post-restore legal progression; missing any one fails acceptance. Refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd",
+      "[ACC:T51.16] After turn-end cleanup is completed, the resulting persistence markers must be restored consistently across restart (turn_count/current_actor/cleanup markers). Refs: Tests.Godot/tests/Adapters/Db/test_savegame_persistence_cross_restart.gd"
     ],
     "test_strategy": [
       "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032."
