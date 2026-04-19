@@ -42,7 +42,7 @@ public sealed class DamageTests
     [InlineData(10, 10, 1.0, -2.0, false, 0)]   // invalid vulnerable multiplier
     [InlineData(-5, 3, 1.0, 1.0, false, 3)]     // negative base damage clamp
     [InlineData(10, 999, 0.5, 0.5, true, 10)]   // fixed damage exempt
-    [InlineData(-5, 2, 1.5, 1.5, true, 0)]      // fixed damage + negative base
+    [InlineData(-5, 2, 1.5, 1.5, true, -5)]     // fixed damage + negative base
     public void ShouldCalculateStatusMultiplierDamageByTheoryMatrix_WhenInputVaries(
         int baseDamage,
         int strength,

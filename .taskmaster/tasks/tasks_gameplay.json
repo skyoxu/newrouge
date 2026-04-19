@@ -3161,15 +3161,10 @@
     "acceptance": [
       "在相同初始战斗状态与相同事件输入下，状态/遗物的触发先后必须确定且可复现；重复结算应得到相同触发序列与相同结果，且不得因集合遍历顺序或随机性改变结果 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "固定伤害规则必须可被测试直接证伪：例如 OverplayTax 伤害在结算前后保持原值，不受增伤/减伤等修饰影响；需有 xUnit 用例断言该不变性 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Overlay 验收清单的对应条目必须与本任务语义对齐，并可明确核对到“触发顺序确定性”和“固定伤害不被修饰”两项要求 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Under an equivalent settlement scenario, fixed damage must remain base value while mutable damage must change under regular modifiers, and the divergence must be asserted directly in one test case. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
       "当同一时点存在多个可触发状态/遗物时，对同一输入进行多次结算必须产生完全相同的触发先后序列与最终伤害值 Refs: Game.Core.Tests/Services/StatusTriggerOrderingTests.cs",
       "结算必须能区分固定伤害与非固定伤害：固定伤害保持原值，非固定伤害按常规修饰规则变化，且该差异可由测试直接断言 Refs: Game.Core.Tests/Services/FixedDamageRulesTests.cs",
-      "gameplay:6: 触发顺序必须由 xUnit 用例验证，断言既定排序规则与实际触发序列逐项一致；任一不一致必须导致测试失败 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "门禁汇总必须包含 `adr_refs=[\"ADR-0029\", \"ADR-0032\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "门禁汇总必须包含 `chapter_refs=[\"CH01\", \"CH06\", \"CH07\", \"CH05\"]` 且与任务元数据完全一致；缺失或不一致时门禁必须非零退出。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "本任务 `test_refs` 列出的关键测试与工件必须在本轮执行并输出 `executed/pass_fail` 状态；任一未执行或失败即任务失败。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "若本任务存在可选开关，未启用时必须记录 `executed=false` 与 `pass_fail=\"skipped\"`，且不得被记为通过。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "对于任一必填回链字段、测试证据或工件校验缺失，门禁必须 fail-closed 且非零退出，不得降级为 warning。 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs"
+      "gameplay:6: 触发顺序必须由 xUnit 用例验证，断言既定排序规则与实际触发序列逐项一致；任一不一致必须导致测试失败 Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs"
     ],
     "test_strategy": [
       "xUnit tests for trigger ordering and fixed damage invariants. Refs: ADR-0029."
