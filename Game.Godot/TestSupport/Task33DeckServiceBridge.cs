@@ -11,12 +11,12 @@ public partial class Task33DeckServiceBridge : Node
     private const int DefaultHandLimit = 10;
     private readonly DeckService _service = new();
 
-    public Godot.Collections.Dictionary CreateState(
-        Godot.Collections.Array drawIds,
-        Godot.Collections.Array handIds,
-        Godot.Collections.Array discardIds,
-        Godot.Collections.Array exhaustIds,
-        Godot.Collections.Array retainIds)
+    public global::Godot.Collections.Dictionary CreateState(
+        global::Godot.Collections.Array drawIds,
+        global::Godot.Collections.Array handIds,
+        global::Godot.Collections.Array discardIds,
+        global::Godot.Collections.Array exhaustIds,
+        global::Godot.Collections.Array retainIds)
     {
         var state = new DeckState(
             DrawPile: ToStringList(drawIds),
@@ -28,19 +28,23 @@ public partial class Task33DeckServiceBridge : Node
         return ToState(state);
     }
 
-    public Godot.Collections.Dictionary Draw(Godot.Collections.Dictionary state, int count)
+    public global::Godot.Collections.Dictionary Draw(global::Godot.Collections.Dictionary state, int count)
     {
         var next = _service.Draw(FromState(state), count);
         return ToState(next);
     }
 
-    public Godot.Collections.Dictionary DiscardByIds(Godot.Collections.Dictionary state, Godot.Collections.Array cardIds)
+    public global::Godot.Collections.Dictionary DiscardByIds(
+        global::Godot.Collections.Dictionary state,
+        global::Godot.Collections.Array cardIds)
     {
         var next = _service.Discard(FromState(state), ToStringList(cardIds));
         return ToState(next);
     }
 
-    public Godot.Collections.Dictionary ExhaustByIds(Godot.Collections.Dictionary state, Godot.Collections.Array cardIds)
+    public global::Godot.Collections.Dictionary ExhaustByIds(
+        global::Godot.Collections.Dictionary state,
+        global::Godot.Collections.Array cardIds)
     {
         var snapshot = FromState(state);
         foreach (var cardId in ToStringList(cardIds))
@@ -51,26 +55,28 @@ public partial class Task33DeckServiceBridge : Node
         return ToState(snapshot);
     }
 
-    public Godot.Collections.Dictionary EndOfTurn(Godot.Collections.Dictionary state)
+    public global::Godot.Collections.Dictionary EndOfTurn(global::Godot.Collections.Dictionary state)
     {
         var next = _service.EndOfTurn(FromState(state));
         return ToState(next);
     }
 
-    private static DeckState FromState(Godot.Collections.Dictionary state)
+    private static DeckState FromState(global::Godot.Collections.Dictionary state)
     {
         return new DeckState(
-            DrawPile: ToStringList((Godot.Collections.Array)state["draw_pile"]),
-            Hand: ToStringList((Godot.Collections.Array)state["hand"]),
-            DiscardPile: ToStringList((Godot.Collections.Array)state["discard_pile"]),
-            ExhaustPile: ToStringList((Godot.Collections.Array)state["exhaust_pile"]),
-            RetainedInstanceIds: new HashSet<string>(ToStringList((Godot.Collections.Array)state["retain_ids"]), StringComparer.Ordinal),
+            DrawPile: ToStringList((global::Godot.Collections.Array)state["draw_pile"]),
+            Hand: ToStringList((global::Godot.Collections.Array)state["hand"]),
+            DiscardPile: ToStringList((global::Godot.Collections.Array)state["discard_pile"]),
+            ExhaustPile: ToStringList((global::Godot.Collections.Array)state["exhaust_pile"]),
+            RetainedInstanceIds: new HashSet<string>(
+                ToStringList((global::Godot.Collections.Array)state["retain_ids"]),
+                StringComparer.Ordinal),
             HandLimit: state.ContainsKey("hand_limit") ? (int)state["hand_limit"] : DefaultHandLimit);
     }
 
-    private static Godot.Collections.Dictionary ToState(DeckState state)
+    private static global::Godot.Collections.Dictionary ToState(DeckState state)
     {
-        return new Godot.Collections.Dictionary
+        return new global::Godot.Collections.Dictionary
         {
             { "draw_pile", ToVariantArray(state.DrawPile) },
             { "hand", ToVariantArray(state.Hand) },
@@ -81,7 +87,7 @@ public partial class Task33DeckServiceBridge : Node
         };
     }
 
-    private static List<string> ToStringList(Godot.Collections.Array values)
+    private static List<string> ToStringList(global::Godot.Collections.Array values)
     {
         var list = new List<string>(values.Count);
         foreach (var value in values)
@@ -92,9 +98,9 @@ public partial class Task33DeckServiceBridge : Node
         return list;
     }
 
-    private static Godot.Collections.Array ToVariantArray(IEnumerable<string> ids)
+    private static global::Godot.Collections.Array ToVariantArray(IEnumerable<string> ids)
     {
-        var array = new Godot.Collections.Array();
+        var array = new global::Godot.Collections.Array();
         foreach (var id in ids)
         {
             if (int.TryParse(id, out var numeric))
