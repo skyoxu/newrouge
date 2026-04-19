@@ -123,6 +123,41 @@ class ScTestOrchestrationTests(unittest.TestCase):
             self.assertEqual("fail", summary["status"])
             self.assertEqual(["unit"], [item["name"] for item in summary["steps"]])
 
+    def test_main_should_set_soft_coverage_gate_mode_when_no_coverage_gate_flag_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "sc-test"
+            argv = ["test.py", "--type", "unit", "--run-id", "9" * 32, "--no-coverage-gate", "--no-coverage-report"]
+            unit_step = {
+                "name": "unit",
+                "cmd": ["py", "-3", "scripts/python/run_dotnet.py"],
+                "rc": 0,
+                "log": str(out_dir / "unit.log"),
+                "artifacts_dir": str(out_dir / "unit-artifacts"),
+                "status": "ok",
+            }
+            observed: dict[str, str | None] = {"mode": None}
+            conventions_step = {
+                "name": "csharp-test-conventions",
+                "cmd": ["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
+                "rc": 0,
+                "log": str(out_dir / "csharp-test-conventions.log"),
+                "status": "ok",
+            }
+
+            def fake_run_unit(*args, **kwargs):  # type: ignore[no-untyped-def]
+                observed["mode"] = sc_test.os.environ.get("COVERAGE_GATE_MODE")
+                return unit_step
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
+                mock.patch.object(sc_test, "run_unit", side_effect=fake_run_unit), \
+                mock.patch.object(sc_test, "run_csharp_test_conventions", return_value=conventions_step) as conventions_mock:
+                rc = sc_test.main()
+
+            self.assertEqual(0, rc)
+            self.assertEqual("soft", observed["mode"])
+            conventions_mock.assert_called_once()
+
     def test_main_should_fail_when_csharp_test_conventions_gate_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "sc-test"

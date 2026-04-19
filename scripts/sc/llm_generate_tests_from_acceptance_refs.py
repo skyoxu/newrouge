@@ -366,6 +366,7 @@ def main() -> int:
         godot_bin=args.godot_bin,
         out_dir=out_dir,
         strict_red=require_strict_red,
+        red_first=str(args.tdd_stage) == "red-first",
         run_cmd_fn=run_cmd,
         repo_root_fn=repo_root,
         write_text_fn=write_text,
