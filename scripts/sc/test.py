@@ -289,53 +289,86 @@ def main() -> int:
     if not _persist_summary():
         return 2
 
+    task_cs_refs = _task_scoped_cs_refs(task_id=args.task_id) if args.task_id else []
+    task_gd_refs = _task_scoped_gdunit_refs(task_id=args.task_id, tests_project=repo_root() / "Tests.Godot") if args.task_id else []
+    task_scoped_engine_only = bool(args.task_id and args.type == "all" and not task_cs_refs and bool(task_gd_refs))
+
     if args.type in ("unit", "all"):
-        if bool(runtime["coverage_gate"]):
-            os.environ["COVERAGE_LINES_MIN"] = str(runtime["coverage_lines_min"])
-            os.environ["COVERAGE_BRANCHES_MIN"] = str(runtime["coverage_branches_min"])
-        else:
-            os.environ.pop("COVERAGE_LINES_MIN", None)
-            os.environ.pop("COVERAGE_BRANCHES_MIN", None)
-        step = run_unit(
-            out_dir,
-            args.solution,
-            args.configuration,
-            run_id=run_id,
-            task_id=args.task_id,
-            allow_full_unit_fallback=bool(runtime["allow_full_unit_fallback"]) or bool(args.allow_full_unit_fallback),
-        )
-        summary["steps"].append(step)
-        if not _persist_summary():
-            return 2
-        if step["rc"] != 0:
-            hard_fail = True
-        else:
-            if bool(args.skip_csharp_test_conventions):
+        if task_scoped_engine_only:
+            summary["steps"].append(
+                _skipped_step(
+                    name="unit",
+                    reason="task_scoped_no_cs_refs_engine_only",
+                    cmd=["py", "-3", "scripts/python/run_dotnet.py"],
+                )
+            )
+            if not _persist_summary():
+                return 2
+            summary["steps"].append(
+                _skipped_step(
+                    name="csharp-test-conventions",
+                    reason="task_scoped_no_cs_refs_engine_only",
+                    cmd=["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
+                )
+            )
+            if not _persist_summary():
+                return 2
+            if not args.no_coverage_report:
                 summary["steps"].append(
                     _skipped_step(
-                        name="csharp-test-conventions",
-                        reason="disabled_by_flag",
-                        cmd=["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
+                        name="coverage-report",
+                        reason="task_scoped_no_cs_refs_engine_only",
+                        cmd=["reportgenerator"],
                     )
                 )
                 if not _persist_summary():
                     return 2
+        else:
+            if bool(runtime["coverage_gate"]):
+                os.environ["COVERAGE_LINES_MIN"] = str(runtime["coverage_lines_min"])
+                os.environ["COVERAGE_BRANCHES_MIN"] = str(runtime["coverage_branches_min"])
             else:
-                conventions = run_csharp_test_conventions(out_dir, task_id=args.task_id)
-                summary["steps"].append(conventions)
-                if not _persist_summary():
-                    return 2
-                if conventions["rc"] != 0:
-                    hard_fail = True
-        if not hard_fail and not args.no_coverage_report:
-            cov = run_coverage_report(out_dir, Path(step["artifacts_dir"]))
-            summary["steps"].append(cov)
+                os.environ.pop("COVERAGE_LINES_MIN", None)
+                os.environ.pop("COVERAGE_BRANCHES_MIN", None)
+            step = run_unit(
+                out_dir,
+                args.solution,
+                args.configuration,
+                run_id=run_id,
+                task_id=args.task_id,
+                allow_full_unit_fallback=bool(runtime["allow_full_unit_fallback"]) or bool(args.allow_full_unit_fallback),
+            )
+            summary["steps"].append(step)
             if not _persist_summary():
                 return 2
-            if cov.get("status") == "fail":
+            if step["rc"] != 0:
                 hard_fail = True
+            else:
+                if bool(args.skip_csharp_test_conventions):
+                    summary["steps"].append(
+                        _skipped_step(
+                            name="csharp-test-conventions",
+                            reason="disabled_by_flag",
+                            cmd=["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
+                        )
+                    )
+                    if not _persist_summary():
+                        return 2
+                else:
+                    conventions = run_csharp_test_conventions(out_dir, task_id=args.task_id)
+                    summary["steps"].append(conventions)
+                    if not _persist_summary():
+                        return 2
+                    if conventions["rc"] != 0:
+                        hard_fail = True
+            if not hard_fail and not args.no_coverage_report:
+                cov = run_coverage_report(out_dir, Path(step["artifacts_dir"]))
+                summary["steps"].append(cov)
+                if not _persist_summary():
+                    return 2
+                if cov.get("status") == "fail":
+                    hard_fail = True
 
-    task_gd_refs = _task_scoped_gdunit_refs(task_id=args.task_id, tests_project=repo_root() / "Tests.Godot") if args.task_id else []
     explicit_engine_lane = args.type in ("integration", "e2e")
     should_run_engine_lane = args.type in ("integration", "e2e") or (args.type == "all" and (not args.task_id or bool(task_gd_refs)))
 
