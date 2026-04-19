@@ -10,7 +10,18 @@ from _failure_taxonomy import derive_producer_failure_kind
 from _pipeline_helpers import has_materialized_pipeline_steps
 
 
+def _should_preserve_summary_recovery_recommendation(summary: dict[str, Any]) -> bool:
+    failure_kind = str(summary.get("failure_kind") or "").strip().lower()
+    if failure_kind == "ok":
+        return True
+    reason = str(summary.get("reason") or "").strip().lower()
+    status = str(summary.get("status") or "").strip().lower()
+    return reason in {"pipeline_clean", "pipeline_ok"} and status == "ok"
+
+
 def _sync_summary_recovery_recommendation(summary: dict[str, Any], active_task_payload: dict[str, Any]) -> None:
+    if _should_preserve_summary_recovery_recommendation(summary):
+        return
     for key in (
         "latest_summary_signals",
         "chapter6_hints",

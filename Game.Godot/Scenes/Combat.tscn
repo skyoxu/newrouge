@@ -58,6 +58,23 @@ offset_right = 320.0
 offset_bottom = 104.0
 text = "combat.turn.title"
 
+[node name="EnemyIntentPanel" type="VBoxContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 448.0
+offset_top = 24.0
+offset_right = 862.0
+offset_bottom = 360.0
+theme_override_constants/separation = 6
+
+[node name="EnemyIntentTitle" type="Label" parent="HUD/EnemyIntentPanel"]
+layout_mode = 2
+text = "combat.intent.title"
+
+[node name="EnemyIntentList" type="VBoxContainer" parent="HUD/EnemyIntentPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
 [node name="TurnControls" type="HBoxContainer" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0

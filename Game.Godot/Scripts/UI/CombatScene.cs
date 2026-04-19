@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Godot;
@@ -14,6 +15,8 @@ public partial class CombatScene : Control
     private Label _energyValue = default!;
     private Label _drawPileValue = default!;
     private Label _discardPileValue = default!;
+    private Label _enemyIntentTitleLabel = default!;
+    private VBoxContainer _enemyIntentList = default!;
     private Button _startTurnButton = default!;
     private Button _endTurnButton = default!;
     private Label _turnTitleLabel = default!;
@@ -25,6 +28,10 @@ public partial class CombatScene : Control
     };
     private int _coreStateMutationCount;
     private int _turnIndex = 1;
+    private int _enemyIntentTurnIndex;
+    private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
+    private Texture2D? _enemyIntentFallbackTexture;
 
     public override void _Ready()
     {
@@ -32,6 +39,8 @@ public partial class CombatScene : Control
         _energyValue = GetNode<Label>("HUD/EnergyValue");
         _drawPileValue = GetNode<Label>("HUD/DrawPileValue");
         _discardPileValue = GetNode<Label>("HUD/DiscardPileValue");
+        _enemyIntentTitleLabel = GetNode<Label>("HUD/EnemyIntentPanel/EnemyIntentTitle");
+        _enemyIntentList = GetNode<VBoxContainer>("HUD/EnemyIntentPanel/EnemyIntentList");
         _startTurnButton = GetNode<Button>("HUD/TurnControls/StartTurnButton");
         _endTurnButton = GetNode<Button>("HUD/TurnControls/EndTurnButton");
         _turnTitleLabel = GetNode<Label>("HUD/TurnTitleLabel");
@@ -41,6 +50,7 @@ public partial class CombatScene : Control
         _startTurnButton.Text = Tr("combat.turn.start");
         _endTurnButton.Text = Tr("combat.turn.end");
         _turnTitleLabel.Text = Tr("combat.turn.title");
+        _enemyIntentTitleLabel.Text = Tr("combat.intent.title");
     }
 
     public override void _ExitTree()
@@ -179,6 +189,83 @@ public partial class CombatScene : Control
         return _endTurnButton.Text;
     }
 
+    public bool TryApplyEnemyIntentPreviewContractJson(string intentJson)
+    {
+        if (string.IsNullOrWhiteSpace(intentJson))
+        {
+            return false;
+        }
+
+        EnemyIntentContractPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<EnemyIntentContractPayload>(intentJson, SnapshotJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (payload?.EnemyIntents is null)
+        {
+            return false;
+        }
+
+        ApplyEnemyIntentPreview(payload.EnemyIntents);
+        return true;
+    }
+
+    public bool HasEnemyIntentForTest(string enemyId)
+    {
+        return !string.IsNullOrWhiteSpace(enemyId) && _enemyIntentByEnemy.ContainsKey(enemyId);
+    }
+
+    public string GetEnemyIntentIconIdForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyIntentByEnemy.TryGetValue(enemyId, out var state))
+        {
+            return string.Empty;
+        }
+
+        return state.IconId;
+    }
+
+    public string GetEnemyIntentDescriptionForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyIntentByEnemy.TryGetValue(enemyId, out var state))
+        {
+            return string.Empty;
+        }
+
+        return state.Description;
+    }
+
+    public int GetEnemyIntentTurnForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyIntentByEnemy.TryGetValue(enemyId, out var state))
+        {
+            return 0;
+        }
+
+        return state.Turn;
+    }
+
+    public int GetEnemyIntentRowCountForTest()
+    {
+        return _enemyIntentByEnemy.Count;
+    }
+
+    public bool IsEnemyIntentPanelVisibleForTest()
+    {
+        return _enemyIntentList.Visible;
+    }
+
+    public bool HasEnemyIntentIconTextureForTest(string enemyId)
+    {
+        var iconSlot = FindEnemyIntentIconSlot(enemyId);
+        return iconSlot?.Texture is not null;
+    }
+
     private void OnStartTurnPressed()
     {
         RequestTurnAction("start_turn");
@@ -202,10 +289,197 @@ public partial class CombatScene : Control
         _discardPileValue.Text = snapshot.DiscardPileCount.ToString();
     }
 
+    private void ApplyEnemyIntentPreview(IReadOnlyList<EnemyIntentPreviewItemPayload> previews)
+    {
+        _enemyIntentTurnIndex += 1;
+        _enemyIntentByEnemy.Clear();
+        foreach (var child in _enemyIntentList.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var preview in previews)
+        {
+            if (string.IsNullOrWhiteSpace(preview.EnemyId))
+            {
+                continue;
+            }
+
+            var state = new EnemyIntentState(
+                EnemyId: preview.EnemyId,
+                IconId: preview.IconId ?? string.Empty,
+                Description: ResolveIntentDescription(preview.TextKey),
+                Turn: _enemyIntentTurnIndex);
+            _enemyIntentByEnemy[preview.EnemyId] = state;
+            AddEnemyIntentRow(state);
+        }
+
+        _enemyIntentList.Visible = _enemyIntentByEnemy.Count > 0;
+    }
+
+    private void AddEnemyIntentRow(EnemyIntentState state)
+    {
+        var row = new HBoxContainer
+        {
+            Name = $"EnemyIntent_{state.EnemyId}",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        var iconSlot = new TextureRect
+        {
+            Name = "IconSlot",
+            CustomMinimumSize = new Vector2(20, 20),
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+            TooltipText = state.IconId,
+            Texture = ResolveEnemyIntentTexture(state.IconId),
+        };
+        iconSlot.SetMeta("icon_id", state.IconId);
+
+        var iconIdLabel = new Label
+        {
+            Name = "IconIdLabel",
+            Text = state.IconId,
+        };
+        var descriptionLabel = new Label
+        {
+            Name = "DescriptionLabel",
+            Text = state.Description,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+
+        row.SetMeta("enemy_id", state.EnemyId);
+        row.SetMeta("turn", state.Turn);
+        row.AddChild(iconSlot);
+        row.AddChild(iconIdLabel);
+        row.AddChild(descriptionLabel);
+        _enemyIntentList.AddChild(row);
+    }
+
+    private TextureRect? FindEnemyIntentIconSlot(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return null;
+        }
+
+        foreach (var child in _enemyIntentList.GetChildren())
+        {
+            if (child is not HBoxContainer row || !row.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            var rowEnemyId = row.GetMeta("enemy_id").AsString();
+            if (!string.Equals(rowEnemyId, enemyId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return row.GetNodeOrNull<TextureRect>("IconSlot");
+        }
+
+        return null;
+    }
+
+    private Texture2D ResolveEnemyIntentTexture(string iconId)
+    {
+        var iconKey = iconId ?? string.Empty;
+        if (_enemyIntentTextureCache.TryGetValue(iconKey, out var cachedTexture))
+        {
+            return cachedTexture;
+        }
+
+        var resolved = TryLoadEnemyIntentTexture(iconKey) ?? EnsureEnemyIntentFallbackTexture();
+        _enemyIntentTextureCache[iconKey] = resolved;
+        return resolved;
+    }
+
+    private static Texture2D? TryLoadEnemyIntentTexture(string iconKey)
+    {
+        foreach (var path in BuildEnemyIntentTextureCandidates(iconKey))
+        {
+            if (!ResourceLoader.Exists(path))
+            {
+                continue;
+            }
+
+            if (ResourceLoader.Load(path) is Texture2D texture)
+            {
+                return texture;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> BuildEnemyIntentTextureCandidates(string iconKey)
+    {
+        if (string.IsNullOrWhiteSpace(iconKey))
+        {
+            yield break;
+        }
+
+        if (iconKey.StartsWith("res://", StringComparison.Ordinal))
+        {
+            yield return iconKey;
+            yield break;
+        }
+
+        yield return $"res://Game.Godot/Assets/UI/EnemyIntent/{iconKey}.png";
+        yield return $"res://Game.Godot/Assets/UI/EnemyIntent/{iconKey}.webp";
+        yield return $"res://Game.Godot/Assets/UI/EnemyIntent/{iconKey}.svg";
+    }
+
+    private Texture2D EnsureEnemyIntentFallbackTexture()
+    {
+        if (_enemyIntentFallbackTexture is not null)
+        {
+            return _enemyIntentFallbackTexture;
+        }
+
+        var image = Image.Create(20, 20, false, Image.Format.Rgba8);
+        image.Fill(new Color(0.55f, 0.57f, 0.61f, 1.0f));
+        _enemyIntentFallbackTexture = ImageTexture.CreateFromImage(image);
+        return _enemyIntentFallbackTexture;
+    }
+
+    private string ResolveIntentDescription(string textKey)
+    {
+        if (string.IsNullOrWhiteSpace(textKey))
+        {
+            return string.Empty;
+        }
+
+        var localized = Tr(textKey);
+        if (string.Equals(localized, textKey, StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        return localized;
+    }
+
     private sealed record CombatHudSnapshotPayload(
         List<string>? HandCards,
         int Energy,
         int DrawPileCount,
         int DiscardPileCount
+    );
+
+    private sealed record EnemyIntentContractPayload(
+        List<EnemyIntentPreviewItemPayload>? EnemyIntents
+    );
+
+    private sealed record EnemyIntentPreviewItemPayload(
+        string EnemyId,
+        string IconId,
+        string TextKey
+    );
+
+    private sealed record EnemyIntentState(
+        string EnemyId,
+        string IconId,
+        string Description,
+        int Turn
     );
 }
