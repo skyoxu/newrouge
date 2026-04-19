@@ -8,9 +8,11 @@ using FluentAssertions;
 using Game.Core.Contracts;
 using Game.Core.Contracts.Combat;
 using Game.Core.Contracts.Interfaces;
+using Game.Core.Contracts.Run;
 using Game.Core.Domain;
 using Game.Core.Domain.ValueObjects;
 using Game.Core.Services;
+using Game.Core.State;
 using Xunit;
 
 namespace Game.Core.Tests.Services;
@@ -549,6 +551,198 @@ public sealed class CombatServiceTests
         player.Health.Current.Should().Be(80);
     }
 
+    // ACC:T35.1
+    [Fact]
+    public void ShouldCompleteVictorySettlementInOrderedObservableStages_WhenCombatEndsWithVictory()
+    {
+        var bus = new CapturingEventBus();
+        var service = new CombatService(bus);
+        var pipelineResult = service.ExecutePlayCardPipeline(CreateValidPipelineInput());
+        var machine = BuildMachineAtCombatState();
+        var payloadJson = BuildVictorySettlementPayloadFromPipelineResult(pipelineResult, isComplete: true);
+        CombatResolutionCommandPayload.TryParse(payloadJson, out var payload).Should().BeTrue();
+        payload.Should().NotBeNull();
+        payload!.RunStatePersisted.Should().BeTrue();
+        payload.RewardHandoff.Should().NotBeNull();
+        payload.RewardHandoff!.RunSnapshotId.Should().NotBeNullOrWhiteSpace();
+        payload.SettlementStages.Should().ContainInOrder(
+            "death_triggers_resolved",
+            "reward_offer_presented",
+            "run_state_persisted");
+        payload.SettlementStages.Last().Should().Be("run_state_persisted");
+        var completeCombatCommand = CreateRunCommand(
+            "cmd-task35-victory",
+            "complete_combat",
+            payloadJson: payloadJson);
+
+        var accepted = machine.TryProcessCommand(
+            completeCombatCommand,
+            out var transition);
+
+        pipelineResult.Success.Should().BeTrue();
+        pipelineResult.ExecutedSteps.Should().ContainInOrder(
+            PlayCardPipelineStep.BeforePlayTriggers,
+            PlayCardPipelineStep.ResolveEffect,
+            PlayCardPipelineStep.AfterPlayTriggers,
+            PlayCardPipelineStep.DeathCheck);
+        pipelineResult.StateAfter.ResolvedEffects.Should().Be(1);
+        pipelineResult.StateAfter.DeathCheckCompleted.Should().BeTrue();
+        bus.Published.Should().Contain(evt => evt.Type == EventTypes.AuditLogged);
+        bus.Published
+            .Where(evt => evt.Type == EventTypes.AuditLogged)
+            .Select(evt => evt.DataJson)
+            .Should()
+            .Contain(payload => payload != null && payload.Contains("BeforePlayTriggers", StringComparison.Ordinal));
+        bus.Published
+            .Where(evt => evt.Type == EventTypes.AuditLogged)
+            .Select(evt => evt.DataJson)
+            .Should()
+            .Contain(payload => payload != null && payload.Contains("ResolveEffect", StringComparison.Ordinal));
+        bus.Published
+            .Where(evt => evt.Type == EventTypes.AuditLogged)
+            .Select(evt => evt.DataJson)
+            .Should()
+            .Contain(payload => payload != null && payload.Contains("AfterPlayTriggers", StringComparison.Ordinal));
+        accepted.Should().BeTrue();
+        transition.FromState.Should().Be(RunState.Combat);
+        transition.Reason.Should().Be("complete_combat");
+        transition.ToState.Should().Be(RunState.Reward);
+        machine.LastPersistedRunSnapshotId.Should().Be(payload.RewardHandoff.RunSnapshotId);
+        machine.LastPersistenceSourceState.Should().Be(RunState.Combat);
+        machine.Transitions.Should().ContainSingle(item =>
+            item.Reason == "complete_combat" &&
+            item.FromState == RunState.Combat &&
+            item.ToState == RunState.Reward);
+        machine.CurrentState.Should().Be(RunState.Reward);
+    }
+
+    // ACC:T35.3
+    [Fact]
+    public void ShouldRejectRewardTransition_WhenVictorySettlementStagesAreIncomplete()
+    {
+        var machine = BuildMachineAtCombatState();
+        var transitionCountBefore = machine.Transitions.Count;
+        var incompleteSettlementCommand = CreateRunCommand(
+            "cmd-task35-victory-incomplete",
+            "complete_combat",
+            payloadJson: BuildVictorySettlementPayloadFromPipelineResult(
+                new CombatService().ExecutePlayCardPipeline(CreateValidPipelineInput()),
+                isComplete: false));
+
+        var accepted = machine.TryProcessCommand(incompleteSettlementCommand, out var transition);
+
+        accepted.Should().BeFalse("reward transition must fail-closed when victory settlement is incomplete");
+        transition.Reason.Should().Be("invalid_command_no_transition");
+        transition.FromState.Should().Be(RunState.Combat);
+        transition.ToState.Should().Be(RunState.Combat);
+        machine.LastPersistedRunSnapshotId.Should().BeNull();
+        machine.CurrentState.Should().Be(RunState.Combat);
+        machine.Transitions.Count.Should().Be(transitionCountBefore);
+    }
+
+    // ACC:T35.3
+    [Fact]
+    public void ShouldRejectRewardTransition_WhenSettlementStageOrderIsInvalid()
+    {
+        var machine = BuildMachineAtCombatState();
+        var invalidOrderPayload = JsonSerializer.Serialize(new
+        {
+            settlement_completed = true,
+            death_triggers_resolved = true,
+            reward_offer_presented = true,
+            run_state_persisted = true,
+            settlement_stages = new[] { "reward_offer_presented", "death_triggers_resolved", "run_state_persisted" },
+            reward_handoff = new
+            {
+                reward_context_id = "reward.task35.invalid-order",
+                offer_ids = new[] { "offer.task35.a", "offer.task35.b", "offer.task35.c" },
+                run_snapshot_id = "snapshot.task35.invalid-order"
+            }
+        });
+
+        var accepted = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-victory-order-invalid", "complete_combat", invalidOrderPayload),
+            out var transition);
+
+        accepted.Should().BeFalse();
+        transition.Reason.Should().Be("invalid_command_no_transition");
+        machine.LastPersistedRunSnapshotId.Should().BeNull();
+        machine.CurrentState.Should().Be(RunState.Combat);
+    }
+
+    // ACC:T35.3
+    [Fact]
+    public void ShouldRejectRewardTransition_WhenRewardHandoffIsNotConsumable()
+    {
+        var machine = BuildMachineAtCombatState();
+        var invalidHandoffPayload = JsonSerializer.Serialize(new
+        {
+            settlement_completed = true,
+            death_triggers_resolved = true,
+            reward_offer_presented = true,
+            run_state_persisted = true,
+            settlement_stages = new[] { "death_triggers_resolved", "reward_offer_presented", "run_state_persisted" },
+            reward_handoff = new
+            {
+                reward_context_id = "",
+                offer_ids = Array.Empty<string>(),
+                run_snapshot_id = ""
+            }
+        });
+
+        var accepted = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-victory-handoff-invalid", "complete_combat", invalidHandoffPayload),
+            out var transition);
+
+        accepted.Should().BeFalse();
+        transition.Reason.Should().Be("invalid_command_no_transition");
+        machine.LastPersistedRunSnapshotId.Should().BeNull();
+        machine.CurrentState.Should().Be(RunState.Combat);
+    }
+
+    // ACC:T35.2
+    [Fact]
+    public void ShouldTerminateRunWithoutRewardScene_WhenCombatEndsWithDefeat()
+    {
+        var machine = BuildMachineAtCombatState();
+
+        var accepted = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-defeat", "resolve_combat_defeat"),
+            out var transition);
+
+        accepted.Should().BeTrue();
+        transition.FromState.Should().Be(RunState.Combat);
+        transition.ToState.Should().Be(RunState.GameOver);
+        transition.Reason.Should().Be("resolve_combat_defeat");
+        machine.CurrentState.Should().Be(RunState.GameOver);
+        machine.CurrentState.Should().NotBe(RunState.Reward);
+
+        var rewardClaimAccepted = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-claim-after-defeat", "claim_reward"),
+            out var blockedTransition);
+
+        rewardClaimAccepted.Should().BeFalse();
+        machine.CurrentState.Should().Be(RunState.GameOver);
+        blockedTransition.Reason.Should().Be("invalid_command_no_transition");
+
+        var returnedToMenu = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-return-menu", "return_to_menu"),
+            out var menuTransition);
+        returnedToMenu.Should().BeTrue();
+        menuTransition.FromState.Should().Be(RunState.GameOver);
+        menuTransition.ToState.Should().Be(RunState.MainMenu);
+        machine.CurrentState.Should().Be(RunState.MainMenu);
+        machine.CurrentState.Should().NotBe(RunState.Reward);
+
+        var rewardAfterMenuAccepted = machine.TryProcessCommand(
+            CreateRunCommand("cmd-task35-claim-after-menu", "claim_reward"),
+            out var rewardAfterMenuTransition);
+        rewardAfterMenuAccepted.Should().BeFalse();
+        rewardAfterMenuTransition.Reason.Should().Be("invalid_command_no_transition");
+        machine.CurrentState.Should().Be(RunState.MainMenu);
+        machine.CurrentState.Should().NotBe(RunState.Reward);
+    }
+
     [Fact]
     public void ShouldNotPublishEventForPlainAmountOverload_WhenApplyingRawDamage()
     {
@@ -659,6 +853,64 @@ public sealed class CombatServiceTests
             CombatantId: combatantId,
             StableId: stableId,
             FailAtStep: failAtStep);
+    }
+
+    private static RunStateMachine BuildMachineAtCombatState()
+    {
+        var machine = new RunStateMachine();
+        machine.TryProcessCommand(CreateRunCommand("cmd-enter", "enter_node"), out _).Should().BeTrue();
+        machine.TryProcessCommand(CreateRunCommand("cmd-start", "start_combat"), out _).Should().BeTrue();
+        machine.CurrentState.Should().Be(RunState.Combat);
+        return machine;
+    }
+
+    private static RunCommand CreateRunCommand(string commandId, string commandType, string? payloadJson = null)
+    {
+        var resolvedPayload = payloadJson
+            ?? (commandType == "complete_combat"
+                ? BuildVictorySettlementPayloadFromPipelineResult(
+                    new CombatService().ExecutePlayCardPipeline(CreateValidPipelineInput()),
+                    isComplete: true)
+                : "{}");
+        return new RunCommand(
+            CommandId: commandId,
+            CommandType: commandType,
+            Issuer: "task35-tests",
+            PayloadJson: resolvedPayload,
+            IssuedAt: new DateTimeOffset(2026, 4, 19, 0, 0, 0, TimeSpan.Zero));
+    }
+
+    private static string BuildVictorySettlementPayloadFromPipelineResult(PlayCardPipelineResult pipelineResult, bool isComplete)
+    {
+        var stages = new List<string>();
+        if (pipelineResult.StateAfter.DeathCheckCompleted)
+        {
+            stages.Add("death_triggers_resolved");
+        }
+
+        stages.Add("reward_offer_presented");
+        if (isComplete)
+        {
+            stages.Add("run_state_persisted");
+        }
+
+        var payload = new
+        {
+            settlement_completed = isComplete && pipelineResult.Success,
+            death_triggers_resolved = pipelineResult.StateAfter.DeathCheckCompleted,
+            reward_offer_presented = true,
+            run_state_persisted = isComplete,
+            settlement_stages = stages.ToArray(),
+            reward_handoff = isComplete
+                ? new
+                {
+                    reward_context_id = "reward.task35.combat-service",
+                    offer_ids = new[] { "offer.task35.a", "offer.task35.b", "offer.task35.c" },
+                    run_snapshot_id = "snapshot.task35.combat-service"
+                }
+                : null
+        };
+        return JsonSerializer.Serialize(payload);
     }
 
     private static void AssertAnchorBoundToAssertion(string fileContent, string marker)
