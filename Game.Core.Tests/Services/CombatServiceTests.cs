@@ -844,6 +844,35 @@ public sealed class CombatServiceTests
             "task acceptance must fail-closed when required refs are missing");
     }
 
+    // ACC:T51.9
+    [Fact]
+    public void ShouldExposeTask51Adr0025CoveragePoint_WhenInspectingBackTaskAcceptance()
+    {
+        var taskPath = Path.Combine(RepoRoot, ".taskmaster", "tasks", "tasks_back.json");
+        File.Exists(taskPath).Should().BeTrue();
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(taskPath));
+        var task51 = doc.RootElement
+            .EnumerateArray()
+            .FirstOrDefault(node =>
+                node.TryGetProperty("taskmaster_id", out var idNode)
+                && idNode.ValueKind == JsonValueKind.Number
+                && idNode.GetInt32() == 51);
+
+        task51.ValueKind.Should().Be(JsonValueKind.Object);
+        var acceptanceItems = task51.GetProperty("acceptance")
+            .EnumerateArray()
+            .Select(x => x.GetString())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToArray();
+
+        acceptanceItems.Should().Contain(item =>
+            item!.Contains("ADR-0025", StringComparison.OrdinalIgnoreCase)
+            && (item.Contains("验证点覆盖", StringComparison.Ordinal)
+                || item.Contains("coverage", StringComparison.OrdinalIgnoreCase)),
+            "Task 51 must include at least one directly locatable ADR-0025 coverage point.");
+    }
+
     // ACC:T11.33
     // ACC:T11.34
     [Fact]
