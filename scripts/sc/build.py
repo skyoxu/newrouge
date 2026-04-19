@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
 from _delivery_profile import (
@@ -73,6 +74,79 @@ def build_parser() -> argparse.ArgumentParser:
         help="Security profile override (default derives from delivery profile).",
     )
     return ap
+
+
+def _read_non_negative_int_env(name: str, default: int) -> int:
+    raw = (os.environ.get(name, "") or "").strip()
+    if not raw:
+        return max(0, int(default))
+    try:
+        value = int(raw)
+    except ValueError:
+        return max(0, int(default))
+    return max(0, value)
+
+
+def _read_positive_float_env(name: str, default: float) -> float:
+    raw = (os.environ.get(name, "") or "").strip()
+    if not raw:
+        return float(default)
+    try:
+        value = float(raw)
+    except ValueError:
+        return float(default)
+    if value <= 0:
+        return float(default)
+    return value
+
+
+def _is_retryable_file_lock_failure(rc: int, output: str) -> bool:
+    if rc == 0:
+        return False
+    trace = output.lower()
+    if "cs2012" in trace:
+        return True
+    if "being used by another process" in trace:
+        return True
+    if "cannot access the file" in trace and "another process" in trace:
+        return True
+    if "另一进程" in output or "另一个进程" in output:
+        return True
+    return False
+
+
+def run_build_with_file_lock_retry(
+    *,
+    cmd: list[str],
+    retry_on_file_lock: int,
+    retry_backoff_sec: float,
+    timeout_sec: int = 1_800,
+) -> tuple[int, str, list[dict[str, object]]]:
+    attempts: list[dict[str, object]] = []
+    chunks: list[str] = []
+
+    attempt = 0
+    while attempt <= retry_on_file_lock:
+        attempt += 1
+        rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=timeout_sec)
+        retryable = _is_retryable_file_lock_failure(rc, out)
+        attempts.append(
+            {
+                "attempt": attempt,
+                "rc": rc,
+                "retryable_file_lock": retryable,
+            }
+        )
+        chunks.append(f"=== attempt {attempt} rc={rc} ===\n{out.rstrip()}\n")
+        if rc == 0:
+            return 0, "\n".join(chunks), attempts
+        if not retryable or attempt > retry_on_file_lock:
+            return rc, "\n".join(chunks), attempts
+        if retry_backoff_sec > 0:
+            time.sleep(retry_backoff_sec)
+
+    # Defensive fallback (loop always returns above).
+    return 1, "\n".join(chunks), attempts
 
 
 def main() -> int:
@@ -138,13 +212,38 @@ def main() -> int:
         warn_as_error=bool(runtime["warn_as_error"]),
     )
 
-    rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=1_800)
+    retry_on_file_lock = _read_non_negative_int_env("SC_BUILD_RETRY_ON_FILE_LOCK", 1)
+    retry_backoff_ms = _read_non_negative_int_env("SC_BUILD_RETRY_BACKOFF_MS", 1200)
+    retry_backoff_sec = _read_positive_float_env(
+        "SC_BUILD_RETRY_BACKOFF_SEC",
+        retry_backoff_ms / 1000.0,
+    )
+    rc, out, build_attempts = run_build_with_file_lock_retry(
+        cmd=cmd,
+        retry_on_file_lock=retry_on_file_lock,
+        retry_backoff_sec=retry_backoff_sec,
+        timeout_sec=1_800,
+    )
     log_path = out_dir / "dotnet-build.log"
     write_text(log_path, out)
-    logs.append({"name": "dotnet-build", "cmd": cmd, "rc": rc, "log": str(log_path)})
+    logs.append(
+        {
+            "name": "dotnet-build",
+            "cmd": cmd,
+            "rc": rc,
+            "log": str(log_path),
+            "attempt_count": len(build_attempts),
+            "retry_on_file_lock": retry_on_file_lock,
+        }
+    )
 
     summary["logs"] = logs
     summary["status"] = "ok" if rc == 0 else "fail"
+    summary["build_retry"] = {
+        "retry_on_file_lock": retry_on_file_lock,
+        "retry_backoff_sec": retry_backoff_sec,
+        "attempts": build_attempts,
+    }
     write_json(out_dir / "summary.json", summary)
 
     print(f"SC_BUILD status={summary['status']} out={out_dir}")
