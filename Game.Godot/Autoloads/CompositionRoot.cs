@@ -1,6 +1,9 @@
 using System;
+using System.Text.Json;
 using Game.Core.Ports;
 using Game.Core.Contracts.Interfaces;
+using Game.Core.Contracts.Save;
+using Game.Core.Services;
 using Godot;
 
 namespace Game.Godot.Autoloads;
@@ -30,6 +33,9 @@ public partial class CompositionRoot : Node
     private Adapters.DataStoreAdapter? _dataStoreAdapter;
     private Adapters.LoggerAdapter? _loggerAdapter;
     private Adapters.EventBusAdapter? _eventBusAdapter;
+    private SaveService? _saveService;
+    private DeterministicAutosaveTriggerService? _autosaveTriggerService;
+    private DeterministicAutosaveEventSubscriber? _autosaveEventSubscriber;
 
     private readonly global::Godot.Collections.Array<string> _initializationErrors = new();
     private readonly global::Godot.Collections.Array<string> _injectionErrors = new();
@@ -80,6 +86,11 @@ public partial class CompositionRoot : Node
             DataStore = _dataStoreAdapter;
             Logger = _loggerAdapter;
             EventBus = _eventBusAdapter;
+            _saveService = new SaveService(_dataStoreAdapter, new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("user://")), _eventBusAdapter, _loggerAdapter);
+            _autosaveTriggerService = new DeterministicAutosaveTriggerService(
+                _saveService,
+                context => BuildAutosaveSnapshot(context));
+            _autosaveEventSubscriber = new DeterministicAutosaveEventSubscriber(_eventBusAdapter, _autosaveTriggerService);
 
             _initialized = true;
         }
@@ -234,5 +245,23 @@ public partial class CompositionRoot : Node
         }
 
         return false;
+    }
+
+    private static AutosaveSnapshot BuildAutosaveSnapshot(AutosaveTriggerContext context)
+    {
+        var stateJson = JsonSerializer.Serialize(new
+        {
+            trigger = context.Trigger,
+            source_id = context.SourceId,
+            sequence = context.Sequence,
+            run_id = context.RunId,
+        });
+
+        return new AutosaveSnapshot(
+            RunId: context.RunId,
+            SavePointId: $"deterministic/{context.Trigger}/{context.Sequence}",
+            SchemaVersion: "v1",
+            StateJson: stateJson,
+            SavedAt: context.OccurredAt);
     }
 }
