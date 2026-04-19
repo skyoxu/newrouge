@@ -1,0 +1,21 @@
+# Task 51 Integrate combat turn flow and persistence acceptance-test generation plan
+
+- Title: Task 51 Integrate combat turn flow and persistence acceptance-test generation plan
+- Status: active
+- Branch: task/T51
+- Git Head: 1c285281bcbe9bc7531e86aa278c01c4149fe9d1
+- Goal: Control acceptance-driven test generation complexity for task 51.
+- Scope: 2 missing refs across 1 test roots; seed refs: Game.Core.Tests/Tasks/Task0051AcceptanceTests.cs, Game.Core.Tests/Tasks/Task51AdrTraceabilityGateTests.cs
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 51 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `51`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
