@@ -78,9 +78,18 @@ def safe_prompt_truncate(prompt: str, *, max_chars: int) -> str:
     )
 
 
-def _normalize_ws(text: str) -> str:
-    return re.sub(r"\s+", " ", str(text or "")).strip()
+def _normalize_escaped_control_chars(text: str) -> str:
+    return (
+        str(text or "")
+        .replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\r", "\n")
+        .replace("\\t", "\t")
+    )
 
+
+def _normalize_ws(text: str) -> str:
+    return re.sub(r"\s+", " ", _normalize_escaped_control_chars(str(text or ""))).strip()
 
 def _strip_prompt_prefix(text: str) -> str:
     s = str(text or "").strip()
@@ -112,14 +121,17 @@ def _contains_excerpt(excerpt: str, raw_corpus: str, norm_corpus: str) -> tuple[
     """Return (matched, matched_after_prefix_strip)."""
     if not excerpt:
         return False, False
+    normalized_raw_corpus = _normalize_escaped_control_chars(raw_corpus)
+    normalized_norm_corpus = _normalize_ws(norm_corpus or raw_corpus)
 
     def _match(candidate: str) -> bool:
         if not candidate:
             return False
-        if candidate in raw_corpus:
+        normalized_candidate = _normalize_escaped_control_chars(candidate)
+        if normalized_candidate in normalized_raw_corpus:
             return True
         norm_candidate = _normalize_ws(candidate)
-        return bool(norm_candidate and norm_candidate in norm_corpus)
+        return bool(norm_candidate and norm_candidate in normalized_norm_corpus)
 
     if _match(excerpt):
         return True, False

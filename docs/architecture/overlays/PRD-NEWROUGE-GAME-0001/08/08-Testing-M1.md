@@ -110,3 +110,65 @@ Test-Refs:
   - scene `res://Game.Godot/Scenes/UI/CharacterSelect.tscn` loads and supports Warrior selection flow
   - warrior summary stays at three visible localized lines (`rage_buff`, `power_window`, `cost_burst`)
 
+
+## 9. Task59-69 UI Wiring Test-Refs
+- T59 / GM-0159:
+  - `Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd`
+  - `Tests.Godot/tests/Tasks/test_task0014_acceptance.gd`
+  - `Tests.Godot/tests/Tasks/test_task0015_acceptance.gd`
+  - `Tests.Godot/tests/Tasks/test_task0016_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs`
+- T60 / GM-0160:
+  - `Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd`
+  - `Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd`
+  - `Tests.Godot/tests/Tasks/test_task0042_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs`
+- T61 / GM-0161:
+  - `Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd`
+  - `Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd`
+  - `Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd`
+  - `Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs`
+- T62 / GM-0162:
+  - `Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd`
+  - `Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd`
+  - `Tests.Godot/tests/Tasks/test_task0021_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs`
+- T63 / GM-0163:
+  - `Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd`
+  - `Tests.Godot/tests/Tasks/test_task0014_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs`
+  - `Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs`
+  - `Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs`
+- T64 / GM-0164:
+  - `Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd`
+  - `Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd`
+  - `Tests.Godot/tests/Tasks/test_task0041_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs`
+- T65 / GM-0165:
+  - `Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd`
+  - `Tests.Godot/tests/Tasks/test_task0023_acceptance.gd`
+  - `Tests.Godot/tests/Tasks/test_task0039_acceptance.gd`
+  - `Tests.Godot/tests/UI/test_reward_ui_translations.gd`
+  - `Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs`
+- T66 / GM-0166:
+  - `Tests.Godot/tests/UI/test_run_summary_surface.gd`
+  - `Tests.Godot/tests/UI/test_hud_scene.gd`
+  - `Tests.Godot/tests/Tasks/test_task0045_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs`
+- T67 / GM-0167:
+  - `Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd`
+  - `Tests.Godot/tests/Tasks/test_task0020_acceptance.gd`
+  - `Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd`
+  - `Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs`
+- T68 / GM-0168:
+  - `Tests.Godot/tests/UI/A11y/test_button_invokable.gd`
+  - `Tests.Godot/tests/UI/A11y/test_focus_cycle.gd`
+  - `Tests.Godot/tests/UI/A11y/test_visible_labels.gd`
+  - `Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd`
+  - `Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs`
+- T69 / GM-0169:
+  - `Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd`
+  - `Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd`
+  - `Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd`
+  - `Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd`
+  - `Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs`

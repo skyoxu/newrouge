@@ -53,13 +53,13 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-19T17:07:02.518940+00:00",
+  "generated_at": "2026-04-20T05:08:24.516005+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "e1438249eec5d123093f4787a75a52ccfcc6fd1a8134bdf700b4904749afe753",
-      "bytes": 86174
+      "sha256": "c6cc1de16f5c064e916929a1be9d34c5e4ad42ebf702bcbfd80449f46276367f",
+      "bytes": 98662
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
@@ -70,8 +70,8 @@ Test-Refs:
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "cc93bd145648fd6f1736d64f0e32e2ffc692b421993b1000ba65f6028a1b3769",
-      "bytes": 237967
+      "sha256": "b2f4dd77504a51d4de21bcea8062d9e91acee8a61667a06db13c3a6b04d0d57f",
+      "bytes": 269851
     }
   ]
 }
@@ -128,3 +128,21 @@ Test-Refs:
   - `Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs`
 - Evidence script:
   - `scripts/python/verify_m1_translations.py`
+
+## Task59-69 UI Wiring Extension
+- Scope source: `docs/gdd/ui-gdd-flow.md`.
+- Overlay refs for Task59-69 must resolve inside this Overlay 08 directory; the GDD file is supporting design evidence, not an `overlay_refs` target.
+- Task range covered by this overlay now extends from `T1-T57` to `T1-T69` for M1 UI wiring work.
+
+### Task Backlinks
+- T59 / GM-0159: M1 run entry route `MainMenu -> DifficultySelect -> CharacterSelect -> Map`.
+- T60 / GM-0160: Map-owned node routing for Combat, Event, Shop, and Rest.
+- T61 / GM-0161: standalone Reward scene route integration.
+- T62 / GM-0162: standalone Rest scene route integration.
+- T63 / GM-0163: Continue blocked-state UX and recovery messaging.
+- T64 / GM-0164: Combat HUD explainability and command feedback.
+- T65 / GM-0165: M1 visible text flow validation across UI scenes.
+- T66 / GM-0166: Run Summary surface ownership.
+- T67 / GM-0167: real Shop UI behavior binding and route ownership.
+- T68 / GM-0168: M1 UI focus and accessibility pass.
+- T69 / GM-0169: Event result explainability and node feedback routing.
