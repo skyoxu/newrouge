@@ -415,12 +415,12 @@ public sealed class DifficultyRuleServiceDeterminismTests
 
         if (value is IDictionary dictionary)
         {
-            var tokens = dictionary.Keys
-                .Cast<object?>()
-                .Select(key => new
+            var tokens = dictionary
+                .Cast<DictionaryEntry>()
+                .Select(entry => new
                 {
-                    KeyToken = BuildDeterministicSignature(key, depth + 1),
-                    ValueToken = BuildDeterministicSignature(dictionary[key], depth + 1),
+                    KeyToken = BuildDeterministicSignature(entry.Key, depth + 1),
+                    ValueToken = BuildDeterministicSignature(entry.Value, depth + 1),
                 })
                 .OrderBy(token => token.KeyToken, StringComparer.Ordinal)
                 .Select(token => $"{token.KeyToken}:{token.ValueToken}");

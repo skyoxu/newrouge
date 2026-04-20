@@ -371,6 +371,12 @@ public class ContractInstantiationCoverageTests
                     return false;
                 }
 
+                if (keyValue is null)
+                {
+                    value = null;
+                    return false;
+                }
+
                 var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
                 var dict = (System.Collections.IDictionary)Activator.CreateInstance(dictType)!;
                 dict.Add(keyValue, dictValue);
