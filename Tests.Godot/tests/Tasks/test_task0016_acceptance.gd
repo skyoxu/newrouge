@@ -10,6 +10,14 @@ const TASK16_EXPECTED_TEST_REFS := [
     "Tests.Godot/tests/UI/test_settings_locale.gd",
     "Game.Core.Tests/Tasks/Task16RunCharacterSelectedContractTests.cs"
 ]
+var _previous_locale := ""
+
+func before() -> void:
+    _previous_locale = TranslationServer.get_locale()
+    TranslationServer.set_locale("en")
+
+func after() -> void:
+    TranslationServer.set_locale(_previous_locale)
 
 func _new_scene() -> Control:
     var scene := CHARACTER_SELECT_SCENE.instantiate() as Control

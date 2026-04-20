@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Godot;
+using Game.Core.Contracts;
+using Game.Godot.Adapters;
 
 namespace Game.Godot.Scripts.UI;
 
@@ -70,7 +73,14 @@ public partial class CharacterSelect : Control
 
     public void KeyboardConfirmCharacterForTest(string characterId)
     {
-        TrySelectCharacter(characterId);
+        var normalized = NormalizeId(characterId);
+        if (!string.Equals(normalized, WarriorId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        TrySelectCharacter(normalized);
+        ConfirmSelectedCharacterForTest();
     }
 
     public string GetSelectedCharacterForTest()
@@ -126,6 +136,11 @@ public partial class CharacterSelect : Control
     {
         RefreshLocalizedText(force: false);
         return ResolveVisibleText(key);
+    }
+
+    public void ConfirmSelectedCharacterForTest()
+    {
+        PublishCharacterSelected(_selectedCharacterId);
     }
 
     public void RefreshLocaleForTest()
@@ -286,5 +301,20 @@ public partial class CharacterSelect : Control
 
         var normalized = locale.Trim().Replace('_', '-');
         return normalized.ToLowerInvariant();
+    }
+
+    private void PublishCharacterSelected(string characterId)
+    {
+        var bus = GetNodeOrNull<EventBusAdapter>("/root/EventBus");
+        if (bus is null)
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            character_id = characterId
+        });
+        bus.PublishSimple(EventTypes.RunCharacterSelected, "ui.character.select", payload);
     }
 }
