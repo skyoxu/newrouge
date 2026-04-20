@@ -3924,7 +3924,13 @@
     ],
     "taskmaster_id": 59,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.run.started",
+      "core.run.difficulty.selected",
+      "core.run.character.selected",
+      "core.run.state.transitioned",
+      "core.map.node.entered"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0059.json"
@@ -4047,7 +4053,12 @@
     ],
     "taskmaster_id": 61,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.reward.offer.locked",
+      "core.reward.offer.presented",
+      "core.reward.offer.selected",
+      "core.reward.offer.skipped"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0061.json"
@@ -4109,7 +4120,11 @@
     ],
     "taskmaster_id": 62,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.rest.option.selected",
+      "core.card.upgraded",
+      "core.curse.removed"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0062.json"
@@ -4235,7 +4250,14 @@
     ],
     "taskmaster_id": 64,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.combat.turn.started",
+      "core.intent.selected",
+      "core.combat.card.played",
+      "core.combat.card.invalid_play_blocked",
+      "core.combat.damage.resolved",
+      "core.health.updated"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0064.json"
@@ -4300,7 +4322,17 @@
     ],
     "taskmaster_id": 65,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.run.continue.blocked",
+      "core.run.difficulty.selected",
+      "core.run.character.selected",
+      "core.map.node.selected",
+      "core.combat.card.invalid_play_blocked",
+      "core.reward.offer.locked",
+      "core.shop.inventory.locked",
+      "core.rest.option.selected",
+      "core.event.entered"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0065.json"
@@ -4424,7 +4456,11 @@
     ],
     "taskmaster_id": 67,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.shop.inventory.locked",
+      "core.shop.item.purchased",
+      "core.shop.curse.removed"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0067.json"
@@ -4552,7 +4588,13 @@
     ],
     "taskmaster_id": 69,
     "taskmaster_exported": true,
-    "contractRefs": [],
+    "contractRefs": [
+      "core.event.entered",
+      "core.event.choice.committed",
+      "core.darkcost.applied",
+      "core.relic.granted",
+      "core.curse.added"
+    ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0069.json"
