@@ -31,7 +31,7 @@ public sealed class Task0059AcceptanceTests
 
     // ACC:T59.2
     [Fact]
-    public void ShouldBindAccT59_2ToIntegrationAnchor_WhenReadingAcceptanceSemantics()
+    public void ShouldBindAccT592ToIntegrationAnchorWhenReadingAcceptanceSemantics()
     {
         using var task59 = ReadTask59Definition();
         var acceptanceLine = task59.RootElement.GetProperty("acceptance").EnumerateArray()
@@ -44,7 +44,7 @@ public sealed class Task0059AcceptanceTests
 
     // ACC:T59.3
     [Fact]
-    public void ShouldBindAccT59_3ToIntegrationAnchor_WhenReadingAcceptanceSemantics()
+    public void ShouldBindAccT593ToIntegrationAnchorWhenReadingAcceptanceSemantics()
     {
         using var task59 = ReadTask59Definition();
         var acceptanceLine = task59.RootElement.GetProperty("acceptance").EnumerateArray()
@@ -57,7 +57,7 @@ public sealed class Task0059AcceptanceTests
 
     // ACC:T59.4
     [Fact]
-    public void ShouldBindAccT59_4ToMainMenuAndIntegrationAnchors_WhenReadingAcceptanceSemantics()
+    public void ShouldBindAccT594ToMainMenuAndIntegrationAnchorsWhenReadingAcceptanceSemantics()
     {
         using var task59 = ReadTask59Definition();
         var acceptanceLine = task59.RootElement.GetProperty("acceptance").EnumerateArray()
@@ -72,7 +72,7 @@ public sealed class Task0059AcceptanceTests
 
     // ACC:T59.5
     [Fact]
-    public void ShouldBindAccT59_5ToFinalSceneAndRouteOrder_WhenReadingAcceptanceSemantics()
+    public void ShouldBindAccT595ToFinalSceneAndRouteOrderWhenReadingAcceptanceSemantics()
     {
         using var task59 = ReadTask59Definition();
         var acceptanceLine = task59.RootElement.GetProperty("acceptance").EnumerateArray()
