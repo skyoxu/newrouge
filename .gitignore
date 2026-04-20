@@ -124,3 +124,6 @@ taskdoc/**
 
 # bmad workspace content
 _bmad/
+
+# Codex local skills/agents workspace
+.agents/
