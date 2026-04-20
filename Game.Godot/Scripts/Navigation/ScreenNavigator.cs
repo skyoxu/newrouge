@@ -13,7 +13,7 @@ public partial class ScreenNavigator : Node
     private Control? _overlays;
     private Node? _current;
     private bool _busy;
-    private readonly Godot.Collections.Array<string> _routeHistory = new();
+    private readonly global::Godot.Collections.Array<string> _routeHistory = new();
     private string _currentScenePath = string.Empty;
 
     public override void _Ready()
@@ -45,9 +45,9 @@ public partial class ScreenNavigator : Node
         return true;
     }
 
-    public Godot.Collections.Array<string> GetRouteHistoryForTest()
+    public global::Godot.Collections.Array<string> GetRouteHistoryForTest()
     {
-        return new Godot.Collections.Array<string>(_routeHistory);
+        return new global::Godot.Collections.Array<string>(_routeHistory);
     }
 
     public string GetCurrentScenePathForTest()
