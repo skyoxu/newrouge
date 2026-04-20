@@ -235,4 +235,4 @@ The M1 playable route must be player-facing and route-owned:
 - Combat and Event must surface result feedback that is sufficient for player decisions without reading engineering logs.
 
 ### 7.3 Contract Boundary
-Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts/**` files unless implementation introduces new public DTOs, event families, or command interfaces. If that happens, update `08-Contracts-M1.md` and add the concrete contract path to the relevant task `contractRefs` in the same change.
+Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts/**` files unless implementation introduces new public DTOs, event families, or command interfaces. Even when no new contract file is added, these tasks must declare the existing `EventType` constants they consume in task `contractRefs` so UI consumer coverage stays machine-verifiable. If implementation adds or changes public contracts, update `08-Contracts-M1.md` and the relevant task `contractRefs` in the same change.

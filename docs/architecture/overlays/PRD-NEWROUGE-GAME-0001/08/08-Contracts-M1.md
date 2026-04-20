@@ -426,11 +426,11 @@ Test-Refs:
 
 
 ## Task59-69 UI Wiring Contract Baseline
-Task59-69 do not add contract skeletons at task-definition time. Their current task entries intentionally keep `contractRefs` empty because the work is UI scene routing, visible feedback, localization validation, and adapter binding.
+Task59-69 remain UI/adapter wiring tasks. They do not require new contract skeletons at task-definition time, but they must still declare the existing runtime `EventType` entries they consume in task `contractRefs` so `check_task_contract_refs.py` can verify UI consumer coverage.
 
-Contract updates become mandatory only if implementation introduces or changes public Core-facing events, DTOs, command interfaces, or event-family constants. In that case:
+Contract updates become mandatory when implementation introduces or changes public Core-facing events, DTOs, command interfaces, or event-family constants. In that case:
 - Add or update the concrete file under `Game.Core/Contracts/**`.
 - Keep the file BCL-only and free of `Godot.*` dependencies.
 - Add XML docs on the public contract surface.
-- Add the concrete path to this overlay and to the relevant task `contractRefs`.
-- Re-run `py -3 scripts/python/validate_contracts.py` and `py -3 scripts/python/check_domain_contracts.py`.
+- Update this overlay and the relevant task `contractRefs` in the same change, using the consumed `EventType` constants rather than placeholder-empty arrays.
+- Re-run `py -3 scripts/python/validate_contracts.py`, `py -3 scripts/python/check_domain_contracts.py`, and `py -3 scripts/python/check_task_contract_refs.py --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`.
