@@ -89,7 +89,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032"
@@ -115,7 +115,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0021",
@@ -142,7 +142,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "1",
@@ -236,7 +236,7 @@
         "dependencies": [
           "3"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "1",
@@ -301,7 +301,7 @@
         "dependencies": [
           "4"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -328,7 +328,7 @@
         "dependencies": [
           "5"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0021",
@@ -355,7 +355,7 @@
         "dependencies": [
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "1",
@@ -421,7 +421,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "1",
@@ -548,7 +548,7 @@
         "dependencies": [
           "14"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -576,7 +576,7 @@
         "dependencies": [
           "15"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010"
@@ -602,7 +602,7 @@
         "dependencies": [
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0007",
@@ -630,7 +630,7 @@
           "11",
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": "1",
@@ -699,7 +699,7 @@
           "13",
           "46"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -728,7 +728,7 @@
           "13",
           "46"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -757,7 +757,7 @@
           "8",
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0033",
@@ -785,7 +785,7 @@
         "dependencies": [
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -813,7 +813,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010"
@@ -839,7 +839,7 @@
         "dependencies": [
           "8"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0033"
@@ -866,7 +866,7 @@
           "10",
           "24"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0033",
@@ -894,7 +894,7 @@
           "2",
           "12"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0023",
@@ -924,7 +924,7 @@
           "6",
           "26"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -951,7 +951,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0006",
@@ -981,7 +981,7 @@
           "28",
           "46"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1008,7 +1008,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0020",
@@ -1037,7 +1037,7 @@
         "dependencies": [
           "30"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1066,7 +1066,7 @@
           "3",
           "8"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0033"
@@ -1093,7 +1093,7 @@
           "8",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0021",
@@ -1120,7 +1120,7 @@
         "dependencies": [
           "18"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0022",
@@ -1151,7 +1151,7 @@
           "19",
           "48"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1180,7 +1180,7 @@
           "19",
           "22"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1209,7 +1209,7 @@
           "14",
           "50"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1237,7 +1237,7 @@
         "dependencies": [
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0019",
@@ -1269,7 +1269,7 @@
           "31",
           "32"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010"
@@ -1296,7 +1296,7 @@
           "6",
           "28"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0021"
@@ -1324,7 +1324,7 @@
           "18",
           "52"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1354,7 +1354,7 @@
         "dependencies": [
           "17"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032"
@@ -1381,7 +1381,7 @@
           "12",
           "17"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1411,7 +1411,7 @@
           "22",
           "36"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1440,7 +1440,7 @@
           "15",
           "26"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1470,7 +1470,7 @@
           "4",
           "9"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032"
@@ -1496,7 +1496,7 @@
         "dependencies": [
           "10"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0029",
@@ -1524,7 +1524,7 @@
           "11",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0021",
@@ -1551,7 +1551,7 @@
         "dependencies": [
           "11"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0029"
@@ -1578,7 +1578,7 @@
         "dependencies": [
           "12"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1607,7 +1607,7 @@
           "11",
           "36"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1635,7 +1635,7 @@
           "40",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0032",
@@ -1718,7 +1718,7 @@
         "dependencies": [
           "54"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0005"
@@ -1770,7 +1770,7 @@
         "dependencies": [
           "56"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0019",
@@ -1798,7 +1798,7 @@
         "dependencies": [
           "57"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0005",
@@ -1813,19 +1813,339 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on semantic scope governance for soft review stabilization.",
         "updatedAt": null
+      },
+      {
+        "id": 59,
+        "title": "Rewire M1 run entry from main menu to difficulty, character, and map",
+        "description": "Replace the current demo-oriented new run route with the M1 player flow MainMenu -> DifficultySelect -> CharacterSelect -> Map.",
+        "details": "Story: UI-WIRING-M1-A1\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add one GdUnit integration smoke for the full run-entry path and one focused acceptance test asserting the real route target.\\n",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on rewiring the real M1 run entry flow from MainMenu to DifficultySelect, CharacterSelect, and Map.",
+        "updatedAt": null
+      },
+      {
+        "id": 60,
+        "title": "Implement map-to-node route ownership for the M1 playable loop",
+        "description": "Wire the real map flow so selectable nodes route into Combat, Event, Shop, and Rest, and completed nodes return to Map.",
+        "details": "Story: UI-WIRING-M1-A2\\nADR Refs: ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07",
+        "testStrategy": "Add one route smoke that enters each node type from Map and asserts return-to-map behavior or explicit block reasons.\\n",
+        "priority": "high",
+        "dependencies": [
+          "59"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on implementing real Map-owned node routing for the M1 loop.",
+        "updatedAt": null
+      },
+      {
+        "id": 61,
+        "title": "Implement standalone Reward scene and route integration",
+        "description": "Create a real standalone Reward scene asset and wire Combat/Event completion into Reward and back to Map.",
+        "details": "Story: UI-WIRING-M1-A3\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add a real-scene GdUnit route roundtrip test and keep deterministic offer locking checks on Windows.\\n",
+        "priority": "high",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on implementing a standalone Reward scene and wiring Combat/Event -> Reward -> Map.",
+        "updatedAt": null
+      },
+      {
+        "id": 62,
+        "title": "Implement standalone Rest scene and route integration",
+        "description": "Create a real standalone Rest scene asset and wire Map entry and return behavior for heal, upgrade, and curse removal.",
+        "details": "Story: UI-WIRING-M1-A4\\nADR Refs: ADR-0025, ADR-0032, ADR-0033\\nChapters: CH05, CH06, CH07",
+        "testStrategy": "Add one real-scene route roundtrip test and one irreversible-upgrade verification on Windows.\\n",
+        "priority": "high",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0025",
+          "ADR-0032",
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on implementing a standalone Rest scene and wiring Map -> Rest -> Map.",
+        "updatedAt": null
+      },
+      {
+        "id": 63,
+        "title": "Implement Continue blocked-state UX and recovery messaging",
+        "description": "Make Continue failures player-visible with explicit blocked reasons and recovery options instead of relying on logs only.",
+        "details": "Story: UI-WIRING-M1-A5\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add one UI smoke covering missing-save and invalid-save blocked states on Windows.\\n",
+        "priority": "high",
+        "dependencies": [
+          "59"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on player-visible Continue blocked-state UX and recovery messaging.",
+        "updatedAt": null
+      },
+      {
+        "id": 64,
+        "title": "Implement combat HUD explainability and command feedback",
+        "description": "Complete the combat HUD so key player-facing results, invalid actions, and decision-critical state are visible without relying on engineering logs.",
+        "details": "Story: UI-WIRING-M1-A6\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add one combat feedback smoke and one no-state-mutation invalid-action smoke on Windows.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on combat HUD explainability, invalid action feedback, and command-boundary-safe UI behavior.",
+        "updatedAt": null
+      },
+      {
+        "id": 65,
+        "title": "Implement M1 visible text flow validation across UI scenes",
+        "description": "Validate that all M1 player-facing UI surfaces use translation keys and render non-empty, non-key-echo text in supported locales.",
+        "details": "Story: UI-WIRING-M1-A7\\nADR Refs: ADR-0010, ADR-0025\\nChapters: CH06, CH07, CH10",
+        "testStrategy": "Run a GdUnit M1 visible-text flow smoke for en and zh-CN on Windows.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "61",
+          "62",
+          "63",
+          "64",
+          "69",
+          "67"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement M1 visible text flow validation across UI scenes.",
+        "updatedAt": null
+      },
+      {
+        "id": 66,
+        "title": "Define and implement run summary surface ownership",
+        "description": "Decide and wire the run summary surface so outcome, difficulty, progress, and recovery metadata are shown without recomputing run state.",
+        "details": "Story: UI-WIRING-M1-A8\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add a focused UI test for the chosen Run Summary surface and consistency with HUD/Continue metadata.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "59",
+          "63"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Define and implement run summary surface ownership.",
+        "updatedAt": null
+      },
+      {
+        "id": 67,
+        "title": "Implement real Shop UI behavior binding and route ownership",
+        "description": "Bind the existing Shop scene to real purchase, remove, transform, leave, and no-upgrade-context behavior with explicit route ownership.",
+        "details": "Story: UI-WIRING-M1-A9\\nADR Refs: ADR-0010, ADR-0025, ADR-0032, ADR-0033\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add a real-scene Shop behavior binding test and route roundtrip check on Windows.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032",
+          "ADR-0033"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement real Shop UI behavior binding and route ownership.",
+        "updatedAt": null
+      },
+      {
+        "id": 68,
+        "title": "Implement M1 UI focus and accessibility pass",
+        "description": "Batch the P2 accessibility and focus-cycle work for the M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces.",
+        "details": "Story: UI-WIRING-M1-A10\\nADR Refs: ADR-0010, ADR-0025\\nChapters: CH06, CH07, CH10",
+        "testStrategy": "Run existing A11y UI tests and add one M1 critical-path focus smoke after P0/P1 UI surfaces exist.\\n",
+        "priority": "low",
+        "dependencies": [
+          "65",
+          "66",
+          "67",
+          "69"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Implement M1 UI focus and accessibility pass.",
+        "updatedAt": null
+      },
+      {
+        "id": 69,
+        "title": "Implement Event result explainability and node feedback routing",
+        "description": "Complete Event node UX so costs, choices, results, blocked states, and return-to-map behavior are player-visible and route-owned.",
+        "details": "Story: UI-WIRING-M1-A11\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
+        "testStrategy": "Add one real-scene Event result feedback test and one route-return smoke on Windows.\\n",
+        "priority": "medium",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Event result explainability and route-owned node feedback.",
+        "updatedAt": null
       }
     ],
     "metadata": {
       "created": "2026-01-29T14:10:45.399Z",
-      "updated": "2026-02-11T15:42:04.907443+00:00",
+      "updated": "2026-04-20T04:55:17.627522+00:00",
       "description": "Tasks for master context",
       "version": "",
       "tags": [
         "master"
       ],
-      "taskCount": 58,
-      "completedCount": 0,
-      "lastModified": "2026-03-02T04:16:03.620547+00:00"
+      "taskCount": 69,
+      "completedCount": 58,
+      "lastModified": "2026-04-20T04:55:17.627522+00:00"
     }
   }
 }

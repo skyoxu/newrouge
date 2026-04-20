@@ -67,7 +67,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Create core project structure and namespaces",
     "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -129,7 +129,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement core contracts for card identity and forms",
     "description": "Define contracts in Game.Core/Contracts for card identity, forms (Base, U1A, U1B, Ultimate), and upgrade fields per ADR-0033.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -188,7 +188,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement core contracts for offer locking and deterministic outcomes",
     "description": "Define contracts for offer locking structure, provenance, and RNG streams per ADR-0032 and Design Gate 05.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -256,7 +256,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement core contracts for status and modifier system",
     "description": "Define contracts for status types (Buff, Debuff, RuleModifier), fields, and deterministic ordering per Design Gate 04.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -319,7 +319,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement core contracts for combat loop and resolution pipeline",
     "description": "Define contracts for combat phases, damage calculation, and deterministic sequencing per Design Gates 01 and 03.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -476,7 +476,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement core logic for card identity and forms",
     "description": "Create core services for card definition, instance management, and form transitions per ADR-0033.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -568,7 +568,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement deterministic RNG stream registry",
     "description": "Create RNG stream registry and state management for deterministic systems.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -632,7 +632,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement status application, stacking, and decay",
     "description": "Create status operations: apply, stack, decay, and dispel boundaries.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -689,7 +689,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement combat resolution pipeline (core)",
     "description": "Implement card play pipeline and validation steps in core combat logic.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -789,7 +789,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement save serialization and atomic write",
     "description": "Create SaveService serialization, schema versioning, and atomic write.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -876,7 +876,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Set up Godot autoloads and composition root",
     "description": "Configure Godot autoloads (EventBus, DataStore, Logger, etc.) and composition root for dependency injection per project-context.md.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -1015,7 +1015,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement difficulty selection UI",
     "description": "Create DifficultySelect.tscn with 10 difficulty levels and descriptions per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1080,7 +1080,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement character selection UI for Warrior only",
     "description": "Create CharacterSelect.tscn with Warrior as only selectable character and mechanism summary per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1141,7 +1141,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Create modular Act structure for map system",
     "description": "Implement map system with modular Act structure, not hardcoded to 3 Acts, per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1219,7 +1219,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement combat scene UI shell and bindings",
     "description": "Create Combat.tscn UI layout and bind to core combat state.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -1289,7 +1289,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement reward scene with card three-choice-one and offer locking",
     "description": "Create Reward.tscn with three card choices, offer locking, and deterministic display per ADR-0032.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -1367,7 +1367,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement shop scene with inventory locking and no upgrade context",
     "description": "Create Shop.tscn with purchasable items, inventory locking, and no upgrade services per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1432,7 +1432,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement rest scene with free upgrade option",
     "description": "Create Rest.tscn with options including free card upgrade per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1505,7 +1505,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement event scene with dark cost examples",
     "description": "Create Event.tscn with at least two options and dark cost examples (HP loss, curse card) per M1 requirements.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1572,7 +1572,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Set up translations system with key naming conventions",
     "description": "Configure translations in Game.Godot/Translations/ with key naming per ADR-0010 and project-context.md.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -1630,7 +1630,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement Warrior starting deck with 10 cards",
     "description": "Create Warrior starting deck with 10 cards as per M1 content list.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -1692,7 +1692,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement rage as state buff for Warrior",
     "description": "Implement rage as a combat-only state buff for Warrior and integrate with status system.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -1756,7 +1756,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Define difficulty configuration contract and immutability",
     "description": "Add core DifficultyConfig and run-level immutable difficulty selection (1-10).",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -1827,7 +1827,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement difficulty rule modifiers",
     "description": "Map difficulty to rule modifiers (e.g., OverplayTax threshold for >=10).",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -1896,7 +1896,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Create ActConfig data model and loader",
     "description": "Define ActConfig and load Act data from JSON for modular acts.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -1960,7 +1960,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement card drop pools per Act and encounter type",
     "description": "Add card pools by act and encounter type with rarity tiers.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2027,7 +2027,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Define relic contracts and instance model",
     "description": "Create relic definition/instance contracts in Game.Core/Contracts.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2093,7 +2093,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement 20 starting relic definitions and uniqueness checks",
     "description": "Create 20 relic definitions with unique ids and hookable effects.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2160,7 +2160,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement curse cards and removal services",
     "description": "Add curse card pool (non-upgradable) and removal flows.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2221,7 +2221,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement deck operations service (draw/discard/exhaust/retain)",
     "description": "Build deterministic deck operations with hand limit 10 and retain rules.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2294,7 +2294,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement card targeting and drag UX",
     "description": "Add hover/drag targeting UX in combat scene.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -2365,7 +2365,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement end-of-combat resolution pipeline",
     "description": "Finalize victory/defeat resolution and reward handoff.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -2427,7 +2427,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement autosave triggers per determinism policy",
     "description": "Add autosave on combat start, reward screen open, and event choice.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -2494,7 +2494,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Single-slot continue metadata and integrity checks",
     "description": "Add run metadata, integrity checks, and Continue gating.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2558,7 +2558,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Audit logging for determinism and security events",
     "description": "Implement JSONL audit logging to logs/ per SSoT.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -2626,7 +2626,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Populate translations for M1 cards, relics, events",
     "description": "Add translation entries for M1 content and UI text.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -2691,7 +2691,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Define Act 1 enemy data and definitions",
     "description": "Create enemy definitions and data for Act 1 encounters.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -2748,7 +2748,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement enemy intent display and preview UI",
     "description": "Show enemy next intent in combat UI.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -2806,7 +2806,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Map node entry gating and backtracking rules",
     "description": "Enforce node selection lock and no backtracking.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -2864,7 +2864,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Run state machine with Command-only transitions",
     "description": "Implement run state transitions via Command entries only.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -2923,7 +2923,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Deterministic resume integration tests (headless)",
     "description": "Add GdUnit4 tests for save/resume determinism in reward/shop/event.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2995,7 +2995,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Display difficulty in HUD and run summary",
     "description": "Show selected difficulty in HUD and run summary UI.",
-    "status": "pending",
+    "status": "done",
     "priority": "P3",
     "layer": "adapter",
     "depends_on": [
@@ -3056,7 +3056,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement offer locking generation using RNG streams",
     "description": "Generate and lock offer candidates using RNG streams and provenance.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -3123,7 +3123,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement status trigger ordering and fixed damage rules",
     "description": "Add deterministic trigger ordering and fixed damage behavior.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -3183,7 +3183,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement damage calculation and AOE ordering",
     "description": "Add damage calculation, AOE ordering, and multi-hit resolution.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -3240,7 +3240,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement stability safeguards for combat loop",
     "description": "Add safety limits (100 cards per turn) and failure handling.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -3307,7 +3307,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement save migration validation and failure blocking",
     "description": "Add migration checks and block Continue on invalid save.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -3364,7 +3364,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Integrate combat turn flow and persistence",
     "description": "Wire combat turn flow to core services and save points.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "core",
     "depends_on": [
@@ -3441,7 +3441,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Implement enemy intent selection logic",
     "description": "Add deterministic intent selection rules per enemy.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -3573,7 +3573,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Integrate GdUnit4 suites into quality_gates.py",
     "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -3645,7 +3645,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Coverage thresholds as configurable soft/hard gate",
     "description": "Align xUnit coverage thresholds to the blueprint target (lines >= 90%, branches >= 85%) and allow overriding via environment variables. Provide soft/hard gate modes in scripts/python/run_dotnet.py and scripts/python/quality_gates.py.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -3757,7 +3757,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Traceability gate for ADR/Chapter/Overlay links",
     "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -3816,6 +3816,746 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0158",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Semantic scope governance for soft review stabilization",
+    "description": "Define a governance baseline for semantic soft review so Task acceptance stays aligned with master.details and avoids review oscillation.",
+    "status": "done",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "GM-0157"
+    ],
+    "adr_refs": [
+      "ADR-0005",
+      "ADR-0003"
+    ],
+    "chapter_refs": [
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ci",
+      "governance",
+      "semantics",
+      "quality-gates"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "acceptance": [
+      "Semantic scope policy must bind review scope to master.details and mapped view acceptance so unrelated advisory findings do not oscillate task acceptance. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Deterministic hard gate precedence must treat acceptance_check as blocker and llm_review as advisory warning unless explicitly elevated. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Policy output must be machine-readable and traceable in CI artifacts for one pass sample and one advisory-warning sample. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "test_strategy": [
+      "Validate policy evaluation on Windows for pass/advisory cases and verify generated summary evidence fields are complete."
+    ],
+    "taskmaster_id": 58,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0058-semantic-governance.json",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0159",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Rewire M1 run entry from main menu to difficulty, character, and map",
+    "description": "Replace the current demo-oriented new run route with the M1 player flow MainMenu -> DifficultySelect -> CharacterSelect -> Map.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "flow",
+      "routing"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
+      "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
+      "Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Activating New Run on MainMenu must open DifficultySelect as the first screen of the M1 run-entry flow, and the route must not land on StartScreen or any demo-only screen. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
+      "Confirming a difficulty on DifficultySelect must navigate next to CharacterSelect in the M1 flow, and must not jump directly to Map or any demo-route target. Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
+      "Confirming the available M1 character on CharacterSelect must navigate next to Map, and must not pass through placeholder screens, StartScreen, or other demo-only screens. Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
+      "Rewiring New Run to the M1 flow must not change MainMenu save-overwrite confirmation behavior or Continue availability behavior in the same preconditions where they currently apply. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
+      "A GdUnit integration smoke test must execute the full M1 run-entry sequence from MainMenu to DifficultySelect to CharacterSelect to Map. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
+      "A focused acceptance test must verify that activating New Run on MainMenu routes to DifficultySelect as the actual M1 entry target. Refs: Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that rejects StartScreen or demo-only routing."
+    ],
+    "taskmaster_id": 59,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0059.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0160",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement map-to-node route ownership for the M1 playable loop",
+    "description": "Wire the real map flow so selectable nodes route into Combat, Event, Shop, and Rest, and completed nodes return to Map.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0159"
+    ],
+    "adr_refs": [
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "map",
+      "routing"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "From Map, currently selectable nodes must be actionable route entries so the player can choose a real node and start its owned flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "Selecting a reachable node from Map must enter the corresponding Combat, Event, Shop, or Rest flow, and completing that node flow must return the run to Map. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "Selecting an illegal or unreachable node must refuse the transition, keep the player on Map, show visible feedback, and leave run progression unchanged. Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Route destination must be resolved from the selected map node's actual node type so Combat, Event, Shop, and Rest use the real map flow rather than placeholder or demo-only routing. Refs: Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "Map-owned route transitions must follow node-boundary transition rules so a completed node returns to Map, and any refused transition exposes an explicit block reason instead of silently changing state. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "One Map route smoke must enter Combat, Event, Shop, and Rest node types from Map and verify each route reaches its owned node flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "Every Map-started node route must either return to Map after the node flow completes or refuse entry with an explicit visible block reason while leaving run progression unchanged. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows Map route smoke covering Combat, Event, Shop, and Rest node transitions plus blocked unreachable choices."
+    ],
+    "taskmaster_id": 60,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0060.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0161",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement standalone Reward scene and route integration",
+    "description": "Create a real standalone Reward scene asset and wire Combat/Event completion into Reward and back to Map.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0160"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "reward",
+      "scene"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The gameplay route loads and uses a real standalone Reward scene asset in the actual flow, instead of satisfying the task through test doubles, harness-only behavior, or placeholder-only content. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
+      "When a Combat or Event encounter completes, the route enters Reward, and choosing either confirm or skip from Reward resolves once and returns the player to Map. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
+      "On the first entry into a Reward flow, the offered rewards are locked, and leaving then re-entering that same Reward flow does not refresh, replace, or reorder the offers. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "The standalone Reward scene displays three reward card choices, exposes confirm and skip actions, and shows visible selection feedback so the Reward-to-Map flow can be completed by the player. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
+      "Reward offer-locking checks execute deterministically on Windows and verify both first-entry locking and unchanged offer order after re-entry. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "The standalone Reward scene route integration remains traceable to ADR-0010, ADR-0025, and ADR-0032 in the task evidence. Refs: Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows Reward real-scene route roundtrip test and deterministic offer-locking regression tests."
+    ],
+    "taskmaster_id": 61,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0061.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0162",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement standalone Rest scene and route integration",
+    "description": "Create a real standalone Rest scene asset and wire Map entry and return behavior for heal, upgrade, and curse removal.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0160"
+    ],
+    "adr_refs": [
+      "ADR-0025",
+      "ADR-0032",
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "rest",
+      "scene"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd",
+      "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
+      "Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Rest is implemented as a standalone scene asset that can be loaded by the game, and entering a Rest node from Map opens that scene instead of a test harness path or placeholder screen. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "The standalone Rest scene exposes the actionable Rest choices for heal, upgrade, and curse removal as player-selectable options within the scene. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "Starting from Map, completing heal in Rest returns control to Map through the owned Rest route flow and leaves the player on a valid post-Rest path rather than stranded in Rest or redirected through an unrelated route. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "Starting from Map, completing upgrade in Rest requires an explicit confirm action, the confirmed upgrade remains applied after the route returns to Map, and cancelling before confirmation leaves the upgrade target unmodified. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
+      "Starting from Map, completing curse removal in Rest returns control to Map through the same Rest-owned route flow and applies the curse-removal result to the run state rather than leaving the state unchanged. Refs: Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "A real-scene Rest route roundtrip is covered by automated verification on Windows, and irreversible upgrade confirmation is separately verified on Windows with deterministic evidence for the confirmed path. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "Rest scene and route integration evidence remains traceable to UI-WIRING-M1-A4 and the cited ADR and chapter context for this task. Refs: Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows Rest real-scene route roundtrip test and irreversible-upgrade confirmation regression tests."
+    ],
+    "taskmaster_id": 62,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0062.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0163",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement Continue blocked-state UX and recovery messaging",
+    "description": "Make Continue failures player-visible with explicit blocked reasons and recovery options instead of relying on logs only.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0159"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "continue",
+      "explainability"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "If Continue is invoked while no save exists, the save fails integrity validation, or migration fails, MainMenu shows a visible blocked-state message that names the blocking reason instead of relying on logs only. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
+      "While Continue is blocked, the UI presents player-selectable recovery actions such as starting a New Run, cancelling, or returning to the menu, and the failed Continue attempt is not dismissed without visible feedback. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "Blocked-state messaging states the supported recovery boundary and does not suggest a mid-combat resume when ADR-0032 only permits restoring from the combat initial boundary. Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "The blocked-state Continue flow keeps existing Continue availability checks and MainMenu overwrite confirmation intact, with those existing flows remaining reachable and behaviorally consistent. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
+      "When Continue is blocked, activating Continue refuses the resume action, keeps the player on MainMenu, and changes state only after the player selects an available recovery action. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
+      "One Windows UI smoke covers both missing-save and invalid-save Continue blocked states and verifies that each blocked attempt is surfaced to the player. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows MainMenu blocked-state UI smoke covering missing-save and invalid-save reasons."
+    ],
+    "taskmaster_id": 63,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0063.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0164",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement combat HUD explainability and command feedback",
+    "description": "Complete the combat HUD so key player-facing results, invalid actions, and decision-critical state are visible without relying on engineering logs.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0160"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "combat",
+      "hud",
+      "explainability"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Tasks/test_task0041_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The combat HUD displays the current decision-critical combat state during play, including difficulty, player HP, energy, draw pile count, discard pile count, and enemy intent. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "After each player command attempt, the combat HUD shows a short player-visible outcome message for accepted commands and a short refusal message for rejected commands, without requiring engineering logs to understand the result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "An invalid action, hover preview, or target inspection leaves deterministic combat state unchanged, including HP, energy, pile counts, turn state, enemy intent, and the selected command outcome. Refs: Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "Combat explainability and command feedback remain observable through the existing combat scene bindings and TurnControls flow used by the combat UI. Refs: Tests.Godot/tests/Tasks/test_task0041_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "A Windows combat feedback smoke verifies that both accepted and rejected commands produce player-visible HUD feedback. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "A Windows invalid-action smoke verifies that an invalid combat action does not mutate deterministic combat state. Refs: Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a Windows combat feedback smoke and an invalid-action no-mutation regression test."
+    ],
+    "taskmaster_id": 64,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0064.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0165",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement M1 visible text flow validation across UI scenes",
+    "description": "Validate that all M1 player-facing UI surfaces use translation keys and render non-empty, non-key-echo text in supported locales.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0161",
+      "GM-0162",
+      "GM-0163",
+      "GM-0164",
+      "GM-0169",
+      "GM-0167"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "i18n",
+      "validation"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
+      "Tests.Godot/tests/UI/test_reward_ui_translations.gd",
+      "Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "A Windows M1 visible-text flow smoke must open MainMenu, DifficultySelect, CharacterSelect, Map, Combat, Reward, Shop, Rest, and Event surfaces and fail if any player-visible text is empty or echoes a raw translation key. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs",
+      "For both en and zh-CN, the required player-facing text on M1 flow surfaces must render as readable localized text and must not render as translation keys, empty strings, or garbled placeholder values. Refs: Tests.Godot/tests/Tasks/test_task0039_acceptance.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Player-facing text for Reward locking, Rest irreversible upgrade, Continue blocked-state, and combat invalid-action feedback must resolve through translation keys and render localized non-empty text instead of raw keys. Refs: Tests.Godot/tests/UI/test_reward_ui_translations.gd Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs",
+      "The M1 visible-text flow smoke must execute as a Windows GdUnit gate for en and zh-CN, and the run must record evidence for the Windows execution path. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs",
+      "T65 acceptance evidence must show that the M1 visible-text flow validation covers ADR-0010, ADR-0025, CH06, CH07, and CH10. Refs: Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run a GdUnit M1 visible-text flow smoke for en and zh-CN on Windows."
+    ],
+    "taskmaster_id": 65,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0065.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0166",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Define and implement run summary surface ownership",
+    "description": "Decide and wire the run summary surface so outcome, difficulty, progress, and recovery metadata are shown without recomputing run state.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0159",
+      "GM-0163"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "run-summary",
+      "continue"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Tests.Godot/tests/UI/test_hud_scene.gd",
+      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The product selects exactly one Run Summary owner surface (independent screen, HUD overlay, or MainMenu metadata panel), and leaving ownership undefined or split across multiple surfaces fails acceptance. Refs: Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "The chosen Run Summary surface displays outcome, difficulty, node progress, and failure or recovery reason from stored run metadata, and opening the surface does not recompute, derive, or mutate run state. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "For the same saved run, the chosen Run Summary surface shows difficulty and continue-related metadata that match the HUD difficulty display and Continue metadata, and mismatched or stale values fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd Tests.Godot/tests/UI/test_hud_scene.gd"
+    ],
+    "test_strategy": [
+      "Add a focused UI test for the chosen Run Summary surface and consistency with HUD/Continue metadata."
+    ],
+    "taskmaster_id": 66,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0066.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0167",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement real Shop UI behavior binding and route ownership",
+    "description": "Bind the existing Shop scene to real purchase, remove, transform, leave, and no-upgrade-context behavior with explicit route ownership.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0160"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032",
+      "ADR-0033"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "shop",
+      "routing"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd",
+      "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
+      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The existing Shop scene must be bound to real route-owned behavior so the player can perform purchase, remove, transform/reforge, and leave actions from the actual Shop UI, and each action must resolve through the Shop-owned route instead of placeholder or unowned behavior. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "The Shop UI must expose the observable state needed for real shop actions, including current offers, prices, player gold/resources, and owned/removed outcomes, and it must show a visible failure reason when a purchase cannot be completed because resources are insufficient or the offer was already taken. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "When the player re-enters Shop through the run flow, the locked Shop inventory must remain unchanged, and duplicate purchases or invalid offer ids must be refused with visible feedback instead of silently succeeding or mutating state. Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Shop player-facing UI text and Shop-related service text must stay within Shop semantics and must not present upgrade, rest, campfire, or card-upgrade context. Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "Completing or leaving Shop must return the run to Map through the same explicit route ownership model used for Map-to-node entry, rather than through an ad hoc or separate return path. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd",
+      "At least one real-scene Shop behavior binding test must execute against the actual Shop scene and verify purchase, remove, transform/reforge, and leave behavior on that scene, not only through mocks or pure unit seams. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "At least one Windows route roundtrip check must verify that Map-to-Shop entry and Shop-to-Map return use the same route ownership model in both directions. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Add a real-scene Shop behavior binding test and route roundtrip check on Windows."
+    ],
+    "taskmaster_id": 67,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0067.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0168",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement M1 UI focus and accessibility pass",
+    "description": "Batch the P2 accessibility and focus-cycle work for the M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0165",
+      "GM-0166",
+      "GM-0167",
+      "GM-0169"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "accessibility",
+      "focus"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/UI/A11y/test_button_invokable.gd",
+      "Tests.Godot/tests/UI/A11y/test_focus_cycle.gd",
+      "Tests.Godot/tests/UI/A11y/test_visible_labels.gd",
+      "Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd",
+      "Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces must expose primary actions that can be invoked by keyboard and controller input. Refs: Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd Tests.Godot/tests/UI/A11y/test_button_invokable.gd",
+      "Focus traversal across the M1 critical-path run-entry, map, node, reward, rest, shop, combat, and continue surfaces must reach each required action without trapping focus or skipping required actions. Refs: Tests.Godot/tests/UI/A11y/test_focus_cycle.gd Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs",
+      "Primary actions on the M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces must keep visible labels that identify the action being invoked. Refs: Tests.Godot/tests/UI/A11y/test_visible_labels.gd Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd",
+      "The existing A11y UI tests for button invocation, focus cycling, and visible labels must run as the deterministic verification gate for Task 68. Refs: Tests.Godot/tests/UI/A11y/test_button_invokable.gd Tests.Godot/tests/UI/A11y/test_focus_cycle.gd Tests.Godot/tests/UI/A11y/test_visible_labels.gd",
+      "After the P0/P1 UI surfaces required for the M1 critical path exist, one focus smoke covering that path must be added and included in the deterministic verification gate. Refs: Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run existing A11y UI tests and add one M1 critical-path focus smoke after P0/P1 UI surfaces exist."
+    ],
+    "taskmaster_id": 68,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0068.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0169",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Implement Event result explainability and node feedback routing",
+    "description": "Complete Event node UX so costs, choices, results, blocked states, and return-to-map behavior are player-visible and route-owned.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0160"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "m1",
+      "ui",
+      "event",
+      "explainability",
+      "routing"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd",
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Before the player confirms an Event choice, the Event scene displays the event title, description, available options, and each option's visible cost or reward preview. Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",
+      "After the player commits a choice, the Event scene displays the chosen option, a result summary, and the resulting numeric changes for affected stats or rewards such as HP, gold, status, cards, or relics. Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",
+      "When an Event resolves, the flow returns to Reward or Map through the same route-owned node resolution path used by the M1 map flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "If an Event choice is invalid or unavailable, the player remains in the Event scene, receives visible blocked-state feedback, and no game state changes are applied. Refs: Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",
+      "All player-visible Event copy is delivered through translation keys, and choice presentation does not omit or hide cost information. Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "A real-scene Event result feedback test verifies that, after commit, the chosen option, the result summary, and the resulting numeric changes are visible to the player. Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",
+      "A Windows route-return smoke verifies that completing an Event returns to Reward or Map through the route-owned node resolution model. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Add one real-scene Event result feedback test and one route-return smoke on Windows."
+    ],
+    "taskmaster_id": 69,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0069.json"
     ],
     "semantic_review_tier": "full"
   }

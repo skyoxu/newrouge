@@ -219,3 +219,18 @@ Test-Refs:
   - Trigger ordering determinism: repeated settlements with identical inputs must preserve trigger sequence and final damage.
   - Trigger ordering correctness: tie-breaker rule is deterministic and verifiable (Relic before Status under equal priority; same-type ties honor registration order).
   - Fixed damage unmodified: fixed damage remains unchanged by mutable multipliers and by OverplayTax parameter changes.
+
+## Task59-69 UI Wiring Acceptance Backlinks
+- T59 / GM-0159: New Run must route through `MainMenu -> DifficultySelect -> CharacterSelect -> Map` and preserve Continue/overwrite behavior.
+- T60 / GM-0160: Map must own legal and illegal node routing into Combat, Event, Shop, and Rest.
+- T61 / GM-0161: Reward must be a standalone scene with locked offers, confirm/skip resolution, and return-to-Map routing.
+- T62 / GM-0162: Rest must be a standalone scene with heal, upgrade, remove curse, irreversible upgrade confirmation, and return-to-Map routing.
+- T63 / GM-0163: Continue blocked states must show player-visible recovery reasons without implying unsupported mid-combat resume.
+- T64 / GM-0164: Combat HUD must show decision-critical state and visible command feedback without mutating state on preview/invalid actions.
+- T65 / GM-0165: Main M1 surfaces must render localized visible text without key echo or placeholder-garbled values.
+- T66 / GM-0166: Run Summary surface ownership must be explicit and must read stored metadata without recomputing run state.
+- T67 / GM-0167: Shop must have real UI behavior binding, locked inventory, visible failure feedback, and no upgrade/rest/campfire context.
+- T68 / GM-0168: M1 critical-path surfaces must have invokable primary actions, valid focus cycling, and visible localized labels.
+- T69 / GM-0169: Event must show option costs, committed results, numeric changes, invalid-choice feedback, and route through the Map-owned node model.
+
+GDD reference: `docs/gdd/ui-gdd-flow.md`.

@@ -215,3 +215,24 @@ M1 的目标是交付一个可完整运行、可验证、可复现的最小闭�
   - `schema_version`, `act_id`, `node_graph`, `pools`, `encounters`
 - Implementation:
   - `Game.Core/Services/ActConfigLoader.cs`
+
+## 7. UI Wiring Extension (T59-T69)
+Source design baseline: `docs/gdd/ui-gdd-flow.md`.
+
+### 7.1 Player Flow Spine
+The M1 playable route must be player-facing and route-owned:
+1) MainMenu -> DifficultySelect -> CharacterSelect -> Map.
+2) Map -> Combat/Event/Shop/Rest according to selected legal node.
+3) Combat/Event completion may route to standalone Reward, then return to Map.
+4) Shop, Rest, and Event completion return through the same Map ownership model.
+5) Continue failures remain on MainMenu with visible recovery messaging.
+6) Run Summary ownership must be explicit before it becomes acceptance-critical.
+
+### 7.2 Scene Ownership
+- Reward and Rest are standalone scene assets, not embedded HUD panels and not harness-only behavior.
+- Shop has an existing scene but must gain real behavior binding for purchase, remove, transform/reforge, leave, locked inventory, and visible failure reasons.
+- Map owns node route legality and blocked-choice feedback.
+- Combat and Event must surface result feedback that is sufficient for player decisions without reading engineering logs.
+
+### 7.3 Contract Boundary
+Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts/**` files unless implementation introduces new public DTOs, event families, or command interfaces. If that happens, update `08-Contracts-M1.md` and add the concrete contract path to the relevant task `contractRefs` in the same change.

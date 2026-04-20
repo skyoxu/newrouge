@@ -424,3 +424,13 @@ Test-Refs:
   - 用途：定义战斗阶段枚举（StartOfTurn, Draw, Main, EndOfTurn）
   - 契约位置：`Game.Core/Contracts/Combat/CombatLoop.cs`
 
+
+## Task59-69 UI Wiring Contract Baseline
+Task59-69 do not add contract skeletons at task-definition time. Their current task entries intentionally keep `contractRefs` empty because the work is UI scene routing, visible feedback, localization validation, and adapter binding.
+
+Contract updates become mandatory only if implementation introduces or changes public Core-facing events, DTOs, command interfaces, or event-family constants. In that case:
+- Add or update the concrete file under `Game.Core/Contracts/**`.
+- Keep the file BCL-only and free of `Godot.*` dependencies.
+- Add XML docs on the public contract surface.
+- Add the concrete path to this overlay and to the relevant task `contractRefs`.
+- Re-run `py -3 scripts/python/validate_contracts.py` and `py -3 scripts/python/check_domain_contracts.py`.
