@@ -3,6 +3,11 @@
 @onready var _label: Label = $VBox/Output
 var _score: int = 0
 var _hp: int = 100
+const DIFFICULTY_SELECT_SCENE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
+const CHARACTER_SELECT_SCENE := "res://Game.Godot/Scenes/UI/CharacterSelect.tscn"
+const MAP_SCENE := "res://Game.Godot/Scenes/Map/Map.tscn"
+const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
+const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
 
 func _ready() -> void:
     print("[TEMPLATE_SMOKE_READY] Main scene initialized")
@@ -86,27 +91,31 @@ func _on_lose_hp() -> void:
     _label.text = "HP = %d" % _hp
 
 func _on_domain_event(type: String, source: String, data_json: String, id: String, spec: String, ct: String, ts: String) -> void:
+    var nav = get_node_or_null("/root/Main/ScreenNavigator")
     if type == "ui.menu.start":
         var demo = get_node_or_null("/root/Main/EngineDemo")
         if demo != null and demo.has_method("StartGame"):
             demo.StartGame()
-        var nav = get_node_or_null("/root/Main/ScreenNavigator")
-        if nav != null and nav.has_method("SwitchTo"):
-            var _use_demo := false
-            var _ff = get_node_or_null("/root/FeatureFlags")
-            if _ff != null and _ff.has_method("IsEnabled"):
-                _use_demo = _ff.IsEnabled("demo_screens")
-            elif OS.has_environment("TEMPLATE_DEMO") and str(OS.get_environment("TEMPLATE_DEMO")).to_lower() == "1":
-                _use_demo = true
-            if _use_demo:
-                var ok = nav.SwitchTo("res://Game.Godot/Examples/Screens/DemoScreen.tscn")
-                if ok:
-                    return
-            if ResourceLoader.exists("res://Game.Godot/Scenes/Screens/StartScreen.tscn"):
-                nav.SwitchTo("res://Game.Godot/Scenes/Screens/StartScreen.tscn")
+        _switch_to(nav, DIFFICULTY_SELECT_SCENE)
+    elif type == "core.run.difficulty.selected":
+        _switch_to(nav, CHARACTER_SELECT_SCENE)
+    elif type == "core.run.character.selected":
+        _switch_to(nav, MAP_SCENE)
     elif type == "ui.menu.settings":
         var sp = get_node_or_null("/root/Main/SettingsPanel")
         if sp != null and sp.has_method("ShowPanel"):
             sp.ShowPanel()
     elif type == "ui.menu.quit":
         get_tree().quit()
+
+func _switch_to(nav: Node, scene_path: String) -> void:
+    if nav == null or not nav.has_method("SwitchTo"):
+        return
+    if ResourceLoader.exists(scene_path):
+        nav.SwitchTo(scene_path)
+
+func GetExpectedM1RunEntryRouteForTest() -> Array:
+    return [DIFFICULTY_SELECT_SCENE, CHARACTER_SELECT_SCENE, MAP_SCENE]
+
+func GetLegacyRunEntryTargetsForTest() -> Array:
+    return [LEGACY_START_SCENE, DEMO_SCENE]

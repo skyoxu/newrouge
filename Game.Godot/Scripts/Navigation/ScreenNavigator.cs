@@ -11,8 +11,10 @@ public partial class ScreenNavigator : Node
 
     private Control? _root;
     private Control? _overlays;
-    private Control? _current;
+    private Node? _current;
     private bool _busy;
+    private readonly Godot.Collections.Array<string> _routeHistory = new();
+    private string _currentScenePath = string.Empty;
 
     public override void _Ready()
     {
@@ -36,14 +38,30 @@ public partial class ScreenNavigator : Node
         }
         if (UseFadeTransition && _overlays != null)
         {
-            _ = FadeAndSwitch(packed);
+            _ = FadeAndSwitch(packed, scenePath);
             return true;
         }
-        DoSwitch(packed);
+        DoSwitch(packed, scenePath);
         return true;
     }
 
-    private void DoSwitch(PackedScene packed)
+    public Godot.Collections.Array<string> GetRouteHistoryForTest()
+    {
+        return new Godot.Collections.Array<string>(_routeHistory);
+    }
+
+    public string GetCurrentScenePathForTest()
+    {
+        return _currentScenePath;
+    }
+
+    public void ClearRouteHistoryForTest()
+    {
+        _routeHistory.Clear();
+        _currentScenePath = string.Empty;
+    }
+
+    private void DoSwitch(PackedScene packed, string scenePath)
     {
         // Call Exit on current if present, then remove
         if (_current != null)
@@ -52,17 +70,19 @@ public partial class ScreenNavigator : Node
             _current.QueueFree();
             _current = null;
         }
-        var inst = packed.Instantiate<Control>();
+        var inst = packed.Instantiate();
         _root!.AddChild(inst);
         _current = inst;
+        _currentScenePath = scenePath;
+        _routeHistory.Add(scenePath);
         if (_current.HasMethod("Enter")) _current.CallDeferred("Enter");
     }
 
-    private async System.Threading.Tasks.Task FadeAndSwitch(PackedScene packed)
+    private async System.Threading.Tasks.Task FadeAndSwitch(PackedScene packed, string scenePath)
     {
         if (_overlays == null)
         {
-            DoSwitch(packed);
+            DoSwitch(packed, scenePath);
             return;
         }
         _busy = true;
@@ -79,7 +99,7 @@ public partial class ScreenNavigator : Node
         await ToSignal(tween, Tween.SignalName.Finished);
 
         // Switch content while fully faded
-        DoSwitch(packed);
+        DoSwitch(packed, scenePath);
 
         var tween2 = _overlays.CreateTween();
         tween2.TweenProperty(fade, "color:a", 0.0, FadeDurationSec).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
