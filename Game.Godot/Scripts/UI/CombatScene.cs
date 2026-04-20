@@ -437,7 +437,7 @@ public partial class CombatScene : Control
             return _enemyIntentFallbackTexture;
         }
 
-        var image = Image.Create(20, 20, false, Image.Format.Rgba8);
+        var image = Image.CreateEmpty(20, 20, false, Image.Format.Rgba8);
         image.Fill(new Color(0.55f, 0.57f, 0.61f, 1.0f));
         _enemyIntentFallbackTexture = ImageTexture.CreateFromImage(image);
         return _enemyIntentFallbackTexture;
