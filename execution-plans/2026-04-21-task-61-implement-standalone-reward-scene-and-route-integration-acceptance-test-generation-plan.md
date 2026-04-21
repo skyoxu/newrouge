@@ -1,0 +1,21 @@
+# Task 61 Implement standalone Reward scene and route integration acceptance-test generation plan
+
+- Title: Task 61 Implement standalone Reward scene and route integration acceptance-test generation plan
+- Status: active
+- Branch: task/T61
+- Git Head: 3e52b38e84ed7ea718a9ce5437c561cf1da5313c
+- Goal: Control acceptance-driven test generation complexity for task 61.
+- Scope: 2 missing refs across 2 test roots; seed refs: Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs, Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 61 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `61`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)

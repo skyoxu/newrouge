@@ -10,13 +10,17 @@ const COMBAT_SCENE := "res://Game.Godot/Scenes/Combat.tscn"
 const EVENT_SCENE := "res://Game.Godot/Scenes/Event.tscn"
 const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
 const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
+const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
 const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
 const _ROUTABLE_NODE_SCENES := [COMBAT_SCENE, EVENT_SCENE, SHOP_SCENE, REST_SCENE]
+const _REWARD_ENTRY_SCENES := [COMBAT_SCENE, EVENT_SCENE]
 
 var _map_route_completed_nodes: int = 0
 var _map_route_last_feedback: String = ""
 var _map_route_last_selected_node_id: String = ""
+var _reward_route_pending: bool = false
+var _reward_route_resolved: bool = false
 
 func _ready() -> void:
     print("[TEMPLATE_SMOKE_READY] Main scene initialized")
@@ -176,6 +180,13 @@ func CompleteMapNodeFlowForTest() -> Dictionary:
     var current_scene := ""
     if nav.has_method("GetCurrentScenePathForTest"):
         current_scene = str(nav.call("GetCurrentScenePathForTest"))
+    if _REWARD_ENTRY_SCENES.has(current_scene):
+        _reward_route_pending = true
+        _reward_route_resolved = false
+        _switch_to(nav, REWARD_SCENE)
+        _map_route_last_feedback = ""
+        return {"ok": true, "reason": "", "scene_path": REWARD_SCENE, "completed_node_count": _map_route_completed_nodes}
+
     if not _ROUTABLE_NODE_SCENES.has(current_scene):
         _map_route_last_feedback = "No node flow in progress."
         return {"ok": false, "reason": "no-node-flow-in-progress", "scene_path": current_scene, "completed_node_count": _map_route_completed_nodes}
@@ -195,6 +206,34 @@ func ResetMapRouteProgressForTest() -> void:
     _map_route_completed_nodes = 0
     _map_route_last_feedback = ""
     _map_route_last_selected_node_id = ""
+    _reward_route_pending = false
+    _reward_route_resolved = false
+
+func ResolveRewardForTest(action: String) -> Dictionary:
+    var nav = _resolve_navigator()
+    if nav == null:
+        return {"ok": false, "reason": "navigator-missing", "scene_path": ""}
+
+    var current_scene := ""
+    if nav.has_method("GetCurrentScenePathForTest"):
+        current_scene = str(nav.call("GetCurrentScenePathForTest"))
+    if current_scene != REWARD_SCENE:
+        return {"ok": false, "reason": "not-on-reward", "scene_path": current_scene}
+
+    if not _reward_route_pending:
+        return {"ok": false, "reason": "reward-route-not-pending", "scene_path": current_scene}
+    if _reward_route_resolved:
+        return {"ok": false, "reason": "reward-route-already-resolved", "scene_path": current_scene}
+
+    var normalized := action.strip_edges().to_lower()
+    if normalized != "confirm" and normalized != "skip":
+        return {"ok": false, "reason": "unsupported-action", "scene_path": current_scene}
+
+    _reward_route_resolved = true
+    _reward_route_pending = false
+    _map_route_completed_nodes += 1
+    _switch_to(nav, MAP_SCENE)
+    return {"ok": true, "reason": "", "scene_path": MAP_SCENE}
 
 func GetExpectedM1RunEntryRouteForTest() -> Array:
     return [DIFFICULTY_SELECT_SCENE, CHARACTER_SELECT_SCENE, MAP_SCENE]
