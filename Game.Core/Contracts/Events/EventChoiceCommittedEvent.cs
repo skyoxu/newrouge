@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Game.Core.Contracts.Events;
 
 /// <summary>
@@ -12,7 +14,9 @@ public sealed record EventChoiceCommittedEvent(
     string EventId,
     string OptionId,
     string ChoiceResultId,
-    DateTimeOffset CommittedAt
+    DateTimeOffset CommittedAt,
+    string ResultSummary = "",
+    IReadOnlyDictionary<string, int>? NumericChanges = null
 )
 {
     public const string EventType = EventTypes.EventChoiceCommitted;

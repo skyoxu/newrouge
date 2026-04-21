@@ -38,6 +38,18 @@ public partial class EventScene : Control
     private const string NodeId = "event.node.default";
     private const string TitleKey = "event.abyss_toll.title";
     private const string DescriptionKey = "event.abyss_toll.description";
+    private const string PreviewHpLossKey = "event.preview.hp_loss";
+    private const string PreviewCurseKey = "event.preview.take_curse";
+    private const string BlockedAlreadyCommittedKey = "event.feedback.blocked.already_committed";
+    private const string BlockedInvalidOptionKey = "event.feedback.blocked.invalid_option";
+    private const string BlockedPersistFailureKey = "event.feedback.blocked.persist_failed";
+    private const string ChosenOptionLabelKey = "event.feedback.chosen_option";
+    private const string ResultSummaryLoseHpKey = "event.feedback.summary.lose_hp";
+    private const string ResultSummaryTakeCurseKey = "event.feedback.summary.take_curse";
+    private const string ResultSummaryDefaultKey = "event.feedback.summary.default";
+    private const string NumericChangesHpLossKey = "event.feedback.numeric.hp_loss";
+    private const string NumericChangesTakeCurseKey = "event.feedback.numeric.take_curse";
+    private const string NumericChangesDefaultKey = "event.feedback.numeric.default";
     private const string CurseCardId = "card.curse.basic";
     private const string PersistedStateFileName = "task22-event-state.json";
 
@@ -45,6 +57,12 @@ public partial class EventScene : Control
     private Label _descriptionLabel = default!;
     private Button _loseHpButton = default!;
     private Button _takeCurseButton = default!;
+    private Label _loseHpPreviewLabel = default!;
+    private Label _takeCursePreviewLabel = default!;
+    private Label _chosenOptionLabel = default!;
+    private Label _resultSummaryLabel = default!;
+    private Label _numericChangesLabel = default!;
+    private Label _blockedFeedbackLabel = default!;
     private EventBusAdapter? _eventBus;
 
     private readonly List<EventOption> _lockedOptions = new();
@@ -65,6 +83,12 @@ public partial class EventScene : Control
         _descriptionLabel = GetNode<Label>("VBox/LblDescription");
         _loseHpButton = GetNode<Button>("VBox/Options/BtnLoseHp");
         _takeCurseButton = GetNode<Button>("VBox/Options/BtnTakeCurse");
+        _loseHpPreviewLabel = GetNode<Label>("VBox/Options/LblLoseHpPreview");
+        _takeCursePreviewLabel = GetNode<Label>("VBox/Options/LblTakeCursePreview");
+        _chosenOptionLabel = GetNode<Label>("VBox/Feedback/LblChosenOption");
+        _resultSummaryLabel = GetNode<Label>("VBox/Feedback/LblResultSummary");
+        _numericChangesLabel = GetNode<Label>("VBox/Feedback/LblNumericChanges");
+        _blockedFeedbackLabel = GetNode<Label>("VBox/Feedback/LblBlockedFeedback");
 
         _loseHpButton.Pressed += () => ChooseOptionForTest("lose_hp");
         _takeCurseButton.Pressed += () => ChooseOptionForTest("take_curse");
@@ -99,12 +123,14 @@ public partial class EventScene : Control
         EnsureLockedOptions();
         if (!string.IsNullOrWhiteSpace(_selectedOptionId))
         {
+            SetBlockedFeedbackByKey(BlockedAlreadyCommittedKey);
             return false;
         }
 
         var option = _lockedOptions.FirstOrDefault(item => item.Id == optionId);
         if (option is null)
         {
+            SetBlockedFeedbackByKey(BlockedInvalidOptionKey);
             return false;
         }
 
@@ -127,6 +153,7 @@ public partial class EventScene : Control
         if (!PersistRuntimeState(nextHp, option.Id, nextDeckCards))
         {
             _lastPersistError = "persist_write_failed";
+            SetBlockedFeedbackByKey(BlockedPersistFailureKey);
             return false;
         }
 
@@ -135,6 +162,8 @@ public partial class EventScene : Control
         _deckCards.Clear();
         _deckCards.AddRange(nextDeckCards);
         _selectedOptionId = option.Id;
+        HideBlockedFeedback();
+        RenderCommittedFeedback(option);
 
         if (option.HpLoss > 0)
         {
@@ -209,6 +238,56 @@ public partial class EventScene : Control
         return ResolveText(DescriptionKey);
     }
 
+    public string GetLoseHpPreviewTextForTest()
+    {
+        return _loseHpPreviewLabel.Text ?? string.Empty;
+    }
+
+    public string GetTakeCursePreviewTextForTest()
+    {
+        return _takeCursePreviewLabel.Text ?? string.Empty;
+    }
+
+    public bool IsChosenOptionVisibleForTest()
+    {
+        return _chosenOptionLabel.Visible;
+    }
+
+    public bool IsResultSummaryVisibleForTest()
+    {
+        return _resultSummaryLabel.Visible;
+    }
+
+    public bool IsNumericChangesVisibleForTest()
+    {
+        return _numericChangesLabel.Visible;
+    }
+
+    public bool IsBlockedFeedbackVisibleForTest()
+    {
+        return _blockedFeedbackLabel.Visible;
+    }
+
+    public string GetChosenOptionTextForTest()
+    {
+        return _chosenOptionLabel.Text ?? string.Empty;
+    }
+
+    public string GetResultSummaryTextForTest()
+    {
+        return _resultSummaryLabel.Text ?? string.Empty;
+    }
+
+    public string GetNumericChangesTextForTest()
+    {
+        return _numericChangesLabel.Text ?? string.Empty;
+    }
+
+    public string GetBlockedFeedbackTextForTest()
+    {
+        return _blockedFeedbackLabel.Text ?? string.Empty;
+    }
+
     public void SetLocaleForTest(string locale)
     {
         if (string.IsNullOrWhiteSpace(locale))
@@ -228,6 +307,8 @@ public partial class EventScene : Control
         _descriptionLabel.Text = ResolveText(DescriptionKey);
         _loseHpButton.Text = ResolveText(_lockedOptions[0].TextKey);
         _takeCurseButton.Text = ResolveText(_lockedOptions[1].TextKey);
+        _loseHpPreviewLabel.Text = ResolveText(PreviewHpLossKey);
+        _takeCursePreviewLabel.Text = ResolveText(PreviewCurseKey);
     }
 
     public global::Godot.Collections.Array<global::Godot.Collections.Dictionary> GetOptionViewsForTest()
@@ -272,6 +353,58 @@ public partial class EventScene : Control
     {
         var localized = TranslationServer.Translate(key);
         return string.Equals(localized, key, StringComparison.Ordinal) ? key : localized;
+    }
+
+    private void RenderCommittedFeedback(EventOption option)
+    {
+        _chosenOptionLabel.Text = string.Format(
+            ResolveText(ChosenOptionLabelKey),
+            ResolveText(option.TextKey));
+        _chosenOptionLabel.Visible = true;
+
+        _resultSummaryLabel.Text = option.Id switch
+        {
+            "lose_hp" => ResolveText(ResultSummaryLoseHpKey),
+            "take_curse" => ResolveText(ResultSummaryTakeCurseKey),
+            _ => ResolveText(ResultSummaryDefaultKey),
+        };
+        _resultSummaryLabel.Visible = true;
+
+        var numericChanges = option.Id switch
+        {
+            "lose_hp" => ResolveText(NumericChangesHpLossKey),
+            "take_curse" => ResolveText(NumericChangesTakeCurseKey),
+            _ => ResolveText(NumericChangesDefaultKey),
+        };
+        _numericChangesLabel.Text = numericChanges;
+        _numericChangesLabel.Visible = true;
+    }
+
+    private void HideCommittedFeedback()
+    {
+        _chosenOptionLabel.Text = string.Empty;
+        _chosenOptionLabel.Visible = false;
+        _resultSummaryLabel.Text = string.Empty;
+        _resultSummaryLabel.Visible = false;
+        _numericChangesLabel.Text = string.Empty;
+        _numericChangesLabel.Visible = false;
+    }
+
+    private void SetBlockedFeedback(string message)
+    {
+        _blockedFeedbackLabel.Text = message;
+        _blockedFeedbackLabel.Visible = true;
+    }
+
+    private void SetBlockedFeedbackByKey(string key)
+    {
+        SetBlockedFeedback(ResolveText(key));
+    }
+
+    private void HideBlockedFeedback()
+    {
+        _blockedFeedbackLabel.Text = string.Empty;
+        _blockedFeedbackLabel.Visible = false;
     }
 
     private EventBusAdapter? ResolveEventBus()
@@ -320,12 +453,16 @@ public partial class EventScene : Control
     {
         if (TryLoadPersistedStateFromDisk())
         {
+            HideCommittedFeedback();
+            HideBlockedFeedback();
             return;
         }
 
         if (!_persistedStateInitialized)
         {
             PersistRuntimeState();
+            HideCommittedFeedback();
+            HideBlockedFeedback();
             return;
         }
 
@@ -333,6 +470,8 @@ public partial class EventScene : Control
         _selectedOptionId = _persistedSelectedOptionId;
         _deckCards.Clear();
         _deckCards.AddRange(_persistedDeckCards);
+        HideCommittedFeedback();
+        HideBlockedFeedback();
     }
 
     private static string ResolvePersistedStatePath()

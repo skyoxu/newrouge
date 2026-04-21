@@ -27,6 +27,18 @@ event.abyss_toll.title,深渊代价
 event.abyss_toll.description,付出代价后才能继续前行。
 event.option.lose_hp,流血换取速度
 event.option.take_curse,加入一张诅咒牌
+event.preview.hp_loss,生命值 -3
+event.preview.take_curse,牌堆 +1（诅咒）
+event.feedback.chosen_option,已选项：{0}
+event.feedback.summary.lose_hp,失去 3 点生命值后继续前进。
+event.feedback.summary.take_curse,加入一张诅咒牌后继续前进。
+event.feedback.summary.default,选择已提交。
+event.feedback.numeric.hp_loss,生命值 -3\n诅咒牌 +0
+event.feedback.numeric.take_curse,生命值 +0\n诅咒牌 +1
+event.feedback.numeric.default,生命值 0\n诅咒牌 0
+event.feedback.blocked.already_committed,该选择已提交。
+event.feedback.blocked.invalid_option,该选项不可用。
+event.feedback.blocked.persist_failed,状态持久化失败。
 card.warrior.cleave.name,劈砍
 card.warrior.guard.name,格挡
 card.warrior.rage_surge.name,怒潮

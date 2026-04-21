@@ -9,6 +9,7 @@ func _new_scene() -> Control:
 
 
 # acceptance: ACC:T22.4
+# acceptance: ACC:T69.5
 func test_event_scene_hp_loss_cost_applies_immediately() -> void:
 	var scene = _new_scene()
 	await get_tree().process_frame
@@ -18,6 +19,13 @@ func test_event_scene_hp_loss_cost_applies_immediately() -> void:
 	assert_bool(applied).is_true()
 	assert_int(int(scene.call("GetCurrentHpForTest"))).is_equal(9)
 	assert_str(str(scene.call("GetSelectedOptionIdForTest"))).is_equal("lose_hp")
+	assert_str(str(scene.call("GetLoseHpPreviewTextForTest"))).contains("HP")
+	assert_str(str(scene.call("GetLoseHpPreviewTextForTest"))).contains("-3")
+	assert_str(str(scene.call("GetResultSummaryTextForTest"))).contains("Lost 3 HP")
+	assert_str(str(scene.call("GetNumericChangesTextForTest"))).contains("HP -3")
+	assert_str(str(scene.call("GetChosenOptionTextForTest"))).contains("event.option").is_false()
+	assert_str(str(scene.call("GetEventTitleForTest"))).is_not_empty()
+	assert_str(str(scene.call("GetEventDescriptionForTest"))).is_not_empty()
 
 
 # acceptance: ACC:T22.4
