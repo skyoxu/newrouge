@@ -3907,20 +3907,17 @@
     "test_refs": [
       "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
       "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
-      "Tests.Godot/tests/Tasks/test_task0015_acceptance.gd",
-      "Tests.Godot/tests/Tasks/test_task0016_acceptance.gd",
       "Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs"
     ],
     "acceptance": [
-      "Activating New Run on MainMenu must open DifficultySelect as the first screen of the M1 run-entry flow, and the route must not land on StartScreen or any demo-only screen. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
-      "Confirming a difficulty on DifficultySelect must navigate next to CharacterSelect in the M1 flow, and must not jump directly to Map or any demo-route target. Refs: Tests.Godot/tests/Tasks/test_task0015_acceptance.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
-      "Confirming the available M1 character on CharacterSelect must navigate next to Map, and must not pass through placeholder screens, StartScreen, or other demo-only screens. Refs: Tests.Godot/tests/Tasks/test_task0016_acceptance.gd Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
-      "Rewiring New Run to the M1 flow must not change MainMenu save-overwrite confirmation behavior or Continue availability behavior in the same preconditions where they currently apply. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
-      "A GdUnit integration smoke test must execute the full M1 run-entry sequence from MainMenu to DifficultySelect to CharacterSelect to Map. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
-      "A focused acceptance test must verify that activating New Run on MainMenu routes to DifficultySelect as the actual M1 entry target. Refs: Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs"
+      "Activating New Run on MainMenu must route into the M1-only entry chain, opening DifficultySelect first; no demo-oriented entry target (including StartScreen/demo-only screens) may be reachable from this New Run action. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.1)",
+      "Confirming a difficulty on DifficultySelect must navigate next to CharacterSelect, must not jump directly to Map or any demo-route target, and selecting a difficulty without confirmation must keep the current route on DifficultySelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.2)",
+      "Confirming the available M1 character on CharacterSelect must navigate next to Map, must not pass through placeholder screens/StartScreen/demo-only screens, and changing character selection without confirmation must keep the current route on CharacterSelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.3)",
+      "With autosave-present preconditions that trigger New Run overwrite confirmation, cancel must keep the current scene on MainMenu, confirm must enter the M1 entry chain at DifficultySelect (not StartScreen/demo-only targets), and Continue availability behavior must remain unchanged for the same preconditions. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd (anchor: ACC:T59.4) Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.4)",
+      "A GdUnit integration test must assert route-history order MainMenu -> DifficultySelect -> CharacterSelect -> Map and final current scene = Map under the New Run flow. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.5)"
     ],
     "test_strategy": [
-      "Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that rejects StartScreen or demo-only routing."
+      "Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that validates Task 59 acceptance semantics and route invariants."
     ],
     "taskmaster_id": 59,
     "taskmaster_exported": true,

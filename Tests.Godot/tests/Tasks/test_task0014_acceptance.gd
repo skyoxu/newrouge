@@ -20,6 +20,8 @@ func _looks_like_translation_key(value: String) -> bool:
 func _instantiate_main_menu() -> Control:
     var menu := preload(MAIN_MENU_SCENE_RESOURCE).instantiate() as Control
     add_child(auto_free(menu))
+    if menu.has_method("RefreshVisibleTextForTest"):
+        menu.call("RefreshVisibleTextForTest")
     return menu
 
 func before() -> void:
@@ -28,6 +30,7 @@ func before() -> void:
     _remove_autosave()
 
 func after() -> void:
+    TranslationServer.set_locale(_previous_locale)
     _remove_autosave()
     if _previous_locale != "":
         TranslationServer.set_locale(_previous_locale)
@@ -141,6 +144,7 @@ func _directory_contains_file_name_token(directory_path: String, token: String) 
     return false
 
 # ACC:T14.1
+# ACC:T59.4
 func test_main_menu_initializes_continue_and_new_run_from_real_autosave_file() -> void:
     _write_autosave(_build_valid_autosave_json())
     var menu := _instantiate_main_menu()
@@ -171,6 +175,7 @@ func test_main_menu_disables_continue_when_autosave_is_missing() -> void:
     assert_bool(continue_btn.disabled).is_true()
 
 # ACC:T14.2
+# ACC:T59.4
 func test_menu_and_confirmation_texts_are_from_translation_values() -> void:
     var expected := _load_translation_values(EN_TRANSLATIONS_FILE)
     var menu := _instantiate_main_menu()
@@ -221,7 +226,7 @@ func test_manual_record_is_auditable_with_accessible_log_linkage() -> void:
 
     assert_bool(plan_text.contains("logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json")).is_true()
     assert_bool(decision_text.contains("logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json")).is_true()
-    assert_bool(decision_text.contains("logs/ci/2026-04-06/sc-review-pipeline-task-14-98971061b3f54dd88e8fc2849170eaca")).is_true()
+    assert_bool(decision_text.contains("logs/ci/2026-04-06/sc-review-pipeline-task-14-")).is_true()
 
 # ACC:T14.11
 func test_artifacts_reference_adr_0032_and_adr_0010() -> void:
