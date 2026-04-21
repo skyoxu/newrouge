@@ -32,6 +32,11 @@ public sealed class MapNodeRouteOwnershipService
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(progress);
 
+        if (progress.CurrentState != MapNodeRouteDestination.Map)
+        {
+            return new MapNodeRouteResult(false, progress.CurrentState, progress, "route-owner-mismatch");
+        }
+
         if (!request.IsReachable)
         {
             var reason = string.IsNullOrWhiteSpace(request.BlockReason)
