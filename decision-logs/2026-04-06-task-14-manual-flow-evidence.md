@@ -19,6 +19,7 @@
 - Related run id: `5b55ab7bbcc44fdbae649e02f00e2506`
 - Related latest.json: `logs/ci/2026-04-06/sc-review-pipeline-task-14/latest.json`
 - Related pipeline artifacts: `logs/ci/2026-04-06/sc-review-pipeline-task-14-5b55ab7bbcc44fdbae649e02f00e2506`
+- Historical blocking run retained for audit linkage: `logs/ci/2026-04-06/sc-review-pipeline-task-14-98971061b3f54dd88e8fc2849170eaca`
 
 ## Remaining P2 Needs Fix
 

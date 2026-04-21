@@ -8,6 +8,10 @@ ui.menu.confirm_overwrite.title,Overwrite Save
 ui.menu.confirm_overwrite.body,Existing autosave detected. Start a new run?
 ui.menu.confirm,Overwrite
 ui.menu.cancel,Cancel
+ui.menu.continue_blocked.title,Continue Blocked
+ui.menu.continue_blocked.new_run,Start New Run
+ui.menu.continue_blocked.cancel,Cancel
+ui.menu.continue_blocked.return_to_menu,Return to Menu
 ui.run.summary.title,Run Summary
 ui.settings.language,Language
 ui.player.greeting,Welcome {name}!

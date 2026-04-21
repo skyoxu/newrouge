@@ -36,3 +36,51 @@ dialog_text = "ui.menu.confirm_overwrite.body"
 ok_button_text = "ui.menu.confirm"
 cancel_button_text = "ui.menu.cancel"
 
+[node name="ContinueBlockedDialog" type="PanelContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -120.0
+offset_right = 210.0
+offset_bottom = 120.0
+
+[node name="MarginContainer" type="MarginContainer" parent="ContinueBlockedDialog"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="ContinueBlockedDialog/MarginContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="ContinueBlockedDialog/MarginContainer/VBox"]
+layout_mode = 2
+text = "ui.menu.continue_blocked.title"
+
+[node name="MessageLabel" type="Label" parent="ContinueBlockedDialog/MarginContainer/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = ""
+
+[node name="ButtonRow" type="HBoxContainer" parent="ContinueBlockedDialog/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="BtnNewRun" type="Button" parent="ContinueBlockedDialog/MarginContainer/VBox/ButtonRow"]
+layout_mode = 2
+text = "ui.menu.continue_blocked.new_run"
+
+[node name="BtnCancel" type="Button" parent="ContinueBlockedDialog/MarginContainer/VBox/ButtonRow"]
+layout_mode = 2
+text = "ui.menu.continue_blocked.cancel"
+
+[node name="BtnReturnToMenu" type="Button" parent="ContinueBlockedDialog/MarginContainer/VBox/ButtonRow"]
+layout_mode = 2
+text = "ui.menu.continue_blocked.return_to_menu"
+

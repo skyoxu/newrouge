@@ -57,3 +57,7 @@ relic.name.thorn_crown,荆棘王冠
 relic.name.umbral_shard,幽影碎片
 relic.name.vigilant_emblem,警戒徽记
 relic.name.warden_mark,守卫印记
+ui.menu.continue_blocked.title,继续受阻
+ui.menu.continue_blocked.new_run,开始新游戏
+ui.menu.continue_blocked.cancel,取消
+ui.menu.continue_blocked.return_to_menu,返回菜单
