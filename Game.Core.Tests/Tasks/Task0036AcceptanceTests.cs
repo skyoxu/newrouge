@@ -414,6 +414,11 @@ public sealed class Task0036AcceptanceTests
             return Task.FromResult<ContinueMetadata?>(null);
         }
 
+        public Task<RunSummaryMetadata?> ReadRunSummaryMetadataAsync()
+        {
+            return Task.FromResult<RunSummaryMetadata?>(null);
+        }
+
         public Task<ContinueLoadValidationResult> ValidateContinueLoadAsync()
         {
             return Task.FromResult(new ContinueLoadValidationResult(true, null, null));

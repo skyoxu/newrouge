@@ -168,6 +168,25 @@ public sealed class SaveService : ISaveService
                 UpdatedAt: envelope.SavedAt);
     }
 
+    public async Task<RunSummaryMetadata?> ReadRunSummaryMetadataAsync()
+    {
+        var envelope = await ReadEnvelopeAsync(publishLoadedEvent: false).ConfigureAwait(false);
+        if (envelope is null)
+        {
+            return null;
+        }
+
+        var difficultySnapshot = ResolveDifficultySnapshot(envelope.StateJson);
+        var summarySnapshot = ResolveRunSummarySnapshot(envelope.StateJson);
+        return new RunSummaryMetadata(
+            RunId: envelope.RunId,
+            DifficultyId: difficultySnapshot.DifficultyId,
+            Outcome: summarySnapshot.Outcome,
+            NodeProgress: summarySnapshot.NodeProgress,
+            FailureOrRecoveryReason: summarySnapshot.FailureOrRecoveryReason,
+            OwnerSurface: summarySnapshot.OwnerSurface);
+    }
+
     public async Task<ContinueLoadValidationResult> ValidateContinueLoadAsync()
     {
         var metadata = await ReadContinueMetadataAsync().ConfigureAwait(false);
@@ -358,6 +377,42 @@ public sealed class SaveService : ISaveService
             : DifficultySnapshot.Default;
     }
 
+    private static RunSummarySnapshot ResolveRunSummarySnapshot(string stateJson)
+    {
+        if (string.IsNullOrWhiteSpace(stateJson))
+        {
+            return RunSummarySnapshot.Default;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(stateJson);
+            var source = ResolveRunSummarySource(document.RootElement);
+            if (!TryReadStringValue(source, "outcome", out var outcome)
+                || !TryReadIntValue(source, "node_progress", out var nodeProgress)
+                || !TryReadStringValue(source, "failure_or_recovery_reason", out var reason))
+            {
+                return RunSummarySnapshot.Default;
+            }
+
+            if (!TryReadOwnerSurface(source, out var ownerSurface))
+            {
+                ownerSurface = RunSummaryOwnerSurface.HudOverlay;
+            }
+
+            if (nodeProgress < 0)
+            {
+                return RunSummarySnapshot.Default;
+            }
+
+            return new RunSummarySnapshot(outcome, nodeProgress, reason, ownerSurface);
+        }
+        catch (JsonException)
+        {
+            return RunSummarySnapshot.Default;
+        }
+    }
+
     private static bool ContainsAnyDifficultySnapshotField(string stateJson)
     {
         if (string.IsNullOrWhiteSpace(stateJson))
@@ -429,6 +484,49 @@ public sealed class SaveService : ISaveService
         }
 
         return root;
+    }
+
+    private static JsonElement ResolveRunSummarySource(JsonElement root)
+    {
+        if (root.TryGetProperty("run_summary", out var node) && node.ValueKind == JsonValueKind.Object)
+        {
+            return node;
+        }
+
+        return root;
+    }
+
+    private static bool TryReadOwnerSurface(JsonElement source, out RunSummaryOwnerSurface ownerSurface)
+    {
+        ownerSurface = RunSummaryOwnerSurface.HudOverlay;
+        if (!source.TryGetProperty("owner_surface", out var ownerNode))
+        {
+            return false;
+        }
+
+        if (ownerNode.ValueKind == JsonValueKind.Number && ownerNode.TryGetInt32(out var enumValue))
+        {
+            if (Enum.IsDefined(typeof(RunSummaryOwnerSurface), enumValue))
+            {
+                ownerSurface = (RunSummaryOwnerSurface)enumValue;
+                return true;
+            }
+
+            return false;
+        }
+
+        if (ownerNode.ValueKind == JsonValueKind.String)
+        {
+            var text = ownerNode.GetString();
+            if (!string.IsNullOrWhiteSpace(text)
+                && Enum.TryParse<RunSummaryOwnerSurface>(text, ignoreCase: true, out var parsed))
+            {
+                ownerSurface = parsed;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryReadIntValue(JsonElement source, string propertyName, out int value)
@@ -717,5 +815,18 @@ public sealed class SaveService : ISaveService
             LabelKey: "difficulty.label.default",
             DescriptionKey: "difficulty.description.default",
             RulesetId: "ruleset.default");
+    }
+
+    private sealed record RunSummarySnapshot(
+        string Outcome,
+        int NodeProgress,
+        string FailureOrRecoveryReason,
+        RunSummaryOwnerSurface OwnerSurface)
+    {
+        public static RunSummarySnapshot Default { get; } = new(
+            Outcome: "Unknown",
+            NodeProgress: 0,
+            FailureOrRecoveryReason: "No stored run summary reason.",
+            OwnerSurface: RunSummaryOwnerSurface.HudOverlay);
     }
 }
