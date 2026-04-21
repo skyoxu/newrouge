@@ -1,0 +1,51 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game.Godot/Scripts/RewardScene.gd" id="1_reward_script"]
+
+[node name="RewardScene" type="Control"]
+script = ExtResource("1_reward_script")
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Reward"
+
+[node name="CardList" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Card1" type="Label" parent="VBox/CardList"]
+layout_mode = 2
+text = "Reward Card 1"
+
+[node name="Card2" type="Label" parent="VBox/CardList"]
+layout_mode = 2
+text = "Reward Card 2"
+
+[node name="Card3" type="Label" parent="VBox/CardList"]
+layout_mode = 2
+text = "Reward Card 3"
+
+[node name="Actions" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="ConfirmButton" type="Button" parent="VBox/Actions"]
+layout_mode = 2
+text = "Confirm"
+
+[node name="SkipButton" type="Button" parent="VBox/Actions"]
+layout_mode = 2
+text = "Skip"
+
+[node name="Feedback" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Select a reward."

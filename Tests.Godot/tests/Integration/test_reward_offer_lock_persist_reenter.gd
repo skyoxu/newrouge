@@ -55,6 +55,7 @@ class RewardFlowHarness:
 
 
 # acceptance: ACC:T19.3
+# acceptance: ACC:T61.3
 func test_reenter_must_not_regenerate_or_reorder_locked_offer() -> void:
 	var save := FakeAutoSave.new()
 	var flow := RewardFlowHarness.new(save, 7)
@@ -68,6 +69,7 @@ func test_reenter_must_not_regenerate_or_reorder_locked_offer() -> void:
 
 
 # acceptance: ACC:T19.7
+# acceptance: ACC:T61.5
 func test_reward_display_confirm_skip_and_reenter_locking_contract() -> void:
 	var save := FakeAutoSave.new()
 	var flow := RewardFlowHarness.new(save, 7)

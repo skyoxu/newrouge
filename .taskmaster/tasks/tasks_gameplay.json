@@ -4032,10 +4032,10 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
       "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
     ],
     "acceptance": [
       "The gameplay route loads and uses a real standalone Reward scene asset in the actual flow, instead of satisfying the task through test doubles, harness-only behavior, or placeholder-only content. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
