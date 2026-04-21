@@ -6,8 +6,17 @@ var _hp: int = 100
 const DIFFICULTY_SELECT_SCENE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
 const CHARACTER_SELECT_SCENE := "res://Game.Godot/Scenes/UI/CharacterSelect.tscn"
 const MAP_SCENE := "res://Game.Godot/Scenes/Map/Map.tscn"
+const COMBAT_SCENE := "res://Game.Godot/Scenes/Combat.tscn"
+const EVENT_SCENE := "res://Game.Godot/Scenes/Event.tscn"
+const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
+const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
 const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
+const _ROUTABLE_NODE_SCENES := [COMBAT_SCENE, EVENT_SCENE, SHOP_SCENE, REST_SCENE]
+
+var _map_route_completed_nodes: int = 0
+var _map_route_last_feedback: String = ""
+var _map_route_last_selected_node_id: String = ""
 
 func _ready() -> void:
     print("[TEMPLATE_SMOKE_READY] Main scene initialized")
@@ -91,7 +100,7 @@ func _on_lose_hp() -> void:
     _label.text = "HP = %d" % _hp
 
 func _on_domain_event(type: String, source: String, data_json: String, id: String, spec: String, ct: String, ts: String) -> void:
-    var nav = get_node_or_null("/root/Main/ScreenNavigator")
+    var nav = _resolve_navigator()
     if type == "ui.menu.start":
         var demo = get_node_or_null("/root/Main/EngineDemo")
         if demo != null and demo.has_method("StartGame"):
@@ -113,6 +122,79 @@ func _switch_to(nav: Node, scene_path: String) -> void:
         return
     if ResourceLoader.exists(scene_path):
         nav.SwitchTo(scene_path)
+
+func _resolve_navigator() -> Node:
+    var nav = get_node_or_null("ScreenNavigator")
+    if nav != null:
+        return nav
+    return get_node_or_null("/root/Main/ScreenNavigator")
+
+func _resolve_map_node_scene(node_type: String) -> String:
+    var normalized := node_type.strip_edges().to_lower()
+    if normalized == "combat":
+        return COMBAT_SCENE
+    if normalized == "event":
+        return EVENT_SCENE
+    if normalized == "shop":
+        return SHOP_SCENE
+    if normalized == "rest":
+        return REST_SCENE
+    return ""
+
+func StartMapNodeRouteForTest(node_id: String, node_type: String, reachable: bool, block_reason: String = "") -> Dictionary:
+    var nav = _resolve_navigator()
+    if nav == null:
+        _map_route_last_feedback = "Navigator unavailable."
+        return {"ok": false, "reason": "navigator-missing", "scene_path": "", "flow": ""}
+
+    var current_scene := ""
+    if nav.has_method("GetCurrentScenePathForTest"):
+        current_scene = str(nav.call("GetCurrentScenePathForTest"))
+    if current_scene != MAP_SCENE:
+        _map_route_last_feedback = "Route entry requires the current scene to be Map."
+        return {"ok": false, "reason": "not-on-map", "scene_path": current_scene, "flow": ""}
+
+    if not reachable:
+        _map_route_last_feedback = block_reason if not block_reason.strip_edges().is_empty() else "Node is unreachable."
+        return {"ok": false, "reason": _map_route_last_feedback, "scene_path": current_scene, "flow": ""}
+
+    var destination := _resolve_map_node_scene(node_type)
+    if destination.is_empty():
+        _map_route_last_feedback = "No owned flow for node type."
+        return {"ok": false, "reason": "unsupported-node-type", "scene_path": current_scene, "flow": ""}
+
+    _map_route_last_feedback = ""
+    _map_route_last_selected_node_id = node_id
+    _switch_to(nav, destination)
+    return {"ok": true, "reason": "", "scene_path": destination, "flow": node_type.strip_edges().to_lower()}
+
+func CompleteMapNodeFlowForTest() -> Dictionary:
+    var nav = _resolve_navigator()
+    if nav == null:
+        return {"ok": false, "reason": "navigator-missing", "scene_path": "", "completed_node_count": _map_route_completed_nodes}
+
+    var current_scene := ""
+    if nav.has_method("GetCurrentScenePathForTest"):
+        current_scene = str(nav.call("GetCurrentScenePathForTest"))
+    if not _ROUTABLE_NODE_SCENES.has(current_scene):
+        _map_route_last_feedback = "No node flow in progress."
+        return {"ok": false, "reason": "no-node-flow-in-progress", "scene_path": current_scene, "completed_node_count": _map_route_completed_nodes}
+
+    _map_route_completed_nodes += 1
+    _switch_to(nav, MAP_SCENE)
+    _map_route_last_feedback = ""
+    return {"ok": true, "reason": "", "scene_path": MAP_SCENE, "completed_node_count": _map_route_completed_nodes}
+
+func GetMapRouteCompletedNodeCountForTest() -> int:
+    return _map_route_completed_nodes
+
+func GetMapRouteLastFeedbackForTest() -> String:
+    return _map_route_last_feedback
+
+func ResetMapRouteProgressForTest() -> void:
+    _map_route_completed_nodes = 0
+    _map_route_last_feedback = ""
+    _map_route_last_selected_node_id = ""
 
 func GetExpectedM1RunEntryRouteForTest() -> Array:
     return [DIFFICULTY_SELECT_SCENE, CHARACTER_SELECT_SCENE, MAP_SCENE]

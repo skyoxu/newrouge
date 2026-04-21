@@ -3970,9 +3970,9 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
-      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
       "Tests.Godot/tests/Tasks/test_task0042_acceptance.gd",
-      "Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs"
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
     ],
     "acceptance": [
       "From Map, currently selectable nodes must be actionable route entries so the player can choose a real node and start its owned flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
