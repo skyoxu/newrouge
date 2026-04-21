@@ -4565,10 +4565,10 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd",
-      "Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
-      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd",
+      "Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",
       "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
-      "Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs"
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_hp_loss_cost_applies_immediately.gd",
+      "Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd"
     ],
     "acceptance": [
       "Before the player confirms an Event choice, the Event scene displays the event title, description, available options, and each option's visible cost or reward preview. Refs: Tests.Godot/tests/Scenes/Event/test_event_scene_result_feedback.gd Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs",

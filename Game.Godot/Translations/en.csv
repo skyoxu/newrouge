@@ -52,6 +52,18 @@ event.abyss_toll.title,Abyss Toll
 event.abyss_toll.description,Pay now and leave with a mark.
 event.option.lose_hp,Bleed for speed
 event.option.take_curse,Take a curse card
+event.preview.hp_loss,HP -3
+event.preview.take_curse,Cards +1 (Curse)
+event.feedback.chosen_option,Chosen option: {0}
+event.feedback.summary.lose_hp,Lost 3 HP to push forward.
+event.feedback.summary.take_curse,Took a curse card to continue.
+event.feedback.summary.default,Choice committed.
+event.feedback.numeric.hp_loss,HP -3\nCurse cards +0
+event.feedback.numeric.take_curse,HP +0\nCurse cards +1
+event.feedback.numeric.default,HP 0\nCurse cards 0
+event.feedback.blocked.already_committed,Choice is already committed.
+event.feedback.blocked.invalid_option,Option is unavailable.
+event.feedback.blocked.persist_failed,Persist failed.
 card.warrior.cleave.name,Cleave
 card.warrior.guard.name,Guard
 card.warrior.rage_surge.name,Rage Surge

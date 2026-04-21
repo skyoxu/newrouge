@@ -7,6 +7,7 @@ const COMBAT_SCENE := "res://Game.Godot/Scenes/Combat.tscn"
 const EVENT_SCENE := "res://Game.Godot/Scenes/Event.tscn"
 const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
 const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
+const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
 
 var _bus: Node
 
@@ -114,14 +115,23 @@ func test_illegal_node_type_refuses_transition_with_explicit_reason_and_unchange
 
 
 # acceptance: ACC:T60.4
+# acceptance: ACC:T69.3
 func test_event_node_type_resolves_to_real_event_scene_not_placeholder() -> void:
     var main := await _load_main()
 
     var result := _start_route(main, "event-01", "event", true)
+    await get_tree().process_frame
+    var completion_result := _complete_route(main)
+    var reward_result := main.call("ResolveRewardForTest", "confirm") as Dictionary
+    await get_tree().process_frame
 
     assert_bool(bool(result.get("ok", false))).is_true()
     assert_str(str(result.get("scene_path", ""))).is_equal(EVENT_SCENE)
-    assert_str(_current_scene_path(main)).is_equal(EVENT_SCENE)
+    assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_str(str(completion_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+    assert_bool(bool(reward_result.get("ok", false))).is_true()
+    assert_str(str(reward_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+    assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
 
 
 # acceptance: ACC:T60.5
@@ -157,7 +167,15 @@ func test_map_route_smoke_reaches_combat_event_shop_and_rest_owned_flows() -> vo
         await get_tree().process_frame
         assert_bool(bool(result.get("ok", false))).is_true()
         assert_str(str(result.get("scene_path", ""))).is_equal(str(expected.get("scene", "")))
-        _complete_route(main)
+        var complete_result := _complete_route(main)
+        assert_bool(bool(complete_result.get("ok", false))).is_true()
+        if str(expected.get("scene", "")) == COMBAT_SCENE or str(expected.get("scene", "")) == EVENT_SCENE:
+            assert_str(str(complete_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+            var reward_result := main.call("ResolveRewardForTest", "confirm") as Dictionary
+            assert_bool(bool(reward_result.get("ok", false))).is_true()
+            assert_str(str(reward_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+        else:
+            assert_str(str(complete_result.get("scene_path", ""))).is_equal(MAP_SCENE)
         await get_tree().process_frame
 
 
@@ -168,12 +186,16 @@ func test_each_map_started_route_returns_to_map_or_refuses_with_explicit_reason(
     var ok_result := _start_route(main, "combat-02", "combat", true)
     await get_tree().process_frame
     var completion_result := _complete_route(main)
+    var reward_result := main.call("ResolveRewardForTest", "confirm") as Dictionary
     await get_tree().process_frame
     var count_after_ok := int(main.call("GetMapRouteCompletedNodeCountForTest"))
     var blocked_result := _start_route(main, "event-locked", "event", false, "RouteBlocked")
 
     assert_bool(bool(ok_result.get("ok", false))).is_true()
     assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_str(str(completion_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+    assert_bool(bool(reward_result.get("ok", false))).is_true()
+    assert_str(str(reward_result.get("scene_path", ""))).is_equal(MAP_SCENE)
     assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
     assert_int(count_after_ok).is_equal(1)
 

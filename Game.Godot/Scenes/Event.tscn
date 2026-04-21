@@ -36,6 +36,44 @@ theme_override_constants/separation = 8
 layout_mode = 2
 text = "event.option.lose_hp"
 
+[node name="LblLoseHpPreview" type="Label" parent="VBox/Options"]
+layout_mode = 2
+autowrap_mode = 2
+text = "HP -3"
+
 [node name="BtnTakeCurse" type="Button" parent="VBox/Options"]
 layout_mode = 2
 text = "event.option.take_curse"
+
+[node name="LblTakeCursePreview" type="Label" parent="VBox/Options"]
+layout_mode = 2
+autowrap_mode = 2
+text = "Cards +1 (Curse)"
+
+[node name="Feedback" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LblChosenOption" type="Label" parent="VBox/Feedback"]
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+text = "Selected option"
+
+[node name="LblResultSummary" type="Label" parent="VBox/Feedback"]
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+text = "Result summary"
+
+[node name="LblNumericChanges" type="Label" parent="VBox/Feedback"]
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+text = "Numeric changes"
+
+[node name="LblBlockedFeedback" type="Label" parent="VBox/Feedback"]
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+text = "Blocked feedback"
