@@ -64,3 +64,15 @@ text = "ui.run.summary.title"
 layout_mode = 2
 text = "ui.difficulty.label: ui.difficulty.1"
 
+[node name="SummaryOutcomeLabel" type="Label" parent="RunSummaryPanel/VBox"]
+layout_mode = 2
+text = "Outcome: Unknown"
+
+[node name="SummaryNodeProgressLabel" type="Label" parent="RunSummaryPanel/VBox"]
+layout_mode = 2
+text = "Node Progress: 0"
+
+[node name="SummaryReasonLabel" type="Label" parent="RunSummaryPanel/VBox"]
+layout_mode = 2
+text = "Reason: No stored run summary reason."
+

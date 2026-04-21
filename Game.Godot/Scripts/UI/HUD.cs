@@ -1,7 +1,10 @@
 using Godot;
 using Game.Core.Contracts;
+using Game.Core.Contracts.Save;
+using Game.Core.Contracts.Interfaces;
 using Game.Core.State;
 using Game.Godot.Adapters;
+using Game.Godot.Autoloads;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -16,9 +19,13 @@ public partial class HUD : Control
     private Control _runSummaryPanel = default!;
     private Label _summaryTitle = default!;
     private Label _summaryDifficulty = default!;
+    private Label _summaryOutcome = default!;
+    private Label _summaryNodeProgress = default!;
+    private Label _summaryReason = default!;
     private EventBusAdapter? _eventBus;
     private Callable _domainEventCallable = default!;
     private RunDifficultyLockPolicy _difficultyPolicy = new();
+    private ISaveService? _saveService;
     private static Dictionary<string, string>? _textFallbacks;
     private static readonly JsonDocumentOptions EventJsonOptions = new()
     {
@@ -35,10 +42,17 @@ public partial class HUD : Control
         _runSummaryPanel = GetNode<Control>("RunSummaryPanel");
         _summaryTitle = GetNode<Label>("RunSummaryPanel/VBox/TitleLabel");
         _summaryDifficulty = GetNode<Label>("RunSummaryPanel/VBox/SummaryDifficultyLabel");
+        _summaryOutcome = GetNode<Label>("RunSummaryPanel/VBox/SummaryOutcomeLabel");
+        _summaryNodeProgress = GetNode<Label>("RunSummaryPanel/VBox/SummaryNodeProgressLabel");
+        _summaryReason = GetNode<Label>("RunSummaryPanel/VBox/SummaryReasonLabel");
         _domainEventCallable = new Callable(this, nameof(OnDomainEventEmitted));
+        _saveService = CompositionRoot.Instance?.SaveService;
 
         _runSummaryPanel.Visible = false;
         _summaryTitle.Text = ResolveVisibleText(RunSummaryTitleKey);
+        _summaryOutcome.Text = "Outcome: Unknown";
+        _summaryNodeProgress.Text = "Node Progress: 0";
+        _summaryReason.Text = "Reason: No stored run summary reason.";
         _difficultyPolicy = new RunDifficultyLockPolicy(RunDifficultyState.GetConfirmedDifficulty());
         _ = ApplyDifficultySelection(_difficultyPolicy.SelectedDifficultyId);
 
@@ -120,6 +134,7 @@ public partial class HUD : Control
         {
             _runSummaryPanel.Visible = true;
             _summaryDifficulty.Text = _difficulty.Text;
+            _ = RefreshRunSummaryMetadataAsync();
         }
     }
 
@@ -131,6 +146,12 @@ public partial class HUD : Control
     public string GetSummaryDifficultyTextForTest() => _summaryDifficulty.Text;
 
     public bool IsRunSummaryVisibleForTest() => _runSummaryPanel.Visible;
+
+    public string GetSummaryOutcomeTextForTest() => _summaryOutcome.Text;
+
+    public string GetSummaryNodeProgressTextForTest() => _summaryNodeProgress.Text;
+
+    public string GetSummaryReasonTextForTest() => _summaryReason.Text;
 
     private bool ApplyDifficultySelection(int difficultyId)
     {
@@ -149,6 +170,39 @@ public partial class HUD : Control
         _summaryDifficulty.Text = hudText;
 
         return true;
+    }
+
+    private async System.Threading.Tasks.Task RefreshRunSummaryMetadataAsync()
+    {
+        if (_saveService is null)
+        {
+            return;
+        }
+
+        RunSummaryMetadata? metadata;
+        try
+        {
+            metadata = await _saveService.ReadRunSummaryMetadataAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"[HUD] Failed to read run summary metadata: {ex.Message}");
+            return;
+        }
+
+        if (metadata is null || metadata.OwnerSurface != RunSummaryOwnerSurface.HudOverlay)
+        {
+            return;
+        }
+
+        if (!_difficultyPolicy.IsLocked && metadata.DifficultyId >= 1 && metadata.DifficultyId <= 10)
+        {
+            _ = ApplyDifficultySelection(metadata.DifficultyId);
+        }
+
+        _summaryOutcome.Text = $"Outcome: {metadata.Outcome}";
+        _summaryNodeProgress.Text = $"Node Progress: {metadata.NodeProgress}";
+        _summaryReason.Text = $"Reason: {metadata.FailureOrRecoveryReason}";
     }
 
     private static bool TryReadDifficultyId(JsonElement payload, out int difficultyId)

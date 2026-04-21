@@ -4374,15 +4374,14 @@
     ],
     "owner": "gameplay",
     "test_refs": [
+      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Tests.Godot/tests/UI/test_hud_scene.gd",
-      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd",
-      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
+      "Tests.Godot/tests/Tasks/test_task0045_acceptance.gd"
     ],
     "acceptance": [
       "The product selects exactly one Run Summary owner surface (independent screen, HUD overlay, or MainMenu metadata panel), and leaving ownership undefined or split across multiple surfaces fails acceptance. Refs: Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
       "The chosen Run Summary surface displays outcome, difficulty, node progress, and failure or recovery reason from stored run metadata, and opening the surface does not recompute, derive, or mutate run state. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
-      "For the same saved run, the chosen Run Summary surface shows difficulty and continue-related metadata that match the HUD difficulty display and Continue metadata, and mismatched or stale values fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd Tests.Godot/tests/UI/test_hud_scene.gd"
+      "For the same saved run, the chosen Run Summary surface shows difficulty and continue-related metadata that match the HUD difficulty display and Continue metadata, and mismatched or stale values fail acceptance. Refs: Tests.Godot/tests/Tasks/test_task0045_acceptance.gd Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add a focused UI test for the chosen Run Summary surface and consistency with HUD/Continue metadata."

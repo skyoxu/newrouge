@@ -26,6 +26,7 @@ public partial class CompositionRoot : Node
     public IDataStore DataStore { get; private set; } = default!;
     public ILogger Logger { get; private set; } = default!;
     public IEventBus EventBus { get; private set; } = default!;
+    public ISaveService? SaveService => _saveService;
 
     private Adapters.TimeAdapter? _timeAdapter;
     private Adapters.InputAdapter? _inputAdapter;

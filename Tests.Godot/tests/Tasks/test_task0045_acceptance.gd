@@ -154,6 +154,34 @@ func test_hud_and_run_summary_show_same_selected_difficulty_on_run_start() -> vo
     assert_str(_summary_difficulty_text()).is_equal(expected)
 
 
+# ACC:T66.3
+func test_task66_same_saved_run_keeps_hud_and_summary_difficulty_consistent() -> void:
+    await _publish("core.run.difficulty.selected", "{\"difficulty_id\":6}")
+    await _publish("core.run.started", "{\"run_id\":\"r-66-3-a\"}")
+    await _publish("core.combat.ended", "{\"combat_id\":\"c-66-3-a\",\"player_won\":true}")
+
+    var hud_text := _hud_difficulty_text()
+    var summary_text := _summary_difficulty_text()
+
+    assert_bool(_summary_visible()).is_true()
+    assert_str(hud_text).is_equal(_expected_difficulty_text(6))
+    assert_str(summary_text).is_equal(hud_text)
+
+
+func test_task66_stale_or_mismatched_values_fail_consistency_check() -> void:
+    await _publish("core.run.difficulty.selected", "{\"difficulty_id\":2}")
+    await _publish("core.run.started", "{\"run_id\":\"r-66-3-b\"}")
+    await _publish("core.combat.ended", "{\"combat_id\":\"c-66-3-b\",\"player_won\":false}")
+    var consistent_summary := _summary_difficulty_text()
+
+    await _publish("core.run.difficulty.selected", "{\"difficulty_id\":9}")
+    var mutated_hud := _hud_difficulty_text()
+
+    assert_str(consistent_summary).is_equal(_expected_difficulty_text(2))
+    assert_str(mutated_hud).is_equal(_expected_difficulty_text(2))
+    assert_str(consistent_summary).is_equal(mutated_hud)
+
+
 # ACC:T45.2
 func test_difficulty_display_remains_unchanged_through_flow_and_player_operations() -> void:
     await _publish("core.run.difficulty.selected", "{\"difficulty_id\":3}")

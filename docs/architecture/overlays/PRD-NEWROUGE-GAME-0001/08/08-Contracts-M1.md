@@ -379,6 +379,11 @@ Test-Refs:
   - `Game.Core/Contracts/Save/ContinueMetadata.cs`
   - `Game.Core/Contracts/Save/ContinueGateDecision.cs`
   - `Game.Core/Contracts/Save/ContinueLoadValidationResult.cs`
+  - `Game.Core/Contracts/Save/RunSummaryOwnerSurface.cs`
+  - `Game.Core/Contracts/Save/RunSummaryOwnershipSelection.cs`
+  - `Game.Core/Contracts/Save/RunSummaryOwnershipValidationResult.cs`
+  - `Game.Core/Contracts/Save/RunSummaryOwnershipPolicy.cs`
+  - `Game.Core/Contracts/Save/RunSummaryMetadata.cs`
   - `Game.Core/Contracts/Save/SaveMigrationResult.cs`
 - 配置与内容
   - `Game.Core/Contracts/Config/DifficultyConfig.cs`
