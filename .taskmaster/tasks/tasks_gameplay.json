@@ -4099,16 +4099,16 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd",
+      "Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
-      "Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs"
+      "Tests.Godot/tests/Tasks/test_task0021_acceptance.gd"
     ],
     "acceptance": [
       "Rest is implemented as a standalone scene asset that can be loaded by the game, and entering a Rest node from Map opens that scene instead of a test harness path or placeholder screen. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
       "The standalone Rest scene exposes the actionable Rest choices for heal, upgrade, and curse removal as player-selectable options within the scene. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
       "Starting from Map, completing heal in Rest returns control to Map through the owned Rest route flow and leaves the player on a valid post-Rest path rather than stranded in Rest or redirected through an unrelated route. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
-      "Starting from Map, completing upgrade in Rest requires an explicit confirm action, the confirmed upgrade remains applied after the route returns to Map, and cancelling before confirmation leaves the upgrade target unmodified. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd Tests.Godot/tests/Tasks/test_task0021_acceptance.gd",
-      "Starting from Map, completing curse removal in Rest returns control to Map through the same Rest-owned route flow and applies the curse-removal result to the run state rather than leaving the state unchanged. Refs: Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "Starting from Map, completing upgrade in Rest requires an explicit confirm action; only confirmed upgrade is applied, cancellation before confirmation leaves the target unmodified; and after completion control returns to Map through the same Rest-owned route flow (not an unrelated route) with a valid post-Rest path. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
+      "Starting from Map, completing curse removal in Rest returns control to Map through the same Rest-owned route flow and applies the curse-removal result to observable run state, while route-owner mismatch attempts are refused and keep state unchanged. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
       "A real-scene Rest route roundtrip is covered by automated verification on Windows, and irreversible upgrade confirmation is separately verified on Windows with deterministic evidence for the confirmed path. Refs: Tests.Godot/tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs",
       "Rest scene and route integration evidence remains traceable to UI-WIRING-M1-A4 and the cited ADR and chapter context for this task. Refs: Game.Core.Tests/Tasks/Task0062AcceptanceTests.cs"
     ],
