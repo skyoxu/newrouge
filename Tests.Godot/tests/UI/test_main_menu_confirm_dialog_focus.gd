@@ -19,9 +19,17 @@ func _write_autosave(payload: String) -> void:
     file.store_string(payload)
     file.close()
 
+func _sha256_hex(text: String) -> String:
+    return text.sha256_text()
+
+func _build_valid_autosave_json() -> String:
+    var state_json := "{}"
+    var integrity_hash := _sha256_hex(state_json)
+    return "{\"run_id\":\"run_a\",\"save_point_id\":\"menu\",\"schema_version\":\"1.0.0\",\"saved_at\":\"2026-04-06T00:00:00Z\",\"state_json\":\"%s\",\"integrity_hash\":\"%s\"}" % [state_json, integrity_hash]
+
 # acceptance: ACC:T14.6
 func test_new_run_with_valid_autosave_focuses_real_cancel_button_in_confirmation_dialog() -> void:
-    _write_autosave("{\"run_id\":\"run_a\",\"save_point_id\":\"menu\",\"schema_version\":\"1.0.0\",\"saved_at\":\"2026-04-06T00:00:00Z\",\"state_json\":\"{}\",\"integrity_hash\":\"abc123\"}")
+    _write_autosave(_build_valid_autosave_json())
     var menu := MAIN_MENU_SCENE.instantiate() as Control
     add_child(auto_free(menu))
     await get_tree().process_frame

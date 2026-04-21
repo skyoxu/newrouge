@@ -8,6 +8,7 @@ const EXECUTION_PLAN_FILE := "res://../execution-plans/2026-04-06-task-14-chapte
 const DECISION_LOG_FILE := "res://../decision-logs/2026-04-06-task-14-manual-flow-evidence.md"
 const EN_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/en.csv"
 const KEY_PREFIXES := ["ui.", "menu.", "card.", "relic.", "event.", "etc."]
+var _previous_locale := ""
 
 func _looks_like_translation_key(value: String) -> bool:
     var text := value.strip_edges().to_lower()
@@ -22,10 +23,14 @@ func _instantiate_main_menu() -> Control:
     return menu
 
 func before() -> void:
+    _previous_locale = TranslationServer.get_locale()
+    TranslationServer.set_locale("en")
     _remove_autosave()
 
 func after() -> void:
     _remove_autosave()
+    if _previous_locale != "":
+        TranslationServer.set_locale(_previous_locale)
 
 func _remove_autosave() -> void:
     var absolute_path := ProjectSettings.globalize_path(AUTOSAVE_PATH)
@@ -37,8 +42,13 @@ func _write_autosave(payload: String) -> void:
     file.store_string(payload)
     file.close()
 
+func _sha256_hex(text: String) -> String:
+    return text.sha256_text()
+
 func _build_valid_autosave_json() -> String:
-    return "{\"run_id\":\"run_a\",\"save_point_id\":\"menu\",\"schema_version\":\"1.0.0\",\"saved_at\":\"2026-04-06T00:00:00Z\",\"state_json\":\"{}\",\"integrity_hash\":\"abc123\"}"
+    var state_json := "{}"
+    var integrity_hash := _sha256_hex(state_json)
+    return "{\"run_id\":\"run_a\",\"save_point_id\":\"menu\",\"schema_version\":\"1.0.0\",\"saved_at\":\"2026-04-06T00:00:00Z\",\"state_json\":\"%s\",\"integrity_hash\":\"%s\"}" % [state_json, integrity_hash]
 
 func _load_translation_values(csv_path: String) -> Dictionary:
     var values := {}
@@ -147,6 +157,18 @@ func test_main_menu_initializes_continue_and_new_run_from_real_autosave_file() -
     var dialog := menu.get_node_or_null("OverwriteConfirmDialog") as ConfirmationDialog
     assert_bool(dialog != null).is_true()
     assert_bool(dialog.visible).is_true()
+
+# ACC:T14.1
+func test_main_menu_disables_continue_when_autosave_is_missing() -> void:
+    _remove_autosave()
+    var menu := _instantiate_main_menu()
+    await get_tree().process_frame
+
+    var continue_btn := menu.get_node_or_null("VBox/BtnContinue") as Button
+    assert_bool(continue_btn != null).is_true()
+    if continue_btn == null:
+        return
+    assert_bool(continue_btn.disabled).is_true()
 
 # ACC:T14.2
 func test_menu_and_confirmation_texts_are_from_translation_values() -> void:

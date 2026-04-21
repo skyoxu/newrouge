@@ -4169,15 +4169,15 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
-      "Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs"
+      "Tests.Godot/tests/Tasks/test_task0014_acceptance.gd"
     ],
     "acceptance": [
       "If Continue is invoked while no save exists, the save fails integrity validation, or migration fails, MainMenu shows a visible blocked-state message that names the blocking reason instead of relying on logs only. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
       "While Continue is blocked, the UI presents player-selectable recovery actions such as starting a New Run, cancelling, or returning to the menu, and the failed Continue attempt is not dismissed without visible feedback. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "Blocked-state messaging states the supported recovery boundary and does not suggest a mid-combat resume when ADR-0032 only permits restoring from the combat initial boundary. Refs: Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
+      "Blocked-state messaging states the supported recovery boundary and does not suggest a mid-combat resume when ADR-0032 only permits restoring from the combat initial boundary. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs Game.Core.Tests/Tasks/Task0037AcceptanceTests.cs Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs",
       "The blocked-state Continue flow keeps existing Continue availability checks and MainMenu overwrite confirmation intact, with those existing flows remaining reachable and behaviorally consistent. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
       "When Continue is blocked, activating Continue refuses the resume action, keeps the player on MainMenu, and changes state only after the player selects an available recovery action. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs",
       "One Windows UI smoke covers both missing-save and invalid-save Continue blocked states and verifies that each blocked attempt is surfaced to the player. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Game.Core.Tests/Tasks/Task0063AcceptanceTests.cs"
