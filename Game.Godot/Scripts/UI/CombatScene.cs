@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json;
 using Godot;
 using Game.Core.Contracts.Combat;
@@ -12,9 +13,14 @@ public partial class CombatScene : Control
     public delegate void TurnActionRequestedEventHandler(string actionName);
 
     private ItemList _handCards = default!;
+    private Label _difficultyValue = default!;
+    private Label _playerHpValue = default!;
     private Label _energyValue = default!;
     private Label _drawPileValue = default!;
     private Label _discardPileValue = default!;
+    private Label _turnStateValue = default!;
+    private Label _feedbackMessageLabel = default!;
+    private ItemList _feedbackHistoryList = default!;
     private Label _enemyIntentTitleLabel = default!;
     private VBoxContainer _enemyIntentList = default!;
     private Button _startTurnButton = default!;
@@ -28,17 +34,25 @@ public partial class CombatScene : Control
     };
     private int _coreStateMutationCount;
     private int _turnIndex = 1;
+    private int _acceptedCommandFeedbackCount;
+    private string _latestCommandOutcomeState = "none";
     private int _enemyIntentTurnIndex;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private Texture2D? _enemyIntentFallbackTexture;
 
     public override void _Ready()
     {
         _handCards = GetNode<ItemList>("HUD/HandCards");
+        _difficultyValue = GetNode<Label>("HUD/DifficultyValue");
+        _playerHpValue = GetNode<Label>("HUD/PlayerHpValue");
         _energyValue = GetNode<Label>("HUD/EnergyValue");
         _drawPileValue = GetNode<Label>("HUD/DrawPileValue");
         _discardPileValue = GetNode<Label>("HUD/DiscardPileValue");
+        _turnStateValue = GetNode<Label>("HUD/TurnStateValue");
+        _feedbackMessageLabel = GetNode<Label>("HUD/FeedbackMessageLabel");
+        _feedbackHistoryList = GetNode<ItemList>("HUD/FeedbackHistoryList");
         _enemyIntentTitleLabel = GetNode<Label>("HUD/EnemyIntentPanel/EnemyIntentTitle");
         _enemyIntentList = GetNode<VBoxContainer>("HUD/EnemyIntentPanel/EnemyIntentList");
         _startTurnButton = GetNode<Button>("HUD/TurnControls/StartTurnButton");
@@ -51,6 +65,7 @@ public partial class CombatScene : Control
         _endTurnButton.Text = Tr("combat.turn.end");
         _turnTitleLabel.Text = Tr("combat.turn.title");
         _enemyIntentTitleLabel.Text = Tr("combat.intent.title");
+        _feedbackMessageLabel.Text = string.Empty;
     }
 
     public override void _ExitTree()
@@ -94,12 +109,26 @@ public partial class CombatScene : Control
             return false;
         }
 
-        if (payload is null || payload.HandCards is null || payload.Energy < 0 || payload.DrawPileCount < 0 || payload.DiscardPileCount < 0)
+        if (
+            payload is null
+            || payload.HandCards is null
+            || payload.Energy < 0
+            || payload.DrawPileCount < 0
+            || payload.DiscardPileCount < 0
+            || payload.Difficulty < 0
+            || payload.PlayerHp < 0)
         {
             return false;
         }
 
-        ApplyCoreSnapshot(new CombatHudSnapshot(payload.HandCards, payload.Energy, payload.DrawPileCount, payload.DiscardPileCount));
+        ApplyCoreSnapshot(new CombatHudSnapshot(
+            payload.HandCards,
+            payload.Energy,
+            payload.DrawPileCount,
+            payload.DiscardPileCount,
+            payload.Difficulty,
+            payload.PlayerHp,
+            payload.TurnState ?? string.Empty));
         return true;
     }
 
@@ -130,9 +159,13 @@ public partial class CombatScene : Control
         return new global::Godot.Collections.Dictionary
         {
             { "hand", hand },
+            { "difficulty", _difficultyValue.Text },
+            { "playerHp", _playerHpValue.Text },
             { "energy", _energyValue.Text },
             { "draw", _drawPileValue.Text },
             { "discard", _discardPileValue.Text },
+            { "turnState", _turnStateValue.Text },
+            { "selectedCommandState", _latestCommandOutcomeState },
         };
     }
 
@@ -140,11 +173,13 @@ public partial class CombatScene : Control
     {
         if (actionName != "start_turn" && actionName != "end_turn")
         {
+            AppendCommandFeedback(actionName, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_action");
             return false;
         }
 
         _dispatchedCommands.Add(actionName);
         EmitSignal(SignalName.TurnActionRequested, actionName);
+        AppendCommandFeedback(actionName, accepted: true);
         return true;
     }
 
@@ -164,6 +199,79 @@ public partial class CombatScene : Control
         return commands;
     }
 
+    public void ApplyCommandFeedbackForTest(string commandName, bool accepted)
+    {
+        AppendCommandFeedback(commandName, accepted);
+    }
+
+    public void ApplyHoverPreviewForTest(string previewId)
+    {
+        _ = previewId;
+    }
+
+    public void ApplyTargetInspectionForTest(string targetId)
+    {
+        _ = targetId;
+    }
+
+    public string GetLatestFeedbackMessageForTest()
+    {
+        return _feedbackMessageLabel.Text;
+    }
+
+    public global::Godot.Collections.Array<string> GetFeedbackHistoryForTest()
+    {
+        var history = new global::Godot.Collections.Array<string>();
+        for (var index = 0; index < _feedbackHistoryList.ItemCount; index++)
+        {
+            history.Add(_feedbackHistoryList.GetItemText(index));
+        }
+
+        return history;
+    }
+
+    public int GetAcceptedCommandCountForTest()
+    {
+        return _acceptedCommandFeedbackCount;
+    }
+
+    public string GetSelectedCommandStateForTest()
+    {
+        return _latestCommandOutcomeState;
+    }
+
+    public bool TryApplyAcceptedStrikeForTest()
+    {
+        if (!TryParseIntLabel(_energyValue, out var energy) || energy <= 0)
+        {
+            AppendCommandFeedback("strike", accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
+            return false;
+        }
+
+        var handCards = new List<string>();
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            handCards.Add(_handCards.GetItemText(index));
+        }
+
+        var difficulty = TryParseIntLabel(_difficultyValue, out var parsedDifficulty) ? parsedDifficulty : 0;
+        var playerHp = TryParseIntLabel(_playerHpValue, out var parsedHp) ? parsedHp : 0;
+        var drawPile = TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : 0;
+        var discardPile = TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : 0;
+
+        var remainingEnergy = energy - 1;
+        ApplyCoreSnapshot(new CombatHudSnapshot(
+            handCards,
+            remainingEnergy,
+            drawPile,
+            discardPile,
+            difficulty,
+            playerHp,
+            _turnStateValue.Text));
+        AppendCommandFeedback("strike", accepted: true, detail: BuildAcceptedStrikeDetail(remainingEnergy));
+        return true;
+    }
+
     public int GetCoreStateMutationCountForTest()
     {
         return _coreStateMutationCount;
@@ -176,7 +284,7 @@ public partial class CombatScene : Control
 
     public string ResolveLocalizedTextForTest(string localizationKey)
     {
-        return Tr(localizationKey);
+        return ResolveFeedbackTemplate(localizationKey);
     }
 
     public string GetTurnTitleTextForTest()
@@ -284,9 +392,195 @@ public partial class CombatScene : Control
             _handCards.AddItem(card);
         }
 
+        _difficultyValue.Text = snapshot.Difficulty.ToString();
+        _playerHpValue.Text = snapshot.PlayerHp.ToString();
         _energyValue.Text = snapshot.Energy.ToString();
         _drawPileValue.Text = snapshot.DrawPileCount.ToString();
         _discardPileValue.Text = snapshot.DiscardPileCount.ToString();
+        _turnStateValue.Text = string.IsNullOrWhiteSpace(snapshot.TurnState)
+            ? _turnTitleLabel.Text
+            : snapshot.TurnState;
+    }
+
+    private void AppendCommandFeedback(string commandName, bool accepted, string? detail = null, string? refusalReasonKey = null)
+    {
+        var normalizedCommand = string.IsNullOrWhiteSpace(commandName) ? "unknown" : commandName;
+        var localizationKey = accepted ? "combat.feedback.accepted" : "combat.feedback.refused";
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var localizedTemplate = ResolveFeedbackTemplate(localizationKey);
+        if (locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(localizedTemplate, localizationKey, StringComparison.Ordinal)
+                || localizedTemplate.Contains("accepted", StringComparison.OrdinalIgnoreCase)
+                || localizedTemplate.Contains("refused", StringComparison.OrdinalIgnoreCase)))
+        {
+            localizedTemplate = accepted ? "命令'{0}'已接受。" : "命令'{0}'被拒绝。";
+        }
+
+        var message = string.Equals(localizedTemplate, localizationKey, StringComparison.Ordinal)
+            ? accepted
+                ? $"Command '{normalizedCommand}' accepted."
+                : $"Command '{normalizedCommand}' refused."
+            : string.Format(CultureInfo.CurrentCulture, localizedTemplate, normalizedCommand);
+
+        if (!accepted)
+        {
+            var reasonText = ResolveRefusalReasonText(normalizedCommand, refusalReasonKey);
+            if (!string.IsNullOrWhiteSpace(reasonText))
+            {
+                message = $"{message.TrimEnd('.', '。')}: {reasonText}.";
+            }
+        }
+
+        if (accepted)
+        {
+            _acceptedCommandFeedbackCount += 1;
+            _latestCommandOutcomeState = $"accepted:{normalizedCommand}";
+        }
+
+        var finalMessage = string.IsNullOrWhiteSpace(detail)
+            ? message
+            : $"{message} {detail}";
+
+        _feedbackMessageLabel.Text = finalMessage;
+        _feedbackHistoryList.AddItem(message);
+    }
+
+    private static string BuildAcceptedStrikeDetail(int remainingEnergy)
+    {
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        if (locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"能量-1（剩余{remainingEnergy}）";
+        }
+
+        return $"Energy -1 (remaining {remainingEnergy}).";
+    }
+
+    private static string ResolveRefusalReasonKey(string normalizedCommand, string? refusalReasonKey)
+    {
+        if (!string.IsNullOrWhiteSpace(refusalReasonKey))
+        {
+            return refusalReasonKey.Trim();
+        }
+
+        if (normalizedCommand.Contains("target", StringComparison.OrdinalIgnoreCase))
+        {
+            return "combat.feedback.refusal_reason.invalid_target";
+        }
+
+        if (normalizedCommand.Contains("energy", StringComparison.OrdinalIgnoreCase))
+        {
+            return "combat.feedback.refusal_reason.insufficient_energy";
+        }
+
+        return "combat.feedback.refusal_reason.invalid_action";
+    }
+
+    private static string ResolveRefusalReasonText(string normalizedCommand, string? refusalReasonKey)
+    {
+        var reasonKey = ResolveRefusalReasonKey(normalizedCommand, refusalReasonKey);
+        var mapped = ResolveFeedbackTemplate(reasonKey);
+        if (string.Equals(mapped, reasonKey, StringComparison.Ordinal))
+        {
+            mapped = reasonKey switch
+            {
+                "combat.feedback.refusal_reason.insufficient_energy" => "insufficient energy",
+                "combat.feedback.refusal_reason.invalid_target" => "invalid target",
+                _ => "invalid action",
+            };
+        }
+
+        return mapped.Trim().TrimEnd('.', '。');
+    }
+
+    private static string ResolveFeedbackTemplate(string localizationKey)
+    {
+        if (string.IsNullOrWhiteSpace(localizationKey))
+        {
+            return string.Empty;
+        }
+
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var map = GetFeedbackTextMap(locale);
+        if (map.TryGetValue(localizationKey, out var mappedValue) && !string.IsNullOrWhiteSpace(mappedValue))
+        {
+            return mappedValue;
+        }
+
+        var localized = TranslationServer.Translate(localizationKey);
+        if (!string.Equals(localized, localizationKey, StringComparison.Ordinal))
+        {
+            return localized;
+        }
+
+        if (!string.Equals(locale, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            var fallback = GetFeedbackTextMap("en");
+            if (fallback.TryGetValue(localizationKey, out var fallbackValue) && !string.IsNullOrWhiteSpace(fallbackValue))
+            {
+                return fallbackValue;
+            }
+        }
+
+        return localizationKey;
+    }
+
+    private static Dictionary<string, string> GetFeedbackTextMap(string locale)
+    {
+        if (FeedbackTextMapsByLocale.TryGetValue(locale, out var cached))
+        {
+            return cached;
+        }
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? "res://Game.Godot/Translations/zh-CN.csv"
+            : "res://Game.Godot/Translations/en.csv";
+        if (!FileAccess.FileExists(path))
+        {
+            path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+                ? "res://../Game.Godot/Translations/zh-CN.csv"
+                : "res://../Game.Godot/Translations/en.csv";
+        }
+
+        if (!FileAccess.FileExists(path))
+        {
+            FeedbackTextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+        if (file is null)
+        {
+            FeedbackTextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        var raw = file.GetAsText();
+        foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("key,value", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var sep = trimmed.IndexOf(',');
+            if (sep <= 0 || sep >= trimmed.Length - 1)
+            {
+                continue;
+            }
+
+            var key = trimmed[..sep].Trim();
+            var value = trimmed[(sep + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
+            {
+                map[key] = value;
+            }
+        }
+
+        FeedbackTextMapsByLocale[locale] = map;
+        return map;
     }
 
     private void ApplyEnemyIntentPreview(IReadOnlyList<EnemyIntentPreviewItemPayload> previews)
@@ -450,20 +744,38 @@ public partial class CombatScene : Control
             return string.Empty;
         }
 
-        var localized = Tr(textKey);
-        if (string.Equals(localized, textKey, StringComparison.Ordinal))
+        return ResolveFeedbackTemplate(textKey);
+    }
+
+    private static bool TryParseIntLabel(Label label, out int value)
+    {
+        if (label is null)
         {
-            return string.Empty;
+            value = 0;
+            return false;
         }
 
-        return localized;
+        return int.TryParse(label.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
     }
 
     private sealed record CombatHudSnapshotPayload(
         List<string>? HandCards,
         int Energy,
         int DrawPileCount,
-        int DiscardPileCount
+        int DiscardPileCount,
+        int Difficulty,
+        int PlayerHp,
+        string? TurnState
     );
 
     private sealed record EnemyIntentContractPayload(

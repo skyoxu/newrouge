@@ -9,5 +9,8 @@ public sealed record CombatHudSnapshot(
     IReadOnlyList<string> HandCards,
     int Energy,
     int DrawPileCount,
-    int DiscardPileCount
+    int DiscardPileCount,
+    int Difficulty = 0,
+    int PlayerHp = 0,
+    string TurnState = ""
 );

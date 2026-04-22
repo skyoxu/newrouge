@@ -26,27 +26,43 @@ offset_top = 120.0
 offset_right = 420.0
 offset_bottom = 360.0
 
-[node name="EnergyValue" type="Label" parent="HUD"]
+[node name="DifficultyValue" type="Label" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0
 offset_top = 24.0
-offset_right = 140.0
+offset_right = 128.0
+offset_bottom = 56.0
+text = "--"
+
+[node name="PlayerHpValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 144.0
+offset_top = 24.0
+offset_right = 248.0
+offset_bottom = 56.0
+text = "--"
+
+[node name="EnergyValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 264.0
+offset_top = 24.0
+offset_right = 368.0
 offset_bottom = 56.0
 text = "--"
 
 [node name="DrawPileValue" type="Label" parent="HUD"]
 layout_mode = 2
-offset_left = 160.0
+offset_left = 384.0
 offset_top = 24.0
-offset_right = 276.0
+offset_right = 488.0
 offset_bottom = 56.0
 text = "--"
 
 [node name="DiscardPileValue" type="Label" parent="HUD"]
 layout_mode = 2
-offset_left = 296.0
+offset_left = 504.0
 offset_top = 24.0
-offset_right = 412.0
+offset_right = 608.0
 offset_bottom = 56.0
 text = "--"
 
@@ -57,6 +73,14 @@ offset_top = 72.0
 offset_right = 320.0
 offset_bottom = 104.0
 text = "combat.turn.title"
+
+[node name="TurnStateValue" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 624.0
+offset_top = 24.0
+offset_right = 760.0
+offset_bottom = 56.0
+text = "--"
 
 [node name="EnemyIntentPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
@@ -90,3 +114,18 @@ text = "combat.turn.start"
 [node name="EndTurnButton" type="Button" parent="HUD/TurnControls"]
 layout_mode = 2
 text = "combat.turn.end"
+
+[node name="FeedbackMessageLabel" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 440.0
+offset_right = 860.0
+offset_bottom = 472.0
+text = ""
+
+[node name="FeedbackHistoryList" type="ItemList" parent="HUD"]
+layout_mode = 2
+offset_left = 24.0
+offset_top = 476.0
+offset_right = 860.0
+offset_bottom = 640.0
