@@ -13,9 +13,9 @@ from collect_ui_wiring_inputs import UI_GDD_FLOW, build_summary
 
 
 REQUIRED_SECTIONS = [
-    '## 5. UI \u63a5\u7ebf\u77e9\u9635',
-    '## 9. \u672a\u63a5 UI \u529f\u80fd\u6e05\u5355',
-    '## 10. \u4e0b\u4e00\u6279 UI \u63a5\u7ebf\u4efb\u52a1\u5019\u9009',
+    '## 5. UI Wiring Matrix',
+    '## 10. Unwired UI Feature List',
+    '## 11. Next UI Wiring Task Candidates',
 ]
 
 
