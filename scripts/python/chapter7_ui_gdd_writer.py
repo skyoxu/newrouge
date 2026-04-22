@@ -601,7 +601,7 @@ def render_ui_gdd_flow(*, repo_root: Path, summary: dict[str, Any]) -> str:
         header.append("  - n/a")
     header.append("---")
 
-    return "\n".join(
+    lines = (
         header
         + [
             "",
@@ -691,9 +691,9 @@ def render_ui_gdd_flow(*, repo_root: Path, summary: dict[str, Any]) -> str:
             f"- Completed task count currently expected by Chapter 7: {summary['completed_master_tasks_count']}.",
             "- Chapter 7 uses `.taskmaster/tasks/tasks.json` as the completion-state SSoT.",
             "- View files remain enrichment sources for test refs, acceptance, labels, and contract context.",
-            "",
         ]
-    ) + "\n"
+    )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def export_candidate_sidecar(*, repo_root: Path, summary: dict[str, Any]) -> Path:
