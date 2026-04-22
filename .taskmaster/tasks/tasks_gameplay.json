@@ -4435,15 +4435,15 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd",
+      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
       "Tests.Godot/tests/Tasks/test_task0020_acceptance.gd",
-      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
-      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
+      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd"
     ],
     "acceptance": [
       "The existing Shop scene must be bound to real route-owned behavior so the player can perform purchase, remove, transform/reforge, and leave actions from the actual Shop UI, and each action must resolve through the Shop-owned route instead of placeholder or unowned behavior. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
       "The Shop UI must expose the observable state needed for real shop actions, including current offers, prices, player gold/resources, and owned/removed outcomes, and it must show a visible failure reason when a purchase cannot be completed because resources are insufficient or the offer was already taken. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
       "When the player re-enters Shop through the run flow, the locked Shop inventory must remain unchanged, and duplicate purchases or invalid offer ids must be refused with visible feedback instead of silently succeeding or mutating state. Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
-      "Shop player-facing UI text and Shop-related service text must stay within Shop semantics and must not present upgrade, rest, campfire, or card-upgrade context. Refs: Tests.Godot/tests/Tasks/test_task0020_acceptance.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "Shop player-facing UI text and Shop-related service text must stay within Shop semantics and must not present upgrade, rest, campfire, or card-upgrade context. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
       "Completing or leaving Shop must return the run to Map through the same explicit route ownership model used for Map-to-node entry, rather than through an ad hoc or separate return path. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd",
       "At least one real-scene Shop behavior binding test must execute against the actual Shop scene and verify purchase, remove, transform/reforge, and leave behavior on that scene, not only through mocks or pure unit seams. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
       "At least one Windows route roundtrip check must verify that Map-to-Shop entry and Shop-to-Map return use the same route ownership model in both directions. Refs: Tests.Godot/tests/Scenes/Shop/test_shop_scene_behavior_binding.gd Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
