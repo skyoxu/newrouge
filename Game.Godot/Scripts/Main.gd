@@ -21,6 +21,8 @@ var _map_route_last_feedback: String = ""
 var _map_route_last_selected_node_id: String = ""
 var _reward_route_pending: bool = false
 var _reward_route_resolved: bool = false
+var _shop_state_by_node: Dictionary = {}
+var _active_shop_node_id: String = ""
 
 func _ready() -> void:
     print("[TEMPLATE_SMOKE_READY] Main scene initialized")
@@ -145,6 +147,35 @@ func _resolve_map_node_scene(node_type: String) -> String:
         return REST_SCENE
     return ""
 
+func _build_default_shop_state(node_id: String) -> Dictionary:
+    var normalized := node_id.strip_edges()
+    if normalized.is_empty():
+        normalized = "shop-default"
+    var offer_a := "%s_offer_a" % normalized
+    var offer_b := "%s_offer_b" % normalized
+    var offer_c := "%s_offer_c" % normalized
+    return {
+        "shop_id": normalized,
+        "gold": 180,
+        "offers": [
+            {"id": offer_a, "price": 60, "taken": false},
+            {"id": offer_b, "price": 90, "taken": false},
+            {"id": offer_c, "price": 240, "taken": false}
+        ],
+        "owned_offer_ids": [],
+        "removable_cards": ["curse_doubt"],
+        "reforge_targets": [offer_b],
+        "removed_outcome": ""
+    }
+
+func _activate_shop_route_state(node_id: String) -> void:
+    var key := node_id.strip_edges()
+    if key.is_empty():
+        key = "shop-default"
+    _active_shop_node_id = key
+    if not _shop_state_by_node.has(key):
+        _shop_state_by_node[key] = _build_default_shop_state(key)
+
 func StartMapNodeRouteForTest(node_id: String, node_type: String, reachable: bool, block_reason: String = "") -> Dictionary:
     var nav = _resolve_navigator()
     if nav == null:
@@ -169,6 +200,8 @@ func StartMapNodeRouteForTest(node_id: String, node_type: String, reachable: boo
 
     _map_route_last_feedback = ""
     _map_route_last_selected_node_id = node_id
+    if destination == SHOP_SCENE:
+        _activate_shop_route_state(node_id)
     _switch_to(nav, destination)
     return {"ok": true, "reason": "", "scene_path": destination, "flow": node_type.strip_edges().to_lower()}
 
@@ -192,6 +225,8 @@ func CompleteMapNodeFlowForTest() -> Dictionary:
         return {"ok": false, "reason": "no-node-flow-in-progress", "scene_path": current_scene, "completed_node_count": _map_route_completed_nodes}
 
     _map_route_completed_nodes += 1
+    if current_scene == SHOP_SCENE:
+        _active_shop_node_id = ""
     _switch_to(nav, MAP_SCENE)
     _map_route_last_feedback = ""
     return {"ok": true, "reason": "", "scene_path": MAP_SCENE, "completed_node_count": _map_route_completed_nodes}
@@ -208,6 +243,24 @@ func ResetMapRouteProgressForTest() -> void:
     _map_route_last_selected_node_id = ""
     _reward_route_pending = false
     _reward_route_resolved = false
+    _active_shop_node_id = ""
+    _shop_state_by_node.clear()
+
+func GetActiveShopStateForScene() -> Dictionary:
+    if _active_shop_node_id.is_empty():
+        return {}
+    if not _shop_state_by_node.has(_active_shop_node_id):
+        return {}
+    var state = _shop_state_by_node.get(_active_shop_node_id, {})
+    if typeof(state) != TYPE_DICTIONARY:
+        return {}
+    return (state as Dictionary).duplicate(true)
+
+func ApplyShopStateForScene(state: Dictionary) -> bool:
+    if _active_shop_node_id.is_empty():
+        return false
+    _shop_state_by_node[_active_shop_node_id] = state.duplicate(true)
+    return true
 
 func ResolveRewardForTest(action: String) -> Dictionary:
     var nav = _resolve_navigator()
