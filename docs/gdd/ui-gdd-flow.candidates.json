@@ -1,0 +1,234 @@
+{
+  "generated_at": "2026-04-22",
+  "source_gdd": "docs/gdd/ui-gdd-flow.md",
+  "completed_master_tasks_count": 58,
+  "needed_wiring_features_count": 58,
+  "candidates": [
+    {
+      "bucket": "entry",
+      "screen_group": "MainMenu And Boot Flow",
+      "matrix_link": "## 5. UI Wiring Matrix row Entry And Bootstrap (T01, T11, T21, T43, T45, T53)",
+      "scope_task_ids": [
+        1,
+        11,
+        21,
+        43,
+        45,
+        53
+      ],
+      "scope_task_refs": "T01, T11, T21, T43, T45, T53",
+      "ui_entry": "MainMenu / Boot Flow",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Launch, continue, retry bootstrap, or enter a run",
+      "system_response": "Show canonical startup path, valid continue behavior, and explicit startup failure recovery",
+      "empty_state": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
+      "failure_state": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
+      "completion_result": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "MainMenu",
+        "BootStatusPanel",
+        "ContinueGateDialog"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+        "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+        "Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
+        "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs"
+      ]
+    },
+    {
+      "bucket": "loop",
+      "screen_group": "Runtime HUD And Outcome Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Core Loop State And Outcome (T03, T07, T08, T09, T10, T18, T19, T23, T24, T44)",
+      "scope_task_ids": [
+        3,
+        7,
+        8,
+        9,
+        10,
+        18,
+        19,
+        23,
+        24,
+        44
+      ],
+      "scope_task_refs": "T03, T07, T08, T09, T10, T18, T19, T23, T24, T44",
+      "ui_entry": "HUD / Prompt / Outcome Surfaces",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Play a run, observe timing, rewards, prompts, and terminal transitions",
+      "system_response": "Render readable phase, timer, HP, reward, prompt, and win/lose state from runtime events",
+      "empty_state": "Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance.",
+      "failure_state": "Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance.",
+      "completion_result": "In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "RuntimeHud",
+        "OutcomePanel",
+        "RuntimePromptPanel"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+        "Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+        "Game.Core.Tests/Domain/GameEventContractsTests.cs",
+        "Tests.Godot/tests/Adapters/test_event_bus_adapter.gd"
+      ]
+    },
+    {
+      "bucket": "combat",
+      "screen_group": "Combat Pressure And Interaction Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Combat Pressure And Interaction (T04, T05, T06, T20, T22, T41, T42, T49, T51)",
+      "scope_task_ids": [
+        4,
+        5,
+        6,
+        20,
+        22,
+        41,
+        42,
+        49,
+        51
+      ],
+      "scope_task_refs": "T04, T05, T06, T20, T22, T41, T42, T49, T51",
+      "ui_entry": "Combat HUD / Pressure / Camera Feedback",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Fight, observe pressure, targeting, pathing, and camera responses",
+      "system_response": "Render enemy pressure, targeting, combat outcomes, and camera interaction without hidden state",
+      "empty_state": "ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail.",
+      "failure_state": "In valid constructed samples, `OfferLockSnapshot.rng_stream` equals `OfferProvenance.rng_stream`; any mismatch fails contract validation.",
+      "completion_result": "`OfferLockSnapshot` includes `stable_ids`, `display_order`, `provenance`, `rng_stream`, and `locked_at_save_point` semantics (implemented as `IsLockedAtSavePoint`), and `Provenance` remains intact through value-object round-trip serialization/deserialization.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "CombatHud",
+        "PressurePanel",
+        "CameraControlOverlay"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+        "Game.Core.Tests/Domain/RngStreamTypeTests.cs",
+        "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+        "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+      ]
+    },
+    {
+      "bucket": "economy",
+      "screen_group": "Economy And Progression Panels",
+      "matrix_link": "## 5. UI Wiring Matrix row Economy Build And Progression (T12, T13, T14, T15, T16, T17)",
+      "scope_task_ids": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "scope_task_refs": "T12, T13, T14, T15, T16, T17",
+      "ui_entry": "Resource / Build / Progression Panels",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Spend resources, place/build, train, upgrade, repair, or pick rewards",
+      "system_response": "Render deterministic resource, build, queue, upgrade, and progression changes with clear invalid-state feedback",
+      "empty_state": "Startup smoke must run the Godot project and verify all required autoloads load without startup errors; if any autoload fails to load or any startup error/fatal appears, acceptance must fail and stop further wiring checks.",
+      "failure_state": "保存仅允许写入 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且目标位置不得产生任何落盘文件。",
+      "completion_result": "xUnit must verify atomic commit behavior by writing to a temp file first and replacing the target as one commit outcome.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "ResourcePanel",
+        "BuildPanel",
+        "ProgressionPanel"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+        "Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+        "Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
+        "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+      ]
+    },
+    {
+      "bucket": "meta",
+      "screen_group": "Save, Settings, And Meta Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Meta Systems And Platform (T25, T26, T27, T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58)",
+      "scope_task_ids": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        46,
+        47,
+        48,
+        50,
+        52,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "scope_task_refs": "T25, T26, T27, T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58",
+      "ui_entry": "Settings / Save / Meta Surfaces",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Save, load, localize, tune audio, or inspect platform/runtime status",
+      "system_response": "Render persistence, localization, audio, performance, and platform status on governed player-visible surfaces",
+      "empty_state": "Task 25 acceptance must explicitly include ADR-0033 and ADR-0021 traceability; missing either ADR id fails acceptance.",
+      "failure_state": "Task 25 acceptance must explicitly include ADR-0033 and ADR-0021 traceability; missing either ADR id fails acceptance.",
+      "completion_result": "Task 25 acceptance must explicitly include ADR-0033 and ADR-0021 traceability; missing either ADR id fails acceptance.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "SettingsMenu",
+        "SavePanel",
+        "RunSummaryPanel"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+        "Tests.Godot/tests/Tasks/test_task0026_acceptance.gd",
+        "Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs",
+        "Game.Core.Tests/Tasks/Task0027AcceptanceTests.cs"
+      ]
+    },
+    {
+      "bucket": "governance",
+      "screen_group": "Config Audit And Migration Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Config Governance And Audit (T02, T31, T32, T33, T34, T35, T36, T37, T38, T39, T40)",
+      "scope_task_ids": [
+        2,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ],
+      "scope_task_refs": "T02, T31, T32, T33, T34, T35, T36, T37, T38, T39, T40",
+      "ui_entry": "Config Summary / Audit / Migration Surfaces",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Inspect config state, validation, governance, migration, and report metadata",
+      "system_response": "Render active config, schema status, fallback policy, migration status, and audit metadata without relying on logs-only evidence",
+      "empty_state": "Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance.",
+      "failure_state": "Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj.",
+      "completion_result": "Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "ConfigAuditPanel",
+        "MigrationStatusDialog",
+        "ReportMetadataPanel"
+      ],
+      "test_refs": [
+        "Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
+        "Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs",
+        "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+        "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+      ]
+    }
+  ]
+}
