@@ -4229,18 +4229,19 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Tasks/test_task0041_acceptance.gd",
-      "Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs"
+      "Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
     ],
     "acceptance": [
-      "The combat HUD displays the current decision-critical combat state during play, including difficulty, player HP, energy, draw pile count, discard pile count, and enemy intent. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
-      "After each player command attempt, the combat HUD shows a short player-visible outcome message for accepted commands and a short refusal message for rejected commands, without requiring engineering logs to understand the result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
-      "An invalid action, hover preview, or target inspection leaves deterministic combat state unchanged, including HP, energy, pile counts, turn state, enemy intent, and the selected command outcome. Refs: Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
-      "Combat explainability and command feedback remain observable through the existing combat scene bindings and TurnControls flow used by the combat UI. Refs: Tests.Godot/tests/Tasks/test_task0041_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "A Windows combat feedback smoke verifies that both accepted and rejected commands produce player-visible HUD feedback. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
-      "A Windows invalid-action smoke verifies that an invalid combat action does not mutate deterministic combat state. Refs: Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs"
+      "The combat HUD displays the current decision-critical combat state during play, including difficulty, player HP, energy, draw pile count, discard pile count, turn state, and enemy intent, and scene-binding tests assert rendered values (not only node existence). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "After each player command attempt, the combat HUD shows a short player-visible feedback message: for accepted commands it explains a concrete combat/resource result that matters to the player, and for rejected commands it explains the refusal reason, without requiring engineering logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "An invalid action leaves deterministic combat state unchanged, including HP, energy, pile counts, turn state, enemy intent, and selected command state, and still produces a short player-visible refusal message in the combat HUD. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "TurnControls command attempts propagate to the same combat HUD feedback channel, and tests assert concrete visible feedback text/state output instead of flow-only checks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "On Windows, one accepted and one rejected command both produce visible HUD feedback entries in order as a smoke check. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "Hover preview and target inspection do not replace the latest visible command feedback in Combat HUD scene flow. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs",
+      "After an accepted command, at least one decision-critical HUD field changes consistently with the command outcome (for example energy), and the updated value is player-visible in combat scene bindings. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For at least one accepted combat command, the combat HUD presents a result summary that is more specific than an accepted status alone and remains understandable without engineering logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Run a Windows combat feedback smoke and an invalid-action no-mutation regression test."

@@ -48,6 +48,11 @@ ui.character.not_open,not open
 ui.character.warrior.summary.rage_buff,Rage acts as a combat state buff that grows pressure over time.
 ui.character.warrior.summary.power_window,Heavy attack has a short power window where timing matters most.
 ui.character.warrior.summary.cost_burst,Rage drain is a cost that enables explosive burst damage.
+combat.feedback.accepted,Command '{0}' accepted.
+combat.feedback.refused,Command '{0}' refused.
+combat.feedback.refusal_reason.insufficient_energy,insufficient energy
+combat.feedback.refusal_reason.invalid_action,invalid action
+combat.feedback.refusal_reason.invalid_target,invalid target
 event.abyss_toll.title,Abyss Toll
 event.abyss_toll.description,Pay now and leave with a mark.
 event.option.lose_hp,Bleed for speed
@@ -74,6 +79,7 @@ card.warrior.overpower.name,Overpower
 card.warrior.battlecry.name,Battlecry
 card.warrior.crush.name,Crush
 card.warrior.relentless.name,Relentless
+intent.enemy.slash,Slash
 relic.name.ashen_hourglass,Ashen Hourglass
 relic.name.obsidian_mirror,Obsidian Mirror
 relic.name.blood_oath,Blood Oath
