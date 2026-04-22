@@ -659,6 +659,8 @@ class Chapter7UiWiringTests(unittest.TestCase):
         self.assertEqual(summary1["completed_master_tasks_count"], summary2["completed_master_tasks_count"])
         self.assertEqual(summary1["needed_wiring_features_count"], summary2["needed_wiring_features_count"])
         self.assertEqual(text1, text2)
+        self.assertTrue(text2.endswith("\n"))
+        self.assertFalse(text2.endswith("\n\n"))
 
     def test_self_check_should_include_write_doc_step_when_requested(self) -> None:
         run_module = _load_module("run_chapter7_ui_wiring_module_for_self_check", "scripts/python/run_chapter7_ui_wiring.py")
