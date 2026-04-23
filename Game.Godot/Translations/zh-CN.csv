@@ -79,3 +79,44 @@ ui.menu.continue_blocked.new_run,开始新游戏
 ui.menu.continue_blocked.cancel,取消
 ui.menu.continue_blocked.return_to_menu,返回菜单
 intent.enemy.slash,斩击
+ui.map.title,地图
+ui.map.hint,请选择下一条路线。
+ui.map.action.combat,战斗
+ui.map.action.event,事件
+ui.map.action.shop,商店
+ui.map.action.rest,休息
+reward.locked,奖励已锁定。
+rest.irreversible_upgrade,该升级不可逆。
+continue.blocked_state,当前状态下无法继续。
+combat.invalid_action,该战斗操作无效。
+shop.title,商店
+shop.service.buy,购买
+shop.service.remove,移除诅咒
+shop.service.reforge,重铸
+shop.leave,离开商店
+ui.shop.title,商店
+ui.reward.title,奖励
+ui.reward.card.1.name,奖励卡牌 1
+ui.reward.card.2.name,奖励卡牌 2
+ui.reward.card.3.name,奖励卡牌 3
+ui.reward.confirm,确认
+ui.reward.skip,跳过
+ui.reward.feedback.select_default,请选择一个奖励。
+ui.reward.feedback.selected,已选择奖励 {0}
+ui.reward.feedback.select_first,请先选择一个奖励。
+ui.reward.feedback.confirmed,奖励已确认。
+ui.reward.feedback.skipped,奖励已跳过。
+ui.rest.title,休息
+ui.rest.description,恢复并规划你的下一步。
+ui.rest.option.heal,治疗
+ui.rest.option.upgrade,升级
+ui.rest.option.remove_curse,移除诅咒
+ui.rest.feedback.upgrade_pending,升级等待确认。
+ui.rest.feedback.upgrade_confirmed,升级已确认。
+ui.rest.feedback.upgrade_cancelled,升级已取消。
+ui.rest.feedback.heal_resolved,治疗已完成。
+ui.rest.feedback.remove_curse_resolved,移除诅咒已完成。
+combat.turn.start,开始回合
+combat.turn.end,结束回合
+combat.turn.title,回合控制
+combat.intent.title,敌方意图

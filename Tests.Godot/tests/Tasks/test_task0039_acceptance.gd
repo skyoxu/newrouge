@@ -12,6 +12,7 @@ const MAIN_MENU_SCENE_RESOURCE := "res://Game.Godot/Scenes/UI/MainMenu.tscn"
 const MAIN_MENU_SCENE_FILE := "res://../Game.Godot/Scenes/UI/MainMenu.tscn"
 const CHARACTER_SELECT_SCENE_RESOURCE := "res://Game.Godot/Scenes/UI/CharacterSelect.tscn"
 const DIFFICULTY_SELECT_SCENE_RESOURCE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
+const EVENT_SCENE_RESOURCE := "res://Game.Godot/Scenes/Event.tscn"
 const MAIN_MENU_SCRIPT_FILE := "res://../Game.Godot/Scripts/UI/MainMenu.cs"
 const EVENT_SCENE_SCRIPT_FILE := "res://../Game.Godot/Scripts/UI/EventScene.cs"
 const CHARACTER_SELECT_SCRIPT_FILE := "res://../Game.Godot/Scripts/UI/CharacterSelect.cs"
@@ -436,11 +437,11 @@ func test_runtime_visible_text_refuses_hardcoded_literals() -> void:
     var ds_violations := _collect_runtime_visible_literal_violations(ds_runtime_texts, allowed_values)
     assert_that(ds_violations).is_empty()
 
-    var event_scene := EventScene.new()
+    var event_scene = preload(EVENT_SCENE_RESOURCE).instantiate()
     add_child(auto_free(event_scene))
-    event_scene.EnterEventForTest()
-    var event_options: Array = event_scene.GetOptionViewsForTest()
-    var event_visible_texts: Array = [event_scene.GetEventTitleForTest(), event_scene.GetEventDescriptionForTest()]
+    event_scene.call("EnterEventForTest")
+    var event_options: Array = event_scene.call("GetOptionViewsForTest")
+    var event_visible_texts: Array = [str(event_scene.call("GetEventTitleForTest")), str(event_scene.call("GetEventDescriptionForTest"))]
     for option in event_options:
         event_visible_texts.append(str(option.get("text", "")))
     var event_violations := _collect_runtime_visible_literal_violations(event_visible_texts, allowed_values)

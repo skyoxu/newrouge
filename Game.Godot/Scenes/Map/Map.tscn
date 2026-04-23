@@ -1,6 +1,15 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
 
-[node name="MapRoot" type="Node"]
+[ext_resource type="Script" path="res://Game.Godot/Scripts/UI/MapScene.cs" id="1"]
+
+[node name="MapRoot" type="Control"]
+script = ExtResource("1")
+
+[node name="title_label" type="Label" parent="."]
+text = "ui.map.title"
+
+[node name="hint_label" type="Label" parent="."]
+text = "ui.map.hint"
 
 [node name="combat_icon" type="Node" parent="."]
 groups = ["map_node_combat"]
@@ -13,3 +22,17 @@ groups = ["map_node_shop"]
 
 [node name="rest_icon" type="Node" parent="."]
 groups = ["map_node_rest"]
+
+[node name="ActionRow" type="HBoxContainer" parent="."]
+
+[node name="btn_combat" type="Button" parent="ActionRow"]
+text = "Combat"
+
+[node name="btn_event" type="Button" parent="ActionRow"]
+text = "Event"
+
+[node name="btn_shop" type="Button" parent="ActionRow"]
+text = "Shop"
+
+[node name="btn_rest" type="Button" parent="ActionRow"]
+text = "Rest"

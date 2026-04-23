@@ -1,0 +1,21 @@
+# task-65-chapter6-residual-followup
+
+- Title: task-65-chapter6-residual-followup
+- Status: active
+- Branch: task/T65
+- Git Head: 26b75c2d55147ec90320c6c6f8c9f87f808266af
+- Goal: Track non-blocking residual findings after Task 65 P0/P1 closure.
+- Scope: P2 only - ACC:T65.5 currently validates hard-coded ADR/CH constants instead of reading real acceptance evidence artifacts.
+- Current step: Residual logged; defer to backlog batch instead of continuing chapter-6 rerun loops for Task 65.
+- Last completed step: Cleared all Task 65 P0/P1 findings in run `cff8c4479aa540728b7fb6971361a54b`.
+- Stop-loss: Do not reopen 6.7/6.8 for Task 65 unless new changes explicitly target ACC:T65.5 evidence-chain implementation.
+- Next action: Implement artifact-backed ACC:T65.5 validation in a backlog batch and rerun targeted acceptance checks.
+- Recovery command: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-23/sc-review-pipeline-task-65/latest.json`
+- Open questions: none
+- Exit criteria: Security reviewer no longer reports ACC:T65.5 weak-test P2.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-23-task-65-chapter6-residual-needs-fix.md`
+- Related task id(s): `65`
+- Related run id: `cff8c4479aa540728b7fb6971361a54b`
+- Related latest.json: `logs/ci/2026-04-23/sc-review-pipeline-task-65/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-23/sc-review-pipeline-task-65-cff8c4479aa540728b7fb6971361a54b`

@@ -1,0 +1,21 @@
+# task-65-chapter6-residual-needs-fix
+
+- Title: task-65-chapter6-residual-needs-fix
+- Date: 2026-04-23
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T65
+- Git Head: 26b75c2d55147ec90320c6c6f8c9f87f808266af
+- Why now: Task 65 fast-ship loop has no remaining P0/P1 findings, but reviewer still reports a P2 weak-test item.
+- Context: `review-security-auditor.md` (run `cff8c4479aa540728b7fb6971361a54b`) reports only one P2 item: ACC:T65.5 currently validates hard-coded ADR/CH arrays instead of task artifacts.
+- Decision: Keep Task 65 closed for P0/P1 scope; record the P2 residual as backlog follow-up and avoid reopening heavy reruns for this task.
+- Consequences: Chapter 6 closure for urgent findings is complete; residual quality debt stays explicit with evidence pointers.
+- Recovery impact: Recovery should not reopen full reruns for Task 65 unless new changes target ACC:T65.5 evidence-chain validation.
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-23/sc-review-pipeline-task-65/latest.json
+- Related ADRs: none yet
+- Related execution plans: `execution-plans/2026-04-23-task-65-chapter6-residual-followup.md`
+- Related task id(s): `65`
+- Related run id: `cff8c4479aa540728b7fb6971361a54b`
+- Related latest.json: `logs/ci/2026-04-23/sc-review-pipeline-task-65/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-23/sc-review-pipeline-task-65-cff8c4479aa540728b7fb6971361a54b`

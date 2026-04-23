@@ -168,6 +168,25 @@ public partial class MainMenu : Control
         LocalizeVisibleText();
     }
 
+    public bool InvokePrimaryActionForTest(string actionId)
+    {
+        var normalized = actionId?.Trim().ToLowerInvariant() ?? string.Empty;
+        switch (normalized)
+        {
+            case "new_run":
+                OnNewRunPressed();
+                return true;
+            case "continue":
+                OnContinuePressed();
+                return true;
+            case "quit":
+                OnQuitPressed();
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void LocalizeVisibleText()
     {
         _btnNewRun.Text = ResolveVisibleText("ui.menu.new_run");
@@ -523,13 +542,20 @@ public partial class MainMenu : Control
 
     private static string BuildContinueBlockedMessage(ContinueLoadValidationResult validation)
     {
-        var baseMessage = validation.ErrorCode switch
+        var blockedStatePrefix = ResolveVisibleText("continue.blocked_state");
+        if (string.IsNullOrWhiteSpace(blockedStatePrefix) || string.Equals(blockedStatePrefix, "continue.blocked_state", StringComparison.Ordinal))
         {
-            "missing_save" => "Continue is unavailable because no save was found.",
-            "migration_failed" => "Continue is unavailable because save migration failed. Start a new run or return to the menu; mid-combat resume is not supported.",
-            _ => "Continue is unavailable because save integrity validation failed. Start a new run or return to the menu."
+            blockedStatePrefix = "Continue is currently blocked.";
+        }
+
+        var reasonMessage = validation.ErrorCode switch
+        {
+            "missing_save" => "No save was found.",
+            "migration_failed" => "Save migration failed. Start a new run or return to the menu; mid-combat resume is not supported.",
+            _ => "Save integrity validation failed. Start a new run or return to the menu."
         };
 
+        var baseMessage = $"{blockedStatePrefix} {reasonMessage}".Trim();
         if (!string.IsNullOrWhiteSpace(validation.ErrorMessage)
             && !baseMessage.Contains(validation.ErrorMessage, StringComparison.OrdinalIgnoreCase))
         {

@@ -32,6 +32,7 @@ public partial class CharacterSelect : Control
     private Button _btnWarrior = default!;
     private Button _btnMage = default!;
     private Button _btnRogue = default!;
+    private Label _lblTitle = default!;
     private Label _lblMageLock = default!;
     private Label _lblRogueLock = default!;
     private Label _lblWarriorState = default!;
@@ -46,6 +47,7 @@ public partial class CharacterSelect : Control
         _btnWarrior = GetNode<Button>("VBox/CharacterRow/WarriorPanel/BtnWarrior");
         _btnMage = GetNode<Button>("VBox/CharacterRow/MagePanel/BtnMage");
         _btnRogue = GetNode<Button>("VBox/CharacterRow/RoguePanel/BtnRogue");
+        _lblTitle = GetNode<Label>("VBox/LblTitle");
         _lblMageLock = GetNode<Label>("VBox/CharacterRow/MagePanel/LblMageLock");
         _lblRogueLock = GetNode<Label>("VBox/CharacterRow/RoguePanel/LblRogueLock");
         _lblWarriorState = GetNode<Label>("VBox/CharacterRow/WarriorPanel/LblWarriorState");
@@ -187,6 +189,7 @@ public partial class CharacterSelect : Control
 
         _lastLocale = locale;
 
+        _lblTitle.Text = ResolveVisibleText("ui.character.select.title");
         _btnWarrior.Text = ResolveVisibleText("ui.character.warrior");
         _btnMage.Text = ResolveVisibleText("ui.character.mage");
         _btnRogue.Text = ResolveVisibleText("ui.character.rogue");
