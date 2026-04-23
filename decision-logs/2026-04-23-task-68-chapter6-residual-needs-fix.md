@@ -1,0 +1,24 @@
+# task-68-chapter6-residual-needs-fix
+
+- Title: task-68-chapter6-residual-needs-fix
+- Date: 2026-04-23
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T65
+- Git Head: 26b75c2d55147ec90320c6c6f8c9f87f808266af
+- Why now: Chapter 6 route keeps returning `preferred_lane=record-residual` after fast-ship closes P0/P1 scope.
+- Context: Latest reviewer outputs on run `d8adbcdb0e58450680923bd5beeb5b04` indicate no P0/P1 findings; only P2 residuals remain.
+- Residual findings:
+  - P2: Controller invocation evidence still uses the same `ui_accept` action path as keyboard; no controller-specific input path proof.
+  - P2: Deterministic gate binding is still partly model-level and not fully tied to real gate artifacts.
+- Decision: Stop the fast-ship closure loop for Task 68 at P1 boundary and carry forward only the P2 residuals.
+- Consequences: Task 68 can be treated as complete for fast-ship P1 quality gate; P2 items move to follow-up backlog.
+- Recovery impact: Future recovery should not reopen 6.7/6.8 unless the next change explicitly targets the two P2 anchors above.
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-23/sc-review-pipeline-task-68/latest.json
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-04-23-task-68-chapter6-residual-followup.md
+- Related task id(s): `68`
+- Related run id: `d8adbcdb0e58450680923bd5beeb5b04`
+- Related latest.json: `logs/ci/2026-04-23/sc-review-pipeline-task-68/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-23/sc-review-pipeline-task-68-d8adbcdb0e58450680923bd5beeb5b04`

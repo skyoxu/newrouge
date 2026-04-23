@@ -61,10 +61,10 @@ public partial class CombatScene : Control
 
         _startTurnButton.Pressed += OnStartTurnPressed;
         _endTurnButton.Pressed += OnEndTurnPressed;
-        _startTurnButton.Text = Tr("combat.turn.start");
-        _endTurnButton.Text = Tr("combat.turn.end");
-        _turnTitleLabel.Text = Tr("combat.turn.title");
-        _enemyIntentTitleLabel.Text = Tr("combat.intent.title");
+        _startTurnButton.Text = ResolveUiText("combat.turn.start");
+        _endTurnButton.Text = ResolveUiText("combat.turn.end");
+        _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
+        _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
         _feedbackMessageLabel.Text = string.Empty;
     }
 
@@ -173,7 +173,7 @@ public partial class CombatScene : Control
     {
         if (actionName != "start_turn" && actionName != "end_turn")
         {
-            AppendCommandFeedback(actionName, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_action");
+            AppendCommandFeedback(actionName, accepted: false, refusalReasonKey: "combat.invalid_action");
             return false;
         }
 
@@ -295,6 +295,14 @@ public partial class CombatScene : Control
     public string GetEndTurnButtonTextForTest()
     {
         return _endTurnButton.Text;
+    }
+
+    public void RefreshLocaleForTest()
+    {
+        _startTurnButton.Text = ResolveUiText("combat.turn.start");
+        _endTurnButton.Text = ResolveUiText("combat.turn.end");
+        _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
+        _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
     }
 
     public bool TryApplyEnemyIntentPreviewContractJson(string intentJson)
@@ -486,11 +494,32 @@ public partial class CombatScene : Control
             {
                 "combat.feedback.refusal_reason.insufficient_energy" => "insufficient energy",
                 "combat.feedback.refusal_reason.invalid_target" => "invalid target",
+                "combat.invalid_action" => "invalid action",
                 _ => "invalid action",
             };
         }
 
         return mapped.Trim().TrimEnd('.', '。');
+    }
+
+    private static string ResolveUiText(string localizationKey)
+    {
+        var resolved = ResolveFeedbackTemplate(localizationKey);
+        if (!string.Equals(resolved, localizationKey, StringComparison.Ordinal))
+        {
+            return resolved;
+        }
+
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var isZh = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+        return localizationKey switch
+        {
+            "combat.turn.start" => isZh ? "开始回合" : "Start Turn",
+            "combat.turn.end" => isZh ? "结束回合" : "End Turn",
+            "combat.turn.title" => isZh ? "当前回合" : "Current Turn",
+            "combat.intent.title" => isZh ? "敌方意图" : "Enemy Intent",
+            _ => localizationKey,
+        };
     }
 
     private static string ResolveFeedbackTemplate(string localizationKey)

@@ -76,6 +76,7 @@ public partial class EventScene : Control
     private static int _persistedHp = 20;
     private static readonly List<string> _persistedDeckCards = new();
     private static bool _persistedStateInitialized;
+    private static readonly Dictionary<string, Dictionary<string, string>> TextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
 
     public override void _Ready()
     {
@@ -352,7 +353,90 @@ public partial class EventScene : Control
     private static string ResolveText(string key)
     {
         var localized = TranslationServer.Translate(key);
-        return string.Equals(localized, key, StringComparison.Ordinal) ? key : localized;
+        if (!string.Equals(localized, key, StringComparison.Ordinal))
+        {
+            return localized;
+        }
+
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var map = GetTextMap(locale);
+        if (map.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (!string.Equals(locale, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            var fallback = GetTextMap("en");
+            if (fallback.TryGetValue(key, out var fallbackValue) && !string.IsNullOrWhiteSpace(fallbackValue))
+            {
+                return fallbackValue;
+            }
+        }
+
+        return key;
+    }
+
+    private static Dictionary<string, string> GetTextMap(string locale)
+    {
+        if (TextMapsByLocale.TryGetValue(locale, out var cached))
+        {
+            return cached;
+        }
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? "res://Game.Godot/Translations/zh-CN.csv"
+            : "res://Game.Godot/Translations/en.csv";
+
+        if (!global::Godot.FileAccess.FileExists(path))
+        {
+            TextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        using var file = global::Godot.FileAccess.Open(path, global::Godot.FileAccess.ModeFlags.Read);
+        if (file is null)
+        {
+            TextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        var raw = file.GetAsText();
+        foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("key,value", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var sep = trimmed.IndexOf(',');
+            if (sep <= 0 || sep >= trimmed.Length - 1)
+            {
+                continue;
+            }
+
+            var mapKey = trimmed[..sep].Trim();
+            var mapValue = trimmed[(sep + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(mapKey) && !string.IsNullOrWhiteSpace(mapValue))
+            {
+                map[mapKey] = mapValue;
+            }
+        }
+
+        TextMapsByLocale[locale] = map;
+        return map;
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
     }
 
     private void RenderCommittedFeedback(EventOption option)

@@ -21,6 +21,7 @@ public partial class ShopScene : Control
     }
 
     private ItemList _offerList = default!;
+    private Label _titleLabel = default!;
     private Button _buyButton = default!;
     private Label _goldValueLabel = default!;
     private Label _ownedOutcomeLabel = default!;
@@ -36,6 +37,7 @@ public partial class ShopScene : Control
     private readonly HashSet<string> _reforgeTargets = new(StringComparer.Ordinal);
     private readonly List<string> _failureReasons = new();
     private readonly List<string> _visibleOfferIds = new();
+    private static readonly Dictionary<string, Dictionary<string, string>> TextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private Node? _mainController;
     private string _lastRemovedCardId = string.Empty;
     private string _lastReforgedOfferId = string.Empty;
@@ -46,6 +48,7 @@ public partial class ShopScene : Control
     public override void _Ready()
     {
         _offerList = GetNode<ItemList>("VBox/OfferList");
+        _titleLabel = GetNode<Label>("VBox/TitleLabel");
         _buyButton = GetNode<Button>("VBox/ServicesRow/BuyButton");
         _goldValueLabel = GetNode<Label>("VBox/GoldValueLabel");
         _ownedOutcomeLabel = GetNode<Label>("VBox/OwnedOutcomeLabel");
@@ -62,6 +65,7 @@ public partial class ShopScene : Control
         _reforgeButton.Pressed += OnReforgePressed;
         _leaveButton.Pressed += OnLeavePressed;
         _mainController = ResolveMainController();
+        LocalizeVisibleText();
         TryLoadRouteOwnedState();
         RefreshUi();
     }
@@ -219,6 +223,11 @@ public partial class ShopScene : Control
     public string GetVisibleFailureReasonForTest()
     {
         return _failureReasonLabel.Text ?? string.Empty;
+    }
+
+    public void RefreshLocaleForTest()
+    {
+        LocalizeVisibleText();
     }
 
     public global::Godot.Collections.Dictionary PurchaseOfferForTest(string offerId)
@@ -415,6 +424,109 @@ public partial class ShopScene : Control
         _removedOutcomeLabel.Text = string.IsNullOrWhiteSpace(_removedOutcomeLabel.Text)
             ? "removed"
             : _removedOutcomeLabel.Text;
+    }
+
+    private void LocalizeVisibleText()
+    {
+        _titleLabel.Text = ResolveUiText("shop.title");
+        _buyButton.Text = ResolveUiText("shop.service.buy");
+        _removeButton.Text = ResolveUiText("shop.service.remove");
+        _reforgeButton.Text = ResolveUiText("shop.service.reforge");
+        _leaveButton.Text = ResolveUiText("shop.leave");
+    }
+
+    private static string ResolveUiText(string localizationKey)
+    {
+        if (string.IsNullOrWhiteSpace(localizationKey))
+        {
+            return string.Empty;
+        }
+
+        var localized = TranslationServer.Translate(localizationKey);
+        if (!string.Equals(localized, localizationKey, StringComparison.Ordinal))
+        {
+            return localized;
+        }
+
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var map = GetTextMap(locale);
+        if (map.TryGetValue(localizationKey, out var value) && !string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (!string.Equals(locale, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            var fallback = GetTextMap("en");
+            if (fallback.TryGetValue(localizationKey, out var fallbackValue) && !string.IsNullOrWhiteSpace(fallbackValue))
+            {
+                return fallbackValue;
+            }
+        }
+
+        return localizationKey;
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
+    }
+
+    private static Dictionary<string, string> GetTextMap(string locale)
+    {
+        if (TextMapsByLocale.TryGetValue(locale, out var cached))
+        {
+            return cached;
+        }
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? "res://Game.Godot/Translations/zh-CN.csv"
+            : "res://Game.Godot/Translations/en.csv";
+
+        if (!FileAccess.FileExists(path))
+        {
+            TextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+        if (file is null)
+        {
+            TextMapsByLocale[locale] = map;
+            return map;
+        }
+
+        var raw = file.GetAsText();
+        foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("key,value", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var separator = trimmed.IndexOf(',');
+            if (separator <= 0 || separator >= trimmed.Length - 1)
+            {
+                continue;
+            }
+
+            var key = trimmed[..separator].Trim();
+            var value = trimmed[(separator + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
+            {
+                map[key] = value;
+            }
+        }
+
+        TextMapsByLocale[locale] = map;
+        return map;
     }
 
     private Node? ResolveMainController()

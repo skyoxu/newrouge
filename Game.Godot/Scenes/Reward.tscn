@@ -18,34 +18,34 @@ size_flags_vertical = 4
 
 [node name="Title" type="Label" parent="VBox"]
 layout_mode = 2
-text = "Reward"
+text = "ui.reward.title"
 
 [node name="CardList" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
 
 [node name="Card1" type="Label" parent="VBox/CardList"]
 layout_mode = 2
-text = "Reward Card 1"
+text = "ui.reward.card.1.name"
 
 [node name="Card2" type="Label" parent="VBox/CardList"]
 layout_mode = 2
-text = "Reward Card 2"
+text = "ui.reward.card.2.name"
 
 [node name="Card3" type="Label" parent="VBox/CardList"]
 layout_mode = 2
-text = "Reward Card 3"
+text = "ui.reward.card.3.name"
 
 [node name="Actions" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
 [node name="ConfirmButton" type="Button" parent="VBox/Actions"]
 layout_mode = 2
-text = "Confirm"
+text = "ui.reward.confirm"
 
 [node name="SkipButton" type="Button" parent="VBox/Actions"]
 layout_mode = 2
-text = "Skip"
+text = "ui.reward.skip"
 
 [node name="Feedback" type="Label" parent="VBox"]
 layout_mode = 2
-text = "Select a reward."
+text = "ui.reward.feedback.select_default"

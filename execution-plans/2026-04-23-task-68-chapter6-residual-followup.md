@@ -1,0 +1,23 @@
+# task-68-chapter6-residual-followup
+
+- Title: task-68-chapter6-residual-followup
+- Status: active
+- Branch: task/T65
+- Git Head: 26b75c2d55147ec90320c6c6f8c9f87f808266af
+- Goal: Close remaining P2 reviewer findings for Task 68 after fast-ship P1 closure.
+- Scope:
+  - Add controller-specific invocation evidence (joypad event path or explicit gamepad action map).
+  - Bind ACC:T68.5 verification to real deterministic gate artifacts (not only model-level checks).
+- Current step: Residual recorded from run `d8adbcdb0e58450680923bd5beeb5b04` after confirming P0/P1 are clear.
+- Last completed step: Re-ran Task 68 review pipeline with `--fork` and validated latest reviewer output.
+- Stop-loss: Do not rerun full 6.7 while failure family remains unchanged and no new anchor-targeting edits exist.
+- Next action: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-23/sc-review-pipeline-task-68/latest.json
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 68 --fork`
+- Open questions: none
+- Exit criteria: Task 68 reviewer output has no P2 on the two anchors above, or a superseding run records justified deferment.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-23-task-68-chapter6-residual-needs-fix.md`
+- Related task id(s): `68`
+- Related run id: `d8adbcdb0e58450680923bd5beeb5b04`
+- Related latest.json: `logs/ci/2026-04-23/sc-review-pipeline-task-68/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-23/sc-review-pipeline-task-68-d8adbcdb0e58450680923bd5beeb5b04`

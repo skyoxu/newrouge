@@ -4303,10 +4303,9 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Tests.Godot/tests/Tasks/test_task0023_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs",
       "Tests.Godot/tests/Tasks/test_task0039_acceptance.gd",
-      "Tests.Godot/tests/UI/test_reward_ui_translations.gd",
-      "Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs"
+      "Tests.Godot/tests/UI/test_reward_ui_translations.gd"
     ],
     "acceptance": [
       "A Windows M1 visible-text flow smoke must open MainMenu, DifficultySelect, CharacterSelect, Map, Combat, Reward, Shop, Rest, and Event surfaces and fail if any player-visible text is empty or echoes a raw translation key. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0065AcceptanceTests.cs",
@@ -4502,11 +4501,11 @@
     ],
     "owner": "gameplay",
     "test_refs": [
+      "Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd",
       "Tests.Godot/tests/UI/A11y/test_button_invokable.gd",
       "Tests.Godot/tests/UI/A11y/test_focus_cycle.gd",
-      "Tests.Godot/tests/UI/A11y/test_visible_labels.gd",
-      "Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd",
-      "Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs"
+      "Game.Core.Tests/Tasks/Task0068AcceptanceTests.cs",
+      "Tests.Godot/tests/UI/A11y/test_visible_labels.gd"
     ],
     "acceptance": [
       "M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces must expose primary actions that can be invoked by keyboard and controller input. Refs: Tests.Godot/tests/Integration/test_m1_ui_focus_accessibility.gd Tests.Godot/tests/UI/A11y/test_button_invokable.gd",

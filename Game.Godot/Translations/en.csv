@@ -100,3 +100,44 @@ relic.name.thorn_crown,Thorn Crown
 relic.name.umbral_shard,Umbral Shard
 relic.name.vigilant_emblem,Vigilant Emblem
 relic.name.warden_mark,Warden Mark
+ui.map.title,Map
+ui.map.hint,Choose your next route.
+ui.map.action.combat,Combat
+ui.map.action.event,Event
+ui.map.action.shop,Shop
+ui.map.action.rest,Rest
+reward.locked,Reward is locked.
+rest.irreversible_upgrade,This upgrade is irreversible.
+continue.blocked_state,Continue is currently blocked.
+combat.invalid_action,That action is invalid.
+shop.title,Shop
+shop.service.buy,Buy
+shop.service.remove,Remove Curse
+shop.service.reforge,Reforge
+shop.leave,Leave Shop
+ui.shop.title,Shop
+ui.reward.title,Reward
+ui.reward.card.1.name,Reward Card 1
+ui.reward.card.2.name,Reward Card 2
+ui.reward.card.3.name,Reward Card 3
+ui.reward.confirm,Confirm
+ui.reward.skip,Skip
+ui.reward.feedback.select_default,Select a reward.
+ui.reward.feedback.selected,Selected reward {0}
+ui.reward.feedback.select_first,Select a reward first.
+ui.reward.feedback.confirmed,Reward confirmed.
+ui.reward.feedback.skipped,Reward skipped.
+ui.rest.title,Rest
+ui.rest.description,Recover and plan your next move.
+ui.rest.option.heal,Heal
+ui.rest.option.upgrade,Upgrade
+ui.rest.option.remove_curse,Remove Curse
+ui.rest.feedback.upgrade_pending,Upgrade pending confirmation.
+ui.rest.feedback.upgrade_confirmed,Upgrade confirmed.
+ui.rest.feedback.upgrade_cancelled,Upgrade cancelled.
+ui.rest.feedback.heal_resolved,heal resolved.
+ui.rest.feedback.remove_curse_resolved,remove_curse resolved.
+combat.turn.start,Start Turn
+combat.turn.end,End Turn
+combat.turn.title,Turn Control
+combat.intent.title,Enemy Intent
