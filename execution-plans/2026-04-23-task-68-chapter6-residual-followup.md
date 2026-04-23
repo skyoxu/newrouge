@@ -5,7 +5,7 @@
 - Branch: task/T65
 - Git Head: 26b75c2d55147ec90320c6c6f8c9f87f808266af
 - Goal: Close remaining P2 reviewer findings for Task 68 after fast-ship P1 closure.
-- Scope:
+- Scope: P2 residual only - controller-specific invocation evidence and deterministic gate artifact binding for ACC:T68.1/T68.5.
   - Add controller-specific invocation evidence (joypad event path or explicit gamepad action map).
   - Bind ACC:T68.5 verification to real deterministic gate artifacts (not only model-level checks).
 - Current step: Residual recorded from run `d8adbcdb0e58450680923bd5beeb5b04` after confirming P0/P1 are clear.
