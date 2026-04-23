@@ -141,3 +141,81 @@ combat.turn.start,Start Turn
 combat.turn.end,End Turn
 combat.turn.title,Turn Control
 combat.intent.title,Enemy Intent
+act.1.name,Act 1 - Broken Road
+deck.warrior.m1.starting.name,Warrior Starting Deck
+card.warrior.strike.name,Strike
+card.warrior.strike.description,Deal 6 damage.
+card.warrior.strike.u1a.name,Strike+
+card.warrior.strike.u1a.description,Deal 9 damage.
+card.warrior.strike.u1b.name,Raging Strike
+card.warrior.strike.u1b.description,Deal 7 damage. Gain 1 Rage.
+card.warrior.defend.name,Defend
+card.warrior.defend.description,Gain 5 block.
+card.warrior.defend.u1a.name,Defend+
+card.warrior.defend.u1a.description,Gain 8 block.
+card.warrior.defend.u1b.name,Braced Defend
+card.warrior.defend.u1b.description,Gain 6 block. Gain 1 Rage.
+card.warrior.battle_focus.name,Battle Focus
+card.warrior.battle_focus.description,Gain 2 Rage. Draw 1 card.
+card.warrior.heavy_strike.name,Heavy Strike
+card.warrior.heavy_strike.description,Deal 12 damage.
+card.warrior.iron_wave.name,Iron Wave
+card.warrior.iron_wave.description,Deal 5 damage. Gain 5 block.
+card.warrior.cleave.description,Deal 7 damage to all enemies.
+card.warrior.power_through.name,Power Through
+card.warrior.power_through.description,Gain 10 block. Add a Doubt to your discard pile.
+curse.doubt.name,Doubt
+curse.doubt.description,Unplayable. Clutters your draw until removed.
+enemy.act1.slime_scout.name,Slime Scout
+enemy.act1.moss_rat.name,Moss Rat
+enemy.act1.bandit_enforcer.name,Bandit Enforcer
+enemy.act1.ruin_warden.name,Ruin Warden
+relic.description.ashen_hourglass,Gain extra energy at the start of combat in this placeholder M1 build.
+relic.description.rusted_compass,Preview one more map route in this placeholder M1 build.
+relic.description.twilight_coin,Shop prices are slightly lower in this placeholder M1 build.
+relic.description.oaken_talisman,Gain a small amount of max HP.
+relic.description.raven_feather,Curse removal costs less.
+event.forgotten_cache.title,Forgotten Cache
+event.forgotten_cache.description,A cracked chest sits beside the road.
+event.option.take_gold,Take the gold
+event.option.leave,Leave it
+event.preview.take_gold,Gold +30
+event.preview.leave,No change
+event.feedback.summary.take_gold,You gain 30 gold.
+event.feedback.summary.leave,You leave the cache untouched.
+event.feedback.numeric.take_gold,Gold +30
+event.feedback.numeric.leave,Gold +0
+shop.feedback.insufficient_gold,Not enough gold.
+shop.feedback.offer_taken,That offer is already taken.
+shop.feedback.invalid_offer,That shop offer is unavailable.
+effect.turn_start_plus_energy,Start combat with extra energy.
+effect.map_preview_plus_one,Preview one more map route.
+effect.shop_discount_small,Reduce shop prices slightly.
+effect.max_hp_plus_small,Gain a small amount of max HP.
+effect.curse_remove_discount,Reduce curse removal costs.
+ui.map.feedback.ready,Select a visible route to continue.
+ui.map.feedback.locked_node,Route {0} is locked.
+ui.map.feedback.invalid_branch,Route {0} is not available from here.
+ui.map.feedback.completed_node,Node {0} is already completed.
+ui.map.feedback.returned_to_map,Returned to the map from {0}.
+ui.map.feedback.missing_content,Route {0} is missing required content.
+shop.feedback.invalid_card,That card cannot be removed.
+shop.feedback.card_not_removable,That card is not removable here.
+shop.feedback.not_reforge_target,That offer cannot be reforged.
+shop.feedback.already_left,You already left this shop.
+shop.feedback.route_missing,Shop exit route is unavailable.
+shop.feedback.route_failed,Shop exit failed. Try returning to the map.
+shop.feedback.purchase_result,Purchased: {0}.
+shop.feedback.no_purchase,No purchase yet.
+shop.feedback.remove_result,Removed curse: {0}.
+shop.feedback.no_removal,No curse removed yet.
+shop.feedback.reforge_result,Reforged offer: {0}.
+shop.feedback.leave_route,Leaving shop. Return to the map.
+ui.rest.feedback.missing_target,Choose a valid card or curse target first.
+ui.rest.feedback.return_route,Rest complete. Return to the map.
+ui.run.summary.outcome,Outcome
+ui.run.summary.node_progress,Node Progress
+ui.run.summary.reason,Reason
+ui.fallback.missing_config,Required configuration is missing.
+ui.fallback.missing_content,Required content is missing.
+ui.fallback.translation_missing,Text is unavailable in this language.

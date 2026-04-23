@@ -210,12 +210,6 @@ public partial class CharacterSelect : Control
             return string.Empty;
         }
 
-        var localized = TranslationServer.Translate(keyOrText);
-        if (!string.Equals(localized, keyOrText, StringComparison.Ordinal))
-        {
-            return localized;
-        }
-
         var locale = NormalizeLocale(TranslationServer.GetLocale());
         var map = GetTextMap(locale);
         if (map.TryGetValue(keyOrText, out var value) && !string.IsNullOrWhiteSpace(value))
@@ -232,7 +226,8 @@ public partial class CharacterSelect : Control
             }
         }
 
-        return keyOrText;
+        var localized = TranslationServer.Translate(keyOrText);
+        return string.Equals(localized, keyOrText, StringComparison.Ordinal) ? keyOrText : localized;
     }
 
     private static Dictionary<string, string> GetTextMap(string locale)
@@ -243,24 +238,33 @@ public partial class CharacterSelect : Control
         }
 
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
-            ? "res://Game.Godot/Translations/zh-CN.csv"
-            : "res://Game.Godot/Translations/en.csv";
+        var candidatePaths = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "res://Game.Godot/Translations/zh-CN.csv", "res://../Game.Godot/Translations/zh-CN.csv" }
+            : new[] { "res://Game.Godot/Translations/en.csv", "res://../Game.Godot/Translations/en.csv" };
 
-        if (!FileAccess.FileExists(path))
+        string raw = string.Empty;
+        foreach (var candidatePath in candidatePaths)
+        {
+            if (!FileAccess.FileExists(candidatePath))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(candidatePath, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            raw = file.GetAsText();
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
         {
             TextMapsByLocale[locale] = map;
             return map;
         }
-
-        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-        if (file is null)
-        {
-            TextMapsByLocale[locale] = map;
-            return map;
-        }
-
-        var raw = file.GetAsText();
         var lines = raw.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         foreach (var rawLine in lines)
         {

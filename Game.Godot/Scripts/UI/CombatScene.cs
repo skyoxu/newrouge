@@ -435,7 +435,8 @@ public partial class CombatScene : Control
             var reasonText = ResolveRefusalReasonText(normalizedCommand, refusalReasonKey);
             if (!string.IsNullOrWhiteSpace(reasonText))
             {
-                message = $"{message.TrimEnd('.', '。')}: {reasonText}.";
+                var separator = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "：" : ": ";
+                message = $"{message.TrimEnd('.', '。')}{separator}{reasonText}";
             }
         }
 
@@ -499,7 +500,7 @@ public partial class CombatScene : Control
             };
         }
 
-        return mapped.Trim().TrimEnd('.', '。');
+        return mapped.Trim();
     }
 
     private static string ResolveUiText(string localizationKey)

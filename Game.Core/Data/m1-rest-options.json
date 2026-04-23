@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "rest_sites": [
+    {
+      "id": "rest.act1.m1",
+      "title_key": "ui.rest.title",
+      "description_key": "ui.rest.description",
+      "options": [
+        {
+          "id": "heal",
+          "label_key": "ui.rest.option.heal",
+          "feedback_key": "ui.rest.feedback.heal_resolved",
+          "effect": {
+            "type": "heal",
+            "amount": 20
+          }
+        },
+        {
+          "id": "upgrade",
+          "label_key": "ui.rest.option.upgrade",
+          "confirm_key": "rest.irreversible_upgrade",
+          "feedback_key": "ui.rest.feedback.upgrade_confirmed",
+          "effect": {
+            "type": "upgrade_card",
+            "requires_card_target": true,
+            "irreversible": true
+          }
+        },
+        {
+          "id": "remove_curse",
+          "label_key": "ui.rest.option.remove_curse",
+          "feedback_key": "ui.rest.feedback.remove_curse_resolved",
+          "effect": {
+            "type": "remove_curse",
+            "requires_curse_target": true
+          }
+        }
+      ]
+    }
+  ]
+}

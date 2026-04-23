@@ -3,6 +3,7 @@
   "enemy_definitions": [
     {
       "id": "act1-slime-scout",
+      "name_key": "enemy.act1.slime_scout.name",
       "category": "normal",
       "stats": {
         "hp": 18,
@@ -15,7 +16,22 @@
       ]
     },
     {
+      "id": "act1-moss-rat",
+      "name_key": "enemy.act1.moss_rat.name",
+      "category": "normal",
+      "stats": {
+        "hp": 22,
+        "attack": 6,
+        "defense": 1
+      },
+      "intentPools": [
+        "light_attack",
+        "scratch"
+      ]
+    },
+    {
       "id": "act1-bandit-enforcer",
+      "name_key": "enemy.act1.bandit_enforcer.name",
       "category": "elite",
       "stats": {
         "hp": 34,
@@ -29,6 +45,7 @@
     },
     {
       "id": "act1-ruin-warden",
+      "name_key": "enemy.act1.ruin_warden.name",
       "category": "boss",
       "stats": {
         "hp": 90,

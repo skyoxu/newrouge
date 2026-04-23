@@ -44,7 +44,7 @@ event.feedback.numeric.default,生命值 0\n诅咒牌 0
 event.feedback.blocked.already_committed,该选择已提交。
 event.feedback.blocked.invalid_option,该选项不可用。
 event.feedback.blocked.persist_failed,状态持久化失败。
-card.warrior.cleave.name,劈砍
+card.warrior.cleave.name,顺劈
 card.warrior.guard.name,格挡
 card.warrior.rage_surge.name,怒潮
 card.warrior.bloodrush.name,血袭
@@ -120,3 +120,102 @@ combat.turn.start,开始回合
 combat.turn.end,结束回合
 combat.turn.title,回合控制
 combat.intent.title,敌方意图
+act.1.name,第一幕 - 断裂之路
+deck.warrior.m1.starting.name,战士起始牌组
+card.warrior.strike.name,打击
+card.warrior.strike.description,造成 6 点伤害。
+card.warrior.strike.u1a.name,打击+
+card.warrior.strike.u1a.description,造成 9 点伤害。
+card.warrior.strike.u1b.name,怒火打击
+card.warrior.strike.u1b.description,造成 7 点伤害。获得 1 点怒气。
+card.warrior.defend.name,防御
+card.warrior.defend.description,获得 5 点格挡。
+card.warrior.defend.u1a.name,防御+
+card.warrior.defend.u1a.description,获得 8 点格挡。
+card.warrior.defend.u1b.name,稳固防御
+card.warrior.defend.u1b.description,获得 6 点格挡。获得 1 点怒气。
+card.warrior.battle_focus.name,战斗专注
+card.warrior.battle_focus.description,获得 2 点怒气。抽 1 张牌。
+card.warrior.heavy_strike.name,重击
+card.warrior.heavy_strike.description,造成 12 点伤害。
+card.warrior.iron_wave.name,铁浪
+card.warrior.iron_wave.description,造成 5 点伤害。获得 5 点格挡。
+card.warrior.cleave.description,对所有敌人造成 7 点伤害。
+card.warrior.power_through.name,硬撑
+card.warrior.power_through.description,获得 10 点格挡。将一张怀疑加入弃牌堆。
+curse.doubt.name,怀疑
+curse.doubt.description,无法打出。移除前会干扰你的抽牌。
+enemy.act1.slime_scout.name,黏液斥候
+enemy.act1.moss_rat.name,苔鼠
+enemy.act1.bandit_enforcer.name,强盗打手
+enemy.act1.ruin_warden.name,废墟守卫
+relic.description.ashen_hourglass,在当前 M1 占位版本中，战斗开始时获得额外能量。
+relic.description.rusted_compass,在当前 M1 占位版本中，额外预览一条地图路线。
+relic.description.twilight_coin,在当前 M1 占位版本中，商店价格略微降低。
+relic.description.oaken_talisman,获得少量最大生命值。
+relic.description.raven_feather,移除诅咒的费用降低。
+event.forgotten_cache.title,被遗忘的储藏箱
+event.forgotten_cache.description,路边放着一个裂开的箱子。
+event.option.take_gold,拿走金币
+event.option.leave,离开
+event.preview.take_gold,金币 +30
+event.preview.leave,无变化
+event.feedback.summary.take_gold,你获得 30 枚金币。
+event.feedback.summary.leave,你没有碰这个箱子。
+event.feedback.numeric.take_gold,金币 +30
+event.feedback.numeric.leave,金币 +0
+shop.feedback.insufficient_gold,金币不足。
+shop.feedback.offer_taken,该商品已经被拿走。
+shop.feedback.invalid_offer,该商店商品不可用。
+ui.run.summary.title,本局总结
+effect.turn_start_plus_energy,战斗开始时获得额外能量。
+effect.map_preview_plus_one,额外预览一条地图路线。
+effect.shop_discount_small,略微降低商店价格。
+effect.max_hp_plus_small,获得少量最大生命值。
+effect.curse_remove_discount,降低移除诅咒的费用。
+ui.difficulty.label,难度
+ui.difficulty.1,难度 1
+ui.difficulty.2,难度 2
+ui.difficulty.3,难度 3
+ui.difficulty.4,难度 4
+ui.difficulty.5,难度 5
+ui.difficulty.6,难度 6
+ui.difficulty.7,难度 7
+ui.difficulty.8,难度 8
+ui.difficulty.9,难度 9
+ui.difficulty.10,难度 10
+ui.difficulty.2.desc,第 2 / 10 难度，整体压力略有提升。
+ui.difficulty.3.desc,第 3 / 10 难度，敌人压力稳定增加。
+ui.difficulty.4.desc,第 4 / 10 难度，资源管理更紧。
+ui.difficulty.5.desc,第 5 / 10 难度，适合作为标准挑战。
+ui.difficulty.6.desc,第 6 / 10 难度，战斗压力明显提高。
+ui.difficulty.7.desc,第 7 / 10 难度，容错空间较小。
+ui.difficulty.8.desc,第 8 / 10 难度，需要稳定路线规划。
+ui.difficulty.9.desc,第 9 / 10 难度，资源损耗非常严苛。
+ui.difficulty.10.desc,第 10 / 10 难度，M1 最高挑战压力。
+ui.map.feedback.ready,请选择一条可见路线继续。
+ui.map.feedback.locked_node,路线 {0} 已锁定。
+ui.map.feedback.invalid_branch,当前位置无法前往路线 {0}。
+ui.map.feedback.completed_node,节点 {0} 已完成。
+ui.map.feedback.returned_to_map,已从 {0} 返回地图。
+ui.map.feedback.missing_content,路线 {0} 缺少必要内容。
+shop.feedback.invalid_card,该卡牌无法移除。
+shop.feedback.card_not_removable,该卡牌不能在这里移除。
+shop.feedback.not_reforge_target,该商品不能重铸。
+shop.feedback.already_left,你已经离开这个商店。
+shop.feedback.route_missing,商店离开路线不可用。
+shop.feedback.route_failed,离开商店失败。请返回地图重试。
+shop.feedback.purchase_result,已购买：{0}。
+shop.feedback.no_purchase,尚未购买。
+shop.feedback.remove_result,已移除诅咒：{0}。
+shop.feedback.no_removal,尚未移除诅咒。
+shop.feedback.reforge_result,已重铸商品：{0}。
+shop.feedback.leave_route,正在离开商店，返回地图。
+ui.rest.feedback.missing_target,请先选择有效的卡牌或诅咒目标。
+ui.rest.feedback.return_route,休息完成，返回地图。
+ui.run.summary.outcome,结果
+ui.run.summary.node_progress,节点进度
+ui.run.summary.reason,原因
+ui.fallback.missing_config,缺少必要配置。
+ui.fallback.missing_content,缺少必要内容。
+ui.fallback.translation_missing,当前语言缺少可用文本。

@@ -51,6 +51,14 @@ public partial class CompositionRoot : Node
         }
     }
 
+    public override void _ExitTree()
+    {
+        if (ReferenceEquals(Instance, this))
+        {
+            Instance = null;
+        }
+    }
+
     public override void _Ready()
     {
         if (_initialized) return;

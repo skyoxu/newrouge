@@ -13,11 +13,18 @@ public partial class MapScene : Control
     private const string EventActionKey = "ui.map.action.event";
     private const string ShopActionKey = "ui.map.action.shop";
     private const string RestActionKey = "ui.map.action.rest";
+    private const string ReadyFeedbackKey = "ui.map.feedback.ready";
+    private const string LockedNodeFeedbackKey = "ui.map.feedback.locked_node";
+    private const string InvalidBranchFeedbackKey = "ui.map.feedback.invalid_branch";
+    private const string CompletedNodeFeedbackKey = "ui.map.feedback.completed_node";
+    private const string ReturnedToMapFeedbackKey = "ui.map.feedback.returned_to_map";
+    private const string MissingContentFeedbackKey = "ui.map.feedback.missing_content";
 
     private static readonly Dictionary<string, Dictionary<string, string>> TextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
 
     private Label _titleLabel = default!;
     private Label _hintLabel = default!;
+    private Label _feedbackLabel = default!;
     private Button _combatButton = default!;
     private Button _eventButton = default!;
     private Button _shopButton = default!;
@@ -29,6 +36,7 @@ public partial class MapScene : Control
     {
         _titleLabel = GetNode<Label>("title_label");
         _hintLabel = GetNode<Label>("hint_label");
+        _feedbackLabel = GetNode<Label>("feedback_label");
         _combatButton = GetNode<Button>("ActionRow/btn_combat");
         _eventButton = GetNode<Button>("ActionRow/btn_event");
         _shopButton = GetNode<Button>("ActionRow/btn_shop");
@@ -116,6 +124,27 @@ public partial class MapScene : Control
         return _lastInvokedAction;
     }
 
+    public bool ShowRouteFeedbackForTest(string feedbackKind, string nodeId)
+    {
+        var key = NormalizeFeedbackKind(feedbackKind) switch
+        {
+            "locked_node" => LockedNodeFeedbackKey,
+            "invalid_branch" => InvalidBranchFeedbackKey,
+            "completed_node" => CompletedNodeFeedbackKey,
+            "returned_to_map" => ReturnedToMapFeedbackKey,
+            "missing_content" => MissingContentFeedbackKey,
+            _ => ReadyFeedbackKey,
+        };
+        var node = string.IsNullOrWhiteSpace(nodeId) ? "node" : nodeId.Trim();
+        _feedbackLabel.Text = ResolveVisibleText(key, _lastLocale).Replace("{0}", node, StringComparison.Ordinal);
+        return true;
+    }
+
+    public string GetFeedbackForTest()
+    {
+        return _feedbackLabel.Text ?? string.Empty;
+    }
+
     private void ApplyLocalizedText(string locale)
     {
         _lastLocale = locale;
@@ -125,6 +154,17 @@ public partial class MapScene : Control
         _eventButton.Text = ResolveVisibleTextOrFallback(EventActionKey, locale, "Event");
         _shopButton.Text = ResolveVisibleTextOrFallback(ShopActionKey, locale, "Shop");
         _restButton.Text = ResolveVisibleTextOrFallback(RestActionKey, locale, "Rest");
+        if (string.IsNullOrWhiteSpace(_feedbackLabel.Text) || string.Equals(_feedbackLabel.Text, ReadyFeedbackKey, StringComparison.Ordinal))
+        {
+            _feedbackLabel.Text = ResolveVisibleText(ReadyFeedbackKey, locale);
+        }
+    }
+
+    private static string NormalizeFeedbackKind(string feedbackKind)
+    {
+        return string.IsNullOrWhiteSpace(feedbackKind)
+            ? string.Empty
+            : feedbackKind.Trim().Replace('-', '_').ToLowerInvariant();
     }
 
     private static string ResolveVisibleTextOrFallback(string key, string locale, string fallback)
@@ -160,12 +200,6 @@ public partial class MapScene : Control
 
     private static string ResolveVisibleText(string key, string locale)
     {
-        var localized = TranslationServer.Translate(key);
-        if (!string.Equals(localized, key, StringComparison.Ordinal))
-        {
-            return localized;
-        }
-
         var map = GetTextMap(locale);
         if (map.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
         {
@@ -181,7 +215,17 @@ public partial class MapScene : Control
             }
         }
 
-        return key;
+        var localized = TranslationServer.Translate(key);
+        return !string.Equals(localized, key, StringComparison.Ordinal) && IsReadableVisibleText(localized)
+            ? localized
+            : key;
+    }
+
+    private static bool IsReadableVisibleText(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && !value.Contains("??", StringComparison.Ordinal)
+            && !value.Contains('\uFFFD');
     }
 
     private static Dictionary<string, string> GetTextMap(string locale)

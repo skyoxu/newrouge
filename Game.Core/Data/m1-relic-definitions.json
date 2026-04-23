@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "relics": [
+    {
+      "id": "relic.ashen_hourglass",
+      "name_key": "relic.name.ashen_hourglass",
+      "description_key": "relic.description.ashen_hourglass",
+      "rarity": "starter",
+      "effect_key": "effect.turn_start_plus_energy",
+      "tags": [
+        "m1",
+        "energy"
+      ]
+    },
+    {
+      "id": "relic.rusted_compass",
+      "name_key": "relic.name.rusted_compass",
+      "description_key": "relic.description.rusted_compass",
+      "rarity": "common",
+      "effect_key": "effect.map_preview_plus_one",
+      "tags": [
+        "m1",
+        "map"
+      ]
+    },
+    {
+      "id": "relic.twilight_coin",
+      "name_key": "relic.name.twilight_coin",
+      "description_key": "relic.description.twilight_coin",
+      "rarity": "common",
+      "effect_key": "effect.shop_discount_small",
+      "tags": [
+        "m1",
+        "shop"
+      ]
+    },
+    {
+      "id": "relic.oaken_talisman",
+      "name_key": "relic.name.oaken_talisman",
+      "description_key": "relic.description.oaken_talisman",
+      "rarity": "common",
+      "effect_key": "effect.max_hp_plus_small",
+      "tags": [
+        "m1",
+        "survival"
+      ]
+    },
+    {
+      "id": "relic.raven_feather",
+      "name_key": "relic.name.raven_feather",
+      "description_key": "relic.description.raven_feather",
+      "rarity": "uncommon",
+      "effect_key": "effect.curse_remove_discount",
+      "tags": [
+        "m1",
+        "curse"
+      ]
+    }
+  ]
+}

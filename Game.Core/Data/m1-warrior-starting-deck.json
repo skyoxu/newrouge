@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "character_id": "warrior",
+  "deck_id": "deck.warrior.m1.starting",
+  "name_key": "deck.warrior.m1.starting.name",
+  "cards": [
+    {
+      "card_id": "card.warrior.strike",
+      "count": 5
+    },
+    {
+      "card_id": "card.warrior.defend",
+      "count": 4
+    },
+    {
+      "card_id": "card.warrior.battle_focus",
+      "count": 1
+    }
+  ],
+  "shuffle": {
+    "mode": "run_seed",
+    "rng_stream": "run"
+  }
+}

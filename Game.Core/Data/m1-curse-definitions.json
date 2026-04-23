@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "curses": [
+    {
+      "id": "curse.doubt",
+      "name_key": "curse.doubt.name",
+      "description_key": "curse.doubt.description",
+      "type": "curse",
+      "removable": true,
+      "base_effect": {
+        "dead_draw": true
+      }
+    }
+  ]
+}

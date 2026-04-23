@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0",
+  "content_version": "m1-placeholder",
+  "cards": [
+    {
+      "id": "card.warrior.strike",
+      "name_key": "card.warrior.strike.name",
+      "description_key": "card.warrior.strike.description",
+      "cost": 1,
+      "type": "attack",
+      "target": "enemy",
+      "rarity": "starter",
+      "base_effect": {
+        "damage": 6
+      },
+      "upgrade_routes": [
+        {
+          "form": "U1A",
+          "name_key": "card.warrior.strike.u1a.name",
+          "description_key": "card.warrior.strike.u1a.description",
+          "base_effect": {
+            "damage": 9
+          }
+        },
+        {
+          "form": "U1B",
+          "name_key": "card.warrior.strike.u1b.name",
+          "description_key": "card.warrior.strike.u1b.description",
+          "base_effect": {
+            "damage": 7,
+            "rage": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "card.warrior.defend",
+      "name_key": "card.warrior.defend.name",
+      "description_key": "card.warrior.defend.description",
+      "cost": 1,
+      "type": "skill",
+      "target": "self",
+      "rarity": "starter",
+      "base_effect": {
+        "block": 5
+      },
+      "upgrade_routes": [
+        {
+          "form": "U1A",
+          "name_key": "card.warrior.defend.u1a.name",
+          "description_key": "card.warrior.defend.u1a.description",
+          "base_effect": {
+            "block": 8
+          }
+        },
+        {
+          "form": "U1B",
+          "name_key": "card.warrior.defend.u1b.name",
+          "description_key": "card.warrior.defend.u1b.description",
+          "base_effect": {
+            "block": 6,
+            "rage": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "card.warrior.battle_focus",
+      "name_key": "card.warrior.battle_focus.name",
+      "description_key": "card.warrior.battle_focus.description",
+      "cost": 1,
+      "type": "skill",
+      "target": "self",
+      "rarity": "starter",
+      "base_effect": {
+        "rage": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "card.warrior.heavy_strike",
+      "name_key": "card.warrior.heavy_strike.name",
+      "description_key": "card.warrior.heavy_strike.description",
+      "cost": 2,
+      "type": "attack",
+      "target": "enemy",
+      "rarity": "common",
+      "base_effect": {
+        "damage": 12
+      }
+    },
+    {
+      "id": "card.warrior.iron_wave",
+      "name_key": "card.warrior.iron_wave.name",
+      "description_key": "card.warrior.iron_wave.description",
+      "cost": 1,
+      "type": "attack",
+      "target": "enemy",
+      "rarity": "common",
+      "base_effect": {
+        "damage": 5,
+        "block": 5
+      }
+    },
+    {
+      "id": "card.warrior.cleave",
+      "name_key": "card.warrior.cleave.name",
+      "description_key": "card.warrior.cleave.description",
+      "cost": 1,
+      "type": "attack",
+      "target": "all_enemies",
+      "rarity": "common",
+      "base_effect": {
+        "damage": 7
+      }
+    },
+    {
+      "id": "card.warrior.power_through",
+      "name_key": "card.warrior.power_through.name",
+      "description_key": "card.warrior.power_through.description",
+      "cost": 1,
+      "type": "skill",
+      "target": "self",
+      "rarity": "uncommon",
+      "base_effect": {
+        "block": 10,
+        "add_curse_to_discard": "curse.doubt"
+      }
+    }
+  ]
+}
