@@ -220,6 +220,20 @@ public partial class ShopScene : Control
         return _lastReforgedOfferId;
     }
 
+    public string GetLastRemovedOutcomeTextForTest()
+    {
+        return string.IsNullOrWhiteSpace(_lastRemovedCardId)
+            ? string.Empty
+            : FormatText(ResolveUiText("shop.feedback.remove_result"), _lastRemovedCardId);
+    }
+
+    public string GetLastReforgedOutcomeTextForTest()
+    {
+        return string.IsNullOrWhiteSpace(_lastReforgedOfferId)
+            ? string.Empty
+            : FormatText(ResolveUiText("shop.feedback.reforge_result"), _lastReforgedOfferId);
+    }
+
     public string GetVisibleFailureReasonForTest()
     {
         return _failureReasonLabel.Text ?? string.Empty;
@@ -328,8 +342,13 @@ public partial class ShopScene : Control
         }
 
         _leftShop = true;
-        _failureReasonLabel.Text = string.Empty;
+        _failureReasonLabel.Text = ResolveUiText("shop.feedback.leave_route");
         return Success();
+    }
+
+    public void ShowLeaveRouteFeedbackForTest()
+    {
+        _failureReasonLabel.Text = ResolveUiText("shop.feedback.leave_route");
     }
 
     private void OnRemovePressed()
@@ -418,12 +437,12 @@ public partial class ShopScene : Control
         }
 
         _goldValueLabel.Text = _playerGold.ToString();
-        _ownedOutcomeLabel.Text = string.IsNullOrWhiteSpace(_ownedOutcomeLabel.Text)
-            ? "owned"
-            : _ownedOutcomeLabel.Text;
-        _removedOutcomeLabel.Text = string.IsNullOrWhiteSpace(_removedOutcomeLabel.Text)
-            ? "removed"
-            : _removedOutcomeLabel.Text;
+        _ownedOutcomeLabel.Text = _ownedOfferIds.Count > 0
+            ? FormatText(ResolveUiText("shop.feedback.purchase_result"), string.Join(", ", _ownedOfferIds))
+            : ResolveUiText("shop.feedback.no_purchase");
+        _removedOutcomeLabel.Text = string.IsNullOrWhiteSpace(_lastRemovedCardId)
+            ? ResolveUiText("shop.feedback.no_removal")
+            : GetLastRemovedOutcomeTextForTest();
     }
 
     private void LocalizeVisibleText()
@@ -442,12 +461,6 @@ public partial class ShopScene : Control
             return string.Empty;
         }
 
-        var localized = TranslationServer.Translate(localizationKey);
-        if (!string.Equals(localized, localizationKey, StringComparison.Ordinal))
-        {
-            return localized;
-        }
-
         var locale = NormalizeLocale(TranslationServer.GetLocale());
         var map = GetTextMap(locale);
         if (map.TryGetValue(localizationKey, out var value) && !string.IsNullOrWhiteSpace(value))
@@ -464,7 +477,17 @@ public partial class ShopScene : Control
             }
         }
 
-        return localizationKey;
+        var localized = TranslationServer.Translate(localizationKey);
+        return !string.Equals(localized, localizationKey, StringComparison.Ordinal) && IsReadableVisibleText(localized)
+            ? localized
+            : localizationKey;
+    }
+
+    private static bool IsReadableVisibleText(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && !value.Contains("??", StringComparison.Ordinal)
+            && !value.Contains('\uFFFD');
     }
 
     private static string NormalizeLocale(string locale)
@@ -485,24 +508,33 @@ public partial class ShopScene : Control
         }
 
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
-            ? "res://Game.Godot/Translations/zh-CN.csv"
-            : "res://Game.Godot/Translations/en.csv";
+        var candidatePaths = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "res://Game.Godot/Translations/zh-CN.csv", "res://../Game.Godot/Translations/zh-CN.csv" }
+            : new[] { "res://Game.Godot/Translations/en.csv", "res://../Game.Godot/Translations/en.csv" };
 
-        if (!FileAccess.FileExists(path))
+        string raw = string.Empty;
+        foreach (var candidatePath in candidatePaths)
+        {
+            if (!FileAccess.FileExists(candidatePath))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(candidatePath, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            raw = file.GetAsText();
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
         {
             TextMapsByLocale[locale] = map;
             return map;
         }
-
-        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-        if (file is null)
-        {
-            TextMapsByLocale[locale] = map;
-            return map;
-        }
-
-        var raw = file.GetAsText();
         foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var trimmed = line.Trim();
@@ -632,17 +664,46 @@ public partial class ShopScene : Control
 
     private global::Godot.Collections.Dictionary Fail(string reasonCode, string reasonText)
     {
-        if (!string.IsNullOrWhiteSpace(reasonText))
-        {
-            _failureReasons.Add(reasonText);
-            _failureReasonLabel.Text = string.Join("; ", _failureReasons);
-        }
+        var visibleReason = ResolveFailureReason(reasonCode, reasonText);
+        _failureReasons.Add(visibleReason);
+        _failureReasonLabel.Text = string.Join("; ", _failureReasons);
 
         return new global::Godot.Collections.Dictionary
         {
             { "ok", false },
             { "reason", reasonCode },
         };
+    }
+
+    private static string ResolveFailureReason(string reasonCode, string fallback)
+    {
+        var key = reasonCode switch
+        {
+            "insufficient-resources" => "shop.feedback.insufficient_gold",
+            "offer-already-taken" => "shop.feedback.offer_taken",
+            "invalid-offer" => "shop.feedback.invalid_offer",
+            "offer-not-selected" => "shop.feedback.invalid_offer",
+            "invalid-card" => "shop.feedback.invalid_card",
+            "card-not-removable" => "shop.feedback.card_not_removable",
+            "offer-not-reforge-target" => "shop.feedback.not_reforge_target",
+            "already-left" => "shop.feedback.already_left",
+            "route-controller-missing" => "shop.feedback.route_missing",
+            "route-result-invalid" => "shop.feedback.route_failed",
+            "route-failed" => "shop.feedback.route_failed",
+            _ => string.Empty,
+        };
+
+        var resolved = string.IsNullOrWhiteSpace(key) ? string.Empty : ResolveUiText(key);
+        return string.IsNullOrWhiteSpace(resolved) || string.Equals(resolved, key, StringComparison.Ordinal)
+            ? fallback
+            : resolved;
+    }
+
+    private static string FormatText(string template, string value)
+    {
+        return string.IsNullOrWhiteSpace(template)
+            ? value
+            : template.Replace("{0}", value, StringComparison.Ordinal);
     }
 
     private static global::Godot.Collections.Array ReadArray(global::Godot.Collections.Dictionary source, string key)

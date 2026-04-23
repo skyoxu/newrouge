@@ -16,6 +16,8 @@ public partial class SettingsPanel : Control
     private const string UserId = "default";
     private const string ConfigPath = "user://settings.cfg";
     private const string ConfigSection = "settings";
+    private const string DefaultLanguage = "en";
+    private const string SimplifiedChineseLanguage = "zh-CN";
 
     public override void _Ready()
     {
@@ -39,9 +41,8 @@ public partial class SettingsPanel : Control
         }
         if (_language.ItemCount == 0)
         {
-            _language.AddItem("en");
-            _language.AddItem("zh");
-            _language.AddItem("ja");
+            _language.AddItem(DefaultLanguage);
+            _language.AddItem(SimplifiedChineseLanguage);
             _language.Selected = 0;
         }
 
@@ -62,7 +63,7 @@ public partial class SettingsPanel : Control
         cfg.Load(ConfigPath);
         cfg.SetValue(ConfigSection, nameof(vol), vol);
         cfg.SetValue(ConfigSection, nameof(gfx), gfx ?? "medium");
-        cfg.SetValue(ConfigSection, nameof(lang), lang ?? "en");
+        cfg.SetValue(ConfigSection, nameof(lang), NormalizeLanguage(lang));
         var err = cfg.Save(ConfigPath);
         if (err != Error.Ok)
         {
@@ -72,7 +73,7 @@ public partial class SettingsPanel : Control
 
     private bool TryLoadFromConfig(out float vol, out string gfx, out string lang)
     {
-        vol = 0.5f; gfx = "medium"; lang = "en";
+        vol = 0.5f; gfx = "medium"; lang = DefaultLanguage;
         var cfg = new ConfigFile();
         var err = cfg.Load(ConfigPath);
         if (err != Error.Ok)
@@ -86,7 +87,7 @@ public partial class SettingsPanel : Control
             Variant l = cfg.GetValue(ConfigSection, nameof(lang), "en");
             vol = v.VariantType == Variant.Type.Nil ? 0.5f : (float)v.AsDouble();
             gfx = g.VariantType == Variant.Type.Nil ? "medium" : g.AsString();
-            lang = l.VariantType == Variant.Type.Nil ? "en" : l.AsString();
+            lang = l.VariantType == Variant.Type.Nil ? DefaultLanguage : NormalizeLanguage(l.AsString());
             return true;
         }
         catch
@@ -109,13 +110,13 @@ public partial class SettingsPanel : Control
         var rows = db.Query("SELECT audio_volume, graphics_quality, language FROM settings WHERE user_id=@0;", UserId);
         if (rows.Count == 0) return;
         var r = rows[0];
-        float vol = 0.5f; string gfx = "medium"; string lang = "en";
+        float vol = 0.5f; string gfx = "medium"; string lang = DefaultLanguage;
         if (r.TryGetValue("audio_volume", out var v) && v != null)
             vol = Convert.ToSingle(v);
         if (r.TryGetValue("graphics_quality", out var g) && g != null)
             gfx = g.ToString() ?? "medium";
         if (r.TryGetValue("language", out var l) && l != null)
-            lang = l.ToString() ?? "en";
+            lang = NormalizeLanguage(l.ToString() ?? DefaultLanguage);
         SaveToConfig(vol, gfx, lang);
     }
 
@@ -124,7 +125,7 @@ public partial class SettingsPanel : Control
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var vol = Mathf.Clamp((float)_volume.Value, 0, 1);
         var gfx = _graphics.GetItemText(_graphics.Selected);
-        var lang = _language.GetItemText(_language.Selected);
+        var lang = NormalizeLanguage(_language.GetItemText(_language.Selected));
         // SSoT to ConfigFile
         SaveToConfig(vol, gfx, lang);
 
@@ -159,7 +160,7 @@ public partial class SettingsPanel : Control
         {
             for (int i = 0; i < _language.ItemCount; i++)
             {
-                if (_language.GetItemText(i).Equals(lang, StringComparison.OrdinalIgnoreCase))
+                if (NormalizeLanguage(_language.GetItemText(i)).Equals(NormalizeLanguage(lang), StringComparison.OrdinalIgnoreCase))
                 { _language.Selected = i; break; }
             }
             ApplyLanguage(_language.GetItemText(_language.Selected));
@@ -181,7 +182,7 @@ public partial class SettingsPanel : Control
 
     private void OnLanguageChanged(long index)
     {
-        var lang = _language.GetItemText((int)index);
+        var lang = NormalizeLanguage(_language.GetItemText((int)index));
         ApplyLanguage(lang);
     }
 
@@ -196,8 +197,22 @@ public partial class SettingsPanel : Control
 
     private void ApplyLanguage(string lang)
     {
-        if (!string.IsNullOrEmpty(lang))
-            TranslationServer.SetLocale(lang);
+        var normalized = NormalizeLanguage(lang);
+        if (!string.IsNullOrEmpty(normalized))
+            TranslationServer.SetLocale(normalized);
+    }
+
+    private static string NormalizeLanguage(string? lang)
+    {
+        if (string.IsNullOrWhiteSpace(lang))
+        {
+            return DefaultLanguage;
+        }
+
+        var normalized = lang.Trim();
+        return normalized.Equals("zh", StringComparison.OrdinalIgnoreCase)
+            ? SimplifiedChineseLanguage
+            : normalized;
     }
 
     private void ApplyGraphicsQuality(string quality)

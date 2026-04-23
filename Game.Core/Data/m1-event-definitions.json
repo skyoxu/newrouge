@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "events": [
+    {
+      "id": "event.abyss_toll",
+      "title_key": "event.abyss_toll.title",
+      "description_key": "event.abyss_toll.description",
+      "options": [
+        {
+          "id": "lose_hp",
+          "label_key": "event.option.lose_hp",
+          "preview_key": "event.preview.hp_loss",
+          "result_summary_key": "event.feedback.summary.lose_hp",
+          "numeric_feedback_key": "event.feedback.numeric.hp_loss",
+          "effects": [
+            {
+              "type": "hp_loss",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "take_curse",
+          "label_key": "event.option.take_curse",
+          "preview_key": "event.preview.take_curse",
+          "result_summary_key": "event.feedback.summary.take_curse",
+          "numeric_feedback_key": "event.feedback.numeric.take_curse",
+          "effects": [
+            {
+              "type": "add_curse",
+              "curse_id": "curse.doubt",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "return_route": "map"
+    },
+    {
+      "id": "event.forgotten_cache",
+      "title_key": "event.forgotten_cache.title",
+      "description_key": "event.forgotten_cache.description",
+      "options": [
+        {
+          "id": "take_gold",
+          "label_key": "event.option.take_gold",
+          "preview_key": "event.preview.take_gold",
+          "result_summary_key": "event.feedback.summary.take_gold",
+          "numeric_feedback_key": "event.feedback.numeric.take_gold",
+          "effects": [
+            {
+              "type": "gold_gain",
+              "amount": 30
+            }
+          ]
+        },
+        {
+          "id": "leave",
+          "label_key": "event.option.leave",
+          "preview_key": "event.preview.leave",
+          "result_summary_key": "event.feedback.summary.leave",
+          "numeric_feedback_key": "event.feedback.numeric.leave",
+          "effects": []
+        }
+      ],
+      "return_route": "map"
+    }
+  ]
+}

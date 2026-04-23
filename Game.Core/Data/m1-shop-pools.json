@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "shops": [
+    {
+      "id": "shop.act1.m1",
+      "title_key": "shop.title",
+      "starting_gold_hint": 180,
+      "card_offers": [
+        {
+          "offer_id": "shop.act1.card.heavy_strike",
+          "card_id": "card.warrior.heavy_strike",
+          "price": 60
+        },
+        {
+          "offer_id": "shop.act1.card.iron_wave",
+          "card_id": "card.warrior.iron_wave",
+          "price": 75
+        },
+        {
+          "offer_id": "shop.act1.card.power_through",
+          "card_id": "card.warrior.power_through",
+          "price": 95
+        }
+      ],
+      "relic_offers": [
+        {
+          "offer_id": "shop.act1.relic.twilight_coin",
+          "relic_id": "relic.twilight_coin",
+          "price": 120
+        }
+      ],
+      "services": [
+        {
+          "id": "remove_curse",
+          "label_key": "shop.service.remove",
+          "price": 75,
+          "allowed_targets": [
+            "curse"
+          ]
+        },
+        {
+          "id": "reforge",
+          "label_key": "shop.service.reforge",
+          "price": 90,
+          "allowed_targets": [
+            "card"
+          ]
+        }
+      ],
+      "blocked_keys": {
+        "insufficient_gold": "shop.feedback.insufficient_gold",
+        "offer_taken": "shop.feedback.offer_taken",
+        "invalid_offer": "shop.feedback.invalid_offer"
+      }
+    }
+  ]
+}

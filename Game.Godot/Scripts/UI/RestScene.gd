@@ -10,6 +10,8 @@ const FEEDBACK_UPGRADE_CONFIRMED_KEY := "ui.rest.feedback.upgrade_confirmed"
 const FEEDBACK_UPGRADE_CANCELLED_KEY := "ui.rest.feedback.upgrade_cancelled"
 const FEEDBACK_HEAL_RESOLVED_KEY := "ui.rest.feedback.heal_resolved"
 const FEEDBACK_REMOVE_CURSE_RESOLVED_KEY := "ui.rest.feedback.remove_curse_resolved"
+const FEEDBACK_MISSING_TARGET_KEY := "ui.rest.feedback.missing_target"
+const FEEDBACK_RETURN_ROUTE_KEY := "ui.rest.feedback.return_route"
 const EN_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/en.csv"
 const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 
@@ -111,6 +113,15 @@ func RequestRestorePreUpgradeSnapshotForTest() -> bool:
 	_feedback = _resolve_text("rest.irreversible_upgrade")
 	return false
 
+func ShowMissingTargetFeedbackForTest() -> bool:
+	_feedback = _resolve_text(FEEDBACK_MISSING_TARGET_KEY)
+	return true
+
+func ShowReturnRouteFeedbackForTest() -> bool:
+	_next_route = "map"
+	_feedback = _resolve_text(FEEDBACK_RETURN_ROUTE_KEY)
+	return true
+
 func GetAvailableOptionsForTest() -> Array[String]:
 	return ["heal", "upgrade", "remove_curse"]
 
@@ -136,7 +147,7 @@ func _resolve_text(key: String) -> String:
 	if key.strip_edges().is_empty():
 		return ""
 	var localized := TranslationServer.translate(key)
-	if localized != key:
+	if localized != key and _is_readable_visible_text(localized):
 		return localized
 	var locale := _normalize_locale(TranslationServer.get_locale())
 	var primary := _load_translation_values(_translation_file_for_locale(locale))
@@ -147,6 +158,9 @@ func _resolve_text(key: String) -> String:
 		if fallback.has(key):
 			return str(fallback[key]).strip_edges()
 	return key
+
+func _is_readable_visible_text(value: String) -> bool:
+	return not value.strip_edges().is_empty() and not value.contains("??") and not value.contains("\uFFFD")
 
 func _translation_file_for_locale(locale: String) -> String:
 	if locale.begins_with("zh"):

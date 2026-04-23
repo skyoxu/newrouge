@@ -1,14 +1,20 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const HUD_SCENE := preload("res://Game.Godot/Scenes/UI/HUD.tscn")
-const AUTOSAVE_PATH := "user://autosave_slot.json"
+const COMPOSITION_ROOT_SCRIPT := preload("res://Game.Godot/Autoloads/CompositionRoot.cs")
+const AUTOSAVE_PATH := "user://saves/autosave.json"
 
+var _composition_root: Node = null
 var _bus: Node = null
 var _hud: Node = null
 
 
 func before_test() -> void:
     _remove_autosave()
+    _composition_root = COMPOSITION_ROOT_SCRIPT.new()
+    _composition_root.name = "CompositionRoot"
+    get_tree().get_root().add_child(auto_free(_composition_root))
+    await get_tree().process_frame
     _bus = preload("res://Game.Godot/Adapters/EventBusAdapter.cs").new()
     _bus.name = "EventBus"
     get_tree().get_root().add_child(auto_free(_bus))
@@ -22,6 +28,7 @@ func after_test() -> void:
     _remove_autosave()
     _hud = null
     _bus = null
+    _composition_root = null
     await get_tree().process_frame
 
 
@@ -36,7 +43,17 @@ func _publish(type: String, payload_json: String) -> void:
     await get_tree().process_frame
 
 
+func _wait_for_summary_text(method_name: String, expected: String) -> void:
+    for _index in range(30):
+        if str(_hud.call(method_name)) == expected:
+            return
+        await get_tree().process_frame
+
+
 func _write_autosave_payload(payload: String) -> void:
+    var dir := DirAccess.open("user://")
+    if dir != null and not dir.dir_exists("saves"):
+        dir.make_dir("saves")
     var file := FileAccess.open(AUTOSAVE_PATH, FileAccess.WRITE)
     file.store_string(payload)
     file.close()
@@ -91,7 +108,7 @@ func test_run_summary_surface_displays_stored_metadata_without_recompute_or_muta
 
     await _publish("core.run.started", "{\"run_id\":\"run-66-a\"}")
     await _publish("core.combat.ended", "{\"combat_id\":\"c-66-a\",\"player_won\":false}")
-    await get_tree().process_frame
+    await _wait_for_summary_text("GetSummaryOutcomeTextForTest", "Outcome: Defeat")
 
     assert_bool(bool(_hud.call("IsRunSummaryVisibleForTest"))).is_true()
     assert_str(str(_hud.call("GetSummaryOutcomeTextForTest"))).is_equal("Outcome: Defeat")
@@ -114,7 +131,7 @@ func test_run_summary_surface_uses_stored_reason_instead_of_derived_replacement(
 
     await _publish("core.run.started", "{\"run_id\":\"run-66-b\"}")
     await _publish("core.combat.ended", "{\"combat_id\":\"c-66-b\",\"player_won\":true}")
-    await get_tree().process_frame
+    await _wait_for_summary_text("GetSummaryReasonTextForTest", "Reason: Boss defeated with one HP")
 
     assert_str(str(_hud.call("GetSummaryReasonTextForTest"))).is_equal("Reason: Boss defeated with one HP")
 

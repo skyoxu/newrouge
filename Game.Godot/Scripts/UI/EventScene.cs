@@ -352,12 +352,6 @@ public partial class EventScene : Control
 
     private static string ResolveText(string key)
     {
-        var localized = TranslationServer.Translate(key);
-        if (!string.Equals(localized, key, StringComparison.Ordinal))
-        {
-            return localized;
-        }
-
         var locale = NormalizeLocale(TranslationServer.GetLocale());
         var map = GetTextMap(locale);
         if (map.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
@@ -374,7 +368,8 @@ public partial class EventScene : Control
             }
         }
 
-        return key;
+        var localized = TranslationServer.Translate(key);
+        return string.Equals(localized, key, StringComparison.Ordinal) ? key : localized;
     }
 
     private static Dictionary<string, string> GetTextMap(string locale)
@@ -385,24 +380,33 @@ public partial class EventScene : Control
         }
 
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        var path = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
-            ? "res://Game.Godot/Translations/zh-CN.csv"
-            : "res://Game.Godot/Translations/en.csv";
+        var candidatePaths = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "res://Game.Godot/Translations/zh-CN.csv", "res://../Game.Godot/Translations/zh-CN.csv" }
+            : new[] { "res://Game.Godot/Translations/en.csv", "res://../Game.Godot/Translations/en.csv" };
 
-        if (!global::Godot.FileAccess.FileExists(path))
+        string raw = string.Empty;
+        foreach (var candidatePath in candidatePaths)
+        {
+            if (!global::Godot.FileAccess.FileExists(candidatePath))
+            {
+                continue;
+            }
+
+            using var file = global::Godot.FileAccess.Open(candidatePath, global::Godot.FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            raw = file.GetAsText();
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
         {
             TextMapsByLocale[locale] = map;
             return map;
         }
-
-        using var file = global::Godot.FileAccess.Open(path, global::Godot.FileAccess.ModeFlags.Read);
-        if (file is null)
-        {
-            TextMapsByLocale[locale] = map;
-            return map;
-        }
-
-        var raw = file.GetAsText();
         foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var trimmed = line.Trim();

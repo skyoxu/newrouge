@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0",
+  "act_id": 1,
+  "name_key": "act.1.name",
+  "node_graph": {
+    "start_node_id": "act1-f01-combat-a",
+    "nodes": [
+      {
+        "id": "act1-f01-combat-a",
+        "floor": 1,
+        "type": "combat",
+        "encounter_id": "act1-slime-scout",
+        "next": [
+          "act1-f02-event-a",
+          "act1-f02-combat-b"
+        ]
+      },
+      {
+        "id": "act1-f02-event-a",
+        "floor": 2,
+        "type": "event",
+        "event_id": "event.abyss_toll",
+        "next": [
+          "act1-f03-shop-a"
+        ]
+      },
+      {
+        "id": "act1-f02-combat-b",
+        "floor": 2,
+        "type": "combat",
+        "encounter_id": "act1-moss-rat",
+        "next": [
+          "act1-f03-reward-a"
+        ]
+      },
+      {
+        "id": "act1-f03-shop-a",
+        "floor": 3,
+        "type": "shop",
+        "shop_pool_id": "shop.act1.m1",
+        "next": [
+          "act1-f03-reward-a"
+        ]
+      },
+      {
+        "id": "act1-f03-reward-a",
+        "floor": 3,
+        "type": "reward",
+        "reward_pool_id": "reward.act1.normal",
+        "next": [
+          "act1-f04-rest-a"
+        ]
+      },
+      {
+        "id": "act1-f04-rest-a",
+        "floor": 4,
+        "type": "rest",
+        "rest_options_id": "rest.act1.m1",
+        "next": [
+          "act1-f05-elite-a",
+          "act1-f05-combat-a"
+        ]
+      },
+      {
+        "id": "act1-f05-combat-a",
+        "floor": 5,
+        "type": "combat",
+        "encounter_id": "act1-moss-rat",
+        "next": [
+          "act1-f06-boss-a"
+        ]
+      },
+      {
+        "id": "act1-f05-elite-a",
+        "floor": 5,
+        "type": "elite",
+        "encounter_id": "act1-bandit-enforcer",
+        "next": [
+          "act1-f06-boss-a"
+        ]
+      },
+      {
+        "id": "act1-f06-boss-a",
+        "floor": 6,
+        "type": "boss",
+        "encounter_id": "act1-ruin-warden",
+        "next": []
+      }
+    ]
+  },
+  "pools": {
+    "card_pools_file": "Game.Core/Data/m1-card-pools.json",
+    "shop_pools_file": "Game.Core/Data/m1-shop-pools.json",
+    "rest_options_file": "Game.Core/Data/m1-rest-options.json",
+    "events_file": "Game.Core/Data/m1-event-definitions.json",
+    "relics_file": "Game.Core/Data/m1-relic-definitions.json",
+    "curses_file": "Game.Core/Data/m1-curse-definitions.json"
+  },
+  "encounters": {
+    "enemy_definitions_file": "Game.Core/Data/act1-enemy-definitions.json",
+    "normal": [
+      "act1-slime-scout",
+      "act1-moss-rat"
+    ],
+    "elite": [
+      "act1-bandit-enforcer"
+    ],
+    "boss": [
+      "act1-ruin-warden"
+    ]
+  }
+}

@@ -12,7 +12,7 @@ public partial class DifficultySelect : Control
 {
     private const int MinDifficulty = 1;
     private const int MaxDifficulty = 10;
-    private static Dictionary<string, string>? _textFallbacks;
+    private static readonly Dictionary<string, Dictionary<string, string>> TextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
 
     private Label _titleLabel = default!;
     private OptionButton _difficultyOptions = default!;
@@ -164,14 +164,20 @@ public partial class DifficultySelect : Control
     public bool HasDescriptionTranslationForTest(int difficultyId)
     {
         var key = GetDescriptionKeyForTest(difficultyId);
-        var localized = TranslationServer.Translate(key);
-        if (!string.Equals(localized, key, StringComparison.Ordinal))
-        {
-            return true;
-        }
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        return GetTextMap(locale).ContainsKey(key) || GetTextMap("en").ContainsKey(key);
+    }
 
-        _textFallbacks ??= LoadTextFallbacks();
-        return _textFallbacks.ContainsKey(key);
+    public void RefreshLocaleForTest()
+    {
+        BuildDifficultyOptions();
+        LocalizeStaticText();
+        SelectDifficulty(RunDifficultyState.GetConfirmedDifficulty());
+    }
+
+    public void RefreshVisibleTextForTest()
+    {
+        RefreshLocaleForTest();
     }
 
     private void BuildDifficultyOptions()
@@ -263,37 +269,62 @@ public partial class DifficultySelect : Control
             return string.Empty;
         }
 
+        var locale = NormalizeLocale(TranslationServer.GetLocale());
+        var map = GetTextMap(locale);
+        if (map.TryGetValue(keyOrText, out var value) && !string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (!string.Equals(locale, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            var fallback = GetTextMap("en");
+            if (fallback.TryGetValue(keyOrText, out var fallbackValue) && !string.IsNullOrWhiteSpace(fallbackValue))
+            {
+                return fallbackValue;
+            }
+        }
+
         var localized = TranslationServer.Translate(keyOrText);
-        if (!string.Equals(localized, keyOrText, StringComparison.Ordinal))
-        {
-            return localized;
-        }
-
-        _textFallbacks ??= LoadTextFallbacks();
-        if (_textFallbacks.TryGetValue(keyOrText, out var fallback) && !string.IsNullOrWhiteSpace(fallback))
-        {
-            return fallback;
-        }
-
-        return keyOrText;
+        return string.Equals(localized, keyOrText, StringComparison.Ordinal) ? keyOrText : localized;
     }
 
-    private static Dictionary<string, string> LoadTextFallbacks()
+    private static Dictionary<string, string> GetTextMap(string locale)
     {
+        if (TextMapsByLocale.TryGetValue(locale, out var cached))
+        {
+            return cached;
+        }
+
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        const string path = "res://Game.Godot/Translations/en.csv";
-        if (!FileAccess.FileExists(path))
+        var candidatePaths = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "res://Game.Godot/Translations/zh-CN.csv", "res://../Game.Godot/Translations/zh-CN.csv" }
+            : new[] { "res://Game.Godot/Translations/en.csv", "res://../Game.Godot/Translations/en.csv" };
+
+        string raw = string.Empty;
+        foreach (var candidatePath in candidatePaths)
         {
+            if (!FileAccess.FileExists(candidatePath))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(candidatePath, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            raw = file.GetAsText();
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            TextMapsByLocale[locale] = map;
             return map;
         }
 
-        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-        if (file is null)
-        {
-            return map;
-        }
-
-        var raw = file.GetAsText();
         foreach (var line in raw.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var trimmed = line.Trim();
@@ -316,7 +347,18 @@ public partial class DifficultySelect : Control
             }
         }
 
+        TextMapsByLocale[locale] = map;
         return map;
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
     }
 
     private void PublishDifficultySelected(int difficultyId)

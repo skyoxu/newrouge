@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "pools": [
+    {
+      "id": "reward.act1.normal",
+      "act_id": 1,
+      "encounter_type": "normal",
+      "offers": 3,
+      "cards_by_rarity": {
+        "common": [
+          "card.warrior.heavy_strike",
+          "card.warrior.iron_wave",
+          "card.warrior.cleave"
+        ],
+        "uncommon": [
+          "card.warrior.power_through"
+        ],
+        "rare": []
+      }
+    },
+    {
+      "id": "reward.act1.elite",
+      "act_id": 1,
+      "encounter_type": "elite",
+      "offers": 3,
+      "cards_by_rarity": {
+        "common": [
+          "card.warrior.iron_wave",
+          "card.warrior.cleave"
+        ],
+        "uncommon": [
+          "card.warrior.power_through"
+        ],
+        "rare": []
+      }
+    },
+    {
+      "id": "reward.act1.boss",
+      "act_id": 1,
+      "encounter_type": "boss",
+      "offers": 3,
+      "cards_by_rarity": {
+        "common": [],
+        "uncommon": [
+          "card.warrior.power_through"
+        ],
+        "rare": []
+      }
+    },
+    {
+      "id": "reward.act1.event",
+      "act_id": 1,
+      "encounter_type": "event",
+      "offers": 1,
+      "cards_by_rarity": {
+        "common": [
+          "card.warrior.iron_wave"
+        ],
+        "uncommon": [
+          "card.warrior.power_through"
+        ],
+        "rare": []
+      }
+    }
+  ]
+}

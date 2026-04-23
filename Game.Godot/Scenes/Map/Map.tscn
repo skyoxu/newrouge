@@ -11,6 +11,9 @@ text = "ui.map.title"
 [node name="hint_label" type="Label" parent="."]
 text = "ui.map.hint"
 
+[node name="feedback_label" type="Label" parent="."]
+text = "ui.map.feedback.ready"
+
 [node name="combat_icon" type="Node" parent="."]
 groups = ["map_node_combat"]
 
