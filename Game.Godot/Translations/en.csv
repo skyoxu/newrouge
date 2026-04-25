@@ -53,6 +53,13 @@ combat.feedback.refused,Command '{0}' refused.
 combat.feedback.refusal_reason.insufficient_energy,insufficient energy
 combat.feedback.refusal_reason.invalid_action,invalid action
 combat.feedback.refusal_reason.invalid_target,invalid target
+combat.feedback.refusal_reason.no_card_selected,Select a card first.
+combat.action.hint,Select a card, then click Play Selected Card. Click End Turn when you are done.
+combat.action.play_selected,Play Selected Card
+combat.hand.title,Hand
+combat.enemy.title,Enemy
+combat.enemy.status.none,None
+combat.intent.attack_6,Attack 6
 event.abyss_toll.title,Abyss Toll
 event.abyss_toll.description,Pay now and leave with a mark.
 event.option.lose_hp,Bleed for speed
@@ -69,6 +76,7 @@ event.feedback.numeric.default,HP 0\nCurse cards 0
 event.feedback.blocked.already_committed,Choice is already committed.
 event.feedback.blocked.invalid_option,Option is unavailable.
 event.feedback.blocked.persist_failed,Persist failed.
+ui.event.continue,Continue
 card.warrior.cleave.name,Cleave
 card.warrior.guard.name,Guard
 card.warrior.rage_surge.name,Rage Surge
@@ -132,6 +140,8 @@ ui.rest.description,Recover and plan your next move.
 ui.rest.option.heal,Heal
 ui.rest.option.upgrade,Upgrade
 ui.rest.option.remove_curse,Remove Curse
+ui.rest.confirm_upgrade,Confirm Upgrade
+ui.rest.cancel_upgrade,Cancel
 ui.rest.feedback.upgrade_pending,Upgrade pending confirmation.
 ui.rest.feedback.upgrade_confirmed,Upgrade confirmed.
 ui.rest.feedback.upgrade_cancelled,Upgrade cancelled.
@@ -219,3 +229,5 @@ ui.run.summary.reason,Reason
 ui.fallback.missing_config,Required configuration is missing.
 ui.fallback.missing_content,Required content is missing.
 ui.fallback.translation_missing,Text is unavailable in this language.
+ui.menu.new_game,New Game
+ui.character.confirm,Start Game

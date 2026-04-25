@@ -50,6 +50,7 @@ public partial class EventScene : Control
     private const string NumericChangesHpLossKey = "event.feedback.numeric.hp_loss";
     private const string NumericChangesTakeCurseKey = "event.feedback.numeric.take_curse";
     private const string NumericChangesDefaultKey = "event.feedback.numeric.default";
+    private const string ContinueButtonKey = "ui.event.continue";
     private const string CurseCardId = "card.curse.basic";
     private const string PersistedStateFileName = "task22-event-state.json";
 
@@ -63,6 +64,7 @@ public partial class EventScene : Control
     private Label _resultSummaryLabel = default!;
     private Label _numericChangesLabel = default!;
     private Label _blockedFeedbackLabel = default!;
+    private Button _continueButton = default!;
     private EventBusAdapter? _eventBus;
 
     private readonly List<EventOption> _lockedOptions = new();
@@ -90,9 +92,11 @@ public partial class EventScene : Control
         _resultSummaryLabel = GetNode<Label>("VBox/Feedback/LblResultSummary");
         _numericChangesLabel = GetNode<Label>("VBox/Feedback/LblNumericChanges");
         _blockedFeedbackLabel = GetNode<Label>("VBox/Feedback/LblBlockedFeedback");
+        _continueButton = GetNode<Button>("VBox/Feedback/BtnContinue");
 
         _loseHpButton.Pressed += () => ChooseOptionForTest("lose_hp");
         _takeCurseButton.Pressed += () => ChooseOptionForTest("take_curse");
+        _continueButton.Pressed += () => ContinueAfterChoiceForTest();
 
         EnterEventForTest();
     }
@@ -289,6 +293,47 @@ public partial class EventScene : Control
         return _blockedFeedbackLabel.Text ?? string.Empty;
     }
 
+    public bool CanContinueForTest()
+    {
+        return _continueButton.Visible && !string.IsNullOrWhiteSpace(_selectedOptionId);
+    }
+
+    public global::Godot.Collections.Dictionary ContinueAfterChoiceForTest()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedOptionId))
+        {
+            SetBlockedFeedbackByKey(BlockedAlreadyCommittedKey);
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "choice-not-committed" },
+            };
+        }
+
+        var main = ResolveMainController();
+        if (main is null || !main.HasMethod("CompleteMapNodeFlowForTest"))
+        {
+            SetBlockedFeedbackByKey(BlockedPersistFailureKey);
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "route-controller-missing" },
+            };
+        }
+
+        var resultVariant = main.Call("CompleteMapNodeFlowForTest");
+        if (resultVariant.VariantType != Variant.Type.Dictionary)
+        {
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "route-result-invalid" },
+            };
+        }
+
+        return resultVariant.AsGodotDictionary();
+    }
+
     public void SetLocaleForTest(string locale)
     {
         if (string.IsNullOrWhiteSpace(locale))
@@ -310,6 +355,7 @@ public partial class EventScene : Control
         _takeCurseButton.Text = ResolveText(_lockedOptions[1].TextKey);
         _loseHpPreviewLabel.Text = ResolveText(PreviewHpLossKey);
         _takeCursePreviewLabel.Text = ResolveText(PreviewCurseKey);
+        _continueButton.Text = ResolveText(ContinueButtonKey);
     }
 
     public global::Godot.Collections.Array<global::Godot.Collections.Dictionary> GetOptionViewsForTest()
@@ -466,6 +512,7 @@ public partial class EventScene : Control
         };
         _numericChangesLabel.Text = numericChanges;
         _numericChangesLabel.Visible = true;
+        _continueButton.Visible = true;
     }
 
     private void HideCommittedFeedback()
@@ -476,6 +523,7 @@ public partial class EventScene : Control
         _resultSummaryLabel.Visible = false;
         _numericChangesLabel.Text = string.Empty;
         _numericChangesLabel.Visible = false;
+        _continueButton.Visible = false;
     }
 
     private void SetBlockedFeedback(string message)
@@ -504,6 +552,22 @@ public partial class EventScene : Control
 
         _eventBus = GetNodeOrNull<EventBusAdapter>("/root/EventBus");
         return _eventBus;
+    }
+
+    private Node? ResolveMainController()
+    {
+        Node? current = this;
+        while (current is not null)
+        {
+            if (current.HasMethod("CompleteMapNodeFlowForTest"))
+            {
+                return current;
+            }
+
+            current = current.GetParent();
+        }
+
+        return GetNodeOrNull<Node>("/root/Main");
     }
 
     private void EnsureLockedOptions()
@@ -541,16 +605,14 @@ public partial class EventScene : Control
     {
         if (TryLoadPersistedStateFromDisk())
         {
-            HideCommittedFeedback();
-            HideBlockedFeedback();
+            RenderPersistedStateIfNeeded();
             return;
         }
 
         if (!_persistedStateInitialized)
         {
             PersistRuntimeState();
-            HideCommittedFeedback();
-            HideBlockedFeedback();
+            RenderPersistedStateIfNeeded();
             return;
         }
 
@@ -558,8 +620,27 @@ public partial class EventScene : Control
         _selectedOptionId = _persistedSelectedOptionId;
         _deckCards.Clear();
         _deckCards.AddRange(_persistedDeckCards);
-        HideCommittedFeedback();
+        RenderPersistedStateIfNeeded();
+    }
+
+    private void RenderPersistedStateIfNeeded()
+    {
         HideBlockedFeedback();
+        if (string.IsNullOrWhiteSpace(_selectedOptionId))
+        {
+            HideCommittedFeedback();
+            return;
+        }
+
+        EnsureLockedOptions();
+        var option = _lockedOptions.FirstOrDefault(item => string.Equals(item.Id, _selectedOptionId, StringComparison.Ordinal));
+        if (option is null)
+        {
+            HideCommittedFeedback();
+            return;
+        }
+
+        RenderCommittedFeedback(option);
     }
 
     private static string ResolvePersistedStatePath()

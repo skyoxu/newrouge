@@ -15,6 +15,7 @@ public partial class HUD : Control
 {
     private Label _score = default!;
     private Label _health = default!;
+    private Label _gold = default!;
     private Label _difficulty = default!;
     private Control _runSummaryPanel = default!;
     private Label _summaryTitle = default!;
@@ -44,6 +45,7 @@ public partial class HUD : Control
     {
         _score = GetNode<Label>("TopBar/HBox/ScoreLabel");
         _health = GetNode<Label>("TopBar/HBox/HealthLabel");
+        _gold = GetNode<Label>("TopBar/HBox/GoldLabel");
         _difficulty = GetNode<Label>("TopBar/HBox/DifficultyLabel");
         _runSummaryPanel = GetNode<Control>("RunSummaryPanel");
         _summaryTitle = GetNode<Label>("RunSummaryPanel/VBox/TitleLabel");
@@ -72,6 +74,7 @@ public partial class HUD : Control
     {
         _score.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _health.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
+        _gold.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _difficulty.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _summaryTitle.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _summaryDifficulty.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
@@ -155,6 +158,21 @@ public partial class HUD : Control
                 GD.PushWarning($"[HUD] Invalid health event payload: {ex.Message}");
             }
         }
+        else if (type == "core.gold.updated" || type == "player.gold.changed")
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(dataJson, EventJsonOptions);
+                int v = 0;
+                if (doc.RootElement.TryGetProperty("value", out var val)) v = val.GetInt32();
+                else if (doc.RootElement.TryGetProperty("gold", out var gold)) v = gold.GetInt32();
+                _gold.Text = $"Gold: {v}";
+            }
+            catch (JsonException ex)
+            {
+                GD.PushWarning($"[HUD] Invalid gold event payload: {ex.Message}");
+            }
+        }
         else if (type == EventTypes.CombatEnded || type == "combat.ended")
         {
             _runSummaryPanel.Visible = true;
@@ -165,6 +183,7 @@ public partial class HUD : Control
 
     public void SetScore(int v) => _score.Text = $"Score: {v}";
     public void SetHealth(int v) => _health.Text = $"HP: {v}";
+    public void SetGold(int v) => _gold.Text = $"Gold: {v}";
 
     public string GetHudDifficultyTextForTest() => _difficulty.Text;
 

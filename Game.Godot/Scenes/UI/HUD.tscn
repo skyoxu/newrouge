@@ -35,6 +35,10 @@ text = "Score: 0"
 layout_mode = 2
 text = "HP: 100"
 
+[node name="GoldLabel" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+text = "Gold: 0"
+
 [node name="DifficultyLabel" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
 text = "ui.difficulty.label: ui.difficulty.1"

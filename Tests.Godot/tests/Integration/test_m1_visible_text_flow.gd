@@ -34,6 +34,7 @@ const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 const MAIN_MENU_BLOCKED_MESSAGE_PATH := "ContinueBlockedDialog/MarginContainer/VBox/MessageLabel"
 const MAP_TITLE_KEY := "ui.map.title"
 const MAP_HINT_KEY := "ui.map.hint"
+const MAIN_SCENE := preload("res://Game.Godot/Scenes/Main.tscn")
 
 func _normalize_texts(values: Array[String]) -> Array[String]:
 	var normalized: Array[String] = []
@@ -212,7 +213,7 @@ func _assert_node_translation_binding(surface: String, surface_node: Node, node_
 func _assert_surface_translation_binding(surface: String, surface_node: Node, locale: String) -> void:
 	match surface:
 		"MainMenu":
-			_assert_node_translation_binding(surface, surface_node, "VBox/BtnNewRun", "ui.menu.new_run", locale)
+			_assert_node_translation_binding(surface, surface_node, "VBox/BtnNewRun", "ui.menu.new_game", locale)
 			_assert_node_translation_binding(surface, surface_node, "VBox/BtnContinue", "ui.menu.continue", locale)
 		"DifficultySelect":
 			_assert_node_translation_binding(surface, surface_node, "VBox/LblTitle", "ui.difficulty.title", locale)
@@ -398,12 +399,129 @@ func _ensure_evidence_or_soft_skip(reason: String) -> bool:
 		return false
 	return true
 
+func _load_main_on_map() -> Control:
+	var main := MAIN_SCENE.instantiate() as Control
+	add_child(auto_free(main))
+	await get_tree().process_frame
+	var nav := main.get_node_or_null("ScreenNavigator")
+	assert(nav != null, "Main scene missing ScreenNavigator.")
+	nav.UseFadeTransition = false
+	if nav.has_method("ClearRouteHistoryForTest"):
+		nav.call("ClearRouteHistoryForTest")
+	nav.call("SwitchTo", "res://Game.Godot/Scenes/Map/Map.tscn")
+	await get_tree().process_frame
+	if main.has_method("ResetMapRouteProgressForTest"):
+		main.call("ResetMapRouteProgressForTest")
+	return main
+
+func _current_scene_path(main: Control) -> String:
+	var nav := main.get_node_or_null("ScreenNavigator")
+	if nav == null or not nav.has_method("GetCurrentScenePathForTest"):
+		return ""
+	return str(nav.call("GetCurrentScenePathForTest"))
+
+func _current_scene_instance(main: Control):
+	var root := main.get_node_or_null("ScreenRoot")
+	if root == null or root.get_child_count() == 0:
+		return null
+	return root.get_child(root.get_child_count() - 1)
+
 # acceptance anchor: ACC:T65.1
+# acceptance anchor: ACC:T73.5
 func test_m1_smoke_surfaces_require_readable_visible_text() -> void:
 	# red-first: this validates real M1 scene surfaces instead of fixture dictionaries.
 	for locale in REQUIRED_LOCALES:
 		await _assert_real_surface_texts_for_locale(locale)
 		await _assert_critical_runtime_feedback_for_locale(locale)
+
+
+func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> void:
+	var main := await _load_main_on_map()
+	var route_start := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(route_start.get("ok", false))).is_true()
+	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
+	await get_tree().process_frame
+
+	var combat = _current_scene_instance(main)
+	assert_that(combat).is_not_null()
+	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
+	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(victory.get("ok", false))).is_true()
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+
+	var reward = _current_scene_instance(main)
+	assert_that(reward).is_not_null()
+	assert_that(bool(reward.call("SkipForTest"))).is_true()
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+
+func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu() -> void:
+	var main := await _load_main_on_map()
+	var route_steps: Array[Dictionary] = [
+		{"id": "combat-01", "type": "combat", "reward": true},
+		{"id": "event-02", "type": "event", "reward": true},
+		{"id": "shop-03", "type": "shop", "reward": false},
+		{"id": "rest-04", "type": "rest", "reward": false},
+	]
+	for step in route_steps:
+		var enter_result := main.call("StartMapNodeRouteForTest", str(step.get("id", "")), str(step.get("type", "")), true, "") as Dictionary
+		assert_that(bool(enter_result.get("ok", false))).is_true()
+		await get_tree().process_frame
+		var complete_result := main.call("CompleteMapNodeFlowForTest") as Dictionary
+		assert_that(bool(complete_result.get("ok", false))).is_true()
+		await get_tree().process_frame
+		if bool(step.get("reward", false)):
+			var reward = _current_scene_instance(main)
+			assert_that(reward).is_not_null()
+			assert_that(bool(reward.call("SkipForTest"))).is_true()
+			await get_tree().process_frame
+
+	var route_start := main.call("StartMapNodeRouteForTest", "boss-05", "combat", true, "") as Dictionary
+	assert_that(bool(route_start.get("ok", false))).is_true()
+	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
+	await get_tree().process_frame
+
+	var combat = _current_scene_instance(main)
+	assert_that(combat).is_not_null()
+	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
+	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(victory.get("ok", false))).is_true()
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+
+	var reward = _current_scene_instance(main)
+	assert_that(reward).is_not_null()
+	assert_that(bool(reward.call("ConfirmSelectedForTest"))).is_false()
+	assert_that(bool(reward.call("SelectChoiceForTest", 0))).is_true()
+	assert_that(bool(reward.call("ConfirmSelectedForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+	var hud := main.get_node_or_null("HUD")
+	assert_that(hud).is_not_null()
+	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
+	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Victory") >= 0).is_true()
+
+func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_main_menu() -> void:
+	var main := await _load_main_on_map()
+	var route_start := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(route_start.get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var combat = _current_scene_instance(main)
+	assert_that(combat).is_not_null()
+	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(bool(combat.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+	var hud := main.get_node_or_null("HUD")
+	assert_that(hud).is_not_null()
+	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
+	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 
 # acceptance anchor: ACC:T65.2
 func test_m1_locales_en_and_zh_cn_have_readable_text_and_negative_guard() -> void:

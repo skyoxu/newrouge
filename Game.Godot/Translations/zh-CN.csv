@@ -28,6 +28,13 @@ combat.feedback.refused,命令'{0}'被拒绝。
 combat.feedback.refusal_reason.insufficient_energy,能量不足
 combat.feedback.refusal_reason.invalid_action,无效操作
 combat.feedback.refusal_reason.invalid_target,无效目标
+combat.feedback.refusal_reason.no_card_selected,请先选择一张手牌。
+combat.action.hint,选择一张手牌，然后点击“打出选中卡牌”；没有合适操作时点击“结束回合”。
+combat.action.play_selected,打出选中卡牌
+combat.hand.title,手牌
+combat.enemy.title,敌人
+combat.enemy.status.none,无
+combat.intent.attack_6,攻击 6
 event.abyss_toll.title,深渊代价
 event.abyss_toll.description,付出代价后才能继续前行。
 event.option.lose_hp,流血换取速度
@@ -219,3 +226,8 @@ ui.run.summary.reason,原因
 ui.fallback.missing_config,缺少必要配置。
 ui.fallback.missing_content,缺少必要内容。
 ui.fallback.translation_missing,当前语言缺少可用文本。
+ui.menu.new_game,新游戏
+ui.character.confirm,开始游戏
+ui.event.continue,继续
+ui.rest.confirm_upgrade,确认升级
+ui.rest.cancel_upgrade,取消

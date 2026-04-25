@@ -2,12 +2,12 @@ extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const M1_BUTTON_SPECS := [
     {"surface": "run-entry", "scene": "res://Game.Godot/Scenes/UI/MainMenu.tscn", "action_path": "VBox/BtnNewRun"},
-    {"surface": "map", "scene": "res://Game.Godot/Scenes/Map/Map.tscn", "action_path": "ActionRow/btn_combat"},
+    {"surface": "map", "scene": "res://Game.Godot/Scenes/Map/Map.tscn", "action_path": "RouteTree/Floor1/combat_01"},
     {"surface": "node", "scene": "res://Game.Godot/Scenes/Event.tscn", "action_path": "VBox/Options/BtnLoseHp"},
     {"surface": "reward", "scene": "res://Game.Godot/Scenes/Reward.tscn", "action_path": "VBox/Actions/ConfirmButton"},
     {"surface": "rest", "scene": "res://Game.Godot/Scenes/Rest.tscn", "action_path": "VBox/Option_upgrade"},
     {"surface": "shop", "scene": "res://Game.Godot/Scenes/Shop.tscn", "action_path": "VBox/ServicesRow/BuyButton"},
-    {"surface": "combat", "scene": "res://Game.Godot/Scenes/Combat.tscn", "action_path": "HUD/TurnControls/StartTurnButton"},
+    {"surface": "combat", "scene": "res://Game.Godot/Scenes/Combat.tscn", "action_path": "HUD/TurnControls/PlaySelectedCardButton"},
     {"surface": "continue", "scene": "res://Game.Godot/Scenes/UI/MainMenu.tscn", "action_path": "VBox/BtnContinue"}
 ]
 

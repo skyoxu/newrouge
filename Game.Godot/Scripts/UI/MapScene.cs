@@ -25,18 +25,34 @@ public partial class MapScene : Control
     private Label _titleLabel = default!;
     private Label _hintLabel = default!;
     private Label _feedbackLabel = default!;
+    private Label _nodeLegendLabel = default!;
     private Button _combatButton = default!;
     private Button _eventButton = default!;
     private Button _shopButton = default!;
     private Button _restButton = default!;
     private string _lastLocale = string.Empty;
     private string _lastInvokedAction = string.Empty;
+    private static readonly string[] DefaultNodeOrder = { "combat", "event", "shop", "rest" };
+    private readonly List<RouteNode> _routeNodes = new()
+    {
+        new("combat-01", "combat", 1, "F1 Combat", "F1 战斗"),
+        new("event-02", "event", 2, "F2 Event", "F2 事件"),
+        new("combat-02", "combat", 2, "F2 Combat", "F2 战斗"),
+        new("shop-03", "shop", 3, "F3 Shop", "F3 商店"),
+        new("combat-03", "combat", 3, "F3 Reward Fight", "F3 奖励战斗"),
+        new("rest-04", "rest", 4, "F4 Rest", "F4 休息"),
+        new("boss-05", "combat", 5, "F5 Boss", "F5 首领"),
+    };
+    private readonly Dictionary<string, Button> _routeButtonsById = new(StringComparer.Ordinal);
+
+    private sealed record RouteNode(string Id, string Type, int Floor, string EnglishLabel, string ChineseLabel);
 
     public override void _Ready()
     {
         _titleLabel = GetNode<Label>("title_label");
         _hintLabel = GetNode<Label>("hint_label");
         _feedbackLabel = GetNode<Label>("feedback_label");
+        _nodeLegendLabel = GetNode<Label>("node_legend_label");
         _combatButton = GetNode<Button>("ActionRow/btn_combat");
         _eventButton = GetNode<Button>("ActionRow/btn_event");
         _shopButton = GetNode<Button>("ActionRow/btn_shop");
@@ -45,6 +61,7 @@ public partial class MapScene : Control
         _eventButton.Pressed += OnEventPressed;
         _shopButton.Pressed += OnShopPressed;
         _restButton.Pressed += OnRestPressed;
+        BindRouteTreeButtons();
         RefreshVisibleTextForTest();
     }
 
@@ -69,6 +86,8 @@ public partial class MapScene : Control
         {
             _restButton.Pressed -= OnRestPressed;
         }
+
+        _routeButtonsById.Clear();
     }
 
     public override void _Process(double _delta)
@@ -124,6 +143,52 @@ public partial class MapScene : Control
         return _lastInvokedAction;
     }
 
+    public int GetRouteTreeFloorCountForTest()
+    {
+        return 5;
+    }
+
+    public global::Godot.Collections.Array<string> GetReachableRouteNodeIdsForTest()
+    {
+        var result = new global::Godot.Collections.Array<string>();
+        foreach (var node in _routeNodes)
+        {
+            if (IsRouteNodeReachable(node))
+            {
+                result.Add(node.Id);
+            }
+        }
+
+        return result;
+    }
+
+    public global::Godot.Collections.Dictionary InvokeRouteNodeForTest(string nodeId)
+    {
+        var node = ResolveRouteNode(nodeId);
+        if (node is null)
+        {
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "unknown-node" },
+                { "scene_path", string.Empty },
+            };
+        }
+
+        if (!IsRouteNodeReachable(node))
+        {
+            ShowRouteFeedbackForTest("locked_node", node.Id);
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "node-not-reachable" },
+                { "scene_path", string.Empty },
+            };
+        }
+
+        return TryStartRoute(node.Id, node.Type);
+    }
+
     public bool ShowRouteFeedbackForTest(string feedbackKind, string nodeId)
     {
         var key = NormalizeFeedbackKind(feedbackKind) switch
@@ -154,6 +219,8 @@ public partial class MapScene : Control
         _eventButton.Text = ResolveVisibleTextOrFallback(EventActionKey, locale, "Event");
         _shopButton.Text = ResolveVisibleTextOrFallback(ShopActionKey, locale, "Shop");
         _restButton.Text = ResolveVisibleTextOrFallback(RestActionKey, locale, "Rest");
+        _nodeLegendLabel.Text = BuildNodeLegend(locale);
+        RefreshRouteTree(locale);
         if (string.IsNullOrWhiteSpace(_feedbackLabel.Text) || string.Equals(_feedbackLabel.Text, ReadyFeedbackKey, StringComparison.Ordinal))
         {
             _feedbackLabel.Text = ResolveVisibleText(ReadyFeedbackKey, locale);
@@ -180,22 +247,181 @@ public partial class MapScene : Control
 
     private void OnCombatPressed()
     {
-        _lastInvokedAction = "combat";
+        TryStartRoute("combat");
     }
 
     private void OnEventPressed()
     {
-        _lastInvokedAction = "event";
+        TryStartRoute("event");
     }
 
     private void OnShopPressed()
     {
-        _lastInvokedAction = "shop";
+        TryStartRoute("shop");
     }
 
     private void OnRestPressed()
     {
-        _lastInvokedAction = "rest";
+        TryStartRoute("rest");
+    }
+
+    private void TryStartRoute(string action)
+    {
+        _ = TryStartRoute($"{action}-01", action);
+    }
+
+    private global::Godot.Collections.Dictionary TryStartRoute(string nodeId, string action)
+    {
+        _lastInvokedAction = action;
+
+        var main = ResolveMainController();
+        if (main == null || !main.HasMethod("StartMapNodeRouteForTest"))
+        {
+            _feedbackLabel.Text = ResolveVisibleText(MissingContentFeedbackKey, _lastLocale).Replace("{0}", action, StringComparison.Ordinal);
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "route-controller-missing" },
+                { "scene_path", string.Empty },
+            };
+        }
+
+        var resultVariant = main.Call("StartMapNodeRouteForTest", nodeId, action, true, string.Empty);
+        if (resultVariant.VariantType != Variant.Type.Dictionary)
+        {
+            _feedbackLabel.Text = ResolveVisibleText(MissingContentFeedbackKey, _lastLocale).Replace("{0}", action, StringComparison.Ordinal);
+            return new global::Godot.Collections.Dictionary
+            {
+                { "ok", false },
+                { "reason", "route-result-invalid" },
+                { "scene_path", string.Empty },
+            };
+        }
+
+        var result = (global::Godot.Collections.Dictionary)resultVariant;
+        var ok = result.ContainsKey("ok") && result["ok"].AsBool();
+        if (ok)
+        {
+            _feedbackLabel.Text = ResolveVisibleText(ReturnedToMapFeedbackKey, _lastLocale).Replace("{0}", action, StringComparison.Ordinal);
+            return result;
+        }
+
+        var reason = result.ContainsKey("reason") ? result["reason"].AsString() : string.Empty;
+        if (string.Equals(reason, "unsupported-node-type", StringComparison.Ordinal))
+        {
+            _feedbackLabel.Text = ResolveVisibleText(MissingContentFeedbackKey, _lastLocale).Replace("{0}", action, StringComparison.Ordinal);
+            return result;
+        }
+
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            _feedbackLabel.Text = reason;
+            return result;
+        }
+
+        _feedbackLabel.Text = ResolveVisibleText(MissingContentFeedbackKey, _lastLocale).Replace("{0}", action, StringComparison.Ordinal);
+        return result;
+    }
+
+    private void BindRouteTreeButtons()
+    {
+        foreach (var node in _routeNodes)
+        {
+            var buttonName = node.Id.Replace('-', '_');
+            var button = GetNodeOrNull<Button>($"RouteTree/Floor{node.Floor}/{buttonName}");
+            if (button is null)
+            {
+                continue;
+            }
+
+            _routeButtonsById[node.Id] = button;
+            button.Pressed += () => InvokeRouteNodeForTest(node.Id);
+        }
+    }
+
+    private RouteNode? ResolveRouteNode(string nodeId)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId))
+        {
+            return null;
+        }
+
+        var normalized = nodeId.Trim();
+        foreach (var node in _routeNodes)
+        {
+            if (string.Equals(node.Id, normalized, StringComparison.Ordinal))
+            {
+                return node;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsRouteNodeReachable(RouteNode node)
+    {
+        return node.Floor == ResolveCurrentReachableFloor();
+    }
+
+    private int ResolveCurrentReachableFloor()
+    {
+        var completed = ResolveCompletedNodeCount();
+        return Math.Clamp(completed + 1, 1, 5);
+    }
+
+    private int ResolveCompletedNodeCount()
+    {
+        var main = ResolveMainController();
+        if (main is null || !main.HasMethod("GetMapRouteCompletedNodeCountForTest"))
+        {
+            return 0;
+        }
+
+        var value = main.Call("GetMapRouteCompletedNodeCountForTest");
+        return value.VariantType == Variant.Type.Int ? Math.Max(0, value.AsInt32()) : 0;
+    }
+
+    private Node? ResolveMainController()
+    {
+        Node? current = this;
+        while (current is not null)
+        {
+            if (current.HasMethod("StartMapNodeRouteForTest"))
+            {
+                return current;
+            }
+
+            current = current.GetParent();
+        }
+
+        return GetNodeOrNull<Node>("/root/Main");
+    }
+
+    private void RefreshRouteTree(string locale)
+    {
+        var reachableFloor = ResolveCurrentReachableFloor();
+        var zh = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+        foreach (var node in _routeNodes)
+        {
+            if (!_routeButtonsById.TryGetValue(node.Id, out var button) || button is null)
+            {
+                continue;
+            }
+
+            button.Text = zh ? node.ChineseLabel : node.EnglishLabel;
+            button.Disabled = node.Floor != reachableFloor;
+        }
+    }
+
+    private string BuildNodeLegend(string locale)
+    {
+        var labels = new List<string>(DefaultNodeOrder.Length);
+        foreach (var nodeType in DefaultNodeOrder)
+        {
+            labels.Add(ResolveVisibleText($"ui.map.action.{nodeType}", locale));
+        }
+
+        return string.Join(" -> ", labels);
     }
 
     private static string ResolveVisibleText(string key, string locale)

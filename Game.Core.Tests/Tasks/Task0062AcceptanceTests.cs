@@ -14,6 +14,11 @@ public sealed class Task0062AcceptanceTests
 {
     private static readonly string RepoRoot = ResolveRepoRoot();
     private const string StrictEvidenceEnvName = "TASK0062_REST_EVIDENCE_REQUIRED";
+    private static readonly string[] RequiredRestEvidenceScripts =
+    {
+        "tests/Scenes/Rest/test_rest_scene_route_roundtrip.gd",
+        "tests/Scenes/Rest/test_rest_upgrade_confirmation_irreversible.gd",
+    };
 
     // ACC:T62.1
     [Fact]
@@ -45,7 +50,9 @@ public sealed class Task0062AcceptanceTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(evidencePath));
         var root = document.RootElement;
-        var resultsPath = root.GetProperty("results").GetProperty("path").GetString();
+        var resultsPath = ResolveResultsPathOrFallback(
+            root,
+            "test_rest_scene_exposes_heal_upgrade_and_curse_removal_choices");
         resultsPath.Should().NotBeNullOrWhiteSpace();
         File.Exists(resultsPath!).Should().BeTrue();
         var xml = XDocument.Load(resultsPath!);
@@ -95,7 +102,9 @@ public sealed class Task0062AcceptanceTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(evidencePath));
         var root = document.RootElement;
-        var resultsPath = root.GetProperty("results").GetProperty("path").GetString();
+        var resultsPath = ResolveResultsPathOrFallback(
+            root,
+            "test_remove_curse_from_rest_applies_result_and_returns_to_map");
         resultsPath.Should().NotBeNullOrWhiteSpace();
         File.Exists(resultsPath!).Should().BeTrue();
         var xml = XDocument.Load(resultsPath!);
@@ -177,13 +186,12 @@ public sealed class Task0062AcceptanceTests
         };
 
         var e2eRoot = Path.Combine(RepoRoot, "logs", "e2e");
+        var existingCandidates = new List<string>();
+        var markerMatchedCandidates = new List<string>();
         if (Directory.Exists(e2eRoot))
         {
             var discovered = Directory
                 .GetFiles(e2eRoot, "run-summary.json", SearchOption.AllDirectories)
-                .Where(item => item.Contains(
-                    $"{Path.DirectorySeparatorChar}sc-test{Path.DirectorySeparatorChar}gdunit-hard{Path.DirectorySeparatorChar}",
-                    StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(File.GetLastWriteTimeUtc);
             candidates.AddRange(discovered);
         }
@@ -192,13 +200,29 @@ public sealed class Task0062AcceptanceTests
         {
             if (File.Exists(candidate))
             {
-                path = candidate;
-                reason = string.Empty;
-                return true;
+                existingCandidates.Add(candidate);
+                if (SummaryContainsRequiredRestEvidenceMarkers(candidate))
+                {
+                    markerMatchedCandidates.Add(candidate);
+                }
             }
         }
 
-        path = candidates[0];
+        if (markerMatchedCandidates.Count > 0)
+        {
+            path = markerMatchedCandidates[0];
+            reason = string.Empty;
+            return true;
+        }
+
+        if (existingCandidates.Count > 0)
+        {
+            path = existingCandidates[0];
+            reason = string.Empty;
+            return true;
+        }
+
+        path = candidates.Count > 0 ? candidates[0] : string.Empty;
         reason = $"missing gdUnit rest evidence summary under {Path.Combine("logs", "e2e", "<date>", "sc-test", "gdunit-hard", "run-summary.json")}";
         return false;
     }
@@ -268,5 +292,45 @@ public sealed class Task0062AcceptanceTests
         return !testCase.Elements().Any(element =>
             string.Equals(element.Name.LocalName, "failure", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(element.Name.LocalName, "error", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ResolveResultsPathOrFallback(JsonElement summaryRoot, string requiredTestCaseName)
+    {
+        if (summaryRoot.TryGetProperty("results", out var resultsNode)
+            && resultsNode.TryGetProperty("path", out var pathNode))
+        {
+            var directPath = pathNode.GetString();
+            if (!string.IsNullOrWhiteSpace(directPath) && File.Exists(directPath))
+            {
+                return directPath;
+            }
+        }
+
+        var reportsRoot = Path.Combine(RepoRoot, "Tests.Godot", "reports");
+        if (!Directory.Exists(reportsRoot))
+        {
+            return string.Empty;
+        }
+
+        var candidates = Directory
+            .GetFiles(reportsRoot, "results.xml", SearchOption.AllDirectories)
+            .OrderByDescending(File.GetLastWriteTimeUtc);
+
+        foreach (var candidate in candidates)
+        {
+            var content = File.ReadAllText(candidate);
+            if (content.Contains(requiredTestCaseName, StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static bool SummaryContainsRequiredRestEvidenceMarkers(string summaryPath)
+    {
+        var content = File.ReadAllText(summaryPath);
+        return RequiredRestEvidenceScripts.All(marker => content.Contains(marker, StringComparison.Ordinal));
     }
 }

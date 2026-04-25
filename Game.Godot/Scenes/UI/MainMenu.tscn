@@ -20,11 +20,15 @@ offset_bottom = 240.0
 
 [node name="BtnNewRun" type="Button" parent="VBox"]
 layout_mode = 2
-text = "ui.menu.new_run"
+text = "ui.menu.new_game"
 
 [node name="BtnContinue" type="Button" parent="VBox"]
 layout_mode = 2
 text = "ui.menu.continue"
+
+[node name="BtnSettings" type="Button" parent="VBox"]
+layout_mode = 2
+text = "ui.menu.settings"
 
 [node name="BtnQuit" type="Button" parent="VBox"]
 layout_mode = 2

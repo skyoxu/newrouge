@@ -5,6 +5,8 @@ const DESCRIPTION_KEY := "ui.rest.description"
 const OPTION_HEAL_KEY := "ui.rest.option.heal"
 const OPTION_UPGRADE_KEY := "ui.rest.option.upgrade"
 const OPTION_REMOVE_CURSE_KEY := "ui.rest.option.remove_curse"
+const CONFIRM_UPGRADE_KEY := "ui.rest.confirm_upgrade"
+const CANCEL_UPGRADE_KEY := "ui.rest.cancel_upgrade"
 const FEEDBACK_UPGRADE_PENDING_KEY := "ui.rest.feedback.upgrade_pending"
 const FEEDBACK_UPGRADE_CONFIRMED_KEY := "ui.rest.feedback.upgrade_confirmed"
 const FEEDBACK_UPGRADE_CANCELLED_KEY := "ui.rest.feedback.upgrade_cancelled"
@@ -18,6 +20,9 @@ const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 @onready var _vbox: VBoxContainer = $VBox
 @onready var _title_label: Label = $VBox/Title
 @onready var _description_label: Label = $VBox/Description
+@onready var _confirm_upgrade_button: Button = $VBox/ConfirmUpgradeButton
+@onready var _cancel_upgrade_button: Button = $VBox/CancelUpgradeButton
+@onready var _feedback_label: Label = $VBox/Feedback
 
 var _selected_option: String = ""
 var _next_route: String = ""
@@ -32,6 +37,8 @@ func _ready() -> void:
 	_ensure_option_button(OPTION_HEAL_KEY, "heal")
 	_ensure_option_button(OPTION_UPGRADE_KEY, "upgrade")
 	_ensure_option_button(OPTION_REMOVE_CURSE_KEY, "remove_curse")
+	_confirm_upgrade_button.pressed.connect(func() -> void: ConfirmUpgradeForTest())
+	_cancel_upgrade_button.pressed.connect(func() -> void: CancelUpgradeForTest())
 	RefreshLocaleForTest()
 
 func SetLocaleForTest(locale: String) -> void:
@@ -43,9 +50,12 @@ func SetLocaleForTest(locale: String) -> void:
 func RefreshLocaleForTest() -> void:
 	_title_label.text = _resolve_text(TITLE_KEY)
 	_description_label.text = _resolve_text(DESCRIPTION_KEY)
+	_confirm_upgrade_button.text = _resolve_text(CONFIRM_UPGRADE_KEY)
+	_cancel_upgrade_button.text = _resolve_text(CANCEL_UPGRADE_KEY)
 	_ensure_option_button(OPTION_HEAL_KEY, "heal")
 	_ensure_option_button(OPTION_UPGRADE_KEY, "upgrade")
 	_ensure_option_button(OPTION_REMOVE_CURSE_KEY, "remove_curse")
+	_refresh_feedback_state()
 
 func _ensure_option_button(text_key: String, option_id: String) -> void:
 	var button_name := "Option_" + option_id
@@ -65,6 +75,7 @@ func _on_option_pressed(option_id: String) -> void:
 	if option_id == "upgrade":
 		_upgrade_confirm_pending = true
 		_feedback = _resolve_text(FEEDBACK_UPGRADE_PENDING_KEY)
+		_refresh_feedback_state()
 		return
 
 	if option_id == "remove_curse":
@@ -74,6 +85,8 @@ func _on_option_pressed(option_id: String) -> void:
 		_feedback = _resolve_text(FEEDBACK_HEAL_RESOLVED_KEY)
 	_upgrade_confirm_pending = false
 	_next_route = "map"
+	_refresh_feedback_state()
+	_complete_map_route()
 
 func SelectOptionForTest(option_id: String) -> bool:
 	var normalized := option_id.strip_edges().to_lower()
@@ -90,6 +103,8 @@ func ConfirmUpgradeForTest() -> bool:
 	_upgrade_target_mutated = true
 	_feedback = _resolve_text(FEEDBACK_UPGRADE_CONFIRMED_KEY)
 	_next_route = "map"
+	_refresh_feedback_state()
+	_complete_map_route()
 	return true
 
 func CancelUpgradeForTest() -> bool:
@@ -99,6 +114,7 @@ func CancelUpgradeForTest() -> bool:
 	_selected_option = ""
 	_upgrade_target_mutated = false
 	_feedback = _resolve_text(FEEDBACK_UPGRADE_CANCELLED_KEY)
+	_refresh_feedback_state()
 	return true
 
 func RequestUndoAfterConfirmForTest() -> bool:
@@ -115,11 +131,13 @@ func RequestRestorePreUpgradeSnapshotForTest() -> bool:
 
 func ShowMissingTargetFeedbackForTest() -> bool:
 	_feedback = _resolve_text(FEEDBACK_MISSING_TARGET_KEY)
+	_refresh_feedback_state()
 	return true
 
 func ShowReturnRouteFeedbackForTest() -> bool:
 	_next_route = "map"
 	_feedback = _resolve_text(FEEDBACK_RETURN_ROUTE_KEY)
+	_refresh_feedback_state()
 	return true
 
 func GetAvailableOptionsForTest() -> Array[String]:
@@ -142,6 +160,24 @@ func WasCurseRemovedForTest() -> bool:
 
 func GetFeedbackForTest() -> String:
 	return _feedback
+
+func _refresh_feedback_state() -> void:
+	_confirm_upgrade_button.visible = _upgrade_confirm_pending
+	_cancel_upgrade_button.visible = _upgrade_confirm_pending
+	_feedback_label.text = _feedback
+
+func _complete_map_route() -> void:
+	var main = _resolve_main_controller()
+	if main != null and main.has_method("CompleteMapNodeFlowForTest"):
+		main.call_deferred("CompleteMapNodeFlowForTest")
+
+func _resolve_main_controller() -> Node:
+	var current: Node = self
+	while current != null:
+		if current.has_method("CompleteMapNodeFlowForTest"):
+			return current
+		current = current.get_parent()
+	return get_node_or_null("/root/Main")
 
 func _resolve_text(key: String) -> String:
 	if key.strip_edges().is_empty():

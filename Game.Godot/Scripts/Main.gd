@@ -1,8 +1,14 @@
 ﻿extends Control
 
-@onready var _label: Label = $VBox/Output
+var _label: Label
 var _score: int = 0
-var _hp: int = 100
+const DEFAULT_RUN_HP := 80
+const DEFAULT_RUN_GOLD := 180
+var _hp: int = DEFAULT_RUN_HP
+var _run_hp: int = DEFAULT_RUN_HP
+var _run_gold: int = DEFAULT_RUN_GOLD
+var _hud_node: CanvasItem
+var _hud_visibility_initialized: bool = false
 const DIFFICULTY_SELECT_SCENE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
 const CHARACTER_SELECT_SCENE := "res://Game.Godot/Scenes/UI/CharacterSelect.tscn"
 const MAP_SCENE := "res://Game.Godot/Scenes/Map/Map.tscn"
@@ -24,8 +30,23 @@ var _reward_route_resolved: bool = false
 var _shop_state_by_node: Dictionary = {}
 var _active_shop_node_id: String = ""
 
+func _should_show_template_demo_overlay() -> bool:
+    var ff = get_node_or_null("/root/FeatureFlags")
+    if ff != null and ff.has_method("IsEnabled") and ff.IsEnabled("demo_overlay"):
+        return true
+
+    if OS.has_environment("TEMPLATE_DEMO") and str(OS.get_environment("TEMPLATE_DEMO")).to_lower() == "1":
+        return true
+
+    return false
+
 func _ready() -> void:
     print("[TEMPLATE_SMOKE_READY] Main scene initialized")
+    _hud_node = get_node_or_null("HUD")
+    var demo_root = get_node_or_null("VBox")
+    if demo_root != null:
+        demo_root.visible = _should_show_template_demo_overlay()
+
     var db = get_node_or_null("/root/SqlDb")
     if db != null:
         var ok = db.TryOpen("user://data/game.db")
@@ -33,17 +54,31 @@ func _ready() -> void:
             print("[DB] open failed: ", str(db.LastError))
         else:
             print("[DB] opened at user://data/game.db")
-    $VBox/PublishBtn.pressed.connect(_on_publish)
-    $VBox/SaveLoadBtn.pressed.connect(_on_save_load)
-    $VBox/LogBtn.pressed.connect(_on_log)
-    if has_node("VBox/AddScoreBtn"):
-        $VBox/AddScoreBtn.pressed.connect(_on_add_score)
-    if has_node("VBox/LoseHpBtn"):
-        $VBox/LoseHpBtn.pressed.connect(_on_lose_hp)
+
+    _label = get_node_or_null("VBox/Output")
+    var publish_btn = get_node_or_null("VBox/PublishBtn")
+    if publish_btn != null:
+        publish_btn.pressed.connect(_on_publish)
+    var save_load_btn = get_node_or_null("VBox/SaveLoadBtn")
+    if save_load_btn != null:
+        save_load_btn.pressed.connect(_on_save_load)
+    var log_btn = get_node_or_null("VBox/LogBtn")
+    if log_btn != null:
+        log_btn.pressed.connect(_on_log)
+    var add_score_btn = get_node_or_null("VBox/AddScoreBtn")
+    if add_score_btn != null:
+        add_score_btn.pressed.connect(_on_add_score)
+    var lose_hp_btn = get_node_or_null("VBox/LoseHpBtn")
+    if lose_hp_btn != null:
+        lose_hp_btn.pressed.connect(_on_lose_hp)
+
     # Listen to UI menu events to start/quit game
     var bus = get_node_or_null("/root/EventBus")
     if bus != null:
         bus.connect("DomainEventEmitted", Callable(self, "_on_domain_event"))
+
+    _sync_hud_run_resources()
+    _update_hud_visibility_for_scene("")
 
 func _exit_tree() -> void:
     var bus = get_node_or_null("/root/EventBus")
@@ -56,29 +91,35 @@ func _exit_tree() -> void:
 func _on_publish() -> void:
     var bus = get_node_or_null("/root/EventBus")
     if bus == null:
-        _label.text = "EventBus not found"
+        if _label != null:
+            _label.text = "EventBus not found"
         return
     bus.PublishSimple("demo.event", "ui", "{\"msg\":\"hello\"}")
-    _label.text = "Published demo.event"
+    if _label != null:
+        _label.text = "Published demo.event"
 
 func _on_save_load() -> void:
     var ds = get_node_or_null("/root/DataStore")
     if ds == null:
-        _label.text = "DataStore not found"
+        if _label != null:
+            _label.text = "DataStore not found"
         return
     var key = "demo_save"
     var json = "{\"ts\":" + str(Time.get_unix_time_from_system()) + "}"
     ds.SaveSync(key, json)
     var loaded = ds.LoadSync(key)
-    _label.text = "Loaded: " + str(loaded)
+    if _label != null:
+        _label.text = "Loaded: " + str(loaded)
 
 func _on_log() -> void:
     var logger = get_node_or_null("/root/Logger")
     if logger == null:
-        _label.text = "Logger not found"
+        if _label != null:
+            _label.text = "Logger not found"
         return
     logger.Info("Hello from Main.gd")
-    _label.text = "Logged to console"
+    if _label != null:
+        _label.text = "Logged to console"
 
 func _bus():
     return get_node_or_null("/root/EventBus")
@@ -92,7 +133,8 @@ func _on_add_score() -> void:
         var bus = _bus()
         if bus != null:
             bus.PublishSimple("core.score.updated", "ui", "{\"value\":%d}" % _score)
-    _label.text = "Score = %d" % _score
+    if _label != null:
+        _label.text = "Score = %d" % _score
 
 func _on_lose_hp() -> void:
     _hp = max(0, _hp - 5)
@@ -103,11 +145,17 @@ func _on_lose_hp() -> void:
         var bus = _bus()
         if bus != null:
             bus.PublishSimple("core.health.updated", "ui", "{\"value\":%d}" % _hp)
-    _label.text = "HP = %d" % _hp
+    if _label != null:
+        _label.text = "HP = %d" % _hp
 
 func _on_domain_event(type: String, source: String, data_json: String, id: String, spec: String, ct: String, ts: String) -> void:
     var nav = _resolve_navigator()
     if type == "ui.menu.start":
+        _run_hp = DEFAULT_RUN_HP
+        _run_gold = DEFAULT_RUN_GOLD
+        _score = 0
+        _clear_hud_run_summary()
+        _sync_hud_run_resources()
         var demo = get_node_or_null("/root/Main/EngineDemo")
         if demo != null and demo.has_method("StartGame"):
             demo.StartGame()
@@ -117,7 +165,11 @@ func _on_domain_event(type: String, source: String, data_json: String, id: Strin
     elif type == "core.run.character.selected":
         _switch_to(nav, MAP_SCENE)
     elif type == "ui.menu.settings":
-        var sp = get_node_or_null("/root/Main/SettingsPanel")
+        var sp = get_node_or_null("SettingsLayer/SettingsPanel")
+        if sp == null:
+            sp = get_node_or_null("/root/Main/SettingsLayer/SettingsPanel")
+        if sp == null:
+            sp = get_node_or_null("/root/Main/SettingsPanel")
         if sp != null and sp.has_method("ShowPanel"):
             sp.ShowPanel()
     elif type == "ui.menu.quit":
@@ -127,7 +179,84 @@ func _switch_to(nav: Node, scene_path: String) -> void:
     if nav == null or not nav.has_method("SwitchTo"):
         return
     if ResourceLoader.exists(scene_path):
-        nav.SwitchTo(scene_path)
+        var switched := bool(nav.SwitchTo(scene_path))
+        if switched:
+            _update_hud_visibility_for_scene(scene_path)
+
+func _sync_hud_run_resources() -> void:
+    if _hud_node == null:
+        return
+    if _hud_node.has_method("SetHealth"):
+        _hud_node.call("SetHealth", _run_hp)
+    if _hud_node.has_method("SetGold"):
+        _hud_node.call("SetGold", _run_gold)
+    if _hud_node.has_method("SetScore"):
+        _hud_node.call("SetScore", _score)
+
+func _clear_hud_run_summary() -> void:
+    if _hud_node == null:
+        return
+    var panel := _hud_node.get_node_or_null("RunSummaryPanel")
+    if panel != null:
+        panel.visible = false
+
+func _is_gameplay_scene(scene_path: String) -> bool:
+    if scene_path == MAP_SCENE:
+        return true
+    return _ROUTABLE_NODE_SCENES.has(scene_path) or scene_path == REWARD_SCENE
+
+func _update_hud_visibility_for_scene(scene_path: String) -> void:
+    if _hud_node == null:
+        return
+    var normalized := scene_path.strip_edges()
+    if normalized.is_empty():
+        _hud_node.visible = false
+        _hud_visibility_initialized = true
+        return
+    _hud_node.visible = _is_gameplay_scene(normalized)
+    _hud_visibility_initialized = true
+
+func _show_run_summary_and_return_to_main_menu(outcome: String, node_progress: int, reason: String) -> void:
+    var nav = _resolve_navigator()
+    var current_scene := ""
+    if nav != null and nav.has_method("GetCurrentScenePathForTest"):
+        current_scene = str(nav.call("GetCurrentScenePathForTest"))
+
+    if nav != null and current_scene != MAP_SCENE:
+        _switch_to(nav, MAP_SCENE)
+
+    if _hud_node != null:
+        _hud_node.visible = true
+        if _hud_node.has_method("ShowRunSummaryForTest"):
+            _hud_node.call("ShowRunSummaryForTest", outcome, node_progress, reason)
+
+    var menu = get_node_or_null("MenuLayer/MainMenu")
+    if menu != null:
+        if menu.has_method("ShowMenu"):
+            menu.call("ShowMenu")
+        else:
+            menu.visible = true
+
+func IsMainMenuVisibleForTest() -> bool:
+    var menu = get_node_or_null("MenuLayer/MainMenu")
+    if menu == null:
+        return false
+    return bool(menu.visible)
+
+func HandleCombatDefeatForTest(reason: String = "Player HP reached zero.") -> Dictionary:
+    _run_hp = 0
+    _reward_route_pending = false
+    _reward_route_resolved = false
+    _active_shop_node_id = ""
+    _sync_hud_run_resources()
+    _show_run_summary_and_return_to_main_menu("Defeat", _map_route_completed_nodes, reason)
+    return {
+        "ok": true,
+        "reason": "",
+        "scene_path": MAP_SCENE,
+        "outcome": "defeat",
+        "menu_visible": IsMainMenuVisibleForTest()
+    }
 
 func _resolve_navigator() -> Node:
     var nav = get_node_or_null("ScreenNavigator")
@@ -285,6 +414,17 @@ func ResolveRewardForTest(action: String) -> Dictionary:
     _reward_route_resolved = true
     _reward_route_pending = false
     _map_route_completed_nodes += 1
+    var is_boss_completion := _map_route_last_selected_node_id.strip_edges().to_lower().begins_with("boss")
+    if is_boss_completion:
+        _show_run_summary_and_return_to_main_menu("Victory", _map_route_completed_nodes, "Boss defeated.")
+        return {
+            "ok": true,
+            "reason": "",
+            "scene_path": MAP_SCENE,
+            "outcome": "victory",
+            "menu_visible": IsMainMenuVisibleForTest()
+        }
+
     _switch_to(nav, MAP_SCENE)
     return {"ok": true, "reason": "", "scene_path": MAP_SCENE}
 

@@ -39,6 +39,7 @@ public partial class CharacterSelect : Control
     private Label _lblSummary1 = default!;
     private Label _lblSummary2 = default!;
     private Label _lblSummary3 = default!;
+    private Button _btnConfirm = default!;
     private string _selectedCharacterId = WarriorId;
     private string _lastLocale = string.Empty;
 
@@ -54,10 +55,14 @@ public partial class CharacterSelect : Control
         _lblSummary1 = GetNode<Label>("VBox/Summary/LblSummaryLine1");
         _lblSummary2 = GetNode<Label>("VBox/Summary/LblSummaryLine2");
         _lblSummary3 = GetNode<Label>("VBox/Summary/LblSummaryLine3");
+        _btnConfirm = GetNode<Button>("VBox/BtnConfirm");
 
         _btnWarrior.Pressed += () => TrySelectCharacter(WarriorId);
         _btnMage.Pressed += () => TrySelectCharacter(MageId);
         _btnRogue.Pressed += () => TrySelectCharacter(RogueId);
+        _btnConfirm.Pressed += ConfirmSelectedCharacterForTest;
+
+        _btnConfirm.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
 
         ApplyCharacterState();
         RefreshLocalizedText(force: true);
@@ -167,6 +172,7 @@ public partial class CharacterSelect : Control
         _btnWarrior.Disabled = false;
         _btnMage.Disabled = true;
         _btnRogue.Disabled = true;
+        _btnConfirm.Disabled = !string.Equals(_selectedCharacterId, WarriorId, StringComparison.Ordinal);
 
         _btnWarrior.Modulate = Colors.White;
         _btnMage.Modulate = new Color(1f, 1f, 1f, 0.55f);
@@ -201,6 +207,7 @@ public partial class CharacterSelect : Control
         _lblSummary1.Text = ResolveVisibleText(WarriorSummaryKeys[0]);
         _lblSummary2.Text = ResolveVisibleText(WarriorSummaryKeys[1]);
         _lblSummary3.Text = ResolveVisibleText(WarriorSummaryKeys[2]);
+        _btnConfirm.Text = ResolveVisibleText("ui.character.confirm");
     }
 
     private static string ResolveVisibleText(string keyOrText)
