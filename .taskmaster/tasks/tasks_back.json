@@ -1677,6 +1677,2930 @@
     "semantic_review_tier": "full"
   },
   {
+    "id": "NG-0044",
+    "story_id": "BACKLOG-M1",
+    "title": "Semantic scope governance for soft review stabilization",
+    "description": "Create a governance guardrail that keeps semantic soft review bounded to task scope while preserving deterministic hard-gate precedence.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "NG-0043"
+    ],
+    "adr_refs": [
+      "ADR-0005",
+      "ADR-0003"
+    ],
+    "chapter_refs": [
+      "CH03",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ci",
+      "semantic-governance"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "acceptance": [
+      "task-0058-semantic-governance.json must include semantic_policy_mode, gate_precedence, and governance_result fields with non-empty values. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Policy evaluation scope must be limited to task.master.details and task.mapped.acceptance: when master.details is non-empty, task_context.allowed_scope_items must include both; when master.details is empty, task_context.allowed_scope_items must include only \"task.mapped.acceptance\". Any scope expansion beyond allowed_scope_items must be classified as advisory out-of-scope and must not become blocker without explicit elevation rule. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check is ok and llm_review has warn-level findings only (without explicit elevation), governance_result must be pass and advisory notes must be recorded. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "When acceptance_check fails, governance_result must be fail regardless of llm_review output. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Governance output must expose machine-readable blocker_findings and advisory_findings fields using stable key names. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Windows execution evidence in task-0058-semantic-governance.json must include platform=windows and a non-empty run_id. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "One pass sample and one advisory-warning sample must both be reproducible via local scripts without manual file edits, and each generated task-0058-semantic-governance.json must include machine-readable evidence_refs.acceptance_check_summary and evidence_refs.llm_review_summary paths pointing to logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json and logs/ci/<date>/sc-llm-review-task-<id>/summary.json. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "If any llm_review finding is explicitly elevated to blocker, output must include elevation_rule_id and supporting evidence and the finding must appear in blocker_findings; without an explicit elevation rule, warn findings must remain in advisory_findings and must not fail governance. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "Given identical acceptance_check, llm_review, and task context inputs, policy evaluation must produce stable governance_result and identical blocker/advisory classification across repeated runs (review oscillation guard). Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
+      "For both pass sample and advisory-warning sample, generated evidence summaries must include non-empty status, task_id, generated_at, and findings/summary counters. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
+    ],
+    "test_strategy": [
+      "Run governance evaluation on Windows with one pass sample and one advisory-warning sample, then validate JSON evidence shape and linkage fields."
+    ],
+    "taskmaster_id": 58,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0058-semantic-governance.json",
+      "logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json",
+      "logs/ci/<date>/sc-llm-review-task-<id>/summary.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0045",
+    "story_id": "BACKLOG-M1",
+    "title": "Upgrade Map route graph visualization on top of existing route ownership",
+    "description": "Track the M1 route-graph guardrail as an upgrade on top of the existing route-owned Map flow so visual route connections, legal edge state, and legacy shortcut suppression remain explicit in backlog and quality gates.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0024"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ui",
+      "map",
+      "routing"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
+    ],
+    "acceptance": [
+      "The Map surface must render the M1 route as a connected path graph with visible edges between legal route transitions, while preserving the existing route-owned Map-to-node transition flow and removing reliance on four standalone node-type shortcut buttons. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Route graph data must explicitly define node ids and directed edges for the M1 five-floor path, including branch choices from floor 1 to floor 2 and legal continuations through the final M1 endpoint. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Reachable, locked, completed, and selected-path states must be visible on both route nodes and route edges so the player can understand which Slay-the-Spire-style path choices are currently legal. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Clicking a reachable route node must use the existing route-owned Map-to-node flow, while clicking a locked or disconnected node must refuse the transition with visible feedback and no run progression mutation. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Completing a node must update route graph state so only legal next-floor nodes and their connecting edges become reachable, and previously completed path segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The legacy ActionRow shortcut buttons for Combat, Event, Shop, and Rest must remain hidden or removed from the player-facing Map surface once route graph entry is active. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Windows GdUnit verification must cover route edge existence, edge state changes after node completion, locked-node refusal, and absence of visible legacy shortcut buttons on the Map scene. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
+    ],
+    "test_strategy": [
+      "Extend the existing Map route GdUnit suite to cover connected route graph edges, path-state visualization, legal unlock progression, and hidden legacy shortcut buttons on Windows."
+    ],
+    "taskmaster_id": 70,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.map.node.selected",
+      "core.map.node.completed"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0070.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0046",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
+    "description": "Track the combat deck-lifecycle umbrella milestone over T80-T82 so backlog and quality gates treat this work as an integration checkpoint over existing deck/runtime capabilities, not as a separate build track.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0034"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1-plus",
+      "combat",
+      "deck",
+      "state"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "This task is satisfied only when T80, T81, and T82 are complete and collectively cover combat draw, discard, reshuffle, and HUD pile-count synchronization through the shared DeckService-backed runtime path. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "No scene-local duplicate deck lifecycle implementation may be introduced under this task; deck state ownership must remain in the shared runtime/services path and scene code may only bind or orchestrate it. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Milestone validation for this task must be performed by aggregating evidence from T80-T82 rather than by adding a fourth parallel implementation path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71."
+    ],
+    "taskmaster_id": 71,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.drawn",
+      "core.deck.discarded",
+      "core.deck.shuffled",
+      "core.combat.card.played"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0071.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0047",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
+    "description": "Track CombatScene binding to existing card definitions, translations, and effect contracts so data-driven card behavior does not fork into a second card model.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0046"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "cards",
+      "data",
+      "i18n"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Combat card buttons must render card name, cost, and player-visible effect text from existing data definitions and translations instead of hard-coded scene labels or a second card-text source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Playing a damage card, block card, or mixed-effect card must resolve effects from the card definition and update HP, block, energy, and pile state consistently. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Accepted card feedback must summarize the resolved effect using player-facing terms such as damage dealt, block gained, status applied, card exhausted, or card discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Insufficient energy, missing card definition, and invalid target rule failures must refuse the play with visible feedback and no combat state mutation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Both en and zh-CN card text used by the M1 combat surface must render as readable localized text, not raw keys or placeholder values. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths."
+    ],
+    "taskmaster_id": 72,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.played",
+      "core.card.definition.loaded"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0072.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0048",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
+    "description": "Track the upgrade from the current single-target or partial targeting skeleton to route-owned multi-enemy combat state, without replacing existing victory-route ownership.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0047"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "targeting",
+      "enemy",
+      "routing"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "The Combat surface must render one or more enemies with visible name, HP, block, status, and intent so the player can identify legal targets. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Single-target cards must require a legal living enemy target, while self-target and all-enemy cards must resolve without requiring an enemy click. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Invalid, dead, locked, or disconnected targets must refuse the card play with visible feedback and no HP, energy, or pile mutation. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Enemy death must remove that enemy from legal target choices and preserve deterministic state for remaining enemies and their intents. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When all enemies are defeated, Combat must complete through the existing route-owned flow and enter Reward or Map according to the current node rules. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing."
+    ],
+    "taskmaster_id": 73,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.target.selected",
+      "core.combat.enemy.defeated",
+      "core.route.node.completed"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0073.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0049",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Upgrade existing targeting flow with Slay-the-Spire-style card drag UX",
+    "description": "Track drag targeting as an input-layer upgrade over the current validated play path, while preserving the existing accessibility fallback.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0048"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "cards",
+      "drag-drop",
+      "ux"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_card_drag_target_play.gd",
+      "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "A player can drag a card from hand, hover over a legal target, and release to request the same existing validated card play path used by click-based play. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Dragging over legal targets must show visible target highlight or preview without mutating combat state before the card is released. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd",
+      "Dropping on an invalid target or empty space must cancel or refuse the play with visible feedback, returning the card to hand and preserving energy and pile state. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "The existing click or Play Selected Card accessibility path must remain available and behaviorally equivalent to a successful drag release. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Drag preview and target hover must be UI-only operations and must not advance combat RNG streams or route progression. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd"
+    ],
+    "test_strategy": [
+      "Promote existing drag-target harness coverage into real Combat scene behavior tests, including valid drop, invalid drop, cancel, and accessibility fallback."
+    ],
+    "taskmaster_id": 74,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.play.requested",
+      "core.combat.target.selected"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0074.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0050",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Wire existing status contracts and rules into visible combat status effects",
+    "description": "Track combat status visibility as wiring of existing status contracts and rule semantics into the player-facing combat runtime, rather than a duplicate status implementation.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0047",
+      "NG-0048"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "status-effects",
+      "buffs",
+      "debuffs"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "The Combat surface must display active player and enemy statuses with readable labels, stack counts, and tooltip or detail text for decision-critical effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Strength, weak, vulnerable, and block-like modifiers must affect damage or mitigation deterministically according to the existing status rules and modifier semantics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Status application, stack changes, and expiration at turn boundaries must be visible in feedback or HUD state without requiring logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Invalid or expired status references must fail safely with visible feedback and no corrupted combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Status UI text must render in en and zh-CN without raw translation keys on M1 combat surfaces. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay."
+    ],
+    "taskmaster_id": 75,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.status.applied",
+      "core.combat.status.expired"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0075.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0051",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
+    "description": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0048",
+      "NG-0050"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "enemy-ai",
+      "intent",
+      "rng"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Enemy intent must be generated from enemy behavior definitions on top of the existing intent surface and displayed before the player acts, including attack, block, buff, debuff, or mixed intent types. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Enemy behavior selection must use a named combat RNG stream and must not be advanced by hover, drag preview, localization refresh, or other UI-only operations. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path."
+    ],
+    "taskmaster_id": 76,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.enemy.intent.previewed",
+      "core.combat.enemy.action.resolved"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0076.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0052",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Integrate trigger registration and combat-time hooks into the shared combat runtime",
+    "description": "Integrate deterministic trigger registration and card-play, turn, damage, and death-check hooks into combat runtime while deferring powers/relics/potions presentation and effect integration to a follow-up task.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0046",
+      "NG-0050",
+      "NG-0051"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "triggers",
+      "relics",
+      "potions",
+      "powers"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Combat triggers must execute in deterministic order for card play, turn start, turn end, damage, block, and death-check boundaries through the shared combat runtime rather than a second trigger stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Trigger outcomes that change combat state must produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add deterministic trigger-order assertions through existing Combat scene suites for card-play, turn, damage, and death-check hooks on the shared runtime path."
+    ],
+    "taskmaster_id": 77,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.trigger.resolved",
+      "core.combat.relic.triggered",
+      "core.combat.potion.used"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0077.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0053",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Layer combat presentation feedback on top of deterministic state without mutating runtime logic",
+    "description": "Track the presentation-feedback layer as a UI-only overlay on existing deterministic combat runtime, without introducing a second logic path.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0047",
+      "NG-0048",
+      "NG-0050"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "feedback",
+      "animation",
+      "audio",
+      "preview"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Successful card plays and enemy actions must create player-visible transient feedback such as damage numbers, block numbers, or action banners in addition to static HUD changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Combat SFX hooks must be called for card play, hit, block, invalid action, and enemy action events, while missing audio assets degrade safely with visible feedback or no-op behavior. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Hovering or focusing a card must show a readable card preview with cost, type, target rule, and localized effect text without mutating combat state or advancing RNG. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Enemy intent hover or focus must show detailed readable intent text so the player can understand incoming damage, block, or status effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Reduced-motion or headless-safe mode must preserve deterministic tests by making presentation effects observable without relying on real-time animation timing. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat UI tests with observable presentation-layer nodes/events and verify they do not mutate deterministic combat state or RNG."
+    ],
+    "taskmaster_id": 78,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "ui.combat.feedback.presented",
+      "ui.combat.card.previewed"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0078.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0054",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Unify combat defeat trigger by HP change event and single-resolution guard",
+    "description": "Track defeat routing unification across existing HP mutation paths so any HP<=0 transition resolves exactly once.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0048"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "hp",
+      "defeat-route"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "Defeat route must trigger when player HP changes to <= 0 regardless of damage source path, not only on end-turn handling. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Defeat route must be one-shot per combat resolution and must not duplicate summary/menu routing on repeated HP updates. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "HP-update trigger path must preserve route ownership and return to Main menu with visible summary outcome Defeat. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Add/extend Combat scene tests for HP-change-driven defeat trigger on end-turn and non-end-turn HP mutation paths, and verify one-shot defeat routing."
+    ],
+    "taskmaster_id": 79,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.health.updated",
+      "core.combat.ended"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0079.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0055",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Wire CombatScene to existing DeckService runtime state instead of local pile counters",
+    "description": "Track CombatScene migration from local pile arithmetic to the existing DeckService runtime state as the first concrete implementation slice under T71.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0048"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "deck",
+      "wiring"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "Combat draw/discard/hand counters must be derived from the shared DeckService state transitions rather than local ad-hoc arithmetic. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Playing a card must move card instance from hand to discard (or exhaust by rule) and reflect updated counts in HUD. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "End-turn processing must apply deck retention/discard rules from deck state service and keep UI synchronized. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add/extend tests for deck-state-driven UI counters after play card/end turn and ensure deterministic transitions remain stable."
+    ],
+    "taskmaster_id": 80,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.drawn",
+      "core.deck.discarded",
+      "core.deck.retained"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0080.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0056",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Expose draw-empty reshuffle cycle through existing DeckService-backed combat runtime",
+    "description": "Track reshuffle exposure through the shared DeckService-backed combat runtime rather than a scene-local reshuffle implementation.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0054",
+      "NG-0055"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "reshuffle",
+      "deck-cycle"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "When draw pile reaches zero and discard is non-empty, combat must reshuffle discard into draw and clear discard before next draw action through the shared DeckService-backed combat runtime. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Reshuffle flow must be deterministic under current shuffle policy and must not break hand-limit or retain processing. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Combat HUD counters must show post-reshuffle draw/discard values consistent with runtime deck state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add tests that exhaust draw pile, verify reshuffle from discard, discard reset, and continued draw behavior without state corruption."
+    ],
+    "taskmaster_id": 81,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.shuffled",
+      "core.deck.drawn"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0081.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0057",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Add combat deck total display on top of DeckService-backed pile state",
+    "description": "Track total-deck HUD and pile invariant visibility on top of the shared DeckService-backed combat runtime, not as a second deck implementation.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0055",
+      "NG-0056"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "deck-total",
+      "hud"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Combat HUD must include a visible total-deck counter rendered after existing core counters. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "At runtime, draw + hand + discard must equal total deck count across play-card, end-turn, and reshuffle transitions on the shared DeckService-backed combat runtime. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If invariant cannot be satisfied, surface visible safe feedback instead of silent drift. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add UI/state tests ensuring draw+hand+discard equals total after play, end turn, and reshuffle transitions."
+    ],
+    "taskmaster_id": 82,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.hud.snapshot",
+      "core.deck.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0082.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0058",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Hand off CombatScene card play to the existing CombatService runtime",
+    "description": "Replace scene-local card resolution with the shared CombatService and PlayCard runtime while keeping current scene ownership and leaving Warrior seed and Rage runtime closure to follow-up tasks.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0047",
+      "NG-0055"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "runtime",
+      "playcard"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "CombatScene must hand card play, turn progression, and state mutation to the shared CombatService and PlayCard runtime instead of resolving combat only through scene-local sample logic. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Visible card, energy, HP, and pile updates on the Combat surface must remain synchronized with the shared runtime after play and end-turn actions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Combat scene and acceptance tests to verify CombatService-backed card resolution and removal of scene-local-only play behavior while preserving current surface ownership."
+    ],
+    "taskmaster_id": 83,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.card.played",
+      "core.deck.drawn",
+      "core.player.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0083.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0059",
+    "story_id": "BACKLOG-M1-REWARD",
+    "title": "Generate Reward offers from existing card drop pools on first entry",
+    "description": "Track first-entry Reward offer generation from the current act and encounter context so Reward stops relying on placeholder card content and uses the shared pool path.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0009",
+      "NG-0010"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "reward",
+      "offer",
+      "pool",
+      "determinism"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+    ],
+    "acceptance": [
+      "Reward entry must generate its initial three offered cards from the existing act and encounter card pools through the shared deterministic reward path instead of placeholder scene-local content. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "For the same act and encounter context, first-entry Reward generation must remain deterministic on the shared pool path before any re-entry or restore logic is applied. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs"
+    ],
+    "test_strategy": [
+      "Add or extend Reward scene and integration tests to cover pool-driven first-entry offer generation through the shared reward path."
+    ],
+    "taskmaster_id": 84,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.presented",
+      "core.reward.offer.locked"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0084.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0060",
+    "story_id": "BACKLOG-M1-REWARD",
+    "title": "Complete Reward three-choice selection and confirm gating on the existing Reward scene",
+    "description": "Track the completion of the current Reward interaction so one offer can be selected and confirm is gated through the existing Reward scene.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0009",
+      "NG-0059"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "reward",
+      "selection",
+      "deck-writeback"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
+    ],
+    "acceptance": [
+      "The current Reward scene must support selecting exactly one offered card and exposing visible selected state on the existing surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "Confirmation must remain unavailable while no card is selected and only unlock through the same Reward scene once a valid single selection exists. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface."
+    ],
+    "taskmaster_id": 85,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.selected",
+      "core.reward.offer.skipped",
+      "core.deck.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0085.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0061",
+    "story_id": "BACKLOG-M1",
+    "title": "Generate route graph from existing ActConfig for the live Map path",
+    "description": "Replace the hard-coded M1 map node list with route graph generation from ActConfig while keeping current Map surface binding and visual closure in a follow-up task.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0008",
+      "NG-0045"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "map",
+      "actconfig",
+      "generation"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "acceptance": [
+      "The playable route graph must be generated from existing ActConfig and map services rather than from a hard-coded node list embedded in the scene layer. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "Invalid or incomplete ActConfig map content must refuse route generation with visible failure handling instead of silently falling back to a hard-coded playable map. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "test_strategy": [
+      "Add or extend map service tests to cover ActConfig-driven route generation and deterministic refusal for invalid or incomplete map content."
+    ],
+    "taskmaster_id": 86,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.map.route.generated",
+      "core.route.node.completed"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0086.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0062",
+    "story_id": "BACKLOG-M1",
+    "title": "Resume Continue into real Map or combat entry boundaries from autosave metadata",
+    "description": "Complete the successful Continue path for Map and combat entry boundaries while deferring locked surface restoration for Reward, Shop, and Event to a follow-up task.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0012",
+      "NG-0061"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "continue",
+      "resume",
+      "autosave",
+      "boundary"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+    ],
+    "acceptance": [
+      "When autosave metadata is valid, Continue must restore the player into the real node-owned boundary for Map or the combat initial boundary instead of stopping after metadata validation. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Invalid saves must still stay on the existing blocked-state UX path, so successful Continue restoration does not regress visible refusal behavior for broken metadata. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+    ],
+    "test_strategy": [
+      "Add or extend resume integration tests to cover valid restore into Map or combat boundaries and unchanged blocked-state behavior for invalid saves."
+    ],
+    "taskmaster_id": 87,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.resumed",
+      "core.save.autosave.loaded"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0087.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0063",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Integrate relic acquisition, equip state, and player-facing display on the shared run path",
+    "description": "Promote relic definitions into acquired, equipped, and visible runtime state on the shared run path while deferring combat-time relic effect execution to a follow-up task.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0011",
+      "NG-0060"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "relic",
+      "runtime",
+      "inventory",
+      "ui"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Tests.Godot/tests/UI/test_inventory_panel.gd"
+    ],
+    "acceptance": [
+      "The run path must support acquiring and equipping relic instances from existing relic definitions without duplicating relic ownership in a second scene-local store. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Equipped relics must be visible or inspectable from the player-facing runtime surfaces when they can affect play decisions. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd"
+    ],
+    "test_strategy": [
+      "Add or extend run inventory and UI tests to cover relic grant, uniqueness enforcement, and visible equipped state on the shared run path."
+    ],
+    "taskmaster_id": 88,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted",
+      "core.relic.equipped"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0088.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0064",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Instantiate combat enemy runtime from existing enemy data definitions",
+    "description": "Track replacement of placeholder enemy construction with data-backed runtime enemy instantiation while keeping current combat ownership.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0048",
+      "NG-0051"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "enemy",
+      "data",
+      "runtime"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "Combat encounters must instantiate runtime enemies from existing enemy data definitions rather than from placeholder scene-local defaults. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Live combat must consume those data-backed enemy runtime instances as the authoritative enemy state instead of keeping a separate placeholder enemy model. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path."
+    ],
+    "taskmaster_id": 89,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.enemy.instance.created",
+      "core.enemy.intent.generated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0089.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0065",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Promote status trigger ordering and fixed damage rules into the live combat runtime",
+    "description": "Move the existing deterministic trigger ordering and fixed damage rules into the player-facing combat runtime while deferring AOE and feedback consistency closure to follow-up tasks.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0050",
+      "NG-0052",
+      "NG-0064"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "rules",
+      "fixed-damage",
+      "trigger-order"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Live combat resolution must apply the existing status trigger ordering and fixed damage rules instead of bypassing them through simplified scene-local resolution. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Player-visible combat feedback must not contradict the shared runtime result for ordered triggers and fixed damage application. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add or extend combat rule tests to cover trigger ordering and fixed damage exemptions inside the live combat runtime path."
+    ],
+    "taskmaster_id": 90,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.damage.resolved",
+      "core.status.triggered"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0090.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0066",
+    "story_id": "BACKLOG-M1",
+    "title": "Expand the run summary into a stored-data-backed settlement surface",
+    "description": "Upgrade the current run summary into a stored-data-backed settlement surface for outcome and route progress while deferring reward, relic, and resume metadata completion to a follow-up task.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0070"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "run-summary",
+      "settlement",
+      "metadata"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The chosen run summary owner surface must expand to show stored outcome and route progress without recomputing run state at display time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "Opening the settlement surface from victory or defeat must not mutate current run state and must remain consistent with stored summary metadata across repeated opens. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd"
+    ],
+    "test_strategy": [
+      "Add or extend run summary tests to cover outcome and route-progress visibility from stored data and route-independent opening behavior."
+    ],
+    "taskmaster_id": 91,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.summary.presented",
+      "core.run.metadata.snapshot"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0091.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0034",
+    "story_id": "BACKLOG-M1",
+    "title": "Architecture tests (Core must not depend on Godot)",
+    "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "ci",
+    "depends_on": [
+      "NG-0043",
+      "NG-0068",
+      "NG-0071",
+      "NG-0073"
+    ],
+    "adr_refs": [
+      "ADR-0007",
+      "ADR-0005",
+      "ADR-0024",
+      "ADR-0018"
+    ],
+    "chapter_refs": [
+      "CH01",
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "scripts/python/check_architecture_boundary.py",
+      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "The repository must provide an executable architecture boundary check that fails when Game.Core references Godot APIs or Godot assemblies directly. Refs: scripts/python/check_architecture_boundary.py",
+      "The boundary check must be wired as a deterministic guard for the current codebase so future runtime expansion tasks cannot silently erode the Core-versus-adapter split. Refs: Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "A passing run must leave machine-readable evidence under logs/ci for the architecture-boundary guard, and a failing violation case must be able to stop the guardrail path. Refs: scripts/python/check_architecture_boundary.py"
+    ],
+    "test_strategy": [
+      "Introduce a small intentional violation in a temp branch to verify the test catches it."
+    ],
+    "taskmaster_id": 92,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.architecture.boundary.checked"
+    ],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0092.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0035",
+    "story_id": "BACKLOG-M1",
+    "title": "OS.execute guard (deny-by-default) + audit",
+    "description": "Provide a single adapter for external process execution and keep OS.execute disabled by default. Allow only explicit dev-mode allowlisted commands and write audit records on any deny/allow. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B3).",
+    "status": "pending",
+    "priority": "P3",
+    "layer": "ci",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0019",
+      "ADR-0011",
+      "ADR-0005"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd"
+    ],
+    "acceptance": [
+      "External process execution must be deny-by-default and must not permit ad-hoc OS.execute style calls outside the single guarded adapter path. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "When a command is denied or allowed through the guarded path, the system must emit auditable evidence for the decision rather than silently succeeding or failing. Refs: Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
+      "Any development-mode allowlist path must remain explicit and testable, with non-allowlisted commands still rejected deterministically. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "xUnit tests cover deny-by-default and allowlist behavior with SECURITY_TEST_MODE=1."
+    ],
+    "taskmaster_id": 93,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.security.process.exec.requested"
+    ],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0093.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0036",
+    "story_id": "BACKLOG-M1",
+    "title": "Signal contract validation and tests (security-sensitive)",
+    "description": "Add contract validation for security-sensitive signals (naming/arguments) and integrate into CI checks. This should catch accidental drift between signal definitions and expected contracts. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B5).",
+    "status": "pending",
+    "priority": "P3",
+    "layer": "ci",
+    "depends_on": [
+      "NG-0024",
+      "NG-0025"
+    ],
+    "adr_refs": [
+      "ADR-0004",
+      "ADR-0019",
+      "ADR-0005"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH04",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "m1",
+      "ci"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
+    ],
+    "acceptance": [
+      "Security-sensitive signal contracts must be validated for expected names and arguments, and contract drift must fail deterministically instead of being detected only at runtime. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "Signal contract validation must integrate with the repository guard path so security-sensitive signal drift is surfaced before broader runtime expansion is accepted. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "At least one integration-level signal case must prove that blocked security behavior still emits the expected guarded signal contract and does not silently drift. Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
+    ],
+    "test_strategy": [
+      "Run headless GdUnit4 suite and confirm contract checks report PASS/FAIL deterministically."
+    ],
+    "taskmaster_id": 94,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.guild.member.joined",
+      "core.signal.contract.validated"
+    ],
+    "evidence_refs": [
+      "logs/ci/<date>/task-0094.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0067",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Seed CombatService runtime from the Warrior starting deck on combat entry",
+    "description": "Extend the CombatService-backed entry path so combat starts from the Warrior starting deck and shared deck state instead of scene-local placeholder hands.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0058"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "warrior",
+      "deck"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "Combat entry must seed the shared CombatService runtime from the Warrior starting deck and shared deck state instead of from scene-local placeholder hands. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Visible draw, hand, and discard counts on the Combat surface must stay synchronized with the shared runtime after Warrior deck seeding. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add or extend acceptance and Combat scene tests to verify Warrior deck seeding on combat entry and synchronization between CombatService state and visible piles."
+    ],
+    "taskmaster_id": 95,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.deck.drawn",
+      "core.player.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0095.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0068",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Promote Rage into the live CombatService-backed player runtime",
+    "description": "Finish the Warrior combat runtime by wiring Rage state creation, mutation, and player-visible effect through the shared combat path.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0050",
+      "NG-0067"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "warrior",
+      "rage"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "Rage-capable player state must be created and mutated through the live CombatService-backed runtime instead of remaining data-only or scene-local. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "Player-visible combat state must reflect Rage-driven runtime effects through the shared combat path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Warrior acceptance and Combat scene tests to verify Rage state application, persistence, and visible combat impact through the shared runtime."
+    ],
+    "taskmaster_id": 96,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.triggered",
+      "core.player.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0096.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0069",
+    "story_id": "BACKLOG-M1",
+    "title": "Bind generated ActConfig route data onto the live Map surface and route states",
+    "description": "Project the generated ActConfig route graph into the current Map scene so reachable, locked, selected, and completed path states remain visible and actionable.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0045",
+      "NG-0061"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "map",
+      "actconfig",
+      "surface"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "acceptance": [
+      "Generated ActConfig route data must drive the current route-owned Map surface so reachable, locked, selected, and completed states remain visible and actionable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Map navigation must not regress route ownership or path state transitions when the surface is driven by generated route data. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Map scene tests to cover generated route binding, visible route states, and actionable node selection on the live Map surface."
+    ],
+    "taskmaster_id": 97,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.map.route.generated",
+      "core.route.node.completed"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0097.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0070",
+    "story_id": "BACKLOG-M1",
+    "title": "Restore locked Reward, Shop, and Event surfaces after Continue",
+    "description": "Extend Continue restoration so valid autosaves re-enter locked Reward, Shop, and Event surfaces without changing deterministic offers or route ownership.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0062",
+      "NG-0086",
+      "NG-0087"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "continue",
+      "resume",
+      "locked-surfaces"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd"
+    ],
+    "acceptance": [
+      "Continue must restore valid autosaves into locked Reward, Shop, and Event surfaces without regenerating offers or changing route ownership. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Locked offers and node-owned route state must remain deterministic after re-entry through Continue. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd"
+    ],
+    "test_strategy": [
+      "Add or extend resume integration tests to cover deterministic re-entry into Reward, Shop, and Event surfaces with preserved locked offers and unchanged route ownership."
+    ],
+    "taskmaster_id": 98,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.resumed",
+      "core.save.autosave.loaded"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0098.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0071",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Drive relic runtime effects through the shared combat trigger path",
+    "description": "Finish relic runtime combat closure by executing relic effects through the shared combat trigger path after acquisition and display are already live.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0052",
+      "NG-0063"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "relic",
+      "runtime",
+      "effects"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Tests.Godot/tests/UI/test_inventory_panel.gd"
+    ],
+    "acceptance": [
+      "Relic runtime combat effects must execute through the shared combat trigger path rather than through a scene-local relic effect stack. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Combat surfaces must remain able to show player-relevant relic state when those combat-path effects are active. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd"
+    ],
+    "test_strategy": [
+      "Add or extend combat integration tests to verify relic-triggered combat effects execute through shared trigger paths while preserving uniqueness and ownership rules."
+    ],
+    "taskmaster_id": 99,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted",
+      "core.relic.equipped",
+      "core.status.triggered"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0099.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0072",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Promote AOE and multi-hit ordering rules into the live combat runtime",
+    "description": "Extend rule promotion so AOE and multi-hit effects resolve in the same deterministic target order as the shared damage rules during live combat.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0064",
+      "NG-0065"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "aoe",
+      "multi-hit"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "AOE and multi-hit combat effects must resolve in the same deterministic target order as the existing shared damage calculation rules. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Player-visible combat feedback must not contradict shared runtime target-order results when AOE or multi-hit effects resolve. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add or extend combat rule tests to cover AOE and multi-hit ordering inside the live combat runtime path."
+    ],
+    "taskmaster_id": 100,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.damage.resolved"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0100.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0073",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Align player-visible combat feedback with the promoted runtime rule results",
+    "description": "Finish combat rule promotion by ensuring combat feedback surfaces always reflect the shared runtime result after trigger, fixed damage, and AOE resolution.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0053",
+      "NG-0065",
+      "NG-0072"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "feedback",
+      "runtime"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Player-visible combat logs and indicators must remain aligned with the shared runtime result after trigger, fixed damage, and AOE resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution."
+    ],
+    "taskmaster_id": 101,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.damage.resolved",
+      "core.status.triggered"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0101.json"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0074",
+    "story_id": "BACKLOG-M1",
+    "title": "Audit T70-T101 Chapter 6 sizing and split any task that still exceeds one deterministic closure",
+    "description": "Add a lightweight governance pass to keep late M1 runtime tasks sized for one deterministic closure per Chapter 6 run before additional role, card, and monster expansion begins.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0043",
+      "NG-0036"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "chapter6",
+      "sizing"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "The audit must identify any post-T70 task that still bundles more than one deterministic closure likely to overrun Chapter 6 recovery or review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "If such a task exists, task files and the audit must be updated before execution starts for that task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate task sizing through task graph review, dependency consistency checks, and updated audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md."
+    ],
+    "taskmaster_id": 102,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0075",
+    "story_id": "BACKLOG-M1",
+    "title": "Split Continue restore validation between primary boundaries and locked surfaces in the review pipeline",
+    "description": "Keep Continue tasks narrow at execution time by teaching the review path to validate primary boundaries separately from locked surface restoration.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0062",
+      "NG-0070",
+      "NG-0074"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "resume",
+      "review"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "Review and planning evidence must allow T87 and T98 to run and re-review independently without collapsing them into one combined resume task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate execution-plan and decision-log evidence for separated Continue restore lanes and verify no task file dependency collapses the two closures back into one run."
+    ],
+    "taskmaster_id": 103,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0076",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Split combat rule promotion review between core resolution and surface feedback closure",
+    "description": "Keep combat rule promotion executable in narrower Chapter 6 loops by separating core rule integration from scene feedback reconciliation.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0065",
+      "NG-0072",
+      "NG-0073",
+      "NG-0074"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "combat",
+      "review"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "Review and planning evidence must allow T90, T100, and T101 to run and re-review as separate deterministic closures instead of one monolithic combat-rule promotion run. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate task graph and audit evidence showing separated combat rule promotion lanes for core resolution, AOE ordering, and feedback alignment."
+    ],
+    "taskmaster_id": 104,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0077",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
+    "description": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0051"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "enemy-intent",
+      "resolution"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "acceptance": [
+      "Ending the player turn must resolve the previously displayed enemy intent exactly once and then generate the next turn intent deterministically. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Enemy turn execution must honor status-aware choices and no-repeat guardrails through the shared runtime rather than through a scene-local enemy-turn path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+    ],
+    "test_strategy": [
+      "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path."
+    ],
+    "taskmaster_id": 105,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.enemy.intent.generated",
+      "core.damage.resolved"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0105.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0078",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Integrate powers and relics as visible and effectful combat participants",
+    "description": "Build on the shared trigger path so powers and relics become visible, inspectable, and effectful participants on the combat surface.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0052",
+      "NG-0071"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "powers",
+      "relics"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Active powers and relics must be visible or inspectable from the Combat surface when they can affect player decisions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Powers and relics must execute through the shared trigger path and produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add deterministic trigger-order and UI state assertions for powers and relics as visible and effectful combat participants."
+    ],
+    "taskmaster_id": 106,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.triggered",
+      "core.relic.equipped"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0106.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0079",
+    "story_id": "BACKLOG-M1",
+    "title": "Complete settlement metadata for rewards and relics",
+    "description": "Enrich the settlement surface so stored reward and relic results are visible without recomputing run state.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0066",
+      "NG-0071",
+      "NG-0087"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "settlement",
+      "metadata"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "If the run collected reward cards or relics before settlement, the settlement surface must present those results from stored run data instead of omitting them or re-deriving them heuristically. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Settlement must present reward and relic metadata without mutating current run state or introducing a second settlement ownership source. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd"
+    ],
+    "test_strategy": [
+      "Add or extend settlement and integration tests to cover reward and relic metadata visibility from stored run data."
+    ],
+    "taskmaster_id": 107,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.summary.presented",
+      "core.run.metadata.snapshot"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0107.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0080",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Split enemy intent review between preview generation and enemy turn resolution",
+    "description": "Keep enemy intent execution narrow in Chapter 6 by separating preview generation from enemy turn resolution and no-repeat verification.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0051",
+      "NG-0077",
+      "NG-0074"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "enemy-intent",
+      "review"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "Review and planning evidence must allow T76 and T105 to run and re-review independently instead of collapsing preview generation and enemy turn resolution into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate task graph and audit evidence showing separated enemy intent lanes for preview generation and enemy action resolution."
+    ],
+    "taskmaster_id": 108,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0081",
+    "story_id": "BACKLOG-M1",
+    "title": "Split settlement review between owner surface, reward or relic metadata, and resume evidence",
+    "description": "Keep settlement tasks narrow at execution time by teaching the review path to validate owner-surface closure, reward or relic metadata, and resume evidence as separate lanes.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0066",
+      "NG-0079",
+      "NG-0085",
+      "NG-0074"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "settlement",
+      "review"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "Review and planning evidence must allow T91, T107, and T113 to run and re-review independently instead of collapsing settlement owner-surface work, reward or relic metadata, and resume evidence into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate task graph and audit evidence showing separated settlement lanes for owner-surface closure, reward or relic metadata, and resume evidence."
+    ],
+    "taskmaster_id": 109,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0082",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Drive relic runtime effects through shared run trigger boundaries",
+    "description": "Finish relic runtime closure outside direct combat resolution by executing relic effects through shared run trigger boundaries after combat-path effects are live.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0063",
+      "NG-0071"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "relic",
+      "runtime",
+      "run-boundary"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd"
+    ],
+    "acceptance": [
+      "Relic runtime effects that occur at reward, node-resolution, or other run boundaries must execute through shared run trigger paths rather than through scene-local post-combat patches. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Run-boundary relic effects must preserve uniqueness and ownership rules while remaining observable from player-facing flow transitions. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Add or extend run and integration tests to verify relic-triggered non-combat effects execute through shared run trigger paths while preserving uniqueness and ownership rules."
+    ],
+    "taskmaster_id": 110,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted",
+      "core.relic.equipped"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0110.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0083",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Integrate potions as visible and effectful combat participants",
+    "description": "Build on the shared trigger path so potions become visible, inspectable, and effectful participants on the combat surface.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0052"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "combat",
+      "potions"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "acceptance": [
+      "Active potions must be visible or inspectable from the Combat surface when they can affect player decisions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Potions must execute through the shared trigger path and produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+    ],
+    "test_strategy": [
+      "Add deterministic trigger-order and UI state assertions for potions as visible and effectful combat participants."
+    ],
+    "taskmaster_id": 111,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.status.triggered"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0111.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0084",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Drive relic runtime review between combat and run trigger closures",
+    "description": "Keep relic runtime tasks narrow at execution time by teaching the review path to validate combat trigger closure separately from broader run trigger closure.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "governance",
+    "depends_on": [
+      "NG-0071",
+      "NG-0082",
+      "NG-0074"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH06",
+      "CH07"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "workflow",
+      "relic",
+      "review"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "acceptance": [
+      "Review and planning evidence must allow T99 and T110 to run and re-review independently without collapsing relic combat and run trigger effects into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "test_strategy": [
+      "Validate task graph and audit evidence showing separated relic runtime lanes for combat trigger closure and run trigger closure."
+    ],
+    "taskmaster_id": 112,
+    "taskmaster_exported": true,
+    "contractRefs": [],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md"
+    ],
+    "semantic_review_tier": "standard"
+  },
+  {
+    "id": "NG-0085",
+    "story_id": "BACKLOG-M1",
+    "title": "Surface settlement resume evidence from stored run data",
+    "description": "Enrich the settlement surface so stored resume-related evidence is visible without mutating or recomputing run state at display time.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0066",
+      "NG-0070"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "settlement",
+      "resume"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "Settlement must surface stored resume-related metadata or evidence without mutating current run state or recomputing ownership at display time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Resume-related settlement evidence must remain consistent with the stored player-visible flow history for the run. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data."
+    ],
+    "taskmaster_id": 113,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.run.summary.presented",
+      "core.run.metadata.snapshot"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0113.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0086",
+    "story_id": "BACKLOG-M1-REWARD",
+    "title": "Stabilize Reward offer lock re-entry and invalid-pool fallback",
+    "description": "Build on first-entry Reward generation so the offer stays locked across re-entry and fails safe when pool context cannot resolve a valid offer.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0059"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "reward",
+      "lock",
+      "fallback"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+    ],
+    "acceptance": [
+      "The generated Reward offer must stay locked across re-entry for the same runtime boundary and must not refresh, replace, or reorder when the player revisits that Reward flow. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "If the current pool context cannot resolve a valid Reward offer, the player-facing Reward flow must fail safe with visible feedback instead of silently rendering invalid placeholder cards. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Reward scene and integration tests to cover offer-lock persistence across re-entry and visible invalid-pool fallback."
+    ],
+    "taskmaster_id": 114,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.locked"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0114.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0087",
+    "story_id": "BACKLOG-M1-REWARD",
+    "title": "Resolve Reward confirm writeback and skip through the route-owned return path",
+    "description": "Build on Reward selection state so confirm writes the chosen card into live run state and skip resolves once without mutating the deck.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0060"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "reward",
+      "writeback",
+      "skip"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
+    ],
+    "acceptance": [
+      "Confirming a selected Reward card must write that card back into the live run deck before the route returns to Map or the next owned surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Skipping Reward must leave the run deck unchanged while still resolving the current Reward flow once through the existing route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, and single-resolution route return."
+    ],
+    "taskmaster_id": 115,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.selected",
+      "core.reward.offer.skipped",
+      "core.deck.state.updated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0115.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "NG-0088",
+    "story_id": "BACKLOG-M1-COMBAT",
+    "title": "Bind combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies",
+    "description": "Build on data-backed enemy runtime so visible enemy surfaces stay synchronized and invalid definitions fail safe with player-visible feedback.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "depends_on": [
+      "NG-0064",
+      "NG-0051"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "backlog",
+      "guardrails",
+      "newrouge",
+      "enemy",
+      "surface",
+      "fallback"
+    ],
+    "owner": "architecture",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "Enemy name, HP, block, and visible combat surfaces on the Combat scene must bind to data-backed runtime enemies and stay synchronized as state changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Invalid or incomplete enemy definitions must fail safely with visible feedback instead of silently spawning fallback placeholder enemies. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Add or extend Combat scene and integration tests to cover visible enemy stat binding and invalid-definition fallback on top of data-backed enemy runtime."
+    ],
+    "taskmaster_id": 116,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.enemy.instance.created",
+      "core.enemy.intent.generated"
+    ],
+    "evidence_refs": [
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/task-0116.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
     "id": "NG-0024",
     "story_id": "BACKLOG-M1",
     "title": "External URL allowlist + safe ShellOpen adapter",
@@ -2150,156 +5074,6 @@
     ]
   },
   {
-    "id": "NG-0034",
-    "story_id": "BACKLOG-M1",
-    "title": "Architecture tests (Core must not depend on Godot)",
-    "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0021"
-    ],
-    "adr_refs": [
-      "ADR-0007",
-      "ADR-0005",
-      "ADR-0024",
-      "ADR-0018"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH05",
-      "CH06",
-      "CH07"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Introduce a small intentional violation in a temp branch to verify the test catches it."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0067.json"
-    ]
-  },
-  {
-    "id": "NG-0035",
-    "story_id": "BACKLOG-M1",
-    "title": "OS.execute guard (deny-by-default) + audit",
-    "description": "Provide a single adapter for external process execution and keep OS.execute disabled by default. Allow only explicit dev-mode allowlisted commands and write audit records on any deny/allow. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B3).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0019",
-      "ADR-0011",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH02",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "xUnit tests cover deny-by-default and allowlist behavior with SECURITY_TEST_MODE=1."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0068.json"
-    ]
-  },
-  {
-    "id": "NG-0036",
-    "story_id": "BACKLOG-M1",
-    "title": "Signal contract validation and tests (security-sensitive)",
-    "description": "Add contract validation for security-sensitive signals (naming/arguments) and integrate into CI checks. This should catch accidental drift between signal definitions and expected contracts. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B5).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0024",
-      "NG-0025"
-    ],
-    "adr_refs": [
-      "ADR-0004",
-      "ADR-0019",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH02",
-      "CH04",
-      "CH07"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run headless GdUnit4 suite and confirm contract checks report PASS/FAIL deterministically."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [
-      "core.guild.member.joined"
-    ],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0069.json"
-    ]
-  },
-  {
     "id": "NG-0037",
     "story_id": "BACKLOG-M1",
     "title": "Performance reports and history artifacts (project-level)",
@@ -2586,65 +5360,5 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0075.json"
     ]
-  },
-  {
-    "id": "NG-0044",
-    "story_id": "BACKLOG-M1",
-    "title": "Semantic scope governance for soft review stabilization",
-    "description": "Create a governance guardrail that keeps semantic soft review bounded to task scope while preserving deterministic hard-gate precedence.",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0043"
-    ],
-    "adr_refs": [
-      "ADR-0005",
-      "ADR-0003"
-    ],
-    "chapter_refs": [
-      "CH03",
-      "CH07"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci",
-      "semantic-governance"
-    ],
-    "owner": "architecture",
-    "test_refs": [
-      "Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
-    ],
-    "acceptance": [
-      "task-0058-semantic-governance.json must include semantic_policy_mode, gate_precedence, and governance_result fields with non-empty values. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Policy evaluation scope must be limited to task.master.details and task.mapped.acceptance: when master.details is non-empty, task_context.allowed_scope_items must include both; when master.details is empty, task_context.allowed_scope_items must include only \"task.mapped.acceptance\". Any scope expansion beyond allowed_scope_items must be classified as advisory out-of-scope and must not become blocker without explicit elevation rule. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "When acceptance_check is ok and llm_review has warn-level findings only (without explicit elevation), governance_result must be pass and advisory notes must be recorded. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "When acceptance_check fails, governance_result must be fail regardless of llm_review output. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Governance output must expose machine-readable blocker_findings and advisory_findings fields using stable key names. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Windows execution evidence in task-0058-semantic-governance.json must include platform=windows and a non-empty run_id. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "One pass sample and one advisory-warning sample must both be reproducible via local scripts without manual file edits, and each generated task-0058-semantic-governance.json must include machine-readable evidence_refs.acceptance_check_summary and evidence_refs.llm_review_summary paths pointing to logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json and logs/ci/<date>/sc-llm-review-task-<id>/summary.json. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "If any llm_review finding is explicitly elevated to blocker, output must include elevation_rule_id and supporting evidence and the finding must appear in blocker_findings; without an explicit elevation rule, warn findings must remain in advisory_findings and must not fail governance. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "Given identical acceptance_check, llm_review, and task context inputs, policy evaluation must produce stable governance_result and identical blocker/advisory classification across repeated runs (review oscillation guard). Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs",
-      "For both pass sample and advisory-warning sample, generated evidence summaries must include non-empty status, task_id, generated_at, and findings/summary counters. Refs: Game.Core.Tests/Tasks/Task58SemanticScopeGovernanceTests.cs"
-    ],
-    "test_strategy": [
-      "Run governance evaluation on Windows with one pass sample and one advisory-warning sample, then validate JSON evidence shape and linkage fields."
-    ],
-    "taskmaster_id": 58,
-    "taskmaster_exported": true,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0058-semantic-governance.json",
-      "logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json",
-      "logs/ci/<date>/sc-llm-review-task-<id>/summary.json"
-    ],
-    "semantic_review_tier": "full"
   }
 ]
