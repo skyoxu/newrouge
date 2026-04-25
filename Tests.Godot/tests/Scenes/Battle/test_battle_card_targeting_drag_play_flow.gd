@@ -25,7 +25,15 @@ class BattleCardTargetingDragFlowModel:
 		card_play_requested.emit(dragging_card_id, target_id)
 		dragging_card_id = ""
 
+const COMBAT_SCENE := preload("res://Game.Godot/Scenes/Combat.tscn")
 
+func _new_combat_scene() -> Node:
+	var scene := COMBAT_SCENE.instantiate()
+	add_child(auto_free(scene))
+	return scene
+
+
+# acceptance anchor: ACC:T73.2
 func test_dragging_over_valid_target_requests_play_and_clears_drag_state() -> void:
 	var sut := BattleCardTargetingDragFlowModel.new()
 	var events: Array[String] = []
@@ -48,6 +56,7 @@ func test_dragging_over_valid_target_requests_play_and_clears_drag_state() -> vo
 
 # acceptance: ACC:T34.4
 # Invalid targets should provide observable feedback and keep card drag active.
+# acceptance anchor: ACC:T73.3
 func test_drop_on_invalid_target_keeps_dragging_and_emits_feedback_without_play_request() -> void:
 	var sut := BattleCardTargetingDragFlowModel.new()
 	var events: Array[String] = []
@@ -66,3 +75,19 @@ func test_drop_on_invalid_target_keeps_dragging_and_emits_feedback_without_play_
 	assert_that(events).is_equal(["invalid:card_heal->ally_dead"])
 	assert_that(sut.dragging_card_id).is_equal("card_heal")
 	assert_that(sut.selected_target_id).is_equal("ally_dead")
+
+
+func test_invalid_target_in_real_combat_keeps_hp_energy_and_piles_unchanged() -> void:
+	var scene := _new_combat_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_dead"))).is_false()
+	var before := scene.call("CaptureUiStateForTest") as Dictionary
+	var before_enemy_hp := str(scene.call("GetEnemyHpTextForTest"))
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_false()
+	var after := scene.call("CaptureUiStateForTest") as Dictionary
+	var after_enemy_hp := str(scene.call("GetEnemyHpTextForTest"))
+	assert_that(after).is_equal(before)
+	assert_that(after_enemy_hp).is_equal(before_enemy_hp)
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("invalid target") >= 0).is_true()

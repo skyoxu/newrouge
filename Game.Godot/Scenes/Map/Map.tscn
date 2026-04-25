@@ -6,12 +6,91 @@
 script = ExtResource("1")
 
 [node name="title_label" type="Label" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 24.0
+offset_right = 380.0
+offset_bottom = 56.0
 text = "ui.map.title"
 
 [node name="hint_label" type="Label" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 64.0
+offset_right = 760.0
+offset_bottom = 96.0
 text = "ui.map.hint"
 
+[node name="node_legend_label" type="Label" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 112.0
+offset_right = 760.0
+offset_bottom = 144.0
+text = "combat -> event -> shop -> rest"
+
+[node name="RouteTree" type="VBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 152.0
+offset_right = 760.0
+offset_bottom = 232.0
+theme_override_constants/separation = 6
+
+[node name="Floor1" type="HBoxContainer" parent="RouteTree"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="combat_01" type="Button" parent="RouteTree/Floor1"]
+layout_mode = 2
+text = "F1 Combat"
+
+[node name="Floor2" type="HBoxContainer" parent="RouteTree"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="event_02" type="Button" parent="RouteTree/Floor2"]
+layout_mode = 2
+text = "F2 Event"
+
+[node name="combat_02" type="Button" parent="RouteTree/Floor2"]
+layout_mode = 2
+text = "F2 Combat"
+
+[node name="Floor3" type="HBoxContainer" parent="RouteTree"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="shop_03" type="Button" parent="RouteTree/Floor3"]
+layout_mode = 2
+text = "F3 Shop"
+
+[node name="combat_03" type="Button" parent="RouteTree/Floor3"]
+layout_mode = 2
+text = "F3 Reward Fight"
+
+[node name="Floor4" type="HBoxContainer" parent="RouteTree"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="rest_04" type="Button" parent="RouteTree/Floor4"]
+layout_mode = 2
+text = "F4 Rest"
+
+[node name="Floor5" type="HBoxContainer" parent="RouteTree"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="boss_05" type="Button" parent="RouteTree/Floor5"]
+layout_mode = 2
+text = "F5 Boss"
+
 [node name="feedback_label" type="Label" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 320.0
+offset_right = 760.0
+offset_bottom = 360.0
 text = "ui.map.feedback.ready"
 
 [node name="combat_icon" type="Node" parent="."]
@@ -27,6 +106,13 @@ groups = ["map_node_shop"]
 groups = ["map_node_rest"]
 
 [node name="ActionRow" type="HBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+offset_left = 40.0
+offset_top = 240.0
+offset_right = 760.0
+offset_bottom = 288.0
+theme_override_constants/separation = 16
 
 [node name="btn_combat" type="Button" parent="ActionRow"]
 text = "Combat"

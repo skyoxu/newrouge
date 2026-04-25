@@ -77,3 +77,8 @@ visible = false
 layout_mode = 2
 autowrap_mode = 2
 text = "Blocked feedback"
+
+[node name="BtnContinue" type="Button" parent="VBox/Feedback"]
+visible = false
+layout_mode = 2
+text = "ui.event.continue"

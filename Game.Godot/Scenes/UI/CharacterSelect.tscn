@@ -82,3 +82,7 @@ text = "ui.character.warrior.summary.power_window"
 layout_mode = 2
 autowrap_mode = 2
 text = "ui.character.warrior.summary.cost_burst"
+
+[node name="BtnConfirm" type="Button" parent="VBox"]
+layout_mode = 2
+text = "ui.character.confirm"

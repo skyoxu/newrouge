@@ -59,10 +59,12 @@ func ConfirmSelectedForTest() -> bool:
 		_feedback_label.text = _resolve_text(FEEDBACK_SELECT_FIRST_KEY)
 		return false
 	_feedback_label.text = _resolve_text(FEEDBACK_CONFIRMED_KEY)
+	_resolve_route_and_return("confirm")
 	return true
 
 func SkipForTest() -> bool:
 	_feedback_label.text = _resolve_text(FEEDBACK_SKIPPED_KEY)
+	_resolve_route_and_return("skip")
 	return true
 
 func ShowLockedFeedbackForTest() -> bool:
@@ -80,6 +82,19 @@ func _on_confirm_pressed() -> void:
 
 func _on_skip_pressed() -> void:
 	SkipForTest()
+
+func _resolve_route_and_return(action: String) -> void:
+	var main = _resolve_main_controller()
+	if main != null and main.has_method("ResolveRewardForTest"):
+		main.call_deferred("ResolveRewardForTest", action)
+
+func _resolve_main_controller() -> Node:
+	var current: Node = self
+	while current != null:
+		if current.has_method("ResolveRewardForTest"):
+			return current
+		current = current.get_parent()
+	return get_node_or_null("/root/Main")
 
 func _resolve_text(key: String) -> String:
 	if key.strip_edges().is_empty():

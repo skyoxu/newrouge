@@ -22,6 +22,7 @@ public partial class MainMenu : Control
 
     private Button _btnNewRun = default!;
     private Button _btnContinue = default!;
+    private Button _btnSettings = default!;
     private Button _btnQuit = default!;
     private ConfirmationDialog? _overwriteConfirmDialog;
     private Control? _continueBlockedDialog;
@@ -44,6 +45,7 @@ public partial class MainMenu : Control
     {
         _btnNewRun = GetNode<Button>("VBox/BtnNewRun");
         _btnContinue = GetNode<Button>("VBox/BtnContinue");
+        _btnSettings = GetNode<Button>("VBox/BtnSettings");
         _btnQuit = GetNode<Button>("VBox/BtnQuit");
         _overwriteConfirmDialog = GetNodeOrNull<ConfirmationDialog>("OverwriteConfirmDialog");
         _continueBlockedDialog = GetNodeOrNull<Control>("ContinueBlockedDialog");
@@ -61,6 +63,7 @@ public partial class MainMenu : Control
 
         _btnNewRun.Pressed += OnNewRunPressed;
         _btnContinue.Pressed += OnContinuePressed;
+        _btnSettings.Pressed += OnSettingsPressed;
         _btnQuit.Pressed += OnQuitPressed;
         if (_overwriteConfirmDialog is not null)
         {
@@ -87,6 +90,7 @@ public partial class MainMenu : Control
     {
         _btnNewRun.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _btnContinue.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
+        _btnSettings.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _btnQuit.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
 
         if (_overwriteConfirmDialog is not null)
@@ -179,6 +183,9 @@ public partial class MainMenu : Control
             case "continue":
                 OnContinuePressed();
                 return true;
+            case "settings":
+                OnSettingsPressed();
+                return true;
             case "quit":
                 OnQuitPressed();
                 return true;
@@ -189,8 +196,9 @@ public partial class MainMenu : Control
 
     private void LocalizeVisibleText()
     {
-        _btnNewRun.Text = ResolveVisibleText("ui.menu.new_run");
+        _btnNewRun.Text = ResolveVisibleText("ui.menu.new_game");
         _btnContinue.Text = ResolveVisibleText("ui.menu.continue");
+        _btnSettings.Text = ResolveVisibleText("ui.menu.settings");
         _btnQuit.Text = ResolveVisibleText("ui.menu.quit");
 
         if (_overwriteConfirmDialog is null)
@@ -396,6 +404,12 @@ public partial class MainMenu : Control
         Publish("ui.menu.start", "ui");
         Publish(EventTypes.RunStarted, "ui");
         HideMenu();
+    }
+
+    private void OnSettingsPressed()
+    {
+        HideContinueBlockedDialog(clearMessage: false);
+        Publish("ui.menu.settings", "ui");
     }
 
     private void OnContinuePressed()

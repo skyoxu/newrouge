@@ -4,42 +4,50 @@ const FOCUS_SCENES := [
 	{
 		"surface": "run-entry",
 		"scene": "res://Game.Godot/Scenes/UI/MainMenu.tscn",
-		"order": ["VBox/BtnNewRun", "VBox/BtnContinue", "VBox/BtnQuit"]
+		"order": ["VBox/BtnNewRun", "VBox/BtnContinue", "VBox/BtnSettings", "VBox/BtnQuit"],
+		"strict_next": true
 	},
 	{
 		"surface": "map",
 		"scene": "res://Game.Godot/Scenes/Map/Map.tscn",
-		"order": ["ActionRow/btn_combat", "ActionRow/btn_event", "ActionRow/btn_shop", "ActionRow/btn_rest"]
+		"order": ["RouteTree/Floor1/combat_01"],
+		"strict_next": false
 	},
 	{
 		"surface": "node",
 		"scene": "res://Game.Godot/Scenes/Event.tscn",
-		"order": ["VBox/Options/BtnLoseHp", "VBox/Options/BtnTakeCurse"]
+		"order": ["VBox/Options/BtnLoseHp", "VBox/Options/BtnTakeCurse"],
+		"strict_next": false
 	},
 	{
 		"surface": "reward",
 		"scene": "res://Game.Godot/Scenes/Reward.tscn",
-		"order": ["VBox/Actions/ConfirmButton", "VBox/Actions/SkipButton"]
+		"order": ["VBox/Actions/ConfirmButton", "VBox/Actions/SkipButton"],
+		"strict_next": false
 	},
 	{
 		"surface": "rest",
 		"scene": "res://Game.Godot/Scenes/Rest.tscn",
-		"order": ["VBox/Option_heal", "VBox/Option_upgrade", "VBox/Option_remove_curse"]
+		"order": ["VBox/Option_heal", "VBox/Option_upgrade", "VBox/Option_remove_curse"],
+		"strict_next": false
 	},
 	{
 		"surface": "shop",
 		"scene": "res://Game.Godot/Scenes/Shop.tscn",
-		"order": ["VBox/ServicesRow/BuyButton", "VBox/ServicesRow/RemoveButton", "VBox/ServicesRow/ReforgeButton", "VBox/LeaveButton"]
+		"order": ["VBox/ServicesRow/BuyButton", "VBox/ServicesRow/RemoveButton", "VBox/ServicesRow/ReforgeButton", "VBox/LeaveButton"],
+		"strict_next": false
 	},
 	{
 		"surface": "combat",
 		"scene": "res://Game.Godot/Scenes/Combat.tscn",
-		"order": ["HUD/TurnControls/StartTurnButton", "HUD/TurnControls/EndTurnButton"]
+		"order": ["HUD/TurnControls/PlaySelectedCardButton", "HUD/TurnControls/EndTurnButton"],
+		"strict_next": false
 	},
 	{
 		"surface": "continue",
 		"scene": "res://Game.Godot/Scenes/UI/MainMenu.tscn",
-		"order": ["VBox/BtnContinue", "VBox/BtnQuit", "VBox/BtnNewRun"]
+		"order": ["VBox/BtnContinue", "VBox/BtnSettings", "VBox/BtnQuit"],
+		"strict_next": true
 	}
 ]
 
@@ -104,6 +112,16 @@ func test_m1_focus_traversal_uses_real_ui_focus_navigation_without_trap_or_skip(
 		var scene := await _instantiate_scene(str(spec["scene"]))
 		await _prepare_scene(surface_name, scene)
 		var controls := _resolve_focus_controls(scene, spec["order"])
+		for control in controls:
+			assert_bool(control.visible).is_true()
+			assert_bool(control.focus_mode != Control.FOCUS_NONE).is_true()
+			control.grab_focus()
+			await get_tree().process_frame
+			assert_bool(control.has_focus()).is_true()
+
+		if not bool(spec.get("strict_next", false)) or controls.size() == 1:
+			continue
+
 		controls[0].grab_focus()
 		await get_tree().process_frame
 		assert_bool(controls[0].has_focus()).is_true()

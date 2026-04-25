@@ -241,6 +241,11 @@ public partial class SqliteDataStore : Node, ISqlDatabase
     {
         try
         {
+            if (!ClassDB.ClassExists("SQLite"))
+            {
+                return false;
+            }
+
             var v = ClassDB.Instantiate("SQLite");
             if (v.VariantType != Variant.Type.Object) return false;
             var obj = v.As<GodotObject>();

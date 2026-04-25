@@ -1,0 +1,21 @@
+# Task 73 Implement combat targeting, multi-enemy lifecycle, and victory routing acceptance-test generation plan
+
+- Title: Task 73 Implement combat targeting, multi-enemy lifecycle, and victory routing acceptance-test generation plan
+- Status: active
+- Branch: setupfile
+- Git Head: 31bb7e69c7bfeb8316df3103abca022d15ff63bc
+- Goal: Control acceptance-driven test generation complexity for task 73.
+- Scope: 0 missing refs across 0 test roots; seed refs: no missing refs detected
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 73 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `73`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
