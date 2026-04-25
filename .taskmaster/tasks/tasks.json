@@ -2133,6 +2133,1413 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on Event result explainability and route-owned node feedback.",
         "updatedAt": null
+      },
+      {
+        "id": 70,
+        "title": "Upgrade Map route graph visualization on top of existing route ownership",
+        "description": "Extend the existing M1 Map route ownership with a connected route graph that renders legal path edges, locked paths, completed path history, and current reachable choices instead of reworking route ownership from scratch.",
+        "details": "Story: UI-WIRING-M1-A12\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on the existing Map route-owned transition flow from T60, add route edge model and visual route connections, render node and edge state, suppress legacy shortcut exposure, and preserve current route-owned scene transitions. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd to verify connected route edges, reachable/locked/completed edge states, legal next-floor unlocks, preservation of existing route ownership, and hidden legacy shortcut buttons.\n",
+        "priority": "medium",
+        "dependencies": [
+          "60"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Slay-the-Spire-style map route connections, route edge state visualization, and route-owned Map progression.",
+        "updatedAt": null
+      },
+      {
+        "id": 71,
+        "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
+        "description": "Use this task strictly as the umbrella milestone over T80-T82 so combat deck lifecycle work is coordinated through existing deck/runtime capabilities without creating another parallel implementation track.",
+        "details": "Story: UI-WIRING-COMBAT-A1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: define and audit the integrated target state for draw pile, hand, discard pile, exhaust pile, turn-end discard, reshuffle, deterministic ordering, and HUD synchronization. Execution should land through T80, T81, and T82 plus the existing DeckService/CardState capabilities. This task is a milestone and integration checkpoint, not an additional implementation slice. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Verify that T80-T82 together satisfy the deck lifecycle milestone by reusing existing deck lifecycle and Combat scene suites for deterministic draw/discard/exhaust/reshuffle behavior and HUD synchronization on Windows.",
+        "priority": "high",
+        "dependencies": [
+          "64"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on real combat deck lifecycle and pile state transitions.",
+        "updatedAt": null
+      },
+      {
+        "id": 72,
+        "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
+        "description": "Replace hard-coded Strike and Defend UI effects by wiring CombatScene to the existing card contracts, definitions, translations, costs, targeting rules, and effect resolution instead of introducing a second card model.",
+        "details": "Story: UI-WIRING-COMBAT-A2\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: consume existing card definition loading, localized card name/body, cost, card type, targeting rule, damage/block/status/exhaust effects, and visible effect summaries; do not fork a new card-definition path outside current contracts and data files. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Combat scene binding and feedback suites to cover reuse of existing data-driven card definitions, localized text, effect summaries, and refusal paths.\n",
+        "priority": "high",
+        "dependencies": [
+          "71"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on data-driven combat card effects and card text binding.",
+        "updatedAt": null
+      },
+      {
+        "id": 73,
+        "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
+        "description": "Extend the current targeting and victory-routing skeleton so cards resolve against legal enemies, dead enemies leave the target set, and combat completion stays route-owned under multi-enemy runtime state.",
+        "details": "Story: UI-WIRING-COMBAT-A3\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on the current enemy list, selected target, HP/block/status, legal target validation, death checks, and victory routing; expand them to multi-enemy runtime state instead of replacing current route-owned completion flow. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend existing Combat and targeting flow suites to cover upgraded legal target resolution, invalid target refusal, enemy death handling, and route-owned combat completion.\n",
+        "priority": "high",
+        "dependencies": [
+          "72"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on combat targeting, multi-enemy lifecycle, and victory routing.",
+        "updatedAt": null
+      },
+      {
+        "id": 74,
+        "title": "Upgrade existing targeting flow with Slay-the-Spire-style card drag UX",
+        "description": "Add mouse drag, target hover, release-to-play, cancel, and invalid-target feedback on top of the current targeting/play path while preserving the existing click or button accessibility fallback.",
+        "details": "Story: UI-WIRING-COMBAT-A4\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: layer drag gesture, drag preview, target highlight, drop-to-play, cancel return, invalid drop feedback, and keyboard/controller fallback onto the current validated play path instead of introducing a separate combat input stack. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Promote existing drag-target harness coverage into real Combat scene behavior tests, including valid drop, invalid drop, cancel, and accessibility fallback through the same play path.\n",
+        "priority": "high",
+        "dependencies": [
+          "73"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on slay-the-spire-style card drag targeting ux.",
+        "updatedAt": null
+      },
+      {
+        "id": 75,
+        "title": "Wire existing status contracts and rules into visible combat status effects",
+        "description": "Expose the existing status and modifier foundations as visible player and enemy combat statuses such as strength, weak, vulnerable, block, poison, and temporary modifiers with deterministic turn updates, rather than creating a parallel status system.",
+        "details": "Story: UI-WIRING-COMBAT-A5\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: reuse status definitions, stacking/decay rules, damage/block modifiers, player/enemy status UI, status tooltips, and turn-boundary updates from existing contracts/services; avoid duplicating status semantics in UI-only code. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay through the existing status rule path.\n",
+        "priority": "high",
+        "dependencies": [
+          "72",
+          "73"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on combat status effects and buff/debuff visibility.",
+        "updatedAt": null
+      },
+      {
+        "id": 76,
+        "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
+        "description": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
+        "details": "Story: UI-WIRING-COMBAT-A6-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: reuse the current intent surface and bind it to enemy AI definitions, named RNG stream behavior selection, and visible intent preview. Do not widen this task to enemy action resolution or no-repeat guardrails; those move to a follow-up task so Chapter 6 can validate deterministic intent generation separately from enemy turn execution. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path.\n",
+        "priority": "high",
+        "dependencies": [
+          "73",
+          "75"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on enemy intent generation and preview binding while deferring enemy action resolution and no-repeat guardrails.",
+        "updatedAt": null
+      },
+      {
+        "id": 77,
+        "title": "Integrate trigger registration and combat-time hooks into the shared combat runtime",
+        "description": "Integrate deterministic trigger registration and card-play, turn, damage, and death-check hooks into combat runtime while deferring powers/relics/potions presentation and effect integration to a follow-up task.",
+        "details": "Story: UI-WIRING-COMBAT-A7-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: integrate trigger registration, deterministic ordering, card-play hooks, turn hooks, damage hooks, and death-check hooks with current combat flow and route-owned completion behavior. Do not widen this task to powers/relics/potions presentation or effectful integration; those move to a follow-up task so Chapter 6 can validate the shared trigger path separately. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add deterministic trigger-order assertions through existing Combat scene suites for card-play, turn, damage, and death-check hooks on the shared runtime path.\n",
+        "priority": "medium",
+        "dependencies": [
+          "71",
+          "75",
+          "76"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on integrating trigger registration and combat-time hooks while deferring powers/relics/potions presentation and effect integration.",
+        "updatedAt": null
+      },
+      {
+        "id": 78,
+        "title": "Layer combat presentation feedback on top of deterministic state without mutating runtime logic",
+        "description": "Add the player-facing presentation layer for combat actions while keeping deterministic combat state, routing, and RNG ownership in the existing runtime path.",
+        "details": "Story: UI-WIRING-COMBAT-A8\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: damage numbers, block gain numbers, card play motion, hit feedback, enemy action feedback, SFX hooks, hover card preview, intent detail preview, and reduced-motion safe fallback as a layer over existing combat logic rather than a second logic path. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Combat UI tests with observable presentation-layer nodes/events and verify they do not mutate the existing deterministic combat state or RNG path.\n",
+        "priority": "low",
+        "dependencies": [
+          "72",
+          "73",
+          "75"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on combat presentation feedback layer with animations, damage numbers, audio, and hover previews.",
+        "updatedAt": null
+      },
+      {
+        "id": 79,
+        "title": "Unify combat defeat trigger by HP change event and single-resolution guard",
+        "description": "Refactor the current combat HP mutation paths into a single state update path that triggers defeat routing whenever HP changes to <= 0, with one-shot guard to prevent duplicate resolve.",
+        "details": "Story: UI-WIRING-COMBAT-M1-HP-DEFEAT\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07\nScope: unify the existing HP mutation entry points, emit HP-changed signal or callback from logic state update, resolve defeat once when HP<=0, remove end-turn-only coupling, and keep current route ownership. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Combat scene tests for HP-change-driven defeat trigger on end-turn and non-end-turn HP mutation paths, and verify one-shot defeat routing.\n",
+        "priority": "high",
+        "dependencies": [
+          "73"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on unify combat defeat trigger by hp change event and single-resolution guard.",
+        "updatedAt": null
+      },
+      {
+        "id": 80,
+        "title": "Wire CombatScene to existing DeckService runtime state instead of local pile counters",
+        "description": "Replace CombatScene local draw/discard counter mutation with the existing DeckService-backed runtime deck state transitions for draw, play/discard, and end-turn hand processing.",
+        "details": "Story: UI-WIRING-COMBAT-M1-DECK-WIRING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07\nScope: bind Combat scene pile and hand state to existing DeckService transitions, align hand UI with deck state, and stop direct manual pile arithmetic in scene code. This task is the first concrete implementation slice under the T71 umbrella. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend tests for deck-state-driven UI counters after play card and end turn, and ensure deterministic transitions remain stable through the existing DeckService path.\n",
+        "priority": "high",
+        "dependencies": [
+          "73"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 5,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on wire combatscene to deckservice runtime state instead of local pile counters.",
+        "updatedAt": null
+      },
+      {
+        "id": 81,
+        "title": "Expose draw-empty reshuffle cycle through existing DeckService-backed combat runtime",
+        "description": "Enable runtime draw-empty handling so discard pile reshuffles into draw pile and discard resets to zero before continuing draw actions, using the existing service reshuffle policy rather than a scene-local implementation.",
+        "details": "Story: UI-WIRING-COMBAT-M1-RESHUFFLE\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07\nScope: ensure draw-empty cycle uses the existing service reshuffle logic, expose stable UI feedback, and preserve deterministic ordering policy already used by DeckService. This task refines the T80 wiring and remains under the T71 umbrella. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add tests that exhaust draw pile, verify reshuffle from discard, discard reset, and continued draw behavior without state corruption through the shared DeckService runtime path.\n",
+        "priority": "high",
+        "dependencies": [
+          "79",
+          "80"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 4,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on implement draw-empty reshuffle cycle with discard reset in combat runtime.",
+        "updatedAt": null
+      },
+      {
+        "id": 82,
+        "title": "Add combat deck total display on top of DeckService-backed pile state",
+        "description": "Add a deck total indicator on the combat HUD and keep draw+hand+discard equal to total deck count under the shared DeckService-backed runtime transitions.",
+        "details": "Story: UI-WIRING-COMBAT-M1-DECK-TOTAL\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07\nScope: extend combat HUD with total deck count, update binding from the shared runtime deck state, and expose invariant mismatch as visible fallback feedback for diagnostics. This task is the HUD/invariant slice after T80 and T81, not a second deck-state implementation. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add UI and state tests ensuring draw+hand+discard equals total after play, end turn, and reshuffle transitions through the shared DeckService-backed runtime path.\n",
+        "priority": "medium",
+        "dependencies": [
+          "80",
+          "81"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on add combat deck total display and enforce pile-total invariant visibility.",
+        "updatedAt": null
+      },
+      {
+        "id": 83,
+        "title": "Hand off CombatScene card play to the existing CombatService runtime",
+        "description": "Replace scene-local card resolution with the shared CombatService and PlayCard runtime while keeping current scene ownership and leaving Warrior seed and Rage runtime closure to follow-up tasks.",
+        "details": "Story: UI-WIRING-COMBAT-M1-CORE-RUNTIME-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: route CombatScene card play, end-turn progression, and runtime state mutation through the existing CombatService and PlayCard pipeline instead of resolving combat through scene-local sample logic. Keep the current combat route owner and feedback surfaces. Do not pull Warrior starting deck seeding or live Rage runtime closure into this task; those move to follow-up tasks so Chapter 6 can run a narrower deterministic loop. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Combat scene and acceptance tests to verify CombatService-backed card resolution and removal of scene-local-only play behavior while preserving current surface ownership.\n",
+        "priority": "high",
+        "dependencies": [
+          "72",
+          "80"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on replacing scene-local card resolution with the shared CombatService runtime while deferring Warrior deck seed and Rage runtime closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 84,
+        "title": "Generate Reward offers from existing card drop pools on first entry",
+        "description": "Replace placeholder Reward card content by generating the initial three-card offer from the current act and encounter context through the existing card pool path.",
+        "details": "Story: UI-WIRING-REWARD-M1-POOL-GENERATION-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: feed Reward entry from current act and encounter context into the existing card drop pool path so the first presented three-card offer is runtime-owned and deterministic. Reuse Reward scene routing and existing pool definitions rather than inventing a scene-local reward generator. Lock persistence across re-entry and invalid-pool fallback move to a follow-up task so Chapter 6 can validate offer generation separately from reward stability and failure handling. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Reward scene and integration tests to cover pool-driven first-entry offer generation through the shared reward path.\n",
+        "priority": "high",
+        "dependencies": [
+          "29",
+          "46",
+          "61"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on first-entry Reward offer generation from existing card pools while deferring re-entry stability and invalid-pool fallback.",
+        "updatedAt": null
+      },
+      {
+        "id": 85,
+        "title": "Complete Reward three-choice selection and confirm gating on the existing Reward scene",
+        "description": "Turn the current Reward surface into a real three-choice-one interaction where one offer can be selected and confirmation is gated by that selection.",
+        "details": "Story: UI-WIRING-REWARD-M1-SELECTION-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: keep the existing standalone Reward scene and route ownership, but complete player selection state, single-choice enforcement, and confirm gating on the current surface. Deck writeback and skip resolution move to a follow-up task so Chapter 6 can validate Reward interaction state separately from persistent mutation and return-path closure. Do not create a second Reward confirmation flow outside the current scene. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface.\n",
+        "priority": "high",
+        "dependencies": [
+          "61",
+          "84"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on completing Reward selection state and confirm gating while deferring deck writeback and skip resolution.",
+        "updatedAt": null
+      },
+      {
+        "id": 86,
+        "title": "Generate route graph from existing ActConfig for the live Map path",
+        "description": "Replace the hard-coded M1 map node list with route graph generation from ActConfig while keeping current Map surface binding and visual closure in a follow-up task.",
+        "details": "Story: UI-WIRING-MAP-M1-ACTCONFIG-GENERATION\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build the playable route graph from existing ActConfig content and map services rather than from a hard-coded node list. Keep the current route owner and do not yet widen scope to Map surface binding refinements beyond what is required to prove generated route data exists and can be consumed. Scene-level route presentation closure moves to follow-up tasks so Chapter 6 can validate deterministic generation separately. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend map service tests to cover ActConfig-driven route generation and deterministic refusal for invalid or incomplete map content.\n",
+        "priority": "high",
+        "dependencies": [
+          "17",
+          "28",
+          "70"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on generating a playable route graph from existing ActConfig content while deferring Map surface binding closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 87,
+        "title": "Resume Continue into real Map or combat entry boundaries from autosave metadata",
+        "description": "Complete the successful Continue path for Map and combat entry boundaries while deferring locked surface restoration for Reward, Shop, and Event to a follow-up task.",
+        "details": "Story: UI-WIRING-RESUME-M1-BOUNDARY-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: use autosave metadata, integrity checks, and current route ownership to restore a valid run into Map or the combat initial boundary as appropriate. Keep the existing blocked-state UX intact for invalid saves. Restoration of locked Reward, Shop, and Event surfaces moves to follow-up tasks so Chapter 6 can validate the primary runtime boundary without mixing every node-owned branch into one run. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend resume integration tests to cover valid restore into Map or combat boundaries and unchanged blocked-state behavior for invalid saves.\n",
+        "priority": "high",
+        "dependencies": [
+          "36",
+          "37",
+          "63",
+          "86"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on valid Continue restore into Map or combat entry boundaries while deferring locked offer surface restoration.",
+        "updatedAt": null
+      },
+      {
+        "id": 88,
+        "title": "Integrate relic acquisition, equip state, and player-facing display on the shared run path",
+        "description": "Promote relic definitions into acquired, equipped, and visible runtime state on the shared run path while deferring combat-time relic effect execution to a follow-up task.",
+        "details": "Story: UI-WIRING-RELIC-M1-RUNTIME-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: take existing relic definitions and uniqueness rules, then wire acquisition, run inventory ownership, and player-facing display through the current shared runtime. Reuse existing inventory paths rather than creating a second relic store. Combat-time relic effect execution moves to a follow-up task so Chapter 6 can validate inventory and ownership closure separately from trigger semantics. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend run inventory and UI tests to cover relic grant, uniqueness enforcement, and visible equipped state on the shared run path.\n",
+        "priority": "high",
+        "dependencies": [
+          "30",
+          "31",
+          "85"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on relic acquisition, inventory ownership, and player-facing display while deferring combat-time relic effects.",
+        "updatedAt": null
+      },
+      {
+        "id": 89,
+        "title": "Instantiate combat enemy runtime from existing enemy data definitions",
+        "description": "Replace placeholder combat enemy construction with runtime instantiation from current enemy definitions while preserving current combat ownership.",
+        "details": "Story: UI-WIRING-ENEMY-M1-DATA-RUNTIME-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: construct encounter enemies from existing enemy data definitions and expose runtime enemy instances to the live combat path instead of scene-local defaults. Reuse current targeting and enemy-intent ownership rather than creating a parallel enemy runtime. Visible stat binding and invalid-definition surface fallback move to a follow-up task so Chapter 6 can validate core enemy instantiation separately. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path.\n",
+        "priority": "high",
+        "dependencies": [
+          "40",
+          "73",
+          "76"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on instantiating combat enemy runtime from existing enemy data definitions while deferring visible stat binding and invalid-definition fallback.",
+        "updatedAt": null
+      },
+      {
+        "id": 90,
+        "title": "Promote status trigger ordering and fixed damage rules into the live combat runtime",
+        "description": "Move the existing deterministic trigger ordering and fixed damage rules into the player-facing combat runtime while deferring AOE and feedback consistency closure to follow-up tasks.",
+        "details": "Story: UI-WIRING-COMBAT-M1-RULE-PROMOTION-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: route live combat resolution through the existing trigger-order and fixed-damage rules so player-facing combat no longer bypasses shared semantics. Reuse the current combat runtime and do not yet widen scope to AOE or scene feedback reconciliation beyond what is needed to validate deterministic rule application. AOE ordering and visible feedback alignment move to follow-up tasks so Chapter 6 can narrow the failure surface. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend combat rule tests to cover trigger ordering and fixed damage exemptions inside the live combat runtime path.\n",
+        "priority": "high",
+        "dependencies": [
+          "47",
+          "75",
+          "77",
+          "89"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on promoting trigger ordering and fixed damage rules into live combat while deferring AOE ordering and feedback consistency closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 91,
+        "title": "Expand the run summary into a stored-data-backed settlement surface",
+        "description": "Upgrade the current run summary into a stored-data-backed settlement surface for outcome and route progress while deferring reward, relic, and resume metadata completion to a follow-up task.",
+        "details": "Story: UI-WIRING-SETTLEMENT-M1-SURFACE-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: keep the existing summary ownership from T66, but expand it into a settlement surface backed by stored run data for outcome and route progress. Do not widen this task to reward, relic, or resume metadata completion; those move to a follow-up task so Chapter 6 can validate the core settlement owner surface separately from metadata enrichment. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend run summary tests to cover outcome and route-progress visibility from stored data and route-independent opening behavior.\n",
+        "priority": "medium",
+        "dependencies": [
+          "66",
+          "98"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on stored-data-backed settlement ownership for outcome and route progress while deferring reward, relic, and resume metadata enrichment.",
+        "updatedAt": null
+      },
+      {
+        "id": 92,
+        "title": "Promote architecture boundary tests into the main task line for Core-versus-Godot protection",
+        "description": "Add executable architecture boundary tests that fail whenever Game.Core depends on Godot APIs so the upcoming runtime expansion work cannot erode the Core versus adapter boundary.",
+        "details": "Story: M1-GUARDRAIL-ARCH-BOUNDARY\nADR Refs: ADR-0005, ADR-0007, ADR-0018, ADR-0024\nChapters: CH01, CH05, CH06, CH07\nScope: promote the existing architecture-boundary backlog item into an executable mainline task, using deterministic tests and scripts to prove that Game.Core stays free of Godot dependencies while adapters remain the allowed integration boundary. Keep this as a guardrail task that protects upcoming runtime and gameplay expansion. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Run the architecture boundary check and xUnit coverage for one pass case, and verify an intentional violation would fail on a temp branch or fixture.\n",
+        "priority": "high",
+        "dependencies": [
+          "57",
+          "96",
+          "99",
+          "101"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0005",
+          "ADR-0007",
+          "ADR-0018",
+          "ADR-0024"
+        ],
+        "archRefs": [
+          "CH01",
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on executable architecture boundary tests that keep Game.Core free of Godot dependencies.",
+        "updatedAt": null
+      },
+      {
+        "id": 93,
+        "title": "Add deny-by-default external process execution guard and audit coverage",
+        "description": "Introduce a single guarded external-process path so direct OS.execute style behavior remains deny-by-default, auditable, and safe during future tooling and runtime expansion.",
+        "details": "Story: M1-GUARDRAIL-PROCESS-EXEC\nADR Refs: ADR-0005, ADR-0011, ADR-0019\nChapters: CH02, CH07, CH10\nScope: promote the existing OS.execute guard backlog item into the mainline task set by adding one explicit adapter boundary, deny-by-default behavior, allowlisted dev-mode exceptions, and audit evidence. This is a safety boundary task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Run xUnit and security tests for deny-by-default, allowlist behavior, and audit evidence in Windows-friendly dev-mode and deny paths.\n",
+        "priority": "medium",
+        "dependencies": [
+          "92"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0005",
+          "ADR-0011",
+          "ADR-0019"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on deny-by-default external process execution guardrails and audit coverage.",
+        "updatedAt": null
+      },
+      {
+        "id": 94,
+        "title": "Validate security-sensitive signal contracts before wider runtime expansion",
+        "description": "Add deterministic validation for security-sensitive signal names and arguments so signal drift is caught before the next wave of runtime and gameplay expansion work.",
+        "details": "Story: M1-GUARDRAIL-SIGNAL-CONTRACTS\nADR Refs: ADR-0004, ADR-0005, ADR-0019\nChapters: CH02, CH04, CH07\nScope: promote the signal-contract backlog item into the mainline task set, with deterministic validation of security-sensitive signal signatures and CI-friendly failures when definitions drift from expected contracts. This remains a guardrail task protecting runtime safety and integration correctness. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Run deterministic contract validation and GdUnit or xUnit signal checks for one pass case and one intentional drift case.\n",
+        "priority": "medium",
+        "dependencies": [
+          "93"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0004",
+          "ADR-0005",
+          "ADR-0019"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH04",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on validating security-sensitive signal contracts before wider runtime expansion.",
+        "updatedAt": null
+      },
+      {
+        "id": 95,
+        "title": "Seed CombatService runtime from the Warrior starting deck on combat entry",
+        "description": "Extend the CombatService-backed entry path so combat starts from the Warrior starting deck and shared deck state instead of scene-local placeholder hands.",
+        "details": "Story: UI-WIRING-COMBAT-M1-WARRIOR-DECK-SEED\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: take the CombatService-backed entry path from T83 and seed it from the Warrior starting deck and shared deck state rather than from local sample hand construction. Reuse existing deck ownership and avoid a second combat-start seed path. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend acceptance and Combat scene tests to verify Warrior deck seeding on combat entry and synchronization between CombatService state and visible piles.\n",
+        "priority": "high",
+        "dependencies": [
+          "24",
+          "33",
+          "83"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on seeding CombatService runtime from the Warrior starting deck on combat entry.",
+        "updatedAt": null
+      },
+      {
+        "id": 96,
+        "title": "Promote Rage into the live CombatService-backed player runtime",
+        "description": "Finish the Warrior combat runtime by wiring Rage state creation, mutation, and player-visible effect through the shared combat path.",
+        "details": "Story: UI-WIRING-COMBAT-M1-RAGE-RUNTIME\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T95 and route Rage-capable player state through the live CombatService-backed runtime so the Warrior loop uses the existing Rage model instead of dormant data-only state. Reuse current state contracts and avoid a parallel status implementation in the scene. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Warrior acceptance and Combat scene tests to verify Rage state application, persistence, and visible combat impact through the shared runtime.\n",
+        "priority": "high",
+        "dependencies": [
+          "25",
+          "75",
+          "95"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on promoting Rage into the live CombatService-backed player runtime.",
+        "updatedAt": null
+      },
+      {
+        "id": 97,
+        "title": "Bind generated ActConfig route data onto the live Map surface and route states",
+        "description": "Project the generated ActConfig route graph into the current Map scene so reachable, locked, selected, and completed path states remain visible and actionable.",
+        "details": "Story: UI-WIRING-MAP-M1-ACTCONFIG-BINDING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: take the generated route graph from T86 and bind it onto the current route-owned Map surface, including reachable, locked, selected, and completed state projection. Preserve existing route ownership and visual route conventions rather than introducing a second map presentation owner. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Map scene tests to cover generated route binding, visible route states, and actionable node selection on the live Map surface.\n",
+        "priority": "high",
+        "dependencies": [
+          "60",
+          "70",
+          "86"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on binding generated ActConfig route data onto the live Map surface and route states.",
+        "updatedAt": null
+      },
+      {
+        "id": 98,
+        "title": "Restore locked Reward, Shop, and Event surfaces after Continue",
+        "description": "Extend Continue restoration so valid autosaves re-enter locked Reward, Shop, and Event surfaces without changing deterministic offers or route ownership.",
+        "details": "Story: UI-WIRING-RESUME-M1-LOCKED-SURFACES\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T87 and restore valid autosaves into locked Reward, Shop, and Event surfaces while preserving locked offers, node ownership, and deterministic route state. Keep the blocked-state UX from T87 unchanged for invalid saves. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend resume integration tests to cover deterministic re-entry into Reward, Shop, and Event surfaces with preserved locked offers and unchanged route ownership.\n",
+        "priority": "high",
+        "dependencies": [
+          "87",
+          "114",
+          "115"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on restoring locked Reward, Shop, and Event surfaces after Continue.",
+        "updatedAt": null
+      },
+      {
+        "id": 99,
+        "title": "Drive relic runtime effects through the shared combat trigger path",
+        "description": "Finish relic runtime combat closure by executing relic effects through the shared combat trigger path after acquisition and display are already live.",
+        "details": "Story: UI-WIRING-RELIC-M1-COMBAT-EFFECTS\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T88 and route relic runtime effects through the shared combat trigger path so combat-time relic outcomes no longer rely on scene-local forks. Preserve uniqueness rules and current ownership. Post-combat or broader run trigger closure moves to a follow-up task so Chapter 6 can execute a narrower deterministic loop. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend combat integration tests to verify relic-triggered combat effects execute through shared trigger paths while preserving uniqueness and ownership rules.\n",
+        "priority": "high",
+        "dependencies": [
+          "77",
+          "88"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on driving relic runtime combat effects through the shared trigger path while deferring broader run-trigger closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 100,
+        "title": "Promote AOE and multi-hit ordering rules into the live combat runtime",
+        "description": "Extend rule promotion so AOE and multi-hit effects resolve in the same deterministic target order as the shared damage rules during live combat.",
+        "details": "Story: UI-WIRING-COMBAT-M1-AOE-PROMOTION\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T90 and route live combat AOE and multi-hit resolution through the existing shared damage calculation and target-order rules. Reuse the current combat runtime and avoid scene-local target-order forks. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend combat rule tests to cover AOE and multi-hit ordering inside the live combat runtime path.\n",
+        "priority": "high",
+        "dependencies": [
+          "48",
+          "89",
+          "90"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on promoting AOE and multi-hit ordering rules into the live combat runtime.",
+        "updatedAt": null
+      },
+      {
+        "id": 101,
+        "title": "Align player-visible combat feedback with the promoted runtime rule results",
+        "description": "Finish combat rule promotion by ensuring combat feedback surfaces always reflect the shared runtime result after trigger, fixed damage, and AOE resolution.",
+        "details": "Story: UI-WIRING-COMBAT-M1-FEEDBACK-ALIGNMENT\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T78, T90, and T100 so player-visible combat feedback and logs remain aligned with the promoted shared runtime rule results. Do not mutate runtime logic in the scene layer; this task is strictly about surface alignment on top of the already promoted shared semantics. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution.\n",
+        "priority": "medium",
+        "dependencies": [
+          "78",
+          "90",
+          "100"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on aligning player-visible combat feedback with promoted runtime rule results.",
+        "updatedAt": null
+      },
+      {
+        "id": 102,
+        "title": "Audit T70-T101 Chapter 6 sizing and split any task that still exceeds one deterministic closure",
+        "description": "Add a lightweight governance pass to keep late M1 runtime tasks sized for one deterministic closure per Chapter 6 run before additional role, card, and monster expansion begins.",
+        "details": "Story: M1-GOVERNANCE-CH6-TASK-SIZING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07\nScope: review the post-T70 mainline tasks and verify no task still bundles multiple unrelated deterministic closures that would predictably overrun Chapter 6 recovery and review. If a task still mixes multiple owner boundaries or large runtime closures, split it before execution. This is a governance guardrail task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate task sizing through task graph review, dependency consistency checks, and updated audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md.\n",
+        "priority": "medium",
+        "dependencies": [
+          "57",
+          "94"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on auditing T70-T101 task sizing for one deterministic closure per Chapter 6 run.",
+        "updatedAt": null
+      },
+      {
+        "id": 103,
+        "title": "Split Continue restore validation between primary boundaries and locked surfaces in the review pipeline",
+        "description": "Keep Continue tasks narrow at execution time by teaching the review path to validate primary boundaries separately from locked surface restoration.",
+        "details": "Story: M1-GOVERNANCE-RESUME-REVIEW-NARROWING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH06, CH07\nScope: add planning and review evidence so T87 and T98 can be executed and re-reviewed independently without forcing one combined resume mega-run. This is a governance and workflow task protecting Chapter 6 efficiency, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate execution-plan and decision-log evidence for separated Continue restore lanes and verify no task file dependency collapses the two closures back into one run.\n",
+        "priority": "medium",
+        "dependencies": [
+          "87",
+          "98",
+          "102"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on separating Continue restore validation between primary boundaries and locked surfaces in the review pipeline.",
+        "updatedAt": null
+      },
+      {
+        "id": 104,
+        "title": "Split combat rule promotion review between core resolution and surface feedback closure",
+        "description": "Keep combat rule promotion executable in narrower Chapter 6 loops by separating core rule integration from scene feedback reconciliation.",
+        "details": "Story: M1-GOVERNANCE-COMBAT-RULE-REVIEW-NARROWING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH06, CH07\nScope: add planning and review evidence so T90, T100, and T101 can be executed and re-reviewed as separate deterministic closures rather than one monolithic combat-rule promotion run. This is a governance and workflow task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate task graph and audit evidence showing separated combat rule promotion lanes for core resolution, AOE ordering, and feedback alignment.\n",
+        "priority": "medium",
+        "dependencies": [
+          "90",
+          "100",
+          "101",
+          "102"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on separating combat rule promotion review between core resolution and surface feedback closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 105,
+        "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
+        "description": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
+        "details": "Story: UI-WIRING-COMBAT-A6-PHASE2\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T76 and route enemy turn action resolution, status-aware choices, and no-repeat guardrails through the displayed intent path. Keep the current intent surface and avoid a second enemy-turn execution path. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path.\n",
+        "priority": "high",
+        "dependencies": [
+          "76"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on enemy action resolution and no-repeat guardrails on top of the displayed intent path.",
+        "updatedAt": null
+      },
+      {
+        "id": 106,
+        "title": "Integrate powers and relics as visible and effectful combat participants",
+        "description": "Build on the shared trigger path so powers and relics become visible, inspectable, and effectful participants on the combat surface.",
+        "details": "Story: UI-WIRING-COMBAT-A7-PHASE2A\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T77 and T99 and integrate powers and relics into the shared trigger path so their player-visible state and runtime outcomes are surfaced through the Combat scene. Keep the shared trigger owner and avoid a scene-local effect stack. Potion runtime closure moves to a follow-up task so Chapter 6 can execute a narrower deterministic loop. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add deterministic trigger-order and UI state assertions for powers and relics as visible and effectful combat participants.\n",
+        "priority": "medium",
+        "dependencies": [
+          "77",
+          "99"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on integrating powers and relics as visible and effectful combat participants while deferring potion closure.",
+        "updatedAt": null
+      },
+      {
+        "id": 107,
+        "title": "Complete settlement metadata for rewards and relics",
+        "description": "Enrich the settlement surface so stored reward and relic results are visible without recomputing run state.",
+        "details": "Story: UI-WIRING-SETTLEMENT-M1-REWARD-RELIC-METADATA\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T91 and add reward and relic metadata to the settlement surface from stored run data. Keep the owner surface from T91 and avoid a second settlement authority. Resume evidence enrichment moves to a follow-up task so Chapter 6 can keep settlement closure narrower. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend settlement and integration tests to cover reward and relic metadata visibility from stored run data.\n",
+        "priority": "medium",
+        "dependencies": [
+          "91",
+          "99",
+          "115"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 3,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on completing reward and relic settlement metadata while deferring resume evidence enrichment.",
+        "updatedAt": null
+      },
+      {
+        "id": 108,
+        "title": "Split enemy intent review between preview generation and enemy turn resolution",
+        "description": "Keep enemy intent execution narrow in Chapter 6 by separating preview generation from enemy turn resolution and no-repeat verification.",
+        "details": "Story: M1-GOVERNANCE-ENEMY-INTENT-REVIEW-NARROWING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH06, CH07\nScope: add planning and review evidence so T76 and T105 can run and re-review independently instead of collapsing preview generation and enemy turn resolution into one combined lane. This is a governance task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate task graph and audit evidence showing separated enemy intent lanes for preview generation and enemy action resolution.\n",
+        "priority": "medium",
+        "dependencies": [
+          "76",
+          "105",
+          "102"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on separating enemy intent review between preview generation and enemy turn resolution.",
+        "updatedAt": null
+      },
+      {
+        "id": 109,
+        "title": "Split settlement review between owner surface, reward or relic metadata, and resume evidence",
+        "description": "Keep settlement tasks narrow at execution time by teaching the review path to validate owner-surface closure, reward or relic metadata, and resume evidence as separate lanes.",
+        "details": "Story: M1-GOVERNANCE-SETTLEMENT-REVIEW-NARROWING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH06, CH07\nScope: add planning and review evidence so T91, T107, and T113 can execute and re-review as distinct settlement closures instead of collapsing them into one combined lane. This is a governance and workflow task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate task graph and audit evidence showing separated settlement lanes for owner-surface closure, reward or relic metadata, and resume evidence.\n",
+        "priority": "medium",
+        "dependencies": [
+          "91",
+          "107",
+          "113",
+          "102"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on separating settlement review between owner-surface closure, reward or relic metadata, and resume evidence.",
+        "updatedAt": null
+      },
+      {
+        "id": 110,
+        "title": "Drive relic runtime effects through shared run trigger boundaries",
+        "description": "Finish relic runtime closure outside direct combat resolution by executing relic effects through shared run trigger boundaries after combat-path effects are live.",
+        "details": "Story: UI-WIRING-RELIC-M1-RUN-EFFECTS\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T99 and route relic runtime effects through shared run trigger boundaries such as reward, node resolution, and post-combat ownership transitions. Preserve uniqueness rules and current ownership. Do not create a scene-local relic effect stack for non-combat surfaces. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend run and integration tests to verify relic-triggered non-combat effects execute through shared run trigger paths while preserving uniqueness and ownership rules.\n",
+        "priority": "medium",
+        "dependencies": [
+          "88",
+          "99"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on driving relic runtime effects through shared run trigger boundaries after combat-path closure is live.",
+        "updatedAt": null
+      },
+      {
+        "id": 111,
+        "title": "Integrate potions as visible and effectful combat participants",
+        "description": "Build on the shared trigger path so potions become visible, inspectable, and effectful participants on the combat surface.",
+        "details": "Story: UI-WIRING-COMBAT-A7-PHASE2B\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T77 and integrate potions into the shared trigger path so their player-visible state and runtime outcomes are surfaced through the Combat scene. Reuse the same combat ownership and avoid a scene-local potion stack. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add deterministic trigger-order and UI state assertions for potions as visible and effectful combat participants.\n",
+        "priority": "medium",
+        "dependencies": [
+          "77"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on integrating potions as visible and effectful combat participants on the shared trigger path.",
+        "updatedAt": null
+      },
+      {
+        "id": 112,
+        "title": "Drive relic runtime review between combat and run trigger closures",
+        "description": "Keep relic runtime tasks narrow at execution time by teaching the review path to validate combat trigger closure separately from broader run trigger closure.",
+        "details": "Story: M1-GOVERNANCE-RELIC-REVIEW-NARROWING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH06, CH07\nScope: add planning and review evidence so T99 and T110 can execute and re-review independently without collapsing relic combat and run trigger effects back into one combined lane. This is a governance and workflow task, not a gameplay feature. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Validate task graph and audit evidence showing separated relic runtime lanes for combat trigger closure and run trigger closure.\n",
+        "priority": "medium",
+        "dependencies": [
+          "99",
+          "110",
+          "102"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH06",
+          "CH07"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on separating relic runtime review between combat and run trigger closures.",
+        "updatedAt": null
+      },
+      {
+        "id": 113,
+        "title": "Surface settlement resume evidence from stored run data",
+        "description": "Enrich the settlement surface so stored resume-related evidence is visible without mutating or recomputing run state at display time.",
+        "details": "Story: UI-WIRING-SETTLEMENT-M1-RESUME-EVIDENCE\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T91 and T98 and add resume-related evidence to the settlement surface from stored run data. Keep the owner surface from T91 and avoid recomputing ownership or mutating run state at display time. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data.\n",
+        "priority": "medium",
+        "dependencies": [
+          "91",
+          "98"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on surfacing settlement resume evidence from stored run data without recomputing live state.",
+        "updatedAt": null
+      },
+      {
+        "id": 114,
+        "title": "Stabilize Reward offer lock re-entry and invalid-pool fallback",
+        "description": "Build on first-entry Reward generation so the offer stays locked across re-entry and fails safe when pool context cannot resolve a valid offer.",
+        "details": "Story: UI-WIRING-REWARD-M1-LOCK-STABILITY\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T84 and complete Reward offer lock persistence across re-entry for the same runtime boundary, plus visible fallback behavior when pool context is invalid or unavailable. Reuse the shared offer-locking path and current Reward scene ownership. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Reward scene and integration tests to cover offer-lock persistence across re-entry and visible invalid-pool fallback.\n",
+        "priority": "medium",
+        "dependencies": [
+          "84"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Reward offer lock persistence across re-entry and invalid-pool fallback.",
+        "updatedAt": null
+      },
+      {
+        "id": 115,
+        "title": "Resolve Reward confirm writeback and skip through the route-owned return path",
+        "description": "Build on Reward selection state so confirm writes the chosen card into live run state and skip resolves once without mutating the deck.",
+        "details": "Story: UI-WIRING-REWARD-M1-RESOLUTION-WRITEBACK\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T85 and route the selected reward card into live run deck state before the current Reward flow returns, while keeping skip as a no-mutation route-owned resolution path. Reuse the existing Reward scene and return ownership rather than creating a second resolution flow. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, and single-resolution route return.\n",
+        "priority": "medium",
+        "dependencies": [
+          "85"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on Reward confirm writeback and skip resolution through the route-owned return path.",
+        "updatedAt": null
+      },
+      {
+        "id": 116,
+        "title": "Bind combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies",
+        "description": "Build on data-backed enemy runtime so visible enemy surfaces stay synchronized and invalid definitions fail safe with player-visible feedback.",
+        "details": "Story: UI-WIRING-ENEMY-M1-SURFACE-BINDING\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T89 and bind enemy name, HP, block, and visible combat surfaces to data-backed runtime enemies while providing safe visible fallback when definitions are invalid or incomplete. Reuse current targeting and intent surfaces instead of creating a parallel enemy presentation path. Do not execute implementation until this task is selected by workflow.",
+        "testStrategy": "Add or extend Combat scene and integration tests to cover visible enemy stat binding and invalid-definition fallback on top of data-backed enemy runtime.\n",
+        "priority": "medium",
+        "dependencies": [
+          "89",
+          "76"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0025",
+          "ADR-0032"
+        ],
+        "archRefs": [
+          "CH05",
+          "CH06",
+          "CH07",
+          "CH10"
+        ],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "complexity": 2,
+        "recommendedSubtasks": 0,
+        "expansionPrompt": "Break down this task with a focus on binding combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies.",
+        "updatedAt": null
       }
     ],
     "metadata": {
@@ -2143,7 +3550,7 @@
       "tags": [
         "master"
       ],
-      "taskCount": 69,
+      "taskCount": 81,
       "completedCount": 58,
       "lastModified": "2026-04-20T04:55:17.627522+00:00"
     }
