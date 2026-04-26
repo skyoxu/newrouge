@@ -420,11 +420,10 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var hasEnemy = _enemyCombatById.TryGetValue(enemyId, out var state);
-        if (!hasEnemy)
-        {
-            state = new EnemyCombatState(enemyId, ResolveUiText("enemy.act1.slime_scout.name"), maxHp, 0, ResolveUiText("combat.enemy.status.none"));
-        }
+        var hasEnemy = _enemyCombatById.TryGetValue(enemyId, out var existingState);
+        var state = hasEnemy && existingState is not null
+            ? existingState
+            : new EnemyCombatState(enemyId, ResolveUiText("enemy.act1.slime_scout.name"), maxHp, 0, ResolveUiText("combat.enemy.status.none"));
 
         var clampedHp = Math.Min(maxHp, currentHp);
         _enemyCombatById[enemyId] = state with { CurrentHp = clampedHp, MaxHp = maxHp };
