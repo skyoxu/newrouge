@@ -158,7 +158,7 @@ public partial class HUD : Control
                 GD.PushWarning($"[HUD] Invalid health event payload: {ex.Message}");
             }
         }
-        else if (type == "core.gold.updated" || type == "player.gold.changed")
+        else if (type == EventTypes.ScoreUpdated || type == "player.gold.changed")
         {
             try
             {
