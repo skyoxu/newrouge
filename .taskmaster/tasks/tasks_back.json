@@ -1775,16 +1775,18 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "The Map surface must render the M1 route as a connected path graph with visible edges between legal route transitions, while preserving the existing route-owned Map-to-node transition flow and removing reliance on four standalone node-type shortcut buttons. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Route graph data must explicitly define node ids and directed edges for the M1 five-floor path, including branch choices from floor 1 to floor 2 and legal continuations through the final M1 endpoint. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Reachable, locked, completed, and selected-path states must be visible on both route nodes and route edges so the player can understand which Slay-the-Spire-style path choices are currently legal. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Clicking a reachable route node must use the existing route-owned Map-to-node flow, while clicking a locked or disconnected node must refuse the transition with visible feedback and no run progression mutation. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Completing a node must update route graph state so only legal next-floor nodes and their connecting edges become reachable, and previously completed path segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "The legacy ActionRow shortcut buttons for Combat, Event, Shop, and Rest must remain hidden or removed from the player-facing Map surface once route graph entry is active. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Windows GdUnit verification must cover route edge existence, edge state changes after node completion, locked-node refusal, and absence of visible legacy shortcut buttons on the Map scene. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
+      "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, and does not present the four standalone node-type shortcut buttons as the primary entry path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The M1 route graph defines explicit node IDs and directed edges for the complete five-floor route, including floor-1 to floor-2 branch choices and legal continuations to the final M1 endpoint. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Map rendering makes reachable, locked, completed, and selected-path states visually distinguishable on both nodes and edges so currently legal choices are directly observable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Selecting a reachable node triggers the existing route-owned Map-to-node transition; selecting a locked or disconnected node shows visible refusal feedback, does not transition, and keeps run progression unchanged. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "After node completion, route-graph reachability updates so only legal next-floor nodes and connecting edges become reachable, while traversed segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "When route-graph entry is active, legacy ActionRow shortcut buttons (Combat, Event, Shop, Rest) are hidden or removed from the player-facing Map. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Windows GdUnit coverage verifies route-edge presence, post-completion edge-state updates, locked/disconnected selection refusal with unchanged progression, preservation of route-owned transitions, and non-visible legacy shortcut buttons in Map scene. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Implementation work for T70 is valid only after workflow explicitly selects T70, and review evidence includes that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Extend the existing Map route GdUnit suite to cover connected route graph edges, path-state visualization, legal unlock progression, and hidden legacy shortcut buttons on Windows."
@@ -1841,12 +1843,17 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Services/DeckServiceTests.cs",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "This task is satisfied only when T80, T81, and T82 are complete and collectively cover combat draw, discard, reshuffle, and HUD pile-count synchronization through the shared DeckService-backed runtime path. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "No scene-local duplicate deck lifecycle implementation may be introduced under this task; deck state ownership must remain in the shared runtime/services path and scene code may only bind or orchestrate it. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Milestone validation for this task must be performed by aggregating evidence from T80-T82 rather than by adding a fourth parallel implementation path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "T80 is accepted only when evidence from the shared DeckService/CardState runtime path shows deterministic combat deck-lifecycle outcomes for draw-pile-to-hand draw, turn-end discard into discard pile, exhaust-pile placement, and discard-to-draw reshuffle ordering. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T81 is accepted only when Combat scene/HUD wiring remains synchronized with runtime transitions for draw, hand, discard, and exhaust states, and scene code is limited to binding/orchestration without taking scene-local deck-lifecycle ownership or duplicating lifecycle logic. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T82 can close this umbrella milestone only when Windows-run evidence from existing deck-lifecycle and Combat scene suites aggregates T80 and T81 results; introducing a fourth parallel implementation path or standalone duplicate track fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The aggregated T80-T82 milestone evidence must explicitly verify hand state, exhaust pile, turn-end discard behavior, deterministic ordering, and Windows-backed execution, in addition to draw/discard/reshuffle behavior and HUD synchronization. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T71 remains milestone-only: validation must run through existing DeckService and Combat scene suites, and acceptance fails if a replacement verification lane or a fourth implementation path is used. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "No implementation evidence under this task is valid unless workflow selection of T71 is recorded first, and the review evidence set must include that selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71."
@@ -1905,14 +1912,20 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "Combat card buttons must render card name, cost, and player-visible effect text from existing data definitions and translations instead of hard-coded scene labels or a second card-text source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Playing a damage card, block card, or mixed-effect card must resolve effects from the card definition and update HP, block, energy, and pile state consistently. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Accepted card feedback must summarize the resolved effect using player-facing terms such as damage dealt, block gained, status applied, card exhausted, or card discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Insufficient energy, missing card definition, and invalid target rule failures must refuse the play with visible feedback and no combat state mutation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Both en and zh-CN card text used by the M1 combat surface must render as readable localized text, not raw keys or placeholder values. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "When CombatScene renders playable cards, each card button shows localized card name, cost, card type, and player-visible effect summary sourced from the existing card-definition and translation contracts, with no hard-coded scene text and no parallel card text/model source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Playing any damage, block, status, or mixed-effect card resolves strictly from its existing card definition (including cost payment, targeting rule, and exhaust/discard routing) and produces state updates to HP, block, energy, and piles that match that definition. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Each successful card play emits visible player-facing feedback that matches the resolved outcomes, including damage dealt, block gained, statuses applied, and whether the card was exhausted or discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "If play is rejected due to insufficient energy, missing card definition, or invalid targeting rule, the UI presents refusal feedback and leaves HP, block, energy, and pile states unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "On the M1 combat surface, both en and zh-CN card text is displayed as readable localized text rather than raw localization keys or placeholder content. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "CombatScene reads card type from existing card definitions and uses that type for combat presentation and interaction behavior, without hard-coded fallback typing or any parallel card-description path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When a status card is played, the defined status is applied to the correct target, and when an exhaust-effect card is played, that card is moved to exhaust (not discard) per the existing definition path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "CombatScene card loading uses only existing contracts and current card data files, and does not introduce any new card-definition path or new card-data file family. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Implementation evidence for this task is valid only after workflow explicitly selects T72, and review evidence includes the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths."
@@ -1970,14 +1983,16 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "The Combat surface must render one or more enemies with visible name, HP, block, status, and intent so the player can identify legal targets. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Single-target cards must require a legal living enemy target, while self-target and all-enemy cards must resolve without requiring an enemy click. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Invalid, dead, locked, or disconnected targets must refuse the card play with visible feedback and no HP, energy, or pile mutation. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Enemy death must remove that enemy from legal target choices and preserve deterministic state for remaining enemies and their intents. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "When all enemies are defeated, Combat must complete through the existing route-owned flow and enter Reward or Map according to the current node rules. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "In multi-enemy runtime state, Combat must render at least one enemy, and every rendered enemy must expose name, HP, block, status, and intent so legal targets can be observed. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Card play must enforce legal targeting: single-target cards resolve only when a living legal enemy is selected, while self-target and all-enemy cards resolve without selecting an enemy. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If the selected target is invalid, dead, locked, or disconnected, card play must be rejected with visible feedback, and HP, energy, and pile state must stay unchanged. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "When an enemy dies, it must be removed from the legal target set, and the remaining enemies must keep deterministic combat state with intent still visible. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After all enemies are defeated, combat completion must remain route-owned and must transition to Reward or Map based on current node rules. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Implementation for this task must start only after workflow explicitly selects T73, and review evidence must show that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing."
@@ -2036,14 +2051,17 @@
     "test_refs": [
       "Tests.Godot/tests/UI/test_card_drag_target_play.gd",
       "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "A player can drag a card from hand, hover over a legal target, and release to request the same existing validated card play path used by click-based play. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Dragging over legal targets must show visible target highlight or preview without mutating combat state before the card is released. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd",
-      "Dropping on an invalid target or empty space must cancel or refuse the play with visible feedback, returning the card to hand and preserving energy and pile state. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "The existing click or Play Selected Card accessibility path must remain available and behaviorally equivalent to a successful drag release. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Drag preview and target hover must be UI-only operations and must not advance combat RNG streams or route progression. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd"
+      "Dragging a card from hand onto a legal target and releasing it must issue the play request through the current validated card-play path (the same path used by click-based play). Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "While a dragged card is hovering a legal target, the UI shows a visible target highlight/preview, and no combat state change is applied before release. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd",
+      "Dropping on an invalid target or empty area does not commit play: visible invalid/cancel feedback is shown, the card returns to hand, and energy plus pile state remain unchanged. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "The click path and Play Selected Card accessibility path both remain usable, and a successful legal activation is behaviorally equivalent to a successful legal drag release through the same play flow. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Drag preview and target-hover interactions are UI-only and must not advance combat RNG streams or route progression. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd",
+      "Keyboard fallback and controller fallback must each complete target selection and play via the same validated card-play path as drag release, without introducing a separate combat input stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Implementation for this task proceeds only after workflow explicitly selects T74, and review evidence includes that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Promote existing drag-target harness coverage into real Combat scene behavior tests, including valid drop, invalid drop, cancel, and accessibility fallback."
@@ -2101,14 +2119,19 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "The Combat surface must display active player and enemy statuses with readable labels, stack counts, and tooltip or detail text for decision-critical effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Strength, weak, vulnerable, and block-like modifiers must affect damage or mitigation deterministically according to the existing status rules and modifier semantics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Status application, stack changes, and expiration at turn boundaries must be visible in feedback or HUD state without requiring logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Invalid or expired status references must fail safely with visible feedback and no corrupted combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Status UI text must render in en and zh-CN without raw translation keys on M1 combat surfaces. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "When player or enemy statuses are active in combat (including strength, weak, vulnerable, block, poison, and temporary modifiers), each active status is shown on the combat surface with a readable label, visible stack/value, and decision-useful tooltip/detail text, and no active status is omitted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Given the same initial combat state and action sequence, damage and mitigation results are identical across repeated runs, and contributions from strength, weak, vulnerable, block-like effects, poison ticks, and temporary modifiers come from the existing status/modifier rule path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "At turn boundaries, status apply/stack/decay/expire changes are reflected in HUD/feedback within the same turn flow, so the current status state is fully readable from UI feedback without log inspection. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "If combat encounters an invalid or expired status reference, the invalid effect is rejected, visible failure feedback is emitted, and combat state remains non-corrupted and playable. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "On M1 combat surfaces, status-related UI text renders correctly in en and zh-CN and never exposes raw localization keys. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Status rendering, damage/mitigation resolution, and turn-boundary decay all execute through the shared existing status contracts/services path, with no UI-local rule path used for those outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "UI-only modules do not define parallel status semantics for stacking, decay, or modifier computation; presence of a parallel UI status-rule path fails this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Implementation evidence for T75 is valid only if workflow-selection evidence explicitly selecting T75 appears first; if selection evidence is missing or appears after implementation evidence, acceptance fails. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay."
@@ -2166,11 +2189,16 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "Enemy intent must be generated from enemy behavior definitions on top of the existing intent surface and displayed before the player acts, including attack, block, buff, debuff, or mixed intent types. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Enemy behavior selection must use a named combat RNG stream and must not be advanced by hover, drag preview, localization refresh, or other UI-only operations. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Before any player action, the existing intent surface renders enemy intent generated from enemy behavior definitions (data-driven) instead of a fixed attack preview, and the rendered intent can express attack, block, buff, debuff, and mixed intent outputs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Enemy behavior selection for intent preview uses the named combat RNG stream, while UI-only interactions (hover, drag preview, localization refresh) leave that stream state unchanged; this task covers intent generation/preview only and does not execute enemy action resolution or no-repeat guardrail enforcement. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "With the same deterministic inputs, the upgraded intent path produces repeatable enemy intent output, and this determinism is verifiable without invoking enemy turn execution or action-resolution paths. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T76 acceptance excludes enemy action resolution and no-repeat guardrails; checks that require those behaviors are out of scope for this task and deferred to follow-up tasks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Implementation evidence for T76 is valid only if workflow records explicitly show T76 was selected before implementation evidence is recorded in review artifacts. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json",
+      "Combat scene tests on the upgraded intent path are added or updated and explicitly assert deterministic enemy intent generation, visible intent preview, and non-advancement of the named combat RNG stream under UI-only operations. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path."
@@ -2230,11 +2258,16 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "Combat triggers must execute in deterministic order for card play, turn start, turn end, damage, block, and death-check boundaries through the shared combat runtime rather than a second trigger stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Trigger outcomes that change combat state must produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "On the shared combat runtime path, trigger registration and execution order is deterministic for card-play, turn-start, turn-end, damage, and death-check hooks; repeated identical runs produce identical hook order and outcomes, and no second trigger stack is used. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For this task scope, card-play/turn/damage/death-check hooks are integrated into current combat flow so state-changing outcomes are observable through existing combat feedback/history outputs; route-owned completion behavior stays unchanged, and powers/relics/potions presentation or effectful integration is not introduced. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "The shared combat runtime exposes one auditable trigger-registration path, and trigger execution consumes registrations only from that shared path, not from side-channel or duplicate stacks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After integrating these hooks, combat completion ownership remains in the route flow; trigger processing must not finalize or redirect route completion on its own. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Acceptance fails if this task adds powers, relics, or potions presentation/effectful integration; those capabilities remain deferred to follow-up tasks in this phase. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Implementation evidence for T77 is valid only when a prior workflow-selection record explicitly shows T77 was selected before coding or test evidence appears in the review trail. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Add deterministic trigger-order assertions through existing Combat scene suites for card-play, turn, damage, and death-check hooks on the shared runtime path."
@@ -2295,14 +2328,19 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "Successful card plays and enemy actions must create player-visible transient feedback such as damage numbers, block numbers, or action banners in addition to static HUD changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Combat SFX hooks must be called for card play, hit, block, invalid action, and enemy action events, while missing audio assets degrade safely with visible feedback or no-op behavior. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Hovering or focusing a card must show a readable card preview with cost, type, target rule, and localized effect text without mutating combat state or advancing RNG. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Enemy intent hover or focus must show detailed readable intent text so the player can understand incoming damage, block, or status effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Reduced-motion or headless-safe mode must preserve deterministic tests by making presentation effects observable without relying on real-time animation timing. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "For every successful card play and every resolved enemy action, the presentation layer must emit transient visible feedback (damage numbers, block gain numbers, card-play motion cues, and hit/action feedback) in addition to HUD updates, and deterministic combat outcomes must remain identical to baseline runs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When card play, hit, block, invalid action, or enemy action runtime events occur, the corresponding combat SFX hook must be triggered; if an audio asset is missing, action resolution must still complete safely and required visible feedback must still be produced (audio playback may explicitly no-op) without runtime failure. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Hovering or focusing a card must display a readable preview containing cost, type, target rule, and localized effect text, and opening/closing this preview must not mutate deterministic combat state or advance/consume RNG. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Hovering or focusing enemy intent must display readable detail for incoming damage, block, or status effects, and showing/hiding this detail must not mutate deterministic turn state or RNG progression. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "In reduced-motion or headless-safe mode, presentation feedback must remain test-observable via deterministic nodes/events/log outputs without depending on wall-clock animation timing, and combat state plus RNG outputs must match deterministic baselines. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Card-play motion cues and hit feedback must each be independently observable as presentation-layer outputs, not only inferred from static HUD value changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "All presentation feedback must be sourced from the existing deterministic combat event path and must not create a second combat logic path or mutate runtime combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For feedback dispatch on card play, enemy action, hit, block, invalid action, and previews, deterministic combat state and RNG progression must be unchanged before versus after presentation-layer handling. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Implementation for this task must start only after workflow explicitly selects T78, and review evidence must include that workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "test_strategy": [
       "Extend Combat UI tests with observable presentation-layer nodes/events and verify they do not mutate deterministic combat state or RNG."
@@ -2357,12 +2395,17 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "acceptance": [
-      "Defeat route must trigger when player HP changes to <= 0 regardless of damage source path, not only on end-turn handling. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Defeat route must be one-shot per combat resolution and must not duplicate summary/menu routing on repeated HP updates. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "HP-update trigger path must preserve route ownership and return to Main menu with visible summary outcome Defeat. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "For every existing HP mutation path that transitions player HP from >0 to <=0 (including end-turn and non-end-turn paths), defeat routing is triggered by the HP-change state-update flow, not by an end-turn-only check. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Within one combat resolution, only the first qualifying HP<=0 transition resolves defeat; any later HP updates while HP stays <=0 produce no additional defeat routing, and summary/menu routing is observed exactly once. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "When HP<=0 triggers defeat, route ownership remains unchanged from current behavior, and the observable outcome is return to Main menu with a visible Defeat summary result. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "All existing player-HP mutation entry points must converge to one shared state-update path that evaluates defeat; if any existing entry point can mutate HP while bypassing that path, acceptance is not met. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Any logic-state update that changes player HP emits an HP-changed signal/callback, and defeat routing is sourced from that emission; if an HP change has no such emission, that change must not trigger defeat routing. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Implementation evidence for T79 is valid only if workflow selection of T79 is recorded first; if implementation artifacts appear before workflow selection evidence, acceptance is not met. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json",
+      "Combat scene tests are added or extended to cover HP-change-driven Defeat for both end-turn and non-end-turn HP mutation paths, and to verify defeat routing plus summary/menu routing happen exactly once per combat resolution. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "test_strategy": [
       "Add/extend Combat scene tests for HP-change-driven defeat trigger on end-turn and non-end-turn HP mutation paths, and verify one-shot defeat routing."
@@ -2417,12 +2460,15 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
     "acceptance": [
-      "Combat draw/discard/hand counters must be derived from the shared DeckService state transitions rather than local ad-hoc arithmetic. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Playing a card must move card instance from hand to discard (or exhaust by rule) and reflect updated counts in HUD. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "End-turn processing must apply deck retention/discard rules from deck state service and keep UI synchronized. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "In CombatScene, draw/discard/hand HUD counters are sourced from DeckService transition results for draw, play/discard, and end-turn flows; when an invoked action yields no DeckService state transition, all three counters remain unchanged. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "After a card-play action resolves through DeckService, the played card instance is absent from hand and present in discard (or exhaust when rules require), and HUD hand/draw/discard counters equal the DeckService post-play state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "At end turn, hand retention/discard resolution is performed via DeckService rules, and the post-resolution hand plus draw/discard counters displayed in CombatScene exactly match DeckService end-turn state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Automated tests are added or updated to assert DeckService-driven HUD counter sync after card play and after end-turn processing, and repeated runs through the existing DeckService path produce deterministic results. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T80 implementation evidence is accepted only when workflow records show T80 was explicitly selected before execution, and review evidence orders that workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
     "test_strategy": [
       "Add/extend tests for deck-state-driven UI counters after play card/end turn and ensure deterministic transitions remain stable."
@@ -2479,12 +2525,15 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
     "acceptance": [
-      "When draw pile reaches zero and discard is non-empty, combat must reshuffle discard into draw and clear discard before next draw action through the shared DeckService-backed combat runtime. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Reshuffle flow must be deterministic under current shuffle policy and must not break hand-limit or retain processing. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Combat HUD counters must show post-reshuffle draw/discard values consistent with runtime deck state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When a draw is requested with draw pile = 0 and discard > 0, combat must execute the DeckService-backed runtime reshuffle path, transfer discard cards into draw, set discard to 0, and complete the originally pending draw request in that same flow. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "With the same initial runtime state and current shuffle policy, the draw-empty reshuffle flow must yield the same post-draw results across repeated runs, while preserving existing hand-limit and retain outcomes. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "After reshuffle-then-continue-draw resolves, Combat HUD draw/discard counters must match the shared combat runtime draw/discard values exposed to UI bindings. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If a continued draw that crosses a reshuffle boundary cannot produce a valid draw result, runtime deck state must end only in the allowed failure outcome and must not partially mutate draw/discard/hand or related runtime state. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "T81 implementation evidence is invalid unless workflow selection of T81 is recorded first, and review evidence must show that selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
     "test_strategy": [
       "Add tests that exhaust draw pile, verify reshuffle from discard, discard reset, and continued draw behavior without state corruption."
@@ -2540,12 +2589,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json"
     ],
     "acceptance": [
-      "Combat HUD must include a visible total-deck counter rendered after existing core counters. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "At runtime, draw + hand + discard must equal total deck count across play-card, end-turn, and reshuffle transitions on the shared DeckService-backed combat runtime. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If invariant cannot be satisfied, surface visible safe feedback instead of silent drift. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "战斗进行中，Combat HUD 在现有核心计数器之后必须可见显示 total deck 计数器；该计数器取值自共享 DeckService-backed 运行时牌堆状态，并在任一相关状态变更后同步更新到最新值。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "在共享 DeckService-backed 的战斗转换路径（play-card、end-turn、reshuffle）中，每次转换完成后的结果状态必须满足 draw + hand + discard == total deck count；任一转换后不满足即判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "当牌堆计数不变量被破坏时，场景必须给出明确且可见的诊断型安全回退反馈；若仍静默展示不一致计数则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "本任务实现必须限定为现有共享 DeckService-backed 运行时路径上的 HUD/不变量切片；若新增并行牌堆状态来源或第二套 deck-state 实现则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "若 workflow 未显式选择 T82，实现入口必须拒绝执行且保持实现/代码状态不变；评审证据必须先提供 workflow-selection 记录，再提供实现证据。 Refs: logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
+      "本任务必须新增或扩展 UI 与状态测试，验证共享 DeckService-backed 运行时路径下 play-card、end-turn、reshuffle 转换后的 total-deck 不变量；仅描述运行时行为而缺少这些测试不满足验收。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "T82 的实现证据仅在存在可审计的 T80 与 T81 完成证据后才有效；若缺少 T80/T81 前置证据，T82 实现入口必须拒绝执行并保持代码状态不变。 Refs: logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json"
     ],
     "test_strategy": [
       "Add UI/state tests ensuring draw+hand+discard equals total after play, end turn, and reshuffle transitions."
@@ -2602,11 +2657,17 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json"
     ],
     "acceptance": [
-      "CombatScene must hand card play, turn progression, and state mutation to the shared CombatService and PlayCard runtime instead of resolving combat only through scene-local sample logic. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Visible card, energy, HP, and pile updates on the Combat surface must remain synchronized with the shared runtime after play and end-turn actions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When CombatScene executes play-card actions or end-turn progression, runtime state mutation and combat outcome resolution must flow through the existing CombatService + PlayCard runtime path, and must not be resolved solely by scene-local sample logic. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After each successful play-card or end-turn action, Combat scene feedback surfaces must update card zones/piles, energy, and HP to exactly match shared runtime state (no stale or divergent display); Warrior starting-deck seeding and live Rage runtime closure remain unchanged in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The combat route owner must remain the current owner throughout this task; any route-owner reassignment, handoff, or replacement in this slice fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "This slice must not add, implement, or wire Warrior starting-deck seeding; any detected change to Warrior starting-deck seeding behavior or path fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "This slice must not add, implement, or wire live Rage runtime closure; any detected change to live Rage runtime closure behavior or path fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If workflow has not explicitly selected T83, implementation entry must refuse execution and leave implementation/code state unchanged; review evidence must include the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json",
+      "Combat scene tests and acceptance tests must explicitly verify both that current surface ownership is preserved and that scene-local-only play behavior has been replaced by CombatService-backed card resolution. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add or extend Combat scene and acceptance tests to verify CombatService-backed card resolution and removal of scene-local-only play behavior while preserving current surface ownership."
@@ -2666,11 +2727,16 @@
     "test_refs": [
       "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
       "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
     ],
     "acceptance": [
-      "Reward entry must generate its initial three offered cards from the existing act and encounter card pools through the shared deterministic reward path instead of placeholder scene-local content. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "For the same act and encounter context, first-entry Reward generation must remain deterministic on the shared pool path before any re-entry or restore logic is applied. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs"
+      "On first entry to Reward, the system generates exactly three offered cards through the existing shared card-pool path using the current act and encounter context; placeholder content or Reward-scene-local generation must not be used. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Given identical act and encounter context under first-entry conditions, the shared-pool Reward offer is deterministic before any re-entry or restore logic; any differing offer fails this task. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "For T84 in Chapter 6, acceptance validates first-entry offer generation only; reward stability and failure-handling outcomes are out of scope and must not be used as pass criteria. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
+      "Invalid-pool fallback is deferred to a follow-up task; T84 must not require, implement, or claim acceptance based on invalid-pool fallback behavior. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "If workflow has not explicitly selected T84, implementation execution must be refused and implementation/code state must remain unchanged; review evidence must show workflow selection before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
+      "Reward scene tests and integration tests are added or extended to verify first-entry shared-pool offer generation on the existing reward path; missing either scene or integration coverage fails acceptance. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd"
     ],
     "test_strategy": [
       "Add or extend Reward scene and integration tests to cover pool-driven first-entry offer generation through the shared reward path."
@@ -2728,11 +2794,18 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t83/summary.json"
     ],
     "acceptance": [
-      "The current Reward scene must support selecting exactly one offered card and exposing visible selected state on the existing surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
-      "Confirmation must remain unavailable while no card is selected and only unlock through the same Reward scene once a valid single selection exists. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd"
+      "On the existing Reward scene surface, each offer-selection action sets the clicked offer as selected and clears any prior selection, leaving exactly one active selection after every selection action. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "Within the existing Reward scene, confirm is unavailable when no offer is selected and becomes available only when a valid single selection exists; attempting confirm with no selection does not proceed and leaves state unchanged. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "The existing standalone Reward scene shows exactly three offered card choices for this interaction, preserves Reward route ownership, and does not create a second Reward confirmation flow outside the current scene. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "This task does not perform deck writeback, skip resolution, persistent mutation, or return-path closure during Reward confirmation; these behaviors are deferred to a follow-up task. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Reward scene tests are added or extended to explicitly verify single-selection state and confirm lock/unlock gating on the existing Reward surface; citing legacy tests that do not verify this gate is insufficient. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
+      "If workflow has not explicitly selected T85, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
+      "This task must not introduce any second Reward confirmation flow, confirmation UI, or confirmation scene outside the current Reward scene; confirmation interaction must remain exclusively on the existing Reward surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
     ],
     "test_strategy": [
       "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface."
@@ -2790,11 +2863,16 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "acceptance": [
-      "The playable route graph must be generated from existing ActConfig and map services rather than from a hard-coded node list embedded in the scene layer. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "Invalid or incomplete ActConfig map content must refuse route generation with visible failure handling instead of silently falling back to a hard-coded playable map. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+      "For the live Map path, map services generate the playable route graph from existing ActConfig and expose generated route data that downstream Map flow can consume; the source must not be any scene-embedded hard-coded M1 node list, route ownership remains unchanged, and scene-level route presentation closure is outside this task's pass criteria. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "When ActConfig map content is invalid or incomplete, route generation deterministically refuses with a visible failure signal, and map state must not silently fall back to or reconstruct any hard-coded playable route graph. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "T86 must not change route ownership: before and after ActConfig-driven generation, the route owner identity is the same, even though route source data is no longer hard-coded. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "T86 changes are limited to the minimum Map surface interaction needed to prove generated route data exists and can be consumed; broader Map surface binding refinements and scene-level route presentation closure remain deferred and are not required for acceptance. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map service tests are added or extended to assert deterministic ActConfig-driven route generation and deterministic refusal behavior for invalid or incomplete ActConfig content. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "If workflow selection has not explicitly selected T86, implementation entry must refuse execution and leave implementation/code state unchanged; review evidence includes the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "test_strategy": [
       "Add or extend map service tests to cover ActConfig-driven route generation and deterministic refusal for invalid or incomplete map content."
@@ -2852,11 +2930,16 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "acceptance": [
-      "When autosave metadata is valid, Continue must restore the player into the real node-owned boundary for Map or the combat initial boundary instead of stopping after metadata validation. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Invalid saves must still stay on the existing blocked-state UX path, so successful Continue restoration does not regress visible refusal behavior for broken metadata. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+      "When autosave metadata passes integrity checks and current route-ownership checks for a Map or combat entry resume point, selecting Continue must restore into the corresponding real node-owned Map boundary or combat initial boundary in-session, rather than stopping at metadata validation only. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "When autosave metadata is invalid, or the resume target is a locked Reward/Shop/Event surface in this phase, selecting Continue must remain on the existing blocked-state UX with the existing visible refusal behavior and must not transition into any playable boundary. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "Continue restore eligibility must require both autosave metadata integrity checks and current route ownership; metadata presence by itself must not allow restoration. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "T87 must not restore into locked Reward, Shop, or Event surfaces; this phase is limited to Map boundary and combat initial boundary restore, and locked-surface restore paths must stay blocked. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "Resume integration tests must be added or updated to verify both successful Map/combat boundary restore and unchanged blocked-state behavior for invalid saves or locked-surface targets. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "If T87 has not been explicitly selected by workflow, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "test_strategy": [
       "Add or extend resume integration tests to cover valid restore into Map or combat boundaries and unchanged blocked-state behavior for invalid saves."
@@ -2915,11 +2998,16 @@
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Tests.Godot/tests/UI/test_inventory_panel.gd"
+      "Tests.Godot/tests/UI/test_inventory_panel.gd",
+      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "acceptance": [
-      "The run path must support acquiring and equipping relic instances from existing relic definitions without duplicating relic ownership in a second scene-local store. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Equipped relics must be visible or inspectable from the player-facing runtime surfaces when they can affect play decisions. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd"
+      "On the shared run path, granting a relic definition records acquired and equipped ownership in the existing run inventory; no scene-local or second relic ownership store is introduced, and duplicate or conflicting grants are rejected by existing uniqueness rules with run inventory and equipped state unchanged. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "After a relic is equipped on the shared run path, player-facing runtime surfaces display that equipped relic as inspectable for decisions; when no relic is equipped, those same surfaces present no stale equipped-relic data. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd",
+      "T88 is limited to shared run-path acquisition, ownership, uniqueness enforcement, and equipped-state visibility; combat-time relic effect execution remains deferred to a follow-up task and relic-effect combat semantics stay unchanged in this task. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Run inventory ownership for both relic grant and equip closure remains on the existing shared runtime path; this task does not introduce a second persistence path, scene-local inventory authority, or an alternative equipped-state owner. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Run inventory and UI tests are added or extended to verify relic grant, uniqueness-rule refusal with unchanged state, and visible equipped state on the shared run path. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/UI/test_inventory_panel.gd",
+      "If workflow selection has not explicitly selected T88, implementation entry refuses execution and keeps implementation/code state unchanged; review evidence includes the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "test_strategy": [
       "Add or extend run inventory and UI tests to cover relic grant, uniqueness enforcement, and visible equipped state on the shared run path."
@@ -2977,11 +3065,17 @@
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "acceptance": [
-      "Combat encounters must instantiate runtime enemies from existing enemy data definitions rather than from placeholder scene-local defaults. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
-      "Live combat must consume those data-backed enemy runtime instances as the authoritative enemy state instead of keeping a separate placeholder enemy model. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When an encounter is configured with existing enemy data definitions, encounter setup must instantiate runtime enemies from those definitions and must not use scene-local placeholder enemy construction. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "In the live combat path, authoritative enemy state must be the encounter-created data-backed runtime enemy instances, and no separate placeholder enemy runtime model may be treated as authoritative. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Data-backed enemy instantiation must keep the current targeting ownership path unchanged, and must not add a new targeting ownership model or alternate target-resolution owner. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Data-backed enemy instantiation must keep the current enemy-intent ownership path unchanged, and must not introduce a parallel enemy-intent ownership model. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T89 scope is limited to encounter-time enemy instantiation and authoritative runtime ownership; visible stat binding and invalid-definition surface fallback are deferred to a follow-up task and must remain unchanged here. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Enemy data tests and combat runtime tests must be added or extended to verify that live combat instantiates enemies from existing enemy data definitions and consumes those instances as authoritative runtime state. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T89 has not been explicitly selected by workflow, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "test_strategy": [
       "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path."
@@ -3040,11 +3134,16 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "Live combat resolution must apply the existing status trigger ordering and fixed damage rules instead of bypassing them through simplified scene-local resolution. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Player-visible combat feedback must not contradict the shared runtime result for ordered triggers and fixed damage application. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "In the live player-facing combat path, combat resolution must run through the existing shared combat runtime entrypoint so deterministic status trigger ordering and fixed-damage outcomes no longer bypass shared semantics through a scene-local path. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "T90 must use the current combat runtime as the single owner of combat resolution and must not add a parallel resolver, separate trigger executor, or alternate fixed-damage resolution owner. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
+      "Any player-visible combat feedback changed in T90 must be limited to what is required to validate ordered trigger results and fixed-damage outcomes coming from the shared runtime; broader scene feedback reconciliation remains out of scope. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "T90 must leave AOE ordering and broader full-surface feedback alignment to follow-up tasks rather than changing those behaviors in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Automated tests must execute the live combat runtime path and verify deterministic trigger ordering together with fixed-damage exemption behavior on that path. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "If T90 has not been explicitly selected by workflow, implementation entry must refuse to run and leave implementation/code state unchanged; review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "Add or extend combat rule tests to cover trigger ordering and fixed damage exemptions inside the live combat runtime path."
@@ -3101,11 +3200,15 @@
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
+      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "The chosen run summary owner surface must expand to show stored outcome and route progress without recomputing run state at display time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
-      "Opening the settlement surface from victory or defeat must not mutate current run state and must remain consistent with stored summary metadata across repeated opens. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd"
+      "On the existing run-summary owner surface introduced by T66, opening a stored settlement summary must show the recorded run outcome and route-progress values from stored run data, and those displayed values must not be recomputed from live run state at open time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "The settlement surface must open from both victory and defeat flows, must not mutate current run state when opened, and reopening the same stored summary data must produce the same settlement content each time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "T91 must only add stored-data-backed visibility for settlement outcome and route progress; reward metadata, relic metadata, and resume metadata completion must remain deferred to follow-up work and remain unchanged by this task. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Run summary tests must be added or updated so they verify outcome and route-progress visibility from stored data and verify that the settlement surface opens the same way regardless of route result. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "If workflow selection has not explicitly selected T91, implementation entry must refuse execution, no implementation/code state may change, and review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "Add or extend run summary tests to cover outcome and route-progress visibility from stored data and route-independent opening behavior."
@@ -3166,12 +3269,16 @@
     "owner": "architecture",
     "test_refs": [
       "scripts/python/check_architecture_boundary.py",
-      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs"
+      "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "The repository must provide an executable architecture boundary check that fails when Game.Core references Godot APIs or Godot assemblies directly. Refs: scripts/python/check_architecture_boundary.py",
-      "The boundary check must be wired as a deterministic guard for the current codebase so future runtime expansion tasks cannot silently erode the Core-versus-adapter split. Refs: Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "A passing run must leave machine-readable evidence under logs/ci for the architecture-boundary guard, and a failing violation case must be able to stop the guardrail path. Refs: scripts/python/check_architecture_boundary.py"
+      "T92 is promoted from backlog documentation into the executable main task line as a runnable guardrail that the active repository workflow can execute. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "The repository exposes an executable architecture boundary check that deterministically fails when Game.Core introduces any dependency on Godot APIs or Godot assemblies. Refs: scripts/python/check_architecture_boundary.py",
+      "The guardrail enforces that Game.Core stays free of Godot dependencies while adapter-layer integration points remain the only allowed boundary for Godot interaction. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "A passing verification scenario runs the architecture boundary check together with the required xUnit coverage in one pass and records the passing result as deterministic evidence for this task. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "An isolated temp branch or fixture with an intentional Game.Core-to-Godot dependency causes the guardrail verification to fail deterministically, proving the violating case is blocked. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "If T92 has not been selected by the workflow, implementation entry refuses to run, leaves implementation and code state unchanged, and records workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "Introduce a small intentional violation in a temp branch to verify the test catches it."
@@ -3223,12 +3330,16 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd"
+      "Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "External process execution must be deny-by-default and must not permit ad-hoc OS.execute style calls outside the single guarded adapter path. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "When a command is denied or allowed through the guarded path, the system must emit auditable evidence for the decision rather than silently succeeding or failing. Refs: Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
-      "Any development-mode allowlist path must remain explicit and testable, with non-allowlisted commands still rejected deterministically. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs"
+      "T93 appears in the executable main task path instead of remaining backlog-only, and review evidence shows this OS.execute guard work was promoted into the mainline task set. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json",
+      "When external process execution is requested, it is denied by default unless the request goes through the single guarded adapter boundary; direct OS.execute-style execution outside that boundary remains unavailable. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "For each denied request and each request allowed by the explicit Windows-friendly dev-mode allowlist, the guarded external-process path writes audit evidence that records the allow or deny decision rather than completing silently. Refs: Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "T93 deterministic gates pass only if xUnit and security tests verify deny-by-default behavior, explicit allowlist behavior, and audit evidence for both Windows-friendly dev-mode allow cases and deny paths. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
+      "T93 changes are confined to the external-process safety boundary and its audit behavior, with no gameplay feature change or gameplay-surface expansion introduced. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
+      "If workflow has not explicitly selected T93, the implementation entry refuses to run and leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "xUnit tests cover deny-by-default and allowlist behavior with SECURITY_TEST_MODE=1."
@@ -3283,12 +3394,15 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
+      "Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd",
+      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "Security-sensitive signal contracts must be validated for expected names and arguments, and contract drift must fail deterministically instead of being detected only at runtime. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "Signal contract validation must integrate with the repository guard path so security-sensitive signal drift is surfaced before broader runtime expansion is accepted. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "At least one integration-level signal case must prove that blocked security behavior still emits the expected guarded signal contract and does not silently drift. Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
+      "A deterministic validation step verifies every security-sensitive signal against the expected signal name and argument contract, and the run fails immediately when any definition drifts from that contract instead of deferring detection to runtime. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "The security-sensitive signal-contract backlog item is surfaced in the executable main task line so repository guardrails and CI can run it directly rather than treating it as backlog-only tracking. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "T94 includes at least one intentionally drifted security-sensitive signal contract, and deterministic validation reports that drift as a reproducible failure. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
+      "At least one integration-level security signal scenario shows the passing case still emits the expected guarded signal contract, and a drifted contract in the same validation scope is reported as a failing result instead of silently changing behavior. Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd",
+      "When workflow selection has not explicitly selected T94, implementation must refuse to start and leave implementation/code state unchanged, and the review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "Run headless GdUnit4 suite and confirm contract checks report PASS/FAIL deterministically."
@@ -3344,11 +3458,18 @@
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "acceptance": [
-      "Combat entry must seed the shared CombatService runtime from the Warrior starting deck and shared deck state instead of from scene-local placeholder hands. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Visible draw, hand, and discard counts on the Combat surface must stay synchronized with the shared runtime after Warrior deck seeding. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Starting combat through the CombatService-backed flow seeds the shared CombatService runtime from the Warrior starting deck and shared deck state, and the initial combat piles are not created from scene-local placeholder hands. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Entering combat through the T83 CombatService-backed path starts from the Warrior starting deck through that existing path and does not bypass it or fall back to a different scene-local start flow. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After Warrior deck seeding on combat entry, runtime deck data remains owned by the existing shared deck state, and entry does not create a combat-local copy or alternate deck owner. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Combat start uses only the existing combat-start entry path for Warrior deck seeding, and no second seeding route can produce a different initial deck state. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
+      "After Warrior deck seeding and the initial draw, visible Combat draw, hand, and discard counts match the shared CombatService runtime counts and stay synchronized as those piles change. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Acceptance tests are added or updated to verify that combat entry through the shared CombatService-backed flow seeds from the Warrior starting deck and shared deck state. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Combat scene tests are added or updated to verify Warrior deck seeding on combat entry and draw, hand, and discard synchronization with CombatService state after seeding. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T95 has not been explicitly selected by workflow, the implementation entry aborts before making implementation changes, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "test_strategy": [
       "Add or extend acceptance and Combat scene tests to verify Warrior deck seeding on combat entry and synchronization between CombatService state and visible piles."
@@ -3405,12 +3526,18 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "acceptance": [
-      "Rage-capable player state must be created and mutated through the live CombatService-backed runtime instead of remaining data-only or scene-local. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
-      "Player-visible combat state must reflect Rage-driven runtime effects through the shared combat path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When the Warrior combat loop runs through the live CombatService-backed runtime, it must create or consume the existing Rage model from the shared combat path and must not read from or maintain a separate dormant data-only Rage copy. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "Rage promotion in the live runtime must use the existing player-state and combat-state contracts, with no new parallel Rage contract and no combat-local Rage owner introduced for this flow. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "In the Combat scene, any player-visible Rage or related status shown while shared runtime state is available must come from that shared runtime, and the scene must not keep its own parallel Rage/status implementation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Rage values created or changed through the shared runtime must persist across the Warrior combat flow segments covered by this task, rather than resetting or diverging between segments. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "Acceptance evidence for T96 must include both Warrior acceptance tests and Combat scene tests, and both test families must be present in the recorded evidence set. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Automated tests must verify that the Warrior flow can apply Rage through the shared runtime itself, not merely that Rage remains persisted later or becomes visible in UI. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
+      "Automated tests must verify that Rage applied through the shared runtime changes combat behavior or results in a player-visible way, not only that a Rage value is displayed. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T96 has not been selected by workflow, the implementation entry path must refuse to run, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence appears in review artifacts. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "test_strategy": [
       "Add or extend Warrior acceptance and Combat scene tests to verify Rage state application, persistence, and visible combat impact through the shared runtime."
@@ -3466,12 +3593,22 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Tests.Godot/tests/UI/test_map_scene_surface.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
     ],
     "acceptance": [
-      "Generated ActConfig route data must drive the current route-owned Map surface so reachable, locked, selected, and completed states remain visible and actionable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Map navigation must not regress route ownership or path state transitions when the surface is driven by generated route data. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+      "When the live Map surface binds route data, it must use the T86-generated ActConfig route graph as the source of truth instead of any hard-coded or scene-local route source. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Binding the generated route graph must update the existing route-owned Map surface and its route states without replacing that owner or switching rendering to a second map presentation path. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "After generated route binding is applied, the current route-owned Map surface must continue to follow the existing visual route conventions already used by that surface. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd",
+      "The live Map surface must visibly mark nodes or paths that are reachable according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "The live Map surface must visibly mark nodes or paths that are locked according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "The live Map surface must visibly mark the currently selected node or path according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "The live Map surface must visibly mark nodes or paths that are completed according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "After the generated route graph is projected, the existing route-owned Map surface must remain the only map presentation owner. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map scene tests must verify that generated route binding appears on the live Map surface and that the visible route states reflect the generated data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd",
+      "Map scene tests must verify that node selection on the live Map surface remains actionable when driven by the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "If T97 has not been selected by workflow, implementation entry must refuse execution, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
     ],
     "test_strategy": [
       "Add or extend Map scene tests to cover generated route binding, visible route states, and actionable node selection on the live Map surface."
@@ -3528,12 +3665,21 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
-      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd"
+      "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "acceptance": [
-      "Continue must restore valid autosaves into locked Reward, Shop, and Event surfaces without regenerating offers or changing route ownership. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Locked offers and node-owned route state must remain deterministic after re-entry through Continue. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd"
+      "Continue restores a locked Reward, Shop, or Event surface only when the autosave metadata is valid and the restore ownership checks pass for that locked surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing the locked offers captured in the save. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing node ownership from the saved route state. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces with the deterministic route state preserved from the autosave. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "For an invalid autosave, Continue keeps the T87 blocked-state UX unchanged and does not enter the Reward, Shop, or Event restore flow. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "An invalid autosave does not reopen any Reward, Shop, or Event surface through Continue, even when locked-surface restoration is available for valid saves. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Resume integration coverage includes valid-autosave re-entry into locked Reward, Shop, and Event surfaces and verifies that the resumed surface matches the saved surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Resume integration coverage verifies that locked offers are unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "Resume integration coverage verifies that route ownership is unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "If T98 has not been selected by workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and records the workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "test_strategy": [
       "Add or extend resume integration tests to cover deterministic re-entry into Reward, Shop, and Event surfaces with preserved locked offers and unchanged route ownership."
@@ -3590,11 +3736,16 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Tests.Godot/tests/UI/test_inventory_panel.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "acceptance": [
-      "Relic runtime combat effects must execute through the shared combat trigger path rather than through a scene-local relic effect stack. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Combat surfaces must remain able to show player-relevant relic state when those combat-path effects are active. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd"
+      "When a relic is eligible to produce a combat-time effect, that effect is executed through the shared combat trigger path, and combat results do not depend on scene-local or one-off trigger shortcuts. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Routing combat-time relic effects through the shared combat trigger path preserves existing relic uniqueness rules, and the change does not introduce duplicate triggers, duplicate ownership, or non-unique runtime state. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Combat-time relic effects routed through the shared combat trigger path resolve against the current correct owner, and the same trigger does not apply the effect to any other owner. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "This task changes combat-time relic triggering only; post-combat relic closure and broader run trigger closure remain unchanged after the task work. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Combat integration coverage is added or updated to demonstrate that relic-triggered combat effects run through the shared combat trigger path and that uniqueness and ownership behavior remain correct. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "If task 99 has not been selected by the workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "test_strategy": [
       "Add or extend combat integration tests to verify relic-triggered combat effects execute through shared trigger paths while preserving uniqueness and ownership rules."
@@ -3652,11 +3803,15 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "acceptance": [
-      "AOE and multi-hit combat effects must resolve in the same deterministic target order as the existing shared damage calculation rules. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "Player-visible combat feedback must not contradict shared runtime target-order results when AOE or multi-hit effects resolve. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "During live combat, AOE and multi-hit effects must resolve through the existing combat runtime entrypoint, and any separate runtime path fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "During live combat, AOE and multi-hit effects must use the existing shared damage-calculation rules, and any separate damage-calculation branch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "During live combat, AOE and multi-hit resolution must follow the shared deterministic target-order rules owned by the combat runtime, and scene-local target-order logic must not alter the result order. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "Combat rule tests must be added or extended to verify AOE and multi-hit ordering on the live combat runtime path and must fail when that ordering diverges from the shared damage-rule order. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
+      "If T100 has not been selected by workflow, implementation execution must be refused, implementation and code state must remain unchanged, and review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "test_strategy": [
       "Add or extend combat rule tests to cover AOE and multi-hit ordering inside the live combat runtime path."
@@ -3712,10 +3867,15 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "acceptance": [
-      "Player-visible combat logs and indicators must remain aligned with the shared runtime result after trigger, fixed damage, and AOE resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Changes under T101 only update combat feedback surfaces that present shared runtime results to the player and do not change combat runtime logic. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "After trigger, fixed damage, and AOE resolution, the combat scene's player-visible feedback surfaces must display the same outcomes produced by the promoted shared runtime semantics, without expanding or altering those semantics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Combat scene feedback tests must be added or updated so player-visible logs and indicators are asserted against the shared runtime outcomes for trigger, fixed-damage, and AOE resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T101 is not selected by workflow, the implementation entry must refuse to run, leave code and implementation state unchanged, and record workflow-selection evidence before any implementation evidence in review output. Refs: logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "test_strategy": [
       "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution."
@@ -3770,14 +3930,18 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "The audit must identify any post-T70 task that still bundles more than one deterministic closure likely to overrun Chapter 6 recovery or review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "If such a task exists, task files and the audit must be updated before execution starts for that task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "The sizing audit reviews the post-T70 Chapter 6 mainline tasks in T70-T101, and every task that still combines multiple owner boundaries or multiple unrelated deterministic closures is identified and split before that task is executed. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "Review evidence in docs/gdd/t1-t69-m1-wiring-audit.md records the sizing conclusion for the T70-T101 task set and shows that no unsplit task still bundles multiple unrelated deterministic closures that would predictably overrun Chapter 6 recovery and review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "Validation evidence for this sizing pass includes a task graph review, dependency consistency checks, and matching audit updates recorded in docs/gdd/t1-t69-m1-wiring-audit.md. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "Outputs from T102 are limited to governance audit findings and task-splitting updates for Chapter 6 sizing, and the task does not deliver gameplay feature implementation. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "If T102 has not been selected by the workflow, no implementation work advances under this task and the recorded state remains limited to sizing review evidence. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
-      "Validate task sizing through task graph review, dependency consistency checks, and updated audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md."
+      "Validate task sizing through task graph review, dependency consistency checks, explicit T70-T101 scope coverage, and updated audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md."
     ],
     "taskmaster_id": 102,
     "taskmaster_exported": true,
@@ -3825,10 +3989,16 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "execution-plans/<latest>.md",
+      "decision-logs/<latest>.md",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "Review and planning evidence must allow T87 and T98 to run and re-review independently without collapsing them into one combined resume task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "Review pipeline evidence must show Continue restore validation as two distinct lanes, one for primary boundaries and one for locked surfaces, instead of a single combined closure. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
+      "Execution-plan and decision-log evidence must both show that T87 and T98 are handled through the separated Continue restore lanes so each task can be executed and re-reviewed independently. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
+      "If any task-file dependency still forces the T87 and T98 closures back into one run, T103 does not pass. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
+      "T103 must remain limited to governance and workflow planning or review evidence for the split Continue restore validation and must not add gameplay feature implementation. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
+      "If workflow has not selected T103 for implementation, no implementation work may advance and the task must remain evidence-only. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
       "Validate execution-plan and decision-log evidence for separated Continue restore lanes and verify no task file dependency collapses the two closures back into one run."
@@ -3880,13 +4050,19 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "execution-plans/<latest>.md",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "Review and planning evidence must allow T90, T100, and T101 to run and re-review as separate deterministic closures instead of one monolithic combat-rule promotion run. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "Planning and review evidence records three distinct combat-rule promotion lanes for core resolution, AOE ordering, and feedback alignment, and does not present them as one combined closure. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "Planning and review evidence assigns T90, T100, and T101 to the separated combat-rule promotion lanes so they are reviewed as distinct deterministic closures instead of one monolithic combat-rule promotion run. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "The task graph and audit evidence show that T90, T100, and T101 can each be executed, re-reviewed, and closed independently without re-merging the split combat-rule promotion closure. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "T104 is accepted only when its output is governance and workflow planning/review evidence, and gameplay feature implementation completion does not satisfy this task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "If T104 has not been selected by workflow, the accepted output remains governance evidence only and no implementation advancement counts toward completion. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
-      "Validate task graph and audit evidence showing separated combat rule promotion lanes for core resolution, AOE ordering, and feedback alignment."
+      "Validate task graph and audit evidence showing separated combat rule promotion lanes for core resolution, AOE ordering, and feedback alignment, with explicit T90/T100/T101 mapping and separate re-review closure evidence."
     ],
     "taskmaster_id": 104,
     "taskmaster_exported": true,
@@ -3934,11 +4110,15 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "Ending the player turn must resolve the previously displayed enemy intent exactly once and then generate the next turn intent deterministically. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Enemy turn execution must honor status-aware choices and no-repeat guardrails through the shared runtime rather than through a scene-local enemy-turn path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When the player ends the turn, the enemy action shown by the current intent preview resolves exactly once through the shared runtime path, and the next-turn intent is generated deterministically afterward. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Enemy turn resolution on the shared runtime path must apply status-aware choice rules and no-repeat guardrails, and the same turn must not execute through any separate scene-local enemy-turn path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The rerouted execution keeps the existing player-visible intent surface intact; this task changes how the displayed intent is resolved, not the intent surface itself. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Combat scene tests must prove the shared runtime path by covering one-shot resolution of the displayed enemy action, status-aware intent execution, and deterministic no-repeat behavior. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T105 has not been selected by workflow, no T105 implementation changes are applied and task-related state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
       "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path."
@@ -3995,14 +4175,19 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "Active powers and relics must be visible or inspectable from the Combat surface when they can affect player decisions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Powers and relics must execute through the shared trigger path and produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "In the Combat scene, powers and relics appear as visible and inspectable participants and produce player-observable combat effects through the shared trigger path, while the integration keeps the shared trigger owner and does not introduce a scene-local effect stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "T106 leaves potion runtime closure to a follow-up task, and the deterministic combat loop covered here runs and completes without any implemented potion runtime closure. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Deterministic tests assert the observable trigger order for powers and relics on the shared trigger path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Deterministic tests assert that the Combat scene exposes player-visible and inspectable UI state for powers and relics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The Combat scene surfaces runtime outcomes from power and relic triggers as player-observable combat results rather than inspectable state only, and deterministic tests assert at least one such observable outcome. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T106 has not been selected by the workflow, implementation work for this task does not proceed and task-related state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
-      "Add deterministic trigger-order and UI state assertions for powers and relics as visible and effectful combat participants."
+      "Add deterministic trigger-order assertions, visible/inspectable Combat UI state assertions, and at least one player-observable runtime outcome assertion for powers and relics as effectful combat participants."
     ],
     "taskmaster_id": 106,
     "taskmaster_exported": true,
@@ -4056,14 +4241,19 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "If the run collected reward cards or relics before settlement, the settlement surface must present those results from stored run data instead of omitting them or re-deriving them heuristically. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Settlement must present reward and relic metadata without mutating current run state or introducing a second settlement ownership source. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd"
+      "T107 extends the existing T91 settlement owner surface to expose reward and relic metadata, and the settlement surface still uses that owner surface instead of introducing a replacement owner surface or a second settlement authority. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Given stored run data that already records earned reward cards or relics before settlement, the settlement surface shows those recorded reward and relic results and does not recompute them or leave them missing. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Settlement-level tests verify that reward-card metadata and relic metadata are both visible from stored run data, and the tests fail if either metadata set is absent from the settlement surface. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Integration tests verify that settlement shows reward-card and relic results from stored run data, and the coverage fails if settlement recomputes, omits, or bypasses stored reward or relic data. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "T107 leaves resume evidence enrichment out of scope: it does not add resume evidence enrichment outputs, fields, or extra settlement closure requirements, because that work remains deferred to a follow-up task. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "If workflow has not selected T107 for execution, T107 produces no implementation changes and leaves task-related state unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
-      "Add or extend settlement and integration tests to cover reward and relic metadata visibility from stored run data."
+      "Add or extend settlement-level tests and integration tests to cover reward-card and relic metadata visibility from stored run data, and fail coverage when settlement recomputes or omits that stored metadata."
     ],
     "taskmaster_id": 107,
     "taskmaster_exported": true,
@@ -4115,13 +4305,19 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "execution-plans/<latest>.md",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "acceptance": [
-      "Review and planning evidence must allow T76 and T105 to run and re-review independently instead of collapsing preview generation and enemy turn resolution into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "Task-graph evidence identifies enemy intent preview generation and enemy turn resolution as separate lanes that are tracked independently, and does not present them as a single combined review path. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "Audit evidence demonstrates that the preview-generation lane and the enemy-action-resolution lane can each be reviewed for T76 and T105 without requiring one collapsed enemy intent review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "Planning and review evidence shows T76 and T105 can be run independently after the split and can be re-reviewed independently without recombining the two enemy-intent lanes. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "T108 deliverables are limited to governance, planning, and review evidence for the enemy intent lane split, and do not include gameplay feature implementation. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "If workflow has not selected T108, the task does not implement preview generation or enemy turn resolution, and the repository implementation state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "test_strategy": [
-      "Validate task graph and audit evidence showing separated enemy intent lanes for preview generation and enemy action resolution."
+      "Validate task graph, planning, review, and audit evidence showing separated enemy intent lanes for preview generation and enemy action resolution, with independent T76/T105 run and re-review closure evidence."
     ],
     "taskmaster_id": 108,
     "taskmaster_exported": true,
@@ -4170,13 +4366,18 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "execution-plans/<latest>.md",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Review and planning evidence must allow T91, T107, and T113 to run and re-review independently instead of collapsing settlement owner-surface work, reward or relic metadata, and resume evidence into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "Planning and review evidence identifies T91, T107, and T113 as separate settlement-closure lanes so each can execute and be re-reviewed independently for owner-surface closure, reward or relic metadata, and resume evidence, instead of being handled as one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "The task graph and audit evidence explicitly distinguish separate settlement review lanes for owner-surface closure, reward or relic metadata, and resume evidence. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "T109 deliverables are limited to governance and workflow artifacts for planning, review, task-graph, and audit evidence, and do not include gameplay feature implementation. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "If workflow has not selected T109, implementation work under this task does not execute or advance, and the recorded task state remains limited to governance evidence. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Validate task graph and audit evidence showing separated settlement lanes for owner-surface closure, reward or relic metadata, and resume evidence."
+      "Validate planning, review, task-graph, and audit evidence showing separated settlement lanes for owner-surface closure, reward or relic metadata, and resume evidence."
     ],
     "taskmaster_id": 109,
     "taskmaster_exported": true,
@@ -4226,14 +4427,22 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd"
+      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-rerun-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Relic runtime effects that occur at reward, node-resolution, or other run boundaries must execute through shared run trigger paths rather than through scene-local post-combat patches. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
-      "Run-boundary relic effects must preserve uniqueness and ownership rules while remaining observable from player-facing flow transitions. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "T110 routes non-combat relic runtime effects by extending the shared run trigger boundary path established in T99, and it does not add a separate relic runtime trigger path. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "When a reward boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "When a node-resolution boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "When a post-combat ownership transition triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local patch path. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Across shared run boundaries, relic-triggered results keep uniqueness rules and current ownership intact, and the resulting state changes remain observable in player-facing flow transitions. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "On non-combat surfaces, routing relic effects through shared run triggers does not create a scene-local relic effect stack, and those surfaces continue to resolve through the same shared run trigger path. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Run and integration coverage verifies that non-combat relic-triggered effects resolve through shared run trigger paths while uniqueness and ownership rules remain preserved. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "If workflow has not selected T110 for implementation, this task does not execute implementation work or advance task execution state. Refs: logs/ci/<date>/single-task-light-lane-rerun-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add or extend run and integration tests to verify relic-triggered non-combat effects execute through shared run trigger paths while preserving uniqueness and ownership rules."
+      "Add or extend run and integration tests to verify relic-triggered non-combat effects build on the T99 shared run trigger boundary path, execute at reward, node-resolution, and post-combat ownership-transition boundaries, and preserve uniqueness and ownership without scene-local runtime stacks."
     ],
     "taskmaster_id": 110,
     "taskmaster_exported": true,
@@ -4285,14 +4494,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Active potions must be visible or inspectable from the Combat surface when they can affect player decisions. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Potions must execute through the shared trigger path and produce concise visible feedback or history entries identifying the source and player-relevant result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      "In the Combat scene, each active potion that can affect a player decision is either visible on the combat surface or inspectable from it, and the shown potion state matches the shared combat-owned state at that time. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Combat reads potion participant state from the existing shared combat ownership path and does not create, maintain, or rely on a scene-local potion stack as the authoritative source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When a potion resolves through the shared trigger path, the Combat scene applies the player-relevant result in deterministic trigger order and records visible feedback or history that identifies the potion source and the result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Deterministic automated coverage verifies potion execution order on the shared trigger path and verifies Combat UI state for active potions that should be visible or inspectable. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If workflow has not selected T111, this task does not proceed with implementation or task execution artifacts. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add deterministic trigger-order and UI state assertions for potions as visible and effectful combat participants."
+      "Add deterministic trigger-order assertions and Combat UI state assertions for potions as visible, inspectable, and effectful combat participants on the shared combat ownership path."
     ],
     "taskmaster_id": 111,
     "taskmaster_exported": true,
@@ -4343,13 +4556,18 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "execution-plans/<latest>.md",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Review and planning evidence must allow T99 and T110 to run and re-review independently without collapsing relic combat and run trigger effects into one combined lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md"
+      "Planning and review evidence explicitly permits T99 and T110 to execute and be re-reviewed independently, with relic combat trigger closure reviewed in a separate lane from run trigger closure rather than through a single combined path. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "The task graph and audit evidence record distinct relic runtime lanes for combat trigger closure and run trigger closure, and do not present them as one shared review lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
+      "T112 completion evidence is limited to governance and workflow artifacts, and gameplay feature implementation alone does not satisfy or close the task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
+      "Until workflow explicitly selects T112, implementation activity does not advance under this task and its recorded state remains confined to planning and review evidence. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Validate task graph and audit evidence showing separated relic runtime lanes for combat trigger closure and run trigger closure."
+      "Validate planning, review, task-graph, and audit evidence showing separated relic runtime lanes for combat trigger closure and run trigger closure."
     ],
     "taskmaster_id": 112,
     "taskmaster_exported": true,
@@ -4398,14 +4616,16 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Settlement must surface stored resume-related metadata or evidence without mutating current run state or recomputing ownership at display time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Resume-related settlement evidence must remain consistent with the stored player-visible flow history for the run. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "When the settlement surface is opened for a stored run, it shows the existing T91 owner surface together with resume-related evidence sourced from stored run data, and viewing that surface does not change run state or recompute ownership. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "The resume-related evidence shown on the settlement surface matches the stored player-visible flow history for that run and does not display resume evidence that is absent from the stored data. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Before workflow selection of T113, no implementation behavior for this task executes or progresses, and task-related state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data."
+      "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data while preserving the T91 owner surface and display-time read-only behavior."
     ],
     "taskmaster_id": 113,
     "taskmaster_exported": true,
@@ -4458,14 +4678,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "The generated Reward offer must stay locked across re-entry for the same runtime boundary and must not refresh, replace, or reorder when the player revisits that Reward flow. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "If the current pool context cannot resolve a valid Reward offer, the player-facing Reward flow must fail safe with visible feedback instead of silently rendering invalid placeholder cards. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+      "When the player exits and re-enters the same Reward flow within the same runtime boundary, the Reward offer shown on first entry remains locked and the displayed offer set does not regenerate, change, or reorder. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "When pool context is invalid or unavailable and no valid Reward offer can be resolved, the Reward flow presents visible player-facing fallback feedback and does not render invalid or placeholder reward cards as if resolution succeeded. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Reward lock persistence and invalid-pool handling remain on the existing shared offer-locking path under the current Reward scene ownership, with no separate Reward-specific lock persistence owner or parallel lock path introduced for this behavior. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Reward scene and integration coverage is added or updated so automated tests verify both same-boundary re-entry lock persistence and the visible fallback shown when pool resolution is invalid or unavailable. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "If T114 has not been selected by the workflow, implementation for this task does not proceed and the implementation state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add or extend Reward scene and integration tests to cover offer-lock persistence across re-entry and visible invalid-pool fallback."
+      "Add or extend Reward scene and integration tests to cover shared offer-lock persistence across re-entry, current Reward scene ownership preservation, and visible invalid-pool fallback."
     ],
     "taskmaster_id": 114,
     "taskmaster_exported": true,
@@ -4517,14 +4741,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Confirming a selected Reward card must write that card back into the live run deck before the route returns to Map or the next owned surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "Skipping Reward must leave the run deck unchanged while still resolving the current Reward flow once through the existing route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd"
+      "Using confirm with a selected Reward card writes that chosen card into the live run deck state before the current Reward flow returns. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Using skip leaves the live run deck state unchanged and the current Reward flow resolves exactly once through the existing route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
+      "Reward resolution reuses the existing Reward scene, and both confirm and skip return through the same existing route-owned return path instead of a separate resolution flow. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Reward scene tests verify confirm writeback, skip with no deck mutation, and a single resolution through the route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Before workflow selects T115, no implementation work for this task is executed. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, and single-resolution route return."
+      "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, reuse of the existing Reward scene, and single-resolution route return."
     ],
     "taskmaster_id": 115,
     "taskmaster_exported": true,
@@ -4579,14 +4807,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "acceptance": [
-      "Enemy name, HP, block, and visible combat surfaces on the Combat scene must bind to data-backed runtime enemies and stay synchronized as state changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Invalid or incomplete enemy definitions must fail safely with visible feedback instead of silently spawning fallback placeholder enemies. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "The Combat scene displays enemy name, HP, block, and the existing visible enemy combat surfaces from the same data-backed runtime enemy, and those surfaces change with runtime state updates so the visible values do not remain stale or diverge. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When an enemy definition is invalid or incomplete, combat fails safe by showing player-visible feedback through the existing presentation path, and it does not silently spawn a placeholder enemy that appears to be a valid definition. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Runtime-enemy combat presentation uses the existing targeting and intent surfaces, and combat does not expose a separate parallel enemy presentation path for those runtime enemies. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Combat scene tests and integration tests are added or extended to verify visible enemy stat binding and invalid-definition fallback on top of the data-backed enemy runtime. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "If workflow has not selected T116, this task does not execute or produce implementation progress for T116. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "test_strategy": [
-      "Add or extend Combat scene and integration tests to cover visible enemy stat binding and invalid-definition fallback on top of data-backed enemy runtime."
+      "Add or extend Combat scene tests and integration tests to cover visible enemy stat binding, reuse of existing targeting and intent surfaces, and invalid-definition fallback on top of the data-backed enemy runtime."
     ],
     "taskmaster_id": 116,
     "taskmaster_exported": true,

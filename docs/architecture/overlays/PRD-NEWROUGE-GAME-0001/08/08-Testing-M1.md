@@ -172,3 +172,44 @@ Test-Refs:
   - `Tests.Godot/tests/Scenes/Event/test_event_scene_curse_card_cost_applies_immediately.gd`
   - `Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd`
   - `Game.Core.Tests/Tasks/Task0069AcceptanceTests.cs`
+
+## 10. Task70-116 Runtime Closure Test Baseline
+T70-T116 stay inside the same M1 verification envelope, but they expand it from basic UI wiring into runtime-closure and replay-closure validation.
+
+### 10.1 Runtime Promotion Focus
+The following areas now require explicit verification before the corresponding task can be marked done:
+- Combat runtime handoff from scene-local placeholders to shared Core services.
+- Reward generation, confirm, skip, and re-entry lock stability.
+- Map route generation from `ActConfig` instead of scene-local fixed buttons.
+- Continue restore into real route boundaries and locked-surface replay.
+- Settlement persistence and replay evidence from stored run data.
+- Enemy runtime instantiation and invalid-definition fallback.
+- Relic, powers, and later potions entering the same deterministic trigger path.
+
+### 10.2 Minimum Test Shape
+For T70-T116, acceptance should normally include a mix of:
+- Core tests that prove rule promotion or contract-boundary behavior without Godot.
+- Godot scene or integration tests that prove the player-facing surface now consumes the shared runtime path.
+- Resume/re-entry tests when the task changes Reward, Shop, Event, Continue, or settlement ownership.
+- Contract-ref and traceability checks when task metadata or public contract baselines are updated.
+
+### 10.3 Review-Governance Tasks
+T102, T103, T104, T108, T109, and T112 are Chapter 6 split/governance tasks. They do not add new player features by themselves, but their acceptance must still verify:
+- narrowed review scope still covers the intended runtime boundary
+- no previous acceptance ref was silently dropped
+- `summary.json`, repair guidance, and task refs still point to the same M1 slice evidence
+
+### 10.4 Contract Drift Guard
+If a T70-T116 task updates `contractRefs`, test evidence must show one of these is true:
+- the refs now point to existing `EventTypes` constants and corresponding contract files, or
+- the same change added the missing contract baseline under `Game.Core/Contracts/**`
+
+Task metadata must not be accepted when it references placeholder event names that have no corresponding contract baseline.
+
+### 10.5 Phase 0-2 Decision For Test And Contract Baseline
+The current Phase 0-2 review result for `T70-T116` is:
+- overlay documents must be kept in sync because these tasks expanded the runtime-closure scope of M1
+- tests may point at existing contract baselines or future contract promotion requirements, but they must not assume placeholder task metadata is already canonical contract truth
+- new `Game.Core/Contracts/**` files are only required when implementation in the selected task actually promotes a new public contract
+- potion-related tests must continue to treat potion contracts as future work until `T77` or `T111` implementation lands with real contract files and `EventTypes` constants
+

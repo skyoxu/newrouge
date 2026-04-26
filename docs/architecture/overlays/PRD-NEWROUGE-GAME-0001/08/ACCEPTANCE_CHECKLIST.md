@@ -234,3 +234,18 @@ Test-Refs:
 - T69 / GM-0169: Event must show option costs, committed results, numeric changes, invalid-choice feedback, and route through the Map-owned node model.
 
 GDD reference: `docs/gdd/ui-gdd-flow.md`.
+
+## Task70-116 Runtime Closure Acceptance Backlinks
+- `T70-T116` are covered by the existing Overlay 08 page family and must not silently create a second overlay baseline.
+- Runtime-closure families that must stay documented in Overlay 08:
+  - Map and ActConfig route closure: `T70`, `T86`, `T97`
+  - Combat runtime and deck truth-source closure: `T71-T83`, `T95-T106`, `T111`, `T116`
+  - Reward stability and writeback closure: `T84`, `T85`, `T114`, `T115`
+  - Continue, settlement, and replay closure: `T87`, `T91`, `T98`, `T107`, `T109`, `T113`
+  - Relic runtime closure across combat and run boundaries: `T88`, `T99`, `T110`, `T112`
+- Governance split tasks `T102`, `T103`, `T104`, `T108`, `T109`, and `T112` must be accepted as review-scope narrowing and evidence work, not as gameplay feature implementation.
+- Contract baseline rule for `T70-T116`:
+  - reuse existing `Game.Core/Contracts/**` files when the public boundary already exists
+  - add new contract files only when implementation promotes a truly new public DTO / event / interface / ownership snapshot
+  - potion-related contract files remain a documented future gap until `T77` or `T111` implementation is actually selected
+

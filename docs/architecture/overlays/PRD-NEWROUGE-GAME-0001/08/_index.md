@@ -53,25 +53,25 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-23T02:30:32.196154+00:00",
+  "generated_at": "2026-04-26T03:33:37.294642+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "c6cc1de16f5c064e916929a1be9d34c5e4ad42ebf702bcbfd80449f46276367f",
-      "bytes": 98662
+      "sha256": "82a7a35a7a5f1a16c010674986ca5b752fdf854d75a89aa8f52f41b35d6a75c5",
+      "bytes": 181446
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "0d21490f592cf3f4d55f4e80f4b96b7f1dca0f7c661c17abe4bd9623d572d102",
-      "bytes": 145327
+      "sha256": "7f1bd9f8141f6627ce108c2c2435cf994db5b32b89d7f88344377dc50b0c0132",
+      "bytes": 320086
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "29afe37493c18edc558dff5d9fab0bdf1b3215fc45751991341e40a5b1735c81",
-      "bytes": 280607
+      "sha256": "82cd9b0cf53c3cce63c395a371e20234e84b8652b8b70a26dc713ed2e3bbe514",
+      "bytes": 432050
     }
   ]
 }
@@ -146,3 +146,15 @@ Test-Refs:
 - T67 / GM-0167: real Shop UI behavior binding and route ownership.
 - T68 / GM-0168: M1 UI focus and accessibility pass.
 - T69 / GM-0169: Event result explainability and node feedback routing.
+
+## Task70-116 Runtime Closure Extension
+- `T70-T116` stay inside the same Overlay 08 family; they expand M1 from basic UI wiring into runtime closure, replay closure, and Chapter 6 governance splitting.
+- No second overlay page family is required at this stage; the active carrier pages remain `08-Feature-Slice-M1-Warrior.md`, `08-Contracts-M1.md`, `08-Observability-M1.md`, `08-Testing-M1.md`, and `ACCEPTANCE_CHECKLIST.md`.
+- Overlay updates are required whenever `T70-T116` changes one of these public boundaries:
+  - route ownership and `ActConfig`-driven map progression
+  - Reward/settlement/Continue replay ownership
+  - combat runtime truth-source handoff from scene-local logic to shared Core services
+  - public contract baseline under `Game.Core/Contracts/**`
+- Contract-file updates are not automatic for every new task. They become mandatory only when implementation promotes a new public DTO / event / interface / ownership snapshot into the canonical baseline.
+- Current explicit future contract gap remains potion work (`T77`, `T111`). Until potion implementation is selected, keep that gap documented in `08-Contracts-M1.md` instead of inventing placeholder contract files.
+

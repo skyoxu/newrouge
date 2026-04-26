@@ -439,3 +439,61 @@ Contract updates become mandatory when implementation introduces or changes publ
 - Add XML docs on the public contract surface.
 - Update this overlay and the relevant task `contractRefs` in the same change, using the consumed `EventType` constants rather than placeholder-empty arrays.
 - Re-run `py -3 scripts/python/validate_contracts.py`, `py -3 scripts/python/check_domain_contracts.py`, and `py -3 scripts/python/check_task_contract_refs.py --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`.
+
+## Task70-116 Runtime Closure Contract Baseline
+Task70-116 extend the existing M1 runtime closure work. Under `workflow.md` Phase 2, they require contract updates only when implementation adds or changes a public Core-facing contract surface.
+
+### Baseline Reuse Areas
+The following task groups should initially reuse the existing contract baseline unless implementation proves otherwise:
+- Reward closure and restore stability: `RewardOfferLockedEvent`, `RewardOfferPresentedEvent`, `RewardOfferSelectedEvent`, `RewardOfferSkippedEvent`, `OfferLockSnapshot`, `OfferProvenance`.
+- Continue and restore boundaries: `RunResumedEvent`, `SaveLoadedEvent`, `ContinueMetadata`, `AutosaveSnapshot`, `ContinueLoadValidationResult`.
+- Route ownership and ActConfig-driven map progression: `ActConfig`, `ActConfigLoadResult`, `ActConfigLoadedEvent`, `MapNodeSelectedEvent`, `MapNodeEnteredEvent`, `MapNodeLockedEvent`, `MapPathBacktrackBlockedEvent`.
+- Combat deck and state promotion: `DeckInitializedEvent`, `DeckDrawnEvent`, `DeckDiscardedEvent`, `DeckRetainedEvent`, `DeckExhaustedEvent`, `DeckShuffledEvent`, `CombatHudSnapshot`.
+- Status and combat rule promotion: `StatusAppliedEvent`, `StatusStackedEvent`, `StatusExpiredEvent`, `StatusDispelledEvent`, `HealthUpdatedEvent`, `CombatDamageResolvedEvent`, `CombatFixedDamageResolvedEvent`, `CombatEndedEvent`.
+- Relic and settlement promotion: `RelicDefinition`, `RelicInstance`, `RelicGrantedEvent`, `RunSummaryMetadata`, `RunSummaryOwnerSurface`, `RunSummaryOwnershipSelection`.
+
+### Phase 0-2 Decision For T70-T116
+- After checking `workflow.md` Phase 0-2 expectations against the current triplet and Overlay 08 baseline, no new `Game.Core/Contracts/**` file is required immediately just because `T70-T116` were added.
+- The current contract baseline is still the authority for map ownership, reward locking, save/resume, relic inventory, settlement metadata, combat loop, deck events, and status events.
+- For `T70-T116`, contract work should stay in one of two modes only:
+  - reuse an existing contract path or `EventTypes` constant that already exists in `Game.Core/Contracts/**`
+  - or, if implementation truly introduces a new public contract, add the concrete contract file and matching constant in the same change
+- Do not create placeholder contract files only to mirror planning metadata from task views.
+
+### Explicit Gap Requiring Future Contract Promotion
+Current baseline inspection shows one clear public-contract gap that must be handled before the corresponding task family is considered contract-complete:
+- Potions (`T77`, `T111`)
+  - No potion DTO, event, or interface baseline currently exists under `Game.Core/Contracts/**`.
+  - `08-Contracts-M1.md` therefore does not yet define potion ownership, payload shape, or event-family naming.
+  - If potion implementation is selected, add the new potion contract files and matching `EventTypes` constants in the same change, then update both task views to consume the real constants instead of placeholder refs.
+
+### Task-View Drift That Must Not Be Mistaken For Canonical Contracts
+Current `tasks_back.json` and `tasks_gameplay.json` entries for T70-T116 reference multiple event names that are not presently defined in `Game.Core/Contracts/EventTypes.cs` or `Game.Core/Contracts/Events/**`. Examples include:
+- `core.map.node.completed`
+- `core.card.definition.loaded`
+- `core.combat.target.selected`
+- `core.combat.enemy.defeated`
+- `core.combat.trigger.resolved`
+- `core.combat.potion.used`
+- `core.deck.state.updated`
+- `core.player.state.updated`
+- `core.map.route.generated`
+- `core.save.autosave.loaded`
+- `core.relic.equipped`
+- `core.enemy.instance.created`
+- `core.enemy.intent.generated`
+- `core.damage.resolved`
+- `core.status.triggered`
+- `core.run.summary.presented`
+- `core.run.metadata.snapshot`
+
+These refs are currently planning metadata, not approved contract baseline. Before implementation or acceptance relies on them, do one of the following in the same change:
+- normalize the task `contractRefs` to already-existing `EventType` constants, or
+- promote the name into a real contract by adding the concrete file under `Game.Core/Contracts/**`, updating `EventTypes.cs`, and documenting it here
+
+### Required Validation When T70-T116 Touch Public Contracts
+When any T70-T116 implementation introduces or changes public contracts, the minimum validation bundle is:
+- `py -3 scripts/python/validate_contracts.py`
+- `py -3 scripts/python/check_domain_contracts.py`
+- `py -3 scripts/python/check_task_contract_refs.py --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+- `dotnet test Game.Core.Tests/Game.Core.Tests.csproj`
