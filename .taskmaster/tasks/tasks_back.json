@@ -2348,8 +2348,8 @@
     "taskmaster_id": 78,
     "taskmaster_exported": true,
     "contractRefs": [
-      "ui.combat.feedback.presented",
-      "ui.combat.card.previewed"
+      "core.combat.hud.snapshot",
+      "core.combat.card.play.requested"
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
@@ -3894,7 +3894,7 @@
       "docs/gdd/t1-t69-m1-wiring-audit.md",
       "logs/ci/<date>/task-0101.json"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0074",
@@ -3953,7 +3953,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0075",
@@ -4013,7 +4013,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0076",
@@ -4074,7 +4074,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0077",
@@ -4329,7 +4329,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0081",
@@ -4389,7 +4389,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0082",
@@ -4579,7 +4579,7 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "standard"
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0085",
