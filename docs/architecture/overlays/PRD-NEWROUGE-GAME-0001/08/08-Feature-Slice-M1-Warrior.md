@@ -236,3 +236,62 @@ The M1 playable route must be player-facing and route-owned:
 
 ### 7.3 Contract Boundary
 Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts/**` files unless implementation introduces new public DTOs, event families, or command interfaces. Even when no new contract file is added, these tasks must declare the existing `EventType` constants they consume in task `contractRefs` so UI consumer coverage stays machine-verifiable. If implementation adds or changes public contracts, update `08-Contracts-M1.md` and the relevant task `contractRefs` in the same change.
+
+## 8. Runtime Closure Extension (T70-T116)
+
+### 8.0 Phase 0-2 Alignment Decision
+- After checking `workflow.md` Phase 0-2 against the current triplet and Overlay 08 baseline, `T70-T116` do require overlay maintenance, but they do not automatically require new contract files.
+- The correct default is: extend the existing Overlay 08 pages first, then promote concrete contract files only when implementation introduces a truly new public DTO, event, interface, or ownership snapshot.
+- Current explicit future contract promotion gap remains potion work (`T77`, `T111`); keep that gap documented instead of creating placeholder contract files.
+
+### 8.1 Scope Decision
+- T70-T116 extend the same M1 Warrior slice; they do not justify a new overlay page family at this stage.
+- The required baseline action is to update the existing `08-Feature-Slice-M1-Warrior.md`, `08-Contracts-M1.md`, `08-Testing-M1.md`, and `08-Observability-M1.md` pages so the runtime-closure tasks and Chapter 6 governance splits remain traceable.
+- A new overlay page is only warranted later if M1 splits into a second independently owned vertical slice with a different route spine, contract family, or acceptance owner.
+
+### 8.2 Player-Facing Route Closure
+The following task groups stay inside the current M1 route-owned spine and therefore extend this page instead of creating a second slice definition:
+- Reward and post-combat closure: T84, T85, T114, T115.
+- Map and ActConfig-driven route ownership: T70, T86, T97.
+- Continue restore and locked-surface replay: T87, T98.
+- Settlement ownership and replay evidence: T91, T107, T113.
+- Relic acquisition and run-surface visibility: T88, T110.
+
+These tasks are expected to preserve the already frozen ownership rules:
+- Map remains the owner of legal node progression and return routing.
+- Reward remains a standalone route-owned scene, not a Combat HUD subpanel.
+- Continue must restore a real route boundary, not an ad hoc scene-local snapshot.
+- Settlement remains route-owned evidence, not a transient toast-only result.
+
+### 8.3 Combat Runtime Promotion
+The following task groups promote existing M1 contracts and services into the live combat runtime:
+- Deck/runtime handoff and HUD truth source: T71, T80, T81, T82, T95.
+- Data-driven card, enemy, and route binding: T72, T73, T76, T89, T116.
+- CombatService handoff and rule promotion: T77, T79, T83, T90, T96, T99, T100, T105, T106, T111.
+- Surface feedback on top of deterministic runtime results: T74, T75, T78, T101.
+
+These tasks are still governed by the same slice boundary:
+- Core runtime truth stays in `Game.Core/**`.
+- Scene code consumes read models and commands; it does not fork parallel combat logic.
+- New player-visible behavior must either reuse an existing public contract or explicitly promote a new contract baseline before implementation is considered complete.
+
+### 8.4 Review Governance Extension
+T102, T103, T104, T108, T109, and T112 are not new gameplay slices. They are Chapter 6 cost-control and review-governance splits for the same M1 closure work.
+
+They must therefore inherit, not replace, the current slice baseline:
+- same overlay family: `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/**`
+- same contract SSoT: `Game.Core/Contracts/**`
+- same route-owner principle and acceptance ownership
+
+### 8.5 Contract-Impact Rule For T70-T116
+T70-T116 should default to reusing the current M1 contract baseline. Contract file updates become mandatory only when implementation introduces one of the following:
+- a new public event family not already represented in `Game.Core/Contracts/EventTypes.cs`
+- a new public DTO or read model that crosses Core-to-Adapter boundaries
+- a new command interface or service interface under `Game.Core/Contracts/Interfaces/**`
+
+Current evidence shows one explicit future-risk area:
+- Potions are named by T77 and T111 but are not yet represented in the current contract baseline. If potion work is selected for implementation, update `08-Contracts-M1.md` first and add the concrete `Game.Core/Contracts/**` files in the same change.
+
+Current evidence also shows task-view drift:
+- Several T70-T116 `contractRefs` point to placeholder event names that are not currently defined in `EventTypes.cs`.
+- Those refs should not be treated as frozen public contracts until they are either normalized to existing `EventType` constants or promoted into real contract files.

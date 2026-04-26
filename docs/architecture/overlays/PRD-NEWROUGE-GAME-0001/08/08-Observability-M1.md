@@ -55,3 +55,31 @@ M1 可观测性目标是让“确定性、可追溯、可回放”成为可验�
 - 若 Continue 阻断路径无取证，视为硬失败。
 - 若回链断裂（ADR/Overlay/Test-Refs 不一致），视为硬失败。
 
+## 7. Task70-116 Runtime Closure Observability Addendum
+T70-T116 expand M1 observability from basic route proof into runtime-closure proof. The following evidence classes become mandatory when those task families are implemented:
+- Reward first-entry lock, confirm, skip, and re-entry fallback evidence.
+- Continue restore evidence that distinguishes primary route restore from locked-surface replay.
+- Enemy runtime instantiation evidence, including invalid-definition fallback paths.
+- Settlement evidence that proves rewards, relics, and resume metadata come from stored run data instead of scene-local transient state.
+- Combat runtime evidence that shows deck/state/rule promotion happened on the shared Core path rather than in UI-local counters or display-only helpers.
+
+### 7.1 Task-View And Contract Drift Signal
+If a T70-T116 task references an event family that is not present in `Game.Core/Contracts/EventTypes.cs`, treat that mismatch as a traceability defect until one of the following happens:
+- the task refs are normalized back to existing contract constants, or
+- a real contract baseline is added under `Game.Core/Contracts/**`
+
+This is especially important for Chapter 6 split tasks, because narrow review lanes must not normalize placeholder contract names into acceptance evidence by accident.
+
+### 7.2 Potion Contract Readiness
+Potion-related work is currently observable only as backlog/task intent. Before T77 or T111 can claim contract-complete observability:
+- define the potion contract baseline under `Game.Core/Contracts/**`
+- add the matching `EventTypes` constants
+- route any potion audit/replay evidence through the same JSONL and traceability gates as other M1 runtime events
+
+### 7.3 Phase 0-2 Overlay And Contract Decision
+For `T70-T116`, observability review follows the same rule now recorded in `_index.md` and `08-Contracts-M1.md`:
+- update Overlay 08 pages whenever runtime-closure scope, review-governance scope, or traceability expectations change
+- do not treat task-view placeholder event names as approved observability contracts
+- do not create new contract files for observability alone unless implementation promotes a real public event or snapshot baseline
+- potion observability remains a documented future contract gap until `T77` or `T111` implementation is actually selected
+
