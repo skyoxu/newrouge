@@ -23,13 +23,21 @@ func test_main_scene_glue_publishes_on_menu_start() -> void:
     var main = preload("res://Game.Godot/Scenes/Main.tscn").instantiate()
     add_child(auto_free(main))
     await get_tree().process_frame
-    var menu := main.get_node_or_null("MainMenu")
+    var menu := main.get_node_or_null("MenuLayer/MainMenu")
+    if menu == null:
+        menu = main.get_node_or_null("MainMenu")
     assert_object(menu).is_not_null()
+    if menu == null:
+        return
+
     menu.call("SetAutosaveAvailableForTest", false)
     var btn := menu.get_node_or_null("VBox/BtnNewRun")
     if btn == null:
         btn = menu.get_node_or_null("VBox/BtnPlay")
     assert_object(btn).is_not_null()
+    if btn == null:
+        return
+
     btn.emit_signal("pressed")
     await get_tree().process_frame
     assert_bool(_got).is_true()
