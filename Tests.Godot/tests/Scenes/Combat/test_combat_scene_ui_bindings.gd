@@ -144,6 +144,7 @@ func test_snapshot_binding_matches_hand_energy_draw_and_discard_values() -> void
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
 
 
+# ACC:T71.3
 func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
