@@ -9,6 +9,7 @@ namespace Game.Core.Tests.Services;
 
 public sealed class DeckServiceTests
 {
+    // ACC:T71.1
     // ACC:T33.4
     [Fact]
     public void ShouldAppendCardsInDrawOrder_WhenDrawingWithoutHandOverflow()
@@ -26,6 +27,7 @@ public sealed class DeckServiceTests
         drawnSnapshot.DiscardPile.Should().Equal("x-1");
     }
 
+    // ACC:T71.2
     // ACC:T33.5
     [Fact]
     public void ShouldMoveOnlySpecifiedInstance_WhenDiscardingKnownCard()
@@ -43,6 +45,7 @@ public sealed class DeckServiceTests
         discardedSnapshot.DrawPile.Should().Equal("d-9");
     }
 
+    // ACC:T71.4
     // ACC:T33.5
     [Fact]
     public void ShouldKeepStateUnchanged_WhenDiscardingUnknownCardInstance()
@@ -66,6 +69,7 @@ public sealed class DeckServiceTests
         discardedSnapshot.HandLimit.Should().Be(initialSnapshot.HandLimit);
     }
 
+    // ACC:T71.5
     // ACC:T33.6
     [Fact]
     public void ShouldNeverReturnExhaustedCard_WhenExhaustingThenCyclingDeck()
