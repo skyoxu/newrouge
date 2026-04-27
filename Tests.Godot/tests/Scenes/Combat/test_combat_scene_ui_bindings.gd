@@ -47,6 +47,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		assert_that(str(root.get_path_to(node))).is_equal(path)
 
 
+# ACC:T72.1
 func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -67,9 +68,18 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	assert_that(_read_hand_cards(root.get_node("HUD/HandCards") as ItemList)).is_equal(["Strike", "Defend", "Strike"])
 	var card_row := root.get_node("HUD/CardButtonRow") as HBoxContainer
 	assert_that(card_row.get_child_count()).is_equal(3)
-	assert_that((card_row.get_child(0) as Button).text).is_equal("Strike")
-	assert_that((card_row.get_child(1) as Button).text).is_equal("Defend")
-	assert_that((card_row.get_child(2) as Button).text).is_equal("Strike")
+	var strike_text := (card_row.get_child(0) as Button).text
+	var defend_text := (card_row.get_child(1) as Button).text
+	assert_that(strike_text.find("Strike") >= 0).is_true()
+	assert_that(strike_text.find("Cost 1") >= 0).is_true()
+	assert_that(strike_text.find("attack") >= 0).is_true()
+	assert_that(strike_text.find("Deal 6 damage.") >= 0).is_true()
+	assert_that(strike_text.find("card.warrior.") < 0).is_true()
+	assert_that(defend_text.find("Defend") >= 0).is_true()
+	assert_that(defend_text.find("Cost 1") >= 0).is_true()
+	assert_that(defend_text.find("skill") >= 0).is_true()
+	assert_that(defend_text.find("Gain 5 block.") >= 0).is_true()
+	assert_that(defend_text.find("card.warrior.") < 0).is_true()
 
 	var enemy_name := root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label
 	var enemy_hp := root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label
@@ -176,6 +186,86 @@ func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> voi
 	assert_that(state_after_defend["energy"]).is_equal("1")
 	assert_that(state_after_defend["discard"]).is_equal("2")
 	assert_that(str(defend_feedback).find("gained 5 block") >= 0).is_true()
+
+
+# ACC:T72.2
+func test_mixed_effect_card_updates_hp_block_energy_and_piles_from_definition() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Iron Wave"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var played := bool(scene.call("RequestPlaySelectedCardForTest"))
+	assert_that(played).is_true()
+
+	var snapshot := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(str(scene.call("GetEnemyHpTextForTest"))).is_equal("27/32")
+	assert_that(int(scene.call("GetPlayerBlockForTest"))).is_equal(5)
+	assert_that(snapshot["energy"]).is_equal("2")
+	assert_that(snapshot["draw"]).is_equal("7")
+	assert_that(snapshot["discard"]).is_equal("1")
+	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(1)
+	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(0)
+	assert_that(feedback.find("dealt 5 damage") >= 0).is_true()
+	assert_that(feedback.find("gained 5 block") >= 0).is_true()
+	assert_that(feedback.find("Energy -1") >= 0).is_true()
+
+
+# ACC:T72.2
+func test_exhaust_routing_is_definition_driven_for_non_power_through_card() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Iron Wave"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	var injected := bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.warrior.iron_wave","name_key":"card.warrior.iron_wave.name","description_key":"card.warrior.iron_wave.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":5,"block":5,"exhaust":true}}]}'))
+	assert_that(injected).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var played := bool(scene.call("RequestPlaySelectedCardForTest"))
+	assert_that(played).is_true()
+	assert_that(str(scene.call("GetEnemyHpTextForTest"))).is_equal("27/32")
+	assert_that(int(scene.call("GetPlayerBlockForTest"))).is_equal(5)
+	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(0)
+	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(1)
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("moved to exhaust") >= 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T72.8
+func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_fallback() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	scene.call("RefreshLocaleForTest")
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var card_row := root.get_node("HUD/CardButtonRow") as HBoxContainer
+	var strike_text := str((card_row.get_child(0) as Button).text)
+	assert_that(strike_text).is_equal("Strike")
+	assert_that(strike_text.find("Cost ") < 0).is_true()
+
+	var state_before_missing_definition := scene.call("CaptureUiStateForTest") as Dictionary
+	var played := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var state_after_missing_definition := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(played).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("missing card definition") >= 0).is_true()
+	assert_that(state_after_missing_definition).is_equal(state_before_missing_definition)
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # acceptance anchor: ACC:T73.4

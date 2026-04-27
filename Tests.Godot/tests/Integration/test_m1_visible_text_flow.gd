@@ -308,11 +308,53 @@ func _assert_combat_invalid_action_feedback_for_locale(locale: String) -> void:
 	assert(not expected.is_empty(), "Missing translation for combat.invalid_action in locale %s." % locale)
 	assert(actual.find(expected) >= 0, "Combat invalid-action feedback must include translated message in locale %s." % locale)
 
+
+func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
+	TranslationServer.set_locale(locale)
+	var combat := await _instantiate_surface("Combat")
+	_refresh_surface_locale(combat)
+	await get_tree().process_frame
+	var root := combat as Control
+	var card_row := root.get_node_or_null("HUD/CardButtonRow") as HBoxContainer
+	assert(card_row != null, "Combat scene missing card button row.")
+	assert(card_row.get_child_count() >= 2, "Combat scene must expose at least two card buttons.")
+	var strike_text := str((card_row.get_child(0) as Button).text)
+	var defend_text := str((card_row.get_child(1) as Button).text)
+
+	var strike_name := _resolve_expected_text(locale, "card.warrior.strike.name")
+	var strike_desc := _resolve_expected_text(locale, "card.warrior.strike.description")
+	var defend_name := _resolve_expected_text(locale, "card.warrior.defend.name")
+	var defend_desc := _resolve_expected_text(locale, "card.warrior.defend.description")
+
+	assert(strike_text.find(strike_name) >= 0, "Combat strike button must expose localized card name in locale %s." % locale)
+	assert(strike_text.find("Cost 1") >= 0, "Combat strike button must expose cost in locale %s." % locale)
+	assert(strike_text.find("| attack") >= 0, "Combat strike button must expose card type in locale %s." % locale)
+	assert(strike_text.find(strike_desc) >= 0, "Combat strike button must expose localized effect summary in locale %s." % locale)
+	assert(strike_text.find("card.warrior.") < 0, "Combat strike button must not expose raw localization keys in locale %s." % locale)
+	assert(defend_text.find(defend_name) >= 0, "Combat defend button must expose localized card name in locale %s." % locale)
+	assert(defend_text.find("Cost 1") >= 0, "Combat defend button must expose cost in locale %s." % locale)
+	assert(defend_text.find("| skill") >= 0, "Combat defend button must expose card type in locale %s." % locale)
+	assert(defend_text.find(defend_desc) >= 0, "Combat defend button must expose localized effect summary in locale %s." % locale)
+	assert(defend_text.find("card.warrior.") < 0, "Combat defend button must not expose raw localization keys in locale %s." % locale)
+
+	# ACC:T72.8 negative path: if definition source is unavailable, UI must not fall back
+	# to a hidden hardcoded card-definition model.
+	combat.call("ClearCardDefinitionsForTest")
+	combat.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	_refresh_surface_locale(combat)
+	await get_tree().process_frame
+	strike_text = str((card_row.get_child(0) as Button).text)
+	assert(strike_text.find("Cost ") < 0, "Combat strike button must not synthesize hardcoded cost when definitions are unavailable in locale %s." % locale)
+	assert(strike_text.find("|") < 0, "Combat strike button must not synthesize hardcoded type when definitions are unavailable in locale %s." % locale)
+	assert(strike_text.find("card.warrior.") < 0, "Combat strike button must not leak raw localization keys when definitions are unavailable in locale %s." % locale)
+	combat.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
 func _assert_critical_runtime_feedback_for_locale(locale: String) -> void:
 	await _assert_reward_locked_feedback_for_locale(locale)
 	await _assert_rest_irreversible_feedback_for_locale(locale)
 	await _assert_continue_blocked_feedback_for_locale(locale)
 	await _assert_combat_invalid_action_feedback_for_locale(locale)
+	await _assert_combat_card_text_contract_for_locale(locale)
 
 func _assert_real_surface_texts_for_locale(locale: String) -> void:
 	TranslationServer.set_locale(locale)

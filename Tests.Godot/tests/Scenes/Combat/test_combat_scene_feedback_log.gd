@@ -104,3 +104,78 @@ func test_feedback_text_resolves_for_en_and_zh_cn_locales() -> void:
 	assert_that(zh_text.find("accepted") < 0).is_true()
 
 	TranslationServer.set_locale(previous_locale)
+
+
+# ACC:T72.4
+func test_rejected_play_paths_keep_state_unchanged_for_energy_missing_definition_and_invalid_target() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	var previous_locale := TranslationServer.get_locale()
+	TranslationServer.set_locale("en")
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	hand.select(0)
+	var state_before_energy := scene.call("CaptureUiStateForTest") as Dictionary
+	var energy_rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var state_after_energy := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(energy_rejected).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("insufficient energy") >= 0).is_true()
+	assert_that(state_after_energy).is_equal(state_before_energy)
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["UnknownCard"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var state_before_missing := scene.call("CaptureUiStateForTest") as Dictionary
+	var missing_rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var state_after_missing := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(missing_rejected).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("missing card definition") >= 0).is_true()
+	assert_that(state_after_missing).is_equal(state_before_missing)
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var state_before_target := scene.call("CaptureUiStateForTest") as Dictionary
+	var target_rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var state_after_target := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(target_rejected).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("invalid target") >= 0).is_true()
+	assert_that(state_after_target).is_equal(state_before_target)
+
+	TranslationServer.set_locale(previous_locale)
+
+
+# ACC:T72.7
+func test_status_card_and_exhaust_card_apply_expected_target_and_pile_routing() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	var previous_locale := TranslationServer.get_locale()
+	TranslationServer.set_locale("en")
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Battle Focus"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	hand.select(0)
+	var played_status := bool(scene.call("RequestPlaySelectedCardForTest"))
+	assert_that(played_status).is_true()
+	var feedback_status := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var enemy_status := str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime"))
+	assert_that(enemy_status.find("status.rage") < 0).is_true()
+	assert_that(str(scene.call("GetPlayerStatusSummaryForTest")).find("status.rage:2") >= 0).is_true()
+	assert_that(feedback_status.find("status.rage") >= 0).is_true()
+	assert_that(feedback_status.find("to self") >= 0).is_true()
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Power Through"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var played_exhaust := bool(scene.call("RequestPlaySelectedCardForTest"))
+	assert_that(played_exhaust).is_true()
+	var feedback_exhaust := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(0)
+	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(1)
+	assert_that(feedback_exhaust.find("moved to exhaust") >= 0).is_true()
+
+	TranslationServer.set_locale(previous_locale)
