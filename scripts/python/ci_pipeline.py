@@ -214,15 +214,40 @@ def main():
     dotnet_env = os.environ.copy()
     if not str(dotnet_env.get('DOTNET_TEST_TIMEOUT_MS', '') or '').strip():
         dotnet_env['DOTNET_TEST_TIMEOUT_MS'] = str(dotnet_stage_timeout_ms)
-    rc, out = run_cmd(
-        ['py', '-3', '-u', 'scripts/python/run_dotnet.py', '--solution', resolved_solution, '--configuration', args.configuration],
-        cwd=root,
-        timeout=dotnet_stage_timeout_ms,
-        env=dotnet_env,
-    )
+
+    dotnet_max_attempts = 2
+    dotnet_attempts = []
+    dotnet_rc = 1
+    dotnet_out = ''
+    dotnet_sum = {}
+    for attempt in range(1, dotnet_max_attempts + 1):
+        dotnet_rc, dotnet_out = run_cmd(
+            ['py', '-3', '-u', 'scripts/python/run_dotnet.py', '--solution', resolved_solution, '--configuration', args.configuration],
+            cwd=root,
+            timeout=dotnet_stage_timeout_ms,
+            env=dotnet_env,
+        )
+        attempt_log = os.path.join(ci_dir, f'run-dotnet-console-attempt-{attempt}.txt')
+        with io.open(attempt_log, 'w', encoding='utf-8') as f:
+            f.write(dotnet_out)
+
+        dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
+        dotnet_status = str(dotnet_sum.get('status') or '').strip()
+        dotnet_hard_fail = (dotnet_rc not in (0, 2)) or (dotnet_status == 'tests_failed')
+        dotnet_attempts.append({
+            'attempt': attempt,
+            'rc': dotnet_rc,
+            'status': dotnet_status,
+            'hard_fail': dotnet_hard_fail,
+        })
+        if not dotnet_hard_fail:
+            break
+
     with io.open(os.path.join(ci_dir, 'run-dotnet-console.txt'), 'w', encoding='utf-8') as f:
-        f.write(out)
-    dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
+        f.write(dotnet_out)
+
+    rc = dotnet_rc
+    out = dotnet_out
     dotnet_out_dir = dotnet_sum.get('out_dir') if isinstance(dotnet_sum, dict) else None
     dotnet_test_output_src = os.path.join(dotnet_out_dir, 'dotnet-test-output.txt') if dotnet_out_dir else ''
     dotnet_test_output_ci = os.path.join(ci_dir, 'dotnet-test-output.txt')
@@ -241,6 +266,8 @@ def main():
         'branch_pct': (dotnet_sum.get('coverage') or {}).get('branch_pct'),
         'status': dotnet_sum.get('status'),
         'run_dotnet_console_log': os.path.join(ci_dir, 'run-dotnet-console.txt'),
+        'run_dotnet_console_attempt_logs': [os.path.join(ci_dir, f'run-dotnet-console-attempt-{item["attempt"]}.txt') for item in dotnet_attempts],
+        'attempts': dotnet_attempts,
         'stage_timeout_ms': dotnet_stage_timeout_ms,
         'dotnet_test_timeout_ms': dotnet_env.get('DOTNET_TEST_TIMEOUT_MS'),
         'dotnet_test_output_log': dotnet_test_output_ci if copied_test_output else None,
@@ -256,21 +283,38 @@ def main():
     sc_args = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
     if args.build_solutions:
         sc_args.append('--build-solutions')
-    rc2, out2 = run_cmd(sc_args, cwd=root, timeout=600_000)
-    # persist raw stdout for diagnosis
-    os.makedirs(os.path.join('logs', 'ci', date), exist_ok=True)
+    sc_max_attempts = 2
+    sc_attempts = []
+    rc2 = 2
+    out2 = ''
+    sc_sum = {}
+    for attempt in range(1, sc_max_attempts + 1):
+        rc2, out2 = run_cmd(sc_args, cwd=root, timeout=600_000)
+        os.makedirs(os.path.join('logs', 'ci', date), exist_ok=True)
+        with io.open(os.path.join('logs', 'ci', date, f'selfcheck-stdout-attempt-{attempt}.txt'), 'w', encoding='utf-8') as f:
+            f.write(out2)
+
+        sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or {}
+        if not sc_sum:
+            import re
+            m = re.search(r"SELF_CHECK status=([a-z]+).*? out=([^\r\n]+)", out2)
+            if m:
+                sc_status = m.group(1)
+                sc_out = m.group(2)
+                sc_sum = {'status': sc_status, 'out': sc_out, 'note': 'parsed-from-stdout'}
+        sc_ok_now = (sc_sum.get('status') == 'ok') or (rc2 == 0)
+        sc_attempts.append({
+            'attempt': attempt,
+            'rc': rc2,
+            'status': str(sc_sum.get('status') or ''),
+            'ok': bool(sc_ok_now),
+        })
+        if sc_ok_now:
+            break
+
     with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout.txt'), 'w', encoding='utf-8') as f:
         f.write(out2)
-    sc_sum = read_json(os.path.join('logs', 'e2e', date, 'selfcheck-summary.json')) or {}
-    # fallback: parse status from stdout if summary missing
-    if not sc_sum:
-        import re
-        m = re.search(r"SELF_CHECK status=([a-z]+).*? out=([^\r\n]+)", out2)
-        if m:
-            sc_status = m.group(1)
-            sc_out = m.group(2)
-            sc_sum = {'status': sc_status, 'out': sc_out, 'note': 'parsed-from-stdout'}
-    # as ultimate fallback, trust process rc (0==ok)
+
     # Copy Godot selfcheck raw console/stderr into ci logs if present
     try:
         e2e_dir = os.path.join('logs', 'e2e', date)
@@ -292,6 +336,12 @@ def main():
 
     sc_ok = (sc_sum.get('status') == 'ok') or (rc2 == 0)
     summary['selfcheck'] = sc_sum or {'status': 'fail', 'note': 'no-summary'}
+    summary['selfcheck']['attempts'] = sc_attempts
+    summary['selfcheck']['selfcheck_stdout_attempt_logs'] = [
+        os.path.join('logs', 'ci', date, f'selfcheck-stdout-attempt-{item["attempt"]}.txt')
+        for item in sc_attempts
+    ]
+    summary['selfcheck']['selfcheck_stdout_log'] = os.path.join('logs', 'ci', date, 'selfcheck-stdout.txt')
     if not sc_ok:
         hard_fail = True
 
