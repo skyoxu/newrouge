@@ -17,6 +17,7 @@ const EVENT_SCENE := "res://Game.Godot/Scenes/Event.tscn"
 const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
 const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
 const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
+const REWARD_OFFER_PROVIDER_SCRIPT := preload("res://Game.Godot/Scripts/Reward/RewardOfferProvider.cs")
 const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
 const _ROUTABLE_NODE_SCENES := [COMBAT_SCENE, EVENT_SCENE, SHOP_SCENE, REST_SCENE]
@@ -32,6 +33,12 @@ var _reward_route_pending: bool = false
 var _reward_route_resolved: bool = false
 var _shop_state_by_node: Dictionary = {}
 var _active_shop_node_id: String = ""
+var _reward_offer_provider: Node = null
+var _reward_offer_by_context: Dictionary = {}
+var _reward_offer_active_context_id: String = ""
+var _reward_offer_seed_counter: int = 0
+var _map_route_last_selected_node_type: String = ""
+var _map_route_last_selected_node_floor: int = 1
 
 func _should_show_template_demo_overlay() -> bool:
     var ff = get_node_or_null("/root/FeatureFlags")
@@ -82,6 +89,7 @@ func _ready() -> void:
 
     _sync_hud_run_resources()
     _update_hud_visibility_for_scene("")
+    _ensure_reward_offer_provider()
 
 func _exit_tree() -> void:
     var bus = get_node_or_null("/root/EventBus")
@@ -279,6 +287,104 @@ func _resolve_map_node_scene(node_type: String) -> String:
         return REST_SCENE
     return ""
 
+func _resolve_node_floor(node_id: String) -> int:
+    var normalized := node_id.strip_edges().to_lower()
+    if normalized.begins_with("boss"):
+        return 5
+    var dash := normalized.find("-")
+    if dash > 0:
+        var digits := ""
+        for ch in normalized.substr(dash + 1):
+            if ch >= "0" and ch <= "9":
+                digits += ch
+            else:
+                break
+        if not digits.is_empty():
+            return maxi(1, int(digits))
+    return maxi(1, _map_route_completed_nodes + 1)
+
+func _build_reward_context_id(node_id: String, node_type: String, floor: int) -> String:
+    var normalized_id := node_id.strip_edges()
+    var normalized_type := node_type.strip_edges().to_lower()
+    if normalized_id.is_empty():
+        normalized_id = "reward-node"
+    if normalized_type.is_empty():
+        normalized_type = "combat"
+    return "act1:%s:floor%d:%s" % [normalized_type, floor, normalized_id]
+
+func _build_reward_offer_seed(context_id: String) -> int:
+    var hash := context_id.hash()
+    return int(abs(hash) + _reward_offer_seed_counter)
+
+func _ensure_reward_offer_provider() -> void:
+    if _reward_offer_provider != null and is_instance_valid(_reward_offer_provider):
+        return
+    _reward_offer_provider = REWARD_OFFER_PROVIDER_SCRIPT.new()
+    _reward_offer_provider.name = "RewardOfferProvider"
+    add_child(_reward_offer_provider)
+
+func _build_first_entry_reward_offer(context_id: String, encounter_type: String, floor: int) -> Array:
+    _ensure_reward_offer_provider()
+    if _reward_offer_provider == null or not _reward_offer_provider.has_method("BuildFirstEntryOfferForContext"):
+        return []
+    var stream_position: int = int(max(0, _map_route_completed_nodes))
+    var seed := _build_reward_offer_seed(context_id)
+    _reward_offer_seed_counter += 1
+    var result = _reward_offer_provider.call(
+        "BuildFirstEntryOfferForContext",
+        1,
+        encounter_type,
+        seed,
+        stream_position,
+        3
+    )
+    if typeof(result) != TYPE_ARRAY:
+        return []
+    var offers: Array = []
+    for item in result:
+        if typeof(item) == TYPE_DICTIONARY:
+            offers.append((item as Dictionary).duplicate(true))
+    return offers
+
+func _ensure_reward_offer_for_active_context() -> Dictionary:
+    var context_id := _reward_offer_active_context_id.strip_edges()
+    if context_id.is_empty():
+        context_id = _build_reward_context_id(
+            _map_route_last_selected_node_id,
+            _map_route_last_selected_node_type,
+            _map_route_last_selected_node_floor
+        )
+    _reward_offer_active_context_id = context_id
+    if _reward_offer_by_context.has(context_id):
+        var existing = _reward_offer_by_context[context_id]
+        if typeof(existing) == TYPE_DICTIONARY:
+            return (existing as Dictionary).duplicate(true)
+
+    var encounter_type := _map_route_last_selected_node_type.strip_edges().to_lower()
+    if encounter_type.is_empty():
+        encounter_type = "combat"
+    if encounter_type == "event":
+        encounter_type = "normal"
+    elif encounter_type != "combat" and encounter_type != "normal" and encounter_type != "elite" and encounter_type != "boss":
+        encounter_type = "normal"
+    if encounter_type == "combat":
+        encounter_type = "normal"
+
+    var offers := _build_first_entry_reward_offer(context_id, encounter_type, _map_route_last_selected_node_floor)
+    var payload := {
+        "context_id": context_id,
+        "act_id": 1,
+        "encounter_type": encounter_type,
+        "floor": _map_route_last_selected_node_floor,
+        "offers": offers,
+        "source": "shared-card-pool"
+    }
+    _reward_offer_by_context[context_id] = payload.duplicate(true)
+    return payload
+
+func GetRewardOfferSnapshotForScene() -> Dictionary:
+    return _ensure_reward_offer_for_active_context()
+
 func _build_default_shop_state(node_id: String) -> Dictionary:
     var normalized := node_id.strip_edges()
     if normalized.is_empty():
@@ -332,6 +438,8 @@ func StartMapNodeRouteForTest(node_id: String, node_type: String, reachable: boo
 
     _map_route_last_feedback = ""
     _map_route_last_selected_node_id = node_id
+    _map_route_last_selected_node_type = node_type.strip_edges().to_lower()
+    _map_route_last_selected_node_floor = _resolve_node_floor(node_id)
     _map_route_start_invocation_count += 1
     _map_route_last_start_destination = destination
     if destination == SHOP_SCENE:
@@ -350,6 +458,12 @@ func CompleteMapNodeFlowForTest() -> Dictionary:
     if _REWARD_ENTRY_SCENES.has(current_scene):
         _reward_route_pending = true
         _reward_route_resolved = false
+        _reward_offer_active_context_id = _build_reward_context_id(
+            _map_route_last_selected_node_id,
+            _map_route_last_selected_node_type,
+            _map_route_last_selected_node_floor
+        )
+        _ensure_reward_offer_for_active_context()
         _switch_to(nav, REWARD_SCENE)
         _map_route_last_feedback = ""
         return {"ok": true, "reason": "", "scene_path": REWARD_SCENE, "completed_node_count": _map_route_completed_nodes}
@@ -390,6 +504,11 @@ func ResetMapRouteProgressForTest() -> void:
     _shop_state_by_node.clear()
     _map_route_start_invocation_count = 0
     _map_route_last_start_destination = ""
+    _map_route_last_selected_node_type = ""
+    _map_route_last_selected_node_floor = 1
+    _reward_offer_by_context.clear()
+    _reward_offer_active_context_id = ""
+    _reward_offer_seed_counter = 0
 
 func GetMapRouteStartInvocationCountForTest() -> int:
     return _map_route_start_invocation_count

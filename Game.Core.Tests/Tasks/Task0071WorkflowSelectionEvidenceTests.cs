@@ -181,7 +181,7 @@ public sealed class Task0071WorkflowSelectionEvidenceTests
             .EnumerateFiles(ciRoot, "latest.json", SearchOption.AllDirectories)
             .Where(path => path.Contains(PipelineTaskPrefix, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
-            .FirstOrDefault();
+            .FirstOrDefault() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(latestIndexPath))
         {
