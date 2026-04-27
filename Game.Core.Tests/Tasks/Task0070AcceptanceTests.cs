@@ -131,7 +131,7 @@ public sealed class Task0070AcceptanceTests
             .Where(path => path.Replace('\\', '/').EndsWith("/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json", StringComparison.Ordinal))
             .Where(path => WorkflowSummaryMatchesTask70(path))
             .OrderByDescending(File.GetLastWriteTimeUtc)
-            .FirstOrDefault();
+            .FirstOrDefault() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(candidate))
         {
@@ -156,7 +156,7 @@ public sealed class Task0070AcceptanceTests
         candidate = Directory
             .EnumerateFiles(logsRoot, "task-0070.json", SearchOption.AllDirectories)
             .OrderByDescending(File.GetLastWriteTimeUtc)
-            .FirstOrDefault();
+            .FirstOrDefault() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(candidate))
         {
