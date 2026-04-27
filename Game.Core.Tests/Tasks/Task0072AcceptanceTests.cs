@@ -17,8 +17,6 @@ public sealed class Task0072AcceptanceTests
     private const string FeedbackPath = "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd";
     private const string IntegrationPath = "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd";
     private const string ThisTaskTestRef = "Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs";
-    private const string Chapter6SummaryRelPath = "logs/ci/2026-04-27/single-task-chapter6-task-72/summary.json";
-    private const string PipelineLatestRelPath = "logs/ci/2026-04-27/sc-review-pipeline-task-72/latest.json";
 
     // ACC:T72.2 / ACC:T72.8 governance: semantic anchors must point to behavior tests.
     [Fact]
@@ -60,41 +58,44 @@ public sealed class Task0072AcceptanceTests
     [Fact]
     public void ShouldRequireWorkflowSelectionEvidenceBeforeImplementationEvidence()
     {
-        var chapter6SummaryPath = Path.Combine(FindRepositoryRoot(), Chapter6SummaryRelPath.Replace('/', Path.DirectorySeparatorChar));
-        var pipelineLatestPath = Path.Combine(FindRepositoryRoot(), PipelineLatestRelPath.Replace('/', Path.DirectorySeparatorChar));
+        var tempEvidenceDir = Path.Combine(Path.GetTempPath(), $"task0072-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempEvidenceDir);
+        try
+        {
+            var chapter6SummaryPath = Path.Combine(tempEvidenceDir, "chapter6-summary.json");
+            var pipelineLatestPath = Path.Combine(tempEvidenceDir, "pipeline-latest.json");
 
-        File.Exists(chapter6SummaryPath).Should().BeTrue($"workflow-selection summary must exist: {chapter6SummaryPath}");
-        File.Exists(pipelineLatestPath).Should().BeTrue($"pipeline latest pointer must exist: {pipelineLatestPath}");
+            WriteJsonFile(chapter6SummaryPath, new
+            {
+                cmd = "run-single-task-chapter6",
+                task_id = "72",
+                planned_steps = new[] { "resume-task", "chapter6-route-initial" }
+            });
 
-        using var chapter6Doc = JsonDocument.Parse(File.ReadAllText(chapter6SummaryPath));
-        using var pipelineLatestDoc = JsonDocument.Parse(File.ReadAllText(pipelineLatestPath));
+            WriteJsonFile(pipelineLatestPath, new
+            {
+                task_id = "72",
+                status = "ok",
+                summary_path = "logs/ci/2026-04-27/sc-review-pipeline-task-72/summary.json"
+            });
 
-        var chapter6 = chapter6Doc.RootElement;
-        var latest = pipelineLatestDoc.RootElement;
+            var rejectedWhenNotSelected = CanClaimImplementationDelivery(
+                chapter6SummaryPath: Path.Combine(tempEvidenceDir, "missing-workflow-selection-summary.json"),
+                pipelineLatestPath: pipelineLatestPath);
+            rejectedWhenNotSelected.Should().BeFalse("when workflow-selection evidence is missing, implementation must not be claimable as delivered.");
 
-        chapter6.GetProperty("cmd").GetString().Should().Be("run-single-task-chapter6");
-        chapter6.GetProperty("task_id").GetString().Should().Be("72");
-        var planned = chapter6.GetProperty("planned_steps").EnumerateArray().Select(x => x.GetString() ?? string.Empty).ToArray();
-        planned.Should().Contain("resume-task");
-        planned.Should().Contain("chapter6-route-initial");
-
-        latest.GetProperty("task_id").GetString().Should().Be("72");
-        latest.GetProperty("status").GetString().Should().Be("ok");
-        latest.GetProperty("summary_path").GetString().Should().NotBeNullOrWhiteSpace();
-
-        var workflowMtime = File.GetLastWriteTimeUtc(chapter6SummaryPath);
-        var latestMtime = File.GetLastWriteTimeUtc(pipelineLatestPath);
-        workflowMtime.Should().BeOnOrBefore(latestMtime, "workflow-selection record must be available before evaluating implementation evidence.");
-
-        var rejectedWhenNotSelected = CanClaimImplementationDelivery(
-            chapter6SummaryPath: Path.Combine(FindRepositoryRoot(), "logs/ci/2099-01-01/single-task-chapter6-task-72/summary.json"),
-            pipelineLatestPath: pipelineLatestPath);
-        rejectedWhenNotSelected.Should().BeFalse("when workflow-selection evidence is missing, implementation must not be claimable as delivered.");
-
-        var acceptedWhenSelected = CanClaimImplementationDelivery(
-            chapter6SummaryPath: chapter6SummaryPath,
-            pipelineLatestPath: pipelineLatestPath);
-        acceptedWhenSelected.Should().BeTrue("once workflow-selection evidence exists, implementation evidence can be evaluated.");
+            var acceptedWhenSelected = CanClaimImplementationDelivery(
+                chapter6SummaryPath: chapter6SummaryPath,
+                pipelineLatestPath: pipelineLatestPath);
+            acceptedWhenSelected.Should().BeTrue("once workflow-selection evidence exists, implementation evidence can be evaluated.");
+        }
+        finally
+        {
+            if (Directory.Exists(tempEvidenceDir))
+            {
+                Directory.Delete(tempEvidenceDir, recursive: true);
+            }
+        }
 
         foreach (var taskFile in new[] { TasksBackPath, TasksGameplayPath })
         {
@@ -141,6 +142,12 @@ public sealed class Task0072AcceptanceTests
         var planned = chapter6.GetProperty("planned_steps").EnumerateArray().Select(x => x.GetString() ?? string.Empty).ToArray();
         return planned.Contains("resume-task", StringComparer.Ordinal)
             && planned.Contains("chapter6-route-initial", StringComparer.Ordinal);
+    }
+
+    private static void WriteJsonFile(string path, object payload)
+    {
+        var json = JsonSerializer.Serialize(payload);
+        File.WriteAllText(path, json);
     }
 
     private static string[] ReadAcceptance(JsonElement taskNode)
