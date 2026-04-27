@@ -1846,7 +1846,7 @@
       "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Game.Core.Tests/Services/DeckServiceTests.cs",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "T80 is accepted only when evidence from the shared DeckService/CardState runtime path shows deterministic combat deck-lifecycle outcomes for draw-pile-to-hand draw, turn-end discard into discard pile, exhaust-pile placement, and discard-to-draw reshuffle ordering. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
@@ -1854,7 +1854,7 @@
       "T82 can close this umbrella milestone only when Windows-run evidence from existing deck-lifecycle and Combat scene suites aggregates T80 and T81 results; introducing a fourth parallel implementation path or standalone duplicate track fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "The aggregated T80-T82 milestone evidence must explicitly verify hand state, exhaust pile, turn-end discard behavior, deterministic ordering, and Windows-backed execution, in addition to draw/discard/reshuffle behavior and HUD synchronization. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "T71 remains milestone-only: validation must run through existing DeckService and Combat scene suites, and acceptance fails if a replacement verification lane or a fourth implementation path is used. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "No implementation evidence under this task is valid unless workflow selection of T71 is recorded first, and the review evidence set must include that selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "No implementation evidence under this task is valid unless workflow selection of T71 is recorded first, and the review evidence set must include that selection record before implementation evidence. Refs: Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71."
@@ -1869,7 +1869,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0071.json"
+      "logs/ci/<date>/task-0071.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
