@@ -1914,20 +1914,22 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "acceptance": [
-      "When CombatScene renders playable cards, each card button shows localized card name, cost, card type, and player-visible effect summary sourced from the existing card-definition and translation contracts, with no hard-coded scene text and no parallel card text/model source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Playing any damage, block, status, or mixed-effect card resolves strictly from its existing card definition (including cost payment, targeting rule, and exhaust/discard routing) and produces state updates to HP, block, energy, and piles that match that definition. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Each successful card play emits visible player-facing feedback that matches the resolved outcomes, including damage dealt, block gained, statuses applied, and whether the card was exhausted or discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "If play is rejected due to insufficient energy, missing card definition, or invalid targeting rule, the UI presents refusal feedback and leaves HP, block, energy, and pile states unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "On the M1 combat surface, both en and zh-CN card text is displayed as readable localized text rather than raw localization keys or placeholder content. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "CombatScene reads card type from existing card definitions and uses that type for combat presentation and interaction behavior, without hard-coded fallback typing or any parallel card-description path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "When a status card is played, the defined status is applied to the correct target, and when an exhaust-effect card is played, that card is moved to exhaust (not discard) per the existing definition path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "CombatScene card loading uses only existing contracts and current card data files, and does not introduce any new card-definition path or new card-data file family. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Implementation evidence for this task is valid only after workflow explicitly selects T72, and review evidence includes the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "When CombatScene renders playable cards, each card button shows localized card name, cost, card type, and player-visible effect summary sourced from the existing card-definition and translation contracts, with no hard-coded scene text and no parallel card text/model source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "Playing any damage, block, status, or mixed-effect card resolves strictly from its existing card definition (including cost payment, targeting rule, and exhaust/discard routing); for each effect component, only definition-allowed targets are mutated and non-target entities remain unchanged, and resulting HP, block, energy, and pile states match that definition. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "Each successful card play emits visible player-facing feedback that matches the resolved outcomes, including damage dealt, block gained, statuses applied, and whether the card was exhausted or discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "If play is rejected due to insufficient energy, missing card definition, or invalid targeting rule, the UI presents refusal feedback and leaves HP, block, energy, and pile states unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "On the M1 combat surface, both en and zh-CN must render localized card name and localized card body/effect description for playable cards (including Strike and Defend) from the existing translation + card-definition contracts, with visible cost/type data from the same existing definition path; raw localization keys or placeholder text are not allowed. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "CombatScene reads card type from existing card definitions and uses that type for combat presentation and interaction behavior, without hard-coded fallback typing or any parallel card-description path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "When a status card is played, the defined status is applied to the correct target, and when an exhaust-effect card is played, that card is moved to exhaust (not discard) per the existing definition path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "CombatScene card loading uses only existing contracts and current card data files, and does not introduce any new card-definition path or new card-data file family. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "Legacy hard-coded Strike/Defend UI/effect wiring is removed from CombatScene runtime behavior: rendering, cost display, targeting, and resolution for Strike/Defend must come from the same existing card definition + localization + effect contracts path as all other cards, without card-specific hard-coded branches. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "Before workflow selection evidence marks Task 72 as selected, CombatScene implementation changes for this task must not be executable/claimed as delivered; once selected, implementation evidence must trace to the same existing card-definition + localization + effect-contract path (no parallel model path). Refs: Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "For target-rule edge cases (self-only, enemy-only, and invalid selected target), CombatScene must apply or refuse strictly per existing card targeting contracts, with refusal feedback and unchanged state on invalid selection. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths."
@@ -1940,7 +1942,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0072.json"
+      "logs/ci/<date>/task-0072.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
