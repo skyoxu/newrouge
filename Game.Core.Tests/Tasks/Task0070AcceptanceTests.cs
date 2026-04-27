@@ -12,6 +12,7 @@ public sealed class Task0070AcceptanceTests
 {
     private const string WorkflowSummaryTemplate = "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json";
     private const string ImplementationEvidenceTemplate = "logs/ci/<date>/task-0070.json";
+    private const string StrictEvidenceEnvName = "TASK0070_GATE_EVIDENCE_REQUIRED";
     private static readonly string RepoRoot = ResolveRepoRoot();
 
     // ACC:T70.8
@@ -30,8 +31,17 @@ public sealed class Task0070AcceptanceTests
         backTask.TestRefs.Should().Contain("Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs");
         gameplayTask.TestRefs.Should().Contain("Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs");
 
-        var workflowSummaryPath = ResolveLatestWorkflowSummaryPath();
-        var implementationEvidencePath = ResolveLatestImplementationEvidencePath();
+        if (!TryResolveLatestWorkflowSummaryPath(out var workflowSummaryPath, out var workflowMissingReason))
+        {
+            EnsurePipelineEvidenceOrSkip(workflowMissingReason);
+            return;
+        }
+
+        if (!TryResolveLatestImplementationEvidencePath(out var implementationEvidencePath, out var implementationMissingReason))
+        {
+            EnsurePipelineEvidenceOrSkip(implementationMissingReason);
+            return;
+        }
 
         File.Exists(workflowSummaryPath).Should().BeTrue("workflow-selection evidence must exist for Task 70 governance gate.");
         File.Exists(implementationEvidencePath).Should().BeTrue("implementation evidence must exist for Task 70 governance gate.");
@@ -106,34 +116,83 @@ public sealed class Task0070AcceptanceTests
 
     private sealed record ViewTask(string[] Acceptance, string[] TestRefs);
 
-    private static string ResolveLatestWorkflowSummaryPath()
+    private static bool TryResolveLatestWorkflowSummaryPath(out string candidate, out string reason)
     {
         var logsRoot = Path.Combine(RepoRoot, "logs", "ci");
-        Directory.Exists(logsRoot).Should().BeTrue();
+        if (!Directory.Exists(logsRoot))
+        {
+            candidate = string.Empty;
+            reason = $"missing logs/ci root: {logsRoot}";
+            return false;
+        }
 
-        var candidate = Directory
+        candidate = Directory
             .EnumerateFiles(logsRoot, "summary.json", SearchOption.AllDirectories)
             .Where(path => path.Replace('\\', '/').EndsWith("/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json", StringComparison.Ordinal))
             .Where(path => WorkflowSummaryMatchesTask70(path))
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
 
-        candidate.Should().NotBeNullOrWhiteSpace($"workflow evidence template {WorkflowSummaryTemplate} must resolve to a concrete file.");
-        return candidate!;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            reason = $"missing workflow evidence: {WorkflowSummaryTemplate}";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
     }
 
-    private static string ResolveLatestImplementationEvidencePath()
+    private static bool TryResolveLatestImplementationEvidencePath(out string candidate, out string reason)
     {
         var logsRoot = Path.Combine(RepoRoot, "logs", "ci");
-        Directory.Exists(logsRoot).Should().BeTrue();
+        if (!Directory.Exists(logsRoot))
+        {
+            candidate = string.Empty;
+            reason = $"missing logs/ci root: {logsRoot}";
+            return false;
+        }
 
-        var candidate = Directory
+        candidate = Directory
             .EnumerateFiles(logsRoot, "task-0070.json", SearchOption.AllDirectories)
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
 
-        candidate.Should().NotBeNullOrWhiteSpace($"implementation evidence template {ImplementationEvidenceTemplate} must resolve to a concrete file.");
-        return candidate!;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            reason = $"missing implementation evidence: {ImplementationEvidenceTemplate}";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    private static void EnsurePipelineEvidenceOrSkip(string reason)
+    {
+        if (!ShouldRequirePipelineEvidence())
+        {
+            return;
+        }
+
+        throw new Xunit.Sdk.XunitException(
+            "Task0070 pipeline evidence is required but missing. "
+            + reason
+            + " Set TASK0070_GATE_EVIDENCE_REQUIRED=0 (or unset) to suppress in CI/non-Task70 runs.");
+    }
+
+    private static bool ShouldRequirePipelineEvidence()
+    {
+        var raw = Environment.GetEnvironmentVariable(StrictEvidenceEnvName);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        return raw.Equals("1", StringComparison.OrdinalIgnoreCase)
+               || raw.Equals("true", StringComparison.OrdinalIgnoreCase)
+               || raw.Equals("yes", StringComparison.OrdinalIgnoreCase)
+               || raw.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void ValidateWorkflowEvidenceOrder(JsonDocument workflowSummary, JsonDocument implementationEvidence)
