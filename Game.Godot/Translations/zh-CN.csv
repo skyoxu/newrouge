@@ -28,6 +28,7 @@ combat.feedback.refused,命令'{0}'被拒绝。
 combat.feedback.refusal_reason.insufficient_energy,能量不足
 combat.feedback.refusal_reason.invalid_action,无效操作
 combat.feedback.refusal_reason.invalid_target,无效目标
+combat.feedback.refusal_reason.missing_card_definition,缺少卡牌定义
 combat.feedback.refusal_reason.no_card_selected,请先选择一张手牌。
 combat.action.hint,选择一张手牌，然后点击“打出选中卡牌”；没有合适操作时点击“结束回合”。
 combat.action.play_selected,打出选中卡牌

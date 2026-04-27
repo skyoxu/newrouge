@@ -227,9 +227,10 @@ public sealed class Task0062AcceptanceTests
 
         if (existingCandidates.Count > 0)
         {
-            path = existingCandidates[0];
-            reason = string.Empty;
-            return true;
+            // Keep evidence strict: unrelated gdUnit summaries must not be treated as Task62 rest evidence.
+            path = string.Empty;
+            reason = "found gdUnit run-summary.json artifacts, but none contains required Task62 rest evidence markers";
+            return false;
         }
 
         path = candidates.Count > 0 ? candidates[0] : string.Empty;

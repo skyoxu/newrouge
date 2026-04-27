@@ -46,13 +46,23 @@ public partial class CombatScene : Control
     private int _acceptedCommandFeedbackCount;
     private string _latestCommandOutcomeState = "none";
     private int _playerBlock;
+    private int _exhaustPileCount;
     private int _enemyIntentTurnIndex;
     private const string DefaultEnemyId = "enemy_m1_slime";
     private readonly Dictionary<string, EnemyCombatState> _enemyCombatById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, int>> _enemyStatusStacksByEnemy = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _playerStatusStacks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CardDefinitionRuntime> _cardDefinitionsByLookup = new(StringComparer.Ordinal);
     private string _selectedEnemyTargetId = string.Empty;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
+    private bool _cardDefinitionAutoLoadEnabledForTest = true;
+    private static readonly string[] CardDefinitionCandidatePaths =
+    {
+        "res://Game.Core/Data/m1-card-definitions.json",
+        "res://../Game.Core/Data/m1-card-definitions.json",
+    };
     private Texture2D? _enemyIntentFallbackTexture;
 
     public override void _Ready()
@@ -97,6 +107,7 @@ public partial class CombatScene : Control
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
         ApplyDefaultM1EnemyIntentIfEmpty();
+        EnsureCardDefinitionsLoaded();
         EnsureDefaultHandSelection();
     }
 
@@ -201,6 +212,7 @@ public partial class CombatScene : Control
             { "energy", _energyValue.Text },
             { "draw", _drawPileValue.Text },
             { "discard", _discardPileValue.Text },
+            { "exhaust", _exhaustPileCount.ToString(CultureInfo.InvariantCulture) },
             { "turnState", _turnStateValue.Text },
             { "selectedCommandState", _latestCommandOutcomeState },
         };
@@ -229,6 +241,57 @@ public partial class CombatScene : Control
     public bool RequestTurnActionForTest(string actionName)
     {
         return RequestTurnAction(actionName);
+    }
+
+    public bool TryApplyCardDefinitionsContractJsonForTest(string definitionsJson)
+    {
+        if (string.IsNullOrWhiteSpace(definitionsJson))
+        {
+            return false;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(definitionsJson);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        using (document)
+        {
+            if (!document.RootElement.TryGetProperty("cards", out var cards) || cards.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            _cardDefinitionsByLookup.Clear();
+            foreach (var cardNode in cards.EnumerateArray())
+            {
+                if (!TryBuildCardDefinition(cardNode, out var parsedDefinition))
+                {
+                    continue;
+                }
+
+                RegisterCardDefinition(parsedDefinition);
+            }
+        }
+
+        if (_cardDefinitionsByLookup.Count <= 0)
+        {
+            return false;
+        }
+
+        var handCards = new List<string>();
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            handCards.Add(_handCards.GetItemText(index));
+        }
+
+        RebuildCardButtons(handCards);
+        return true;
     }
 
     public global::Godot.Collections.Array<string> GetDispatchedCommandsForTest()
@@ -321,12 +384,6 @@ public partial class CombatScene : Control
     private bool TryPlayCard(string cardName, int selectedIndex = 0)
     {
         var normalizedCard = cardName.Trim();
-        if (!TryParseIntLabel(_energyValue, out var energy) || energy <= 0)
-        {
-            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
-            return false;
-        }
-
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
@@ -339,8 +396,20 @@ public partial class CombatScene : Control
             return false;
         }
 
+        if (!TryResolveCardDefinition(normalizedCard, out var definition))
+        {
+            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.missing_card_definition");
+            return false;
+        }
+
+        if (!TryParseIntLabel(_energyValue, out var energy) || energy < definition.Cost)
+        {
+            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
+            return false;
+        }
+
         string targetEnemyId = string.Empty;
-        if (CardRequiresEnemyTarget(normalizedCard) && !TryResolveSelectedAliveTarget(out targetEnemyId))
+        if (CardDefinitionRequiresEnemyTarget(definition) && !TryResolveSelectedAliveTarget(out targetEnemyId))
         {
             AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_target");
             return false;
@@ -351,18 +420,24 @@ public partial class CombatScene : Control
         var drawPile = TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : 0;
         var discardPile = TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : 0;
 
-        var result = ResolveCardEffect(normalizedCard, targetEnemyId);
+        var result = ResolveCardEffect(definition, targetEnemyId);
         handCards.RemoveAt(selectedIndex);
-        var remainingEnergy = energy - 1;
+        var remainingEnergy = energy - definition.Cost;
+        if (result.MovedToExhaust)
+        {
+            _exhaustPileCount += 1;
+        }
+
+        var nextDiscardPile = result.MovedToExhaust ? discardPile : discardPile + 1;
         ApplyCoreSnapshot(new CombatHudSnapshot(
             handCards,
             remainingEnergy,
             drawPile,
-            discardPile + 1,
+            nextDiscardPile,
             difficulty,
             playerHp,
             _turnStateValue.Text));
-        AppendCommandFeedback(normalizedCard, accepted: true, detail: BuildAcceptedCardDetail(result, remainingEnergy));
+        AppendCommandFeedback(normalizedCard, accepted: true, detail: BuildAcceptedCardDetail(result, remainingEnergy, definition.Cost));
         TryAutoCompleteVictoryRoute();
         return true;
     }
@@ -395,6 +470,67 @@ public partial class CombatScene : Control
     public string GetEnemyHpTextForTest()
     {
         return _enemyHpValue.Text;
+    }
+
+    public string GetEnemyStatusTextForTest()
+    {
+        return _enemyStatusValue.Text;
+    }
+
+    public string GetEnemyStatusForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyCombatById.TryGetValue(enemyId, out var state))
+        {
+            return string.Empty;
+        }
+
+        return state.Status;
+    }
+
+    public int GetDiscardPileCountForTest()
+    {
+        return TryParseIntLabel(_discardPileValue, out var value) ? value : 0;
+    }
+
+    public int GetExhaustPileCountForTest()
+    {
+        return _exhaustPileCount;
+    }
+
+    public int GetPlayerBlockForTest()
+    {
+        return _playerBlock;
+    }
+
+    public void ClearCardDefinitionsForTest()
+    {
+        _cardDefinitionsByLookup.Clear();
+    }
+
+    public void SetCardDefinitionAutoLoadEnabledForTest(bool enabled)
+    {
+        _cardDefinitionAutoLoadEnabledForTest = enabled;
+        if (enabled && _cardDefinitionsByLookup.Count <= 0)
+        {
+            EnsureCardDefinitionsLoaded();
+        }
+    }
+
+    public string GetPlayerStatusSummaryForTest()
+    {
+        if (_playerStatusStacks.Count <= 0)
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+        foreach (var (statusId, stacks) in _playerStatusStacks)
+        {
+            parts.Add($"{statusId}:{stacks}");
+        }
+
+        parts.Sort(StringComparer.Ordinal);
+        return string.Join(",", parts);
     }
 
     public global::Godot.Collections.Array<string> GetAvailableEnemyTargetIdsForTest()
@@ -470,6 +606,13 @@ public partial class CombatScene : Control
         _handTitleLabel.Text = ResolveUiText("combat.hand.title");
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
+        var handCards = new List<string>();
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            handCards.Add(_handCards.GetItemText(index));
+        }
+
+        RebuildCardButtons(handCards);
         RefreshDefaultM1EnemyStateLocale();
         RefreshEnemyIntentRows();
     }
@@ -665,25 +808,59 @@ public partial class CombatScene : Control
         _feedbackHistoryList.AddItem(message);
     }
 
-    private CardEffectResult ResolveCardEffect(string cardName, string targetEnemyId)
+    private CardEffectResult ResolveCardEffect(CardDefinitionRuntime definition, string targetEnemyId)
     {
-        var normalizedCard = cardName.Trim();
-        if (normalizedCard.Contains("Defend", StringComparison.OrdinalIgnoreCase))
+        var dealtDamage = 0;
+        if (definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase))
         {
-            _playerBlock += 5;
-            return new CardEffectResult(Damage: 0, Block: 5);
+            foreach (var enemyId in GetAliveEnemyIds())
+            {
+                dealtDamage += ApplyDamageToEnemy(enemyId, definition.Damage);
+            }
+        }
+        else if (definition.Damage > 0 && definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase))
+        {
+            dealtDamage += ApplyDamageToEnemy(targetEnemyId, definition.Damage);
         }
 
-        var damage = normalizedCard.Contains("Strike", StringComparison.OrdinalIgnoreCase) ? 6 : 0;
-        if (damage > 0)
+        if (definition.Block > 0)
         {
-            ApplyDamageToEnemy(targetEnemyId, damage);
+            _playerBlock += definition.Block;
         }
 
-        return new CardEffectResult(Damage: damage, Block: 0);
+        var statusDetail = string.Empty;
+        if (definition.StatusStacks > 0 && !string.IsNullOrWhiteSpace(definition.StatusId))
+        {
+            if (definition.Target.Equals("self", StringComparison.OrdinalIgnoreCase))
+            {
+                ApplyStatusToPlayer(definition.StatusId, definition.StatusStacks);
+                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to self";
+            }
+            else if (definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var enemyId in GetAliveEnemyIds())
+                {
+                    ApplyStatusToEnemy(enemyId, definition.StatusId, definition.StatusStacks);
+                }
+
+                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to all_enemies";
+            }
+            else
+            {
+                var resolvedEnemyId = string.IsNullOrWhiteSpace(targetEnemyId) ? DefaultEnemyId : targetEnemyId.Trim();
+                ApplyStatusToEnemy(resolvedEnemyId, definition.StatusId, definition.StatusStacks);
+                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to {resolvedEnemyId}";
+            }
+        }
+
+        return new CardEffectResult(
+            Damage: dealtDamage,
+            Block: definition.Block,
+            StatusDetail: statusDetail,
+            MovedToExhaust: definition.Exhaust);
     }
 
-    private void ApplyDamageToEnemy(string enemyId, int damage)
+    private int ApplyDamageToEnemy(string enemyId, int damage)
     {
         var resolvedEnemyId = string.IsNullOrWhiteSpace(enemyId) ? DefaultEnemyId : enemyId.Trim();
         if (!_enemyCombatById.TryGetValue(resolvedEnemyId, out var enemyState))
@@ -694,6 +871,7 @@ public partial class CombatScene : Control
         var currentHp = enemyState.CurrentHp;
         var maxHp = Math.Max(1, enemyState.MaxHp);
         var remainingHp = Math.Max(0, currentHp - Math.Max(0, damage));
+        var actualDamage = Math.Max(0, currentHp - remainingHp);
         _enemyCombatById[resolvedEnemyId] = enemyState with { CurrentHp = remainingHp, MaxHp = maxHp };
         if (remainingHp <= 0)
         {
@@ -701,6 +879,7 @@ public partial class CombatScene : Control
         }
 
         RefreshPrimaryEnemyPanel();
+        return actualDamage;
     }
 
     private static (int Current, int Max) ParseEnemyHp(string text)
@@ -721,7 +900,7 @@ public partial class CombatScene : Control
         return (32, 32);
     }
 
-    private static string BuildAcceptedCardDetail(CardEffectResult result, int remainingEnergy)
+    private static string BuildAcceptedCardDetail(CardEffectResult result, int remainingEnergy, int paidCost)
     {
         var parts = new List<string>();
         if (result.Damage > 0)
@@ -734,23 +913,265 @@ public partial class CombatScene : Control
             parts.Add($"gained {result.Block} block");
         }
 
-        parts.Add($"Energy -1 (remaining {remainingEnergy}).");
+        if (!string.IsNullOrWhiteSpace(result.StatusDetail))
+        {
+            parts.Add(result.StatusDetail);
+        }
+
+        parts.Add(result.MovedToExhaust ? "moved to exhaust" : "moved to discard");
+        parts.Add($"Energy -{paidCost} (remaining {remainingEnergy}).");
         return string.Join("; ", parts);
     }
 
-    private static bool CardRequiresEnemyTarget(string normalizedCard)
+    private static bool CardDefinitionRequiresEnemyTarget(CardDefinitionRuntime definition)
     {
-        if (string.IsNullOrWhiteSpace(normalizedCard))
+        return definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase)
+            || definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool TryResolveCardDefinition(string cardName, out CardDefinitionRuntime definition)
+    {
+        EnsureCardDefinitionsLoaded();
+        var key = NormalizeCardLookupKey(cardName);
+        return _cardDefinitionsByLookup.TryGetValue(key, out definition!);
+    }
+
+    private void EnsureCardDefinitionsLoaded()
+    {
+        if (_cardDefinitionsByLookup.Count > 0)
+        {
+            return;
+        }
+
+        if (!_cardDefinitionAutoLoadEnabledForTest)
+        {
+            return;
+        }
+
+        _ = TryLoadCardDefinitionsFromData();
+    }
+
+    private bool TryLoadCardDefinitionsFromData()
+    {
+        foreach (var path in CardDefinitionCandidatePaths)
+        {
+            if (!FileAccess.FileExists(path))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(file.GetAsText());
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            using (document)
+            {
+                if (!document.RootElement.TryGetProperty("cards", out var cards) || cards.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var cardNode in cards.EnumerateArray())
+                {
+                    if (!TryBuildCardDefinition(cardNode, out var parsedDefinition))
+                    {
+                        continue;
+                    }
+
+                    RegisterCardDefinition(parsedDefinition);
+                }
+            }
+
+            if (_cardDefinitionsByLookup.Count > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryBuildCardDefinition(JsonElement cardNode, out CardDefinitionRuntime definition)
+    {
+        definition = default!;
+        if (!cardNode.TryGetProperty("id", out var idNode) || idNode.ValueKind != JsonValueKind.String)
         {
             return false;
         }
 
-        if (normalizedCard.Contains("Defend", StringComparison.OrdinalIgnoreCase))
+        var id = idNode.GetString()?.Trim() ?? string.Empty;
+        if (id.Length <= 0)
         {
             return false;
         }
 
+        var target = cardNode.TryGetProperty("target", out var targetNode) && targetNode.ValueKind == JsonValueKind.String
+            ? targetNode.GetString()?.Trim() ?? "enemy"
+            : "enemy";
+        var type = cardNode.TryGetProperty("type", out var typeNode) && typeNode.ValueKind == JsonValueKind.String
+            ? typeNode.GetString()?.Trim() ?? "unknown"
+            : "unknown";
+        var nameKey = cardNode.TryGetProperty("name_key", out var nameKeyNode) && nameKeyNode.ValueKind == JsonValueKind.String
+            ? nameKeyNode.GetString()?.Trim() ?? string.Empty
+            : string.Empty;
+        var descriptionKey = cardNode.TryGetProperty("description_key", out var descriptionNode) && descriptionNode.ValueKind == JsonValueKind.String
+            ? descriptionNode.GetString()?.Trim() ?? string.Empty
+            : string.Empty;
+        var cost = cardNode.TryGetProperty("cost", out var costNode) && costNode.ValueKind == JsonValueKind.Number
+            ? Math.Max(0, costNode.GetInt32())
+            : 1;
+
+        var damage = 0;
+        var block = 0;
+        var rage = 0;
+        if (cardNode.TryGetProperty("base_effect", out var effectNode) && effectNode.ValueKind == JsonValueKind.Object)
+        {
+            if (effectNode.TryGetProperty("damage", out var damageNode) && damageNode.ValueKind == JsonValueKind.Number)
+            {
+                damage = Math.Max(0, damageNode.GetInt32());
+            }
+
+            if (effectNode.TryGetProperty("block", out var blockNode) && blockNode.ValueKind == JsonValueKind.Number)
+            {
+                block = Math.Max(0, blockNode.GetInt32());
+            }
+
+            if (effectNode.TryGetProperty("rage", out var rageNode) && rageNode.ValueKind == JsonValueKind.Number)
+            {
+                rage = Math.Max(0, rageNode.GetInt32());
+            }
+        }
+
+        var statusId = rage > 0 ? "status.rage" : string.Empty;
+        var exhaust = false;
+        if (cardNode.TryGetProperty("exhaust", out var cardExhaustNode))
+        {
+            exhaust = cardExhaustNode.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => exhaust,
+            };
+        }
+
+        if (effectNode.ValueKind == JsonValueKind.Object
+            && effectNode.TryGetProperty("exhaust", out var effectExhaustNode))
+        {
+            exhaust = effectExhaustNode.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => exhaust,
+            };
+        }
+
+        definition = new CardDefinitionRuntime(id, target, type, nameKey, descriptionKey, cost, damage, block, statusId, rage, exhaust);
         return true;
+    }
+
+    private void RegisterCardDefinition(CardDefinitionRuntime definition)
+    {
+        RegisterCardLookup(definition.Id, definition);
+        RegisterCardLookup(definition.Id[(definition.Id.LastIndexOf('.') + 1)..], definition);
+
+        var nameKey = string.IsNullOrWhiteSpace(definition.NameKey) ? $"{definition.Id}.name" : definition.NameKey;
+        var enMap = GetFeedbackTextMap("en");
+        if (enMap.TryGetValue(nameKey, out var enName))
+        {
+            RegisterCardLookup(enName, definition);
+        }
+
+        var zhMap = GetFeedbackTextMap("zh-cn");
+        if (zhMap.TryGetValue(nameKey, out var zhName))
+        {
+            RegisterCardLookup(zhName, definition);
+        }
+    }
+
+    private void RegisterCardLookup(string key, CardDefinitionRuntime definition)
+    {
+        var normalized = NormalizeCardLookupKey(key);
+        if (normalized.Length <= 0)
+        {
+            return;
+        }
+
+        _cardDefinitionsByLookup[normalized] = definition;
+    }
+
+    private static string NormalizeCardLookupKey(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        var chars = new List<char>(raw.Length);
+        foreach (var ch in raw.Trim())
+        {
+            if (char.IsWhiteSpace(ch) || ch == '_' || ch == '-' || ch == '.')
+            {
+                continue;
+            }
+
+            chars.Add(char.ToLowerInvariant(ch));
+        }
+
+        return new string(chars.ToArray());
+    }
+
+    private void ApplyStatusToEnemy(string enemyId, string statusId, int stacks)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyCombatById.TryGetValue(enemyId, out var enemyState))
+        {
+            return;
+        }
+
+        if (!_enemyStatusStacksByEnemy.TryGetValue(enemyId, out var statusMap))
+        {
+            statusMap = new Dictionary<string, int>(StringComparer.Ordinal);
+            _enemyStatusStacksByEnemy[enemyId] = statusMap;
+        }
+
+        statusMap.TryGetValue(statusId, out var current);
+        statusMap[statusId] = current + stacks;
+        _enemyCombatById[enemyId] = enemyState with { Status = BuildStatusSummary(statusMap) };
+        RefreshPrimaryEnemyPanel();
+    }
+
+    private void ApplyStatusToPlayer(string statusId, int stacks)
+    {
+        _playerStatusStacks.TryGetValue(statusId, out var current);
+        _playerStatusStacks[statusId] = current + stacks;
+    }
+
+    private string BuildStatusSummary(IReadOnlyDictionary<string, int> statusMap)
+    {
+        if (statusMap.Count <= 0)
+        {
+            return ResolveUiText("combat.enemy.status.none");
+        }
+
+        var parts = new List<string>();
+        foreach (var (statusId, stacks) in statusMap)
+        {
+            parts.Add($"{statusId} +{stacks}");
+        }
+
+        parts.Sort(StringComparer.Ordinal);
+        return string.Join(", ", parts);
     }
 
     private bool TryResolveSelectedAliveTarget(out string enemyId)
@@ -810,6 +1231,7 @@ public partial class CombatScene : Control
     private void RemoveEnemyFromActiveSets(string enemyId)
     {
         _enemyIntentByEnemy.Remove(enemyId);
+        _enemyStatusStacksByEnemy.Remove(enemyId);
         if (string.Equals(_selectedEnemyTargetId, enemyId, StringComparison.Ordinal))
         {
             _selectedEnemyTargetId = string.Empty;
@@ -914,6 +1336,7 @@ public partial class CombatScene : Control
             {
                 "combat.feedback.refusal_reason.insufficient_energy" => "insufficient energy",
                 "combat.feedback.refusal_reason.invalid_target" => "invalid target",
+                "combat.feedback.refusal_reason.missing_card_definition" => "missing card definition",
                 "combat.invalid_action" => "invalid action",
                 _ => "invalid action",
             };
@@ -1148,7 +1571,7 @@ public partial class CombatScene : Control
             var button = new Button
             {
                 Name = $"CardButton_{index}",
-                Text = cardName,
+                Text = BuildCardButtonText(cardName),
                 CustomMinimumSize = new Vector2(128, 56),
                 SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
             };
@@ -1160,6 +1583,71 @@ public partial class CombatScene : Control
             };
             _cardButtonRow.AddChild(button);
         }
+    }
+
+    private string BuildCardButtonText(string cardName)
+    {
+        if (!TryResolveCardDefinition(cardName, out var definition))
+        {
+            return cardName;
+        }
+
+        var displayName = ResolveCardDisplayName(definition);
+        var typeText = string.IsNullOrWhiteSpace(definition.Type) ? "unknown" : definition.Type;
+        var effectSummary = ResolveCardEffectSummary(definition);
+        return $"{displayName}\nCost {definition.Cost} | {typeText}\n{effectSummary}";
+    }
+
+    private static string ResolveCardDisplayName(CardDefinitionRuntime definition)
+    {
+        if (!string.IsNullOrWhiteSpace(definition.NameKey))
+        {
+            var localized = ResolveFeedbackTemplate(definition.NameKey);
+            if (!string.Equals(localized, definition.NameKey, StringComparison.Ordinal))
+            {
+                return localized;
+            }
+        }
+
+        var lastDot = definition.Id.LastIndexOf('.');
+        return lastDot >= 0 && lastDot < definition.Id.Length - 1
+            ? definition.Id[(lastDot + 1)..]
+            : definition.Id;
+    }
+
+    private static string ResolveCardEffectSummary(CardDefinitionRuntime definition)
+    {
+        if (!string.IsNullOrWhiteSpace(definition.DescriptionKey))
+        {
+            var localized = ResolveFeedbackTemplate(definition.DescriptionKey);
+            if (!string.Equals(localized, definition.DescriptionKey, StringComparison.Ordinal))
+            {
+                return localized;
+            }
+        }
+
+        var parts = new List<string>();
+        if (definition.Damage > 0)
+        {
+            parts.Add($"Deal {definition.Damage} damage.");
+        }
+
+        if (definition.Block > 0)
+        {
+            parts.Add($"Gain {definition.Block} block.");
+        }
+
+        if (definition.StatusStacks > 0 && !string.IsNullOrWhiteSpace(definition.StatusId))
+        {
+            parts.Add($"Apply {definition.StatusId} +{definition.StatusStacks}.");
+        }
+
+        if (parts.Count <= 0)
+        {
+            parts.Add("No effect summary.");
+        }
+
+        return string.Join(" ", parts);
     }
 
     private void RefreshEnemyIntentRows()
@@ -1384,5 +1872,17 @@ public partial class CombatScene : Control
         int MaxHp = 32
     );
 
-    private sealed record CardEffectResult(int Damage, int Block);
+    private sealed record CardEffectResult(int Damage, int Block, string StatusDetail, bool MovedToExhaust);
+    private sealed record CardDefinitionRuntime(
+        string Id,
+        string Target,
+        string Type,
+        string NameKey,
+        string DescriptionKey,
+        int Cost,
+        int Damage,
+        int Block,
+        string StatusId,
+        int StatusStacks,
+        bool Exhaust);
 }
