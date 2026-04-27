@@ -1780,7 +1780,7 @@
     ],
     "acceptance": [
       "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, does not present the four standalone node-type shortcut buttons as the primary entry path, and does not introduce any parallel Map-to-node transition owner or second execution path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-        "The M1 route graph must expose a deterministic directed edge set for the full five-floor route: every non-terminal node has at least one legal outgoing edge to the next floor, the final node has no outgoing edge, and no edge skips floors or points to an undefined node ID. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The M1 route graph must expose a deterministic directed edge set for the full five-floor route: every non-terminal node has at least one legal outgoing edge to the next floor, the final node has no outgoing edge, and no edge skips floors or points to an undefined node ID. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Map rendering makes reachable, locked, completed, and selected-path states visually distinguishable on both nodes and edges so currently legal choices are directly observable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Selecting a reachable node triggers the existing route-owned Map-to-node transition; selecting a locked or disconnected node shows visible refusal feedback, does not transition, and keeps run progression unchanged. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "After node completion, route-graph reachability updates so only legal next-floor nodes and connecting edges become reachable, while traversed segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
@@ -2729,18 +2729,18 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
-      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
     ],
     "acceptance": [
-      "On first entry to Reward, the system generates exactly three offered cards through the existing shared card-pool path using the current act and encounter context; placeholder content or Reward-scene-local generation must not be used. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "Given identical act and encounter context under first-entry conditions, the shared-pool Reward offer is deterministic before any re-entry or restore logic; any differing offer fails this task. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs",
-      "For T84 in Chapter 6, acceptance validates first-entry offer generation only; reward stability and failure-handling outcomes are out of scope and must not be used as pass criteria. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
-      "Invalid-pool fallback is deferred to a follow-up task; T84 must not require, implement, or claim acceptance based on invalid-pool fallback behavior. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "If workflow has not explicitly selected T84, implementation execution must be refused and implementation/code state must remain unchanged; review evidence must show workflow selection before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
-      "Reward scene tests and integration tests are added or extended to verify first-entry shared-pool offer generation on the existing reward path; missing either scene or integration coverage fails acceptance. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Reward first-entry offer generation must use the shared reward pool owner as the only authoritative source, and RewardScene must not cache or synthesize an alternative authoritative offer set outside that path. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
+      "On first entry to Reward, the system generates exactly three offered cards through the existing shared card-pool path using the current act and encounter context; placeholder content or Reward-scene-local generation must not be used. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Given identical act and encounter context under first-entry conditions, the shared-pool Reward offer is deterministic before any re-entry or restore logic; any differing offer fails this task. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "For T84 in Chapter 6, acceptance validates first-entry offer generation only; reward stability and failure-handling outcomes are out of scope and must not be used as pass criteria. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Invalid-pool fallback is deferred to a follow-up task; T84 must not require, implement, or claim acceptance based on invalid-pool fallback behavior. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "If workflow has not explicitly selected T84, implementation execution must be refused and implementation/code state must remain unchanged; review evidence must show workflow selection before any implementation evidence. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Reward scene tests and integration tests are added or extended to verify first-entry shared-pool offer generation on the existing reward path; missing either scene or integration coverage fails acceptance. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Reward first-entry offer generation must use the shared reward pool owner as the only authoritative source, and RewardScene must not cache or synthesize an alternative authoritative offer set outside that path. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add or extend Reward scene and integration tests to cover pool-driven first-entry offer generation through the shared reward path."
@@ -2753,7 +2753,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0084.json"
+      "logs/ci/<date>/task-0084.json",
+      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

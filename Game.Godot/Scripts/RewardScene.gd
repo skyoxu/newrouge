@@ -26,10 +26,13 @@ const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 
 var _selected_index: int = -1
 var _translations_by_locale := {}
+var _offer_snapshot: Dictionary = {}
+var _offered_cards: Array = []
 
 func _ready() -> void:
 	_confirm_button.pressed.connect(_on_confirm_pressed)
 	_skip_button.pressed.connect(_on_skip_pressed)
+	_load_offer_snapshot_from_main()
 	RefreshLocaleForTest()
 	_feedback_label.text = _resolve_text(FEEDBACK_DEFAULT_KEY)
 
@@ -41,11 +44,9 @@ func SetLocaleForTest(locale: String) -> void:
 
 func RefreshLocaleForTest() -> void:
 	_title_label.text = _resolve_text(TITLE_KEY)
-	_card1_label.text = _resolve_text(CARD1_KEY)
-	_card2_label.text = _resolve_text(CARD2_KEY)
-	_card3_label.text = _resolve_text(CARD3_KEY)
 	_confirm_button.text = _resolve_text(CONFIRM_KEY)
 	_skip_button.text = _resolve_text(SKIP_KEY)
+	_refresh_offer_labels()
 
 func SelectChoiceForTest(index: int) -> bool:
 	if index < 0 or index >= _card_list.get_child_count():
@@ -75,7 +76,25 @@ func GetFeedbackForTest() -> String:
 	return _feedback_label.text
 
 func GetCardCountForTest() -> int:
+	if _offered_cards.size() > 0:
+		return _offered_cards.size()
 	return _card_list.get_child_count()
+
+func GetOfferSourceForTest() -> String:
+	return str(_offer_snapshot.get("source", ""))
+
+func GetOfferedCardIdsForTest() -> Array[String]:
+	var ids: Array[String] = []
+	for card_data in _offered_cards:
+		if typeof(card_data) != TYPE_DICTIONARY:
+			continue
+		var card := card_data as Dictionary
+		var card_id := str(card.get("id", ""))
+		if card_id.is_empty():
+			card_id = str(card.get("name", ""))
+		if not card_id.is_empty():
+			ids.append(card_id)
+	return ids
 
 func _on_confirm_pressed() -> void:
 	ConfirmSelectedForTest()
@@ -95,6 +114,47 @@ func _resolve_main_controller() -> Node:
 			return current
 		current = current.get_parent()
 	return get_node_or_null("/root/Main")
+
+func _load_offer_snapshot_from_main() -> void:
+	_offer_snapshot.clear()
+	_offered_cards.clear()
+	var main = _resolve_main_controller()
+	if main == null or not main.has_method("GetRewardOfferSnapshotForScene"):
+		return
+	var snapshot_variant = main.call("GetRewardOfferSnapshotForScene")
+	if typeof(snapshot_variant) != TYPE_DICTIONARY:
+		return
+	_offer_snapshot = (snapshot_variant as Dictionary).duplicate(true)
+	var offers_variant = _offer_snapshot.get("offers", [])
+	if typeof(offers_variant) != TYPE_ARRAY:
+		return
+	for item in (offers_variant as Array):
+		if typeof(item) == TYPE_DICTIONARY:
+			_offered_cards.append((item as Dictionary).duplicate(true))
+
+func _resolve_offer_label_text(index: int, fallback_key: String) -> String:
+	if index < 0 or index >= _offered_cards.size():
+		return _resolve_text(fallback_key)
+	var card_data = _offered_cards[index]
+	if typeof(card_data) != TYPE_DICTIONARY:
+		return _resolve_text(fallback_key)
+	var card := card_data as Dictionary
+	var name_key := str(card.get("name_key", "")).strip_edges()
+	if not name_key.is_empty():
+		return _resolve_text(name_key)
+	var name := str(card.get("name", "")).strip_edges()
+	if name.is_empty():
+		name = str(card.get("id", "")).strip_edges()
+	if name.is_empty():
+		return _resolve_text(fallback_key)
+	if name.begins_with("card.") and name.ends_with(".name"):
+		return _resolve_text(name)
+	return name
+
+func _refresh_offer_labels() -> void:
+	_card1_label.text = _resolve_offer_label_text(0, CARD1_KEY)
+	_card2_label.text = _resolve_offer_label_text(1, CARD2_KEY)
+	_card3_label.text = _resolve_offer_label_text(2, CARD3_KEY)
 
 func _resolve_text(key: String) -> String:
 	if key.strip_edges().is_empty():

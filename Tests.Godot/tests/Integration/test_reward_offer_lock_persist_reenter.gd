@@ -54,6 +54,7 @@ class RewardFlowHarness:
 		return cards.slice(0, 3)
 
 
+
 # acceptance: ACC:T19.3
 # acceptance: ACC:T61.3
 func test_reenter_must_not_regenerate_or_reorder_locked_offer() -> void:
