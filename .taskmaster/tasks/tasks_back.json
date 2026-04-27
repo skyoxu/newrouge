@@ -1776,17 +1776,17 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs"
     ],
     "acceptance": [
-      "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, and does not present the four standalone node-type shortcut buttons as the primary entry path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "The M1 route graph defines explicit node IDs and directed edges for the complete five-floor route, including floor-1 to floor-2 branch choices and legal continuations to the final M1 endpoint. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, does not present the four standalone node-type shortcut buttons as the primary entry path, and does not introduce any parallel Map-to-node transition owner or second execution path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+        "The M1 route graph must expose a deterministic directed edge set for the full five-floor route: every non-terminal node has at least one legal outgoing edge to the next floor, the final node has no outgoing edge, and no edge skips floors or points to an undefined node ID. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Map rendering makes reachable, locked, completed, and selected-path states visually distinguishable on both nodes and edges so currently legal choices are directly observable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Selecting a reachable node triggers the existing route-owned Map-to-node transition; selecting a locked or disconnected node shows visible refusal feedback, does not transition, and keeps run progression unchanged. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "After node completion, route-graph reachability updates so only legal next-floor nodes and connecting edges become reachable, while traversed segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "When route-graph entry is active, legacy ActionRow shortcut buttons (Combat, Event, Shop, Rest) are hidden or removed from the player-facing Map. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Windows GdUnit coverage verifies route-edge presence, post-completion edge-state updates, locked/disconnected selection refusal with unchanged progression, preservation of route-owned transitions, and non-visible legacy shortcut buttons in Map scene. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Implementation work for T70 is valid only after workflow explicitly selects T70, and review evidence includes that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Route-node selection must have a single execution authority: reachable-node selection resolves exactly once through the existing route-owned transition path, while locked/disconnected selections resolve to refusal feedback only and never invoke an alternative scene transition path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Workflow-selection gate evidence for T70 must be recorded before implementation evidence is accepted; verification must assert a concrete workflow-selection summary artifact exists with task_id=70 and that its timestamp is not later than the selected implementation evidence timestamp. Refs: Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Extend the existing Map route GdUnit suite to cover connected route graph edges, path-state visualization, legal unlock progression, and hidden legacy shortcut buttons on Windows."
@@ -1799,7 +1799,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0070.json"
+      "logs/ci/<date>/task-0070.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
@@ -3232,16 +3233,13 @@
   {
     "id": "NG-0034",
     "story_id": "BACKLOG-M1",
-    "title": "Architecture tests (Core must not depend on Godot)",
+    "title": "Promote architecture boundary tests into the main task line for Core-versus-Godot protection",
     "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
     "status": "pending",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
-      "NG-0043",
-      "NG-0068",
-      "NG-0071",
-      "NG-0073"
+      "NG-0043"
     ],
     "adr_refs": [
       "ADR-0007",
@@ -3300,7 +3298,7 @@
   {
     "id": "NG-0035",
     "story_id": "BACKLOG-M1",
-    "title": "OS.execute guard (deny-by-default) + audit",
+    "title": "Add deny-by-default external process execution guard and audit coverage",
     "description": "Provide a single adapter for external process execution and keep OS.execute disabled by default. Allow only explicit dev-mode allowlisted commands and write audit records on any deny/allow. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B3).",
     "status": "pending",
     "priority": "P3",
@@ -3361,7 +3359,7 @@
   {
     "id": "NG-0036",
     "story_id": "BACKLOG-M1",
-    "title": "Signal contract validation and tests (security-sensitive)",
+    "title": "Validate security-sensitive signal contracts before wider runtime expansion",
     "description": "Add contract validation for security-sensitive signals (naming/arguments) and integrate into CI checks. This should catch accidental drift between signal definitions and expected contracts. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B5).",
     "status": "pending",
     "priority": "P3",
@@ -3499,7 +3497,6 @@
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
-      "NG-0050",
       "NG-0067"
     ],
     "adr_refs": [
@@ -3697,7 +3694,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0098.json"
+      "logs/ci/<date>/task-0098.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
@@ -3710,7 +3708,6 @@
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
-      "NG-0052",
       "NG-0063"
     ],
     "adr_refs": [
@@ -3904,7 +3901,7 @@
     "description": "Add a lightweight governance pass to keep late M1 runtime tasks sized for one deterministic closure per Chapter 6 run before additional role, card, and monster expansion begins.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0043",
       "NG-0036"
@@ -3963,7 +3960,7 @@
     "description": "Keep Continue tasks narrow at execution time by teaching the review path to validate primary boundaries separately from locked surface restoration.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0062",
       "NG-0070",
@@ -4023,7 +4020,7 @@
     "description": "Keep combat rule promotion executable in narrower Chapter 6 loops by separating core rule integration from scene feedback reconciliation.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0065",
       "NG-0072",
@@ -4279,7 +4276,7 @@
     "description": "Keep enemy intent execution narrow in Chapter 6 by separating preview generation from enemy turn resolution and no-repeat verification.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0051",
       "NG-0077",
@@ -4339,7 +4336,7 @@
     "description": "Keep settlement tasks narrow at execution time by teaching the review path to validate owner-surface closure, reward or relic metadata, and resume evidence as separate lanes.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0066",
       "NG-0079",
@@ -4530,7 +4527,7 @@
     "description": "Keep relic runtime tasks narrow at execution time by teaching the review path to validate combat trigger closure separately from broader run trigger closure.",
     "status": "pending",
     "priority": "P2",
-    "layer": "governance",
+    "layer": "docs",
     "depends_on": [
       "NG-0071",
       "NG-0082",

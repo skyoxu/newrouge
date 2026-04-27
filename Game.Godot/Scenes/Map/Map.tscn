@@ -85,6 +85,42 @@ theme_override_constants/separation = 12
 layout_mode = 2
 text = "F5 Boss"
 
+[node name="RouteEdgeContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 780.0
+offset_top = 152.0
+offset_right = 1220.0
+offset_bottom = 360.0
+theme_override_constants/separation = 4
+
+[node name="combat_01__event_02" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "combat-01 -> event-02"
+
+[node name="combat_01__combat_02" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "combat-01 -> combat-02"
+
+[node name="event_02__shop_03" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "event-02 -> shop-03"
+
+[node name="combat_02__combat_03" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "combat-02 -> combat-03"
+
+[node name="shop_03__rest_04" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "shop-03 -> rest-04"
+
+[node name="combat_03__rest_04" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "combat-03 -> rest-04"
+
+[node name="rest_04__boss_05" type="Label" parent="RouteEdgeContainer"]
+layout_mode = 2
+text = "rest-04 -> boss-05"
+
 [node name="feedback_label" type="Label" parent="."]
 layout_mode = 2
 offset_left = 40.0
@@ -92,6 +128,15 @@ offset_top = 320.0
 offset_right = 760.0
 offset_bottom = 360.0
 text = "ui.map.feedback.ready"
+
+[node name="edge_legend_label" type="Label" parent="."]
+layout_mode = 2
+offset_left = 40.0
+offset_top = 368.0
+offset_right = 760.0
+offset_bottom = 432.0
+autowrap_mode = 3
+text = ""
 
 [node name="combat_icon" type="Node" parent="."]
 groups = ["map_node_combat"]

@@ -26,6 +26,8 @@ public partial class MapScene : Control
     private Label _hintLabel = default!;
     private Label _feedbackLabel = default!;
     private Label _nodeLegendLabel = default!;
+    private Label _edgeLegendLabel = default!;
+    private VBoxContainer _routeEdgeContainer = default!;
     private Button _combatButton = default!;
     private Button _eventButton = default!;
     private Button _shopButton = default!;
@@ -44,8 +46,18 @@ public partial class MapScene : Control
         new("boss-05", "combat", 5, "F5 Boss", "F5 首领"),
     };
     private readonly Dictionary<string, Button> _routeButtonsById = new(StringComparer.Ordinal);
+    private static readonly Color NodeStateReachableColor = new(0.78f, 1.0f, 0.78f, 1.0f);
+    private static readonly Color NodeStateLockedColor = new(0.66f, 0.66f, 0.66f, 1.0f);
+    private static readonly Color NodeStateCompletedColor = new(0.66f, 0.86f, 1.0f, 1.0f);
+    private static readonly Color NodeStateSelectedPathColor = new(1.0f, 0.88f, 0.55f, 1.0f);
+    private static readonly Color EdgeStateReachableColor = new(0.78f, 1.0f, 0.78f, 1.0f);
+    private static readonly Color EdgeStateLockedColor = new(0.70f, 0.70f, 0.70f, 1.0f);
+    private static readonly Color EdgeStateCompletedColor = new(0.66f, 0.86f, 1.0f, 1.0f);
+    private static readonly Color EdgeStateSelectedPathColor = new(1.0f, 0.88f, 0.55f, 1.0f);
 
     private sealed record RouteNode(string Id, string Type, int Floor, string EnglishLabel, string ChineseLabel);
+    private sealed record RouteEdge(string FromId, string ToId, int FromFloor, int ToFloor);
+
 
     public override void _Ready()
     {
@@ -53,6 +65,8 @@ public partial class MapScene : Control
         _hintLabel = GetNode<Label>("hint_label");
         _feedbackLabel = GetNode<Label>("feedback_label");
         _nodeLegendLabel = GetNode<Label>("node_legend_label");
+        _edgeLegendLabel = GetNode<Label>("edge_legend_label");
+        _routeEdgeContainer = GetNode<VBoxContainer>("RouteEdgeContainer");
         _combatButton = GetNode<Button>("ActionRow/btn_combat");
         _eventButton = GetNode<Button>("ActionRow/btn_event");
         _shopButton = GetNode<Button>("ActionRow/btn_shop");
@@ -221,6 +235,8 @@ public partial class MapScene : Control
         _restButton.Text = ResolveVisibleTextOrFallback(RestActionKey, locale, "Rest");
         _nodeLegendLabel.Text = BuildNodeLegend(locale);
         RefreshRouteTree(locale);
+        RefreshEdgeLegend();
+        RefreshEdgeVisuals();
         if (string.IsNullOrWhiteSpace(_feedbackLabel.Text) || string.Equals(_feedbackLabel.Text, ReadyFeedbackKey, StringComparison.Ordinal))
         {
             _feedbackLabel.Text = ResolveVisibleText(ReadyFeedbackKey, locale);
@@ -358,9 +374,76 @@ public partial class MapScene : Control
         return null;
     }
 
+    public global::Godot.Collections.Array<global::Godot.Collections.Dictionary> GetRouteEdgesForTest()
+    {
+        var completedNodeOrder = ResolveCompletedNodeOrder();
+        var completedEdgeKeys = BuildCompletedEdgeKeys(completedNodeOrder);
+        var selectedNodeId = ResolveSelectedNodeId();
+        var reachableFloor = ResolveCurrentReachableFloor();
+        var result = new global::Godot.Collections.Array<global::Godot.Collections.Dictionary>();
+        foreach (var edge in ResolveRouteEdges())
+        {
+            var state = ResolveEdgeVisualState(
+                edge.FromId,
+                edge.ToId,
+                reachableFloor,
+                selectedNodeId,
+                completedEdgeKeys,
+                completedNodeOrder.Count);
+            result.Add(new global::Godot.Collections.Dictionary
+            {
+                { "from", edge.FromId },
+                { "to", edge.ToId },
+                { "from_floor", edge.FromFloor },
+                { "to_floor", edge.ToFloor },
+                { "state", state },
+            });
+        }
+
+        return result;
+    }
+
+    public global::Godot.Collections.Dictionary GetRouteNodeStatesForTest()
+    {
+        var completedNodeOrder = ResolveCompletedNodeOrder();
+        var completedNodeIds = new HashSet<string>(completedNodeOrder, StringComparer.Ordinal);
+        var reachableFloor = ResolveCurrentReachableFloor();
+        var selectedNodeId = ResolveSelectedNodeId();
+        var result = new global::Godot.Collections.Dictionary();
+        foreach (var node in _routeNodes)
+        {
+            var state = ResolveNodeVisualState(node, reachableFloor, selectedNodeId, completedNodeIds);
+            result[node.Id] = state;
+        }
+
+        return result;
+    }
+
     private bool IsRouteNodeReachable(RouteNode node)
     {
-        return node.Floor == ResolveCurrentReachableFloor();
+        var reachableFloor = ResolveCurrentReachableFloor();
+        if (node.Floor != reachableFloor)
+        {
+            return false;
+        }
+
+        var edges = ResolveRouteEdges();
+        if (reachableFloor == 1)
+        {
+            var hasOutgoing = edges.Exists(edge => string.Equals(edge.FromId, node.Id, StringComparison.Ordinal));
+            var hasIncoming = edges.Exists(edge => string.Equals(edge.ToId, node.Id, StringComparison.Ordinal));
+            return hasOutgoing && !hasIncoming;
+        }
+
+        var selectedNodeId = ResolveSelectedNodeId();
+        if (string.IsNullOrWhiteSpace(selectedNodeId))
+        {
+            return false;
+        }
+
+        return edges.Exists(edge =>
+            string.Equals(edge.FromId, selectedNodeId, StringComparison.Ordinal)
+            && string.Equals(edge.ToId, node.Id, StringComparison.Ordinal));
     }
 
     private int ResolveCurrentReachableFloor()
@@ -397,9 +480,140 @@ public partial class MapScene : Control
         return GetNodeOrNull<Node>("/root/Main");
     }
 
+    private static List<RouteEdge> ResolveRouteEdges()
+    {
+        return new List<RouteEdge>
+        {
+            new("combat-01", "event-02", 1, 2),
+            new("combat-01", "combat-02", 1, 2),
+            new("event-02", "shop-03", 2, 3),
+            new("combat-02", "combat-03", 2, 3),
+            new("shop-03", "rest-04", 3, 4),
+            new("combat-03", "rest-04", 3, 4),
+            new("rest-04", "boss-05", 4, 5),
+        };
+    }
+
+    private string ResolveSelectedNodeId()
+    {
+        var main = ResolveMainController();
+        if (main is null || !main.HasMethod("GetMapRouteLastSelectedNodeIdForTest"))
+        {
+            return string.Empty;
+        }
+
+        var selected = main.Call("GetMapRouteLastSelectedNodeIdForTest");
+        return selected.VariantType == Variant.Type.String ? selected.AsString() : string.Empty;
+    }
+
+    private List<string> ResolveCompletedNodeOrder()
+    {
+        var main = ResolveMainController();
+        if (main is null || !main.HasMethod("GetMapRouteCompletedNodeIdsForTest"))
+        {
+            return new List<string>();
+        }
+
+        var value = main.Call("GetMapRouteCompletedNodeIdsForTest");
+        if (value.VariantType != Variant.Type.Array)
+        {
+            return new List<string>();
+        }
+
+        var result = new List<string>();
+        foreach (var item in value.AsGodotArray())
+        {
+            var nodeId = item.AsString().Trim();
+            if (!string.IsNullOrWhiteSpace(nodeId))
+            {
+                result.Add(nodeId);
+            }
+        }
+
+        return result;
+    }
+
+    private static HashSet<string> BuildCompletedEdgeKeys(List<string> completedNodeOrder)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i + 1 < completedNodeOrder.Count; i++)
+        {
+            keys.Add(BuildEdgeKey(completedNodeOrder[i], completedNodeOrder[i + 1]));
+        }
+
+        return keys;
+    }
+
+    private static string BuildEdgeKey(string fromId, string toId)
+    {
+        return $"{fromId}->{toId}";
+    }
+
+    private string ResolveNodeVisualState(
+        RouteNode node,
+        int reachableFloor,
+        string selectedNodeId,
+        HashSet<string> completedNodeIds)
+    {
+        if (completedNodeIds.Contains(node.Id))
+        {
+            return "completed";
+        }
+
+        if (IsRouteNodeReachable(node))
+        {
+            if (!string.IsNullOrWhiteSpace(selectedNodeId) && reachableFloor > 1)
+            {
+                return "selected-path";
+            }
+
+            return "reachable";
+        }
+
+        return "locked";
+    }
+
+    private string ResolveEdgeVisualState(
+        string fromId,
+        string toId,
+        int reachableFloor,
+        string selectedNodeId,
+        HashSet<string> completedEdgeKeys,
+        int completedNodeCount)
+    {
+        var fromNode = ResolveRouteNode(fromId);
+        var toNode = ResolveRouteNode(toId);
+        if (fromNode is null || toNode is null)
+        {
+            return "locked";
+        }
+
+        var edgeKey = BuildEdgeKey(fromId, toId);
+        if (completedEdgeKeys.Contains(edgeKey))
+        {
+            return "completed";
+        }
+
+        if (completedNodeCount == 0 && fromNode.Floor == 1 && toNode.Floor == 2)
+        {
+            return "reachable";
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedNodeId)
+            && string.Equals(fromId, selectedNodeId, StringComparison.Ordinal)
+            && toNode.Floor == reachableFloor)
+        {
+            return "selected-path";
+        }
+
+        return "locked";
+    }
+
     private void RefreshRouteTree(string locale)
     {
         var reachableFloor = ResolveCurrentReachableFloor();
+        var selectedNodeId = ResolveSelectedNodeId();
+        var completedNodeIds = new HashSet<string>(ResolveCompletedNodeOrder(), StringComparer.Ordinal);
         var zh = locale.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
         foreach (var node in _routeNodes)
         {
@@ -408,9 +622,94 @@ public partial class MapScene : Control
                 continue;
             }
 
+            var state = ResolveNodeVisualState(node, reachableFloor, selectedNodeId, completedNodeIds);
             button.Text = zh ? node.ChineseLabel : node.EnglishLabel;
-            button.Disabled = node.Floor != reachableFloor;
+            button.Disabled = string.Equals(state, "locked", StringComparison.Ordinal);
+            button.TooltipText = $"state:{state}";
+            button.Modulate = ResolveNodeStateColor(state);
         }
+    }
+
+    private void RefreshEdgeLegend()
+    {
+        if (_edgeLegendLabel is null)
+        {
+            return;
+        }
+
+        var completedNodeOrder = ResolveCompletedNodeOrder();
+        var completedEdgeKeys = BuildCompletedEdgeKeys(completedNodeOrder);
+        var selectedNodeId = ResolveSelectedNodeId();
+        var reachableFloor = ResolveCurrentReachableFloor();
+        var edgeItems = new List<string>();
+        foreach (var edge in ResolveRouteEdges())
+        {
+            var state = ResolveEdgeVisualState(
+                edge.FromId,
+                edge.ToId,
+                reachableFloor,
+                selectedNodeId,
+                completedEdgeKeys,
+                completedNodeOrder.Count);
+            edgeItems.Add($"{edge.FromId}->{edge.ToId}({state})");
+        }
+
+        _edgeLegendLabel.Text = string.Join(" | ", edgeItems);
+    }
+
+    private void RefreshEdgeVisuals()
+    {
+        if (_routeEdgeContainer is null)
+        {
+            return;
+        }
+
+        var completedNodeOrder = ResolveCompletedNodeOrder();
+        var completedEdgeKeys = BuildCompletedEdgeKeys(completedNodeOrder);
+        var selectedNodeId = ResolveSelectedNodeId();
+        var reachableFloor = ResolveCurrentReachableFloor();
+        foreach (var edge in ResolveRouteEdges())
+        {
+            var edgeName = edge.FromId.Replace('-', '_') + "__" + edge.ToId.Replace('-', '_');
+            var edgeLabel = _routeEdgeContainer.GetNodeOrNull<Label>(edgeName);
+            if (edgeLabel is null)
+            {
+                continue;
+            }
+
+            var state = ResolveEdgeVisualState(
+                edge.FromId,
+                edge.ToId,
+                reachableFloor,
+                selectedNodeId,
+                completedEdgeKeys,
+                completedNodeOrder.Count);
+            edgeLabel.Text = $"{edge.FromId} -> {edge.ToId}";
+            edgeLabel.TooltipText = $"state:{state}";
+            edgeLabel.Modulate = ResolveEdgeStateColor(state);
+        }
+    }
+
+    private static Color ResolveEdgeStateColor(string state)
+    {
+        return state switch
+        {
+            "reachable" => EdgeStateReachableColor,
+            "completed" => EdgeStateCompletedColor,
+            "selected-path" => EdgeStateSelectedPathColor,
+            _ => EdgeStateLockedColor,
+        };
+    }
+
+    private static Color ResolveNodeStateColor(string state)
+    {
+        return state switch
+        {
+            "reachable" => NodeStateReachableColor,
+            "completed" => NodeStateCompletedColor,
+            "selected-path" => NodeStateSelectedPathColor,
+            _ => NodeStateLockedColor,
+        };
     }
 
     private string BuildNodeLegend(string locale)
