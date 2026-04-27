@@ -23,8 +23,11 @@ const _ROUTABLE_NODE_SCENES := [COMBAT_SCENE, EVENT_SCENE, SHOP_SCENE, REST_SCEN
 const _REWARD_ENTRY_SCENES := [COMBAT_SCENE, EVENT_SCENE]
 
 var _map_route_completed_nodes: int = 0
+var _map_route_completed_node_ids: Array[String] = []
 var _map_route_last_feedback: String = ""
 var _map_route_last_selected_node_id: String = ""
+var _map_route_start_invocation_count: int = 0
+var _map_route_last_start_destination: String = ""
 var _reward_route_pending: bool = false
 var _reward_route_resolved: bool = false
 var _shop_state_by_node: Dictionary = {}
@@ -329,6 +332,8 @@ func StartMapNodeRouteForTest(node_id: String, node_type: String, reachable: boo
 
     _map_route_last_feedback = ""
     _map_route_last_selected_node_id = node_id
+    _map_route_start_invocation_count += 1
+    _map_route_last_start_destination = destination
     if destination == SHOP_SCENE:
         _activate_shop_route_state(node_id)
     _switch_to(nav, destination)
@@ -354,6 +359,8 @@ func CompleteMapNodeFlowForTest() -> Dictionary:
         return {"ok": false, "reason": "no-node-flow-in-progress", "scene_path": current_scene, "completed_node_count": _map_route_completed_nodes}
 
     _map_route_completed_nodes += 1
+    if not _map_route_last_selected_node_id.strip_edges().is_empty():
+        _map_route_completed_node_ids.append(_map_route_last_selected_node_id)
     if current_scene == SHOP_SCENE:
         _active_shop_node_id = ""
     _switch_to(nav, MAP_SCENE)
@@ -363,17 +370,32 @@ func CompleteMapNodeFlowForTest() -> Dictionary:
 func GetMapRouteCompletedNodeCountForTest() -> int:
     return _map_route_completed_nodes
 
+func GetMapRouteCompletedNodeIdsForTest() -> Array:
+    return _map_route_completed_node_ids.duplicate()
+
+func GetMapRouteLastSelectedNodeIdForTest() -> String:
+    return _map_route_last_selected_node_id
+
 func GetMapRouteLastFeedbackForTest() -> String:
     return _map_route_last_feedback
 
 func ResetMapRouteProgressForTest() -> void:
     _map_route_completed_nodes = 0
+    _map_route_completed_node_ids.clear()
     _map_route_last_feedback = ""
     _map_route_last_selected_node_id = ""
     _reward_route_pending = false
     _reward_route_resolved = false
     _active_shop_node_id = ""
     _shop_state_by_node.clear()
+    _map_route_start_invocation_count = 0
+    _map_route_last_start_destination = ""
+
+func GetMapRouteStartInvocationCountForTest() -> int:
+    return _map_route_start_invocation_count
+
+func GetMapRouteLastStartDestinationForTest() -> String:
+    return _map_route_last_start_destination
 
 func GetActiveShopStateForScene() -> Dictionary:
     if _active_shop_node_id.is_empty():

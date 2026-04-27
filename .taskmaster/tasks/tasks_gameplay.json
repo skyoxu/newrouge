@@ -4636,17 +4636,17 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs"
     ],
     "acceptance": [
-      "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, and does not present the four standalone node-type shortcut buttons as the primary entry path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "The M1 route graph defines explicit node IDs and directed edges for the complete five-floor route, including floor-1 to floor-2 branch choices and legal continuations to the final M1 endpoint. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "On M1 Map, the player-facing entry presents a connected route graph with visible legal-transition edges, continues to use the existing route-owned Map-to-node transition flow, does not present the four standalone node-type shortcut buttons as the primary entry path, and does not introduce any parallel Map-to-node transition owner or second execution path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+        "The M1 route graph must expose a deterministic directed edge set for the full five-floor route: every non-terminal node has at least one legal outgoing edge to the next floor, the final node has no outgoing edge, and no edge skips floors or points to an undefined node ID. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Map rendering makes reachable, locked, completed, and selected-path states visually distinguishable on both nodes and edges so currently legal choices are directly observable. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "Selecting a reachable node triggers the existing route-owned Map-to-node transition; selecting a locked or disconnected node shows visible refusal feedback, does not transition, and keeps run progression unchanged. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "After node completion, route-graph reachability updates so only legal next-floor nodes and connecting edges become reachable, while traversed segments remain visible as completed path history. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
       "When route-graph entry is active, legacy ActionRow shortcut buttons (Combat, Event, Shop, Rest) are hidden or removed from the player-facing Map. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Windows GdUnit coverage verifies route-edge presence, post-completion edge-state updates, locked/disconnected selection refusal with unchanged progression, preservation of route-owned transitions, and non-visible legacy shortcut buttons in Map scene. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
-      "Implementation work for T70 is valid only after workflow explicitly selects T70, and review evidence includes that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Route-node selection must have a single execution authority: reachable-node selection resolves exactly once through the existing route-owned transition path, while locked/disconnected selections resolve to refusal feedback only and never invoke an alternative scene transition path. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Workflow-selection gate evidence for T70 must be recorded before implementation evidence is accepted; verification must assert a concrete workflow-selection summary artifact exists with task_id=70 and that its timestamp is not later than the selected implementation evidence timestamp. Refs: Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Extend the existing Map route GdUnit suite to cover connected route graph edges, path-state visualization, legal unlock progression, and hidden legacy shortcut buttons on Windows."
@@ -4659,7 +4659,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0070.json"
+      "logs/ci/<date>/task-0070.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
