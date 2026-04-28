@@ -63,7 +63,7 @@ public sealed class MapActConfigurationTests
     }
 
     [Fact]
-    public void ShouldResolveConfiguredCountFromCountLikeProperty()
+    public void ShouldResolveConfiguredCount_WhenCountLikePropertyExists()
     {
         var service = new MapActConfigurationService();
         var provider = new PropertyCountProvider(3);
@@ -75,7 +75,7 @@ public sealed class MapActConfigurationTests
     }
 
     [Fact]
-    public void ShouldResolveConfiguredCountFromCountLikeField()
+    public void ShouldResolveConfiguredCount_WhenCountLikeFieldExists()
     {
         var service = new MapActConfigurationService();
         var provider = new FieldCountProvider(2);
@@ -87,7 +87,7 @@ public sealed class MapActConfigurationTests
     }
 
     [Fact]
-    public void ShouldResolveConfiguredCountFromCollectionProperty()
+    public void ShouldResolveConfiguredCount_WhenCollectionPropertyExists()
     {
         var service = new MapActConfigurationService();
         var provider = new CollectionPropertyProvider(2);
@@ -99,7 +99,7 @@ public sealed class MapActConfigurationTests
     }
 
     [Fact]
-    public void ShouldResolveConfiguredCountFromCollectionField()
+    public void ShouldResolveConfiguredCount_WhenCollectionFieldExists()
     {
         var service = new MapActConfigurationService();
         var provider = new CollectionFieldProvider(2);
@@ -123,6 +123,7 @@ public sealed class MapActConfigurationTests
     }
 
     // ACC:T17.8
+    // ACC:T86.1
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -152,7 +153,72 @@ public sealed class MapActConfigurationTests
         }
     }
 
+    // ACC:T86.7
+    [Fact]
+    public void ShouldConsumeActConfigTopologyMarkersInActIdOrder_WhenConfiguredActsRun()
+    {
+        var binding = MapActServiceBinding.TryCreate(out var diagnostics);
+        binding.Should().NotBeNull(diagnostics);
+        if (binding is null)
+        {
+            return;
+        }
+
+        var provider = new TopologyMarkerProvider(new Dictionary<int, string>
+        {
+            { 1, "route-start-01" },
+            { 2, "route-start-02" },
+            { 3, "route-start-03" }
+        });
+
+        var result = binding.TryRunConfiguredActs(provider, 3);
+
+        result.Success.Should().BeTrue(result.Diagnostics);
+        provider.RequestedActIds.Should().Equal(1, 2, 3);
+        provider.ResolvedTopologyMarkers.Should().Equal("route-start-01", "route-start-02", "route-start-03");
+        provider.ResolvedTopologyMarkers.Should().NotContain("combat-01", "route topology must come from ActConfig content, not legacy scene literals.");
+    }
+
+    // ACC:T86.3
+    [Fact]
+    public void ShouldKeepRouteOwnerGuardUnchanged_WhenActConfigurationServiceRuns()
+    {
+        var routeService = new MapNodeRouteOwnershipService();
+        var mapOwner = new MapNodeRouteProgress(MapNodeRouteDestination.Map, CompletedNodeCount: 2);
+        var activeShopOwner = new MapNodeRouteProgress(MapNodeRouteDestination.Shop, CompletedNodeCount: 2);
+        var shopRequest = new MapNodeRouteRequest("shop-02", "shop", IsReachable: true);
+
+        var allowedBefore = routeService.StartRoute(shopRequest, mapOwner);
+        allowedBefore.IsSuccess.Should().BeTrue();
+        allowedBefore.Destination.Should().Be(MapNodeRouteDestination.Shop);
+        allowedBefore.NewProgress.CurrentState.Should().Be(MapNodeRouteDestination.Shop);
+        allowedBefore.BlockReason.Should().BeEmpty();
+
+        var blockedBefore = routeService.StartRoute(shopRequest, activeShopOwner);
+        blockedBefore.IsSuccess.Should().BeFalse();
+        blockedBefore.BlockReason.Should().Be("route-owner-mismatch");
+        blockedBefore.NewProgress.Should().Be(activeShopOwner);
+
+        var mapActService = new MapActConfigurationService();
+        var provider = new InMemoryActConfigProvider(2);
+        var runResult = mapActService.TryRunConfiguredActs(2, provider);
+        runResult.Should().BeTrue();
+
+        var allowedAfter = routeService.StartRoute(shopRequest, mapOwner);
+        allowedAfter.IsSuccess.Should().BeTrue();
+        allowedAfter.Destination.Should().Be(MapNodeRouteDestination.Shop);
+        allowedAfter.NewProgress.CurrentState.Should().Be(MapNodeRouteDestination.Shop);
+        allowedAfter.BlockReason.Should().BeEmpty();
+
+        var blockedAfter = routeService.StartRoute(shopRequest, activeShopOwner);
+        blockedAfter.IsSuccess.Should().BeFalse();
+        blockedAfter.BlockReason.Should().Be("route-owner-mismatch");
+        blockedAfter.NewProgress.Should().Be(activeShopOwner);
+    }
+
     // ACC:T17.8
+    // ACC:T86.2
+    // ACC:T86.6
     [Theory]
     [InlineData(1, 2)]
     [InlineData(2, 3)]
@@ -205,6 +271,48 @@ public sealed class MapActConfigurationTests
             return config;
         }
 
+    }
+
+    private sealed class TopologyMarkerProvider : IActConfigProvider
+    {
+        private readonly Dictionary<int, ActConfig> configs;
+        private readonly List<int> requestedActIds = new();
+        private readonly List<string> resolvedTopologyMarkers = new();
+
+        public TopologyMarkerProvider(IReadOnlyDictionary<int, string> markersByActId)
+        {
+            if (markersByActId.Count == 0)
+            {
+                throw new ArgumentException("At least one marker is required.", nameof(markersByActId));
+            }
+
+            configs = markersByActId.ToDictionary(
+                kvp => kvp.Key,
+                kvp => BuildActConfigWithMarker(kvp.Key, kvp.Value));
+        }
+
+        public IReadOnlyList<int> RequestedActIds => requestedActIds;
+
+        public IReadOnlyList<string> ResolvedTopologyMarkers => resolvedTopologyMarkers;
+
+        public int ActConfigCount => configs.Count;
+
+        public ActConfig GetByActId(int actId)
+        {
+            requestedActIds.Add(actId);
+            var config = configs[actId];
+            var marker = config.NodeGraph.GetProperty("start").GetString() ?? string.Empty;
+            resolvedTopologyMarkers.Add(marker);
+            return config;
+        }
+
+        private static ActConfig BuildActConfigWithMarker(int actId, string marker)
+        {
+            var nodeGraph = JsonDocument.Parse("{\"start\":\"" + marker + "\"}").RootElement.Clone();
+            var pools = JsonDocument.Parse("{\"normal\":[\"enemy_a\"]}").RootElement.Clone();
+            var encounters = JsonDocument.Parse("[{\"id\":\"enc-" + actId + "\",\"type\":\"combat\"}]").RootElement.Clone();
+            return new ActConfig("1.0", actId, nodeGraph, pools, encounters);
+        }
     }
 
     private sealed class ThrowingProvider : IActConfigProvider
@@ -398,7 +506,7 @@ public sealed class MapActConfigurationTests
             return null;
         }
 
-        public InvocationResult TryRunConfiguredActs(InMemoryActConfigProvider provider, int requestedActCount)
+        public InvocationResult TryRunConfiguredActs(IActConfigProvider provider, int requestedActCount)
         {
             if (!TryCreateInstance(provider, out var instance, out var instanceDiagnostics))
             {
@@ -455,7 +563,7 @@ public sealed class MapActConfigurationTests
             return hasRequestedCount;
         }
 
-        private bool TryCreateInstance(InMemoryActConfigProvider provider, out object? instance, out string diagnostics)
+        private bool TryCreateInstance(IActConfigProvider provider, out object? instance, out string diagnostics)
         {
             instance = null;
             diagnostics = string.Empty;
@@ -487,7 +595,7 @@ public sealed class MapActConfigurationTests
         }
 
         private bool TryBuildArguments(
-            InMemoryActConfigProvider provider,
+            IActConfigProvider provider,
             int requestedActCount,
             out object?[] args,
             out string diagnostics)

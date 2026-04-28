@@ -2869,15 +2869,15 @@
     "test_refs": [
       "Game.Core.Tests/Services/MapActConfigurationTests.cs",
       "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
     ],
     "acceptance": [
-      "For the live Map path, map services generate the playable route graph from existing ActConfig and expose generated route data that downstream Map flow can consume; the source must not be any scene-embedded hard-coded M1 node list, route ownership remains unchanged, and scene-level route presentation closure is outside this task's pass criteria. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "When ActConfig map content is invalid or incomplete, route generation deterministically refuses with a visible failure signal, and map state must not silently fall back to or reconstruct any hard-coded playable route graph. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "T86 must not change route ownership: before and after ActConfig-driven generation, the route owner identity is the same, even though route source data is no longer hard-coded. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "T86 changes are limited to the minimum Map surface interaction needed to prove generated route data exists and can be consumed; broader Map surface binding refinements and scene-level route presentation closure remain deferred and are not required for acceptance. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "Map service tests are added or extended to assert deterministic ActConfig-driven route generation and deterministic refusal behavior for invalid or incomplete ActConfig content. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
-      "If workflow selection has not explicitly selected T86, implementation entry must refuse execution and leave implementation/code state unchanged; review evidence includes the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
+      "For the live Map path, map services generate and expose playable route graph data from existing ActConfig for downstream consumption; route ownership semantics remain unchanged, no scene-embedded hard-coded M1 source or fallback is allowed, and full scene-level presentation closure remains out of scope for this task. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "When configured ActConfig content is insufficient for the requested route generation scope, execution must deterministically refuse and keep route progression state unchanged; the flow must not silently fall back to or reconstruct any hard-coded playable route graph. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "T86 must preserve route ownership guard semantics before and after ActConfig-driven generation: map-owned route entry behavior remains unchanged, and non-Map owners are deterministically refused with route-owner-mismatch without progress mutation. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "T86 map-surface scope remains minimal: scene interaction only needs to prove generated route data can be consumed for route-entry decisions; when selecting a locked or unreachable node, entry is deterministically refused with no route-progress mutation; full scene-level route presentation closure is explicitly deferred. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "When requested ActConfig count exceeds available configured acts, execution must refuse deterministically and avoid partial act execution so route progression state remains unchanged. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "Generated playable route graph topology (node identity/order and declared reachability seed markers) must be consumed from ActConfig map content through map services on the live Map path; passing only by configured act count is insufficient, and no hard-coded M1 topology source may be used. Refs: Game.Core.Tests/Services/MapActConfigurationTests.cs"
     ],
     "test_strategy": [
       "Add or extend map service tests to cover ActConfig-driven route generation and deterministic refusal for invalid or incomplete map content."
@@ -2890,7 +2890,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0086.json"
+      "logs/ci/<date>/task-0086.json",
+      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
