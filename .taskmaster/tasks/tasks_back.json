@@ -1988,16 +1988,16 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "acceptance": [
-      "In multi-enemy runtime state, Combat must render at least one enemy, and every rendered enemy must expose name, HP, block, status, and intent so legal targets can be observed. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Card play must enforce legal targeting: single-target cards resolve only when a living legal enemy is selected, while self-target and all-enemy cards resolve without selecting an enemy. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "In multi-enemy runtime state, Combat must expose every living legal runtime enemy as a selectable and inspectable target entry, and each exposed enemy must surface name, HP, block, status, and intent. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Card play must enforce legal targeting: single-target cards resolve only when a living legal enemy is selected, and on success the effect applies to the selected enemy only; non-selected enemies must remain unchanged unless the card explicitly declares all-enemy/global behavior, while self-target and all-enemy cards resolve without selecting an enemy. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "If the selected target is invalid, dead, locked, or disconnected, card play must be rejected with visible feedback, and HP, energy, and pile state must stay unchanged. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
       "When an enemy dies, it must be removed from the legal target set, and the remaining enemies must keep deterministic combat state with intent still visible. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "After all enemies are defeated, combat completion must remain route-owned and must transition to Reward or Map based on current node rules. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Implementation for this task must start only after workflow explicitly selects T73, and review evidence must show that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Combat victory routing must not trigger while any legal living enemy remains; route-owned completion may execute only after the legal living enemy set becomes empty. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "If the currently selected enemy becomes dead, disconnected, or otherwise illegal before card resolution, Combat must clear or deterministically retarget selection and must never resolve card effects against an illegal target. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing."
@@ -2011,7 +2011,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0073.json"
+      "logs/ci/<date>/task-0073.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

@@ -58,6 +58,7 @@ public partial class CombatScene : Control
     private readonly Dictionary<string, int> _playerStatusStacks = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CardDefinitionRuntime> _cardDefinitionsByLookup = new(StringComparer.Ordinal);
     private string _selectedEnemyTargetId = string.Empty;
+    private bool _hasPendingInvalidTargetSelection;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
@@ -218,6 +219,7 @@ public partial class CombatScene : Control
             { "exhaust", _exhaustPileCount.ToString(CultureInfo.InvariantCulture) },
             { "turnState", _turnStateValue.Text },
             { "selectedCommandState", _latestCommandOutcomeState },
+            { "selectedEnemyTargetId", _selectedEnemyTargetId },
         };
     }
 
@@ -475,6 +477,16 @@ public partial class CombatScene : Control
         return _enemyHpValue.Text;
     }
 
+    public string GetEnemyHpTextByIdForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyCombatById.TryGetValue(enemyId.Trim(), out var state))
+        {
+            return string.Empty;
+        }
+
+        return $"{state.CurrentHp}/{state.MaxHp}";
+    }
+
     public string GetEnemyStatusTextForTest()
     {
         return _enemyStatusValue.Text;
@@ -550,6 +562,11 @@ public partial class CombatScene : Control
     public bool SetTargetEnemyIdForTest(string enemyId)
     {
         return TrySelectEnemyTarget(enemyId);
+    }
+
+    public string GetSelectedEnemyTargetIdForTest()
+    {
+        return _selectedEnemyTargetId;
     }
 
     public bool SetEnemyHpForTest(string enemyId, int currentHp, int maxHp)
@@ -928,8 +945,7 @@ public partial class CombatScene : Control
 
     private static bool CardDefinitionRequiresEnemyTarget(CardDefinitionRuntime definition)
     {
-        return definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase)
-            || definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase);
+        return definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool TryResolveCardDefinition(string cardName, out CardDefinitionRuntime definition)
@@ -1180,21 +1196,24 @@ public partial class CombatScene : Control
     private bool TryResolveSelectedAliveTarget(out string enemyId)
     {
         enemyId = string.Empty;
-        var selected = _selectedEnemyTargetId.Trim();
-        if (selected.Length > 0
-            && _enemyCombatById.TryGetValue(selected, out var selectedState)
-            && selectedState.CurrentHp > 0)
+        if (_hasPendingInvalidTargetSelection)
         {
-            enemyId = selected;
-            return true;
+            _hasPendingInvalidTargetSelection = false;
+            return false;
         }
 
-        var alive = GetAliveEnemyIds();
-        if (alive.Count == 1)
+        var selected = _selectedEnemyTargetId.Trim();
+        if (selected.Length > 0)
         {
-            enemyId = alive[0];
-            _selectedEnemyTargetId = enemyId;
-            return true;
+            if (_enemyCombatById.TryGetValue(selected, out var selectedState) && selectedState.CurrentHp > 0)
+            {
+                enemyId = selected;
+                return true;
+            }
+
+            // Selected target became illegal (dead/disconnected). Clear selection deterministically.
+            _selectedEnemyTargetId = string.Empty;
+            return false;
         }
 
         return false;
@@ -1210,10 +1229,13 @@ public partial class CombatScene : Control
         var normalized = enemyId.Trim();
         if (!_enemyCombatById.TryGetValue(normalized, out var state) || state.CurrentHp <= 0)
         {
+            _hasPendingInvalidTargetSelection = true;
             return false;
         }
 
         _selectedEnemyTargetId = normalized;
+        _hasPendingInvalidTargetSelection = false;
+        RefreshPrimaryEnemyPanel();
         return true;
     }
 
@@ -1259,7 +1281,6 @@ public partial class CombatScene : Control
         if (string.IsNullOrWhiteSpace(preferredId) || !_enemyCombatById.TryGetValue(preferredId, out var preferredState) || preferredState.CurrentHp <= 0)
         {
             preferredId = aliveEnemies[0];
-            _selectedEnemyTargetId = preferredId;
             preferredState = _enemyCombatById[preferredId];
         }
 
