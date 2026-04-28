@@ -82,6 +82,11 @@ public partial class CombatScene : Control
         "res://Game.Core/Data/m1-card-definitions.json",
     };
     private Texture2D? _enemyIntentFallbackTexture;
+    private bool _defeatResolvedForCurrentHpDrop;
+    private int _hpChangedEmissionCount;
+    private int _defeatEligibleTransitionCount;
+    private int _defeatResolveCount;
+    private int _unifiedHpUpdateEntryCount;
 
     public override void _Ready()
     {
@@ -472,6 +477,26 @@ public partial class CombatScene : Control
         return _coreStateMutationCount;
     }
 
+    public int GetHpChangedEmissionCountForTest()
+    {
+        return _hpChangedEmissionCount;
+    }
+
+    public int GetDefeatEligibleTransitionCountForTest()
+    {
+        return _defeatEligibleTransitionCount;
+    }
+
+    public int GetDefeatResolveCountForTest()
+    {
+        return _defeatResolveCount;
+    }
+
+    public int GetUnifiedHpUpdateEntryCountForTest()
+    {
+        return _unifiedHpUpdateEntryCount;
+    }
+
     public int GetTurnIndexForTest()
     {
         return _turnIndex;
@@ -751,6 +776,9 @@ public partial class CombatScene : Control
 
     public void ApplyCoreSnapshot(CombatHudSnapshot snapshot)
     {
+        _unifiedHpUpdateEntryCount += 1;
+        var previousPlayerHp = TryParseIntLabel(_playerHpValue, out var parsedPreviousPlayerHp) ? parsedPreviousPlayerHp : snapshot.PlayerHp;
+
         _handCards.Clear();
         foreach (var card in snapshot.HandCards)
         {
@@ -768,6 +796,7 @@ public partial class CombatScene : Control
         _coreStateMutationCount += 1;
         RebuildCardButtons(snapshot.HandCards);
         EnsureDefaultHandSelection();
+        TryResolveDefeatOnHpTransition(previousPlayerHp, snapshot.PlayerHp, "Player HP reached zero.");
     }
 
     private void ResolveEndTurn()
@@ -805,10 +834,6 @@ public partial class CombatScene : Control
         }
 
         AppendCommandFeedback("end_turn", accepted: true, detail: string.Join(" ", detailParts));
-        if (nextPlayerHp <= 0)
-        {
-            TryAutoCompleteDefeatRoute("Player HP reached zero.");
-        }
     }
 
     private void AppendCommandFeedback(string commandName, bool accepted, string? detail = null, string? refusalReasonKey = null)
@@ -1462,6 +1487,28 @@ public partial class CombatScene : Control
         if (main is not null && main.HasMethod("HandleCombatDefeatForTest"))
         {
             main.CallDeferred("HandleCombatDefeatForTest", reason);
+        }
+    }
+
+    private void TryResolveDefeatOnHpTransition(int previousPlayerHp, int currentPlayerHp, string reason)
+    {
+        if (previousPlayerHp != currentPlayerHp)
+        {
+            _hpChangedEmissionCount += 1;
+        }
+
+        var transitionedToDefeat = previousPlayerHp > 0 && currentPlayerHp <= 0;
+        if (transitionedToDefeat)
+        {
+            _defeatEligibleTransitionCount += 1;
+        }
+
+        if (transitionedToDefeat && !_defeatResolvedForCurrentHpDrop)
+        {
+            _defeatResolvedForCurrentHpDrop = true;
+            _defeatResolveCount += 1;
+            TryAutoCompleteDefeatRoute(reason);
+            return;
         }
     }
 
