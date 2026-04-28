@@ -84,6 +84,32 @@ func _extract_offer_ids(snapshot: Dictionary) -> Array[String]:
 			ids.append(card_id.strip_edges())
 	return ids
 
+func _resolve_reward_context_id(main: Control, node_id: String, node_type: String, floor: int) -> String:
+	if main == null or not main.has_method("_build_reward_context_id"):
+		return ""
+	var context_variant = main.call("_build_reward_context_id", node_id, node_type, floor)
+	return str(context_variant).strip_edges()
+
+func _inject_invalid_shared_pool_offer(main: Control, context_id: String) -> void:
+	if main == null or context_id.is_empty():
+		return
+	var current = main.get("_reward_offer_by_context")
+	var by_context: Dictionary = {}
+	if typeof(current) == TYPE_DICTIONARY:
+		by_context = (current as Dictionary).duplicate(true)
+	by_context[context_id] = {
+		"context_id": context_id,
+		"act_id": 1,
+		"encounter_type": "normal",
+		"floor": 1,
+		"offers": [
+			{"id": "card.strike_plus", "name_key": "card.strike_plus.name"}
+		],
+		"source": "shared-card-pool"
+	}
+	main.set("_reward_offer_by_context", by_context)
+	main.set("_reward_offer_active_context_id", context_id)
+
 # acceptance: ACC:T19.1
 # RED-FIRST: fails deterministically until Reward scene renders exactly three complete selectable cards.
 func test_reward_scene_renders_exactly_three_selectable_cards_with_required_fields() -> void:
@@ -99,6 +125,10 @@ func test_reward_scene_rejects_cards_when_any_required_field_is_missing() -> voi
 	assert_that(_validate_reward_cards(invalid_cards)).is_false()
 
 # acceptance: ACC:T84.1
+# acceptance: ACC:T114.2
+# acceptance: ACC:T114.3
+# acceptance: ACC:T114.4
+# acceptance: ACC:T114.5
 func test_reward_scene_uses_shared_pool_offer_on_first_entry_route() -> void:
 	var main := await _load_main_on_map()
 	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
@@ -129,6 +159,40 @@ func test_reward_scene_uses_shared_pool_offer_on_first_entry_route() -> void:
 	var card1_text := str(card_list.get_child(0).text)
 	assert_str(card1_text).is_not_equal("Reward Card 1")
 	assert_bool(card1_text.begins_with("ui.reward.card")).is_false()
+
+func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void:
+	var main := await _load_main_on_map()
+	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_bool(bool(enter_result.get("ok", false))).is_true()
+	var context_id := _resolve_reward_context_id(main, "combat-01", "combat", 1)
+	assert_bool(context_id.is_empty()).is_false()
+	_inject_invalid_shared_pool_offer(main, context_id)
+
+	var complete_result := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_bool(bool(complete_result.get("ok", false))).is_true()
+	assert_str(str(complete_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+	await get_tree().process_frame
+
+	var reward = _current_scene_instance(main)
+	assert_object(reward).is_not_null()
+	assert_bool(reward.has_method("GetCardCountForTest")).is_true()
+	assert_bool(reward.has_method("GetFeedbackForTest")).is_true()
+	assert_bool(reward.has_method("SelectChoiceForTest")).is_true()
+	assert_bool(reward.has_method("ConfirmSelectedForTest")).is_true()
+
+	var offered_count := int(reward.call("GetCardCountForTest"))
+	assert_int(offered_count).is_less(3)
+	var select_ok := bool(reward.call("SelectChoiceForTest", 0))
+	assert_bool(select_ok).is_false()
+	var confirm_ok := bool(reward.call("ConfirmSelectedForTest"))
+	assert_bool(confirm_ok).is_false()
+	var feedback := str(reward.call("GetFeedbackForTest"))
+	assert_str(feedback).is_not_equal("")
+
+	var card_list := reward.get_node_or_null("VBox/CardList")
+	assert_object(card_list).is_not_null()
+	var card1_text := str(card_list.get_child(0).text)
+	assert_str(card1_text).is_equal(feedback)
 
 # acceptance: ACC:T84.6
 func test_reward_scene_first_entry_offer_is_deterministic_for_same_context_before_resolution() -> void:

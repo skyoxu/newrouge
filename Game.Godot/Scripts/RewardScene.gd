@@ -12,6 +12,7 @@ const FEEDBACK_SELECT_FIRST_KEY := "ui.reward.feedback.select_first"
 const FEEDBACK_CONFIRMED_KEY := "ui.reward.feedback.confirmed"
 const FEEDBACK_SKIPPED_KEY := "ui.reward.feedback.skipped"
 const FEEDBACK_LOCKED_KEY := "reward.locked"
+const FEEDBACK_MISSING_CONTENT_KEY := "ui.fallback.missing_content"
 const EN_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/en.csv"
 const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 
@@ -30,14 +31,16 @@ var _is_skipped: bool = false
 var _translations_by_locale := {}
 var _offer_snapshot: Dictionary = {}
 var _offered_cards: Array = []
+var _offer_snapshot_valid: bool = true
 
 func _ready() -> void:
 	_confirm_button.pressed.connect(_on_confirm_pressed)
 	_skip_button.pressed.connect(_on_skip_pressed)
 	_load_offer_snapshot_from_main()
+	_refresh_offer_snapshot_validity()
 	RefreshLocaleForTest()
 	_reset_resolution_state()
-	_feedback_label.text = _resolve_text(FEEDBACK_DEFAULT_KEY)
+	_feedback_label.text = _resolve_text(FEEDBACK_DEFAULT_KEY) if _offer_snapshot_valid else _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
 
 func SetLocaleForTest(locale: String) -> void:
 	if locale.strip_edges().is_empty():
@@ -52,6 +55,9 @@ func RefreshLocaleForTest() -> void:
 	_refresh_offer_labels()
 
 func SelectChoiceForTest(index: int) -> bool:
+	if not _offer_snapshot_valid:
+		_feedback_label.text = _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
+		return false
 	if _is_resolution_locked():
 		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
 		return false
@@ -62,11 +68,16 @@ func SelectChoiceForTest(index: int) -> bool:
 	return true
 
 func CanConfirmSelectedForTest(index: int) -> bool:
+	if not _offer_snapshot_valid:
+		return false
 	if _is_resolution_locked():
 		return false
 	return _selected_index == index and index >= 0
 
 func ConfirmSelectedForTest() -> bool:
+	if not _offer_snapshot_valid:
+		_feedback_label.text = _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
+		return false
 	if _is_resolution_locked():
 		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
 		return false
@@ -101,9 +112,7 @@ func GetFeedbackForTest() -> String:
 	return _feedback_label.text
 
 func GetCardCountForTest() -> int:
-	if _offered_cards.size() > 0:
-		return _offered_cards.size()
-	return _card_list.get_child_count()
+	return _offered_cards.size()
 
 func GetOfferSourceForTest() -> String:
 	return str(_offer_snapshot.get("source", ""))
@@ -157,6 +166,9 @@ func _load_offer_snapshot_from_main() -> void:
 		if typeof(item) == TYPE_DICTIONARY:
 			_offered_cards.append((item as Dictionary).duplicate(true))
 
+func _refresh_offer_snapshot_validity() -> void:
+	_offer_snapshot_valid = _offered_cards.size() >= 3
+
 func _reset_resolution_state() -> void:
 	_selected_index = -1
 	_is_confirmed = false
@@ -185,6 +197,12 @@ func _resolve_offer_label_text(index: int, fallback_key: String) -> String:
 	return name
 
 func _refresh_offer_labels() -> void:
+	if not _offer_snapshot_valid:
+		var fallback_text := _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
+		_card1_label.text = fallback_text
+		_card2_label.text = fallback_text
+		_card3_label.text = fallback_text
+		return
 	_card1_label.text = _resolve_offer_label_text(0, CARD1_KEY)
 	_card2_label.text = _resolve_offer_label_text(1, CARD2_KEY)
 	_card3_label.text = _resolve_offer_label_text(2, CARD3_KEY)
