@@ -1,0 +1,21 @@
+# task-86-chapter6-residual-followup
+
+- Title: task-86-chapter6-residual-followup
+- Status: active
+- Branch: task/T86
+- Git Head: 7837f0d193bd3390a724e3480d05dc3dbd76b9f2
+- Goal: Close the recorded residual reviewer findings for Task 86.
+- Scope: No low priority findings were captured.
+- Current step: Residual Needs Fix recorded; wait for a change that hits the previous reviewer anchors before paying for another 6.8.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not reopen 6.7 without a fresh deterministic failure. Do not rerun 6.8 when current edits do not hit the recorded reviewer anchors.
+- Next action: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-04-28/sc-review-pipeline-task-86/latest.json
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 86 --resume`
+- Open questions: none recorded yet
+- Exit criteria: Either the recorded findings are cleared by a targeted 6.8 pass, or a later run supersedes this residual record.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-04-28-task-86-chapter6-residual-needs-fix.md`
+- Related task id(s): `86`
+- Related run id: `9739e2fba316431eb042e4fe861d606e`
+- Related latest.json: `logs/ci/2026-04-28/sc-review-pipeline-task-86/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-04-28/sc-review-pipeline-task-86-9739e2fba316431eb042e4fe861d606e`

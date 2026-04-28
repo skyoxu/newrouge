@@ -240,6 +240,7 @@ func test_route_transitions_cover_all_m1_node_types_without_parallel_execution_p
 
 
 # acceptance: ACC:T70.7
+# acceptance: ACC:T86.4
 func test_locked_future_floor_node_refuses_route_without_progress_mutation() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)
