@@ -51,15 +51,15 @@ Test-Refs:
 `py -3 scripts/python/remind_overlay_task_drift.py --write` 更新此快照。
 
 <!-- TASK_BASELINE_START -->
-`json
+```json
 {
-  "generated_at": "2026-04-28T11:30:08.437309+00:00",
+  "generated_at": "2026-04-28T11:46:07.072751+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "82a7a35a7a5f1a16c010674986ca5b752fdf854d75a89aa8f52f41b35d6a75c5",
-      "bytes": 181446
+      "sha256": "437e1756c5d49372b2f5e8770d1089b0bde1fed8bd194050f281dcc1006526cf",
+      "bytes": 177888
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
@@ -75,7 +75,7 @@ Test-Refs:
     }
   ]
 }
-`
+```
 <!-- TASK_BASELINE_END -->
 
 ## 与任务回链（硬要求）
@@ -157,4 +157,3 @@ Test-Refs:
   - public contract baseline under `Game.Core/Contracts/**`
 - Contract-file updates are not automatic for every new task. They become mandatory only when implementation promotes a new public DTO / event / interface / ownership snapshot into the canonical baseline.
 - Current explicit future contract gap remains potion work (`T77`, `T111`). Until potion implementation is selected, keep that gap documented in `08-Contracts-M1.md` instead of inventing placeholder contract files.
-
