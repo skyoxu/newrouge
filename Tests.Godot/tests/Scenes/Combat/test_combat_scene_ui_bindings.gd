@@ -77,6 +77,113 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		assert_that(enemy_intent).is_not_empty()
 
 
+# ACC:T75.1
+func test_status_surface_shows_explicit_status_labels_stacks_and_feedback_details() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	# Ensure deterministic target exists and is selected.
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+
+	# Inject two explicit status cards so UI status stacks and feedback details are observable.
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	var injected := bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t75.self_focus","name_key":"card.t75.self_focus.name","description_key":"card.t75.self_focus.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.strength","status_stacks":2}},{"id":"card.t75.enemy_press","name_key":"card.t75.enemy_press.name","description_key":"card.t75.enemy_press.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.weak","status_stacks":1}},{"id":"card.t75.enemy_venom","name_key":"card.t75.enemy_venom.name","description_key":"card.t75.enemy_venom.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.poison","status_stacks":2}},{"id":"card.t75.self_guard","name_key":"card.t75.self_guard.name","description_key":"card.t75.self_guard.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.block","status_stacks":3}},{"id":"card.t75.self_temp","name_key":"card.t75.self_temp.name","description_key":"card.t75.self_temp.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.temp_attack_up","status_stacks":1}},{"id":"card.t75.enemy_brittle","name_key":"card.t75.enemy_brittle.name","description_key":"card.t75.enemy_brittle.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.vulnerable","status_stacks":1}}]}'
+	))
+	assert_that(injected).is_true()
+
+	# Self status application: verify explicit status ids + stack/value in feedback and player status summary.
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.self_focus","card.t75.self_guard","card.t75.self_temp"],"difficulty":1,"playerHp":80,"energy":4,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var root := scene as Control
+	var card_row := root.get_node("HUD/CardButtonRow") as HBoxContainer
+	var self_focus_detail := str((card_row.get_child(0) as Button).text)
+	var self_guard_detail := str((card_row.get_child(1) as Button).text)
+	var self_temp_detail := str((card_row.get_child(2) as Button).text)
+	assert_that(self_focus_detail.find("Apply status.strength +2.") >= 0).is_true()
+	assert_that(self_guard_detail.find("Apply status.block +3.") >= 0).is_true()
+	assert_that(self_temp_detail.find("Apply status.temp_attack_up +1.") >= 0).is_true()
+	assert_that(self_focus_detail.find("card.t75.") < 0).is_true()
+	assert_that(self_guard_detail.find("card.t75.") < 0).is_true()
+	assert_that(self_temp_detail.find("card.t75.") < 0).is_true()
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var self_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var player_status_summary := str(scene.call("GetPlayerStatusSummaryForTest"))
+	assert_that(self_feedback.find("applied status.temp_attack_up +1 to self") >= 0).is_true()
+	assert_that(player_status_summary.find("status.strength:2") >= 0).is_true()
+	assert_that(player_status_summary.find("status.block:3") >= 0).is_true()
+	assert_that(player_status_summary.find("status.temp_attack_up:1") >= 0).is_true()
+
+	# Enemy status application: verify explicit status ids + stack/value are visible on enemy status surface.
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.enemy_press","card.t75.enemy_venom","card.t75.enemy_brittle"],"difficulty":1,"playerHp":80,"energy":4,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	card_row = root.get_node("HUD/CardButtonRow") as HBoxContainer
+	var enemy_press_detail := str((card_row.get_child(0) as Button).text)
+	var enemy_venom_detail := str((card_row.get_child(1) as Button).text)
+	var enemy_brittle_detail := str((card_row.get_child(2) as Button).text)
+	assert_that(enemy_press_detail.find("Apply status.weak +1.") >= 0).is_true()
+	assert_that(enemy_venom_detail.find("Apply status.poison +2.") >= 0).is_true()
+	assert_that(enemy_brittle_detail.find("Apply status.vulnerable +1.") >= 0).is_true()
+	assert_that(enemy_press_detail.find("card.t75.") < 0).is_true()
+	assert_that(enemy_venom_detail.find("card.t75.") < 0).is_true()
+	assert_that(enemy_brittle_detail.find("card.t75.") < 0).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var enemy_status := str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime")).strip_edges()
+	var enemy_status_panel := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+	var enemy_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	for expected_status in ["status.weak +1", "status.poison +2", "status.vulnerable +1"]:
+		assert_that(enemy_status.find(expected_status) >= 0).is_true()
+		assert_that(enemy_status_panel.find(expected_status) >= 0).is_true()
+	assert_that(enemy_feedback.find("applied status.vulnerable +1 to enemy_m1_slime") >= 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T75.5
+func test_status_texts_on_combat_surface_render_in_en_and_zh_cn_without_raw_keys() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t75.locale_status","name_key":"card.t75.locale_status.name","description_key":"card.t75.locale_status.description","cost":1,"type":"skill","target":"enemy","base_effect":{"rage":1}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+
+	for locale in ["en", "zh-CN"]:
+		TranslationServer.set_locale(locale)
+		scene.call("RefreshLocaleForTest")
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.locale_status"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		var status_panel := str(scene.call("GetEnemyStatusTextForTest")).strip_edges()
+		var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).strip_edges()
+		assert_that(status_panel).is_not_empty()
+		assert_that(status_panel.find("combat.enemy.status.") < 0).is_true()
+		assert_that(feedback.find("status.rage +1") >= 0).is_true()
+		assert_that(feedback.find("card.t75.") < 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
 # ACC:T72.1
 func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	var scene := _new_scene()
@@ -219,30 +326,101 @@ func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> voi
 
 
 # ACC:T72.2
+# ACC:T75.2
 func test_mixed_effect_card_updates_hp_block_energy_and_piles_from_definition() -> void:
-	var scene := _new_scene()
-	await get_tree().process_frame
-	TranslationServer.set_locale("en")
-	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Iron Wave"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var snapshots: Array[Dictionary] = []
+	var feedbacks: Array[String] = []
+	var player_blocks: Array[int] = []
+	var enemy_hps: Array[String] = []
+	var discard_counts: Array[int] = []
+	var exhaust_counts: Array[int] = []
 
-	var root := scene as Control
-	var hand := root.get_node("HUD/HandCards") as ItemList
-	hand.select(0)
-	var played := bool(scene.call("RequestPlaySelectedCardForTest"))
-	assert_that(played).is_true()
+	for _run in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Iron Wave"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
 
-	var snapshot := scene.call("CaptureUiStateForTest") as Dictionary
-	var feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
-	assert_that(str(scene.call("GetEnemyHpTextForTest"))).is_equal("27/32")
-	assert_that(int(scene.call("GetPlayerBlockForTest"))).is_equal(5)
-	assert_that(snapshot["energy"]).is_equal("2")
-	assert_that(snapshot["draw"]).is_equal("7")
-	assert_that(snapshot["discard"]).is_equal("1")
-	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(1)
-	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(0)
-	assert_that(feedback.find("dealt 5 damage") >= 0).is_true()
-	assert_that(feedback.find("gained 5 block") >= 0).is_true()
-	assert_that(feedback.find("Energy -1") >= 0).is_true()
+		var root := scene as Control
+		var hand := root.get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		var played := bool(scene.call("RequestPlaySelectedCardForTest"))
+		assert_that(played).is_true()
+
+		snapshots.append(scene.call("CaptureUiStateForTest") as Dictionary)
+		feedbacks.append(str(scene.call("GetLatestFeedbackMessageForTest")))
+		player_blocks.append(int(scene.call("GetPlayerBlockForTest")))
+		enemy_hps.append(str(scene.call("GetEnemyHpTextForTest")))
+		discard_counts.append(int(scene.call("GetDiscardPileCountForTest")))
+		exhaust_counts.append(int(scene.call("GetExhaustPileCountForTest")))
+
+	assert_that(enemy_hps[0]).is_equal("27/32")
+	assert_that(player_blocks[0]).is_equal(5)
+	assert_that(snapshots[0]["energy"]).is_equal("2")
+	assert_that(snapshots[0]["draw"]).is_equal("7")
+	assert_that(snapshots[0]["discard"]).is_equal("1")
+	assert_that(discard_counts[0]).is_equal(1)
+	assert_that(exhaust_counts[0]).is_equal(0)
+	assert_that(feedbacks[0].find("dealt 5 damage") >= 0).is_true()
+	assert_that(feedbacks[0].find("gained 5 block") >= 0).is_true()
+	assert_that(feedbacks[0].find("Energy -1") >= 0).is_true()
+
+	# Determinism assertion: same initial state + same action sequence => identical outcomes.
+	assert_that(enemy_hps[1]).is_equal(enemy_hps[0])
+	assert_that(player_blocks[1]).is_equal(player_blocks[0])
+	assert_that(snapshots[1]).is_equal(snapshots[0])
+	assert_that(feedbacks[1]).is_equal(feedbacks[0])
+	assert_that(discard_counts[1]).is_equal(discard_counts[0])
+	assert_that(exhaust_counts[1]).is_equal(exhaust_counts[0])
+
+# ACC:T75.2
+func test_status_modifier_cards_keep_deterministic_results_across_repeated_runs() -> void:
+	var snapshots: Array[Dictionary] = []
+	var feedbacks: Array[String] = []
+	var enemy_statuses: Array[String] = []
+	var player_statuses: Array[String] = []
+	var enemy_hps: Array[String] = []
+
+	for _run in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+		assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+		scene.call("ClearCardDefinitionsForTest")
+		scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+		assert_that(bool(scene.call(
+			"TryApplyCardDefinitionsContractJsonForTest",
+			'{"cards":[{"id":"card.t75.mod.block","name_key":"card.t75.mod.block.name","description_key":"card.t75.mod.block.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.block","status_stacks":2}},{"id":"card.t75.mod.temp_up","name_key":"card.t75.mod.temp_up.name","description_key":"card.t75.mod.temp_up.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.temp_attack_up","status_stacks":1}},{"id":"card.t75.mod.temp_down","name_key":"card.t75.mod.temp_down.name","description_key":"card.t75.mod.temp_down.description","cost":1,"type":"skill","target":"self","base_effect":{"status_id":"status.temp_attack_down","status_stacks":1}},{"id":"card.t75.mod.poison","name_key":"card.t75.mod.poison.name","description_key":"card.t75.mod.poison.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.poison","status_stacks":2}},{"id":"card.t75.mod.weak","name_key":"card.t75.mod.weak.name","description_key":"card.t75.mod.weak.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.weak","status_stacks":1}},{"id":"card.t75.mod.vulnerable","name_key":"card.t75.mod.vulnerable.name","description_key":"card.t75.mod.vulnerable.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.vulnerable","status_stacks":1}}]}'
+		))).is_true()
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.mod.block","card.t75.mod.temp_up","card.t75.mod.temp_down","card.t75.mod.poison","card.t75.mod.weak","card.t75.mod.vulnerable"],"difficulty":1,"playerHp":80,"energy":8,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		for _i in range(6):
+			hand.select(0)
+			assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+			hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+
+		snapshots.append(scene.call("CaptureUiStateForTest") as Dictionary)
+		feedbacks.append(str(scene.call("GetLatestFeedbackMessageForTest")))
+		enemy_statuses.append(str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime")))
+		player_statuses.append(str(scene.call("GetPlayerStatusSummaryForTest")))
+		enemy_hps.append(str(scene.call("GetEnemyHpTextForTest")))
+		scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+	assert_that(enemy_statuses[0].find("status.poison +2") >= 0).is_true()
+	assert_that(enemy_statuses[0].find("status.weak +1") >= 0).is_true()
+	assert_that(enemy_statuses[0].find("status.vulnerable +1") >= 0).is_true()
+	assert_that(player_statuses[0].find("status.block:2") >= 0).is_true()
+	assert_that(player_statuses[0].find("status.temp_attack_up:1") >= 0).is_true()
+	assert_that(player_statuses[0].find("status.temp_attack_down:1") >= 0).is_true()
+	assert_that(feedbacks[0].find("applied status.vulnerable +1 to enemy_m1_slime") >= 0).is_true()
+	assert_that(enemy_hps[0]).is_not_equal("32/32")
+
+	assert_that(snapshots[1]).is_equal(snapshots[0])
+	assert_that(feedbacks[1]).is_equal(feedbacks[0])
+	assert_that(enemy_statuses[1]).is_equal(enemy_statuses[0])
+	assert_that(player_statuses[1]).is_equal(player_statuses[0])
+	assert_that(enemy_hps[1]).is_equal(enemy_hps[0])
 
 
 # ACC:T72.2
@@ -271,6 +449,8 @@ func test_exhaust_routing_is_definition_driven_for_non_power_through_card() -> v
 
 
 # ACC:T72.8
+# ACC:T75.6
+# ACC:T75.7
 func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_fallback() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
