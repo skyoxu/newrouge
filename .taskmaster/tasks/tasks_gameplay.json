@@ -6998,15 +6998,13 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
     ],
     "acceptance": [
-      "Using confirm with a selected Reward card writes that chosen card into the live run deck state before the current Reward flow returns. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Using skip leaves the live run deck state unchanged and the current Reward flow resolves exactly once through the existing route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Reward resolution reuses the existing Reward scene, and both confirm and skip return through the same existing route-owned return path instead of a separate resolution flow. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "Reward scene tests verify confirm writeback, skip with no deck mutation, and a single resolution through the route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "Before workflow selects T115, no implementation work for this task is executed. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Using confirm with any valid selected Reward card appends exactly the final selected card_id into the current live run deck state exactly once, and that writeback is already visible before the current Reward flow returns through the existing route-owned return path. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Using skip leaves the live run deck state unchanged and resolves exactly once through the existing route-owned return path; any second skip attempt is rejected without route or deck mutation. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Reward resolution reuses the existing Reward scene, and both confirm and skip return directly to the same existing route-owned owner target without any extra intermediate owner or alternate resolution scene being inserted for either action. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Using confirm with a selected Reward card resolves exactly once through the existing route-owned return path; any second confirm attempt after first resolution is rejected and does not mutate live run deck state or route history. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
     ],
     "test_strategy": [
       "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, reuse of the existing Reward scene, and single-resolution route return."
@@ -7020,7 +7018,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0115.json"
+      "logs/ci/<date>/task-0115.json",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
   },

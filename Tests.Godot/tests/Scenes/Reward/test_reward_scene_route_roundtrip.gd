@@ -58,6 +58,17 @@ func _current_scene_path(main: Control) -> String:
     return str(nav.call("GetCurrentScenePathForTest"))
 
 
+func _run_deck_ids(main: Control) -> Array[String]:
+    assert_bool(main.has_method("GetRunDeckCardIdsForTest")).is_true()
+    var variant = main.call("GetRunDeckCardIdsForTest")
+    var ids: Array[String] = []
+    if typeof(variant) != TYPE_ARRAY:
+        return ids
+    for item in variant:
+        ids.append(str(item))
+    return ids
+
+
 func _current_scene_instance(main: Control):
     var root := main.get_node_or_null("ScreenRoot")
     if root == null:
@@ -78,29 +89,43 @@ func _start_and_complete_encounter(main: Control, node_id: String, node_type: St
 
 
 func _resolve_reward_once(main: Control, action: String) -> Dictionary:
-    if main.has_method("ResolveRewardForTest"):
-        var result_variant = main.call("ResolveRewardForTest", action)
-        if typeof(result_variant) == TYPE_DICTIONARY:
-            return result_variant as Dictionary
-        if typeof(result_variant) == TYPE_BOOL:
-            return {"ok": bool(result_variant), "reason": "", "source": "main-bool"}
-        return {"ok": false, "reason": "invalid-main-result", "source": "main"}
-
     var reward_scene = _current_scene_instance(main)
     if reward_scene == null:
+        if main.has_method("ResolveRewardForTest"):
+            var result_variant = main.call("ResolveRewardForTest", action)
+            if typeof(result_variant) == TYPE_DICTIONARY:
+                return result_variant as Dictionary
+            if typeof(result_variant) == TYPE_BOOL:
+                return {"ok": bool(result_variant), "reason": "", "source": "main-bool"}
+            return {"ok": false, "reason": "invalid-main-result", "source": "main"}
         return {"ok": false, "reason": "reward-scene-missing", "source": "scene"}
 
     var normalized := action.strip_edges().to_lower()
     if normalized == "confirm":
+        var selected_card_id := ""
+        if reward_scene.has_method("GetOfferedCardIdsForTest"):
+            var offered_ids = reward_scene.call("GetOfferedCardIdsForTest") as Array[String]
+            if offered_ids.size() > 0:
+                selected_card_id = offered_ids[0]
         if reward_scene.has_method("SelectChoiceForTest"):
             reward_scene.call("SelectChoiceForTest", 0)
         elif reward_scene.has_method("SelectOptionForTest"):
             reward_scene.call("SelectOptionForTest", "reward_card_1")
 
         if reward_scene.has_method("ConfirmSelectedForTest"):
-            return {"ok": bool(reward_scene.call("ConfirmSelectedForTest")), "reason": "", "source": "scene"}
+            return {
+                "ok": bool(reward_scene.call("ConfirmSelectedForTest")),
+                "reason": "",
+                "source": "scene",
+                "selected_card_id": selected_card_id
+            }
         if reward_scene.has_method("ConfirmForTest"):
-            return {"ok": bool(reward_scene.call("ConfirmForTest")), "reason": "", "source": "scene"}
+            return {
+                "ok": bool(reward_scene.call("ConfirmForTest")),
+                "reason": "",
+                "source": "scene",
+                "selected_card_id": selected_card_id
+            }
         return {"ok": false, "reason": "confirm-hook-missing", "source": "scene"}
 
     if normalized == "skip":
@@ -159,45 +184,127 @@ func test_combat_completion_routes_to_real_reward_scene_asset_not_placeholder_or
 
 # acceptance: ACC:T61.2
 # acceptance: ACC:T85.4
+# acceptance: ACC:T115.1
+# acceptance: ACC:T115.4
 # RED-FIRST: this fails until Reward confirm resolves exactly once and returns to Map.
 func test_confirm_from_reward_resolves_once_then_refuses_second_resolution_without_route_mutation() -> void:
     var main := await _load_main_on_map()
 
     await _start_and_complete_encounter(main, "combat-02", "combat")
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+    assert_bool(reward_scene.has_method("GetOfferedCardIdsForTest")).is_true()
+    var offered_ids := reward_scene.call("GetOfferedCardIdsForTest") as Array[String]
+    assert_int(offered_ids.size()).is_equal(3)
+    var selected_card_id := offered_ids[0]
+
+    var deck_before := _run_deck_ids(main)
+    assert_bool(reward_scene.has_method("SelectChoiceForTest")).is_true()
+    assert_bool(bool(reward_scene.call("SelectChoiceForTest", 0))).is_true()
 
     var first := _resolve_reward_once(main, "confirm")
     await get_tree().process_frame
     var history_after_first := _route_history(main)
+    var deck_after_first := _run_deck_ids(main)
 
     var second := _resolve_reward_once(main, "confirm")
     await get_tree().process_frame
     var history_after_second := _route_history(main)
+    var deck_after_second := _run_deck_ids(main)
 
     assert_bool(bool(first.get("ok", false))).is_true()
+    assert_int(deck_after_first.size()).is_equal(deck_before.size() + 1)
+    assert_str(deck_after_first[deck_after_first.size() - 1]).is_equal(selected_card_id)
     assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
     assert_bool(bool(second.get("ok", false))).is_false()
+    assert_int(deck_after_second.size()).is_equal(deck_after_first.size())
+    assert_array(deck_after_second).is_equal(deck_after_first)
     assert_int(history_after_second.size()).is_equal(history_after_first.size())
+
+# acceptance: ACC:T115.1
+func test_confirm_after_reselection_writes_final_selected_card_id_only_once() -> void:
+    var main := await _load_main_on_map()
+
+    await _start_and_complete_encounter(main, "combat-11", "combat")
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+    assert_bool(reward_scene.has_method("GetOfferedCardIdsForTest")).is_true()
+    var offered_ids := reward_scene.call("GetOfferedCardIdsForTest") as Array[String]
+    assert_int(offered_ids.size()).is_equal(3)
+
+    var deck_before := _run_deck_ids(main)
+    assert_bool(bool(reward_scene.call("SelectChoiceForTest", 0))).is_true()
+    assert_bool(bool(reward_scene.call("SelectChoiceForTest", 1))).is_true()
+    assert_bool(bool(reward_scene.call("CanConfirmSelectedForTest", 0))).is_false()
+    assert_bool(bool(reward_scene.call("CanConfirmSelectedForTest", 1))).is_true()
+
+    var confirm_result := _resolve_reward_once(main, "confirm")
+    await get_tree().process_frame
+    var deck_after := _run_deck_ids(main)
+
+    assert_bool(bool(confirm_result.get("ok", false))).is_true()
+    assert_int(deck_after.size()).is_equal(deck_before.size() + 1)
+    assert_str(deck_after[deck_after.size() - 1]).is_equal(offered_ids[1])
+    assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
 
 
 # acceptance: ACC:T61.2
 # acceptance: ACC:T85.4
-func test_event_completion_then_skip_reward_resolves_once_and_second_skip_is_refused() -> void:
+# acceptance: ACC:T115.2
+func test_event_completion_then_skip_reward_resolves_once_without_deck_mutation_and_second_skip_is_refused() -> void:
     var main := await _load_main_on_map()
 
     await _start_and_complete_encounter(main, "event-01", "event")
+    var deck_before := _run_deck_ids(main)
 
     var first := _resolve_reward_once(main, "skip")
     await get_tree().process_frame
     var history_after_first := _route_history(main)
+    var deck_after_first := _run_deck_ids(main)
 
     var second := _resolve_reward_once(main, "skip")
     await get_tree().process_frame
     var history_after_second := _route_history(main)
+    var deck_after_second := _run_deck_ids(main)
 
     assert_bool(bool(first.get("ok", false))).is_true()
     assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
+    assert_int(deck_after_first.size()).is_equal(deck_before.size())
+    assert_array(deck_after_first).is_equal(deck_before)
     assert_bool(bool(second.get("ok", false))).is_false()
+    assert_int(deck_after_second.size()).is_equal(deck_after_first.size())
+    assert_array(deck_after_second).is_equal(deck_after_first)
     assert_int(history_after_second.size()).is_equal(history_after_first.size())
+
+# acceptance: ACC:T115.3
+func test_confirm_and_skip_return_to_same_route_owned_owner_target_without_secondary_flow() -> void:
+    var main := await _load_main_on_map()
+
+    await _start_and_complete_encounter(main, "combat-10", "combat")
+    var confirm_result := _resolve_reward_once(main, "confirm")
+    await get_tree().process_frame
+    var history_after_confirm := _route_history(main)
+    var scene_after_confirm := _current_scene_path(main)
+
+    await _start_and_complete_encounter(main, "event-10", "event")
+    var skip_result := _resolve_reward_once(main, "skip")
+    await get_tree().process_frame
+    var history_after_skip := _route_history(main)
+    var scene_after_skip := _current_scene_path(main)
+
+    assert_bool(bool(confirm_result.get("ok", false))).is_true()
+    assert_bool(bool(skip_result.get("ok", false))).is_true()
+    assert_str(str(confirm_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+    assert_str(str(skip_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+    assert_str(scene_after_confirm).is_equal(MAP_SCENE)
+    assert_str(scene_after_skip).is_equal(MAP_SCENE)
+    assert_bool(_contains_non_gameplay_route_target(history_after_confirm)).is_false()
+    assert_bool(_contains_non_gameplay_route_target(history_after_skip)).is_false()
+
+    var confirm_again := _resolve_reward_once(main, "confirm")
+    var skip_again := _resolve_reward_once(main, "skip")
+    assert_bool(bool(confirm_again.get("ok", false))).is_false()
+    assert_bool(bool(skip_again.get("ok", false))).is_false()
 
 
 # acceptance: ACC:T61.4
@@ -300,14 +407,31 @@ func test_reenter_reward_does_not_refresh_locked_offer_and_illegal_action_is_rej
     var main := await _load_main_on_map()
 
     await _start_and_complete_encounter(main, "event-02", "event")
+    var deck_before_illegal := _run_deck_ids(main)
+    var history_before_illegal := _route_history(main)
     var illegal := _resolve_reward_once(main, "hack")
+    var deck_after_illegal := _run_deck_ids(main)
+    var history_after_illegal := _route_history(main)
     assert_bool(bool(illegal.get("ok", false))).is_false()
     assert_str(_current_scene_path(main)).is_equal(REWARD_SCENE)
+    assert_array(deck_after_illegal).is_equal(deck_before_illegal)
+    assert_array(history_after_illegal).is_equal(history_before_illegal)
 
     var first_skip := _resolve_reward_once(main, "skip")
     await get_tree().process_frame
+    var history_after_first_skip := _route_history(main)
+    var deck_after_first_skip := _run_deck_ids(main)
     assert_bool(bool(first_skip.get("ok", false))).is_true()
     assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
+    assert_array(deck_after_first_skip).is_equal(deck_before_illegal)
+
+    var second_skip := _resolve_reward_once(main, "skip")
+    await get_tree().process_frame
+    var history_after_second_skip := _route_history(main)
+    var deck_after_second_skip := _run_deck_ids(main)
+    assert_bool(bool(second_skip.get("ok", false))).is_false()
+    assert_array(deck_after_second_skip).is_equal(deck_after_first_skip)
+    assert_int(history_after_second_skip.size()).is_equal(history_after_first_skip.size())
 
     await _start_and_complete_encounter(main, "event-03", "event")
     var reward_scene = _current_scene_instance(main)
