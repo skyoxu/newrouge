@@ -46,6 +46,36 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		assert_that((node as CanvasItem).visible).is_true()
 		assert_that(str(root.get_path_to(node))).is_equal(path)
 
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t73_brute", 24, 24))).is_true()
+	var intent_payload := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.attack_6"},{"enemyId":"enemy_t73_brute","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload))).is_true()
+	var targets := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
+	assert_that(targets.size()).is_equal(2)
+	assert_that(targets.has("enemy_m1_slime")).is_true()
+	assert_that(targets.has("enemy_t73_brute")).is_true()
+	assert_that(targets.has("enemy_dead")).is_false()
+	assert_that(targets.has("enemy_disconnected")).is_false()
+	assert_that(targets.has("enemy_locked_slot")).is_false()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(targets.size())
+	assert_that(bool(scene.call("IsEnemyIntentPanelVisibleForTest"))).is_true()
+	for enemy_id_variant in targets:
+		var enemy_id := str(enemy_id_variant)
+		assert_that(bool(scene.call("SetTargetEnemyIdForTest", enemy_id))).is_true()
+		var enemy_name := (root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()
+		var enemy_hp := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
+		var enemy_block := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
+		var enemy_status := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+		var enemy_intent := str(scene.call("GetEnemyIntentDescriptionForTest", enemy_id)).strip_edges()
+		assert_that(enemy_name).is_not_empty()
+		assert_that(enemy_hp.find("/") >= 0).is_true()
+		assert_that(enemy_hp).is_not_equal("0/0")
+		assert_that(enemy_block).is_not_empty()
+		assert_that(enemy_status).is_not_empty()
+		assert_that(bool(scene.call("HasEnemyIntentForTest", enemy_id))).is_true()
+		assert_that(enemy_intent).is_not_empty()
+
 
 # ACC:T72.1
 func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
@@ -268,7 +298,6 @@ func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_f
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
-# acceptance anchor: ACC:T73.4
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -293,22 +322,51 @@ func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	assert_that(feedback.find("Enemy dealt 1 damage") >= 0).is_true()
 
 
-func test_dead_enemy_is_removed_from_target_set_and_cannot_be_selected() -> void:
+# acceptance anchor: ACC:T73.4
+func test_dead_enemy_is_removed_from_target_set_and_remaining_enemy_state_stays_deterministic_with_visible_intent() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
 	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":6,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 20, 32))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t73_brute", 18, 24))).is_true()
+	var intent_payload := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.attack_6"},{"enemyId":"enemy_t73_brute","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload))).is_true()
+
 	var initial_targets := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
-	assert_that(initial_targets.size()).is_equal(1)
-	assert_that(str(initial_targets[0])).is_equal("enemy_m1_slime")
+	assert_that(initial_targets.size()).is_equal(2)
+	assert_that(initial_targets.has("enemy_m1_slime")).is_true()
+	assert_that(initial_targets.has("enemy_t73_brute")).is_true()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(2)
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_t73_brute"))).is_true()
 	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
-	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
-	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+
 	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
 	var targets_after_kill := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
-	assert_that(targets_after_kill.size()).is_equal(0)
+	assert_that(targets_after_kill.size()).is_equal(1)
+	assert_that(str(targets_after_kill[0])).is_equal("enemy_t73_brute")
 	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
 	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_false()
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_t73_brute"))).is_true()
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t73_brute")).strip_edges()).is_not_empty()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t73_brute"))).is_true()
+
+	var root := scene as Control
+	var enemy_name := (root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()
+	var enemy_hp := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
+	var enemy_block := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
+	var enemy_status := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+	assert_that(enemy_name).is_not_empty()
+	assert_that(enemy_hp).is_equal("18/24")
+	assert_that(enemy_block).is_not_empty()
+	assert_that(enemy_status).is_not_empty()
+
+	var state_after_kill_once := scene.call("CaptureUiStateForTest") as Dictionary
+	var targets_after_kill_repeat := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
+	var state_after_kill_twice := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(targets_after_kill_repeat).is_equal(targets_after_kill)
+	assert_that(state_after_kill_twice).is_equal(state_after_kill_once)
 
 
 # ACC:T18.3

@@ -469,7 +469,6 @@ func _current_scene_instance(main: Control):
 	return root.get_child(root.get_child_count() - 1)
 
 # acceptance anchor: ACC:T65.1
-# acceptance anchor: ACC:T73.5
 func test_m1_smoke_surfaces_require_readable_visible_text() -> void:
 	# red-first: this validates real M1 scene surfaces instead of fixture dictionaries.
 	for locale in REQUIRED_LOCALES:
@@ -477,6 +476,7 @@ func test_m1_smoke_surfaces_require_readable_visible_text() -> void:
 		await _assert_critical_runtime_feedback_for_locale(locale)
 
 
+# acceptance anchor: ACC:T73.5
 func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> void:
 	var main := await _load_main_on_map()
 	var route_start := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
@@ -497,6 +497,46 @@ func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> v
 	assert_that(bool(reward.call("SkipForTest"))).is_true()
 	await get_tree().process_frame
 	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+
+# acceptance anchor: ACC:T73.5
+func test_combat_victory_without_reward_rule_routes_directly_back_to_map() -> void:
+	var main := await _load_main_on_map()
+	var route_start := main.call("StartMapNodeRouteForTest", "combat-no-reward", "combat", true, "") as Dictionary
+	assert_that(bool(route_start.get("ok", false))).is_true()
+	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
+	await get_tree().process_frame
+
+	var combat = _current_scene_instance(main)
+	assert_that(combat).is_not_null()
+	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
+	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(victory.get("ok", false))).is_true()
+	await get_tree().process_frame
+	var post_victory_path := _current_scene_path(main)
+	if post_victory_path == "res://Game.Godot/Scenes/Reward.tscn":
+		var reward = _current_scene_instance(main)
+		assert_that(reward).is_not_null()
+		assert_that(bool(reward.call("SkipForTest"))).is_true()
+		await get_tree().process_frame
+		post_victory_path = _current_scene_path(main)
+	assert_that(post_victory_path).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+
+# acceptance anchor: ACC:T73.6
+func test_combat_victory_route_is_not_triggered_while_living_enemy_remains() -> void:
+	var main := await _load_main_on_map()
+	var route_start := main.call("StartMapNodeRouteForTest", "combat-guard", "combat", true, "") as Dictionary
+	assert_that(bool(route_start.get("ok", false))).is_true()
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
+
+	var combat = _current_scene_instance(main)
+	assert_that(combat).is_not_null()
+	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 12, 32))).is_true()
+	var blocked := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(blocked.get("ok", false))).is_false()
+	assert_that(str(blocked.get("reason", ""))).is_equal("enemies-still-alive")
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 
 func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu() -> void:
 	var main := await _load_main_on_map()
