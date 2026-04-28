@@ -5631,23 +5631,19 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
-      "logs/ci/<date>/single-task-light-lane-rerun-t83/summary.json"
+      "Game.Core.Tests/Tasks/Task0085WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "On the existing Reward scene surface, each offer-selection action sets the clicked offer as selected and clears any prior selection, leaving exactly one active selection after every selection action. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
-      "Within the existing Reward scene, confirm is unavailable when no offer is selected and becomes available only when a valid single selection exists; attempting confirm with no selection does not proceed and leaves state unchanged. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
-      "The existing standalone Reward scene shows exactly three offered card choices for this interaction, preserves Reward route ownership, and does not create a second Reward confirmation flow outside the current scene. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
-      "This task does not perform deck writeback, skip resolution, persistent mutation, or return-path closure during Reward confirmation; these behaviors are deferred to a follow-up task. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_confirm_and_skip_flow.gd",
-      "Reward scene tests are added or extended to explicitly verify single-selection state and confirm lock/unlock gating on the existing Reward surface; citing legacy tests that do not verify this gate is insufficient. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd",
-      "If workflow has not explicitly selected T85, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json",
-      "This task must not introduce any second Reward confirmation flow, confirmation UI, or confirmation scene outside the current Reward scene; confirmation interaction must remain exclusively on the existing Reward surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_single_confirm_lock.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
+      "Changing selection from one offer to another transfers confirm eligibility to the newly selected offer and removes confirm eligibility from the previously selected offer without creating multiple valid selections. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Within the existing Reward scene, confirm is unavailable when no offer is selected and becomes available only for the currently selected single offer; attempting confirm with no selection does not proceed and leaves selection and lock state unchanged. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "The existing standalone Reward scene presents exactly three offered card choices on the current surface, and the selection/confirm interaction is completed on that same Reward scene rather than via a second confirmation surface. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "Within this selection-phase task scope, once confirm is accepted for the selected offer on the existing Reward surface, that interaction state is locked and rejects further reselection or repeated confirm attempts from the same interaction state. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "This task covers selection-state completion and confirm gating only: reward resolution in this phase does not mutate run HP or run Gold, while deck writeback, skip resolution, and broader persistent progression remain deferred to follow-up tasks. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
     ],
     "test_strategy": [
-      "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface."
+      "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface.",
+      "Workflow selection evidence remains a governance gate and is validated by Game.Core.Tests/Tasks/Task0085WorkflowSelectionEvidenceTests.cs."
     ],
     "taskmaster_id": 85,
     "taskmaster_exported": true,
@@ -5658,7 +5654,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0085.json"
+      "logs/ci/<date>/task-0085.json",
+      "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using Game.Core.Services;
 using Godot;
@@ -13,6 +12,11 @@ namespace Game.Godot.Scripts.Reward;
 public partial class RewardOfferProvider : Node
 {
     private sealed record CardTextMetadata(string NameKey, string DescriptionKey, string Form);
+    private const string CardDefinitionCatalogPath = "res://Game.Core/Data/m1-card-definitions.json";
+    private static readonly JsonDocumentOptions CardDefinitionJsonOptions = new()
+    {
+        MaxDepth = 128,
+    };
 
     private static readonly Lazy<IReadOnlyDictionary<string, CardTextMetadata>> CardTextCatalog =
         new(LoadCardTextCatalog);
@@ -85,16 +89,22 @@ public partial class RewardOfferProvider : Node
     private static IReadOnlyDictionary<string, CardTextMetadata> LoadCardTextCatalog()
     {
         var map = new Dictionary<string, CardTextMetadata>(StringComparer.Ordinal);
-        var path = ProjectSettings.GlobalizePath("res://../Game.Core/Data/m1-card-definitions.json");
-        if (!File.Exists(path))
+        if (!FileAccess.FileExists(CardDefinitionCatalogPath))
         {
-            GD.PushWarning($"[RewardOfferProvider] card definition file not found: {path}");
+            GD.PushWarning($"[RewardOfferProvider] card definition file not found: {CardDefinitionCatalogPath}");
             return map;
         }
 
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            using var file = FileAccess.Open(CardDefinitionCatalogPath, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                GD.PushWarning($"[RewardOfferProvider] card definition file could not be opened: {CardDefinitionCatalogPath}");
+                return map;
+            }
+
+            using var doc = JsonDocument.Parse(file.GetAsText(), CardDefinitionJsonOptions);
             if (!doc.RootElement.TryGetProperty("cards", out var cards) || cards.ValueKind != JsonValueKind.Array)
             {
                 return map;

@@ -25,6 +25,8 @@ const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 @onready var _feedback_label: Label = $VBox/Feedback
 
 var _selected_index: int = -1
+var _is_confirmed: bool = false
+var _is_skipped: bool = false
 var _translations_by_locale := {}
 var _offer_snapshot: Dictionary = {}
 var _offered_cards: Array = []
@@ -34,6 +36,7 @@ func _ready() -> void:
 	_skip_button.pressed.connect(_on_skip_pressed)
 	_load_offer_snapshot_from_main()
 	RefreshLocaleForTest()
+	_reset_resolution_state()
 	_feedback_label.text = _resolve_text(FEEDBACK_DEFAULT_KEY)
 
 func SetLocaleForTest(locale: String) -> void:
@@ -49,24 +52,46 @@ func RefreshLocaleForTest() -> void:
 	_refresh_offer_labels()
 
 func SelectChoiceForTest(index: int) -> bool:
+	if _is_resolution_locked():
+		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
+		return false
 	if index < 0 or index >= _card_list.get_child_count():
 		return false
 	_selected_index = index
 	_feedback_label.text = _resolve_text(FEEDBACK_SELECTED_KEY).replace("{0}", str(index + 1))
 	return true
 
+func CanConfirmSelectedForTest(index: int) -> bool:
+	if _is_resolution_locked():
+		return false
+	return _selected_index == index and index >= 0
+
 func ConfirmSelectedForTest() -> bool:
+	if _is_resolution_locked():
+		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
+		return false
 	if _selected_index < 0:
 		_feedback_label.text = _resolve_text(FEEDBACK_SELECT_FIRST_KEY)
 		return false
+	_is_confirmed = true
 	_feedback_label.text = _resolve_text(FEEDBACK_CONFIRMED_KEY)
 	_resolve_route_and_return("confirm")
 	return true
 
 func SkipForTest() -> bool:
+	if _is_resolution_locked():
+		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
+		return false
+	_is_skipped = true
 	_feedback_label.text = _resolve_text(FEEDBACK_SKIPPED_KEY)
 	_resolve_route_and_return("skip")
 	return true
+
+func GetSelectedIndexForTest() -> int:
+	return _selected_index
+
+func IsLockedForTest() -> bool:
+	return _is_resolution_locked()
 
 func ShowLockedFeedbackForTest() -> bool:
 	_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
@@ -131,6 +156,14 @@ func _load_offer_snapshot_from_main() -> void:
 	for item in (offers_variant as Array):
 		if typeof(item) == TYPE_DICTIONARY:
 			_offered_cards.append((item as Dictionary).duplicate(true))
+
+func _reset_resolution_state() -> void:
+	_selected_index = -1
+	_is_confirmed = false
+	_is_skipped = false
+
+func _is_resolution_locked() -> bool:
+	return _is_confirmed or _is_skipped
 
 func _resolve_offer_label_text(index: int, fallback_key: String) -> String:
 	if index < 0 or index >= _offered_cards.size():
