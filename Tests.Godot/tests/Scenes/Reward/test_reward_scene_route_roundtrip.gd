@@ -158,6 +158,7 @@ func test_combat_completion_routes_to_real_reward_scene_asset_not_placeholder_or
 
 
 # acceptance: ACC:T61.2
+# acceptance: ACC:T85.4
 # RED-FIRST: this fails until Reward confirm resolves exactly once and returns to Map.
 func test_confirm_from_reward_resolves_once_then_refuses_second_resolution_without_route_mutation() -> void:
     var main := await _load_main_on_map()
@@ -179,6 +180,7 @@ func test_confirm_from_reward_resolves_once_then_refuses_second_resolution_witho
 
 
 # acceptance: ACC:T61.2
+# acceptance: ACC:T85.4
 func test_event_completion_then_skip_reward_resolves_once_and_second_skip_is_refused() -> void:
     var main := await _load_main_on_map()
 
@@ -199,6 +201,7 @@ func test_event_completion_then_skip_reward_resolves_once_and_second_skip_is_ref
 
 
 # acceptance: ACC:T61.4
+# acceptance: ACC:T85.3
 func test_reward_scene_exposes_three_cards_confirm_skip_and_visible_feedback() -> void:
     var main := await _load_main_on_map()
     await _start_and_complete_encounter(main, "combat-03", "combat")
@@ -211,7 +214,88 @@ func test_reward_scene_exposes_three_cards_confirm_skip_and_visible_feedback() -
     assert_str(str(reward_scene.call("GetFeedbackForTest"))).is_equal("Reward skipped.")
 
 
+# acceptance: ACC:T85.1
+# acceptance: ACC:T85.2
+# acceptance: ACC:T85.5
+func test_reward_scene_confirm_gating_requires_selection_and_locks_after_resolution() -> void:
+    var main := await _load_main_on_map()
+    await _start_and_complete_encounter(main, "combat-04", "combat")
+
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+
+    var confirm_without_selection := bool(reward_scene.call("ConfirmSelectedForTest"))
+    assert_bool(confirm_without_selection).is_false()
+    assert_int(int(reward_scene.call("GetSelectedIndexForTest"))).is_equal(-1)
+    assert_bool(bool(reward_scene.call("IsLockedForTest"))).is_false()
+
+    var select_first := bool(reward_scene.call("SelectChoiceForTest", 0))
+    var selected_after_first := int(reward_scene.call("GetSelectedIndexForTest"))
+    var select_second := bool(reward_scene.call("SelectChoiceForTest", 1))
+    var selected_after_second := int(reward_scene.call("GetSelectedIndexForTest"))
+    var can_confirm_old := bool(reward_scene.call("CanConfirmSelectedForTest", 0))
+    var can_confirm_new := bool(reward_scene.call("CanConfirmSelectedForTest", 1))
+    var confirm_selected := bool(reward_scene.call("ConfirmSelectedForTest"))
+    var select_after_confirm := bool(reward_scene.call("SelectChoiceForTest", 1))
+    var confirm_after_confirm := bool(reward_scene.call("ConfirmSelectedForTest"))
+
+    assert_bool(select_first).is_true()
+    assert_int(selected_after_first).is_equal(0)
+    assert_bool(select_second).is_true()
+    assert_int(selected_after_second).is_equal(1)
+    assert_bool(can_confirm_old).is_false()
+    assert_bool(can_confirm_new).is_true()
+    assert_bool(confirm_selected).is_true()
+    assert_bool(select_after_confirm).is_false()
+    assert_bool(confirm_after_confirm).is_false()
+    assert_bool(bool(reward_scene.call("IsLockedForTest"))).is_true()
+
+
+# acceptance: ACC:T85.4
+func test_reward_scene_skip_locks_reward_surface_and_blocks_late_confirm() -> void:
+    var main := await _load_main_on_map()
+    await _start_and_complete_encounter(main, "event-04", "event")
+
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+
+    var selected := bool(reward_scene.call("SelectChoiceForTest", 0))
+    var skipped := bool(reward_scene.call("SkipForTest"))
+    var confirm_after_skip := bool(reward_scene.call("ConfirmSelectedForTest"))
+    var select_after_skip := bool(reward_scene.call("SelectChoiceForTest", 1))
+
+    assert_bool(selected).is_true()
+    assert_bool(skipped).is_true()
+    assert_bool(confirm_after_skip).is_false()
+    assert_bool(select_after_skip).is_false()
+    assert_bool(bool(reward_scene.call("IsLockedForTest"))).is_true()
+
+
+# acceptance: ACC:T85.5
+func test_reward_resolution_does_not_mutate_run_hp_or_gold_within_selection_phase_scope() -> void:
+    var main := await _load_main_on_map()
+    await _start_and_complete_encounter(main, "combat-05", "combat")
+
+    assert_bool(main.has_method("GetRunStateForTest")).is_true()
+    var before_state := main.call("GetRunStateForTest") as Dictionary
+    var hp_before := int(before_state.get("hp", -1))
+    var gold_before := int(before_state.get("gold", -1))
+    var score_before := int(before_state.get("score", -1))
+
+    var first := _resolve_reward_once(main, "confirm")
+    await get_tree().process_frame
+
+    assert_bool(bool(first.get("ok", false))).is_true()
+    assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
+
+    var after_state := main.call("GetRunStateForTest") as Dictionary
+    assert_int(int(after_state.get("hp", -1))).is_equal(hp_before)
+    assert_int(int(after_state.get("gold", -1))).is_equal(gold_before)
+    assert_int(int(after_state.get("score", -1))).is_equal(score_before)
+
+
 # acceptance: ACC:T61.5
+# acceptance: ACC:T85.7
 func test_reenter_reward_does_not_refresh_locked_offer_and_illegal_action_is_rejected() -> void:
     var main := await _load_main_on_map()
 

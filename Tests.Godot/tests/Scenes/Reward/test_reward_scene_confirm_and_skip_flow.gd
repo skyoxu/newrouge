@@ -9,6 +9,10 @@ class RewardSceneFlowHarness:
     var _is_confirmed: bool = false
     var _is_skipped: bool = false
     var _in_scene: bool = false
+    var _deck_writeback_count: int = 0
+    var _skip_resolution_count: int = 0
+    var _persistent_mutation_count: int = 0
+    var _return_path_closure_count: int = 0
 
     func enter_offer(offer_id: String, cards: Array[String]) -> void:
         _offer_id = offer_id
@@ -63,6 +67,18 @@ class RewardSceneFlowHarness:
     func is_skipped() -> bool:
         return _is_skipped
 
+    func deck_writeback_count() -> int:
+        return _deck_writeback_count
+
+    func skip_resolution_count() -> int:
+        return _skip_resolution_count
+
+    func persistent_mutation_count() -> int:
+        return _persistent_mutation_count
+
+    func return_path_closure_count() -> int:
+        return _return_path_closure_count
+
 
 func test_reward_offer_displays_three_choices_on_enter() -> void:
     var harness := RewardSceneFlowHarness.new()
@@ -112,6 +128,10 @@ func test_skip_marks_offer_skipped_and_blocks_confirmation() -> void:
     assert_bool(harness.is_skipped()).is_true()
     assert_bool(confirmed_after_skip).is_false()
     assert_bool(harness.is_confirmed()).is_false()
+    assert_int(harness.deck_writeback_count()).is_equal(0)
+    assert_int(harness.skip_resolution_count()).is_equal(0)
+    assert_int(harness.persistent_mutation_count()).is_equal(0)
+    assert_int(harness.return_path_closure_count()).is_equal(0)
 
 
 # acceptance: ACC:T19.7

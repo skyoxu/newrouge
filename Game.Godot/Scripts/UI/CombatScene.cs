@@ -41,6 +41,10 @@ public partial class CombatScene : Control
     {
         PropertyNameCaseInsensitive = true,
     };
+    private static readonly JsonDocumentOptions SafeJsonDocumentOptions = new()
+    {
+        MaxDepth = 128,
+    };
     private int _coreStateMutationCount;
     private int _turnIndex = 1;
     private int _acceptedCommandFeedbackCount;
@@ -61,7 +65,6 @@ public partial class CombatScene : Control
     private static readonly string[] CardDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-card-definitions.json",
-        "res://../Game.Core/Data/m1-card-definitions.json",
     };
     private Texture2D? _enemyIntentFallbackTexture;
 
@@ -253,7 +256,7 @@ public partial class CombatScene : Control
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(definitionsJson);
+            document = JsonDocument.Parse(definitionsJson, SafeJsonDocumentOptions);
         }
         catch (JsonException)
         {
@@ -969,7 +972,7 @@ public partial class CombatScene : Control
             JsonDocument document;
             try
             {
-                document = JsonDocument.Parse(file.GetAsText());
+                document = JsonDocument.Parse(file.GetAsText(), SafeJsonDocumentOptions);
             }
             catch (JsonException)
             {
