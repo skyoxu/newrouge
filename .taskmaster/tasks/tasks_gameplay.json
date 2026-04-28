@@ -5243,17 +5243,16 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0079WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "For every existing HP mutation path that transitions player HP from >0 to <=0 (including end-turn and non-end-turn paths), defeat routing is triggered by the HP-change state-update flow, not by an end-turn-only check. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Within one combat resolution, only the first qualifying HP<=0 transition resolves defeat; any later HP updates while HP stays <=0 produce no additional defeat routing, and summary/menu routing is observed exactly once. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "All existing player-HP mutation entry points (including end-turn and non-end-turn paths) MUST call the same logic-state HP update entry (single-source state-update path); defeat routing MUST trigger only on HP transitions >0 -> <=0 from that unified path, and HP changes that do not cross this boundary (<=0 -> <=0 or >0 -> >0) MUST NOT trigger defeat resolve. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Within one combat resolution, defeat resolve is one-shot: after the first HP transition from >0 to <=0, the observable outcome MUST be Defeat summary + Main menu exactly once; no later HP updates (including recover-above-zero then drop-again, or staying <=0) may trigger another defeat resolve or replace Defeat with Victory. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "When HP<=0 triggers defeat, route ownership remains unchanged from current behavior, and the observable outcome is return to Main menu with a visible Defeat summary result. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "All existing player-HP mutation entry points must converge to one shared state-update path that evaluates defeat; if any existing entry point can mutate HP while bypassing that path, acceptance is not met. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Any logic-state update that changes player HP emits an HP-changed signal/callback, and defeat routing is sourced from that emission; if an HP change has no such emission, that change must not trigger defeat routing. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Implementation evidence for T79 is valid only if workflow selection of T79 is recorded first; if implementation artifacts appear before workflow selection evidence, acceptance is not met. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json",
-      "Combat scene tests are added or extended to cover HP-change-driven Defeat for both end-turn and non-end-turn HP mutation paths, and to verify defeat routing plus summary/menu routing happen exactly once per combat resolution. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Each existing player-HP mutation entry point (end-turn and non-end-turn) must be exercised and shown to produce identical HP-change-driven defeat behavior through the same state-update semantics; any entry point that can cause defeat without the unified HP-change flow fails acceptance. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "HP-change emission/callback MUST be produced by the unified logic-state update path for every HP mutation update (not defeat-only), with test-visible evidence on both end-turn and non-end-turn entry points; defeat routing MUST be causally bound to that emission when and only when HP transitions >0 -> <=0. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "No parallel defeat trigger is allowed outside the unified HP state-update flow: if a code path can resolve defeat without passing through the unified HP-change emission, acceptance fails even when observable routing appears correct. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Implementation evidence for T79 is valid only if workflow selection of T79 is recorded first; if implementation artifacts appear before workflow selection evidence, acceptance is not met. Refs: Game.Core.Tests/Tasks/Task0079WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add/extend Combat scene tests for HP-change-driven defeat trigger on end-turn and non-end-turn HP mutation paths, and verify one-shot defeat routing."
@@ -5266,7 +5265,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0079.json"
+      "logs/ci/<date>/task-0079.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
