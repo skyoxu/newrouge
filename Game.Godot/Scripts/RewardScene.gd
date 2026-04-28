@@ -139,7 +139,12 @@ func _on_skip_pressed() -> void:
 func _resolve_route_and_return(action: String) -> void:
 	var main = _resolve_main_controller()
 	if main != null and main.has_method("ResolveRewardForTest"):
-		main.call_deferred("ResolveRewardForTest", action)
+		var payload := {
+			"action": action,
+			"selected_index": _selected_index,
+			"selected_card_id": _resolve_selected_card_id()
+		}
+		main.call("ResolveRewardForTest", payload)
 
 func _resolve_main_controller() -> Node:
 	var current: Node = self
@@ -206,6 +211,18 @@ func _refresh_offer_labels() -> void:
 	_card1_label.text = _resolve_offer_label_text(0, CARD1_KEY)
 	_card2_label.text = _resolve_offer_label_text(1, CARD2_KEY)
 	_card3_label.text = _resolve_offer_label_text(2, CARD3_KEY)
+
+func _resolve_selected_card_id() -> String:
+	if _selected_index < 0 or _selected_index >= _offered_cards.size():
+		return ""
+	var card_data = _offered_cards[_selected_index]
+	if typeof(card_data) != TYPE_DICTIONARY:
+		return ""
+	var card := card_data as Dictionary
+	var card_id := str(card.get("id", "")).strip_edges()
+	if card_id.is_empty():
+		card_id = str(card.get("name", "")).strip_edges()
+	return card_id
 
 func _resolve_text(key: String) -> String:
 	if key.strip_edges().is_empty():

@@ -7,6 +7,7 @@ const DEFAULT_RUN_GOLD := 180
 var _hp: int = DEFAULT_RUN_HP
 var _run_hp: int = DEFAULT_RUN_HP
 var _run_gold: int = DEFAULT_RUN_GOLD
+var _run_deck_card_ids: Array[String] = []
 var _hud_node: CanvasItem
 var _hud_visibility_initialized: bool = false
 const DIFFICULTY_SELECT_SCENE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
@@ -90,6 +91,7 @@ func _ready() -> void:
     _sync_hud_run_resources()
     _update_hud_visibility_for_scene("")
     _ensure_reward_offer_provider()
+    _reset_run_deck_for_test()
 
 func _exit_tree() -> void:
     var bus = get_node_or_null("/root/EventBus")
@@ -165,6 +167,7 @@ func _on_domain_event(type: String, source: String, data_json: String, id: Strin
         _run_hp = DEFAULT_RUN_HP
         _run_gold = DEFAULT_RUN_GOLD
         _score = 0
+        _reset_run_deck_for_test()
         _clear_hud_run_summary()
         _sync_hud_run_resources()
         var demo = get_node_or_null("/root/Main/EngineDemo")
@@ -509,6 +512,7 @@ func ResetMapRouteProgressForTest() -> void:
     _reward_offer_by_context.clear()
     _reward_offer_active_context_id = ""
     _reward_offer_seed_counter = 0
+    _reset_run_deck_for_test()
 
 func GetMapRouteStartInvocationCountForTest() -> int:
     return _map_route_start_invocation_count
@@ -532,7 +536,7 @@ func ApplyShopStateForScene(state: Dictionary) -> bool:
     _shop_state_by_node[_active_shop_node_id] = state.duplicate(true)
     return true
 
-func ResolveRewardForTest(action: String) -> Dictionary:
+func ResolveRewardForTest(action_payload) -> Dictionary:
     var nav = _resolve_navigator()
     if nav == null:
         return {"ok": false, "reason": "navigator-missing", "scene_path": ""}
@@ -548,13 +552,21 @@ func ResolveRewardForTest(action: String) -> Dictionary:
     if _reward_route_resolved:
         return {"ok": false, "reason": "reward-route-already-resolved", "scene_path": current_scene}
 
-    var normalized := action.strip_edges().to_lower()
+    var parsed := _parse_reward_action_payload(action_payload)
+    var normalized := str(parsed.get("action", "")).strip_edges().to_lower()
+    var selected_card_id := str(parsed.get("selected_card_id", "")).strip_edges()
+    var selected_index := int(parsed.get("selected_index", -1))
     if normalized != "confirm" and normalized != "skip":
         return {"ok": false, "reason": "unsupported-action", "scene_path": current_scene}
+
+    var deck_before := _run_deck_card_ids.size()
+    if normalized == "confirm":
+        _writeback_reward_card_to_run_deck(selected_card_id, selected_index)
 
     _reward_route_resolved = true
     _reward_route_pending = false
     _map_route_completed_nodes += 1
+    var deck_after := _run_deck_card_ids.size()
     var is_boss_completion := _map_route_last_selected_node_id.strip_edges().to_lower().begins_with("boss")
     if is_boss_completion:
         _show_run_summary_and_return_to_main_menu("Victory", _map_route_completed_nodes, "Boss defeated.")
@@ -563,11 +575,82 @@ func ResolveRewardForTest(action: String) -> Dictionary:
             "reason": "",
             "scene_path": MAP_SCENE,
             "outcome": "victory",
-            "menu_visible": IsMainMenuVisibleForTest()
+            "menu_visible": IsMainMenuVisibleForTest(),
+            "deck_before_count": deck_before,
+            "deck_after_count": deck_after,
+            "selected_card_id": selected_card_id
         }
 
     _switch_to(nav, MAP_SCENE)
-    return {"ok": true, "reason": "", "scene_path": MAP_SCENE}
+    return {
+        "ok": true,
+        "reason": "",
+        "scene_path": MAP_SCENE,
+        "deck_before_count": deck_before,
+        "deck_after_count": deck_after,
+        "selected_card_id": selected_card_id
+    }
+
+func GetRunDeckCardIdsForTest() -> Array[String]:
+    return _run_deck_card_ids.duplicate()
+
+func GetRunStateForTest() -> Dictionary:
+    return {
+        "hp": _run_hp,
+        "gold": _run_gold,
+        "score": _score,
+        "deck_card_ids": _run_deck_card_ids.duplicate()
+    }
+
+func _parse_reward_action_payload(action_payload) -> Dictionary:
+    var parsed := {
+        "action": "",
+        "selected_card_id": "",
+        "selected_index": -1
+    }
+    if typeof(action_payload) == TYPE_DICTIONARY:
+        var payload := action_payload as Dictionary
+        parsed["action"] = str(payload.get("action", ""))
+        parsed["selected_card_id"] = str(payload.get("selected_card_id", ""))
+        parsed["selected_index"] = int(payload.get("selected_index", -1))
+        return parsed
+    parsed["action"] = str(action_payload)
+    return parsed
+
+func _writeback_reward_card_to_run_deck(selected_card_id: String, selected_index: int) -> void:
+    var chosen_card_id := selected_card_id.strip_edges()
+    if chosen_card_id.is_empty():
+        chosen_card_id = _resolve_reward_card_id_from_active_offer(selected_index)
+    if chosen_card_id.is_empty():
+        return
+    _run_deck_card_ids.append(chosen_card_id)
+
+func _resolve_reward_card_id_from_active_offer(selected_index: int) -> String:
+    if selected_index < 0:
+        return ""
+    var context_id := _reward_offer_active_context_id.strip_edges()
+    if context_id.is_empty() or not _reward_offer_by_context.has(context_id):
+        return ""
+    var payload = _reward_offer_by_context.get(context_id, {})
+    if typeof(payload) != TYPE_DICTIONARY:
+        return ""
+    var offers_variant = (payload as Dictionary).get("offers", [])
+    if typeof(offers_variant) != TYPE_ARRAY:
+        return ""
+    var offers = offers_variant as Array
+    if selected_index >= offers.size():
+        return ""
+    var offer_variant = offers[selected_index]
+    if typeof(offer_variant) != TYPE_DICTIONARY:
+        return ""
+    var offer := offer_variant as Dictionary
+    var card_id := str(offer.get("id", "")).strip_edges()
+    if card_id.is_empty():
+        card_id = str(offer.get("name", "")).strip_edges()
+    return card_id
+
+func _reset_run_deck_for_test() -> void:
+    _run_deck_card_ids.clear()
 
 func GetExpectedM1RunEntryRouteForTest() -> Array:
     return [DIFFICULTY_SELECT_SCENE, CHARACTER_SELECT_SCENE, MAP_SCENE]
