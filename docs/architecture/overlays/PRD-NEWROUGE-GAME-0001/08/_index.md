@@ -1,59 +1,53 @@
----
-PRD-ID: PRD-NEWROUGE-GAME-0001
-Title: 08章功能纵切索引（M1: Warrior）
-Status: Draft
+# 08 Overlay Index — PRD-NEWROUGE-GAME-0001
+
+Status: active
+
+Purpose:
+
+- Organize Chapter 08 overlay artifacts for M1 playable gameplay, testing, and observability.
+- Keep contract references and task mapping aligned with `.taskmaster/tasks/*` for gate checks.
+
+Sections:
+
+- [08-Feature-Slice-M1-Warrior.md](08-Feature-Slice-M1-Warrior.md)
+- [08-Contracts-M1.md](08-Contracts-M1.md)
+- [08-Testing-M1.md](08-Testing-M1.md)
+- [08-Observability-M1.md](08-Observability-M1.md)
+- [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md)
+- [overlay-manifest.json](overlay-manifest.json)
+
+Contract-Refs:
+
+- `Game.Core/Contracts/Services/ICombatService.cs`
+- `Game.Core/Contracts/Services/IRunSummaryService.cs`
+- `Game.Core/Contracts/Services/IRngService.cs`
+
+Task-Refs:
+
+- `.taskmaster/tasks/tasks.json`
+- `.taskmaster/tasks/tasks_back.json`
+- `.taskmaster/tasks/tasks_gameplay.json`
+
 ADR-Refs:
-  - ADR-0021
-  - ADR-0005
-  - ADR-0010
-  - ADR-0011
-  - ADR-0019
-  - ADR-0020
-  - ADR-0025
-  - ADR-0032
-  - ADR-0033
-Arch-Refs:
-  - CH01
-  - CH02
-  - CH03
-  - CH05
-  - CH06
-  - CH07
-  - CH09
-  - CH10
+
+- `docs/adr/ADR-0015-event-bus-publish-subscribe.md`
+- `docs/adr/ADR-0016-acceptance-evidence-and-gates.md`
+- `docs/adr/ADR-0032-task-refs-and-acceptance-contract.md`
+
 Test-Refs:
-  - Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs
-  - Game.Core.Tests/Services/CombatServiceTests.cs
-  - logs/ci/2026-02-12/docs-utf8-gate/summary.json
-  - logs/ci/2026-02-12/prd-gdd-consistency/summary.json
-  - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
----
 
-# 08章功能纵切索引（M1: Warrior）
-本目录是 `PRD-NEWROUGE-GAME-0001` 的 Overlay 08，仅覆盖 M1 最小可玩纵切。
+- `Game.Core.Tests/`
+- `Tests.Godot/tests/`
 
-跨切面阈值、质量门禁、安全基线与可观测性口径统一引用 Base/ADR，不在本目录复制阈值。
+Notes:
 
-## 使用边界
-- 仅承载功能纵切：实体、事件、运行时路径、验收、测试回链。
-- 不承载实现细节代码与排期说明；任务 SSoT 以 `.taskmaster/tasks/*.json` 为准。
-- 任何改动必须同步 `ACCEPTANCE_CHECKLIST.md` 的 `Test-Refs` 与任务回链。
-
-## 文档目录
-- `08-Feature-Slice-M1-Warrior.md`：M1 玩法纵切与运行时骨干。
-- `08-Contracts-M1.md`：M1 契约边界与命名约束。
-- `08-Observability-M1.md`：M1 日志、审计、取证与发布健康对齐。
-- `08-Testing-M1.md`：M1 测试策略与执行证据路径。
-- `ACCEPTANCE_CHECKLIST.md`：M1 交付验收总清单。
-
-## 任务基线快照（用于漂移提醒）
-当 `tasks.json` 或视图任务文件变化时，运行
-`py -3 scripts/python/remind_overlay_task_drift.py --write` 更新此快照。
+- Do not duplicate base architecture content here.
+- Keep this index updated when adding/removing 08 overlay files.
 
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-28T11:46:07.072751+00:00",
+  "generated_at": "2026-04-28T15:40:44.309928+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
@@ -64,96 +58,16 @@ Test-Refs:
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "3e774eb74d3cf71bd6e2714e02f604dab03421303da0425ed29c96fd448a881e",
-      "bytes": 318795
+      "sha256": "5fbbebd3cff9ebdbae38c3ac29104a05ed582f6de292191ba0da0d0ea0840e87",
+      "bytes": 318865
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "58c54524fedd1b55382a326951f1f557cdda5da13ac95256920c387fc0e34866",
-      "bytes": 429237
+      "sha256": "74eb614b361b10b715f463ad7204123e2d92d9ec273bce409c568f191012efe8",
+      "bytes": 429307
     }
   ]
 }
 ```
 <!-- TASK_BASELINE_END -->
-
-## 与任务回链（硬要求）
-- Overlay 锚点必须覆盖任务 `T1-T57` 的 `overlay_refs`。
-- `T56` 与 `T57` 必须可被搜索命中：
-  - T56: `Audit JSONL validation + gate integration`
-  - T57: `Traceability gate for ADR/Chapter/Overlay links`
-
-## 变更纪律
-- 新增、删除或重命名 08 下文档时，必须同步更新本索引和验收清单。
-- 若口径变化影响 ADR（尤其 `ADR-0032`/`ADR-0033`），必须先补 ADR 再改 Overlay。
-- `Test-Refs` 可先占位，但路径必须稳定且可被后续自动化替换为真实用例。
-
-## Task53 Back-Link (Headless Smoke Runner)
-- Task: `T53 Headless smoke runner (Python) + strict mode`
-- Runner: `scripts/python/smoke_headless.py`
-- Strict behavior: strict mode returns non-zero when neither `[TEMPLATE_SMOKE_READY]` nor `[DB] opened` is found.
-- Non-strict behavior: permissive mode keeps exit code 0 for template ergonomics while still writing artifacts.
-- Artifact entry points:
-  - `logs/ci/<date>/task-0053.json`
-  - `logs/ci/<date>/smoke/<timestamp>/headless.out.log`
-  - `logs/ci/<date>/smoke/<timestamp>/headless.err.log`
-  - `logs/ci/<date>/smoke/<timestamp>/summary.json`
-- Test-Refs:
-  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs`
-  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs`
-  - `Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs`
-
-## Task54 Gate Notes
-- Task: `T54 Integrate GdUnit4 suites into quality_gates.py`
-- ADR-Refs: `ADR-0005`, `ADR-0011`, `ADR-0024`
-- Chapter-Refs: `CH06`, `CH07`, `CH10`
-- Test-Refs:
-  - `logs/ci/<date>/quality-gates/summary.json`
-  - `logs/e2e/<date>/gdunit/junit.xml`
-  - `Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd`
-  - `Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd`
-  - `Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs`
-  - `Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs`
-  - `Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs`
-  - `Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs`
-  - `Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd`
-  - `Game.Core.Tests/Tasks/Task32AcceptanceTests.cs`
-
-## Task39 Translation Traceability
-- Task: `T39 Populate translations for M1 cards, relics, events`
-- ADR-Refs: `ADR-0010`
-- Test-Refs:
-  - `Tests.Godot/tests/Tasks/test_task0039_acceptance.gd`
-  - `Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs`
-- Evidence script:
-  - `scripts/python/verify_m1_translations.py`
-
-## Task59-69 UI Wiring Extension
-- Scope source: `docs/gdd/ui-gdd-flow.md`.
-- Overlay refs for Task59-69 must resolve inside this Overlay 08 directory; the GDD file is supporting design evidence, not an `overlay_refs` target.
-- Task range covered by this overlay now extends from `T1-T57` to `T1-T69` for M1 UI wiring work.
-
-### Task Backlinks
-- T59 / GM-0159: M1 run entry route `MainMenu -> DifficultySelect -> CharacterSelect -> Map`.
-- T60 / GM-0160: Map-owned node routing for Combat, Event, Shop, and Rest.
-- T61 / GM-0161: standalone Reward scene route integration.
-- T62 / GM-0162: standalone Rest scene route integration.
-- T63 / GM-0163: Continue blocked-state UX and recovery messaging.
-- T64 / GM-0164: Combat HUD explainability and command feedback.
-- T65 / GM-0165: M1 visible text flow validation across UI scenes.
-- T66 / GM-0166: Run Summary surface ownership.
-- T67 / GM-0167: real Shop UI behavior binding and route ownership.
-- T68 / GM-0168: M1 UI focus and accessibility pass.
-- T69 / GM-0169: Event result explainability and node feedback routing.
-
-## Task70-116 Runtime Closure Extension
-- `T70-T116` stay inside the same Overlay 08 family; they expand M1 from basic UI wiring into runtime closure, replay closure, and Chapter 6 governance splitting.
-- No second overlay page family is required at this stage; the active carrier pages remain `08-Feature-Slice-M1-Warrior.md`, `08-Contracts-M1.md`, `08-Observability-M1.md`, `08-Testing-M1.md`, and `ACCEPTANCE_CHECKLIST.md`.
-- Overlay updates are required whenever `T70-T116` changes one of these public boundaries:
-  - route ownership and `ActConfig`-driven map progression
-  - Reward/settlement/Continue replay ownership
-  - combat runtime truth-source handoff from scene-local logic to shared Core services
-  - public contract baseline under `Game.Core/Contracts/**`
-- Contract-file updates are not automatic for every new task. They become mandatory only when implementation promotes a new public DTO / event / interface / ownership snapshot into the canonical baseline.
-- Current explicit future contract gap remains potion work (`T77`, `T111`). Until potion implementation is selected, keep that gap documented in `08-Contracts-M1.md` instead of inventing placeholder contract files.
