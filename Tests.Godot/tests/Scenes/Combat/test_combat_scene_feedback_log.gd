@@ -107,6 +107,7 @@ func test_feedback_text_resolves_for_en_and_zh_cn_locales() -> void:
 
 
 # ACC:T72.4
+# ACC:T75.4
 func test_rejected_play_paths_keep_state_unchanged_for_energy_missing_definition_and_invalid_target() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -145,6 +146,69 @@ func test_rejected_play_paths_keep_state_unchanged_for_energy_missing_definition
 	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("invalid target") >= 0).is_true()
 	assert_that(state_after_target).is_equal(state_before_target)
 
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.invalid_status"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t75.invalid_status","name_key":"card.t75.invalid_status.name","description_key":"card.t75.invalid_status.description","cost":1,"type":"skill","target":"enemy","base_effect":{"status_id":"status.expired_reference","status_stacks":1}}]}'
+	))).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	var state_before_invalid_status := scene.call("CaptureUiStateForTest") as Dictionary
+	var invalid_status_rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var state_after_invalid_status := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(invalid_status_rejected).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("invalid status reference") >= 0).is_true()
+	assert_that(state_after_invalid_status).is_equal(state_before_invalid_status)
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+	TranslationServer.set_locale(previous_locale)
+
+
+# ACC:T75.3
+func test_turn_boundary_keeps_status_stack_changes_visible_in_hud_and_feedback_flow() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	var previous_locale := TranslationServer.get_locale()
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t75.weak_one","name_key":"card.t75.weak_one.name","description_key":"card.t75.weak_one.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.weak","status_stacks":1}},{"id":"card.t75.weak_two","name_key":"card.t75.weak_two.name","description_key":"card.t75.weak_two.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":1,"status_id":"status.weak","status_stacks":2}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t75.weak_one","card.t75.weak_two"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var first_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(first_feedback.find("applied status.weak +1 to enemy_m1_slime") >= 0).is_true()
+	assert_that(str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime")).find("status.weak +1") >= 0).is_true()
+
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var second_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(second_feedback.find("applied status.weak +2 to enemy_m1_slime") >= 0).is_true()
+	assert_that(str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime")).find("status.weak +3") >= 0).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var end_turn_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var enemy_status_after_turn := str(scene.call("GetEnemyStatusTextForTest")).strip_edges()
+	assert_that(end_turn_feedback.find("Enemy dealt") >= 0).is_true()
+	assert_that(end_turn_feedback.find("decayed status.weak to 2 on enemy_m1_slime") >= 0).is_true()
+	assert_that(end_turn_feedback.find("Turn ") >= 0).is_true()
+	assert_that(enemy_status_after_turn.find("status.weak +2") >= 0).is_true()
+	assert_that(enemy_status_after_turn).is_not_equal("None")
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 	TranslationServer.set_locale(previous_locale)
 
 

@@ -4976,18 +4976,17 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "When player or enemy statuses are active in combat (including strength, weak, vulnerable, block, poison, and temporary modifiers), each active status is shown on the combat surface with a readable label, visible stack/value, and decision-useful tooltip/detail text, and no active status is omitted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Given the same initial combat state and action sequence, damage and mitigation results are identical across repeated runs, and contributions from strength, weak, vulnerable, block-like effects, poison ticks, and temporary modifiers come from the existing status/modifier rule path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "At turn boundaries, status apply/stack/decay/expire changes are reflected in HUD/feedback within the same turn flow, so the current status state is fully readable from UI feedback without log inspection. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "If combat encounters an invalid or expired status reference, the invalid effect is rejected, visible failure feedback is emitted, and combat state remains non-corrupted and playable. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "On M1 combat surfaces, status-related UI text renders correctly in en and zh-CN and never exposes raw localization keys. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "On M1 combat surfaces, status-related UI text renders correctly in en and zh-CN and never exposes raw localization keys. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Status rendering, damage/mitigation resolution, and turn-boundary decay all execute through the shared existing status contracts/services path, with no UI-local rule path used for those outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "UI-only modules do not define parallel status semantics for stacking, decay, or modifier computation; presence of a parallel UI status-rule path fails this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Implementation evidence for T75 is valid only if workflow-selection evidence explicitly selecting T75 appears first; if selection evidence is missing or appears after implementation evidence, acceptance fails. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Implementation evidence for T75 is valid only if workflow-selection evidence explicitly selecting T75 appears first; if selection evidence is missing or appears after implementation evidence, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay."
@@ -5000,7 +4999,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0075.json"
+      "logs/ci/<date>/task-0075.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

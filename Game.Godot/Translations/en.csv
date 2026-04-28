@@ -54,6 +54,7 @@ combat.feedback.refusal_reason.insufficient_energy,insufficient energy
 combat.feedback.refusal_reason.invalid_action,invalid action
 combat.feedback.refusal_reason.invalid_target,invalid target
 combat.feedback.refusal_reason.missing_card_definition,missing card definition
+combat.feedback.refusal_reason.invalid_status_reference,invalid status reference
 combat.feedback.refusal_reason.no_card_selected,Select a card first.
 combat.action.hint,Select a card, then click Play Selected Card. Click End Turn when you are done.
 combat.action.play_selected,Play Selected Card

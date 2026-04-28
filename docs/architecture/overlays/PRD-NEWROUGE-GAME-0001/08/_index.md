@@ -53,7 +53,7 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-04-28T10:35:54.314230+00:00",
+  "generated_at": "2026-04-28T11:46:07.072751+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
@@ -64,14 +64,14 @@ Test-Refs:
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "56f0b8bce1d253b2d52dd581ade7d37f6da7c7117520186d7bdc9db7e672a7ce",
-      "bytes": 318804
+      "sha256": "3e774eb74d3cf71bd6e2714e02f604dab03421303da0425ed29c96fd448a881e",
+      "bytes": 318795
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "12ea94b0f01b6a6352b44c16de62f07827234e7a6e1f9a3c632c7fa9c850fb21",
-      "bytes": 429246
+      "sha256": "58c54524fedd1b55382a326951f1f557cdda5da13ac95256920c387fc0e34866",
+      "bytes": 429237
     }
   ]
 }
@@ -157,4 +157,3 @@ Test-Refs:
   - public contract baseline under `Game.Core/Contracts/**`
 - Contract-file updates are not automatic for every new task. They become mandatory only when implementation promotes a new public DTO / event / interface / ownership snapshot into the canonical baseline.
 - Current explicit future contract gap remains potion work (`T77`, `T111`). Until potion implementation is selected, keep that gap documented in `08-Contracts-M1.md` instead of inventing placeholder contract files.
-

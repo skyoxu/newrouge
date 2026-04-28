@@ -41,6 +41,20 @@ public partial class CombatScene : Control
     {
         PropertyNameCaseInsensitive = true,
     };
+    private static readonly HashSet<string> AllowedStatusIds = new(StringComparer.Ordinal)
+    {
+        "status.rage",
+        "status.strength",
+        "status.weak",
+        "status.vulnerable",
+        "status.block",
+        "status.poison",
+        "status.temp_attack_up",
+        "status.temp_attack_down",
+        "status.temp_defense_up",
+        "status.temp_defense_down",
+        "status.bloodbeat",
+    };
     private static readonly JsonDocumentOptions SafeJsonDocumentOptions = new()
     {
         MaxDepth = 128,
@@ -407,6 +421,12 @@ public partial class CombatScene : Control
             return false;
         }
 
+        if (!IsCardStatusReferenceValid(definition))
+        {
+            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_status_reference");
+            return false;
+        }
+
         if (!TryParseIntLabel(_energyValue, out var energy) || energy < definition.Cost)
         {
             AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
@@ -768,6 +788,7 @@ public partial class CombatScene : Control
 
         _playerBlock = 0;
         _turnIndex += 1;
+        var statusTransitionDetail = ResolveEndTurnStatusTransitions();
         ApplyCoreSnapshot(new CombatHudSnapshot(
             new List<string> { "Strike", "Defend", "Strike" },
             3,
@@ -777,7 +798,13 @@ public partial class CombatScene : Control
             nextPlayerHp,
             "PlayerTurn"));
         ApplyDefaultM1EnemyIntentIfEmpty();
-        AppendCommandFeedback("end_turn", accepted: true, detail: $"Enemy dealt {damageTaken} damage. Turn {_turnIndex} started.");
+        var detailParts = new List<string> { $"Enemy dealt {damageTaken} damage. Turn {_turnIndex} started." };
+        if (!string.IsNullOrWhiteSpace(statusTransitionDetail))
+        {
+            detailParts.Add(statusTransitionDetail);
+        }
+
+        AppendCommandFeedback("end_turn", accepted: true, detail: string.Join(" ", detailParts));
         if (nextPlayerHp <= 0)
         {
             TryAutoCompleteDefeatRoute("Player HP reached zero.");
@@ -1055,6 +1082,8 @@ public partial class CombatScene : Control
         var damage = 0;
         var block = 0;
         var rage = 0;
+        var explicitStatusId = string.Empty;
+        var explicitStatusStacks = 0;
         if (cardNode.TryGetProperty("base_effect", out var effectNode) && effectNode.ValueKind == JsonValueKind.Object)
         {
             if (effectNode.TryGetProperty("damage", out var damageNode) && damageNode.ValueKind == JsonValueKind.Number)
@@ -1071,9 +1100,36 @@ public partial class CombatScene : Control
             {
                 rage = Math.Max(0, rageNode.GetInt32());
             }
+
+            if (effectNode.TryGetProperty("status_id", out var effectStatusIdNode) && effectStatusIdNode.ValueKind == JsonValueKind.String)
+            {
+                explicitStatusId = effectStatusIdNode.GetString()?.Trim() ?? string.Empty;
+            }
+
+            if (effectNode.TryGetProperty("status_stacks", out var effectStatusStacksNode) && effectStatusStacksNode.ValueKind == JsonValueKind.Number)
+            {
+                explicitStatusStacks = Math.Max(0, effectStatusStacksNode.GetInt32());
+            }
+        }
+
+        if (cardNode.TryGetProperty("status_id", out var cardStatusIdNode) && cardStatusIdNode.ValueKind == JsonValueKind.String)
+        {
+            explicitStatusId = cardStatusIdNode.GetString()?.Trim() ?? explicitStatusId;
+        }
+
+        if (cardNode.TryGetProperty("status_stacks", out var cardStatusStacksNode) && cardStatusStacksNode.ValueKind == JsonValueKind.Number)
+        {
+            explicitStatusStacks = Math.Max(0, cardStatusStacksNode.GetInt32());
         }
 
         var statusId = rage > 0 ? "status.rage" : string.Empty;
+        var statusStacks = rage;
+        if (!string.IsNullOrWhiteSpace(explicitStatusId))
+        {
+            statusId = explicitStatusId;
+            statusStacks = explicitStatusStacks;
+        }
+
         var exhaust = false;
         if (cardNode.TryGetProperty("exhaust", out var cardExhaustNode))
         {
@@ -1096,7 +1152,7 @@ public partial class CombatScene : Control
             };
         }
 
-        definition = new CardDefinitionRuntime(id, target, type, nameKey, descriptionKey, cost, damage, block, statusId, rage, exhaust);
+        definition = new CardDefinitionRuntime(id, target, type, nameKey, descriptionKey, cost, damage, block, statusId, statusStacks, exhaust);
         return true;
     }
 
@@ -1191,6 +1247,102 @@ public partial class CombatScene : Control
 
         parts.Sort(StringComparer.Ordinal);
         return string.Join(", ", parts);
+    }
+
+    private string ResolveEndTurnStatusTransitions()
+    {
+        var details = new List<string>();
+        var aliveEnemies = GetAliveEnemyIds();
+        foreach (var enemyId in aliveEnemies)
+        {
+            if (!_enemyStatusStacksByEnemy.TryGetValue(enemyId, out var statusMap))
+            {
+                continue;
+            }
+
+            if (statusMap.Count <= 0)
+            {
+                continue;
+            }
+
+            var keys = new List<string>(statusMap.Keys);
+            foreach (var statusId in keys)
+            {
+                if (ShouldDecayStatusAtEndTurn(statusId))
+                {
+                    if (!statusMap.TryGetValue(statusId, out var currentStacks))
+                    {
+                        continue;
+                    }
+
+                    var nextStacks = Math.Max(0, currentStacks - 1);
+                    if (nextStacks <= 0)
+                    {
+                        statusMap.Remove(statusId);
+                        details.Add($"expired {statusId} on {enemyId}");
+                    }
+                    else
+                    {
+                        statusMap[statusId] = nextStacks;
+                        details.Add($"decayed {statusId} to {nextStacks} on {enemyId}");
+                    }
+                }
+            }
+
+            if (statusMap.Count <= 0)
+            {
+                _enemyStatusStacksByEnemy.Remove(enemyId);
+                if (_enemyCombatById.TryGetValue(enemyId, out var emptyState))
+                {
+                    _enemyCombatById[enemyId] = emptyState with { Status = ResolveUiText("combat.enemy.status.none") };
+                }
+            }
+            else if (_enemyCombatById.TryGetValue(enemyId, out var state))
+            {
+                _enemyCombatById[enemyId] = state with { Status = BuildStatusSummary(statusMap) };
+            }
+        }
+
+        var playerStatusIds = new List<string>(_playerStatusStacks.Keys);
+        foreach (var statusId in playerStatusIds)
+        {
+            if (!ShouldDecayStatusAtEndTurn(statusId))
+            {
+                continue;
+            }
+
+            if (!_playerStatusStacks.TryGetValue(statusId, out var currentStacks))
+            {
+                continue;
+            }
+
+            var nextStacks = Math.Max(0, currentStacks - 1);
+            if (nextStacks <= 0)
+            {
+                _playerStatusStacks.Remove(statusId);
+                details.Add($"expired {statusId} on self");
+            }
+            else
+            {
+                _playerStatusStacks[statusId] = nextStacks;
+                details.Add($"decayed {statusId} to {nextStacks} on self");
+            }
+        }
+
+        RefreshPrimaryEnemyPanel();
+        return string.Join("; ", details);
+    }
+
+    private static bool ShouldDecayStatusAtEndTurn(string statusId)
+    {
+        if (string.IsNullOrWhiteSpace(statusId))
+        {
+            return false;
+        }
+
+        return statusId.StartsWith("status.temp_", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(statusId, "status.weak", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(statusId, "status.vulnerable", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool TryResolveSelectedAliveTarget(out string enemyId)
@@ -1361,12 +1513,29 @@ public partial class CombatScene : Control
                 "combat.feedback.refusal_reason.insufficient_energy" => "insufficient energy",
                 "combat.feedback.refusal_reason.invalid_target" => "invalid target",
                 "combat.feedback.refusal_reason.missing_card_definition" => "missing card definition",
+                "combat.feedback.refusal_reason.invalid_status_reference" => "invalid status reference",
                 "combat.invalid_action" => "invalid action",
                 _ => "invalid action",
             };
         }
 
         return mapped.Trim();
+    }
+
+    private static bool IsCardStatusReferenceValid(CardDefinitionRuntime definition)
+    {
+        if (definition.StatusStacks <= 0)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(definition.StatusId))
+        {
+            return false;
+        }
+
+        var statusId = definition.StatusId.Trim();
+        return AllowedStatusIds.Contains(statusId);
     }
 
     private static string ResolveUiText(string localizationKey)
