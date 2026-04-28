@@ -51,31 +51,31 @@ Test-Refs:
 `py -3 scripts/python/remind_overlay_task_drift.py --write` 更新此快照。
 
 <!-- TASK_BASELINE_START -->
-```json
+`json
 {
-  "generated_at": "2026-04-28T11:09:34.551782+00:00",
+  "generated_at": "2026-04-28T11:30:08.437309+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "437e1756c5d49372b2f5e8770d1089b0bde1fed8bd194050f281dcc1006526cf",
-      "bytes": 177888
+      "sha256": "82a7a35a7a5f1a16c010674986ca5b752fdf854d75a89aa8f52f41b35d6a75c5",
+      "bytes": 181446
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "dfeb793ca15b93a26ba300433ba1dcd39321f014e17a04d8a5f0df2aa9d68cc0",
-      "bytes": 318647
+      "sha256": "3e774eb74d3cf71bd6e2714e02f604dab03421303da0425ed29c96fd448a881e",
+      "bytes": 318795
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "03723dba2cb6aafe228bc1f33083a38606d6dbdcb8c7074cc19bd4a489ae9407",
-      "bytes": 429089
+      "sha256": "58c54524fedd1b55382a326951f1f557cdda5da13ac95256920c387fc0e34866",
+      "bytes": 429237
     }
   ]
 }
-```
+`
 <!-- TASK_BASELINE_END -->
 
 ## 与任务回链（硬要求）

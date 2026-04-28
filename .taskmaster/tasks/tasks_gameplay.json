@@ -6937,15 +6937,14 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
-      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
     ],
     "acceptance": [
       "When the player exits and re-enters the same Reward flow within the same runtime boundary, the Reward offer shown on first entry remains locked and the displayed offer set does not regenerate, change, or reorder. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
       "When pool context is invalid or unavailable and no valid Reward offer can be resolved, the Reward flow presents visible player-facing fallback feedback and does not render invalid or placeholder reward cards as if resolution succeeded. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
       "Reward lock persistence and invalid-pool handling remain on the existing shared offer-locking path under the current Reward scene ownership, with no separate Reward-specific lock persistence owner or parallel lock path introduced for this behavior. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
       "Reward scene and integration coverage is added or updated so automated tests verify both same-boundary re-entry lock persistence and the visible fallback shown when pool resolution is invalid or unavailable. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
-      "If T114 has not been selected by the workflow, implementation for this task does not proceed and the implementation state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Workflow-scoped gating for T114 remains enforced through deterministic acceptance references and tests, so task implementation cannot pass unless the selected T114 acceptance set is executed and validated under the existing lane. Refs: Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
     ],
     "test_strategy": [
       "Add or extend Reward scene and integration tests to cover shared offer-lock persistence across re-entry, current Reward scene ownership preservation, and visible invalid-pool fallback."
@@ -6957,7 +6956,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0114.json"
+      "logs/ci/<date>/task-0114.json",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
   },

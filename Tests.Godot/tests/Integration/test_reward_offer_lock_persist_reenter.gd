@@ -1,5 +1,10 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
+const MAIN_SCENE := preload("res://Game.Godot/Scenes/Main.tscn")
+const MAP_SCENE := "res://Game.Godot/Scenes/Map/Map.tscn"
+const COMBAT_SCENE := "res://Game.Godot/Scenes/Combat.tscn"
+const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
+
 class FakeAutoSave:
 	var locked_offer: Array = []
 	var has_locked_offer: bool = false
@@ -53,10 +58,49 @@ class RewardFlowHarness:
 			cards.reverse()
 		return cards.slice(0, 3)
 
+func _load_main_on_map() -> Control:
+	var main := MAIN_SCENE.instantiate() as Control
+	add_child(auto_free(main))
+	await get_tree().process_frame
+	var nav := main.get_node_or_null("ScreenNavigator")
+	assert(nav != null, "Main scene missing ScreenNavigator.")
+	nav.UseFadeTransition = false
+	if nav.has_method("ClearRouteHistoryForTest"):
+		nav.call("ClearRouteHistoryForTest")
+	nav.call("SwitchTo", MAP_SCENE)
+	await get_tree().process_frame
+	if main.has_method("ResetMapRouteProgressForTest"):
+		main.call("ResetMapRouteProgressForTest")
+	return main
+
+func _current_scene_instance(main: Control):
+	var root := main.get_node_or_null("ScreenRoot")
+	if root == null or root.get_child_count() == 0:
+		return null
+	return root.get_child(root.get_child_count() - 1)
+
+func _extract_offer_ids(snapshot: Dictionary) -> Array[String]:
+	var ids: Array[String] = []
+	var offers_variant = snapshot.get("offers", [])
+	if typeof(offers_variant) != TYPE_ARRAY:
+		return ids
+	for item in offers_variant:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var card := item as Dictionary
+		var card_id := str(card.get("id", "")).strip_edges()
+		if not card_id.is_empty():
+			ids.append(card_id)
+	return ids
+
 
 
 # acceptance: ACC:T19.3
 # acceptance: ACC:T61.3
+# acceptance: ACC:T114.1
+# acceptance: ACC:T114.3
+# acceptance: ACC:T114.4
+# acceptance: ACC:T114.5
 func test_reenter_must_not_regenerate_or_reorder_locked_offer() -> void:
 	var save := FakeAutoSave.new()
 	var flow := RewardFlowHarness.new(save, 7)
@@ -71,6 +115,10 @@ func test_reenter_must_not_regenerate_or_reorder_locked_offer() -> void:
 
 # acceptance: ACC:T19.7
 # acceptance: ACC:T61.5
+# acceptance: ACC:T114.1
+# acceptance: ACC:T114.3
+# acceptance: ACC:T114.4
+# acceptance: ACC:T114.5
 func test_reward_display_confirm_skip_and_reenter_locking_contract() -> void:
 	var save := FakeAutoSave.new()
 	var flow := RewardFlowHarness.new(save, 7)
@@ -95,3 +143,43 @@ func test_reward_display_confirm_skip_and_reenter_locking_contract() -> void:
 
 	var after_skip := flow_skip.enter_reward_scene()
 	assert_that(after_skip).is_equal(skip_offer)
+
+func test_reward_reenter_uses_same_shared_offer_snapshot_in_route_owned_flow() -> void:
+	var main := await _load_main_on_map()
+	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_bool(bool(enter_result.get("ok", false))).is_true()
+	assert_str(str(enter_result.get("scene_path", ""))).is_equal(COMBAT_SCENE)
+
+	var first_complete := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_bool(bool(first_complete.get("ok", false))).is_true()
+	assert_str(str(first_complete.get("scene_path", ""))).is_equal(REWARD_SCENE)
+	await get_tree().process_frame
+
+	var first_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var first_ids := _extract_offer_ids(first_snapshot)
+	assert_int(first_ids.size()).is_equal(3)
+	assert_str(str(first_snapshot.get("source", ""))).is_equal("shared-card-pool")
+	var first_context_id := str(first_snapshot.get("context_id", "")).strip_edges()
+	assert_bool(first_context_id.is_empty()).is_false()
+
+	var reward = _current_scene_instance(main)
+	assert_object(reward).is_not_null()
+	assert_bool(reward.has_method("SkipForTest")).is_true()
+	assert_bool(bool(reward.call("SkipForTest"))).is_true()
+	await get_tree().process_frame
+
+	var back_to_map := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_bool(bool(back_to_map.get("ok", false))).is_true()
+	assert_str(str(back_to_map.get("scene_path", ""))).is_equal(COMBAT_SCENE)
+	var second_complete := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_bool(bool(second_complete.get("ok", false))).is_true()
+	assert_str(str(second_complete.get("scene_path", ""))).is_equal(REWARD_SCENE)
+	await get_tree().process_frame
+
+	var second_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var second_ids := _extract_offer_ids(second_snapshot)
+	assert_int(second_ids.size()).is_equal(3)
+	assert_str(str(second_snapshot.get("source", ""))).is_equal("shared-card-pool")
+	var second_context_id := str(second_snapshot.get("context_id", "")).strip_edges()
+	assert_str(second_context_id).is_equal(first_context_id)
+	assert_array(second_ids).is_equal(first_ids)
