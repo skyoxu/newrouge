@@ -1,9 +1,13 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const EVENT_SCENE = preload("res://Game.Godot/Scenes/Event.tscn")
+const MAIN_SCENE = preload("res://Game.Godot/Scenes/Main.tscn")
 const INTERACTIVE_INPUT_TOKEN := "keyboard_enter"
 const SAVE_FILE_BASENAME := "task44.repeatability.snapshot.json"
 const EVENT_STATE_FILE := "user://task22-event-state.json"
+const AUTOSAVE_PATH := "user://autosave_slot.json"
+const MAP_SCENE_PATH := "res://Game.Godot/Scenes/Map/Map.tscn"
+const COMBAT_SCENE_PATH := "res://Game.Godot/Scenes/Combat.tscn"
 
 class ResumeRunResult:
     var event_order: PackedStringArray = PackedStringArray()
@@ -15,6 +19,23 @@ class ResumeRunResult:
     var event_selected_result: String = ""
     var event_current_hp: int = -1
     var event_curse_cards: int = -1
+
+var _bus: Node
+var _event_types: Array[String] = []
+
+func before() -> void:
+    _event_types.clear()
+    _remove_autosave()
+    _bus = preload("res://Game.Godot/Adapters/EventBusAdapter.cs").new()
+    _bus.name = "EventBus"
+    get_tree().get_root().add_child(auto_free(_bus))
+    _bus.connect("DomainEventEmitted", Callable(self, "_on_event"))
+
+func after() -> void:
+    _remove_autosave()
+
+func _on_event(type, _source, _data_json, _id, _spec, _ct, _ts) -> void:
+    _event_types.append(str(type))
 
 func _temp_run_dir(tag: String) -> String:
     var path := ProjectSettings.globalize_path("user://task44_repeatability_%s_%s" % [tag, str(Time.get_ticks_usec())])
@@ -148,6 +169,56 @@ func _build_default_payload() -> Dictionary:
         "event": {"offer_locked": true, "selected_result": "event_option_left"}
     }
 
+func _remove_autosave() -> void:
+    var absolute_path := ProjectSettings.globalize_path(AUTOSAVE_PATH)
+    if FileAccess.file_exists(AUTOSAVE_PATH):
+        DirAccess.remove_absolute(absolute_path)
+
+func _write_autosave(payload: String) -> void:
+    var file := FileAccess.open(AUTOSAVE_PATH, FileAccess.WRITE)
+    if file == null:
+        return
+    file.store_string(payload)
+    file.close()
+
+func _build_continue_autosave_json(save_point_id: String, route_owner: String) -> String:
+    var state_payload := {
+        "route_owner": route_owner,
+        "difficulty": {
+            "difficulty_id": 1,
+            "label_key": "difficulty.label.default",
+            "description_key": "difficulty.description.default",
+            "ruleset_id": "ruleset.default"
+        }
+    }
+    var state_json := JSON.stringify(state_payload)
+    var envelope := {
+        "run_id": "run_t87",
+        "save_point_id": save_point_id,
+        "schema_version": "1.0.0",
+        "saved_at": "2026-04-29T00:00:00Z",
+        "state_json": state_json,
+        "integrity_hash": state_json.sha256_text()
+    }
+    return JSON.stringify(envelope)
+
+func _load_main_for_continue() -> Control:
+    var main := MAIN_SCENE.instantiate() as Control
+    add_child(auto_free(main))
+    await get_tree().process_frame
+    var nav := main.get_node_or_null("ScreenNavigator")
+    if nav != null:
+        nav.UseFadeTransition = false
+        if nav.has_method("ClearRouteHistoryForTest"):
+            nav.call("ClearRouteHistoryForTest")
+    return main
+
+func _current_scene_path(main: Control) -> String:
+    var nav := main.get_node_or_null("ScreenNavigator")
+    if nav == null or not nav.has_method("GetCurrentScenePathForTest"):
+        return ""
+    return str(nav.call("GetCurrentScenePathForTest"))
+
 # acceptance: ACC:T44.7
 func test_headless_resume_repeatability_without_manual_input() -> void:
     var run_dir := _temp_run_dir("baseline")
@@ -196,3 +267,74 @@ func test_headless_resume_fingerprint_should_change_when_saved_payload_changes()
     var baseline := await _execute_headless_resume_once(baseline_payload)
     var changed := await _execute_headless_resume_once(changed_payload)
     assert_str(changed.reward_selected_result).is_not_equal(baseline.reward_selected_result)
+
+# acceptance anchor: ACC:T87.1
+# acceptance anchor: ACC:T87.5
+func test_continue_with_valid_metadata_restores_into_map_or_combat_boundary() -> void:
+    var cases := [
+        {"save_point_id": "map", "route_owner": "map", "expected_scene": MAP_SCENE_PATH},
+        {"save_point_id": "combat_start", "route_owner": "combat", "expected_scene": COMBAT_SCENE_PATH}
+    ]
+
+    for case_data in cases:
+        _event_types.clear()
+        _remove_autosave()
+        _write_autosave(_build_continue_autosave_json(str(case_data["save_point_id"]), str(case_data["route_owner"])))
+
+        var main := await _load_main_for_continue()
+        var menu := main.get_node("MainMenu") as Control
+        var continue_btn := menu.get_node("VBox/BtnContinue") as Button
+        continue_btn.emit_signal("pressed")
+        await get_tree().process_frame
+        await get_tree().process_frame
+
+        assert_bool(_event_types.has("core.run.resumed")).is_true()
+        assert_bool(menu.visible).is_false()
+        assert_str(_current_scene_path(main)).is_equal(str(case_data["expected_scene"]))
+
+        main.queue_free()
+        await get_tree().process_frame
+
+# acceptance anchor: ACC:T87.3
+func test_continue_should_block_when_route_ownership_does_not_match_resume_target() -> void:
+    _event_types.clear()
+    _remove_autosave()
+    _write_autosave(_build_continue_autosave_json("combat_start", "map"))
+
+    var main := await _load_main_for_continue()
+    var menu := main.get_node("MainMenu") as Control
+    var continue_btn := menu.get_node("VBox/BtnContinue") as Button
+    continue_btn.emit_signal("pressed")
+    await get_tree().process_frame
+    await get_tree().process_frame
+
+    var blocked_dialog := main.get_node_or_null("MainMenu/ContinueBlockedDialog") as Control
+    assert_bool(menu.visible).is_true()
+    assert_bool(blocked_dialog != null and blocked_dialog.visible).is_true()
+    assert_bool(_event_types.has("core.run.continue.blocked")).is_true()
+    assert_bool(_event_types.has("core.run.resumed")).is_false()
+    assert_bool(_current_scene_path(main) == MAP_SCENE_PATH or _current_scene_path(main) == COMBAT_SCENE_PATH).is_false()
+
+# acceptance anchor: ACC:T87.4
+func test_continue_should_keep_menu_boundary_when_resume_target_is_locked_surface() -> void:
+    _event_types.clear()
+    _remove_autosave()
+    _write_autosave(_build_continue_autosave_json("event_reward_claim", "map"))
+
+    var main := await _load_main_for_continue()
+    var menu := main.get_node("MainMenu") as Control
+    var continue_btn := menu.get_node("VBox/BtnContinue") as Button
+    continue_btn.emit_signal("pressed")
+    await get_tree().process_frame
+    await get_tree().process_frame
+
+    var blocked_dialog := main.get_node_or_null("MainMenu/ContinueBlockedDialog") as Control
+    var message_label := main.get_node_or_null("MainMenu/ContinueBlockedDialog/MarginContainer/VBox/MessageLabel") as Label
+    assert_bool(menu.visible).is_true()
+    assert_bool(blocked_dialog != null and blocked_dialog.visible).is_true()
+    assert_bool(message_label != null).is_true()
+    if message_label != null:
+        assert_bool(message_label.text.to_lower().find("locked") >= 0).is_true()
+    assert_bool(_event_types.has("core.run.continue.blocked")).is_true()
+    assert_bool(_event_types.has("core.run.resumed")).is_false()
+    assert_bool(_current_scene_path(main) == MAP_SCENE_PATH or _current_scene_path(main) == COMBAT_SCENE_PATH).is_false()

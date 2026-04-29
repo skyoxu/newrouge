@@ -364,6 +364,24 @@ public partial class MainMenu : Control
         return DateTimeOffset.TryParse(value.GetString(), out _);
     }
 
+    private static bool TryReadRequiredString(JsonElement root, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!root.TryGetProperty(propertyName, out var element) || element.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var raw = element.GetString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        value = raw.Trim();
+        return true;
+    }
+
     private void OnNewRunPressed()
     {
         HideContinueBlockedDialog(clearMessage: false);
@@ -492,12 +510,18 @@ public partial class MainMenu : Control
                 return new ContinueLoadValidationResult(false, "migration_failed", "Continue is unavailable because save migration failed.");
             }
 
+            var savePointId = root.GetProperty("save_point_id").GetString() ?? string.Empty;
             var stateJson = root.GetProperty("state_json").GetString() ?? string.Empty;
             var integrityHash = root.GetProperty("integrity_hash").GetString();
             var expectedIntegrityHash = ComputeIntegrityHash(stateJson);
             if (!string.Equals(integrityHash, expectedIntegrityHash, StringComparison.Ordinal))
             {
                 return new ContinueLoadValidationResult(false, "invalid_integrity", "Continue is unavailable because save integrity validation failed.");
+            }
+
+            if (!IsResumeTargetAllowed(savePointId, stateJson, out var targetReasonCode, out var targetReasonMessage))
+            {
+                return new ContinueLoadValidationResult(false, targetReasonCode, targetReasonMessage);
             }
 
             return new ContinueLoadValidationResult(true, null, null);
@@ -566,6 +590,8 @@ public partial class MainMenu : Control
         {
             "missing_save" => "No save was found.",
             "migration_failed" => "Save migration failed. Start a new run or return to the menu; mid-combat resume is not supported.",
+            "unsupported_resume_target" => "This save target is locked in this phase. Only Map boundary and combat entry restore are supported.",
+            "route_owner_mismatch" => "Resume route ownership validation failed.",
             _ => "Save integrity validation failed. Start a new run or return to the menu."
         };
 
@@ -598,6 +624,117 @@ public partial class MainMenu : Control
     {
         HideContinueBlockedDialog(clearMessage: false);
         ShowMenu();
+    }
+
+    private static bool IsResumeTargetAllowed(
+        string savePointId,
+        string stateJson,
+        out string reasonCode,
+        out string reasonMessage)
+    {
+        reasonCode = string.Empty;
+        reasonMessage = string.Empty;
+        if (!TryResolveExpectedRouteOwner(savePointId, out var expectedOwner))
+        {
+            reasonCode = "unsupported_resume_target";
+            reasonMessage = "Continue is unavailable because this save target is locked in this phase.";
+            return false;
+        }
+
+        if (!TryResolveRouteOwnerFromStateJson(stateJson, out var actualOwner)
+            || !string.Equals(expectedOwner, actualOwner, StringComparison.Ordinal))
+        {
+            reasonCode = "route_owner_mismatch";
+            reasonMessage = "Continue is unavailable because resume route ownership validation failed.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryResolveExpectedRouteOwner(string savePointId, out string owner)
+    {
+        owner = string.Empty;
+        var normalized = (savePointId ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        if (normalized.StartsWith("combat", StringComparison.Ordinal))
+        {
+            owner = "combat";
+            return true;
+        }
+
+        if (normalized.StartsWith("node_pre_enter", StringComparison.Ordinal)
+            || normalized.StartsWith("map", StringComparison.Ordinal)
+            || string.Equals(normalized, "menu", StringComparison.Ordinal))
+        {
+            owner = "map";
+            return true;
+        }
+
+        if (normalized.Contains("reward", StringComparison.Ordinal)
+            || normalized.Contains("shop", StringComparison.Ordinal)
+            || normalized.Contains("event", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static bool TryResolveRouteOwnerFromStateJson(string stateJson, out string owner)
+    {
+        owner = string.Empty;
+        if (string.IsNullOrWhiteSpace(stateJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var stateDoc = JsonDocument.Parse(stateJson);
+            if (stateDoc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            if (TryReadRequiredString(stateDoc.RootElement, "route_owner", out var routeOwner))
+            {
+                owner = NormalizeRouteOwner(routeOwner);
+                return !string.IsNullOrWhiteSpace(owner);
+            }
+
+            if (TryReadRequiredString(stateDoc.RootElement, "current_state", out var currentState))
+            {
+                owner = NormalizeRouteOwner(currentState);
+                return !string.IsNullOrWhiteSpace(owner);
+            }
+
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static string NormalizeRouteOwner(string value)
+    {
+        var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized is "map" or "node_pre_enter" or "menu")
+        {
+            return "map";
+        }
+
+        if (normalized.StartsWith("combat", StringComparison.Ordinal))
+        {
+            return "combat";
+        }
+
+        return string.Empty;
     }
 }
 

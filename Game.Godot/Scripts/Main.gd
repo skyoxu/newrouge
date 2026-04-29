@@ -174,6 +174,8 @@ func _on_domain_event(type: String, source: String, data_json: String, id: Strin
         if demo != null and demo.has_method("StartGame"):
             demo.StartGame()
         _switch_to(nav, DIFFICULTY_SELECT_SCENE)
+    elif type == "core.run.resumed":
+        _handle_continue_resume(nav)
     elif type == "core.run.difficulty.selected":
         _switch_to(nav, CHARACTER_SELECT_SCENE)
     elif type == "core.run.character.selected":
@@ -188,6 +190,35 @@ func _on_domain_event(type: String, source: String, data_json: String, id: Strin
             sp.ShowPanel()
     elif type == "ui.menu.quit":
         get_tree().quit()
+
+func _handle_continue_resume(nav: Node) -> void:
+    if nav == null:
+        return
+    var target := _resolve_continue_resume_scene()
+    if target.is_empty():
+        return
+    _switch_to(nav, target)
+
+func _resolve_continue_resume_scene() -> String:
+    var autosave_path := "user://autosave_slot.json"
+    if not FileAccess.file_exists(autosave_path):
+        return ""
+    var file := FileAccess.open(autosave_path, FileAccess.READ)
+    if file == null:
+        return ""
+    var payload := str(file.get_as_text()).strip_edges()
+    if payload.is_empty():
+        return ""
+    var parsed: Variant = JSON.parse_string(payload)
+    if not (parsed is Dictionary):
+        return ""
+    var envelope := parsed as Dictionary
+    var save_point_id := str(envelope.get("save_point_id", "")).to_lower()
+    if save_point_id.begins_with("combat"):
+        return COMBAT_SCENE
+    if save_point_id.begins_with("map") or save_point_id.begins_with("node_pre_enter") or save_point_id == "menu":
+        return MAP_SCENE
+    return ""
 
 func _switch_to(nav: Node, scene_path: String) -> void:
     if nav == null or not nav.has_method("SwitchTo"):
