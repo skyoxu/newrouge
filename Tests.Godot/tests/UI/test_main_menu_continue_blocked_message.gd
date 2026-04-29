@@ -1,6 +1,7 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 # RED-FIRST: this suite defines the blocked-state UX contract for Continue failures.
+# acceptance anchor: ACC:T87.5
 
 const AUTOSAVE_PATH := "user://autosave_slot.json"
 const MAIN_MENU_SCENE := preload("res://Game.Godot/Scenes/UI/MainMenu.tscn")
@@ -48,6 +49,27 @@ func _build_invalid_integrity_autosave_json() -> String:
 func _build_migration_failure_autosave_json() -> String:
     return "{\"run_id\":\"run_t63\",\"save_point_id\":\"menu\",\"schema_version\":\"999.0.0\",\"saved_at\":\"2026-04-21T00:00:00Z\",\"state_json\":\"{}\",\"integrity_hash\":\"abc123\"}"
 
+func _build_locked_surface_autosave_json() -> String:
+    var state_payload := {
+        "route_owner": "map",
+        "difficulty": {
+            "difficulty_id": 1,
+            "label_key": "difficulty.label.default",
+            "description_key": "difficulty.description.default",
+            "ruleset_id": "ruleset.default"
+        }
+    }
+    var state_json := JSON.stringify(state_payload)
+    var envelope := {
+        "run_id": "run_t87_locked_surface",
+        "save_point_id": "reward_pick",
+        "schema_version": "1.0.0",
+        "saved_at": "2026-04-29T00:00:00Z",
+        "state_json": state_json,
+        "integrity_hash": state_json.sha256_text()
+    }
+    return JSON.stringify(envelope)
+
 func _prepare_continue_blocked_case(mode: String) -> void:
     _remove_autosave()
     if mode == "missing":
@@ -57,6 +79,9 @@ func _prepare_continue_blocked_case(mode: String) -> void:
         return
     if mode == "migration_failure":
         _write_autosave(_build_migration_failure_autosave_json())
+        return
+    if mode == "locked_surface":
+        _write_autosave(_build_locked_surface_autosave_json())
         return
 
 func _instantiate_menu() -> Control:
@@ -116,8 +141,9 @@ func test_continue_blocked_message_names_reason_for_missing_invalid_and_migratio
         await get_tree().process_frame
 
 # ACC:T63.2
+# acceptance anchor: ACC:T87.2
 func test_continue_blocked_state_exposes_recovery_actions_without_dismissing_feedback() -> void:
-    _prepare_continue_blocked_case("invalid_integrity")
+    _prepare_continue_blocked_case("locked_surface")
 
     var menu := _instantiate_menu()
     await get_tree().process_frame
@@ -144,6 +170,7 @@ func test_continue_blocked_state_exposes_recovery_actions_without_dismissing_fee
     assert_bool(cancel_btn.visible).is_true()
     assert_bool(return_btn.visible).is_true()
     assert_bool(_blocked_message_text(menu).length() > 0).is_true()
+    assert_bool(_blocked_message_text(menu).to_lower().find("locked") >= 0).is_true()
 
     _events.clear()
     cancel_btn.emit_signal("pressed")
@@ -151,7 +178,7 @@ func test_continue_blocked_state_exposes_recovery_actions_without_dismissing_fee
 
     assert_bool(menu.visible).is_true()
     assert_bool(dialog.visible).is_false()
-    assert_bool(_blocked_message_text(menu).to_lower().find("integrity") >= 0).is_true()
+    assert_bool(_blocked_message_text(menu).to_lower().find("locked") >= 0).is_true()
     _assert_no_resume_or_start_events()
 
     continue_btn.emit_signal("pressed")
@@ -165,7 +192,7 @@ func test_continue_blocked_state_exposes_recovery_actions_without_dismissing_fee
 
     assert_bool(menu.visible).is_true()
     assert_bool(dialog.visible).is_false()
-    assert_bool(_blocked_message_text(menu).to_lower().find("integrity") >= 0).is_true()
+    assert_bool(_blocked_message_text(menu).to_lower().find("locked") >= 0).is_true()
     _assert_no_resume_or_start_events()
 
 # ACC:T63.3
@@ -189,8 +216,9 @@ func test_migration_failure_message_states_supported_recovery_boundary() -> void
     assert_bool(menu.visible).is_true()
 
 # ACC:T63.5
+# acceptance anchor: ACC:T87.4
 func test_continue_refuses_resume_until_player_selects_recovery_action() -> void:
-    _prepare_continue_blocked_case("migration_failure")
+    _prepare_continue_blocked_case("locked_surface")
 
     var menu := _instantiate_menu()
     await get_tree().process_frame
@@ -202,7 +230,7 @@ func test_continue_refuses_resume_until_player_selects_recovery_action() -> void
 
     assert_bool(_events.has("core.run.resumed")).is_false()
     assert_bool(menu.visible).is_true()
-    _assert_blocked_feedback(menu, "migration")
+    _assert_blocked_feedback(menu, "locked")
 
     var new_run_btn := menu.get_node_or_null(BLOCKED_NEW_RUN_PATH) as Button
     assert_bool(new_run_btn != null).is_true()
