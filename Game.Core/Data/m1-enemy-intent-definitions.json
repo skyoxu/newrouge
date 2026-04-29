@@ -1,0 +1,18 @@
+{
+  "combatState": "Opening",
+  "rngStream": [
+    0
+  ],
+  "enemies": [
+    {
+      "enemyId": "enemy_m1_slime",
+      "intents": [
+        {
+          "intentId": "intent.attack",
+          "iconId": "icon_sword",
+          "textKey": "combat.intent.attack_6"
+        }
+      ]
+    }
+  ]
+}

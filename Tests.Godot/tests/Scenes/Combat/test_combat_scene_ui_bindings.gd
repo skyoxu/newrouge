@@ -16,6 +16,7 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
+# ACC:T76.1
 func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -47,19 +48,46 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		assert_that(str(root.get_path_to(node))).is_equal(path)
 
 	TranslationServer.set_locale("en")
-	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
-	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t73_brute", 24, 24))).is_true()
-	var intent_payload := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.attack_6"},{"enemyId":"enemy_t73_brute","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}'
-	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_attack", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_block", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_buff", 20, 20))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_debuff", 18, 18))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_mixed", 28, 28))).is_true()
+	var ai_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_attack","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]},{"enemyId":"enemy_t76_block","intents":[{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]},{"enemyId":"enemy_t76_buff","intents":[{"intentId":"intent.buff","iconId":"icon_star","textKey":"combat.intent.buff_2"}]},{"enemyId":"enemy_t76_debuff","intents":[{"intentId":"intent.debuff","iconId":"icon_skull","textKey":"combat.intent.debuff_weak"}]},{"enemyId":"enemy_t76_mixed","intents":[{"intentId":"intent.mixed","iconId":"icon_mix","textKey":"combat.intent.mixed_attack_block"}]}]}'
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", ai_definitions_payload))).is_true()
 	var targets := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
-	assert_that(targets.size()).is_equal(2)
-	assert_that(targets.has("enemy_m1_slime")).is_true()
-	assert_that(targets.has("enemy_t73_brute")).is_true()
+	assert_that(targets.size()).is_equal(5)
+	assert_that(targets.has("enemy_t76_attack")).is_true()
+	assert_that(targets.has("enemy_t76_block")).is_true()
+	assert_that(targets.has("enemy_t76_buff")).is_true()
+	assert_that(targets.has("enemy_t76_debuff")).is_true()
+	assert_that(targets.has("enemy_t76_mixed")).is_true()
 	assert_that(targets.has("enemy_dead")).is_false()
 	assert_that(targets.has("enemy_disconnected")).is_false()
 	assert_that(targets.has("enemy_locked_slot")).is_false()
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(targets.size())
 	assert_that(bool(scene.call("IsEnemyIntentPanelVisibleForTest"))).is_true()
+	var attack_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_attack")).to_lower()
+	var block_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_block")).to_lower()
+	var buff_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_buff")).to_lower()
+	var debuff_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_debuff")).to_lower()
+	var mixed_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_mixed")).to_lower()
+	var attack_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_attack"))
+	var block_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_block"))
+	var buff_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_buff"))
+	var debuff_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_debuff"))
+	var mixed_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_mixed"))
+	assert_that(attack_desc.find("attack") >= 0).is_true()
+	assert_that(block_desc.find("block") >= 0).is_true()
+	assert_that(buff_desc.find("buff") >= 0).is_true()
+	assert_that(debuff_desc.find("debuff") >= 0).is_true()
+	assert_that(mixed_desc.find("attack") >= 0).is_true()
+	assert_that(mixed_desc.find("block") >= 0).is_true()
+	assert_that(attack_icon).is_equal("icon_sword")
+	assert_that(block_icon).is_equal("icon_shield")
+	assert_that(buff_icon).is_equal("icon_star")
+	assert_that(debuff_icon).is_equal("icon_skull")
+	assert_that(mixed_icon).is_equal("icon_mix")
 	for enemy_id_variant in targets:
 		var enemy_id := str(enemy_id_variant)
 		assert_that(bool(scene.call("SetTargetEnemyIdForTest", enemy_id))).is_true()
@@ -75,6 +103,89 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		assert_that(enemy_status).is_not_empty()
 		assert_that(bool(scene.call("HasEnemyIntentForTest", enemy_id))).is_true()
 		assert_that(enemy_intent).is_not_empty()
+	var row_count_before_invalid := int(scene.call("GetEnemyIntentRowCountForTest"))
+	var mixed_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_mixed"))
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", '{"enemyIntentRows":[]}'))).is_false()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_invalid)
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_mixed"))).is_equal(mixed_before_invalid)
+	var unknown_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_unknown","intents":[{"intentId":"intent.unknown","iconId":"icon_unknown","textKey":"combat.intent.t76_unknown_preview"}]}]}'
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_unknown", 16, 16))).is_true()
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", unknown_payload))).is_true()
+	var unknown_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown")).to_lower()
+	assert_that(unknown_desc).is_equal("combat.intent.t76_unknown_preview")
+	assert_that(unknown_desc.find("attack") < 0).is_true()
+	var missing_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_unknown","intents":[]}]}'
+	var row_count_before_missing := int(scene.call("GetEnemyIntentRowCountForTest"))
+	var unknown_before_missing := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", missing_definitions_payload))).is_false()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_missing)
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))).is_equal(unknown_before_missing)
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
+
+# ACC:T76.2
+# ACC:T76.6
+func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_position() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_rng", 24, 24))).is_true()
+	var low_entropy_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_rng","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"},{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
+	var high_entropy_payload := '{"combatState":"Opening","rngStream":[9],"enemies":[{"enemyId":"enemy_t76_rng","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"},{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", low_entropy_payload))).is_true()
+	var intent_low_entropy := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_rng")).to_lower()
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", high_entropy_payload))).is_true()
+	var intent_high_entropy := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_rng")).to_lower()
+	assert_that(intent_high_entropy).is_not_equal(intent_low_entropy)
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t76_rng"))).is_true()
+
+	var rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var intent_before := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_rng"))
+	var turn_before := int(scene.call("GetTurnIndexForTest"))
+
+	scene.call("ApplyHoverPreviewForTest", "card_1")
+	scene.call("ApplyTargetInspectionForTest", "enemy_t76_rng")
+	scene.call("RefreshLocaleForTest")
+
+	var rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var intent_after := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_rng"))
+	var turn_after := int(scene.call("GetTurnIndexForTest"))
+	assert_that(rng_after).is_equal(rng_before)
+	assert_that(intent_after).is_equal(intent_before)
+	assert_that(turn_after).is_equal(turn_before)
+
+
+# ACC:T76.3
+func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_execution() -> void:
+	var ai_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_d1","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]},{"enemyId":"enemy_t76_d2","intents":[{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
+	var output_once: Array[String] = []
+	var output_twice: Array[String] = []
+
+	for run in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_d1", 32, 32))).is_true()
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_d2", 20, 20))).is_true()
+		assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", ai_definitions_payload))).is_true()
+
+		var captured: Array[String] = [
+			str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_d1")).strip_edges(),
+			str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_d2")).strip_edges(),
+			str(int(scene.call("GetEnemyIntentRowCountForTest"))),
+			str(int(scene.call("GetTurnIndexForTest")))
+		]
+		if run == 0:
+			output_once = captured
+		else:
+			output_twice = captured
+
+	assert_that(output_twice).is_equal(output_once)
+	var invalid_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_d1","intents":[]}]}'
+	var row_count_before_invalid := int(scene.call("GetEnemyIntentRowCountForTest"))
+	var d1_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_d1"))
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", invalid_definitions_payload))).is_false()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_invalid)
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_d1"))).is_equal(d1_before_invalid)
 
 
 # ACC:T75.1
@@ -589,6 +700,18 @@ func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_f
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
+# ACC:T76.5
+func test_enemy_intent_default_surface_follows_external_ai_definitions_without_hardcoded_fallback() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("SetEnemyIntentDefinitionAutoLoadEnabledForTest", false)
+	scene.call("RefreshLocaleForTest")
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(0)
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime")).strip_edges()).is_empty()
+
+
 # ACC:T80.3
 # ACC:T80.6
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
@@ -789,22 +912,39 @@ func test_accepted_command_feedback_includes_player_visible_result_summary() -> 
 
 
 # ACC:T64.6
+# ACC:T76.4
+# ACC:T76.5
 func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
 
 	var accepted := bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":3,"playerHp":26,"energy":2,"drawPileCount":10,"discardPileCount":4,"turnState":"PlayerTurn"}'))
 	assert_that(accepted).is_true()
+	var intent_payload := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload))).is_true()
 	scene.call("ApplyCommandFeedbackForTest", "debug_invalid", false)
 
 	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
 	var feedback_before := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var combat_rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
 
 	scene.call("ApplyHoverPreviewForTest", "card_1")
 	scene.call("ApplyTargetInspectionForTest", "enemy_alpha")
 
 	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
 	var feedback_after := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var combat_rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
 
 	assert_that(state_after).is_equal(state_before)
 	assert_that(feedback_after).is_equal(feedback_before)
+	assert_that(combat_rng_after).is_equal(combat_rng_before)
+
+
+func test_feedback_localization_zh_cn_keeps_human_readable_text() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("zh-CN")
+	scene.call("ApplyCommandFeedbackForTest", "end_turn", true)
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(feedback.find("命令") >= 0).is_true()
+	assert_that(feedback.find("已接受") >= 0).is_true()
