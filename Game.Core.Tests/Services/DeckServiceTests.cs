@@ -9,6 +9,10 @@ namespace Game.Core.Tests.Services;
 
 public sealed class DeckServiceTests
 {
+    // ACC:T80.1
+    // ACC:T80.4
+    // ACC:T80.6
+    // ACC:T80.7
     // ACC:T71.1
     // ACC:T33.4
     [Fact]
@@ -25,6 +29,31 @@ public sealed class DeckServiceTests
         drawnSnapshot.Hand.Should().Equal("h-0", "d-1", "d-2");
         drawnSnapshot.DrawPile.Should().Equal("d-3");
         drawnSnapshot.DiscardPile.Should().Equal("x-1");
+    }
+
+    // ACC:T80.4
+    [Fact]
+    public void ShouldProduceIdenticalStepByStepStatesAcrossRepeatedRuns_WhenInitialStateAndActionSequenceAreIdentical()
+    {
+        var sut = CreateSut();
+        var initialSnapshot = DeckSnapshot.Create(
+            drawPile: new[] { "d-1", "d-2", "d-3", "d-4" },
+            hand: new[] { "h-1", "h-2" },
+            discardPile: new[] { "x-1" },
+            retainedInstanceIds: new[] { "h-2" },
+            handLimit: 10);
+
+        var run1AfterDraw = sut.Draw(initialSnapshot, 2);
+        var run1AfterDiscard = sut.Discard(run1AfterDraw, new[] { "h-1" });
+        var run1AfterEndTurn = sut.EndOfTurn(run1AfterDiscard);
+
+        var run2AfterDraw = sut.Draw(initialSnapshot, 2);
+        var run2AfterDiscard = sut.Discard(run2AfterDraw, new[] { "h-1" });
+        var run2AfterEndTurn = sut.EndOfTurn(run2AfterDiscard);
+
+        AssertSnapshotEqual(run1AfterDraw, run2AfterDraw);
+        AssertSnapshotEqual(run1AfterDiscard, run2AfterDiscard);
+        AssertSnapshotEqual(run1AfterEndTurn, run2AfterEndTurn);
     }
 
     // ACC:T71.2
@@ -149,6 +178,16 @@ public sealed class DeckServiceTests
     private static IDeckOperationsPort CreateSut()
     {
         return new DeckOperationsPortAdapter(new DeckService());
+    }
+
+    private static void AssertSnapshotEqual(DeckSnapshot expected, DeckSnapshot actual)
+    {
+        actual.DrawPile.Should().Equal(expected.DrawPile);
+        actual.Hand.Should().Equal(expected.Hand);
+        actual.DiscardPile.Should().Equal(expected.DiscardPile);
+        actual.ExhaustPile.Should().Equal(expected.ExhaustPile);
+        actual.RetainedInstanceIds.Should().BeEquivalentTo(expected.RetainedInstanceIds);
+        actual.HandLimit.Should().Be(expected.HandLimit);
     }
 
     private interface IDeckOperationsPort

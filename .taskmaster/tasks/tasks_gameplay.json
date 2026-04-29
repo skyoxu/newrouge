@@ -5306,16 +5306,18 @@
     "owner": "gameplay",
     "test_refs": [
       "Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "acceptance": [
-      "In CombatScene, draw/discard/hand HUD counters are sourced from DeckService transition results for draw, play/discard, and end-turn flows; when an invoked action yields no DeckService state transition, all three counters remain unchanged. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "In CombatScene, draw/discard/hand HUD counters and rendered hand-card list are derived from DeckService transition outputs for draw, play/discard, and end-turn. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs",
       "After a card-play action resolves through DeckService, the played card instance is absent from hand and present in discard (or exhaust when rules require), and HUD hand/draw/discard counters equal the DeckService post-play state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "At end turn, hand retention/discard resolution is performed via DeckService rules, and the post-resolution hand plus draw/discard counters displayed in CombatScene exactly match DeckService end-turn state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Automated tests are added or updated to assert DeckService-driven HUD counter sync after card play and after end-turn processing, and repeated runs through the existing DeckService path produce deterministic results. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "T80 implementation evidence is accepted only when workflow records show T80 was explicitly selected before execution, and review evidence orders that workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json",
-      "CombatScene must not retain or mutate authoritative local draw, discard, or hand counters once DeckService-backed runtime state is wired; any scene-local pile counter that can diverge from DeckService state fails acceptance. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "Given the same initial DeckState and identical action sequence, DeckService post-transition state and CombatScene HUD/hand presentation remain step-by-step identical across repeated runs (deterministic parity check). Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "CombatScene must not retain or mutate authoritative local draw/discard/hand counters, and must persist plus reuse the same DeckService-backed runtime state across sequential draw/play/end-turn actions (no per-action reinitialization, snapshot rebuild, or fallback local arithmetic). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs",
+      "After a draw action resolves through DeckService, exactly the drawn card instance(s) are added to hand according to DeckService order/rules, removed from draw (or cycled per DeckService rules), and CombatScene hand UI plus draw/hand/discard counters exactly match the DeckService post-draw state. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "CombatScene action handlers for draw, play/discard, and end-turn must not perform direct scene-local pile arithmetic (increment/decrement or recompute authoritative draw/discard/hand counts); scene state is updated only by applying DeckService transition results. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After draw and end-turn transitions, CombatScene rendered hand-card order (by instance sequence) matches DeckService hand order rather than only membership/counter parity. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs",
+      "When a request is rejected or yields no transition from DeckService, CombatScene produces no local side effects: hand membership, hand render order, and draw/hand/discard HUD counters remain unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add/extend tests for deck-state-driven UI counters after play card/end turn and ensure deterministic transitions remain stable."

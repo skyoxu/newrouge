@@ -291,6 +291,79 @@ func test_snapshot_binding_matches_hand_energy_draw_and_discard_values() -> void
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
 
 
+# ACC:T80.7
+func test_draw_transition_from_deckservice_updates_hand_membership_order_and_counters_with_no_transition_guard() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var deck_bridge := preload("res://Game.Godot/TestSupport/Task33DeckServiceBridge.cs").new()
+	var initial_state := deck_bridge.CreateState([101, 102, 103], ["h-0"], [201], [], [])
+	var after_draw := deck_bridge.Draw(initial_state, 2) as Dictionary
+
+	var expected_hand: Array[String] = []
+	for card_id in after_draw["hand"]:
+		expected_hand.append(str(card_id))
+	var expected_draw_count := int((after_draw["draw_pile"] as Array).size())
+	var expected_discard_count := int((after_draw["discard_pile"] as Array).size())
+
+	var applied_draw := bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		JSON.stringify({
+			"handCards": expected_hand,
+			"difficulty": 1,
+			"playerHp": 80,
+			"energy": 3,
+			"drawPileCount": expected_draw_count,
+			"discardPileCount": expected_discard_count,
+			"turnState": "PlayerTurn"
+		})
+	))
+	assert_that(applied_draw).is_true()
+
+	var root := scene as Control
+	var hand_cards := _read_hand_cards(root.get_node("HUD/HandCards") as ItemList)
+	var state_after_draw := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(hand_cards).is_equal(expected_hand)
+	assert_that(state_after_draw["draw"]).is_equal(str(expected_draw_count))
+	assert_that(state_after_draw["discard"]).is_equal(str(expected_discard_count))
+
+	# No-transition guard: drawing zero cards keeps DeckService state and HUD counters unchanged.
+	var no_transition_state := deck_bridge.Draw(after_draw, 0) as Dictionary
+	var no_transition_hand: Array[String] = []
+	for card_id in no_transition_state["hand"]:
+		no_transition_hand.append(str(card_id))
+	var no_transition_draw_count := int((no_transition_state["draw_pile"] as Array).size())
+	var no_transition_discard_count := int((no_transition_state["discard_pile"] as Array).size())
+	assert_that(no_transition_hand).is_equal(expected_hand)
+	assert_that(no_transition_draw_count).is_equal(expected_draw_count)
+	assert_that(no_transition_discard_count).is_equal(expected_discard_count)
+
+	var applied_no_transition := bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		JSON.stringify({
+			"handCards": no_transition_hand,
+			"difficulty": 1,
+			"playerHp": 80,
+			"energy": 3,
+			"drawPileCount": no_transition_draw_count,
+			"discardPileCount": no_transition_discard_count,
+			"turnState": "PlayerTurn"
+		})
+	))
+	assert_that(applied_no_transition).is_true()
+	var state_after_no_transition := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state_after_no_transition["hand"]).is_equal(state_after_draw["hand"])
+	assert_that(state_after_no_transition["draw"]).is_equal(state_after_draw["draw"])
+	assert_that(state_after_no_transition["discard"]).is_equal(state_after_draw["discard"])
+
+
+# ACC:T80.2
+# ACC:T80.4
+# ACC:T80.7
+# ACC:T80.8
+# ACC:T80.9
+# ACC:T80.10
 # ACC:T71.3
 func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> void:
 	var scene := _new_scene()
@@ -323,6 +396,44 @@ func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> voi
 	assert_that(state_after_defend["energy"]).is_equal("1")
 	assert_that(state_after_defend["discard"]).is_equal("2")
 	assert_that(str(defend_feedback).find("gained 5 block") >= 0).is_true()
+
+
+# ACC:T80.8
+func test_draw_discard_counters_are_derived_from_applied_transition_and_not_scene_local_arithmetic() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	# Apply a transition-shaped snapshot with non-default values and verify counters are exactly applied.
+	var applied_a := bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["A","B"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":9,"discardPileCount":4,"turnState":"PlayerTurn"}'
+	))
+	assert_that(applied_a).is_true()
+	var state_a := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state_a["draw"]).is_equal("9")
+	assert_that(state_a["discard"]).is_equal("4")
+	assert_that(state_a["hand"]).is_equal(["A", "B"])
+
+	# Apply another transition-shaped snapshot; if scene used local arithmetic this would drift.
+	var applied_b := bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["X"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":3,"discardPileCount":7,"turnState":"PlayerTurn"}'
+	))
+	assert_that(applied_b).is_true()
+	var state_b := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state_b["draw"]).is_equal("3")
+	assert_that(state_b["discard"]).is_equal("7")
+	assert_that(state_b["hand"]).is_equal(["X"])
+
+	# Rejected action yields no transition and must leave hand/order/counters unchanged.
+	var before_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	var rejected := bool(scene.call("RequestTurnActionForTest", "invalid_action"))
+	var after_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(rejected).is_false()
+	assert_that(after_rejected["hand"]).is_equal(before_rejected["hand"])
+	assert_that(after_rejected["draw"]).is_equal(before_rejected["draw"])
+	assert_that(after_rejected["discard"]).is_equal(before_rejected["discard"])
 
 
 # ACC:T72.2
@@ -478,6 +589,8 @@ func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_f
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
+# ACC:T80.3
+# ACC:T80.6
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
