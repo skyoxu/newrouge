@@ -364,6 +364,24 @@ public partial class MainMenu : Control
         return DateTimeOffset.TryParse(value.GetString(), out _);
     }
 
+    private static bool TryReadRequiredString(JsonElement root, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!root.TryGetProperty(propertyName, out var element) || element.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var raw = element.GetString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        value = raw.Trim();
+        return true;
+    }
+
     private void OnNewRunPressed()
     {
         HideContinueBlockedDialog(clearMessage: false);
