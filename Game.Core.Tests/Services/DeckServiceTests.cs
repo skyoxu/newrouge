@@ -56,6 +56,74 @@ public sealed class DeckServiceTests
         AssertSnapshotEqual(run1AfterEndTurn, run2AfterEndTurn);
     }
 
+    // ACC:T81.1
+    [Fact]
+    public void ShouldReshuffleDiscardIntoDrawAndContinuePendingDraw_WhenDrawPileIsEmptyAndDiscardHasCards()
+    {
+        var sut = CreateSut();
+        var initialSnapshot = DeckSnapshot.Create(
+            drawPile: Array.Empty<string>(),
+            hand: new[] { "h-0" },
+            discardPile: new[] { "d-10", "d-02", "d-01" });
+
+        var drawnSnapshot = sut.Draw(initialSnapshot, 2);
+
+        drawnSnapshot.Hand.Should().Equal("h-0", "d-01", "d-02");
+        drawnSnapshot.DrawPile.Should().Equal("d-10");
+        drawnSnapshot.DiscardPile.Should().BeEmpty();
+    }
+
+    // ACC:T81.2
+    [Fact]
+    public void ShouldBeDeterministicAcrossRepeatedRuns_WhenDrawCrossesEmptyDrawPileReshuffleBoundary()
+    {
+        var sut = CreateSut();
+        var initialSnapshot = DeckSnapshot.Create(
+            drawPile: Array.Empty<string>(),
+            hand: new[] { "h-0" },
+            discardPile: new[] { "d-10", "d-02", "d-01" });
+
+        var run1 = sut.Draw(initialSnapshot, 2);
+        var run2 = sut.Draw(initialSnapshot, 2);
+
+        AssertSnapshotEqual(run1, run2);
+    }
+
+    // ACC:T81.4
+    [Fact]
+    public void ShouldConsumeOnlyAvailableCardsWithoutStateCorruption_WhenCrossBoundaryDrawRequestExceedsTotalCards()
+    {
+        var sut = CreateSut();
+        var initialSnapshot = DeckSnapshot.Create(
+            drawPile: Array.Empty<string>(),
+            hand: new[] { "h-0" },
+            discardPile: new[] { "d-02", "d-01" });
+
+        var drawnSnapshot = sut.Draw(initialSnapshot, 3);
+
+        drawnSnapshot.Hand.Should().Equal("h-0", "d-01", "d-02");
+        drawnSnapshot.DrawPile.Should().BeEmpty();
+        drawnSnapshot.DiscardPile.Should().BeEmpty();
+    }
+
+    // ACC:T81.5
+    [Fact]
+    public void ShouldKeepStateUnchanged_WhenDrawCannotProceedBecauseBothDrawAndDiscardPilesAreEmpty()
+    {
+        var sut = CreateSut();
+        var initialSnapshot = DeckSnapshot.Create(
+            drawPile: Array.Empty<string>(),
+            hand: new[] { "h-0", "h-1" },
+            discardPile: Array.Empty<string>(),
+            exhaustPile: new[] { "e-1" },
+            retainedInstanceIds: new[] { "h-1" },
+            handLimit: 7);
+
+        var drawnSnapshot = sut.Draw(initialSnapshot, 2);
+
+        AssertSnapshotEqual(initialSnapshot, drawnSnapshot);
+    }
+
     // ACC:T71.2
     // ACC:T33.5
     [Fact]

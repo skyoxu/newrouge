@@ -2533,15 +2533,15 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Services/DeckServiceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "acceptance": [
       "When a draw is requested with draw pile = 0 and discard > 0, combat must execute the DeckService-backed runtime reshuffle path, transfer discard cards into draw, set discard to 0, and complete the originally pending draw request in that same flow. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "With the same initial runtime state and current shuffle policy, the draw-empty reshuffle flow must yield the same post-draw results across repeated runs, while preserving existing hand-limit and retain outcomes. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "After reshuffle-then-continue-draw resolves, Combat HUD draw/discard counters must match the shared combat runtime draw/discard values exposed to UI bindings. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If a continued draw that crosses a reshuffle boundary cannot produce a valid draw result, runtime deck state must end only in the allowed failure outcome and must not partially mutate draw/discard/hand or related runtime state. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
-      "T81 implementation evidence is invalid unless workflow selection of T81 is recorded first, and review evidence must show that selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
+      "With the same initial runtime state and current shuffle policy, the draw-empty reshuffle flow must yield identical post-draw snapshot states across repeated runs, with no task-local shuffle-policy override. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "After reshuffle-then-continue-draw resolves, Combat HUD draw/discard counters and reshuffle-related deck-state presentation must be derived from shared combat runtime bindings (DeckService-backed transition/snapshot) rather than scene-local arithmetic/state, and must match runtime draw/discard values. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When a draw request crosses a reshuffle boundary but the total available cards still cannot satisfy the full requested count, the runtime must consume only available cards deterministically, leave draw/discard in a valid terminal state, and avoid duplicate or corrupted card movement. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "When draw cannot proceed because both draw and discard piles are empty, the draw request must preserve draw/discard/hand and related runtime deck state without partial mutation, and deterministic tests must assert this guard behavior before accepting T81 evidence. Refs: Game.Core.Tests/Services/DeckServiceTests.cs",
+      "The draw-empty recovery must be observable only through DeckService-backed runtime snapshot/transition outputs consumed by combat UI bindings; scene-local reshuffle arithmetic/state mutation must not alter draw/discard results independently of runtime state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add tests that exhaust draw pile, verify reshuffle from discard, discard reset, and continued draw behavior without state corruption."
@@ -2554,7 +2554,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0081.json"
+      "logs/ci/<date>/task-0081.json",
+      "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

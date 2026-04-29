@@ -403,6 +403,7 @@ func test_snapshot_binding_matches_hand_energy_draw_and_discard_values() -> void
 
 
 # ACC:T80.7
+# ACC:T81.6
 func test_draw_transition_from_deckservice_updates_hand_membership_order_and_counters_with_no_transition_guard() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -467,6 +468,49 @@ func test_draw_transition_from_deckservice_updates_hand_membership_order_and_cou
 	assert_that(state_after_no_transition["hand"]).is_equal(state_after_draw["hand"])
 	assert_that(state_after_no_transition["draw"]).is_equal(state_after_draw["draw"])
 	assert_that(state_after_no_transition["discard"]).is_equal(state_after_draw["discard"])
+
+
+# ACC:T81.3
+func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_deck_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var deck_bridge := preload("res://Game.Godot/TestSupport/Task33DeckServiceBridge.cs").new()
+	var initial_state := deck_bridge.CreateState([], ["h-0"], [10, 2, 1], [], [])
+	var after_draw := deck_bridge.Draw(initial_state, 2) as Dictionary
+
+	var expected_hand: Array[String] = []
+	for card_id in after_draw["hand"]:
+		expected_hand.append(str(card_id))
+	var expected_draw_count := int((after_draw["draw_pile"] as Array).size())
+	var expected_discard_count := int((after_draw["discard_pile"] as Array).size())
+
+	assert_that(expected_discard_count).is_equal(0)
+	assert_that(expected_draw_count).is_equal(1)
+
+	var applied := bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		JSON.stringify({
+			"handCards": expected_hand,
+			"difficulty": 1,
+			"playerHp": 80,
+			"energy": 3,
+			"drawPileCount": expected_draw_count,
+			"discardPileCount": expected_discard_count,
+			"turnState": "PlayerTurn"
+		})
+	))
+	assert_that(applied).is_true()
+
+	var runtime_draw_count := int((after_draw["draw_pile"] as Array).size())
+	var runtime_discard_count := int((after_draw["discard_pile"] as Array).size())
+	assert_that(int(scene.call("GetDrawPileCountForTest"))).is_equal(runtime_draw_count)
+	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(runtime_discard_count)
+
+	var state := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state["draw"]).is_equal(str(runtime_draw_count))
+	assert_that(state["discard"]).is_equal(str(runtime_discard_count))
 
 
 # ACC:T80.2
