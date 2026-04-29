@@ -2939,16 +2939,14 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
+      "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
     ],
     "acceptance": [
-      "When autosave metadata passes integrity checks and current route-ownership checks for a Map or combat entry resume point, selecting Continue must restore into the corresponding real node-owned Map boundary or combat initial boundary in-session, rather than stopping at metadata validation only. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "When autosave metadata is invalid, or the resume target is a locked Reward/Shop/Event surface in this phase, selecting Continue must remain on the existing blocked-state UX with the existing visible refusal behavior and must not transition into any playable boundary. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "Continue restore eligibility must require both autosave metadata integrity checks and current route ownership; metadata presence by itself must not allow restoration. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "T87 must not restore into locked Reward, Shop, or Event surfaces; this phase is limited to Map boundary and combat initial boundary restore, and locked-surface restore paths must stay blocked. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "Resume integration tests must be added or updated to verify both successful Map/combat boundary restore and unchanged blocked-state behavior for invalid saves or locked-surface targets. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "If T87 has not been explicitly selected by workflow, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
+      "[ACC:T87.1] When autosave metadata passes integrity checks and current route-ownership checks for a Map or combat entry resume point, selecting Continue must restore into the corresponding real node-owned Map boundary or combat initial boundary in-session, rather than stopping at metadata validation only. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "[ACC:T87.2] When autosave metadata is invalid, or the resume target is a locked Reward/Shop/Event surface in this phase, selecting Continue must remain on the existing blocked-state UX with the existing visible refusal behavior and must not transition into any playable boundary. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "[ACC:T87.3] Continue restore eligibility must require both autosave metadata integrity checks and current route ownership; metadata presence by itself must not allow restoration. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "[ACC:T87.4] T87 must not restore into locked Reward, Shop, or Event surfaces; this phase is limited to Map boundary and combat initial boundary restore, and locked-surface restore paths must stay blocked. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "[ACC:T87.5] Resume integration tests must be added or updated to verify both successful Map/combat boundary restore and unchanged blocked-state behavior for invalid saves or locked-surface targets. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
     ],
     "test_strategy": [
       "Add or extend resume integration tests to cover valid restore into Map or combat boundaries and unchanged blocked-state behavior for invalid saves."
@@ -2961,7 +2959,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0087.json"
+      "logs/ci/<date>/task-0087.json",
+      "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
