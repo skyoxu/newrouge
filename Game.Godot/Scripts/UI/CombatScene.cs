@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 using Godot;
 using Game.Core.Contracts.Combat;
+using Game.Core.Services;
 
 namespace Game.Godot.Scripts.UI;
 
@@ -66,6 +67,7 @@ public partial class CombatScene : Control
     private int _playerBlock;
     private int _exhaustPileCount;
     private int _enemyIntentTurnIndex;
+    private int _enemyIntentSelectionRngCursor;
     private const string DefaultEnemyId = "enemy_m1_slime";
     private readonly Dictionary<string, EnemyCombatState> _enemyCombatById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, int>> _enemyStatusStacksByEnemy = new(StringComparer.Ordinal);
@@ -77,9 +79,14 @@ public partial class CombatScene : Control
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private bool _cardDefinitionAutoLoadEnabledForTest = true;
+    private bool _enemyIntentDefinitionAutoLoadEnabledForTest = true;
     private static readonly string[] CardDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-card-definitions.json",
+    };
+    private static readonly string[] EnemyIntentDefinitionCandidatePaths =
+    {
+        "res://Game.Core/Data/m1-enemy-intent-definitions.json",
     };
     private Texture2D? _enemyIntentFallbackTexture;
     private bool _defeatResolvedForCurrentHpDrop;
@@ -576,6 +583,11 @@ public partial class CombatScene : Control
         }
     }
 
+    public void SetEnemyIntentDefinitionAutoLoadEnabledForTest(bool enabled)
+    {
+        _enemyIntentDefinitionAutoLoadEnabledForTest = enabled;
+    }
+
     public string GetPlayerStatusSummaryForTest()
     {
         if (_playerStatusStacks.Count <= 0)
@@ -708,6 +720,36 @@ public partial class CombatScene : Control
         return true;
     }
 
+    public bool TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJson(string definitionsJson)
+    {
+        if (string.IsNullOrWhiteSpace(definitionsJson))
+        {
+            return false;
+        }
+
+        EnemyIntentFromAiContractPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<EnemyIntentFromAiContractPayload>(definitionsJson, SnapshotJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (payload is null)
+        {
+            return false;
+        }
+
+        return TryGenerateEnemyIntentPreviewFromAiPayload(payload);
+    }
+
+    public bool TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest(string definitionsJson)
+    {
+        return TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJson(definitionsJson);
+    }
+
     public bool HasEnemyIntentForTest(string enemyId)
     {
         return !string.IsNullOrWhiteSpace(enemyId) && _enemyIntentByEnemy.ContainsKey(enemyId);
@@ -741,6 +783,11 @@ public partial class CombatScene : Control
         }
 
         return state.Turn;
+    }
+
+    public int GetCombatRngStreamPositionForTest()
+    {
+        return _enemyIntentSelectionRngCursor;
     }
 
     public int GetEnemyIntentRowCountForTest()
@@ -1790,10 +1837,127 @@ public partial class CombatScene : Control
             return;
         }
 
-        ApplyEnemyIntentPreview(new List<EnemyIntentPreviewItemPayload>
+        var generated = TryGenerateEnemyIntentPreviewFromDataDefinitions();
+        if (!generated)
         {
-            new("enemy_m1_slime", "icon_sword", "combat.intent.attack_6"),
-        });
+            _enemyIntentByEnemy.Clear();
+            RefreshEnemyIntentRows();
+        }
+    }
+
+    private bool TryGenerateEnemyIntentPreviewFromDataDefinitions()
+    {
+        if (!_enemyIntentDefinitionAutoLoadEnabledForTest)
+        {
+            return false;
+        }
+
+        foreach (var path in EnemyIntentDefinitionCandidatePaths)
+        {
+            if (!FileAccess.FileExists(path))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            EnemyIntentFromAiContractPayload? payload;
+            try
+            {
+                payload = JsonSerializer.Deserialize<EnemyIntentFromAiContractPayload>(file.GetAsText(), SnapshotJsonOptions);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (payload is null)
+            {
+                continue;
+            }
+
+            if (TryGenerateEnemyIntentPreviewFromAiPayload(payload))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryGenerateEnemyIntentPreviewFromAiPayload(EnemyIntentFromAiContractPayload payload)
+    {
+        if (payload.Enemies is null || payload.Enemies.Count <= 0)
+        {
+            return false;
+        }
+
+        var combatState = string.IsNullOrWhiteSpace(payload.CombatState) ? "Opening" : payload.CombatState.Trim();
+        var rngStreamBase = payload.RngStream ?? new List<int>();
+        var selector = new EnemyIntentSelectionService();
+        var previews = new List<EnemyIntentPreviewItemPayload>();
+
+        foreach (var enemy in payload.Enemies)
+        {
+            if (string.IsNullOrWhiteSpace(enemy.EnemyId) || enemy.Intents is null || enemy.Intents.Count <= 0)
+            {
+                return false;
+            }
+
+            var intentById = new Dictionary<string, EnemyIntentFromAiBehaviorPayload>(StringComparer.Ordinal);
+            var candidateIds = new List<string>();
+            foreach (var intent in enemy.Intents)
+            {
+                if (string.IsNullOrWhiteSpace(intent.IntentId))
+                {
+                    continue;
+                }
+
+                var key = intent.IntentId.Trim();
+                if (!intentById.ContainsKey(key))
+                {
+                    intentById[key] = intent;
+                    candidateIds.Add(key);
+                }
+            }
+
+            if (candidateIds.Count <= 0)
+            {
+                return false;
+            }
+
+            var pools = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                [combatState] = candidateIds,
+            };
+            var effectiveRngStream = new List<int>(rngStreamBase)
+            {
+                _enemyIntentSelectionRngCursor,
+            };
+            var selectedIntentId = selector.SelectIntent(enemy.EnemyId, combatState, pools, effectiveRngStream);
+            if (!intentById.TryGetValue(selectedIntentId, out var selectedIntent))
+            {
+                return false;
+            }
+
+            previews.Add(new EnemyIntentPreviewItemPayload(
+                enemy.EnemyId,
+                selectedIntent.IconId ?? string.Empty,
+                selectedIntent.TextKey ?? string.Empty));
+        }
+
+        if (previews.Count <= 0)
+        {
+            return false;
+        }
+
+        _enemyIntentSelectionRngCursor += 1;
+        ApplyEnemyIntentPreview(previews);
+        return true;
     }
 
     private void RebuildCardButtons(IReadOnlyList<string> handCards)
@@ -2087,6 +2251,23 @@ public partial class CombatScene : Control
 
     private sealed record EnemyIntentContractPayload(
         List<EnemyIntentPreviewItemPayload>? EnemyIntents
+    );
+
+    private sealed record EnemyIntentFromAiContractPayload(
+        string? CombatState,
+        List<int>? RngStream,
+        List<EnemyIntentFromAiEnemyPayload>? Enemies
+    );
+
+    private sealed record EnemyIntentFromAiEnemyPayload(
+        string EnemyId,
+        List<EnemyIntentFromAiBehaviorPayload>? Intents
+    );
+
+    private sealed record EnemyIntentFromAiBehaviorPayload(
+        string IntentId,
+        string IconId,
+        string TextKey
     );
 
     private sealed record EnemyIntentPreviewItemPayload(

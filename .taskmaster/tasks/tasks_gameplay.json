@@ -5042,17 +5042,15 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "acceptance": [
-      "Before any player action, the existing intent surface renders enemy intent generated from enemy behavior definitions (data-driven) instead of a fixed attack preview, and the rendered intent can express attack, block, buff, debuff, and mixed intent outputs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Before any player action, the existing intent surface renders enemy intent generated from enemy AI behavior definitions as the single source (no fixed/hardcoded fallback preview), and the rendered intent can express attack, block, buff, debuff, and mixed intent outputs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Enemy behavior selection for intent preview uses the named combat RNG stream, while UI-only interactions (hover, drag preview, localization refresh) leave that stream state unchanged; this task covers intent generation/preview only and does not execute enemy action resolution or no-repeat guardrail enforcement. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "With the same deterministic inputs, the upgraded intent path produces repeatable enemy intent output, and this determinism is verifiable without invoking enemy turn execution or action-resolution paths. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "T76 acceptance excludes enemy action resolution and no-repeat guardrails; checks that require those behaviors are out of scope for this task and deferred to follow-up tasks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Implementation evidence for T76 is valid only if workflow records explicitly show T76 was selected before implementation evidence is recorded in review artifacts. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json",
-      "Combat scene tests on the upgraded intent path are added or updated and explicitly assert deterministic enemy intent generation, visible intent preview, and non-advancement of the named combat RNG stream under UI-only operations. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "T76 scope is limited to enemy intent generation and preview binding; enemy action resolution and no-repeat guardrail enforcement are explicitly out of scope for T76 acceptance paths. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "The upgrade reuses the existing intent surface nodes and binding points; no parallel replacement intent surface is introduced in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Under deterministic seed/inputs, enemy intent preview generated from AI behavior definitions remains repeatable and visible on existing intent surfaces, and UI-only operations do not advance the named combat RNG stream. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path."
@@ -5065,7 +5063,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0076.json"
+      "logs/ci/<date>/task-0076.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
