@@ -151,6 +151,56 @@ public sealed class Task0011AcceptanceTests
         result.StateAfter.DeathCheckCompleted.Should().BeTrue();
     }
 
+    // ACC:T83.1
+    [Fact]
+    public void ShouldResolveCardRuntimeDeterministically_WhenGivenEquivalentInputs()
+    {
+        var service = new CombatService();
+        var input = new CardResolutionInput(
+            Target: "enemy",
+            TargetEnemyId: "enemy_m1_slime",
+            AliveEnemyCount: 1,
+            ResolvedDamageFromPipeline: 6,
+            Block: 5,
+            StatusId: "status.weak",
+            StatusStacks: 1,
+            Exhaust: false);
+
+        var first = service.ResolveCardRuntime(input);
+        var second = service.ResolveCardRuntime(input);
+
+        first.Should().Be(second);
+        first.TotalDamage.Should().Be(6);
+        first.PerTargetDamage.Should().Be(6);
+        first.BlockGain.Should().Be(5);
+        first.StatusDetail.Should().Contain("status.weak");
+    }
+
+    // ACC:T83.7
+    [Fact]
+    public void ShouldResolveEndTurnProgressionDeterministically_WhenGivenEquivalentInputs()
+    {
+        var service = new CombatService();
+        var input = new EndTurnProgressionInput(
+            Difficulty: 10,
+            PlayerHp: 80,
+            PlayerBlock: 5,
+            DrawPileCount: 7,
+            DiscardPileCount: 2,
+            HandCount: 3,
+            IncomingEnemyDamage: 6,
+            NextHandCards: new[] { "Strike", "Defend", "Strike" });
+
+        var first = service.ResolveEndTurnProgression(input);
+        var second = service.ResolveEndTurnProgression(input);
+
+        first.Should().Be(second);
+        first.DamageTaken.Should().Be(1);
+        first.NextPlayerHp.Should().Be(79);
+        first.NextEnergy.Should().Be(3);
+        first.NextDiscardPileCount.Should().Be(5);
+    }
+
     private static bool ContainsForbiddenGodotToken(string content)
     {
         return ForbiddenGodotNamespaceTokens.Any(token => content.Contains(token, StringComparison.Ordinal));
