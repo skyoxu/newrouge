@@ -262,6 +262,51 @@ class Chapter6RouteTests(unittest.TestCase):
         self.assertEqual("fix-deterministic", route["preferred_lane"])
         self.assertEqual("task-issue", route["repo_noise_classification"])
 
+    def test_should_route_to_68_when_step_failed_is_llm_timeout_stop_loss(self) -> None:
+        payload = {
+            "task_id": "97",
+            "run_id": "run-97",
+            "recommended_action": "needs-fix-fast",
+            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            "forbidden_commands": [
+                "py -3 scripts/sc/run_review_pipeline.py --task-id 97",
+                "py -3 scripts/sc/run_review_pipeline.py --task-id 97 --resume",
+            ],
+            "candidate_commands": {
+                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 97",
+                "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            },
+            "latest_summary_signals": {"reason": "step_failed:sc-llm-review"},
+            "chapter6_hints": {
+                "next_action": "needs-fix-fast",
+                "can_skip_6_7": True,
+                "can_go_to_6_8": True,
+                "blocked_by": "llm_retry_stop_loss",
+                "rerun_forbidden": True,
+            },
+            "inspection": {
+                "failure": {"code": "step-failed", "message": "sc-llm-review timed out."},
+                "paths": {"latest": "logs/ci/2026-04-30/sc-review-pipeline-task-97/latest.json"},
+            },
+        }
+
+        with (
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+            mock.patch.object(
+                chapter6_route,
+                "_derive_change_scope",
+                return_value={"changed_paths": ["Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"]},
+            ),
+        ):
+            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="97")
+
+        self.assertEqual("run-6.8", route["preferred_lane"])
+        self.assertTrue(route["six_eight_worthwhile"])
+        self.assertEqual(
+            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
+            route["recommended_command"],
+        )
+
     def test_should_require_real_artifacts_before_recommending_full_67(self) -> None:
         payload = {
             "task_id": "15",
