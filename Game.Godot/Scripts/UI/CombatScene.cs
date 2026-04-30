@@ -94,6 +94,8 @@ public partial class CombatScene : Control
     private int _defeatEligibleTransitionCount;
     private int _defeatResolveCount;
     private int _unifiedHpUpdateEntryCount;
+    private int _cardsPlayedThisTurn;
+    private readonly CombatService _combatService = new();
 
     public override void _Ready()
     {
@@ -261,8 +263,7 @@ public partial class CombatScene : Control
         EmitSignal(SignalName.TurnActionRequested, actionName);
         if (actionName == "end_turn")
         {
-            ResolveEndTurn();
-            return true;
+            return ResolveEndTurn();
         }
 
         AppendCommandFeedback(actionName, accepted: true);
@@ -452,14 +453,37 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var difficulty = TryParseIntLabel(_difficultyValue, out var parsedDifficulty) ? parsedDifficulty : 0;
-        var playerHp = TryParseIntLabel(_playerHpValue, out var parsedHp) ? parsedHp : 0;
-        var drawPile = TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : 0;
-        var discardPile = TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : 0;
+        if (!TryParseIntLabel(_difficultyValue, out var difficulty)
+            || !TryParseIntLabel(_playerHpValue, out var playerHp)
+            || !TryParseIntLabel(_drawPileValue, out var drawPile)
+            || !TryParseIntLabel(_discardPileValue, out var discardPile))
+        {
+            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.invalid_action");
+            return false;
+        }
 
-        var result = ResolveCardEffect(definition, targetEnemyId);
+        var pipelineInput = BuildPlayCardPipelineInput(definition, energy);
+        var pipelineResult = _combatService.PlayCard(pipelineInput);
+        if (!pipelineResult.Success)
+        {
+            AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
+            return false;
+        }
+
+        var resolved = _combatService.ResolveCardRuntime(
+            new CardResolutionInput(
+                Target: definition.Target,
+                TargetEnemyId: targetEnemyId,
+                AliveEnemyCount: GetAliveEnemyIds().Count,
+                ResolvedDamageFromPipeline: pipelineResult.StateAfter.FinalDamage,
+                Block: definition.Block,
+                StatusId: definition.StatusId,
+                StatusStacks: definition.StatusStacks,
+                Exhaust: definition.Exhaust));
+        var result = ResolveCardEffect(definition, targetEnemyId, resolved);
         handCards.RemoveAt(selectedIndex);
-        var remainingEnergy = energy - definition.Cost;
+        var remainingEnergy = pipelineResult.StateAfter.Energy;
+        _cardsPlayedThisTurn = pipelineResult.StateAfter.CardsPlayedThisTurn;
         if (result.MovedToExhaust)
         {
             _exhaustPileCount += 1;
@@ -846,7 +870,7 @@ public partial class CombatScene : Control
         TryResolveDefeatOnHpTransition(previousPlayerHp, snapshot.PlayerHp, "Player HP reached zero.");
     }
 
-    private void ResolveEndTurn()
+    private bool ResolveEndTurn()
     {
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
@@ -854,33 +878,88 @@ public partial class CombatScene : Control
             handCards.Add(_handCards.GetItemText(index));
         }
 
-        var difficulty = TryParseIntLabel(_difficultyValue, out var parsedDifficulty) ? parsedDifficulty : 0;
-        var playerHp = TryParseIntLabel(_playerHpValue, out var parsedHp) ? parsedHp : 0;
-        var drawPile = TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : 0;
-        var discardPile = TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : 0;
-        var incomingDamage = 6;
-        var damageTaken = Math.Max(0, incomingDamage - _playerBlock);
-        var nextPlayerHp = Math.Max(0, playerHp - damageTaken);
+        if (!TryParseIntLabel(_difficultyValue, out var difficulty)
+            || !TryParseIntLabel(_playerHpValue, out var playerHp)
+            || !TryParseIntLabel(_drawPileValue, out var drawPile)
+            || !TryParseIntLabel(_discardPileValue, out var discardPile))
+        {
+            AppendCommandFeedback("end_turn", accepted: false, refusalReasonKey: "combat.invalid_action");
+            return false;
+        }
 
-        _playerBlock = 0;
+        var intentDamage = TryResolveIncomingEnemyDamageFromIntent();
+        var incomingDamage = _combatService.ResolveEndTurnIncomingDamage(
+            new EndTurnEnemyIntentInput(
+                IntentDamage: intentDamage,
+                FallbackDamage: _combatService.CalculateDamage(
+                    new Game.Core.Domain.ValueObjects.Damage(6, Game.Core.Domain.ValueObjects.DamageType.Physical, false))));
+        var nextHandCards = new List<string> { "Strike", "Defend", "Strike" };
+        var progression = _combatService.ResolveEndTurnProgression(
+            new EndTurnProgressionInput(
+                Difficulty: difficulty,
+                PlayerHp: playerHp,
+                PlayerBlock: _playerBlock,
+                DrawPileCount: drawPile,
+                DiscardPileCount: discardPile,
+                HandCount: handCards.Count,
+                IncomingEnemyDamage: incomingDamage,
+                NextHandCards: nextHandCards));
+
+        _playerBlock = progression.NextPlayerBlock;
+        _cardsPlayedThisTurn = 0;
         _turnIndex += 1;
         var statusTransitionDetail = ResolveEndTurnStatusTransitions();
         ApplyCoreSnapshot(new CombatHudSnapshot(
-            new List<string> { "Strike", "Defend", "Strike" },
-            3,
-            drawPile,
-            discardPile + handCards.Count,
+            progression.NextHandCards,
+            progression.NextEnergy,
+            progression.NextDrawPileCount,
+            progression.NextDiscardPileCount,
             difficulty,
-            nextPlayerHp,
+            progression.NextPlayerHp,
             "PlayerTurn"));
         ApplyDefaultM1EnemyIntentIfEmpty();
-        var detailParts = new List<string> { $"Enemy dealt {damageTaken} damage. Turn {_turnIndex} started." };
+        var detailParts = new List<string> { $"Enemy dealt {progression.DamageTaken} damage. Turn {_turnIndex} started." };
         if (!string.IsNullOrWhiteSpace(statusTransitionDetail))
         {
             detailParts.Add(statusTransitionDetail);
         }
 
         AppendCommandFeedback("end_turn", accepted: true, detail: string.Join(" ", detailParts));
+        return true;
+    }
+
+    private int TryResolveIncomingEnemyDamageFromIntent()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedEnemyTargetId)
+            || !_enemyIntentByEnemy.TryGetValue(_selectedEnemyTargetId, out var intentState))
+        {
+            return 0;
+        }
+
+        var description = intentState.Description ?? string.Empty;
+        var digits = new List<char>();
+        foreach (var ch in description)
+        {
+            if (char.IsDigit(ch))
+            {
+                digits.Add(ch);
+                continue;
+            }
+
+            if (digits.Count > 0)
+            {
+                break;
+            }
+        }
+
+        if (digits.Count <= 0)
+        {
+            return 0;
+        }
+
+        return int.TryParse(new string(digits.ToArray()), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? Math.Max(0, value)
+            : 0;
     }
 
     private void AppendCommandFeedback(string commandName, bool accepted, string? detail = null, string? refusalReasonKey = null)
@@ -927,33 +1006,31 @@ public partial class CombatScene : Control
         _feedbackHistoryList.AddItem(message);
     }
 
-    private CardEffectResult ResolveCardEffect(CardDefinitionRuntime definition, string targetEnemyId)
+    private CardEffectResult ResolveCardEffect(CardDefinitionRuntime definition, string targetEnemyId, CardResolutionResult runtimeResult)
     {
         var dealtDamage = 0;
         if (definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase))
         {
             foreach (var enemyId in GetAliveEnemyIds())
             {
-                dealtDamage += ApplyDamageToEnemy(enemyId, definition.Damage);
+                dealtDamage += ApplyDamageToEnemy(enemyId, runtimeResult.PerTargetDamage);
             }
         }
-        else if (definition.Damage > 0 && definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase))
+        else if (runtimeResult.PerTargetDamage > 0 && definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase))
         {
-            dealtDamage += ApplyDamageToEnemy(targetEnemyId, definition.Damage);
+            dealtDamage += ApplyDamageToEnemy(targetEnemyId, runtimeResult.PerTargetDamage);
         }
 
-        if (definition.Block > 0)
+        if (runtimeResult.BlockGain > 0)
         {
-            _playerBlock += definition.Block;
+            _playerBlock += runtimeResult.BlockGain;
         }
 
-        var statusDetail = string.Empty;
         if (definition.StatusStacks > 0 && !string.IsNullOrWhiteSpace(definition.StatusId))
         {
             if (definition.Target.Equals("self", StringComparison.OrdinalIgnoreCase))
             {
                 ApplyStatusToPlayer(definition.StatusId, definition.StatusStacks);
-                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to self";
             }
             else if (definition.Target.Equals("all_enemies", StringComparison.OrdinalIgnoreCase))
             {
@@ -961,22 +1038,19 @@ public partial class CombatScene : Control
                 {
                     ApplyStatusToEnemy(enemyId, definition.StatusId, definition.StatusStacks);
                 }
-
-                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to all_enemies";
             }
             else
             {
                 var resolvedEnemyId = string.IsNullOrWhiteSpace(targetEnemyId) ? DefaultEnemyId : targetEnemyId.Trim();
                 ApplyStatusToEnemy(resolvedEnemyId, definition.StatusId, definition.StatusStacks);
-                statusDetail = $"applied {definition.StatusId} +{definition.StatusStacks} to {resolvedEnemyId}";
             }
         }
 
         return new CardEffectResult(
-            Damage: dealtDamage,
-            Block: definition.Block,
-            StatusDetail: statusDetail,
-            MovedToExhaust: definition.Exhaust);
+            Damage: dealtDamage > 0 ? dealtDamage : runtimeResult.TotalDamage,
+            Block: runtimeResult.BlockGain,
+            StatusDetail: runtimeResult.StatusDetail,
+            MovedToExhaust: runtimeResult.MoveToExhaust);
     }
 
     private int ApplyDamageToEnemy(string enemyId, int damage)
@@ -1045,6 +1119,27 @@ public partial class CombatScene : Control
     private static bool CardDefinitionRequiresEnemyTarget(CardDefinitionRuntime definition)
     {
         return definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private PlayCardPipelineInput BuildPlayCardPipelineInput(CardDefinitionRuntime definition, int currentEnergy)
+    {
+        var baseDamage = Math.Max(0, definition.Damage);
+        var triggerN = 3;
+        var taxPerCard = 2;
+        return new PlayCardPipelineInput(
+            DifficultyId: TryParseIntLabel(_difficultyValue, out var difficulty) ? difficulty : 1,
+            CardsPlayedThisTurn: Math.Max(0, _cardsPlayedThisTurn),
+            OverplayTriggerN: triggerN,
+            OverplayTaxPerCard: taxPerCard,
+            BaseCardCost: Math.Max(0, definition.Cost),
+            EnergyBefore: Math.Max(0, currentEnergy),
+            BaseDamage: baseDamage,
+            Strength: 0,
+            WeakMultiplier: 1.0,
+            VulnerableMultiplier: 1.0,
+            IsFixedDamage: false,
+            CombatantId: "player",
+            StableId: $"turn-{_turnIndex}");
     }
 
     private bool TryResolveCardDefinition(string cardName, out CardDefinitionRuntime definition)

@@ -5500,17 +5500,16 @@
     "owner": "gameplay",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "acceptance": [
-      "When CombatScene executes play-card actions or end-turn progression, runtime state mutation and combat outcome resolution must flow through the existing CombatService + PlayCard runtime path, and must not be resolved solely by scene-local sample logic. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "After each successful play-card or end-turn action, Combat scene feedback surfaces must update card zones/piles, energy, and HP to exactly match shared runtime state (no stale or divergent display); Warrior starting-deck seeding and live Rage runtime closure remain unchanged in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "The combat route owner must remain the current owner throughout this task; any route-owner reassignment, handoff, or replacement in this slice fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "This slice must not add, implement, or wire Warrior starting-deck seeding; any detected change to Warrior starting-deck seeding behavior or path fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "This slice must not add, implement, or wire live Rage runtime closure; any detected change to live Rage runtime closure behavior or path fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If workflow has not explicitly selected T83, implementation entry must refuse execution and leave implementation/code state unchanged; review evidence must include the workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json",
-      "Combat scene tests and acceptance tests must explicitly verify both that current surface ownership is preserved and that scene-local-only play behavior has been replaced by CombatService-backed card resolution. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When CombatScene executes a play-card action, visible combat state mutation and outcome resolution must be produced from the existing CombatService + PlayCard runtime result, not from scene-local sample resolution. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "After each successful play-card or end-turn action, the current Combat scene feedback surfaces must update hand/discard or exhaust piles, energy, HP, and visible feedback text to match the shared runtime result exactly, with no stale or divergent display. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "This slice keeps CombatScene as the current combat route owner and current feedback surface owner; card-play and end-turn wiring must not introduce a second combat owner, alternate resolution scene, or owner reassignment path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Warrior starting-deck seeding is out of scope for this task: Task 83 neither requires nor claims closure for starting-deck seeding behavior, and acceptance for this task must not rely on new Warrior seeding wiring. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Live Rage runtime closure is out of scope for this task: Task 83 neither requires nor claims closure for Rage runtime behavior, and acceptance for this task must not rely on new Rage closure wiring. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "CombatScene must not fall back to scene-local sample resolution when shared runtime definitions/contracts or runtime snapshot inputs are missing/invalid; the request must be rejected and visible state must remain unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When CombatScene executes end-turn progression on a valid snapshot, enemy-turn resolution and next-turn state must be taken from the shared runtime progression path rather than from scene-local turn arithmetic. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add or extend Combat scene and acceptance tests to verify CombatService-backed card resolution and removal of scene-local-only play behavior while preserving current surface ownership."
@@ -5524,7 +5523,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0083.json"
+      "logs/ci/<date>/task-0083.json",
+      "logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

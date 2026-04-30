@@ -352,6 +352,12 @@ Test-Refs:
 - Combat UI HUD snapshot
   - `Game.Core/Contracts/Combat/CombatHudSnapshot.cs`
   - Purpose: adapter-facing immutable read model for hand cards, energy, and pile counters.
+- Combat end-turn progression contract
+  - `Game.Core/Contracts/Combat/CombatTurnProgression.cs`
+  - Purpose: deterministic runtime contract for end-turn progression result consumed by CombatScene UI owner.
+- Combat runtime resolution contracts
+  - `Game.Core/Contracts/Combat/CombatRuntimeResolutionContracts.cs`
+  - Purpose: shared runtime input/output contracts for card-resolution settlement and end-turn intent damage routing.
 - 卡牌与形态
   - `Game.Core/Contracts/Cards/CardDefinition.cs`
   - `Game.Core/Contracts/Cards/CardForm.cs`

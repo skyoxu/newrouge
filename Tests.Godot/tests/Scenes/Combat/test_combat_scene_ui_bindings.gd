@@ -1,4 +1,4 @@
-extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
+﻿extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const COMBAT_SCENE := preload("res://Game.Godot/Scenes/Combat.tscn")
 
@@ -553,6 +553,107 @@ func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> voi
 	assert_that(str(defend_feedback).find("gained 5 block") >= 0).is_true()
 
 
+# ACC:T83.1
+# ACC:T83.2
+func test_play_card_overplay_tax_and_end_turn_reset_follow_shared_runtime_progression() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["Strike","Strike","Strike","Strike","Strike"],"difficulty":10,"playerHp":80,"energy":10,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'
+	))).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	for _i in range(3):
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		hand = root.get_node("HUD/HandCards") as ItemList
+
+	var state_after_three := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state_after_three["energy"]).is_equal("7")
+
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var state_after_four := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_four := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(state_after_four["energy"]).is_equal("4")
+	assert_that(feedback_four.find("Energy -1 (remaining 4)") >= 0).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	assert_that(bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["Strike"],"difficulty":10,"playerHp":79,"energy":3,"drawPileCount":7,"discardPileCount":3,"turnState":"PlayerTurn"}'
+	))).is_true()
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var state_after_reset_first := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_after_reset := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(state_after_reset_first["energy"]).is_equal("2")
+	assert_that(feedback_after_reset.find("Energy -1 (remaining 2)") >= 0).is_true()
+
+
+# ACC:T83.3
+func test_combat_scene_owner_surfaces_remain_authoritative_across_play_and_end_turn() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var hand_path := str(root.get_path_to(root.get_node("HUD/HandCards")))
+	var energy_path := str(root.get_path_to(root.get_node("HUD/EnergyValue")))
+	var feedback_path := str(root.get_path_to(root.get_node("HUD/FeedbackMessageLabel")))
+	assert_that(hand_path).is_equal("HUD/HandCards")
+	assert_that(energy_path).is_equal("HUD/EnergyValue")
+	assert_that(feedback_path).is_equal("HUD/FeedbackMessageLabel")
+
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+
+	assert_that(str(root.get_path_to(root.get_node("HUD/HandCards")))).is_equal(hand_path)
+	assert_that(str(root.get_path_to(root.get_node("HUD/EnergyValue")))).is_equal(energy_path)
+	assert_that(str(root.get_path_to(root.get_node("HUD/FeedbackMessageLabel")))).is_equal(feedback_path)
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_not_empty()
+
+
+# ACC:T83.4
+func test_task83_flow_does_not_require_new_warrior_seed_wiring() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state_before["hand"]).is_equal(["Strike"])
+	assert_that(state_after["hand"]).is_equal([])
+	assert_that(state_after["draw"]).is_equal("7")
+	assert_that(state_after["discard"]).is_equal("1")
+
+
+# ACC:T83.5
+func test_task83_flow_does_not_require_rage_runtime_closure_wiring() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var player_status_before := str(scene.call("GetPlayerStatusSummaryForTest"))
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var player_status_after := str(scene.call("GetPlayerStatusSummaryForTest"))
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+
+	assert_that(player_status_before).is_equal("")
+	assert_that(player_status_after).is_equal("")
+	assert_that(feedback.find("gained 5 block") >= 0).is_true()
+
+
 # ACC:T80.8
 func test_draw_discard_counters_are_derived_from_applied_transition_and_not_scene_local_arithmetic() -> void:
 	var scene := _new_scene()
@@ -717,6 +818,7 @@ func test_exhaust_routing_is_definition_driven_for_non_power_through_card() -> v
 # ACC:T72.8
 # ACC:T75.6
 # ACC:T75.7
+# ACC:T83.6
 func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_fallback() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -758,6 +860,7 @@ func test_enemy_intent_default_surface_follows_external_ai_definitions_without_h
 
 # ACC:T80.3
 # ACC:T80.6
+# ACC:T83.7
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -780,6 +883,49 @@ func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	assert_that(state_after_end["hand"]).is_equal(["Strike", "Defend", "Strike"])
 	assert_that(state_after_end["discard"]).is_equal("3")
 	assert_that(feedback.find("Enemy dealt 1 damage") >= 0).is_true()
+
+
+# ACC:T83.6
+func test_end_turn_rejects_when_runtime_snapshot_is_invalid_and_keeps_state_stable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	(root.get_node("HUD/PlayerHpValue") as Label).text = "invalid-hp"
+	var before_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	var turn_before := int(scene.call("GetTurnIndexForTest"))
+	var rejected := bool(scene.call("RequestTurnActionForTest", "end_turn"))
+	var after_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	var turn_after := int(scene.call("GetTurnIndexForTest"))
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+
+	assert_that(rejected).is_false()
+	assert_that(after_rejected).is_equal(before_rejected)
+	assert_that(turn_after).is_equal(turn_before)
+	assert_that(feedback.find("refused") >= 0).is_true()
+
+
+# ACC:T83.6
+func test_play_card_rejects_when_runtime_snapshot_is_invalid_and_keeps_state_stable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	(root.get_node("HUD/DrawPileValue") as Label).text = "invalid-draw"
+	hand.select(0)
+	var before_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	var rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var after_rejected := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+
+	assert_that(rejected).is_false()
+	assert_that(after_rejected).is_equal(before_rejected)
+	assert_that(feedback.find("refused") >= 0).is_true()
 
 
 # acceptance anchor: ACC:T73.4

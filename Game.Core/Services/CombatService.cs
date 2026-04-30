@@ -88,6 +88,80 @@ public class CombatService
         return ExecutePlayCardPipeline(input);
     }
 
+    public EndTurnProgressionResult ResolveEndTurnProgression(EndTurnProgressionInput input)
+    {
+        var incomingDamage = Math.Max(0, input.IncomingEnemyDamage);
+        var mitigatedDamage = Math.Max(0, incomingDamage - Math.Max(0, input.PlayerBlock));
+        var nextPlayerHp = Math.Max(0, input.PlayerHp - mitigatedDamage);
+        var nextDiscardPile = Math.Max(0, input.DiscardPileCount + Math.Max(0, input.HandCount));
+        var nextHand = input.NextHandCards ?? Array.Empty<string>();
+
+        return new EndTurnProgressionResult(
+            NextPlayerHp: nextPlayerHp,
+            NextPlayerBlock: 0,
+            NextEnergy: 3,
+            NextDrawPileCount: Math.Max(0, input.DrawPileCount),
+            NextDiscardPileCount: nextDiscardPile,
+            NextHandCards: nextHand,
+            DamageTaken: mitigatedDamage);
+    }
+
+    public CardResolutionResult ResolveCardRuntime(CardResolutionInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        var target = string.IsNullOrWhiteSpace(input.Target) ? string.Empty : input.Target.Trim();
+        var targetCount = Math.Max(1, input.AliveEnemyCount);
+        var resolvedDamage = Math.Max(0, input.ResolvedDamageFromPipeline);
+        var perTargetDamage = 0;
+        var totalDamage = 0;
+        if (string.Equals(target, "all_enemies", StringComparison.OrdinalIgnoreCase))
+        {
+            perTargetDamage = resolvedDamage / targetCount;
+            totalDamage = perTargetDamage * targetCount;
+        }
+        else if (string.Equals(target, "enemy", StringComparison.OrdinalIgnoreCase))
+        {
+            perTargetDamage = resolvedDamage;
+            totalDamage = resolvedDamage;
+        }
+
+        var statusDetail = string.Empty;
+        if (input.StatusStacks > 0 && !string.IsNullOrWhiteSpace(input.StatusId))
+        {
+            if (string.Equals(target, "self", StringComparison.OrdinalIgnoreCase))
+            {
+                statusDetail = $"applied {input.StatusId} +{input.StatusStacks} to self";
+            }
+            else if (string.Equals(target, "all_enemies", StringComparison.OrdinalIgnoreCase))
+            {
+                statusDetail = $"applied {input.StatusId} +{input.StatusStacks} to all_enemies";
+            }
+            else
+            {
+                var resolvedEnemyId = string.IsNullOrWhiteSpace(input.TargetEnemyId) ? "enemy_m1_slime" : input.TargetEnemyId.Trim();
+                statusDetail = $"applied {input.StatusId} +{input.StatusStacks} to {resolvedEnemyId}";
+            }
+        }
+
+        return new CardResolutionResult(
+            TotalDamage: totalDamage,
+            PerTargetDamage: perTargetDamage,
+            BlockGain: Math.Max(0, input.Block),
+            StatusDetail: statusDetail,
+            MoveToExhaust: input.Exhaust);
+    }
+
+    public int ResolveEndTurnIncomingDamage(EndTurnEnemyIntentInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (input.IntentDamage > 0)
+        {
+            return input.IntentDamage;
+        }
+
+        return Math.Max(0, input.FallbackDamage);
+    }
+
     public static int CalculateDamageWithStatusMultipliers(
         int baseDamage,
         int strength,
