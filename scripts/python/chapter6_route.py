@@ -273,12 +273,17 @@ def route_chapter6(
     preferred_lane = "inspect-first"
     recommended_command = str(payload.get("recommended_command") or "").strip() or inspect_command
 
+    blocked_by = str(chapter6_hints.get("blocked_by") or "").strip().lower()
+
     if repo_noise_classification == "repo-noise":
         preferred_lane = "repo-noise-stop"
         recommended_command = inspect_command or recommended_command
-    elif str(chapter6_hints.get("blocked_by") or "").strip().lower() == "artifact_integrity":
+    elif blocked_by == "artifact_integrity":
         preferred_lane = "inspect-first"
         recommended_command = inspect_command or recommended_command
+    elif blocked_by == "llm_retry_stop_loss" and six_eight_worthwhile:
+        preferred_lane = "run-6.8"
+        recommended_command = needs_fix_command or recommended_command
     elif str(failure.get("code") or "").strip().lower() == "step-failed" or str(chapter6_hints.get("blocked_by") or "").strip().lower() in {
         "deterministic_failure",
         "sc_test_retry_stop_loss",
