@@ -76,6 +76,11 @@ const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
 # acceptance: ACC:T70.1
 # acceptance: ACC:T70.2
 # acceptance: ACC:T70.3
+# ACC:T97.6
+# ACC:T97.7
+# ACC:T97.8
+# ACC:T97.9
+# ACC:T97.10
 func test_map_exposes_five_floor_route_tree_and_only_first_floor_is_initially_available() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)
@@ -149,6 +154,11 @@ func test_map_exposes_five_floor_route_tree_and_only_first_floor_is_initially_av
 # acceptance: ACC:T70.4
 # acceptance: ACC:T70.5
 # acceptance: ACC:T70.6
+# ACC:T97.1
+# ACC:T97.2
+# ACC:T97.3
+# ACC:T97.4
+# ACC:T97.5
 func test_tree_node_click_routes_current_floor_and_unlocks_next_floor_after_completion() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)

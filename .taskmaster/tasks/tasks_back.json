@@ -3598,22 +3598,22 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
       "Tests.Godot/tests/UI/test_map_scene_surface.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
+      "Game.Core.Tests/Tasks/Task0097WorkflowSelectionEvidenceTests.cs",
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"
     ],
     "acceptance": [
-      "When the live Map surface binds route data, it must use the T86-generated ActConfig route graph as the source of truth instead of any hard-coded or scene-local route source. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "Binding the generated route graph must update the existing route-owned Map surface and its route states without replacing that owner or switching rendering to a second map presentation path. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "After generated route binding is applied, the current route-owned Map surface must continue to follow the existing visual route conventions already used by that surface. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd",
-      "The live Map surface must visibly mark nodes or paths that are reachable according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "The live Map surface must visibly mark nodes or paths that are locked according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "The live Map surface must visibly mark the currently selected node or path according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "The live Map surface must visibly mark nodes or paths that are completed according to the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "After the generated route graph is projected, the existing route-owned Map surface must remain the only map presentation owner. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "Map scene tests must verify that generated route binding appears on the live Map surface and that the visible route states reflect the generated data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd",
-      "Map scene tests must verify that node selection on the live Map surface remains actionable when driven by the generated route data. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
-      "If T97 has not been selected by workflow, implementation entry must refuse execution, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
+      "When the live Map surface binds route data, it must read node, edge, and route-state projection from the T86-generated ActConfig route graph as the sole source of truth; changing the generated graph or its precomputed states must change the rendered Map output without requiring a scene-local route definition change. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Binding the T86-generated ActConfig route graph and all subsequent route-state interactions must update the existing route-owned Map surface in place, and that surface must remain the only map presentation owner with no second map presentation path introduced before or after interaction. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "After generated route binding is applied, the current route-owned Map surface must keep the same existing node/edge visual convention mapping for reachable, locked, selected-path, and completed states, so each state remains visually distinguishable on the same presentation surface after rebinding. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The live Map surface must visibly mark nodes or paths that are reachable according to the generated route data. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The live Map surface must visibly mark nodes or paths that are locked according to the generated route data. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The live Map surface must visibly mark the currently selected node or path according to the generated route data. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "The live Map surface must visibly mark nodes or paths that are completed according to the generated route data. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "After route-state changes (selection, completion, unlock progression), the live Map surface must continue to display reachable, locked, selected, and completed markers consistent with the same generated route graph. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Interactions must be state-correct: selecting a reachable node/path is actionable and updates route state; attempting to select a locked or unreachable node/path is non-actionable and leaves route progression/selection state unchanged. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "On first bind, if the generated ActConfig route graph already marks any node or edge as selected-path or completed, the live Map surface must project those selected-path and completed states immediately without requiring a new local Map interaction first. Refs: Tests.Godot/tests/UI/test_map_scene_surface.gd",
+      "If T97 has not been selected by workflow, implementation entry must refuse execution, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0097WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend Map scene tests to cover generated route binding, visible route states, and actionable node selection on the live Map surface."
@@ -3626,7 +3626,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0097.json"
+      "logs/ci/<date>/task-0097.json",
+      "logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
     ],
     "semantic_review_tier": "full"
   },

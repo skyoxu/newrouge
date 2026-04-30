@@ -1,0 +1,21 @@
+# Task 97 Bind generated ActConfig route data onto the live Map surface and route states acceptance-test generation plan
+
+- Title: Task 97 Bind generated ActConfig route data onto the live Map surface and route states acceptance-test generation plan
+- Status: active
+- Branch: task/T97
+- Git Head: 55f0a8f0df0ba2e351e400c0e4c447ff0c396d48
+- Goal: Control acceptance-driven test generation complexity for task 97.
+- Scope: 1 missing refs across 1 test roots; seed refs: Tests.Godot/tests/UI/test_map_scene_surface.gd
+- Current step: Review missing acceptance refs and choose the first safe red step.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
+- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 97 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: none yet
+- Related task id(s): `97`
+- Related run id: n/a (no pipeline run id linked yet)
+- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
+- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
