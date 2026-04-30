@@ -3004,18 +3004,17 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs",
-      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Tests.Godot/tests/UI/test_inventory_panel.gd",
-      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "On the shared run path, granting a relic definition records acquired and equipped ownership in the existing run inventory; no scene-local or second relic ownership store is introduced, and duplicate or conflicting grants are rejected by existing uniqueness rules with run inventory and equipped state unchanged. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "After a relic is equipped on the shared run path, player-facing runtime surfaces display that equipped relic as inspectable for decisions; when no relic is equipped, those same surfaces present no stale equipped-relic data. Refs: Tests.Godot/tests/UI/test_inventory_panel.gd",
-      "T88 is limited to shared run-path acquisition, ownership, uniqueness enforcement, and equipped-state visibility; combat-time relic effect execution remains deferred to a follow-up task and relic-effect combat semantics stay unchanged in this task. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Run inventory ownership for both relic grant and equip closure remains on the existing shared runtime path; this task does not introduce a second persistence path, scene-local inventory authority, or an alternative equipped-state owner. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Run inventory and UI tests are added or extended to verify relic grant, uniqueness-rule refusal with unchanged state, and visible equipped state on the shared run path. Refs: Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/UI/test_inventory_panel.gd",
-      "If workflow selection has not explicitly selected T88, implementation entry refuses execution and keeps implementation/code state unchanged; review evidence includes the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
+      "On the shared run path, granting a relic definition records acquired and equipped ownership in the existing run inventory; no scene-local or second relic ownership store is introduced, and duplicate or conflicting grants are rejected by existing uniqueness rules with run inventory and equipped state unchanged. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "After a relic is equipped on the shared run path, the run-path visibility state exposes that equipped relic for decision-time inspection; when no relic is equipped, the same visibility state presents no stale equipped-relic data. This task validates run-path visibility state only and does not claim UI rendering-layer assertions. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "T88 is limited to shared run-path acquisition, ownership, uniqueness enforcement, and equipped-state visibility; combat-time relic effect execution remains deferred to a follow-up task and relic-effect combat semantics stay unchanged in this task. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "Run inventory ownership for both relic grant and equip closure remains on the existing shared runtime path; this task does not introduce a second persistence path, scene-local inventory authority, or an alternative equipped-state owner. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "On the shared run path, run inventory behavior grants relic ownership only for defined relic ids, rejects duplicate/conflicting/undefined relic grants with acquired ownership and equipped state unchanged, and keeps equipped-state visibility consistent with ownership. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "If workflow selection has not explicitly selected T88, implementation entry refuses execution and keeps implementation/code state unchanged; review evidence includes the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs",
+      "On the shared run path, granting or equipping a relic id that is not present in existing relic definitions is refused, and acquired ownership, equipped state, and run-path visibility state remain unchanged. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add or extend run inventory and UI tests to cover relic grant, uniqueness enforcement, and visible equipped state on the shared run path."
@@ -3028,7 +3027,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0088.json"
+      "logs/ci/<date>/task-0088.json",
+      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

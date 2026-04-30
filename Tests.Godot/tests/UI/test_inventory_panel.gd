@@ -10,13 +10,9 @@ func _open_datastore() -> bool:
     return ds != null
 
 func test_inventory_save_and_load() -> void:
-    if not _open_datastore():
-        push_warning("SKIP inventory test: DataStore not found")
-        return
+    assert_bool(_open_datastore()).is_true()
     var packed = load("res://Game.Godot/Examples/UI/InventoryPanel.tscn")
-    if packed == null:
-        push_warning("SKIP inventory test: InventoryPanel.tscn not found")
-        return
+    assert_that(packed).is_not_null()
     var inv = packed.instantiate()
     add_child(auto_free(inv))
     inv.UseRepository = false
@@ -27,11 +23,14 @@ func test_inventory_save_and_load() -> void:
     # save
     var save_btn = inv.get_node("VBox/Buttons/SaveBtn")
     save_btn.emit_signal("pressed")
-    # clear and load
     var list = inv.get_node("VBox/Items")
+    var saved_count = int(list.item_count)
+    assert_int(saved_count).is_equal(2)
+    # clear and load
     list.clear()
+    assert_int(int(list.item_count)).is_equal(0)
     var load_btn = inv.get_node("VBox/Buttons/LoadBtn")
     load_btn.emit_signal("pressed")
     await get_tree().process_frame
-    assert_int(list.item_count).is_greater(0)
+    assert_int(int(list.item_count)).is_equal(saved_count)
     inv.queue_free()
