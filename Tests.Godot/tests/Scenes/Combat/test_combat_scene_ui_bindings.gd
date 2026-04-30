@@ -1,4 +1,4 @@
-extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
+﻿extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const COMBAT_SCENE := preload("res://Game.Godot/Scenes/Combat.tscn")
 
@@ -17,6 +17,7 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
 # ACC:T76.1
+# ACC:T83.1
 func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -124,6 +125,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 
 # ACC:T76.2
 # ACC:T76.6
+# ACC:T83.2
 func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_position() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -155,6 +157,7 @@ func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_posi
 
 
 # ACC:T76.3
+# ACC:T83.3
 func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_execution() -> void:
 	var ai_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_d1","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]},{"enemyId":"enemy_t76_d2","intents":[{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
 	var output_once: Array[String] = []
@@ -189,6 +192,7 @@ func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_
 
 
 # ACC:T75.1
+# ACC:T83.4
 func test_status_surface_shows_explicit_status_labels_stacks_and_feedback_details() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -265,6 +269,7 @@ func test_status_surface_shows_explicit_status_labels_stacks_and_feedback_detail
 
 
 # ACC:T75.5
+# ACC:T83.5
 func test_status_texts_on_combat_surface_render_in_en_and_zh_cn_without_raw_keys() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -296,6 +301,7 @@ func test_status_texts_on_combat_surface_render_in_en_and_zh_cn_without_raw_keys
 
 
 # ACC:T72.1
+# ACC:T83.6
 func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -359,6 +365,7 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 
 # ACC:T18.2
 # ACC:T64.1
+# ACC:T83.7
 func test_snapshot_binding_matches_hand_energy_draw_and_discard_values() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
