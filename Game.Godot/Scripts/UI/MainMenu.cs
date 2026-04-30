@@ -695,7 +695,13 @@ public partial class MainMenu : Control
 
         try
         {
-            using var stateDoc = JsonDocument.Parse(stateJson);
+            var options = new JsonDocumentOptions
+            {
+                MaxDepth = 32,
+                CommentHandling = JsonCommentHandling.Disallow,
+                AllowTrailingCommas = false,
+            };
+            using var stateDoc = JsonDocument.Parse(stateJson, options);
             if (stateDoc.RootElement.ValueKind != JsonValueKind.Object)
             {
                 return false;

@@ -1,4 +1,5 @@
 using Game.Core.Domain;
+using System.Linq;
 
 namespace Game.Core.Services;
 
@@ -16,6 +17,7 @@ public class InventoryService
     public int CountDistinct() => _inventory.Items.Count;
     public int CountItem(string id) => _inventory.CountItem(id);
     public bool HasItem(string id, int atLeast = 1) => _inventory.HasItem(id, atLeast);
+    public IReadOnlyCollection<string> GetItemIds() => _inventory.Items.Keys.ToArray();
 
     /// <summary>
     /// Adds item stacks subject to distinct slot capacity.
