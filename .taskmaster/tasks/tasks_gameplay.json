@@ -6891,12 +6891,12 @@
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Game.Core.Tests/Tasks/Task0113WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "When the settlement surface is opened for a stored run, it shows the existing T91 owner surface together with resume-related evidence sourced from stored run data, and viewing that surface does not change run state or recompute ownership. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "The resume-related evidence shown on the settlement surface matches the stored player-visible flow history for that run and does not display resume evidence that is absent from the stored data. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Before workflow selection of T113, no implementation behavior for this task executes or progresses, and task-related state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "The resume-related evidence shown on the settlement surface matches the stored player-visible flow history for that run and does not display resume evidence that is absent from the stored data. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Before workflow selection of T113, no implementation behavior for this task executes or progresses, and task-related state remains unchanged. Refs: Game.Core.Tests/Tasks/Task0113WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data while preserving the T91 owner surface and display-time read-only behavior."
@@ -6909,7 +6909,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0113.json"
+      "logs/ci/<date>/task-0113.json",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
   },
