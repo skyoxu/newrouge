@@ -17,6 +17,8 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
 # ACC:T76.1
+# ACC:T77.1
+# ACC:T77.3
 func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -121,6 +123,96 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_missing)
 	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))).is_equal(unknown_before_missing)
 	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
+
+
+# ACC:T77.1
+# ACC:T77.3
+func test_shared_runtime_play_card_pipeline_has_deterministic_fingerprint_and_single_ordering_key_path() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t77.attack","name_key":"card.t77.attack.name","description_key":"card.t77.attack.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_det", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_det"))).is_true()
+
+	var fingerprints: Array[String] = []
+	var ordering_keys: Array[String] = []
+	var step_sequences: Array[String] = []
+	for _i in range(2):
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t77.attack"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		assert_that(bool(scene.call("WasLastPlayCardPipelineSuccessfulForTest"))).is_true()
+		fingerprints.append(str(scene.call("GetLastPlayCardExecutionFingerprintForTest")))
+		ordering_keys.append(str(scene.call("GetLastPlayCardOrderingKeyForTest")))
+		var executed_steps := scene.call("GetLastPlayCardExecutedStepsForTest") as Array
+		step_sequences.append(str(executed_steps))
+		assert_that(int(scene.call("GetLastPlayCardOverplayTaxForTest"))).is_equal(0)
+
+	assert_that(fingerprints[0]).is_not_empty()
+	assert_that(fingerprints[1]).is_equal(fingerprints[0])
+	assert_that(ordering_keys[0]).is_not_empty()
+	assert_that(ordering_keys[1]).is_equal(ordering_keys[0])
+	assert_that(ordering_keys[0].find("|") >= 0).is_true()
+	assert_that(step_sequences[1]).is_equal(step_sequences[0])
+	assert_that(step_sequences[0]).contains("Validate")
+	assert_that(step_sequences[0]).contains("BeforePlayTriggers")
+	assert_that(step_sequences[0]).contains("AfterPlayTriggers")
+	assert_that(step_sequences[0]).contains("DeathCheck")
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T77.1
+# ACC:T77.3
+func test_shared_runtime_play_card_pipeline_rejection_path_is_deterministic_and_state_stable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t77.expensive","name_key":"card.t77.expensive.name","description_key":"card.t77.expensive.description","cost":2,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_reject", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_reject"))).is_true()
+
+	var fingerprints: Array[String] = []
+	var ordering_keys: Array[String] = []
+	var step_sequences: Array[String] = []
+	for _i in range(2):
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t77.expensive"],"difficulty":1,"playerHp":80,"energy":1,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_false()
+		assert_that(bool(scene.call("WasLastPlayCardPipelineSuccessfulForTest"))).is_false()
+		var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+		assert_that(state_after).is_equal(state_before)
+		fingerprints.append(str(scene.call("GetLastPlayCardExecutionFingerprintForTest")))
+		ordering_keys.append(str(scene.call("GetLastPlayCardOrderingKeyForTest")))
+		var executed_steps := scene.call("GetLastPlayCardExecutedStepsForTest") as Array
+		step_sequences.append(str(executed_steps))
+
+	assert_that(fingerprints[0]).is_not_empty()
+	assert_that(fingerprints[1]).is_equal(fingerprints[0])
+	assert_that(ordering_keys[0]).is_not_empty()
+	assert_that(ordering_keys[1]).is_equal(ordering_keys[0])
+	assert_that(step_sequences[1]).is_equal(step_sequences[0])
+	assert_that(step_sequences[0]).contains("Validate")
+	assert_that(step_sequences[0]).contains("ComputeCost")
+	assert_that(step_sequences[0]).contains("PayCost")
+	assert_that(step_sequences[0]).contains("PayCost")
+	assert_that(step_sequences[0].find("BeforePlayTriggers") < 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 # ACC:T76.2
 # ACC:T76.6
@@ -861,6 +953,7 @@ func test_enemy_intent_default_surface_follows_external_ai_definitions_without_h
 # ACC:T80.3
 # ACC:T80.6
 # ACC:T83.7
+# ACC:T77.4
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
