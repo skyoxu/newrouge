@@ -227,6 +227,31 @@ func _build_junit_xml_preview(case_names: PackedStringArray) -> String:
     return xml_text
 
 # acceptance: ACC:T44.4
+# acceptance anchor: ACC:T98.1
+# acceptance anchor: ACC:T98.2
+# acceptance anchor: ACC:T98.3
+# acceptance anchor: ACC:T98.4
+# acceptance anchor: ACC:T98.7
+# acceptance anchor: ACC:T98.8
+# acceptance anchor: ACC:T98.9
+# acceptance anchor: ACC:T98.11
+# acceptance anchor: ACC:T98.2
+# acceptance anchor: ACC:T98.3
+# acceptance anchor: ACC:T98.4
+# acceptance anchor: ACC:T98.1
+# acceptance anchor: ACC:T98.2
+# acceptance anchor: ACC:T98.11
+# acceptance anchor: ACC:T98.7
+# acceptance anchor: ACC:T98.8
+# acceptance anchor: ACC:T98.9
+# acceptance anchor: ACC:T98.3
+# acceptance anchor: ACC:T98.4
+# acceptance anchor: ACC:T98.1
+# acceptance anchor: ACC:T98.2
+# acceptance anchor: ACC:T98.11
+# acceptance anchor: ACC:T98.7 ACC:T98.8 ACC:T98.9
+# acceptance anchor: ACC:T98.3
+# acceptance anchor: ACC:T98.4
 func test_reward_shop_event_resume_keeps_offer_lock_and_selection_consistent_red_first() -> void:
     var expected := _build_task44_payload("lose_hp", 17, 0)
     var resumed := await _run_real_resume()
@@ -239,6 +264,7 @@ func test_reward_shop_event_resume_keeps_offer_lock_and_selection_consistent_red
     _assert_resume_field_equal(expected, resumed, "event", "selected_result")
     _assert_resume_field_equal(expected, resumed, "event", "output")
 
+# acceptance anchor: ACC:T98.6
 func test_reward_shop_event_resume_should_fail_when_save_is_corrupted() -> void:
     var run_dir := _temp_run_dir("corrupted")
     var save_path := run_dir.path_join(SAVE_FILE_BASENAME)
@@ -252,6 +278,7 @@ func test_reward_shop_event_resume_should_fail_when_save_is_corrupted() -> void:
     assert_that(failures.size()).is_equal(3)
 
 # acceptance: ACC:T44.5
+# acceptance anchor: ACC:T98.5
 func test_reward_shop_event_observable_failures_report_scenario_and_field() -> void:
     var broken_snapshot := {
         "reward": {},

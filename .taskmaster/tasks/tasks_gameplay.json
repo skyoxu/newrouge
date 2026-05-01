@@ -6307,20 +6307,21 @@
     "test_refs": [
       "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
       "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
+      "Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs",
+      "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd"
     ],
     "acceptance": [
-      "Continue restores a locked Reward, Shop, or Event surface only when the autosave metadata is valid and the restore ownership checks pass for that locked surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing the locked offers captured in the save. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing node ownership from the saved route state. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces with the deterministic route state preserved from the autosave. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "For an invalid autosave, Continue keeps the T87 blocked-state UX unchanged and does not enter the Reward, Shop, or Event restore flow. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
-      "An invalid autosave does not reopen any Reward, Shop, or Event surface through Continue, even when locked-surface restoration is available for valid saves. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Resume integration coverage includes valid-autosave re-entry into locked Reward, Shop, and Event surfaces and verifies that the resumed surface matches the saved surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Resume integration coverage verifies that locked offers are unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "Resume integration coverage verifies that route ownership is unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
-      "If T98 has not been selected by workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and records the workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json",
-      "Resume into locked Reward, Shop, and Event surfaces must reuse the existing node-owned restore path; introducing any separate surface-specific restore owner or bypass path fails acceptance. Refs: Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+      "Continue restores a locked Reward, Shop, or Event surface only when the autosave metadata is valid and the restore ownership checks pass for that locked surface. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing the locked offers captured in the save. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces without changing node ownership from the saved route state. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "For a valid autosave, Continue re-enters the locked Reward, Shop, and Event surfaces with the deterministic route state preserved from the autosave. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "For an invalid autosave, Continue keeps the T87 blocked-state UX unchanged and does not enter the Reward, Shop, or Event restore flow. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "An invalid autosave does not reopen any Reward, Shop, or Event surface through Continue, even when locked-surface restoration is available for valid saves. Refs: Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Resume integration coverage includes valid-autosave re-entry into locked Reward, Shop, and Event surfaces and verifies that the resumed surface matches the saved surface. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Resume integration coverage verifies that locked offers are unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "Resume integration coverage verifies that route ownership is unchanged after Continue restores a valid autosave into a locked Reward, Shop, or Event surface. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "If T98 has not been selected by workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and records the workflow-selection evidence before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs",
+      "Resume into locked Reward, Shop, and Event surfaces must reuse the existing node-owned restore path; introducing any separate surface-specific restore owner or bypass path fails acceptance. Refs: Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
     ],
     "test_strategy": [
       "Add or extend resume integration tests to cover deterministic re-entry into Reward, Shop, and Event surfaces with preserved locked offers and unchanged route ownership."
@@ -6333,7 +6334,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0098.json"
+      "logs/ci/<date>/task-0098.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "semantic_review_tier": "full"
   },
