@@ -2264,15 +2264,16 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "On the shared combat runtime path, trigger registration and execution order is deterministic for card-play, turn-start, turn-end, damage, and death-check hooks; repeated identical runs produce identical hook order and outcomes, and no second trigger stack is used. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "For this task scope, card-play/turn/damage/death-check hooks are integrated into current combat flow so state-changing outcomes are observable through existing combat feedback/history outputs; route-owned completion behavior stays unchanged, and powers/relics/potions presentation or effectful integration is not introduced. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Card-play, turn-start, turn-end, damage, and death-check hooks are each invoked on the shared combat runtime path and produce deterministic end-to-end outputs for identical command sequences (feedback/history ordering and state deltas). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "The shared combat runtime exposes one auditable trigger-registration path, and trigger execution consumes registrations only from that shared path, not from side-channel or duplicate stacks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "After integrating these hooks, combat completion ownership remains in the route flow; trigger processing must not finalize or redirect route completion on its own. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Acceptance fails if this task adds powers, relics, or potions presentation/effectful integration; those capabilities remain deferred to follow-up tasks in this phase. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Implementation evidence for T77 is valid only when a prior workflow-selection record explicitly shows T77 was selected before coding or test evidence appears in the review trail. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "After integrating these hooks, combat completion ownership remains in the route flow; trigger processing must not finalize or redirect route completion on its own, and death-check outcomes must be consumed through the existing route-owned completion chain. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "This task introduces no powers/relics/potions presentation wiring and no powers/relics/potions effect integration into runtime hook execution; related behavior remains absent/deferred in this phase. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "When damage is lethal, death-check hook executes exactly once after damage resolution and before route-owned completion consumption; trigger processing itself must not finalize or redirect route completion. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "On non-lethal damage resolution, death-check hook is not executed and route-owned completion flow remains unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
     ],
     "test_strategy": [
       "Add deterministic trigger-order assertions through existing Combat scene suites for card-play, turn, damage, and death-check hooks on the shared runtime path."
@@ -2286,7 +2287,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0077.json"
+      "logs/ci/<date>/task-0077.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },

@@ -108,6 +108,7 @@ func test_feedback_text_resolves_for_en_and_zh_cn_locales() -> void:
 
 # ACC:T72.4
 # ACC:T75.4
+# ACC:T77.2
 func test_rejected_play_paths_keep_state_unchanged_for_energy_missing_definition_and_invalid_target() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -169,6 +170,8 @@ func test_rejected_play_paths_keep_state_unchanged_for_energy_missing_definition
 
 
 # ACC:T75.3
+# ACC:T77.4
+# ACC:T77.5
 func test_turn_boundary_keeps_status_stack_changes_visible_in_hud_and_feedback_flow() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -210,6 +213,174 @@ func test_turn_boundary_keeps_status_stack_changes_visible_in_hud_and_feedback_f
 
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 	TranslationServer.set_locale(previous_locale)
+
+
+# ACC:T77.2
+func test_identical_command_sequence_produces_identical_feedback_history_and_state_deltas() -> void:
+	var snapshots: Array[Dictionary] = []
+	var histories: Array[Array] = []
+	var latest_messages: Array[String] = []
+	for _run in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_seq", 24, 24))).is_true()
+		assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_seq"))).is_true()
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+		snapshots.append(scene.call("CaptureUiStateForTest") as Dictionary)
+		histories.append(scene.call("GetFeedbackHistoryForTest") as Array)
+		latest_messages.append(str(scene.call("GetLatestFeedbackMessageForTest")))
+
+	assert_that(snapshots[1]).is_equal(snapshots[0])
+	assert_that(histories[1]).is_equal(histories[0])
+	assert_that(latest_messages[1]).is_equal(latest_messages[0])
+
+
+# ACC:T77.2
+func test_turn_start_and_turn_end_hooks_are_both_invoked_on_runtime_path() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var dispatched_before := scene.call("GetDispatchedCommandsForTest") as Array
+	assert_that(dispatched_before.size()).is_equal(0)
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "start_turn"))).is_true()
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var dispatched_after := scene.call("GetDispatchedCommandsForTest") as Array
+	assert_that(dispatched_after.size()).is_equal(2)
+	assert_that(str(dispatched_after[0])).is_equal("start_turn")
+	assert_that(str(dispatched_after[1])).is_equal("end_turn")
+
+
+# ACC:T77.4
+func test_turn_resolution_route_completion_remains_route_owned_and_not_trigger_autonomous() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_route_guard", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_route_guard"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var dispatched_before := scene.call("GetDispatchedCommandsForTest") as Array
+	assert_that(dispatched_before.size()).is_equal(0)
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var dispatched_after := scene.call("GetDispatchedCommandsForTest") as Array
+	assert_that(dispatched_after.size()).is_equal(1)
+	assert_that(str(dispatched_after[0])).is_equal("end_turn")
+
+	var selected_target_after := str(scene.call("GetSelectedEnemyTargetIdForTest"))
+	assert_that(selected_target_after).is_not_empty()
+	assert_that(selected_target_after).is_equal("enemy_t77_route_guard")
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_t77_route_guard"))).is_true()
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t77_route_guard")).strip_edges()).is_not_empty()
+
+	var route_result_while_enemy_alive := scene.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(route_result_while_enemy_alive.get("ok", false))).is_false()
+	assert_that(str(route_result_while_enemy_alive.get("reason", ""))).is_equal("enemies-still-alive")
+
+
+# ACC:T77.7
+func test_lethal_damage_triggers_single_death_check_before_route_owned_completion_consumption() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_lethal", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_lethal"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":1,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var defeat_before := int(scene.call("GetDefeatResolveCountForTest"))
+	var eligible_before := int(scene.call("GetDefeatEligibleTransitionCountForTest"))
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var defeat_after_first := int(scene.call("GetDefeatResolveCountForTest"))
+	var eligible_after_first := int(scene.call("GetDefeatEligibleTransitionCountForTest"))
+	assert_that(defeat_after_first - defeat_before).is_equal(1)
+	assert_that(eligible_after_first - eligible_before).is_equal(1)
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var defeat_after_second := int(scene.call("GetDefeatResolveCountForTest"))
+	assert_that(defeat_after_second).is_equal(defeat_after_first)
+
+
+# ACC:T77.7
+func test_non_lethal_damage_does_not_trigger_death_check_and_route_flow_stays_unchanged() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t77_non_lethal", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t77_non_lethal"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var defeat_before := int(scene.call("GetDefeatResolveCountForTest"))
+	var eligible_before := int(scene.call("GetDefeatEligibleTransitionCountForTest"))
+	var route_before := scene.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(route_before.get("ok", false))).is_false()
+	assert_that(str(route_before.get("reason", ""))).is_equal("enemies-still-alive")
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var defeat_after := int(scene.call("GetDefeatResolveCountForTest"))
+	var eligible_after := int(scene.call("GetDefeatEligibleTransitionCountForTest"))
+	assert_that(defeat_after).is_equal(defeat_before)
+	assert_that(eligible_after).is_equal(eligible_before)
+	var route_after := scene.call("RequestVictoryRouteToRewardForTest") as Dictionary
+	assert_that(bool(route_after.get("ok", false))).is_false()
+	assert_that(str(route_after.get("reason", ""))).is_equal("enemies-still-alive")
+
+
+# ACC:T77.5
+func test_t77_scope_does_not_introduce_power_relic_or_potion_effect_integration() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t77.guard","name_key":"card.t77.guard.name","description_key":"card.t77.guard.description","cost":1,"type":"skill","target":"self","base_effect":{"block":4}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t77.guard"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var block_before := int(scene.call("GetPlayerBlockForTest"))
+	var accepted_count_before := int(scene.call("GetAcceptedCommandCountForTest"))
+	var hp_events_before := int(scene.call("GetHpChangedEmissionCountForTest"))
+	var defeat_events_before := int(scene.call("GetDefeatResolveCountForTest"))
+	var cards_played_before := int(scene.call("GetCardsPlayedThisTurnForTest"))
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var block_after := int(scene.call("GetPlayerBlockForTest"))
+	var accepted_count_after := int(scene.call("GetAcceptedCommandCountForTest"))
+	var hp_events_after := int(scene.call("GetHpChangedEmissionCountForTest"))
+	var defeat_events_after := int(scene.call("GetDefeatResolveCountForTest"))
+	var cards_played_after := int(scene.call("GetCardsPlayedThisTurnForTest"))
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+	var status_text := str(scene.call("GetEnemyStatusTextForTest")).to_lower()
+	assert_that(state_after["energy"]).is_equal("2")
+	assert_that(state_after["discard"]).is_equal("1")
+	assert_that(state_after["hand"]).is_equal([])
+	assert_that(block_after - block_before).is_equal(4)
+	assert_that(accepted_count_after - accepted_count_before).is_equal(1)
+	assert_that(hp_events_after).is_equal(hp_events_before)
+	assert_that(defeat_events_after).is_equal(defeat_events_before)
+	assert_that(cards_played_after - cards_played_before).is_equal(1)
+	assert_that(feedback.find("relic") < 0).is_true()
+	assert_that(feedback.find("potion") < 0).is_true()
+	assert_that(feedback.find("power") < 0).is_true()
+	assert_that(status_text.find("relic") < 0).is_true()
+	assert_that(status_text.find("potion") < 0).is_true()
+	assert_that(status_text.find("power") < 0).is_true()
+	for item in history:
+		var line := str(item).to_lower()
+		assert_that(line.find("relic") < 0).is_true()
+		assert_that(line.find("potion") < 0).is_true()
+		assert_that(line.find("power") < 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T72.7

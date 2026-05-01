@@ -68,6 +68,11 @@ public partial class CombatScene : Control
     private int _exhaustPileCount;
     private int _enemyIntentTurnIndex;
     private int _enemyIntentSelectionRngCursor;
+    private string _lastPlayCardExecutionFingerprint = string.Empty;
+    private string _lastPlayCardOrderingKey = string.Empty;
+    private readonly List<string> _lastPlayCardExecutedSteps = new();
+    private int _lastPlayCardOverplayTax;
+    private bool _lastPlayCardPipelineSuccess;
     private const string DefaultEnemyId = "enemy_m1_slime";
     private readonly Dictionary<string, EnemyCombatState> _enemyCombatById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, int>> _enemyStatusStacksByEnemy = new(StringComparer.Ordinal);
@@ -388,6 +393,37 @@ public partial class CombatScene : Control
         return RequestPlaySelectedCard();
     }
 
+    public string GetLastPlayCardExecutionFingerprintForTest()
+    {
+        return _lastPlayCardExecutionFingerprint;
+    }
+
+    public string GetLastPlayCardOrderingKeyForTest()
+    {
+        return _lastPlayCardOrderingKey;
+    }
+
+    public int GetLastPlayCardOverplayTaxForTest()
+    {
+        return _lastPlayCardOverplayTax;
+    }
+
+    public bool WasLastPlayCardPipelineSuccessfulForTest()
+    {
+        return _lastPlayCardPipelineSuccess;
+    }
+
+    public global::Godot.Collections.Array<string> GetLastPlayCardExecutedStepsForTest()
+    {
+        var steps = new global::Godot.Collections.Array<string>();
+        foreach (var step in _lastPlayCardExecutedSteps)
+        {
+            steps.Add(step);
+        }
+
+        return steps;
+    }
+
     public bool RequestPlaySelectedCard()
     {
         var selectedItems = _handCards.GetSelectedItems();
@@ -464,6 +500,15 @@ public partial class CombatScene : Control
 
         var pipelineInput = BuildPlayCardPipelineInput(definition, energy);
         var pipelineResult = _combatService.PlayCard(pipelineInput);
+        _lastPlayCardExecutionFingerprint = pipelineResult.ExecutionFingerprint;
+        _lastPlayCardOrderingKey = pipelineResult.OrderingKey;
+        _lastPlayCardOverplayTax = pipelineResult.OverplayTax;
+        _lastPlayCardPipelineSuccess = pipelineResult.Success;
+        _lastPlayCardExecutedSteps.Clear();
+        foreach (var step in pipelineResult.ExecutedSteps)
+        {
+            _lastPlayCardExecutedSteps.Add(step.ToString());
+        }
         if (!pipelineResult.Success)
         {
             AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
@@ -506,6 +551,11 @@ public partial class CombatScene : Control
     public int GetCoreStateMutationCountForTest()
     {
         return _coreStateMutationCount;
+    }
+
+    public int GetCardsPlayedThisTurnForTest()
+    {
+        return _cardsPlayedThisTurn;
     }
 
     public int GetHpChangedEmissionCountForTest()
