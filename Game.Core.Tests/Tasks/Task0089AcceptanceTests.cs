@@ -75,7 +75,9 @@ public sealed class Task0089AcceptanceTests
         var acceptance = ReadStringArray(task, "acceptance");
 
         testRefs.Should().Contain("Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs");
-        acceptance.Should().Contain(line => line.Contains("Refs: Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs", StringComparison.Ordinal));
+        acceptance.Should().Contain(
+            line => line.Contains("Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs", StringComparison.Ordinal),
+            "Task 89 acceptance refs should include the Task0089 acceptance evidence path even when refs are combined.");
     }
 
     private static JsonElement ReadTaskNode(string taskFilePath, int taskmasterId)
