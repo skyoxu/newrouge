@@ -125,6 +125,44 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
 
 
+# ACC:T89.1
+# ACC:T89.2
+# ACC:T89.3
+# ACC:T89.4
+# ACC:T89.5
+func test_task89_data_backed_enemy_runtime_ownership_paths_and_negative_path_stability() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t89_alpha", 26, 26))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t89_beta", 18, 18))).is_true()
+	var definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t89_alpha","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]},{"enemyId":"enemy_t89_beta","intents":[{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", definitions_payload))).is_true()
+
+	var targets := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
+	assert_that(targets.has("enemy_t89_alpha")).is_true()
+	assert_that(targets.has("enemy_t89_beta")).is_true()
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_t89_alpha"))).is_true()
+	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_t89_beta"))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t89_alpha"))).is_true()
+	assert_that(str(scene.call("GetSelectedEnemyTargetIdForTest"))).is_equal("enemy_t89_alpha")
+	var alpha_hp := str(scene.call("GetEnemyHpTextByIdForTest", "enemy_t89_alpha")).strip_edges()
+	var beta_hp := str(scene.call("GetEnemyHpTextByIdForTest", "enemy_t89_beta")).strip_edges()
+	assert_that(alpha_hp).is_equal("26/26")
+	assert_that(beta_hp).is_equal("18/18")
+
+	var row_count_before_invalid := int(scene.call("GetEnemyIntentRowCountForTest"))
+	var alpha_intent_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t89_alpha"))
+	var beta_intent_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t89_beta"))
+	var invalid_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t89_alpha","intents":[]}]}'
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", invalid_payload))).is_false()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_invalid)
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t89_alpha"))).is_equal(alpha_intent_before_invalid)
+	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t89_beta"))).is_equal(beta_intent_before_invalid)
+	assert_that(str(scene.call("GetSelectedEnemyTargetIdForTest"))).is_equal("enemy_t89_alpha")
+
+
 # ACC:T77.1
 # ACC:T77.3
 func test_shared_runtime_play_card_pipeline_has_deterministic_fingerprint_and_single_ordering_key_path() -> void:

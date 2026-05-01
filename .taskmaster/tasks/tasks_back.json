@@ -3073,19 +3073,21 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0089WorkflowSelectionEvidenceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "acceptance": [
-      "When an encounter is configured with existing enemy data definitions, encounter setup must instantiate runtime enemies from those definitions and must not use scene-local placeholder enemy construction. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs",
-      "In the live combat path, authoritative enemy state must be the encounter-created data-backed runtime enemy instances, and no separate placeholder enemy runtime model may be treated as authoritative. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Data-backed enemy instantiation must keep the current targeting ownership path unchanged, and must not add a new targeting ownership model or alternate target-resolution owner. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Data-backed enemy instantiation must keep the current enemy-intent ownership path unchanged, and must not introduce a parallel enemy-intent ownership model. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "T89 scope is limited to encounter-time enemy instantiation and authoritative runtime ownership; visible stat binding and invalid-definition surface fallback are deferred to a follow-up task and must remain unchanged here. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Enemy data tests and combat runtime tests must be added or extended to verify that live combat instantiates enemies from existing enemy data definitions and consumes those instances as authoritative runtime state. Refs: Game.Core.Tests/Tasks/Task0040AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T89 has not been explicitly selected by workflow, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
+      "When an encounter is configured with existing enemy data definitions, encounter setup must instantiate runtime enemies from those definitions and must not use scene-local placeholder enemy construction. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "In the live combat path, authoritative enemy state must be the encounter-created data-backed runtime enemy instances, and no separate placeholder enemy runtime model may be treated as authoritative. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Data-backed enemy instantiation must keep the current targeting ownership path unchanged, and must not add a new targeting ownership model or alternate target-resolution owner. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Data-backed enemy instantiation must keep the current enemy-intent ownership path unchanged, and must not introduce a parallel enemy-intent ownership model. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "T89 scope is limited to encounter-time enemy instantiation and authoritative runtime ownership; visible stat binding and invalid-definition surface fallback are deferred to a follow-up task and must remain unchanged here. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "Enemy data tests and combat runtime tests must be added or extended to verify that live combat instantiates enemies from existing enemy data definitions and consumes those instances as authoritative runtime state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0089AcceptanceTests.cs",
+      "If T89 has not been explicitly selected by workflow, implementation entry must refuse execution and keep implementation/code state unchanged; review evidence must include the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0089WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path."
@@ -3098,7 +3100,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0089.json"
+      "logs/ci/<date>/task-0089.json",
+      "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
