@@ -55,6 +55,18 @@ public sealed class WarriorDeckManifestValidationTests
         result.DiffLines.Should().NotBeEmpty("validator must emit concrete diff lines instead of silent pass");
     }
 
+    [Fact]
+    public void ShouldReturnValidResult_WhenManifestMatchesM1Exactly()
+    {
+        var actualCardIds = ExpectedM1WarriorCardIds.ToArray();
+
+        var result = ValidateManifestAgainstM1(ExpectedM1WarriorCardIds, actualCardIds);
+
+        result.IsValid.Should().BeTrue();
+        result.DiffLines.Should().BeEmpty();
+        result.Summary.Should().Be("manifest matches m1 content list");
+    }
+
     private static WarriorDeckManifestValidationResult ValidateManifestAgainstM1(
         IReadOnlyCollection<string> expectedCardIds,
         IReadOnlyCollection<string> actualCardIds)

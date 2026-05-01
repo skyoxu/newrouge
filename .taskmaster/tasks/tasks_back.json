@@ -3468,9 +3468,9 @@
     "owner": "architecture",
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs",
-      "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0095WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "Starting combat through the CombatService-backed flow seeds the shared CombatService runtime from the Warrior starting deck and shared deck state, and the initial combat piles are not created from scene-local placeholder hands. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
@@ -3480,7 +3480,7 @@
       "After Warrior deck seeding and the initial draw, visible Combat draw, hand, and discard counts match the shared CombatService runtime counts and stay synchronized as those piles change. Refs: Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Acceptance tests are added or updated to verify that combat entry through the shared CombatService-backed flow seeds from the Warrior starting deck and shared deck state. Refs: Game.Core.Tests/Tasks/Task0024AcceptanceTests.cs Game.Core.Tests/Tasks/Task0011AcceptanceTests.cs",
       "Combat scene tests are added or updated to verify Warrior deck seeding on combat entry and draw, hand, and discard synchronization with CombatService state after seeding. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T95 has not been explicitly selected by workflow, the implementation entry aborts before making implementation changes, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "If T95 has not been explicitly selected by workflow, the implementation entry aborts before making implementation changes, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0095WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend acceptance and Combat scene tests to verify Warrior deck seeding on combat entry and synchronization between CombatService state and visible piles."
@@ -3493,7 +3493,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0095.json"
+      "logs/ci/<date>/task-0095.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "semantic_review_tier": "full"
   },

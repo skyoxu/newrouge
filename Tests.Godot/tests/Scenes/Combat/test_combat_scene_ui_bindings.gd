@@ -130,6 +130,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 # ACC:T89.3
 # ACC:T89.4
 # ACC:T89.5
+# ACC:T95.7
 func test_task89_data_backed_enemy_runtime_ownership_paths_and_negative_path_stability() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame

@@ -48,6 +48,8 @@ public sealed class Task0024AcceptanceTests
     };
 
     // ACC:T24.1
+    // ACC:T95.1
+    // ACC:T95.2
     [Fact]
     public void ShouldContainExactlyM1WarriorIds_WhenStartingDeckIsInitialized()
     {
@@ -77,6 +79,7 @@ public sealed class Task0024AcceptanceTests
     }
 
     // ACC:T24.2
+    // ACC:T95.3
     [Fact]
     public void ShouldExposeTagsAndIntentForEachCard_WhenReadingWarriorCardDefinitions()
     {
@@ -90,6 +93,7 @@ public sealed class Task0024AcceptanceTests
     }
 
     // ACC:T24.3
+    // ACC:T95.4
     [Fact]
     public void ShouldKeepTask24TestRefsScoped_WhenOverlayChecklistIsPresent()
     {
@@ -121,6 +125,7 @@ public sealed class Task0024AcceptanceTests
     }
 
     // ACC:T24.6
+    // ACC:T95.6
     [Fact]
     public void ShouldExposeNamedStarterDeckInitializer_WhenBuildingWarriorDeck()
     {
