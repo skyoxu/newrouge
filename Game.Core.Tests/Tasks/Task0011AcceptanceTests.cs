@@ -32,6 +32,7 @@ public sealed class Task0011AcceptanceTests
     };
 
     // ACC:T11.7
+    // ACC:T95.5
     [Fact]
     public void ShouldResolveThroughPlayCardEntrypoint_WhenCoreCombatServiceReceivesValidPipelineInput()
     {
