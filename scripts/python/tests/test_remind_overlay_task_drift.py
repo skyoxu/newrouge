@@ -10,7 +10,7 @@ class CanonicalBytesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             sample = Path(td) / "sample.json"
             sample.write_bytes(b"{\r\r\n\"k\":1\r\r\n}\r")
-            self.assertEqual(b"{\n\n\"k\":1\n\n}\n", _canonical_bytes(sample))
+            self.assertEqual(b"{\n\"k\":1\n}\n", _canonical_bytes(sample))
 
 
 if __name__ == "__main__":
