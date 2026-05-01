@@ -6037,16 +6037,16 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
-      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "On the existing run-summary owner surface introduced by T66, opening a stored settlement summary must show the recorded run outcome and route-progress values from stored run data, and those displayed values must not be recomputed from live run state at open time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
       "The settlement surface must open from both victory and defeat flows, must not mutate current run state when opened, and reopening the same stored summary data must produce the same settlement content each time. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "T91 must only add stored-data-backed visibility for settlement outcome and route progress; reward metadata, relic metadata, and resume metadata completion must remain deferred to follow-up work and remain unchanged by this task. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Run summary tests must be added or updated so they verify outcome and route-progress visibility from stored data and verify that the settlement surface opens the same way regardless of route result. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
-      "If workflow selection has not explicitly selected T91, implementation entry must refuse execution, no implementation/code state may change, and review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json",
+      "T91 must only add stored-data-backed visibility for settlement outcome and route progress; reward metadata, relic metadata, and resume metadata completion must remain deferred to follow-up work and remain unchanged by this task. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "When stored settlement summary data misses required outcome or route-progress fields, the settlement surface must not recompute from live run state, must keep deterministic placeholders (Outcome: Unknown, Node Progress: 0), and must not mutate the current run state while opened. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "If workflow selection has not explicitly selected T91, implementation entry must refuse execution, no implementation/code state may change, and review evidence must show the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
       "The existing settlement owner surface remains the sole settlement presentation authority; no alternate settlement panel, transient recompute model, or second read-model may act as the authoritative source for outcome or route-progress display. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs"
     ],
     "test_strategy": [
@@ -6060,7 +6060,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0091.json"
+      "logs/ci/<date>/task-0091.json",
+      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "semantic_review_tier": "full"
   },
