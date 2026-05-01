@@ -5436,18 +5436,18 @@
     "owner": "gameplay",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
-      "logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json"
+      "Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs"
     ],
     "acceptance": [
-      "战斗进行中，Combat HUD 在现有核心计数器之后必须可见显示 total deck 计数器；该计数器取值自共享 DeckService-backed 运行时牌堆状态，并在任一相关状态变更后同步更新到最新值。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "在共享 DeckService-backed 的战斗转换路径（play-card、end-turn、reshuffle）中，每次转换完成后的结果状态必须满足 draw + hand + discard == total deck count；任一转换后不满足即判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "当牌堆计数不变量被破坏时，场景必须给出明确且可见的诊断型安全回退反馈；若仍静默展示不一致计数则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "本任务实现必须限定为现有共享 DeckService-backed 运行时路径上的 HUD/不变量切片；若新增并行牌堆状态来源或第二套 deck-state 实现则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "若 workflow 未显式选择 T82，实现入口必须拒绝执行且保持实现/代码状态不变；评审证据必须先提供 workflow-selection 记录，再提供实现证据。 Refs: logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
-      "本任务必须新增或扩展 UI 与状态测试，验证共享 DeckService-backed 运行时路径下 play-card、end-turn、reshuffle 转换后的 total-deck 不变量；仅描述运行时行为而缺少这些测试不满足验收。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "T82 的实现证据仅在存在可审计的 T80 与 T81 完成证据后才有效；若缺少 T80/T81 前置证据，T82 实现入口必须拒绝执行并保持代码状态不变。 Refs: logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json"
+      "战斗进行中，Combat HUD 必须显示 total deck 计数器（独立于 draw/hand/discard），其显示值必须等于共享 DeckService-backed 运行时总牌数，并在任一会影响牌堆计数的状态变更后立即刷新；若显示值与运行时总牌数不一致即判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "在共享 DeckService-backed 的战斗转换路径（play-card、end-turn、reshuffle）中，每次转换完成后的结果状态必须满足 draw + hand + discard == total deck count；任一转换后不满足即判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "当牌堆计数不变量被破坏时，场景必须给出明确且可见的诊断型安全回退反馈；若仍静默展示不一致计数则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "本任务实现必须限定为现有共享 DeckService-backed 运行时路径上的 HUD/不变量切片；若新增并行牌堆状态来源或第二套 deck-state 实现则判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "若 workflow 未显式选择 T82，实现入口必须拒绝执行且保持实现/代码状态不变；评审证据必须先提供 workflow-selection 记录，再提供实现证据。 Refs: Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "在共享 DeckService-backed 运行时路径下，play-card、end-turn、reshuffle 后必须同时满足：HUD total deck 显示值与运行时总牌数一致，且 draw + hand + discard == total deck count；任一不满足即判定失败。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs",
+      "T82 的实现证据仅在存在可审计的 T80 与 T81 完成证据后才有效；若缺少 T80/T81 前置证据，T82 实现入口必须拒绝执行并保持代码状态不变。 Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Game.Core.Tests/Tasks/Task0082AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add UI/state tests ensuring draw+hand+discard equals total after play, end turn, and reshuffle transitions."
@@ -5460,7 +5460,9 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0082.json"
+      "logs/ci/<date>/task-0082.json",
+      "logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json"
     ],
     "semantic_review_tier": "full"
   },
