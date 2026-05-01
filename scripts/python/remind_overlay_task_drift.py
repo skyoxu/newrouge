@@ -41,12 +41,13 @@ def _sha256(path: Path) -> str:
 def _canonical_bytes(path: Path) -> bytes:
     """Return canonical content bytes for cross-platform stable hashing.
 
-    We normalize CRLF and lone CR to LF so Windows and CI checkouts produce
+    We normalize newline encodings to LF so Windows and CI checkouts produce
     the same digest, including malformed CRCRLF working-tree variants.
     """
     data = path.read_bytes()
-    # First collapse CRLF into LF, then normalize any remaining CR bytes.
-    normalized = data.replace(b"\r\n", b"\n")
+    # Collapse one-or-more CR before LF into a single LF, then normalize
+    # any remaining lone CR bytes.
+    normalized = re.sub(rb"\r+\n", b"\n", data)
     return normalized.replace(b"\r", b"\n")
 
 
