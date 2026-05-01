@@ -137,6 +137,7 @@ func _write_summary_autosave_with_deferred_metadata_probe(
 # ACC:T91.2
 # ACC:T91.4
 # ACC:T91.6
+# ACC:T113.1
 func test_run_summary_surface_displays_stored_metadata_without_recompute_or_mutation() -> void:
     _write_summary_autosave(
         "run-66-a",
@@ -174,6 +175,47 @@ func test_run_summary_surface_uses_stored_reason_instead_of_derived_replacement(
     await _wait_for_summary_text("GetSummaryReasonTextForTest", "Reason: Boss defeated with one HP")
 
     assert_str(str(_hud.call("GetSummaryReasonTextForTest"))).is_equal("Reason: Boss defeated with one HP")
+
+# ACC:T113.2
+func test_run_summary_surface_does_not_display_resume_evidence_when_stored_reason_is_missing() -> void:
+    var state := {
+        "difficulty": {
+            "difficulty_id": 8,
+            "label_key": "ui.difficulty.label",
+            "description_key": "ui.difficulty.8",
+            "ruleset_id": "ruleset.t113",
+        },
+        "run_summary": {
+            "outcome": "Victory",
+            "node_progress": 9,
+            "owner_surface": "HudOverlay",
+        }
+    }
+    var state_json := JSON.stringify(state)
+    var autosave := {
+        "run_id": "run-113-missing-reason",
+        "save_point_id": "node-9",
+        "schema_version": "1.0.0",
+        "saved_at": "2026-05-01T00:00:00Z",
+        "state_json": state_json,
+        "integrity_hash": _sha256_hex(state_json),
+    }
+    _write_autosave_payload(JSON.stringify(autosave))
+
+    await _publish("core.run.started", "{\"run_id\":\"run-113-missing-reason\"}")
+    await _publish("core.combat.ended", "{\"combat_id\":\"c-113-missing-reason\",\"player_won\":true}")
+    await _wait_for_summary_text("GetSummaryReasonTextForTest", "Reason: No stored run summary reason.")
+
+    assert_bool(bool(_hud.call("IsRunSummaryVisibleForTest"))).is_true()
+    assert_str(str(_hud.call("GetSummaryOutcomeTextForTest"))).is_equal("Outcome: Unknown")
+    assert_str(str(_hud.call("GetSummaryNodeProgressTextForTest"))).is_equal("Node Progress: 0")
+    assert_str(str(_hud.call("GetSummaryReasonTextForTest"))).is_equal("Reason: No stored run summary reason.")
+    assert_str(str(_hud.call("GetSummaryReasonTextForTest"))).contains("No stored run summary reason.")
+    assert_str(str(_hud.call("GetSummaryReasonTextForTest"))).not_contains("Recovered from")
+
+    var autosave_raw := FileAccess.get_file_as_string(ProjectSettings.globalize_path(AUTOSAVE_PATH))
+    var parsed = JSON.parse_string(autosave_raw)
+    assert_int(int(parsed["state_json"].find("\"failure_or_recovery_reason\""))).is_equal(-1)
 
 
 # ACC:T91.2
