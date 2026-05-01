@@ -27,6 +27,9 @@ public sealed class Task0066AcceptanceTests
     }
 
     // ACC:T66.2
+    // ACC:T91.1
+    // ACC:T91.4
+    // ACC:T91.6
     [Fact]
     public async Task ShouldReadStoredRunSummaryMetadataWithoutRecomputeOrMutation_WhenOpeningHudSummary()
     {

@@ -1,5 +1,6 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
+
 const REQUIRED_SURFACES: Array[String] = [
 	"MainMenu",
 	"DifficultySelect",
@@ -469,6 +470,7 @@ func _current_scene_instance(main: Control):
 	return root.get_child(root.get_child_count() - 1)
 
 # acceptance anchor: ACC:T65.1
+# ACC:T91.3
 func test_m1_smoke_surfaces_require_readable_visible_text() -> void:
 	# red-first: this validates real M1 scene surfaces instead of fixture dictionaries.
 	for locale in REQUIRED_LOCALES:
