@@ -1,0 +1,21 @@
+# task-105-chapter6-residual-needs-fix
+
+- Title: task-105-chapter6-residual-needs-fix
+- Date: 2026-05-02
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T105
+- Git Head: 22f2fa1c646f0376000d3e7b82447651938eb72a
+- Why now: Chapter 6 route remains `inspect-first` after repeated full deterministic+review runs; current blocker is residual reviewer semantics.
+- Context: Deterministic gates are green in latest full run (`reason=pipeline_clean`, `run_type=full`, `reuse_mode=none`), but reviewer residual still reports `Needs Fix`.
+- Decision: Stop further blind reruns and keep residual record; only continue with targeted semantic refactor aligned to reviewer obligation wording.
+- Consequences: Task 105 remains not closable yet; evidence and next-entry commands are preserved for deterministic resumption.
+- Recovery impact: Resume from `inspect-run` first; obey approval sidecar when present; avoid 6.8 unless route explicitly allows.
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-05-02-task-105-chapter6-residual-followup.md
+- Related task id(s): `105`
+- Related run id: `856edac5e88843b1957c772e4a7998f4`
+- Related latest.json: `logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-02/sc-review-pipeline-task-105-856edac5e88843b1957c772e4a7998f4`

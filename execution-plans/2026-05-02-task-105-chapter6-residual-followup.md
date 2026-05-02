@@ -1,0 +1,21 @@
+# task-105-chapter6-residual-followup
+
+- Title: task-105-chapter6-residual-followup
+- Status: active
+- Branch: task/T105
+- Git Head: 22f2fa1c646f0376000d3e7b82447651938eb72a
+- Goal: Close residual reviewer semantic findings for Task 105 without violating Chapter 6 stop-loss.
+- Scope: Acceptance wording + test semantics for `ACC:T105.*` only; no unrelated feature expansion.
+- Current step: Residual recorded after latest full run (`856edac5e88843b1957c772e4a7998f4`) stayed `review-needs-fix`.
+- Last completed step: Full rerun completed with deterministic gates green and fresh reviewer outputs.
+- Stop-loss: Do not rerun full 6.7 blindly; always run `resume-task -> chapter6-route -> inspect-run` first and obey `Forbidden commands`.
+- Next action: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 105 --resume`
+- Open questions: Whether reviewer expectation of ?same resolved turn? should be represented as acceptance text change or new explicit negative-path fixture.
+- Exit criteria: Latest run shows `failure_code=ok` (or equivalent no `Needs Fix`) with no pending approval block.
+- Related ADRs: none yet
+- Related decision logs: decision-logs/2026-05-02-task-105-chapter6-residual-needs-fix.md
+- Related task id(s): `105`
+- Related run id: `856edac5e88843b1957c772e4a7998f4`
+- Related latest.json: `logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-02/sc-review-pipeline-task-105-856edac5e88843b1957c772e4a7998f4`
