@@ -1,0 +1,21 @@
+# task-105-chapter6-residual-needs-fix
+
+- Title: task-105-chapter6-residual-needs-fix
+- Date: 2026-05-02
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T105
+- Git Head: 22f2fa1c646f0376000d3e7b82447651938eb72a
+- Why now: Chapter 6 routing determined that another immediate 6.8 rerun would not be cost-effective.
+- Context: Remaining findings are low priority reviewer items after deterministic evidence was already sufficient. No low priority findings were captured.
+- Decision: Record the residual Needs Fix items and stop the current fast-ship closure loop until a later change hits the same reviewer anchors.
+- Consequences: The task keeps explicit follow-up evidence instead of paying for another same-shape 6.8 rerun.
+- Recovery impact: Recovery should prefer the recorded follow-up plan over reopening 6.7 or repeating 6.8 without fresh anchor hits.
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `105`
+- Related run id: `856edac5e88843b1957c772e4a7998f4`
+- Related latest.json: `logs/ci/2026-05-02/sc-review-pipeline-task-105/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-02/sc-review-pipeline-task-105-856edac5e88843b1957c772e4a7998f4`

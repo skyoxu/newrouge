@@ -993,12 +993,16 @@ func test_enemy_intent_default_surface_follows_external_ai_definitions_without_h
 # ACC:T80.6
 # ACC:T83.7
 # ACC:T77.4
+# ACC:T105.1
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
 	var accepted := bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))
 	assert_that(accepted).is_true()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
+	var intent_before_end := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+	assert_that(intent_before_end).is_not_empty()
 
 	var root := scene as Control
 	var hand := root.get_node("HUD/HandCards") as ItemList
@@ -1015,6 +1019,215 @@ func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	assert_that(state_after_end["hand"]).is_equal(["Strike", "Defend", "Strike"])
 	assert_that(state_after_end["discard"]).is_equal("3")
 	assert_that(feedback.find("Enemy dealt 1 damage") >= 0).is_true()
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
+	var intent_after_end := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+	assert_that(intent_after_end).is_not_empty()
+	assert_that(intent_after_end).is_equal(intent_before_end)
+	var intent_turn_after_end := int(scene.call("GetEnemyIntentTurnForTest", "enemy_m1_slime"))
+	assert_that(intent_turn_after_end).is_equal(2)
+
+
+# ACC:T105.5
+func test_end_turn_executes_currently_displayed_intent_snapshot_without_pre_resolution_substitution() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+
+	var intent_payload_attack7 := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.synthetic_damage_7"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload_attack7))).is_true()
+	var displayed_before := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+	var displayed_turn_before := int(scene.call("GetEnemyIntentTurnForTest", "enemy_m1_slime"))
+	assert_that(displayed_before.find("7") >= 0).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var state_after_first_end := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_after_first_end := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(str(state_after_first_end["playerHp"])).is_equal("73")
+	assert_that(feedback_after_first_end.find("Enemy dealt 7 damage") >= 0).is_true()
+	var displayed_after_first := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+	var displayed_turn_after_first := int(scene.call("GetEnemyIntentTurnForTest", "enemy_m1_slime"))
+	assert_that(displayed_after_first).is_equal(displayed_before)
+	assert_that(displayed_turn_after_first).is_equal(displayed_turn_before)
+
+	var intent_payload_attack2 := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.synthetic_damage_2"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload_attack2))).is_true()
+	var displayed_before_second := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+	assert_that(displayed_before_second.find("2") >= 0).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var state_after_second_end := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_after_second_end := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(str(state_after_second_end["playerHp"])).is_equal("71")
+	assert_that(feedback_after_second_end.find("Enemy dealt 2 damage") >= 0).is_true()
+
+
+# ACC:T105.2
+# ACC:T105.4
+func test_end_turn_executes_once_per_command_and_has_no_hidden_scene_local_replay_path() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(1)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var turn_before := int(scene.call("GetTurnIndexForTest"))
+	var dispatched_before := scene.call("GetDispatchedCommandsForTest") as Array
+	var feedback_before := scene.call("GetFeedbackHistoryForTest") as Array
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+
+	var turn_after := int(scene.call("GetTurnIndexForTest"))
+	var dispatched_after := scene.call("GetDispatchedCommandsForTest") as Array
+	var feedback_after := scene.call("GetFeedbackHistoryForTest") as Array
+	var state_after_end := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(turn_after).is_equal(turn_before + 1)
+	assert_that(dispatched_after.size()).is_equal(dispatched_before.size() + 1)
+	assert_that(str(dispatched_after[dispatched_after.size() - 1])).is_equal("end_turn")
+	assert_that(feedback_after.size()).is_equal(feedback_before.size() + 1)
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var turn_after_idle := int(scene.call("GetTurnIndexForTest"))
+	var dispatched_after_idle := scene.call("GetDispatchedCommandsForTest") as Array
+	var feedback_after_idle := scene.call("GetFeedbackHistoryForTest") as Array
+	var state_after_idle := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(turn_after_idle).is_equal(turn_after)
+	assert_that(dispatched_after_idle).is_equal(dispatched_after)
+	assert_that(feedback_after_idle).is_equal(feedback_after)
+	assert_that(state_after_idle).is_equal(state_after_end)
+
+	var second_end_result := bool(scene.call("RequestTurnActionForTest", "end_turn"))
+	var turn_after_second := int(scene.call("GetTurnIndexForTest"))
+	var dispatched_after_second := scene.call("GetDispatchedCommandsForTest") as Array
+	var feedback_after_second := scene.call("GetFeedbackHistoryForTest") as Array
+	var state_after_second := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(second_end_result).is_true()
+	assert_that(turn_after_second).is_equal(turn_after + 1)
+	assert_that(dispatched_after_second.size()).is_equal(dispatched_after_idle.size() + 1)
+	assert_that(str(dispatched_after_second[dispatched_after_second.size() - 1])).is_equal("end_turn")
+	assert_that(feedback_after_second.size()).is_equal(feedback_after_idle.size() + 1)
+	assert_that(state_after_second["turnState"]).is_equal("PlayerTurn")
+	assert_that(str(state_after_second["playerHp"])).is_equal("78")
+	assert_that(str(state_after_second["discard"])).is_equal("6")
+
+
+# ACC:T105.1
+func test_end_turn_next_turn_intent_generation_is_deterministic_for_same_input() -> void:
+	var intent_sequences: Array[String] = []
+	for _i in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
+		var before_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+		var before_turn := int(scene.call("GetEnemyIntentTurnForTest", "enemy_m1_slime"))
+		var root := scene as Control
+		var hand := root.get_node("HUD/HandCards") as ItemList
+		hand.select(1)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+		assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
+		var after_desc := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime"))
+		var after_turn := int(scene.call("GetEnemyIntentTurnForTest", "enemy_m1_slime"))
+		intent_sequences.append("%s|%d|%s|%d" % [before_desc, before_turn, after_desc, after_turn])
+		assert_that(after_desc).is_not_empty()
+		assert_that(after_turn).is_equal(before_turn + 1)
+
+	assert_that(intent_sequences[1]).is_equal(intent_sequences[0])
+
+
+# ACC:T105.3
+func test_end_turn_status_aware_transitions_decay_timed_status_once_per_turn() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t105.enemy_weak","name_key":"card.t105.enemy_weak.name","description_key":"card.t105.enemy_weak.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":0,"status_id":"status.weak","status_stacks":2}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t105.enemy_weak"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var enemy_status_before_end := str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime"))
+	assert_that(enemy_status_before_end.find("status.weak +2") >= 0).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var enemy_status_after_end := str(scene.call("GetEnemyStatusForTest", "enemy_m1_slime"))
+	var feedback_after_end := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(enemy_status_after_end.find("status.weak +1") >= 0).is_true()
+	assert_that(enemy_status_after_end.find("status.weak +2") < 0).is_true()
+	assert_that(feedback_after_end.find("decayed status.weak to 1") >= 0).is_true()
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T105.3
+func test_scene_local_feedback_path_does_not_mutate_combat_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var turn_before := int(scene.call("GetTurnIndexForTest"))
+	var enemy_hp_before := str(scene.call("GetEnemyHpTextForTest"))
+	var intent_rows_before := int(scene.call("GetEnemyIntentRowCountForTest"))
+
+	scene.call("ApplyCommandFeedbackForTest", "end_turn", true)
+
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var turn_after := int(scene.call("GetTurnIndexForTest"))
+	var enemy_hp_after := str(scene.call("GetEnemyHpTextForTest"))
+	var intent_rows_after := int(scene.call("GetEnemyIntentRowCountForTest"))
+	assert_that(turn_after).is_equal(turn_before)
+	assert_that(str(state_after["playerHp"])).is_equal(str(state_before["playerHp"]))
+	assert_that(str(state_after["energy"])).is_equal(str(state_before["energy"]))
+	assert_that(str(state_after["draw"])).is_equal(str(state_before["draw"]))
+	assert_that(str(state_after["discard"])).is_equal(str(state_before["discard"]))
+	assert_that(str(state_after["turnState"])).is_equal(str(state_before["turnState"]))
+	assert_that(enemy_hp_after).is_equal(enemy_hp_before)
+	assert_that(intent_rows_after).is_equal(intent_rows_before)
+
+
+# ACC:T105.7
+func test_status_inputs_change_end_turn_outcome_and_remain_deterministic_for_same_inputs() -> void:
+	var no_block_results: Array[String] = []
+	var with_block_results: Array[String] = []
+
+	for _i in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+		var state_after_no_block := scene.call("CaptureUiStateForTest") as Dictionary
+		no_block_results.append("%s|%s|%s" % [str(state_after_no_block["playerHp"]), str(state_after_no_block["discard"]), str(scene.call("GetLatestFeedbackMessageForTest"))])
+
+	for _i in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(1)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+		var state_after_with_block := scene.call("CaptureUiStateForTest") as Dictionary
+		with_block_results.append("%s|%s|%s" % [str(state_after_with_block["playerHp"]), str(state_after_with_block["discard"]), str(scene.call("GetLatestFeedbackMessageForTest"))])
+
+	assert_that(no_block_results[1]).is_equal(no_block_results[0])
+	assert_that(with_block_results[1]).is_equal(with_block_results[0])
+	assert_that(with_block_results[0]).is_not_equal(no_block_results[0])
 
 
 # ACC:T83.6
