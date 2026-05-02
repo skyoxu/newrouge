@@ -312,6 +312,12 @@ func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_
 
 	assert_that(output_twice).is_equal(output_once)
 	var invalid_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_d1","intents":[]}]}'
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_d1", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_d2", 20, 20))).is_true()
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", ai_definitions_payload))).is_true()
 	var row_count_before_invalid := int(scene.call("GetEnemyIntentRowCountForTest"))
 	var d1_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_d1"))
 	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", invalid_definitions_payload))).is_false()

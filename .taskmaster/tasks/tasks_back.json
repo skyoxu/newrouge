@@ -3540,19 +3540,21 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
+      "Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_task0096_rage_runtime_bridge.gd",
+      "Game.Core.Tests/Tasks/Task0096WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "When the Warrior combat loop runs through the live CombatService-backed runtime, it must create or consume the existing Rage model from the shared combat path and must not read from or maintain a separate dormant data-only Rage copy. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "Rage promotion in the live runtime must use the existing player-state and combat-state contracts, with no new parallel Rage contract and no combat-local Rage owner introduced for this flow. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "In the Combat scene, any player-visible Rage or related status shown while shared runtime state is available must come from that shared runtime, and the scene must not keep its own parallel Rage/status implementation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Rage values created or changed through the shared runtime must persist across the Warrior combat flow segments covered by this task, rather than resetting or diverging between segments. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "Acceptance evidence for T96 must include both Warrior acceptance tests and Combat scene tests, and both test families must be present in the recorded evidence set. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Automated tests must verify that the Warrior flow can apply Rage through the shared runtime itself, not merely that Rage remains persisted later or becomes visible in UI. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs",
-      "Automated tests must verify that Rage applied through the shared runtime changes combat behavior or results in a player-visible way, not only that a Rage value is displayed. Refs: Game.Core.Tests/Tasks/Task0025AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T96 has not been selected by workflow, the implementation entry path must refuse to run, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence appears in review artifacts. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
+      "When the Warrior combat loop runs through the live CombatService-backed runtime, it must create or consume the existing Rage model from the shared combat path and must not read from or maintain a separate dormant data-only Rage copy. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Rage promotion in the live runtime must use the existing player-state and combat-state contracts, with no new parallel Rage contract and no combat-local Rage owner introduced for this flow. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "In the Combat scene, any player-visible Rage or related status shown while shared runtime state is available must come from that shared runtime; when a shared-runtime reset snapshot is applied after Rage was triggered, the scene must remain aligned with shared runtime state and must not branch into an independent parallel Rage/status owner. Refs: Tests.Godot/tests/Scenes/Combat/test_task0096_rage_runtime_bridge.gd Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Rage values created or changed through the shared runtime must persist across the Warrior combat flow segments covered by this task, rather than resetting or diverging between segments. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Acceptance evidence for T96 must include both Warrior acceptance tests and Combat scene tests, and both test families must be present in the recorded evidence set. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_task0096_rage_runtime_bridge.gd",
+      "Automated tests must verify that the Warrior flow can apply Rage through the shared runtime itself, not merely that Rage remains persisted later or becomes visible in UI. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Automated tests must verify that Rage applied through the shared runtime changes combat behavior or results in a player-visible way, not only that a Rage value is displayed. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_task0096_rage_runtime_bridge.gd",
+      "If T96 has not been selected by workflow, the implementation entry path must refuse to run, leave implementation/code state unchanged, and record workflow-selection evidence before any implementation evidence appears in review artifacts. Refs: Game.Core.Tests/Tasks/Task0096WorkflowSelectionEvidenceTests.cs",
+      "When shared runtime Rage already exists for the Warrior player, applying Rage through the live CombatService-backed flow must mutate the same Rage state entry (stack increase on canonical status id) rather than creating or reading any parallel Rage copy. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs",
+      "Warrior Rage application and resulting combat effect must be verified through the CombatService entry path used by the live combat loop, not only through isolated status/pipeline helpers. Refs: Game.Core.Tests/Tasks/Task0096AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add or extend Warrior acceptance and Combat scene tests to verify Rage state application, persistence, and visible combat impact through the shared runtime."
@@ -3565,7 +3567,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0096.json"
+      "logs/ci/<date>/task-0096.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "semantic_review_tier": "full"
   },

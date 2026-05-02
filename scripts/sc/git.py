@@ -152,14 +152,64 @@ def sync_overlay_task_drift_baseline(*, out_dir: Path) -> tuple[int, str, Path]:
     return rc, out, log_path
 
 
+def _promote_commit_wrapper_flags(args: argparse.Namespace) -> tuple[argparse.Namespace, list[str]]:
+    """Recover wrapper flags accidentally captured by argparse.REMAINDER after operation."""
+    if args.operation != "commit":
+        return args, list(args.args)
+
+    extra = list(args.args)
+    if extra and extra[0] == "--":
+        extra = extra[1:]
+
+    filtered: list[str] = []
+    i = 0
+    while i < len(extra):
+        tok = extra[i]
+
+        if tok == "--smart-commit":
+            args.smart_commit = True
+            i += 1
+            continue
+        if tok == "--interactive":
+            args.interactive = True
+            i += 1
+            continue
+        if tok == "--yes":
+            args.yes = True
+            i += 1
+            continue
+
+        if tok.startswith("--task-id="):
+            args.task_id = tok.split("=", 1)[1]
+            i += 1
+            continue
+        if tok == "--task-id" and i + 1 < len(extra):
+            args.task_id = extra[i + 1]
+            i += 2
+            continue
+
+        if tok.startswith("--task-ref="):
+            args.task_ref = tok.split("=", 1)[1]
+            i += 1
+            continue
+        if tok == "--task-ref" and i + 1 < len(extra):
+            args.task_ref = extra[i + 1]
+            i += 2
+            continue
+
+        filtered.append(tok)
+        i += 1
+
+    return args, filtered
+
+
 def main() -> int:
     args = build_parser().parse_args()
     out_dir = ci_dir("sc-git")
 
+    args, extra = _promote_commit_wrapper_flags(args)
+
     op = args.operation
-    extra = list(args.args)
-    if extra and extra[0] == "--":
-        extra = extra[1:]
 
     if requires_yes(op, extra) and not args.yes:
         print(f"[sc-git] ERROR: operation '{op}' requires --yes for confirmation.")
