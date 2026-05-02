@@ -5975,17 +5975,16 @@
     ],
     "owner": "gameplay",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0090WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "In the live player-facing combat path, combat resolution must run through the existing shared combat runtime entrypoint so deterministic status trigger ordering and fixed-damage outcomes no longer bypass shared semantics through a scene-local path. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "T90 must use the current combat runtime as the single owner of combat resolution and must not add a parallel resolver, separate trigger executor, or alternate fixed-damage resolution owner. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs",
-      "Any player-visible combat feedback changed in T90 must be limited to what is required to validate ordered trigger results and fixed-damage outcomes coming from the shared runtime; broader scene feedback reconciliation remains out of scope. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "T90 must leave AOE ordering and broader full-surface feedback alignment to follow-up tasks rather than changing those behaviors in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Automated tests must execute the live combat runtime path and verify deterministic trigger ordering together with fixed-damage exemption behavior on that path. Refs: Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "If T90 has not been explicitly selected by workflow, implementation entry must refuse to run and leave implementation/code state unchanged; review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
+      "In the live player-facing combat path, combat resolution must run through the existing shared combat runtime entrypoint so deterministic status trigger ordering and fixed-damage outcomes no longer bypass shared semantics through a scene-local path. Refs: Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "T90 must use the current combat runtime as the single owner of combat resolution and must not add a parallel resolver, separate trigger executor, or alternate fixed-damage resolution owner. Refs: Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "Any player-visible combat feedback changed in T90 must be limited to what is required to validate ordered trigger results and fixed-damage outcomes coming from the shared runtime; broader scene feedback reconciliation remains out of scope. Refs: Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "T90 must leave AOE ordering and broader full-surface feedback alignment to follow-up tasks rather than changing those behaviors in this task. Refs: Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "Automated tests must execute the live combat runtime path and verify deterministic trigger ordering together with fixed-damage exemption behavior on that path. Refs: Game.Core.Tests/Tasks/Task0090AcceptanceTests.cs",
+      "If T90 has not been explicitly selected by workflow, implementation entry must refuse to run and leave implementation/code state unchanged; review evidence must show the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0090WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend combat rule tests to cover trigger ordering and fixed damage exemptions inside the live combat runtime path."
@@ -5998,7 +5997,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0090.json"
+      "logs/ci/<date>/task-0090.json",
+      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
     "semantic_review_tier": "full"
   },
