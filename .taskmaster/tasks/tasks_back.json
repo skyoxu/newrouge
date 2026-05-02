@@ -3757,17 +3757,17 @@
     ],
     "owner": "architecture",
     "test_refs": [
+      "Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
+      "Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "When a relic is eligible to produce a combat-time effect, that effect is executed through the shared combat trigger path, and combat results do not depend on scene-local or one-off trigger shortcuts. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Routing combat-time relic effects through the shared combat trigger path preserves existing relic uniqueness rules, and the change does not introduce duplicate triggers, duplicate ownership, or non-unique runtime state. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Combat-time relic effects routed through the shared combat trigger path resolve against the current correct owner, and the same trigger does not apply the effect to any other owner. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "This task changes combat-time relic triggering only; post-combat relic closure and broader run trigger closure remain unchanged after the task work. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
-      "Combat integration coverage is added or updated to demonstrate that relic-triggered combat effects run through the shared combat trigger path and that uniqueness and ownership behavior remain correct. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "If task 99 has not been selected by the workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
+      "When a relic is eligible to produce a combat-time effect, that effect is executed through the shared combat trigger path, and combat results do not depend on scene-local or one-off trigger shortcuts. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Routing combat-time relic effects through the shared combat trigger path preserves existing relic uniqueness rules, and the change does not introduce duplicate triggers, duplicate ownership, or non-unique runtime state. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Combat-time relic effects routed through the shared combat trigger path resolve against the current correct owner, and the same trigger does not apply the effect to any other owner. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "This task changes combat-time relic triggering only; post-combat relic closure and broader run trigger closure remain unchanged after the task work. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Combat integration coverage is added or updated to demonstrate that relic-triggered combat effects run through the shared combat trigger path and that uniqueness and ownership behavior remain correct. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "If task 99 has not been selected by the workflow, implementation entry refuses execution, leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend combat integration tests to verify relic-triggered combat effects execute through shared trigger paths while preserving uniqueness and ownership rules."
@@ -3781,7 +3781,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0099.json"
+      "logs/ci/<date>/task-0099.json",
+      "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "semantic_review_tier": "full"
   },
@@ -3897,7 +3898,7 @@
       "Changes under T101 only update combat feedback surfaces that present shared runtime results to the player and do not change combat runtime logic. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "After trigger, fixed damage, and AOE resolution, the combat scene's player-visible feedback surfaces must display the same outcomes produced by the promoted shared runtime semantics, without expanding or altering those semantics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "Combat scene feedback tests must be added or updated so player-visible logs and indicators are asserted against the shared runtime outcomes for trigger, fixed-damage, and AOE resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T101 is not selected by workflow, the implementation entry must refuse to run, leave code and implementation state unchanged, and record workflow-selection evidence before any implementation evidence in review output. Refs: logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
+      "If T101 is not selected by workflow, the implementation entry must refuse to run, leave code and implementation state unchanged, and record workflow-selection evidence before any implementation evidence in review output. Refs: Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution."
