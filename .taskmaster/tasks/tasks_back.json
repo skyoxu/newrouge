@@ -4267,8 +4267,7 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "acceptance": [
       "T107 extends the existing T91 settlement owner surface to expose reward and relic metadata, and the settlement surface still uses that owner surface instead of introducing a replacement owner surface or a second settlement authority. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
@@ -4276,7 +4275,7 @@
       "Settlement-level tests verify that reward-card metadata and relic metadata are both visible from stored run data, and the tests fail if either metadata set is absent from the settlement surface. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
       "Integration tests verify that settlement shows reward-card and relic results from stored run data, and the coverage fails if settlement recomputes, omits, or bypasses stored reward or relic data. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "T107 leaves resume evidence enrichment out of scope: it does not add resume evidence enrichment outputs, fields, or extra settlement closure requirements, because that work remains deferred to a follow-up task. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd",
-      "If workflow has not selected T107 for execution, T107 produces no implementation changes and leaves task-related state unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "If workflow has not selected T107 for execution, T107 produces no implementation changes and leaves task-related state unchanged. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "test_strategy": [
       "Add or extend settlement-level tests and integration tests to cover reward-card and relic metadata visibility from stored run data, and fail coverage when settlement recomputes or omits that stored metadata."
@@ -4289,7 +4288,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0107.json"
+      "logs/ci/<date>/task-0107.json",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "semantic_review_tier": "full"
   },

@@ -540,6 +540,9 @@ func test_combat_victory_route_is_not_triggered_while_living_enemy_remains() -> 
 	await get_tree().process_frame
 	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 
+# ACC:T107.2
+# ACC:T107.4
+# ACC:T107.6
 func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu() -> void:
 	var main := await _load_main_on_map()
 	var route_steps: Array[Dictionary] = [
