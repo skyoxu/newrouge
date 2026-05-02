@@ -126,4 +126,18 @@ taskdoc/**
 _bmad/
 
 # Codex local skills/agents workspace
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/workflow-chapter2-repository-bootstrap/
+!.agents/skills/workflow-chapter2-repository-bootstrap/**
+!.agents/skills/workflow-chapter3-task-triplet-baseline/
+!.agents/skills/workflow-chapter3-task-triplet-baseline/**
+!.agents/skills/workflow-chapter4-overlays-contracts-baseline/
+!.agents/skills/workflow-chapter4-overlays-contracts-baseline/**
+!.agents/skills/workflow-chapter5-semantics-stabilization/
+!.agents/skills/workflow-chapter5-semantics-stabilization/**
+!.agents/skills/workflow-chapter6-single-task-daily-loop/
+!.agents/skills/workflow-chapter6-single-task-daily-loop/**
+!.agents/skills/workflow-chapter7-ui-wiring-closure/
+!.agents/skills/workflow-chapter7-ui-wiring-closure/**
