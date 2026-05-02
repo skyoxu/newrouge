@@ -3213,7 +3213,25 @@
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on enemy action resolution and no-repeat guardrails on top of the displayed intent path.",
-        "updatedAt": null
+        "updatedAt": null,
+        "test_refs": [
+          "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
+        ],
+        "acceptance": [
+          "When the player ends the turn, the enemy action shown by the current intent preview resolves exactly once through the shared runtime path, and the next-turn intent is generated deterministically afterward. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "Enemy turn resolution is one-shot per accepted end_turn command: after one accepted end_turn, enemy intent effects do not replay unless a new end_turn command is explicitly issued. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "Only the shared runtime enemy-turn path may mutate combat state; any scene-local enemy-turn path invocation must be a no-op for combat state mutation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "Displayed intent resolution uses the shared runtime path and preserves intent-to-resolution identity (no pre-resolution intent substitution). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "At end_turn acceptance time, the runtime executes the exact enemy intent instance currently displayed to the player (same intent payload), and does not re-roll or swap to a different intent before applying effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+          "If T105 has not been selected by workflow, no T105 implementation changes are applied and task-related state remains unchanged. Refs: Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+          "Status-aware choice semantics are observable: changing relevant status inputs changes enemy intent resolution outcome according to runtime rules, while identical inputs keep deterministic outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+        ],
+        "evidence_refs": [
+          "docs/gdd/t1-t69-m1-wiring-audit.md",
+          "logs/ci/<date>/task-0105.json",
+          "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+        ]
       },
       {
         "id": 106,
