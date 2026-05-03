@@ -4833,15 +4833,15 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Game.Core.Tests/Tasks/Task0116WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "The Combat scene displays enemy name, HP, block, and the existing visible enemy combat surfaces from the same data-backed runtime enemy, and those surfaces change with runtime state updates so the visible values do not remain stale or diverge. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "When an enemy definition is invalid or incomplete, combat fails safe by showing player-visible feedback through the existing presentation path, and it does not silently spawn a placeholder enemy that appears to be a valid definition. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Runtime-enemy combat presentation uses the existing targeting and intent surfaces, and combat does not expose a separate parallel enemy presentation path for those runtime enemies. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Combat scene tests and integration tests are added or extended to verify visible enemy stat binding and invalid-definition fallback on top of the data-backed enemy runtime. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "If workflow has not selected T116, this task does not execute or produce implementation progress for T116. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Combat scene binds enemy name, HP, block, and existing visible enemy combat surfaces to the same runtime enemy instance as a single source of truth, and each visible value updates from runtime state transitions without scene-local fallback values or stale divergence. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Given an invalid or incomplete enemy definition input, combat rejects preview generation, keeps selected target, intent rows, and enemy name/HP/block/status unchanged from pre-input state, and emits player-visible refused and invalid-action feedback through the existing presentation path; it must not render synthetic valid enemy stats. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Runtime-enemy targeting, intent rows, and enemy status panel values (name, HP, block, status) are derived from the same selected runtime enemy identity in the same frame; when selection changes, those surfaces switch together without cross-enemy mixed state or an alternate parallel presentation path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Coverage asserts at least one runtime transition and one invalid-definition rejection path with explicit pre/post visible values for enemy name, HP, block, and one additional enemy-facing surface (status or intent rows), and asserts unchanged-state semantics on rejection; node-existence checks alone are insufficient. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If workflow has not selected T116, this task does not execute or produce implementation progress for T116. Refs: Game.Core.Tests/Tasks/Task0116WorkflowSelectionEvidenceTests.cs",
+      "After an invalid or incomplete enemy-definition input is rejected, a subsequent valid input updates target/intent/name/HP/block/status through the same runtime path without latched fallback state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add or extend Combat scene tests and integration tests to cover visible enemy stat binding, reuse of existing targeting and intent surfaces, and invalid-definition fallback on top of the data-backed enemy runtime."
@@ -4854,7 +4854,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0116.json"
+      "logs/ci/<date>/task-0116.json",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
   },

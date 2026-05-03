@@ -13,12 +13,16 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 		cards.append(list.get_item_text(index))
 	return cards
 
-
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
 # ACC:T76.1
 # ACC:T77.1
 # ACC:T77.3
+# ACC:T116.1
+# ACC:T116.2
+# ACC:T116.3
+# ACC:T116.4
+# ACC:T116.6
 func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -79,6 +83,15 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var buff_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_buff"))
 	var debuff_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_debuff"))
 	var mixed_icon := str(scene.call("GetEnemyIntentIconIdForTest", "enemy_t76_mixed"))
+	var expected_name := str(scene.call("ResolveLocalizedTextForTest", "enemy.act1.slime_scout.name")).strip_edges()
+	var expected_status_none := str(scene.call("ResolveLocalizedTextForTest", "combat.enemy.status.none")).strip_edges()
+	var expected_hp_by_enemy := {
+		"enemy_t76_attack": "32/32",
+		"enemy_t76_block": "24/24",
+		"enemy_t76_buff": "20/20",
+		"enemy_t76_debuff": "18/18",
+		"enemy_t76_mixed": "28/28",
+	}
 	assert_that(attack_desc.find("attack") >= 0).is_true()
 	assert_that(block_desc.find("block") >= 0).is_true()
 	assert_that(buff_desc.find("buff") >= 0).is_true()
@@ -98,13 +111,28 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		var enemy_block := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
 		var enemy_status := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
 		var enemy_intent := str(scene.call("GetEnemyIntentDescriptionForTest", enemy_id)).strip_edges()
-		assert_that(enemy_name).is_not_empty()
-		assert_that(enemy_hp.find("/") >= 0).is_true()
-		assert_that(enemy_hp).is_not_equal("0/0")
-		assert_that(enemy_block).is_not_empty()
-		assert_that(enemy_status).is_not_empty()
+		assert_that(enemy_name).is_equal(expected_name)
+		assert_that(enemy_hp).is_equal(str(expected_hp_by_enemy[enemy_id]))
+		assert_that(enemy_block).is_equal("0")
+		assert_that(enemy_status).is_equal(expected_status_none)
 		assert_that(bool(scene.call("HasEnemyIntentForTest", enemy_id))).is_true()
 		assert_that(enemy_intent).is_not_empty()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t76_attack"))).is_true()
+	var hp_before_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
+	var name_before_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()
+	var block_before_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
+	var status_before_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+	assert_that(hp_before_runtime_update).is_equal("32/32")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_attack", 11, 32))).is_true()
+	var hp_after_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
+	var name_after_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()
+	var block_after_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
+	var status_after_runtime_update := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+	assert_that(hp_after_runtime_update).is_equal("11/32")
+	assert_that(hp_after_runtime_update).is_not_equal(hp_before_runtime_update)
+	assert_that(name_after_runtime_update).is_equal(name_before_runtime_update)
+	assert_that(block_after_runtime_update).is_equal(block_before_runtime_update)
+	assert_that(status_after_runtime_update).is_equal(status_before_runtime_update)
 	var row_count_before_invalid := int(scene.call("GetEnemyIntentRowCountForTest"))
 	var mixed_before_invalid := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_mixed"))
 	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", '{"enemyIntentRows":[]}'))).is_false()
@@ -119,10 +147,37 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var missing_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_unknown","intents":[]}]}'
 	var row_count_before_missing := int(scene.call("GetEnemyIntentRowCountForTest"))
 	var unknown_before_missing := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))
+	var selected_target_before_missing := str(scene.call("GetSelectedEnemyTargetIdForTest"))
+	var name_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()
+	var hp_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
+	var block_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
+	var status_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
+	var feedback_before_missing := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
 	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", missing_definitions_payload))).is_false()
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_missing)
 	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))).is_equal(unknown_before_missing)
+	assert_that(str(scene.call("GetSelectedEnemyTargetIdForTest"))).is_equal(selected_target_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()).is_equal(name_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()).is_equal(hp_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()).is_equal(block_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()).is_equal(status_before_missing)
+	var feedback_after_missing := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(feedback_after_missing).contains("refused")
+	assert_that(feedback_after_missing).contains("invalid action")
+	assert_that(feedback_after_missing).is_not_equal(feedback_before_missing)
 	assert_that(bool(scene.call("HasEnemyIntentForTest", "enemy_m1_slime"))).is_false()
+	var recovered_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_unknown","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]}]}'
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", recovered_payload))).is_true()
+	assert_that(str(scene.call("GetSelectedEnemyTargetIdForTest"))).is_equal(selected_target_before_missing)
+	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_missing)
+	var recovered_intent := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown")).to_lower()
+	assert_that(recovered_intent.find("attack") >= 0).is_true()
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label).text.strip_edges()).is_equal(name_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()).is_equal(hp_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()).is_equal(block_before_missing)
+	assert_that((root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()).is_equal(status_before_missing)
+	var feedback_after_recover := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(feedback_after_recover).is_not_equal(feedback_after_missing)
 
 
 # ACC:T89.1

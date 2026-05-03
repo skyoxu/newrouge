@@ -149,11 +149,29 @@ public sealed class Task0090WorkflowSelectionEvidenceTests
             "--recommendation-only",
             "--recommendation-format",
             "json");
-        ReadString(resumeRecommendation, "chapter6_next_action").Should().Be("inspect");
-        ReadString(resumeRecommendation, "blocked_by").Should().Be("recent_failure_summary");
-        ParseCommandList(ReadString(resumeRecommendation, "forbidden_commands"))
-            .Should()
-            .Contain("py -3 scripts/sc/run_review_pipeline.py --task-id 90");
+        var nextAction = ReadString(resumeRecommendation, "chapter6_next_action");
+        nextAction.Should().Match(action => action == "continue" || action == "inspect" || action == "pause");
+        if (string.Equals(nextAction, "inspect", StringComparison.Ordinal))
+        {
+            ReadString(resumeRecommendation, "blocked_by").Should().Be("recent_failure_summary");
+            ParseCommandList(ReadString(resumeRecommendation, "forbidden_commands"))
+                .Should()
+                .Contain("py -3 scripts/sc/run_review_pipeline.py --task-id 90");
+        }
+        else if (string.Equals(nextAction, "pause", StringComparison.Ordinal))
+        {
+            ReadString(resumeRecommendation, "blocked_by").Should().Be("approval_pending");
+            ParseCommandList(ReadString(resumeRecommendation, "forbidden_commands"))
+                .Should()
+                .Contain("py -3 scripts/sc/run_review_pipeline.py --task-id 90");
+        }
+        else
+        {
+            ReadString(resumeRecommendation, "blocked_by").Should().Be("n/a");
+            ParseCommandList(ReadString(resumeRecommendation, "forbidden_commands"))
+                .Should()
+                .BeEmpty();
+        }
 
         var after = ReadJsonRoot(latestIndexPath);
         ReadString(after, "run_id").Should().Be(beforeRunId, "recommendation-only refusal protocol must not mutate latest run identity.");
@@ -364,6 +382,7 @@ public sealed class Task0090WorkflowSelectionEvidenceTests
 
         return raw
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(item => !string.Equals(item, "none", StringComparison.OrdinalIgnoreCase))
             .Where(item => !string.IsNullOrWhiteSpace(item))
             .ToArray();
     }

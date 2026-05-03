@@ -798,6 +798,7 @@ public partial class CombatScene : Control
     {
         if (string.IsNullOrWhiteSpace(definitionsJson))
         {
+            AppendCommandFeedback("enemy_intent_preview", accepted: false, refusalReasonKey: "combat.invalid_action");
             return false;
         }
 
@@ -808,15 +809,23 @@ public partial class CombatScene : Control
         }
         catch (JsonException)
         {
+            AppendCommandFeedback("enemy_intent_preview", accepted: false, refusalReasonKey: "combat.invalid_action");
             return false;
         }
 
         if (payload is null)
         {
+            AppendCommandFeedback("enemy_intent_preview", accepted: false, refusalReasonKey: "combat.invalid_action");
             return false;
         }
 
-        return TryGenerateEnemyIntentPreviewFromAiPayload(payload);
+        if (!TryGenerateEnemyIntentPreviewFromAiPayload(payload))
+        {
+            AppendCommandFeedback("enemy_intent_preview", accepted: false, refusalReasonKey: "combat.invalid_action");
+            return false;
+        }
+
+        return true;
     }
 
     public bool TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest(string definitionsJson)
