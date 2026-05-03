@@ -138,6 +138,9 @@ func _write_summary_autosave_with_deferred_metadata_probe(
 # ACC:T91.4
 # ACC:T91.6
 # ACC:T113.1
+# ACC:T107.1
+# ACC:T107.3
+# ACC:T107.5
 func test_run_summary_surface_displays_stored_metadata_without_recompute_or_mutation() -> void:
     _write_summary_autosave(
         "run-66-a",
@@ -316,6 +319,7 @@ func test_run_summary_surface_uses_deterministic_placeholders_when_required_summ
     assert_int(int(parsed["state_json"].find("\"node_progress\""))).is_equal(-1)
 
 # ACC:T91.3
+# ACC:T107.4
 func test_run_summary_surface_keeps_deferred_metadata_probe_unchanged_on_victory_and_defeat_flows() -> void:
     _write_summary_autosave_with_deferred_metadata_probe("run-91-probe-victory", "Victory", 11)
     var before_victory_raw := FileAccess.get_file_as_string(ProjectSettings.globalize_path(AUTOSAVE_PATH))
