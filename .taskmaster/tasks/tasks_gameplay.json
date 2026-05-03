@@ -6646,7 +6646,7 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Game.Core.Tests/Tasks/Task0106WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "In the Combat scene, powers and relics appear as visible and inspectable participants and produce player-observable combat effects through the shared trigger path, while the integration keeps the shared trigger owner and does not introduce a scene-local effect stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
@@ -6654,7 +6654,7 @@
       "Deterministic tests assert the observable trigger order for powers and relics on the shared trigger path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "Deterministic tests assert that the Combat scene exposes player-visible and inspectable UI state for powers and relics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "The Combat scene surfaces runtime outcomes from power and relic triggers as player-observable combat results rather than inspectable state only, and deterministic tests assert at least one such observable outcome. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T106 has not been selected by the workflow, implementation work for this task does not proceed and task-related state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "If T106 has not been selected by the workflow, implementation work for this task does not proceed and task-related state remains unchanged. Refs: Game.Core.Tests/Tasks/Task0106WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add deterministic trigger-order assertions, visible/inspectable Combat UI state assertions, and at least one player-observable runtime outcome assertion for powers and relics as effectful combat participants."
@@ -6667,7 +6667,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0106.json"
+      "logs/ci/<date>/task-0106.json",
+      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
     "semantic_review_tier": "full"
   },

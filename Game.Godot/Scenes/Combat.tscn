@@ -151,6 +151,29 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
+[node name="PowerRelicPanel" type="VBoxContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 448.0
+offset_top = 368.0
+offset_right = 862.0
+offset_bottom = 488.0
+visible = false
+theme_override_constants/separation = 6
+
+[node name="PowerRelicTitle" type="Label" parent="HUD/PowerRelicPanel"]
+layout_mode = 2
+text = "Power/Relic Participants"
+
+[node name="PowerParticipantList" type="ItemList" parent="HUD/PowerRelicPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+
+[node name="RelicParticipantList" type="ItemList" parent="HUD/PowerRelicPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+
 [node name="TurnControls" type="HBoxContainer" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0

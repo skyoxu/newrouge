@@ -1544,3 +1544,47 @@ func test_feedback_localization_zh_cn_keeps_human_readable_text() -> void:
 	var feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
 	assert_that(feedback.find("命令") >= 0).is_true()
 	assert_that(feedback.find("已接受") >= 0).is_true()
+
+# ACC:T106.1
+# ACC:T106.2
+# ACC:T106.4
+func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_scene_local_stack() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura: +2 attack this turn","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror: copy first attack","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+
+	var power_ids := scene.call("GetVisiblePowerIdsForTest") as Array
+	var relic_ids := scene.call("GetVisibleRelicIdsForTest") as Array
+	assert_that(power_ids.has("berserk_aura")).is_true()
+	assert_that(relic_ids.has("obsidian_mirror")).is_true()
+	assert_that(bool(scene.call("HasPowerRelicSurfaceForTest"))).is_true()
+	var power_surface_text := str(scene.call("GetPowerParticipantSurfaceTextForTest", "berserk_aura"))
+	var relic_surface_text := str(scene.call("GetRelicParticipantSurfaceTextForTest", "obsidian_mirror"))
+	assert_that(power_surface_text.find("Berserk Aura") >= 0).is_true()
+	assert_that(relic_surface_text.find("Obsidian Mirror") >= 0).is_true()
+
+	scene.call("ApplyTargetInspectionForTest", "berserk_aura")
+	var power_inspect := str(scene.call("GetParticipantInspectTextForTest", "berserk_aura"))
+	assert_that(power_inspect.find("Berserk Aura") >= 0).is_true()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(power_inspect)
+
+	scene.call("ApplyTargetInspectionForTest", "obsidian_mirror")
+	var relic_inspect := str(scene.call("GetParticipantInspectTextForTest", "obsidian_mirror"))
+	assert_that(relic_inspect.find("Obsidian Mirror") >= 0).is_true()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(relic_inspect)
+
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t106_ui", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t106_ui"))).is_true()
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+	var joined := "\n".join(history)
+	assert_that(joined.find("Relic.obsidian_mirror") >= 0).is_true()
+	assert_that(joined.find("Power.berserk_aura") >= 0).is_true()
+	assert_that(bool(scene.call("WasPotionRuntimeClosureExecutedForTest"))).is_false()
+	assert_that(bool(scene.call("IsSceneLocalEffectStackUsedForTest"))).is_false()

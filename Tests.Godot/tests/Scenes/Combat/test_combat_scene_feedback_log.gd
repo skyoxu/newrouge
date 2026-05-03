@@ -414,3 +414,30 @@ func test_status_card_and_exhaust_card_apply_expected_target_and_pile_routing() 
 	assert_that(feedback_exhaust.find("moved to exhaust") >= 0).is_true()
 
 	TranslationServer.set_locale(previous_locale)
+
+# ACC:T106.3
+# ACC:T106.5
+func test_t106_shared_trigger_order_and_runtime_outcome_are_player_observable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura: +2 attack this turn","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror: copy first attack","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t106_runtime", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t106_runtime"))).is_true()
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+	var trigger_order := scene.call("GetLastPowerRelicTriggerOrderForTest") as Array
+	assert_that(trigger_order.size()).is_equal(2)
+	assert_that(str(trigger_order[0])).is_equal("Relic.obsidian_mirror")
+	assert_that(str(trigger_order[1])).is_equal("Power.berserk_aura")
+
+	var outcome_messages := scene.call("GetLastPowerRelicOutcomeMessagesForTest") as Array
+	assert_that(outcome_messages.size()).is_equal(2)
+	assert_that(str(outcome_messages[0]).find("Relic.obsidian_mirror") >= 0).is_true()
+	assert_that(str(outcome_messages[1]).find("Power.berserk_aura") >= 0).is_true()
+	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(latest_feedback.find("Power.berserk_aura") >= 0).is_true()

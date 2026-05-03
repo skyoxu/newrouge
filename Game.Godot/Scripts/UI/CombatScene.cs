@@ -24,6 +24,10 @@ public partial class CombatScene : Control
     private ItemList _feedbackHistoryList = default!;
     private Label _enemyIntentTitleLabel = default!;
     private VBoxContainer _enemyIntentList = default!;
+    private VBoxContainer _powerRelicPanel = default!;
+    private Label _powerRelicTitleLabel = default!;
+    private ItemList _powerParticipantList = default!;
+    private ItemList _relicParticipantList = default!;
     private HBoxContainer _cardButtonRow = default!;
     private Label _enemyStatusTitleLabel = default!;
     private Label _enemyNameValue = default!;
@@ -82,6 +86,16 @@ public partial class CombatScene : Control
     private bool _hasPendingInvalidTargetSelection;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _powerInspectById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _relicInspectById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TriggerOrderItemPayload> _powerTriggerById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TriggerOrderItemPayload> _relicTriggerById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _powerOutcomeById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _relicOutcomeById = new(StringComparer.Ordinal);
+    private bool _potionRuntimeClosureExecutedForTest;
+    private readonly List<string> _lastPowerRelicTriggerOrder = new();
+    private readonly List<string> _lastPowerRelicOutcomeMessages = new();
+    private bool _sceneLocalEffectStackUsedForTest;
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private bool _cardDefinitionAutoLoadEnabledForTest = true;
     private bool _enemyIntentDefinitionAutoLoadEnabledForTest = true;
@@ -115,6 +129,10 @@ public partial class CombatScene : Control
         _feedbackHistoryList = GetNode<ItemList>("HUD/FeedbackHistoryList");
         _enemyIntentTitleLabel = GetNode<Label>("HUD/EnemyIntentPanel/EnemyIntentTitle");
         _enemyIntentList = GetNode<VBoxContainer>("HUD/EnemyIntentPanel/EnemyIntentList");
+        _powerRelicPanel = GetNode<VBoxContainer>("HUD/PowerRelicPanel");
+        _powerRelicTitleLabel = GetNode<Label>("HUD/PowerRelicPanel/PowerRelicTitle");
+        _powerParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/PowerParticipantList");
+        _relicParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/RelicParticipantList");
         _cardButtonRow = GetNode<HBoxContainer>("HUD/CardButtonRow");
         _enemyStatusTitleLabel = GetNode<Label>("HUD/EnemyStatusPanel/EnemyStatusTitle");
         _enemyNameValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyNameValue");
@@ -141,6 +159,8 @@ public partial class CombatScene : Control
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
         _feedbackMessageLabel.Text = string.Empty;
+        _powerRelicTitleLabel.Text = "Power/Relic Participants";
+        _powerRelicPanel.Visible = false;
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
         ApplyDefaultM1EnemyIntentIfEmpty();
@@ -214,6 +234,7 @@ public partial class CombatScene : Control
             payload.Difficulty,
             payload.PlayerHp,
             payload.TurnState ?? string.Empty));
+        ApplyPowerRelicParticipants(payload.Powers, payload.Relics);
         return true;
     }
 
@@ -354,7 +375,22 @@ public partial class CombatScene : Control
 
     public void ApplyTargetInspectionForTest(string targetId)
     {
-        _ = targetId;
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return;
+        }
+
+        var normalized = targetId.Trim();
+        if (_powerInspectById.TryGetValue(normalized, out var powerInspect))
+        {
+            PublishPowerRelicOutcomeMessage(powerInspect);
+            return;
+        }
+
+        if (_relicInspectById.TryGetValue(normalized, out var relicInspect))
+        {
+            PublishPowerRelicOutcomeMessage(relicInspect);
+        }
     }
 
     public string GetLatestFeedbackMessageForTest()
@@ -391,6 +427,230 @@ public partial class CombatScene : Control
     public bool RequestPlaySelectedCardForTest()
     {
         return RequestPlaySelectedCard();
+    }
+
+    public bool TryApplyPowerRelicParticipantsContractJsonForTest(string participantsJson)
+    {
+        if (string.IsNullOrWhiteSpace(participantsJson))
+        {
+            return false;
+        }
+
+        ParticipantsContractPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ParticipantsContractPayload>(participantsJson, SnapshotJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (payload is null)
+        {
+            return false;
+        }
+
+        ApplyPowerRelicParticipants(payload.Powers, payload.Relics);
+        return _powerInspectById.Count > 0 || _relicInspectById.Count > 0;
+    }
+
+    public global::Godot.Collections.Array<string> GetVisiblePowerIdsForTest()
+    {
+        var ids = new global::Godot.Collections.Array<string>();
+        foreach (var id in _powerInspectById.Keys.OrderBy(static item => item, StringComparer.Ordinal))
+        {
+            ids.Add(id);
+        }
+
+        return ids;
+    }
+
+    public global::Godot.Collections.Array<string> GetVisibleRelicIdsForTest()
+    {
+        var ids = new global::Godot.Collections.Array<string>();
+        foreach (var id in _relicInspectById.Keys.OrderBy(static item => item, StringComparer.Ordinal))
+        {
+            ids.Add(id);
+        }
+
+        return ids;
+    }
+
+    public string GetParticipantInspectTextForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return string.Empty;
+        }
+
+        var normalized = participantId.Trim();
+        if (_powerInspectById.TryGetValue(normalized, out var powerInspect))
+        {
+            return powerInspect;
+        }
+
+        if (_relicInspectById.TryGetValue(normalized, out var relicInspect))
+        {
+            return relicInspect;
+        }
+
+        return string.Empty;
+    }
+
+    public bool WasPotionRuntimeClosureExecutedForTest()
+    {
+        return _potionRuntimeClosureExecutedForTest;
+    }
+
+    public bool HasPowerRelicSurfaceForTest()
+    {
+        return _powerRelicPanel.Visible;
+    }
+
+    public string GetPowerParticipantSurfaceTextForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return string.Empty;
+        }
+
+        var normalized = participantId.Trim();
+        return FindParticipantSurfaceText(_powerParticipantList, normalized);
+    }
+
+    public string GetRelicParticipantSurfaceTextForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return string.Empty;
+        }
+
+        var normalized = participantId.Trim();
+        return FindParticipantSurfaceText(_relicParticipantList, normalized);
+    }
+
+    public bool TryResolvePowerRelicTriggerOrderFromContractJsonForTest(string contractJson)
+    {
+        if (string.IsNullOrWhiteSpace(contractJson))
+        {
+            return false;
+        }
+
+        TriggerOrderContractPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<TriggerOrderContractPayload>(contractJson, SnapshotJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (payload?.Triggers is null || payload.Triggers.Count <= 0)
+        {
+            return false;
+        }
+
+        var keys = new List<CombatTriggerOrderKey>();
+        foreach (var item in payload.Triggers)
+        {
+            var sourceId = (item.SourceId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(sourceId))
+            {
+                continue;
+            }
+
+            keys.Add(new CombatTriggerOrderKey(sourceId, item.Priority, item.RegistrationOrder));
+        }
+
+        if (keys.Count <= 0)
+        {
+            return false;
+        }
+
+        var ordered = PlayCardResolutionPipeline.ResolveTriggerOrder(keys);
+        _lastPowerRelicTriggerOrder.Clear();
+        foreach (var sourceId in ordered)
+        {
+            _lastPowerRelicTriggerOrder.Add(sourceId);
+        }
+
+        return true;
+    }
+
+    public global::Godot.Collections.Array<string> GetLastPowerRelicTriggerOrderForTest()
+    {
+        var order = new global::Godot.Collections.Array<string>();
+        foreach (var sourceId in _lastPowerRelicTriggerOrder)
+        {
+            order.Add(sourceId);
+        }
+
+        return order;
+    }
+
+    public bool TryApplyPowerRelicOutcomeContractJsonForTest(string outcomesJson)
+    {
+        if (string.IsNullOrWhiteSpace(outcomesJson))
+        {
+            return false;
+        }
+
+        OutcomeContractPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<OutcomeContractPayload>(outcomesJson, SnapshotJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (payload?.Outcomes is null || payload.Outcomes.Count <= 0)
+        {
+            return false;
+        }
+
+        var published = 0;
+        foreach (var item in payload.Outcomes)
+        {
+            var sourceId = (item.SourceId ?? string.Empty).Trim();
+            var message = (item.Message ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(sourceId) || string.IsNullOrWhiteSpace(message))
+            {
+                continue;
+            }
+
+            var canPublish =
+                sourceId.StartsWith("Power.", StringComparison.Ordinal)
+                || sourceId.StartsWith("Relic.", StringComparison.Ordinal);
+            if (!canPublish)
+            {
+                continue;
+            }
+
+            PublishPowerRelicOutcomeMessage($"{sourceId}: {message}");
+            published += 1;
+        }
+
+        return published > 0;
+    }
+
+    public global::Godot.Collections.Array<string> GetLastPowerRelicOutcomeMessagesForTest()
+    {
+        var messages = new global::Godot.Collections.Array<string>();
+        foreach (var message in _lastPowerRelicOutcomeMessages)
+        {
+            messages.Add(message);
+        }
+
+        return messages;
+    }
+
+    public bool IsSceneLocalEffectStackUsedForTest()
+    {
+        return _sceneLocalEffectStackUsedForTest;
     }
 
     public string GetLastPlayCardExecutionFingerprintForTest()
@@ -525,6 +785,7 @@ public partial class CombatScene : Control
                 StatusId: definition.StatusId,
                 StatusStacks: definition.StatusStacks,
                 Exhaust: definition.Exhaust));
+        ResolvePowerRelicRuntimeForCardPlay();
         var result = ResolveCardEffect(definition, targetEnemyId, resolved);
         handCards.RemoveAt(selectedIndex);
         var remainingEnergy = pipelineResult.StateAfter.Energy;
@@ -546,6 +807,91 @@ public partial class CombatScene : Control
         AppendCommandFeedback(normalizedCard, accepted: true, detail: BuildAcceptedCardDetail(result, remainingEnergy, definition.Cost));
         TryAutoCompleteVictoryRoute();
         return true;
+    }
+
+    private void ResolvePowerRelicRuntimeForCardPlay()
+    {
+        var triggerKeys = new List<CombatTriggerOrderKey>();
+        foreach (var payload in _relicTriggerById.Values)
+        {
+            if (!string.IsNullOrWhiteSpace(payload.SourceId))
+            {
+                triggerKeys.Add(new CombatTriggerOrderKey(payload.SourceId, payload.Priority, payload.RegistrationOrder));
+            }
+        }
+
+        foreach (var payload in _powerTriggerById.Values)
+        {
+            if (!string.IsNullOrWhiteSpace(payload.SourceId))
+            {
+                triggerKeys.Add(new CombatTriggerOrderKey(payload.SourceId, payload.Priority, payload.RegistrationOrder));
+            }
+        }
+
+        _lastPowerRelicTriggerOrder.Clear();
+        if (triggerKeys.Count <= 0)
+        {
+            return;
+        }
+
+        var ordered = PlayCardResolutionPipeline.ResolveTriggerOrder(triggerKeys);
+        foreach (var sourceId in ordered)
+        {
+            _lastPowerRelicTriggerOrder.Add(sourceId);
+
+            var outcome = ResolveOutcomeMessageForSource(sourceId);
+            if (!string.IsNullOrWhiteSpace(outcome))
+            {
+                PublishPowerRelicOutcomeMessage($"{sourceId}: {outcome}");
+            }
+        }
+    }
+
+    private static string FindParticipantSurfaceText(ItemList list, string participantId)
+    {
+        for (var index = 0; index < list.ItemCount; index++)
+        {
+            var text = list.GetItemText(index);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            if (text.StartsWith($"{participantId}: ", StringComparison.Ordinal))
+            {
+                return text;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private string ResolveOutcomeMessageForSource(string sourceId)
+    {
+        if (string.IsNullOrWhiteSpace(sourceId))
+        {
+            return string.Empty;
+        }
+
+        if (sourceId.StartsWith("Power.", StringComparison.Ordinal))
+        {
+            var id = sourceId["Power.".Length..];
+            if (_powerOutcomeById.TryGetValue(id, out var powerOutcome))
+            {
+                return powerOutcome;
+            }
+        }
+
+        if (sourceId.StartsWith("Relic.", StringComparison.Ordinal))
+        {
+            var id = sourceId["Relic.".Length..];
+            if (_relicOutcomeById.TryGetValue(id, out var relicOutcome))
+            {
+                return relicOutcome;
+            }
+        }
+
+        return string.Empty;
     }
 
     public int GetCoreStateMutationCountForTest()
@@ -2400,7 +2746,120 @@ public partial class CombatScene : Control
         int DiscardPileCount,
         int Difficulty,
         int PlayerHp,
-        string? TurnState
+        string? TurnState,
+        List<ParticipantItemPayload>? Powers = null,
+        List<ParticipantItemPayload>? Relics = null
+    );
+
+    private void PublishPowerRelicOutcomeMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        _feedbackMessageLabel.Text = message;
+        _feedbackHistoryList.AddItem(message);
+        _lastPowerRelicOutcomeMessages.Add(message);
+    }
+
+    private sealed record ParticipantsContractPayload(
+        List<ParticipantItemPayload>? Powers,
+        List<ParticipantItemPayload>? Relics
+    );
+
+    private sealed record ParticipantItemPayload(
+        string? Id,
+        string? InspectText,
+        int Priority = 10,
+        int RegistrationOrder = 10,
+        string? OutcomeMessage = null
+    );
+
+    private void ApplyPowerRelicParticipants(
+        IReadOnlyList<ParticipantItemPayload>? powers,
+        IReadOnlyList<ParticipantItemPayload>? relics)
+    {
+        _powerInspectById.Clear();
+        _relicInspectById.Clear();
+        _powerTriggerById.Clear();
+        _relicTriggerById.Clear();
+        _powerOutcomeById.Clear();
+        _relicOutcomeById.Clear();
+        _powerParticipantList.Clear();
+        _relicParticipantList.Clear();
+        _potionRuntimeClosureExecutedForTest = false;
+
+        if (powers is not null)
+        {
+            foreach (var power in powers)
+            {
+                var id = (power.Id ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                var inspectText = string.IsNullOrWhiteSpace(power.InspectText)
+                    ? $"inspect {id}"
+                    : power.InspectText.Trim();
+                _powerInspectById[id] = inspectText;
+                _powerTriggerById[id] = new TriggerOrderItemPayload(
+                    SourceId: $"Power.{id}",
+                    Priority: power.Priority,
+                    RegistrationOrder: power.RegistrationOrder);
+                _powerOutcomeById[id] = string.IsNullOrWhiteSpace(power.OutcomeMessage)
+                    ? "triggered"
+                    : power.OutcomeMessage.Trim();
+                _powerParticipantList.AddItem($"{id}: {inspectText}");
+            }
+        }
+
+        if (relics is not null)
+        {
+            foreach (var relic in relics)
+            {
+                var id = (relic.Id ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                var inspectText = string.IsNullOrWhiteSpace(relic.InspectText)
+                    ? $"inspect {id}"
+                    : relic.InspectText.Trim();
+                _relicInspectById[id] = inspectText;
+                _relicTriggerById[id] = new TriggerOrderItemPayload(
+                    SourceId: $"Relic.{id}",
+                    Priority: relic.Priority,
+                    RegistrationOrder: relic.RegistrationOrder);
+                _relicOutcomeById[id] = string.IsNullOrWhiteSpace(relic.OutcomeMessage)
+                    ? "triggered"
+                    : relic.OutcomeMessage.Trim();
+                _relicParticipantList.AddItem($"{id}: {inspectText}");
+            }
+        }
+
+        _powerRelicPanel.Visible = _powerParticipantList.ItemCount > 0 || _relicParticipantList.ItemCount > 0;
+    }
+
+    private sealed record TriggerOrderContractPayload(
+        List<TriggerOrderItemPayload>? Triggers
+    );
+
+    private sealed record TriggerOrderItemPayload(
+        string? SourceId,
+        int Priority,
+        int RegistrationOrder
+    );
+
+    private sealed record OutcomeContractPayload(
+        List<OutcomeItemPayload>? Outcomes
+    );
+
+    private sealed record OutcomeItemPayload(
+        string? SourceId,
+        string? Message
     );
 
     private sealed record EnemyIntentContractPayload(
