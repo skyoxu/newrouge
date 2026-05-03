@@ -1,0 +1,20 @@
+# Execution Plan
+- Title: Task 110 review-needs-fix state reconciliation
+- Status: in-progress
+- Branch: task/T110
+- Git Head: 244f8da42a42cdae8fa7724e45fdfbe57a9232b4
+- Goal: reconcile reviewer outputs and recovery sidecar state so chapter6 can continue without repeated false needs-fix loops.
+- Scope: task 110 chapter6 recovery artifacts and task-view/test evidence alignment.
+- Current step: inspect-run guided reconciliation after repeated recent failure family.
+- Last completed step: forked run and refreshed reviewer outputs for task 110.
+- Stop-loss: do not pay additional full rerun when inspect-run reports repeated_recent_failure for same family.
+- Next action: refresh and validate only the minimal failing gate path, then resume chapter6 continuation.
+- Recovery command: `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-03/sc-review-pipeline-task-110/latest.json`
+- Open questions: whether remaining needs-fix is semantic reviewer freshness or a true unresolved obligation.
+- Exit criteria: resume-task/inspect-run report failure_code=ok or chapter6_next_action=continue with no approval/stop-loss blockers.
+- Related ADRs: ADR-0010, ADR-0025, ADR-0032
+- Related decision logs: `decision-logs/2026-05-03-task-110-chapter6-stop-loss-needs-fix-state.md`
+- Related task id(s): 110
+- Related run id: 506ff95e5abc457bb4f794b20b50b73f
+- Related latest.json: `logs/ci/2026-05-03/sc-review-pipeline-task-110/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/summary.json`, `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/repair-guide.json`, `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/run-events.jsonl`, `logs/ci/2026-05-03/sc-llm-review-task-110/review-semantic-equivalence-auditor.md`

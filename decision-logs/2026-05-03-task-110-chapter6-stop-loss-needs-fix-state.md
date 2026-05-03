@@ -1,0 +1,20 @@
+# Decision Log
+- Title: Task 110 chapter6 stop-loss needs-fix state
+- Date: 2026-05-03
+- Status: accepted
+- Supersedes: n/a (first decision for this run-state)
+- Superseded by: n/a (active)
+- Branch: task/T110
+- Git Head: 244f8da42a42cdae8fa7724e45fdfbe57a9232b4
+- Why now: inspect-run reported repeated recent failure family and recommended stopping full reruns.
+- Context: task 110 chapter6 loop showed reviewer markdown pass in some lanes while repair sidecars still reported needs-fix, producing repeated rerun cost.
+- Decision: stop additional full reruns for this state and treat it as reconciliation work until protocol fields converge.
+- Consequences: preserve artifacts, reduce wasted reruns, and require reconciliation evidence before reopening heavier loops.
+- Recovery impact: chapter6 route should prefer inspect-first and reconciliation evidence over full rerun.
+- Validation: inspect-run recent_failure_summary indicates repeated_recent_failure=true and stop_full_rerun_recommended=true.
+- Related ADRs: ADR-0010, ADR-0025, ADR-0032
+- Related execution plans: `execution-plans/2026-05-03-task-110-review-needs-fix-state-reconciliation.md`
+- Related task id(s): 110
+- Related run id: 506ff95e5abc457bb4f794b20b50b73f
+- Related latest.json: `logs/ci/2026-05-03/sc-review-pipeline-task-110/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/summary.json`, `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/repair-guide.json`, `logs/ci/2026-05-03/sc-review-pipeline-task-110-506ff95e5abc457bb4f794b20b50b73f/run-events.jsonl`

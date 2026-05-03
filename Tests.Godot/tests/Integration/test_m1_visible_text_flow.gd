@@ -500,6 +500,41 @@ func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> v
 	await get_tree().process_frame
 	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 
+
+# acceptance: ACC:T110.5
+func test_reward_confirm_vs_skip_preserves_route_ownership_and_controls_deck_mutation() -> void:
+	var main_confirm := await _load_main_on_map()
+	var start_confirm := main_confirm.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(start_confirm.get("ok", false))).is_true()
+	await get_tree().process_frame
+	var complete_confirm := main_confirm.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(complete_confirm.get("ok", false))).is_true()
+	assert_that(str(complete_confirm.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+	await get_tree().process_frame
+	var deck_before_confirm = main_confirm.call("GetRunDeckCardIdsForTest")
+	var confirm_result := main_confirm.call("ResolveRewardForTest", {"action": "confirm", "selected_index": 0}) as Dictionary
+	var deck_after_confirm = main_confirm.call("GetRunDeckCardIdsForTest")
+	assert_that(bool(confirm_result.get("ok", false))).is_true()
+	assert_that(int(confirm_result.get("deck_after_count", -1))).is_equal(int(confirm_result.get("deck_before_count", -1)) + 1)
+	assert_that(int(deck_after_confirm.size())).is_equal(int(deck_before_confirm.size()) + 1)
+	assert_that(_current_scene_path(main_confirm)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+
+	var main_skip := await _load_main_on_map()
+	var start_skip := main_skip.call("StartMapNodeRouteForTest", "combat-02", "combat", true, "") as Dictionary
+	assert_that(bool(start_skip.get("ok", false))).is_true()
+	await get_tree().process_frame
+	var complete_skip := main_skip.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(complete_skip.get("ok", false))).is_true()
+	assert_that(str(complete_skip.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+	await get_tree().process_frame
+	var deck_before_skip = main_skip.call("GetRunDeckCardIdsForTest")
+	var skip_result := main_skip.call("ResolveRewardForTest", {"action": "skip"}) as Dictionary
+	var deck_after_skip = main_skip.call("GetRunDeckCardIdsForTest")
+	assert_that(bool(skip_result.get("ok", false))).is_true()
+	assert_that(int(skip_result.get("deck_after_count", -1))).is_equal(int(skip_result.get("deck_before_count", -1)))
+	assert_that(int(deck_after_skip.size())).is_equal(int(deck_before_skip.size()))
+	assert_that(_current_scene_path(main_skip)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+
 # acceptance anchor: ACC:T73.5
 func test_combat_victory_without_reward_rule_routes_directly_back_to_map() -> void:
 	var main := await _load_main_on_map()
