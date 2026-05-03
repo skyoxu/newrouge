@@ -203,3 +203,88 @@ func test_each_map_started_route_returns_to_map_or_refuses_with_explicit_reason(
     assert_str(str(main.call("GetMapRouteLastFeedbackForTest"))).is_equal("RouteBlocked")
     assert_int(main.call("GetMapRouteCompletedNodeCountForTest")).is_equal(count_after_ok)
     assert_bool(_route_history(main).has(EVENT_SCENE)).is_false()
+
+
+# acceptance: ACC:T110.1
+func test_reward_boundary_resolves_via_shared_main_route_owner_contract() -> void:
+    var main := await _load_main()
+    var before_start_count := int(main.call("GetMapRouteStartInvocationCountForTest"))
+    var start_result := _start_route(main, "combat-01", "combat", true)
+    await get_tree().process_frame
+    var completion_result := _complete_route(main)
+    await get_tree().process_frame
+    var resolve_result := main.call("ResolveRewardForTest", "confirm") as Dictionary
+    await get_tree().process_frame
+
+    assert_bool(bool(start_result.get("ok", false))).is_true()
+    assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_str(str(completion_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+    assert_bool(bool(resolve_result.get("ok", false))).is_true()
+    assert_str(str(resolve_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+    assert_int(int(main.call("GetMapRouteStartInvocationCountForTest"))).is_equal(before_start_count + 1)
+    assert_str(str(main.call("GetMapRouteLastStartDestinationForTest"))).is_equal(COMBAT_SCENE)
+
+
+# acceptance: ACC:T110.2
+func test_node_resolution_boundary_refuses_unreachable_nodes_without_mutating_completion_state() -> void:
+    var main := await _load_main()
+    var before_count := int(main.call("GetMapRouteCompletedNodeCountForTest"))
+    var before_route_history := _route_history(main)
+    var blocked_result := _start_route(main, "event-locked", "event", false, "RouteBlocked")
+    await get_tree().process_frame
+
+    assert_bool(bool(blocked_result.get("ok", false))).is_false()
+    assert_str(str(main.call("GetMapRouteLastFeedbackForTest"))).is_equal("RouteBlocked")
+    assert_int(int(main.call("GetMapRouteCompletedNodeCountForTest"))).is_equal(before_count)
+    assert_int(_route_history(main).size()).is_equal(before_route_history.size())
+
+
+# acceptance: ACC:T110.3
+func test_post_combat_transition_keeps_route_owner_state_on_main_and_returns_to_map() -> void:
+    var main := await _load_main()
+    var start_result := _start_route(main, "combat-02", "combat", true)
+    await get_tree().process_frame
+    var completion_result := _complete_route(main)
+    await get_tree().process_frame
+    var resolve_result := main.call("ResolveRewardForTest", {"action": "confirm", "selected_index": 0}) as Dictionary
+    await get_tree().process_frame
+
+    assert_bool(bool(start_result.get("ok", false))).is_true()
+    assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_bool(bool(resolve_result.get("ok", false))).is_true()
+    assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
+    assert_int(int(main.call("GetMapRouteCompletedNodeCountForTest"))).is_equal(1)
+    assert_str(str(main.call("GetMapRouteLastSelectedNodeIdForTest"))).is_equal("combat-02")
+
+
+# acceptance: ACC:T110.6
+func test_non_combat_owned_flows_do_not_enter_reward_resolution_path() -> void:
+    var main := await _load_main()
+    var start_result := _start_route(main, "shop-01", "shop", true)
+    await get_tree().process_frame
+    var completion_result := _complete_route(main)
+    await get_tree().process_frame
+    var resolve_result := main.call("ResolveRewardForTest", "confirm") as Dictionary
+
+    assert_bool(bool(start_result.get("ok", false))).is_true()
+    assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_str(str(completion_result.get("scene_path", ""))).is_equal(MAP_SCENE)
+    assert_bool(bool(resolve_result.get("ok", false))).is_false()
+    assert_str(str(resolve_result.get("reason", ""))).is_equal("not-on-reward")
+
+
+# acceptance: ACC:T110.7
+func test_repeated_reward_resolution_is_rejected_to_prevent_duplicate_route_effects() -> void:
+    var main := await _load_main()
+    var start_result := _start_route(main, "event-01", "event", true)
+    await get_tree().process_frame
+    var completion_result := _complete_route(main)
+    await get_tree().process_frame
+    var first_resolve := main.call("ResolveRewardForTest", {"action": "confirm", "selected_index": 0}) as Dictionary
+    var second_resolve := main.call("ResolveRewardForTest", {"action": "confirm", "selected_index": 1}) as Dictionary
+
+    assert_bool(bool(start_result.get("ok", false))).is_true()
+    assert_bool(bool(completion_result.get("ok", false))).is_true()
+    assert_bool(bool(first_resolve.get("ok", false))).is_true()
+    assert_bool(bool(second_resolve.get("ok", false))).is_false()
+    assert_str(str(second_resolve.get("reason", ""))).is_equal("not-on-reward")
