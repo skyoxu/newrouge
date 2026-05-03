@@ -4452,20 +4452,19 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
       "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Game.Core.Tests/Tasks/Task0110WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "T110 routes non-combat relic runtime effects by extending the shared run trigger boundary path established in T99, and it does not add a separate relic runtime trigger path. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
-      "When a reward boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
-      "When a node-resolution boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "Before non-combat relic runtime routing for T110 is considered complete, the combat-path relic effect route established by T99 must already be live and reused as the same shared run trigger boundary path; introducing a parallel non-combat-only trigger route fails acceptance. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "When a reward boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "When a node-resolution boundary triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local post-combat patch. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
       "When a post-combat ownership transition triggers a relic runtime effect, the effect resolves through the shared run trigger path and not through a scene-local patch path. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "Across shared run boundaries, relic-triggered results keep uniqueness rules and current ownership intact, and the resulting state changes remain observable in player-facing flow transitions. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
       "On non-combat surfaces, routing relic effects through shared run triggers does not create a scene-local relic effect stack, and those surfaces continue to resolve through the same shared run trigger path. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Run and integration coverage verifies that non-combat relic-triggered effects resolve through shared run trigger paths while uniqueness and ownership rules remain preserved. Refs: Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "If workflow has not selected T110 for implementation, this task does not execute implementation work or advance task execution state. Refs: logs/ci/<date>/single-task-light-lane-rerun-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Repeated triggering across reward/node-resolution/post-combat boundaries remains idempotent: duplicate relic runtime resolution attempts are rejected, while accepted transitions preserve uniqueness and current ownership without introducing a scene-local relic stack. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "If workflow has not selected T110 for implementation, this task does not execute implementation work or advance task execution state. Refs: Game.Core.Tests/Tasks/Task0110WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend run and integration tests to verify relic-triggered non-combat effects build on the T99 shared run trigger boundary path, execute at reward, node-resolution, and post-combat ownership-transition boundaries, and preserve uniqueness and ownership without scene-local runtime stacks."
@@ -4478,7 +4477,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0110.json"
+      "logs/ci/<date>/task-0110.json",
+      "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd"
     ],
     "semantic_review_tier": "full"
   },
