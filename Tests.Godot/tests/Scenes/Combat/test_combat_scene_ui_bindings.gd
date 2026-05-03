@@ -1588,3 +1588,145 @@ func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_
 	assert_that(joined.find("Power.berserk_aura") >= 0).is_true()
 	assert_that(bool(scene.call("WasPotionRuntimeClosureExecutedForTest"))).is_false()
 	assert_that(bool(scene.call("IsSceneLocalEffectStackUsedForTest"))).is_false()
+
+
+# --- T111 anchors start ---
+# keep T111 acceptance anchors isolated from the previous test context
+# so acceptance-semantic evidence snippets resolve to the correct behavior block.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ACC:T111.1
+func test_t111_potion_not_directly_visible_is_still_inspectable_from_combat_surface() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var hidden_runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","potions":[{"id":"hidden_elixir","inspectText":"Potion hidden_elixir [priority=9,registrationOrder=6,outcome=Potion hidden elixir applied]","priority":9,"registrationOrder":6,"outcomeMessage":"Potion hidden elixir applied","visibleOnSurface":false}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", hidden_runtime_snapshot))).is_true()
+	var visible_hidden_ids := scene.call("GetVisiblePotionIdsForTest") as Array
+	assert_that(visible_hidden_ids.has("hidden_elixir")).is_false()
+	assert_that(int(scene.call("GetPotionSurfaceIndexForTest", "hidden_elixir"))).is_equal(-1)
+	assert_that(bool(scene.call("RequestPotionInspectFromSurfaceForTest", "hidden_elixir"))).is_false()
+	assert_that(bool(scene.call("RequestPotionInspectBySurfaceIndexForTest", 0))).is_false()
+	assert_that(bool(scene.call("RequestPotionInspectFromCombatSurfaceActionForTest", "hidden_elixir"))).is_true()
+	assert_that(int(scene.call("GetPotionPriorityForTest", "hidden_elixir"))).is_equal(9)
+	assert_that(int(scene.call("GetPotionRegistrationOrderForTest", "hidden_elixir"))).is_equal(6)
+	assert_that(str(scene.call("GetPotionOutcomeMessageForTest", "hidden_elixir"))).is_equal("Potion hidden elixir applied")
+
+	scene.call("ApplyTargetInspectionForTest", "hidden_elixir")
+	var hidden_inspect := str(scene.call("GetParticipantInspectTextForTest", "hidden_elixir"))
+	assert_that(hidden_inspect).contains("hidden_elixir")
+	assert_that(hidden_inspect).contains("priority=9")
+	assert_that(hidden_inspect).contains("registrationOrder=6")
+	assert_that(hidden_inspect).contains("outcome=Potion hidden elixir applied")
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(hidden_inspect)
+
+	var hidden_runtime_snapshot_updated := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","potions":[{"id":"hidden_elixir","inspectText":"Potion hidden_elixir [priority=9,registrationOrder=6,outcome=Potion hidden elixir refreshed]","priority":9,"registrationOrder":6,"outcomeMessage":"Potion hidden elixir refreshed","visibleOnSurface":false}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", hidden_runtime_snapshot_updated))).is_true()
+	assert_that(bool(scene.call("RequestPotionInspectFromCombatSurfaceActionForTest", "hidden_elixir"))).is_true()
+	var hidden_inspect_updated := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(hidden_inspect_updated).contains("outcome=Potion hidden elixir refreshed")
+	assert_that(hidden_inspect_updated).is_not_equal(hidden_inspect)
+
+
+# ACC:T111.1
+# ACC:T111.2
+func test_t111_potion_participants_are_visible_and_inspectable_from_combat_surface() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","potions":[{"id":"healing_draught","inspectText":"Potion healing_draught [priority=8,registrationOrder=2,outcome=Potion restored 6 hp]","priority":8,"registrationOrder":2,"outcomeMessage":"Potion restored 6 hp"}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+
+	var potion_ids := scene.call("GetVisiblePotionIdsForTest") as Array
+	assert_that(potion_ids.has("healing_draught")).is_true()
+	assert_that(bool(scene.call("HasPowerRelicSurfaceForTest"))).is_true()
+	var potion_surface_text := str(scene.call("GetPotionParticipantSurfaceTextForTest", "healing_draught"))
+	assert_that(potion_surface_text).contains("healing_draught")
+	assert_that(potion_surface_text).contains("priority=8")
+	assert_that(potion_surface_text).contains("registrationOrder=2")
+	assert_that(potion_surface_text).contains("outcome=Potion restored 6 hp")
+	assert_that(int(scene.call("GetPotionPriorityForTest", "healing_draught"))).is_equal(8)
+	assert_that(int(scene.call("GetPotionRegistrationOrderForTest", "healing_draught"))).is_equal(2)
+	assert_that(str(scene.call("GetPotionOutcomeMessageForTest", "healing_draught"))).is_equal("Potion restored 6 hp")
+
+	var inspect_index := int(scene.call("GetPotionSurfaceIndexForTest", "healing_draught"))
+	assert_that(inspect_index >= 0).is_true()
+	assert_that(bool(scene.call("RequestPotionInspectBySurfaceIndexForTest", inspect_index))).is_true()
+	var inspect_from_surface_index := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(inspect_from_surface_index).contains("healing_draught")
+	assert_that(inspect_from_surface_index).contains("priority=8")
+	assert_that(inspect_from_surface_index).contains("registrationOrder=2")
+	assert_that(inspect_from_surface_index).contains("outcome=Potion restored 6 hp")
+	assert_that(bool(scene.call("RequestPotionInspectFromSurfaceForTest", "healing_draught"))).is_true()
+	var inspect_from_surface_id := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(inspect_from_surface_id).is_equal(inspect_from_surface_index)
+	assert_that(bool(scene.call("RequestPotionInspectFromCombatSurfaceActionForTest", "healing_draught"))).is_true()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(inspect_from_surface_index)
+
+	scene.call("ApplyTargetInspectionForTest", "healing_draught")
+	var potion_inspect := str(scene.call("GetParticipantInspectTextForTest", "healing_draught"))
+	assert_that(potion_inspect).contains("healing_draught")
+	assert_that(potion_inspect).contains("priority=8")
+	assert_that(potion_inspect).contains("registrationOrder=2")
+	assert_that(potion_inspect).contains("outcome=Potion restored 6 hp")
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(potion_inspect)
+	assert_that(bool(scene.call("RequestPotionInspectBySurfaceIndexForTest", 999))).is_false()
+	assert_that(bool(scene.call("RequestPotionInspectFromSurfaceForTest", "missing_potion"))).is_false()
+
+	assert_that(bool(scene.call("IsSceneLocalEffectStackUsedForTest"))).is_false()
+
+
+# ACC:T111.4
+func test_t111_repeated_runs_keep_potion_surface_visibility_and_inspection_deterministic() -> void:
+	var surface_results: Array[String] = []
+	var inspect_results: Array[String] = []
+	var visible_id_results: Array[String] = []
+
+	for _i in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+
+		var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","potions":[{"id":"healing_draught","inspectText":"Potion healing_draught [priority=8,registrationOrder=2,outcome=Potion restored 6 hp]","priority":8,"registrationOrder":2,"outcomeMessage":"Potion restored 6 hp"}]}'
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+
+		var visible_ids := scene.call("GetVisiblePotionIdsForTest") as Array
+		assert_that(visible_ids.size()).is_equal(1)
+		assert_that(str(visible_ids[0])).is_equal("healing_draught")
+		visible_id_results.append(str(visible_ids))
+
+		var surface_text := str(scene.call("GetPotionParticipantSurfaceTextForTest", "healing_draught"))
+		assert_that(surface_text).contains("healing_draught")
+		assert_that(surface_text).contains("priority=8")
+		assert_that(surface_text).contains("registrationOrder=2")
+		assert_that(surface_text).contains("outcome=Potion restored 6 hp")
+		surface_results.append(surface_text)
+
+		assert_that(bool(scene.call("RequestPotionInspectFromSurfaceForTest", "healing_draught"))).is_true()
+		var inspect_text := str(scene.call("GetLatestFeedbackMessageForTest"))
+		assert_that(inspect_text).contains("healing_draught")
+		assert_that(inspect_text).contains("priority=8")
+		assert_that(inspect_text).contains("registrationOrder=2")
+		assert_that(inspect_text).contains("outcome=Potion restored 6 hp")
+		inspect_results.append(inspect_text)
+		assert_that(bool(scene.call("RequestPotionInspectFromCombatSurfaceActionForTest", "healing_draught"))).is_true()
+		assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_equal(inspect_text)
+
+	assert_that(visible_id_results[1]).is_equal(visible_id_results[0])
+	assert_that(surface_results[1]).is_equal(surface_results[0])
+	assert_that(inspect_results[1]).is_equal(inspect_results[0])

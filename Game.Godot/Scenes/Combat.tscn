@@ -174,6 +174,11 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 
+[node name="PotionParticipantList" type="ItemList" parent="HUD/PowerRelicPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+
 [node name="TurnControls" type="HBoxContainer" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0

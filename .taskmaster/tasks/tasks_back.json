@@ -4522,15 +4522,13 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
     ],
     "acceptance": [
-      "In the Combat scene, each active potion that can affect a player decision is either visible on the combat surface or inspectable from it, and the shown potion state matches the shared combat-owned state at that time. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+    "In the Combat scene, each active potion that can affect a player decision is surfaced on the combat surface; if a potion is not directly visible, it must be inspectable from the same surface through an explicit player-reachable inspect action, and inspected fields must match the shared combat-owned state at inspection time. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Combat reads potion participant state from the existing shared combat ownership path and does not create, maintain, or rely on a scene-local potion stack as the authoritative source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "When a potion resolves through the shared trigger path, the Combat scene applies the player-relevant result in deterministic trigger order and records visible feedback or history that identifies the potion source and the result. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Deterministic automated coverage verifies potion execution order on the shared trigger path and verifies Combat UI state for active potions that should be visible or inspectable. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If workflow has not selected T111, this task does not proceed with implementation or task execution artifacts. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+    "When a potion resolves through the shared trigger path, the Combat scene applies the player-relevant result in trigger order and records feedback/history entries that explicitly identify potion source and resolved outcome in the same entry without substitution by non-potion participant messages. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+    "For identical combat inputs, potion execution order and potion-related feedback/history are identical across repeated runs, and active decision-relevant potion UI state remains visible or inspectable from the Combat surface. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add deterministic trigger-order assertions and Combat UI state assertions for potions as visible, inspectable, and effectful combat participants on the shared combat ownership path."
@@ -4542,7 +4540,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0111.json"
+      "logs/ci/<date>/task-0111.json",
+      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
   },
