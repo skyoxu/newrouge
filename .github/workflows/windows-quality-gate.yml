@@ -241,8 +241,19 @@ jobs:
             throw "Unable to resolve dotnet target (.sln/.csproj) in repository root."
           }
           Write-Host "Resolved dotnet target: $dotnetTarget"
-          dotnet restore $dotnetTarget
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $restoreSucceeded = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "dotnet restore attempt $attempt/3 for $dotnetTarget"
+            dotnet restore $dotnetTarget
+            if ($LASTEXITCODE -eq 0) {
+              $restoreSucceeded = $true
+              break
+            }
+            if ($attempt -lt 3) {
+              Start-Sleep -Seconds (5 * $attempt)
+            }
+          }
+          if (-not $restoreSucceeded) { exit 1 }
           dotnet build $dotnetTarget -c Release -v minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
