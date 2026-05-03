@@ -3827,14 +3827,14 @@
     "test_refs": [
       "Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
+      "Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs"
     ],
     "acceptance": [
-      "During live combat, AOE and multi-hit effects must resolve through the existing combat runtime entrypoint, and any separate runtime path fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "During live combat, AOE and multi-hit effects must use the existing shared damage-calculation rules, and any separate damage-calculation branch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "During live combat, AOE and multi-hit resolution must follow the shared deterministic target-order rules owned by the combat runtime, and scene-local target-order logic must not alter the result order. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "Combat rule tests must be added or extended to verify AOE and multi-hit ordering on the live combat runtime path and must fail when that ordering diverges from the shared damage-rule order. Refs: Game.Core.Tests/Tasks/Task0048AcceptanceTests.cs",
-      "If T100 has not been selected by workflow, implementation execution must be refused, implementation and code state must remain unchanged, and review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
+      "During live combat, AOE and multi-hit effects must resolve through the existing combat runtime entrypoint, and any separate runtime path fails acceptance. Refs: Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs",
+      "During live combat, AOE and multi-hit effects must use the existing shared damage-calculation rules, and any separate damage-calculation branch fails acceptance. Refs: Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs",
+      "During live combat, AOE and multi-hit resolution must follow the shared deterministic target-order rules owned by the combat runtime, and scene-local target-order logic must not alter the result order. Refs: Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Combat rule tests must be added or extended to verify AOE and multi-hit ordering on the live combat runtime path and must fail when that ordering diverges from the shared damage-rule order. Refs: Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs",
+      "If T100 has not been selected by workflow, implementation execution must be refused, implementation and code state must remain unchanged, and review evidence must show the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0100AcceptanceTests.cs"
     ],
     "test_strategy": [
       "Add or extend combat rule tests to cover AOE and multi-hit ordering inside the live combat runtime path."
@@ -3846,7 +3846,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/task-0100.json"
+      "logs/ci/<date>/task-0100.json",
+      "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
     "semantic_review_tier": "full"
   },
