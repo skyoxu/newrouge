@@ -29,6 +29,7 @@ public partial class CombatScene : Control
     private Label _powerRelicTitleLabel = default!;
     private ItemList _powerParticipantList = default!;
     private ItemList _relicParticipantList = default!;
+    private ItemList _potionParticipantList = default!;
     private HBoxContainer _cardButtonRow = default!;
     private Label _enemyStatusTitleLabel = default!;
     private Label _enemyNameValue = default!;
@@ -91,8 +92,12 @@ public partial class CombatScene : Control
     private readonly Dictionary<string, string> _relicInspectById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TriggerOrderItemPayload> _powerTriggerById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TriggerOrderItemPayload> _relicTriggerById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TriggerOrderItemPayload> _potionTriggerById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _powerOutcomeById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _relicOutcomeById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _potionOutcomeById = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _potionInspectById = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _potionVisibleOnSurfaceIds = new(StringComparer.Ordinal);
     private bool _potionRuntimeClosureExecutedForTest;
     private readonly List<string> _lastPowerRelicTriggerOrder = new();
     private readonly List<string> _lastPowerRelicOutcomeMessages = new();
@@ -134,6 +139,7 @@ public partial class CombatScene : Control
         _powerRelicTitleLabel = GetNode<Label>("HUD/PowerRelicPanel/PowerRelicTitle");
         _powerParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/PowerParticipantList");
         _relicParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/RelicParticipantList");
+        _potionParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/PotionParticipantList");
         _cardButtonRow = GetNode<HBoxContainer>("HUD/CardButtonRow");
         _enemyStatusTitleLabel = GetNode<Label>("HUD/EnemyStatusPanel/EnemyStatusTitle");
         _enemyNameValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyNameValue");
@@ -160,7 +166,7 @@ public partial class CombatScene : Control
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
         _feedbackMessageLabel.Text = string.Empty;
-        _powerRelicTitleLabel.Text = "Power/Relic Participants";
+        _powerRelicTitleLabel.Text = "Power/Relic/Potion Participants";
         _powerRelicPanel.Visible = false;
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
@@ -235,7 +241,7 @@ public partial class CombatScene : Control
             payload.Difficulty,
             payload.PlayerHp,
             payload.TurnState ?? string.Empty));
-        ApplyPowerRelicParticipants(payload.Powers, payload.Relics);
+        ApplyPowerRelicParticipants(payload.Powers, payload.Relics, payload.Potions);
         return true;
     }
 
@@ -376,22 +382,7 @@ public partial class CombatScene : Control
 
     public void ApplyTargetInspectionForTest(string targetId)
     {
-        if (string.IsNullOrWhiteSpace(targetId))
-        {
-            return;
-        }
-
-        var normalized = targetId.Trim();
-        if (_powerInspectById.TryGetValue(normalized, out var powerInspect))
-        {
-            PublishPowerRelicOutcomeMessage(powerInspect);
-            return;
-        }
-
-        if (_relicInspectById.TryGetValue(normalized, out var relicInspect))
-        {
-            PublishPowerRelicOutcomeMessage(relicInspect);
-        }
+        _ = TryInspectParticipant(targetId);
     }
 
     public string GetLatestFeedbackMessageForTest()
@@ -452,8 +443,8 @@ public partial class CombatScene : Control
             return false;
         }
 
-        ApplyPowerRelicParticipants(payload.Powers, payload.Relics);
-        return _powerInspectById.Count > 0 || _relicInspectById.Count > 0;
+        ApplyPowerRelicParticipants(payload.Powers, payload.Relics, payload.Potions);
+        return _powerInspectById.Count > 0 || _relicInspectById.Count > 0 || _potionInspectById.Count > 0;
     }
 
     public global::Godot.Collections.Array<string> GetVisiblePowerIdsForTest()
@@ -478,6 +469,17 @@ public partial class CombatScene : Control
         return ids;
     }
 
+    public global::Godot.Collections.Array<string> GetVisiblePotionIdsForTest()
+    {
+        var ids = new global::Godot.Collections.Array<string>();
+        foreach (var id in _potionVisibleOnSurfaceIds.OrderBy(static item => item, StringComparer.Ordinal))
+        {
+            ids.Add(id);
+        }
+
+        return ids;
+    }
+
     public string GetParticipantInspectTextForTest(string participantId)
     {
         if (string.IsNullOrWhiteSpace(participantId))
@@ -494,6 +496,11 @@ public partial class CombatScene : Control
         if (_relicInspectById.TryGetValue(normalized, out var relicInspect))
         {
             return relicInspect;
+        }
+
+        if (_potionInspectById.TryGetValue(normalized, out var potionInspect))
+        {
+            return potionInspect;
         }
 
         return string.Empty;
@@ -529,6 +536,122 @@ public partial class CombatScene : Control
 
         var normalized = participantId.Trim();
         return FindParticipantSurfaceText(_relicParticipantList, normalized);
+    }
+
+    public string GetPotionParticipantSurfaceTextForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return string.Empty;
+        }
+
+        var normalized = participantId.Trim();
+        return FindParticipantSurfaceText(_potionParticipantList, normalized);
+    }
+
+    public int GetPotionSurfaceIndexForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return -1;
+        }
+
+        var normalized = participantId.Trim();
+        for (var index = 0; index < _potionParticipantList.ItemCount; index++)
+        {
+            var itemText = _potionParticipantList.GetItemText(index);
+            var itemId = ExtractParticipantIdFromSurfaceText(itemText);
+            if (string.Equals(itemId, normalized, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    public bool RequestPotionInspectBySurfaceIndexForTest(int index)
+    {
+        if (index < 0 || index >= _potionParticipantList.ItemCount)
+        {
+            return false;
+        }
+
+        var itemText = _potionParticipantList.GetItemText(index);
+        var participantId = ExtractParticipantIdFromSurfaceText(itemText);
+        return TryInspectParticipant(participantId);
+    }
+
+    public bool RequestPotionInspectFromSurfaceForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return false;
+        }
+
+        var normalized = participantId.Trim();
+        if (!_potionVisibleOnSurfaceIds.Contains(normalized))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(FindParticipantSurfaceText(_potionParticipantList, normalized)))
+        {
+            return false;
+        }
+
+        return TryInspectParticipant(normalized);
+    }
+
+    public bool RequestPotionInspectFromCombatSurfaceActionForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return false;
+        }
+
+        var normalized = participantId.Trim();
+        if (!_potionInspectById.ContainsKey(normalized))
+        {
+            return false;
+        }
+
+        // Explicit combat-surface inspect action path: the action is reachable even when
+        // a potion is not directly visible in the surface participant list.
+        return TryInspectParticipant(normalized);
+    }
+
+    public int GetPotionPriorityForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return -1;
+        }
+
+        var normalized = participantId.Trim();
+        return _potionTriggerById.TryGetValue(normalized, out var payload) ? payload.Priority : -1;
+    }
+
+    public int GetPotionRegistrationOrderForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return -1;
+        }
+
+        var normalized = participantId.Trim();
+        return _potionTriggerById.TryGetValue(normalized, out var payload) ? payload.RegistrationOrder : -1;
+    }
+
+    public string GetPotionOutcomeMessageForTest(string participantId)
+    {
+        if (string.IsNullOrWhiteSpace(participantId))
+        {
+            return string.Empty;
+        }
+
+        var normalized = participantId.Trim();
+        return _potionOutcomeById.TryGetValue(normalized, out var message) ? message : string.Empty;
     }
 
     public bool TryResolvePowerRelicTriggerOrderFromContractJsonForTest(string contractJson)
@@ -829,6 +952,14 @@ public partial class CombatScene : Control
             }
         }
 
+        foreach (var payload in _potionTriggerById.Values)
+        {
+            if (!string.IsNullOrWhiteSpace(payload.SourceId))
+            {
+                triggerKeys.Add(new CombatTriggerOrderKey(payload.SourceId, payload.Priority, payload.RegistrationOrder));
+            }
+        }
+
         _lastPowerRelicTriggerOrder.Clear();
         if (triggerKeys.Count <= 0)
         {
@@ -844,6 +975,10 @@ public partial class CombatScene : Control
             if (!string.IsNullOrWhiteSpace(outcome))
             {
                 PublishPowerRelicOutcomeMessage($"{sourceId}: {outcome}");
+                if (sourceId.StartsWith("Potion.", StringComparison.Ordinal))
+                {
+                    _potionRuntimeClosureExecutedForTest = true;
+                }
             }
         }
     }
@@ -892,7 +1027,56 @@ public partial class CombatScene : Control
             }
         }
 
+        if (sourceId.StartsWith("Potion.", StringComparison.Ordinal))
+        {
+            var id = sourceId["Potion.".Length..];
+            if (_potionOutcomeById.TryGetValue(id, out var potionOutcome))
+            {
+                return potionOutcome;
+            }
+        }
+
         return string.Empty;
+    }
+
+    private bool TryInspectParticipant(string targetId)
+    {
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return false;
+        }
+
+        var normalized = targetId.Trim();
+        if (_powerInspectById.TryGetValue(normalized, out var powerInspect))
+        {
+            PublishPowerRelicOutcomeMessage(powerInspect);
+            return true;
+        }
+
+        if (_relicInspectById.TryGetValue(normalized, out var relicInspect))
+        {
+            PublishPowerRelicOutcomeMessage(relicInspect);
+            return true;
+        }
+
+        if (_potionInspectById.TryGetValue(normalized, out var potionInspect))
+        {
+            PublishPowerRelicOutcomeMessage(potionInspect);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string ExtractParticipantIdFromSurfaceText(string surfaceText)
+    {
+        if (string.IsNullOrWhiteSpace(surfaceText))
+        {
+            return string.Empty;
+        }
+
+        var separator = surfaceText.IndexOf(": ", StringComparison.Ordinal);
+        return separator > 0 ? surfaceText[..separator].Trim() : string.Empty;
     }
 
     public int GetCoreStateMutationCountForTest()
@@ -2749,7 +2933,8 @@ public partial class CombatScene : Control
         int PlayerHp,
         string? TurnState,
         List<ParticipantItemPayload>? Powers = null,
-        List<ParticipantItemPayload>? Relics = null
+        List<ParticipantItemPayload>? Relics = null,
+        List<ParticipantItemPayload>? Potions = null
     );
 
     private void PublishPowerRelicOutcomeMessage(string message)
@@ -2766,7 +2951,8 @@ public partial class CombatScene : Control
 
     private sealed record ParticipantsContractPayload(
         List<ParticipantItemPayload>? Powers,
-        List<ParticipantItemPayload>? Relics
+        List<ParticipantItemPayload>? Relics,
+        List<ParticipantItemPayload>? Potions = null
     );
 
     private sealed record ParticipantItemPayload(
@@ -2774,21 +2960,28 @@ public partial class CombatScene : Control
         string? InspectText,
         int Priority = 10,
         int RegistrationOrder = 10,
-        string? OutcomeMessage = null
+        string? OutcomeMessage = null,
+        bool VisibleOnSurface = true
     );
 
     private void ApplyPowerRelicParticipants(
         IReadOnlyList<ParticipantItemPayload>? powers,
-        IReadOnlyList<ParticipantItemPayload>? relics)
+        IReadOnlyList<ParticipantItemPayload>? relics,
+        IReadOnlyList<ParticipantItemPayload>? potions)
     {
         _powerInspectById.Clear();
         _relicInspectById.Clear();
+        _potionInspectById.Clear();
         _powerTriggerById.Clear();
         _relicTriggerById.Clear();
+        _potionTriggerById.Clear();
         _powerOutcomeById.Clear();
         _relicOutcomeById.Clear();
+        _potionOutcomeById.Clear();
+        _potionVisibleOnSurfaceIds.Clear();
         _powerParticipantList.Clear();
         _relicParticipantList.Clear();
+        _potionParticipantList.Clear();
         _potionRuntimeClosureExecutedForTest = false;
 
         if (powers is not null)
@@ -2841,7 +3034,36 @@ public partial class CombatScene : Control
             }
         }
 
-        _powerRelicPanel.Visible = _powerParticipantList.ItemCount > 0 || _relicParticipantList.ItemCount > 0;
+        if (potions is not null)
+        {
+            foreach (var potion in potions)
+            {
+                var id = (potion.Id ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                var inspectText = string.IsNullOrWhiteSpace(potion.InspectText)
+                    ? $"inspect {id}"
+                    : potion.InspectText.Trim();
+                _potionInspectById[id] = inspectText;
+                _potionTriggerById[id] = new TriggerOrderItemPayload(
+                    SourceId: $"Potion.{id}",
+                    Priority: potion.Priority,
+                    RegistrationOrder: potion.RegistrationOrder);
+                _potionOutcomeById[id] = string.IsNullOrWhiteSpace(potion.OutcomeMessage)
+                    ? "triggered"
+                    : potion.OutcomeMessage.Trim();
+                if (potion.VisibleOnSurface)
+                {
+                    _potionParticipantList.AddItem($"{id}: {inspectText}");
+                    _potionVisibleOnSurfaceIds.Add(id);
+                }
+            }
+        }
+
+        _powerRelicPanel.Visible = _powerParticipantList.ItemCount > 0 || _relicParticipantList.ItemCount > 0 || _potionParticipantList.ItemCount > 0;
     }
 
     private sealed record TriggerOrderContractPayload(

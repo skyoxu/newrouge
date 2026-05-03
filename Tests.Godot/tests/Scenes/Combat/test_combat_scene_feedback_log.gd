@@ -441,3 +441,79 @@ func test_t106_shared_trigger_order_and_runtime_outcome_are_player_observable() 
 	assert_that(str(outcome_messages[1]).find("Power.berserk_aura") >= 0).is_true()
 	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
 	assert_that(latest_feedback.find("Power.berserk_aura") >= 0).is_true()
+
+
+# --- T111 anchors start ---
+# keep T111 anchors isolated from T106 relic/power assertions so
+# semantic evidence snippets map to potion-specific behavior only.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ACC:T111.3
+# ACC:T111.4
+func test_t111_potion_shared_trigger_order_and_feedback_are_deterministic_and_player_visible() -> void:
+	var first_order: Array = []
+	var second_order: Array = []
+	var first_history: Array = []
+	var second_history: Array = []
+
+	for run_index in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+
+		var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","potions":[{"id":"frost_tonic","inspectText":"Potion Frost Tonic: apply chill","priority":10,"registrationOrder":4,"outcomeMessage":"Potion applied chill"},{"id":"ember_vial","inspectText":"Potion Ember Vial: apply burn","priority":10,"registrationOrder":1,"outcomeMessage":"Potion applied burn"}]}'
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t111_runtime", 24, 24))).is_true()
+		assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t111_runtime"))).is_true()
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+		var trigger_order := scene.call("GetLastPowerRelicTriggerOrderForTest") as Array
+		assert_that(trigger_order.size()).is_equal(2)
+		assert_that(str(trigger_order[0])).is_equal("Potion.ember_vial")
+		assert_that(str(trigger_order[1])).is_equal("Potion.frost_tonic")
+		var outcome_messages := scene.call("GetLastPowerRelicOutcomeMessagesForTest") as Array
+		assert_that(outcome_messages.size()).is_equal(2)
+		assert_that(str(outcome_messages[0]).find("Potion.ember_vial") >= 0).is_true()
+		assert_that(str(outcome_messages[1]).find("Potion.frost_tonic") >= 0).is_true()
+		assert_that(str(outcome_messages[0]).find("Power.") < 0).is_true()
+		assert_that(str(outcome_messages[1]).find("Power.") < 0).is_true()
+		assert_that(str(outcome_messages[0]).find("Relic.") < 0).is_true()
+		assert_that(str(outcome_messages[1]).find("Relic.") < 0).is_true()
+		assert_that(bool(scene.call("WasPotionRuntimeClosureExecutedForTest"))).is_true()
+
+		var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+		assert_that(latest_feedback.find("Potion.frost_tonic") >= 0).is_true()
+		assert_that(latest_feedback.find("applied chill") >= 0).is_true()
+		assert_that(latest_feedback.find("Power.") < 0).is_true()
+		assert_that(latest_feedback.find("Relic.") < 0).is_true()
+		var history := scene.call("GetFeedbackHistoryForTest") as Array
+		var joined := "\n".join(history)
+		assert_that(joined.find("Potion.ember_vial") >= 0).is_true()
+		assert_that(joined.find("Potion.frost_tonic") >= 0).is_true()
+		assert_that(joined.find("Power.") < 0).is_true()
+		assert_that(joined.find("Relic.") < 0).is_true()
+
+		if run_index == 0:
+			first_order = trigger_order
+			first_history = history
+		else:
+			second_order = trigger_order
+			second_history = history
+
+	assert_that(second_order).is_equal(first_order)
+	assert_that(second_history).is_equal(first_history)
