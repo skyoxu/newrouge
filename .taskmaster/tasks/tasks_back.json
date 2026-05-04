@@ -2336,19 +2336,18 @@
     "owner": "architecture",
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
     ],
     "acceptance": [
-      "For every successful card play and every resolved enemy action, the presentation layer must emit transient visible feedback (damage numbers, block gain numbers, card-play motion cues, and hit/action feedback) in addition to HUD updates, and deterministic combat outcomes must remain identical to baseline runs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For every successful card play and every resolved enemy action, the presentation layer must emit the transient visible feedback applicable to that resolved outcome (including damage numbers, block gain numbers, card-play motion cues, and hit/action feedback where relevant) in addition to HUD updates, and deterministic combat outcomes must remain identical to baseline runs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "When card play, hit, block, invalid action, or enemy action runtime events occur, the corresponding combat SFX hook must be triggered; if an audio asset is missing, action resolution must still complete safely and required visible feedback must still be produced (audio playback may explicitly no-op) without runtime failure. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "Hovering or focusing a card must display a readable preview containing cost, type, target rule, and localized effect text, and opening/closing this preview must not mutate deterministic combat state or advance/consume RNG. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Hovering or focusing enemy intent must display readable detail for incoming damage, block, or status effects, and showing/hiding this detail must not mutate deterministic turn state or RNG progression. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "In reduced-motion or headless-safe mode, presentation feedback must remain test-observable via deterministic nodes/events/log outputs without depending on wall-clock animation timing, and combat state plus RNG outputs must match deterministic baselines. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "In reduced-motion or headless-safe mode, card-play motion, damage numbers, block gain numbers, hit feedback, enemy action feedback, and preview open/close signals must remain test-observable via deterministic nodes/events/log outputs without depending on wall-clock animation timing, and combat state plus RNG outputs must match deterministic baselines. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Card-play motion cues and hit feedback must each be independently observable as presentation-layer outputs, not only inferred from static HUD value changes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "All presentation feedback must be sourced from the existing deterministic combat event path and must not create a second combat logic path or mutate runtime combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "For feedback dispatch on card play, enemy action, hit, block, invalid action, and previews, deterministic combat state and RNG progression must be unchanged before versus after presentation-layer handling. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Implementation for this task must start only after workflow explicitly selects T78, and review evidence must include that workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Presentation feedback emitted through scene-local helper paths must not mutate deterministic combat runtime state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For feedback dispatch on card play, enemy action, hit, block, invalid action, card preview, and intent detail preview, presentation-layer handling must not mutate deterministic combat state or advance/rewind RNG beyond the underlying runtime event itself. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "For card play, enemy action, hit, block, invalid action, hover preview, and intent detail preview, presentation-layer handling must not re-resolve combat effects, must not duplicate action execution, and must not mutate deterministic combat state or advance/rewind RNG beyond the underlying runtime event itself. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Extend Combat UI tests with observable presentation-layer nodes/events and verify they do not mutate deterministic combat state or RNG."
@@ -2361,7 +2360,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0078.json"
+      "logs/ci/<date>/task-0078.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
@@ -4525,10 +4525,10 @@
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
     ],
     "acceptance": [
-    "In the Combat scene, each active potion that can affect a player decision is surfaced on the combat surface; if a potion is not directly visible, it must be inspectable from the same surface through an explicit player-reachable inspect action, and inspected fields must match the shared combat-owned state at inspection time. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "In the Combat scene, each active potion that can affect a player decision is surfaced on the combat surface; if a potion is not directly visible, it must be inspectable from the same surface through an explicit player-reachable inspect action, and inspected fields must match the shared combat-owned state at inspection time. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Combat reads potion participant state from the existing shared combat ownership path and does not create, maintain, or rely on a scene-local potion stack as the authoritative source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-    "When a potion resolves through the shared trigger path, the Combat scene applies the player-relevant result in trigger order and records feedback/history entries that explicitly identify potion source and resolved outcome in the same entry without substitution by non-potion participant messages. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-    "For identical combat inputs, potion execution order and potion-related feedback/history are identical across repeated runs, and active decision-relevant potion UI state remains visible or inspectable from the Combat surface. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
+      "When a potion resolves through the shared trigger path, the Combat scene applies the player-relevant result in trigger order and records feedback/history entries that explicitly identify potion source and resolved outcome in the same entry without substitution by non-potion participant messages. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "For identical combat inputs, potion execution order and potion-related feedback/history are identical across repeated runs, and active decision-relevant potion UI state remains visible or inspectable from the Combat surface. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
     ],
     "test_strategy": [
       "Add deterministic trigger-order assertions and Combat UI state assertions for potions as visible, inspectable, and effectful combat participants on the shared combat ownership path."

@@ -77,6 +77,12 @@ public partial class CombatScene : Control
     private string _lastPlayCardExecutionFingerprint = string.Empty;
     private string _lastPlayCardOrderingKey = string.Empty;
     private readonly List<string> _lastPlayCardExecutedSteps = new();
+    private readonly List<string> _presentationCueHistory = new();
+    private readonly List<string> _sfxHookHistory = new();
+    private readonly List<string> _missingSfxNoopHistory = new();
+    private string _lastHoverPreviewText = string.Empty;
+    private bool _reducedMotionForTest;
+    private bool _simulateMissingSfxForTest;
     private int _lastPlayCardOverplayTax;
     private bool _lastPlayCardPipelineSuccess;
     private const string DefaultEnemyId = "enemy_m1_slime";
@@ -377,12 +383,49 @@ public partial class CombatScene : Control
 
     public void ApplyHoverPreviewForTest(string previewId)
     {
-        _ = previewId;
+        var selectedItems = _handCards.GetSelectedItems();
+        if (selectedItems.Length <= 0)
+        {
+            _lastHoverPreviewText = string.Empty;
+            return;
+        }
+        var selectedIndex = selectedItems[0];
+        if (selectedIndex < 0 || selectedIndex >= _handCards.ItemCount)
+        {
+            _lastHoverPreviewText = string.Empty;
+            return;
+        }
+        var cardName = _handCards.GetItemText(selectedIndex);
+        if (!TryResolveCardDefinition(cardName, out var definition))
+        {
+            _lastHoverPreviewText = string.Empty;
+            return;
+        }
+        var localizedEffect = ResolveFeedbackTemplate(definition.DescriptionKey);
+        _lastHoverPreviewText =
+            $"id={previewId};cost={definition.Cost};type={definition.Type};target={definition.Target};effect={localizedEffect}";
+        PublishPresentationCue("card_preview");
+    }
+
+    public void CloseHoverPreviewForTest()
+    {
+        _lastHoverPreviewText = string.Empty;
+        PublishPresentationCue("card_preview_closed");
     }
 
     public void ApplyTargetInspectionForTest(string targetId)
     {
+        var normalized = string.IsNullOrWhiteSpace(targetId) ? string.Empty : targetId.Trim();
+        if (!string.IsNullOrEmpty(normalized) && _enemyIntentByEnemy.ContainsKey(normalized))
+        {
+            PublishPresentationCue("intent_detail_opened");
+        }
         _ = TryInspectParticipant(targetId);
+    }
+
+    public void HideTargetInspectionForTest()
+    {
+        PublishPresentationCue("intent_detail_hidden");
     }
 
     public string GetLatestFeedbackMessageForTest()
@@ -409,6 +452,51 @@ public partial class CombatScene : Control
     public string GetSelectedCommandStateForTest()
     {
         return _latestCommandOutcomeState;
+    }
+
+    public string GetLastHoverPreviewTextForTest()
+    {
+        return _lastHoverPreviewText;
+    }
+
+    public global::Godot.Collections.Array<string> GetPresentationCueHistoryForTest()
+    {
+        var cues = new global::Godot.Collections.Array<string>();
+        foreach (var cue in _presentationCueHistory)
+        {
+            cues.Add(cue);
+        }
+        return cues;
+    }
+
+    public global::Godot.Collections.Array<string> GetSfxHookHistoryForTest()
+    {
+        var hooks = new global::Godot.Collections.Array<string>();
+        foreach (var hook in _sfxHookHistory)
+        {
+            hooks.Add(hook);
+        }
+        return hooks;
+    }
+
+    public global::Godot.Collections.Array<string> GetMissingSfxNoopHistoryForTest()
+    {
+        var hooks = new global::Godot.Collections.Array<string>();
+        foreach (var hook in _missingSfxNoopHistory)
+        {
+            hooks.Add(hook);
+        }
+        return hooks;
+    }
+
+    public void SetReducedMotionForTest(bool enabled)
+    {
+        _reducedMotionForTest = enabled;
+    }
+
+    public void SetSimulateMissingSfxForTest(bool enabled)
+    {
+        _simulateMissingSfxForTest = enabled;
     }
 
     public bool TryApplyAcceptedStrikeForTest()
@@ -911,6 +999,19 @@ public partial class CombatScene : Control
                 Exhaust: definition.Exhaust));
         ResolvePowerRelicRuntimeForCardPlay();
         var result = ResolveCardEffect(definition, targetEnemyId, resolved);
+        PublishPresentationCue("card_play_motion");
+        PublishSfxHook("card_play");
+        if (result.Damage > 0)
+        {
+            PublishPresentationCue("damage_number");
+            PublishPresentationCue("hit_feedback");
+            PublishSfxHook("hit");
+        }
+        if (result.Block > 0)
+        {
+            PublishPresentationCue("block_gain_number");
+            PublishSfxHook("block");
+        }
         handCards.RemoveAt(selectedIndex);
         var remainingEnergy = pipelineResult.StateAfter.Energy;
         _cardsPlayedThisTurn = pipelineResult.StateAfter.CardsPlayedThisTurn;
@@ -1508,6 +1609,8 @@ public partial class CombatScene : Control
             progression.NextPlayerHp,
             "PlayerTurn"));
         ApplyDefaultM1EnemyIntentIfEmpty();
+        PublishPresentationCue("enemy_action_feedback");
+        PublishSfxHook("enemy_action");
         var detailParts = new List<string> { $"Enemy dealt {progression.DamageTaken} damage. Turn {_turnIndex} started." };
         if (!string.IsNullOrWhiteSpace(statusTransitionDetail))
         {
@@ -1594,6 +1697,39 @@ public partial class CombatScene : Control
 
         _feedbackMessageLabel.Text = finalMessage;
         _feedbackHistoryList.AddItem(message);
+        if (!accepted)
+        {
+            PublishSfxHook("invalid_action");
+        }
+    }
+
+    private void PublishPresentationCue(string cue)
+    {
+        if (string.IsNullOrWhiteSpace(cue))
+        {
+            return;
+        }
+        var normalized = cue.Trim();
+        _presentationCueHistory.Add(normalized);
+        if (_reducedMotionForTest)
+        {
+            _presentationCueHistory.Add($"reduced_motion:{normalized}");
+        }
+    }
+
+    private void PublishSfxHook(string hook)
+    {
+        if (string.IsNullOrWhiteSpace(hook))
+        {
+            return;
+        }
+        var normalized = hook.Trim();
+        if (_simulateMissingSfxForTest)
+        {
+            _missingSfxNoopHistory.Add(normalized);
+            return;
+        }
+        _sfxHookHistory.Add(normalized);
     }
 
     private CardEffectResult ResolveCardEffect(CardDefinitionRuntime definition, string targetEnemyId, CardResolutionResult runtimeResult)

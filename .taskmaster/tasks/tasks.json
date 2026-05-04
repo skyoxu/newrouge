@@ -2399,7 +2399,8 @@
         "complexity": 4,
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on combat presentation feedback layer with animations, damage numbers, audio, and hover previews.",
-        "updatedAt": null
+        "updatedAt": null,
+        "acceptance": []
       },
       {
         "id": 79,
