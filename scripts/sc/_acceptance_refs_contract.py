@@ -2,10 +2,54 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 
 SUMMARY_SCHEMA_VERSION = "acceptance-refs.v1"
+
+
+def validate_anchor_bound_ref_updates(
+    *,
+    root: Path,
+    updates: list[dict[str, Any]],
+    read_text=None,
+) -> tuple[bool, list[str]]:
+    errors: list[str] = []
+    reader = read_text or (lambda path: Path(path).read_text(encoding="utf-8", errors="ignore"))
+    repo_root = Path(root)
+
+    for item in updates or []:
+        if not isinstance(item, dict):
+            errors.append("invalid_update_item")
+            continue
+        view = str(item.get("view") or "").strip().lower()
+        index = item.get("index")
+        anchor = str(item.get("anchor") or "").strip()
+        paths = item.get("paths")
+
+        if view not in {"back", "gameplay"} or not isinstance(index, int) or not anchor:
+            errors.append("invalid_update_shape")
+            continue
+        if not isinstance(paths, list):
+            errors.append(f"invalid_paths:{view}[{index}]")
+            continue
+
+        for raw_path in paths:
+            rel = str(raw_path or "").strip().replace("\\", "/")
+            if not rel:
+                errors.append(f"empty_path:{view}[{index}]")
+                continue
+            file_path = repo_root / rel
+            try:
+                content = str(reader(file_path) or "")
+            except Exception:
+                errors.append(f"unreadable_path:{view}[{index}]:{rel}")
+                continue
+            if anchor not in content:
+                errors.append(f"missing_anchor:{view}[{index}]:{anchor}:{rel}")
+
+    return not errors, errors
 
 
 def validate_fill_acceptance_summary(summary: dict[str, Any]) -> tuple[bool, list[str], dict[str, Any]]:
@@ -108,4 +152,3 @@ def run_fill_acceptance_refs_self_check(
     ]
     report_lines.extend([f"- {item.get('name')}: {'ok' if item.get('ok') else 'fail'}" for item in checks])
     return ok, payload, "\n".join(report_lines) + "\n"
-
