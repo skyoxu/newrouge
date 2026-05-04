@@ -488,6 +488,8 @@ func test_status_texts_on_combat_surface_render_in_en_and_zh_cn_without_raw_keys
 
 
 # ACC:T72.1
+# ACC:T74.4
+# ACC:T74.6
 func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame

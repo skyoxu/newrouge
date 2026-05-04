@@ -2058,7 +2058,7 @@
       "Tests.Godot/tests/UI/test_card_drag_target_play.gd",
       "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Game.Core.Tests/Tasks/Task0074WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
       "Dragging a card from hand onto a legal target and releasing it must issue the play request through the current validated card-play path (the same path used by click-based play). Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
@@ -2067,7 +2067,7 @@
       "The click path and Play Selected Card accessibility path both remain usable, and a successful legal activation is behaviorally equivalent to a successful legal drag release through the same play flow. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Drag preview and target-hover interactions are UI-only and must not advance combat RNG streams or route progression. Refs: Tests.Godot/tests/UI/test_card_drag_target_play.gd",
       "Keyboard fallback and controller fallback must each complete target selection and play via the same validated card-play path as drag release, without introducing a separate combat input stack. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Implementation for this task proceeds only after workflow explicitly selects T74, and review evidence includes that workflow-selection record before implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
+      "Implementation for this task proceeds only after workflow explicitly selects T74, and review evidence includes that workflow-selection record before implementation evidence. Refs: Game.Core.Tests/Tasks/Task0074WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Promote existing drag-target harness coverage into real Combat scene behavior tests, including valid drop, invalid drop, cancel, and accessibility fallback."
@@ -2080,7 +2080,8 @@
     ],
     "evidence_refs": [
       "docs/gdd/ui-gdd-flow.md",
-      "logs/ci/<date>/task-0074.json"
+      "logs/ci/<date>/task-0074.json",
+      "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
     "semantic_review_tier": "full"
   },
