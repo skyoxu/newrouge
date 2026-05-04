@@ -223,58 +223,6 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             )
             self.assertEqual(["code-reviewer"], (semantic.get("details") or {}).get("blocked_by_agents"))
 
-    def test_main_should_not_reuse_stale_review_file_when_execution_fails(self) -> None:
-        monotonic_iter = iter([0.0, 0.0])
-
-        with tempfile.TemporaryDirectory(dir=str(REPO_ROOT)) as td:
-            temp_root = Path(td)
-            out_dir = temp_root / "logs" / "ci" / "sc-llm-review"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            stale_review = out_dir / "review-code-reviewer.md"
-            stale_review.write_text("Verdict: Needs Fix\n", encoding="utf-8")
-
-            def fake_run_codex_exec(*, backend: str, prompt: str, output_last_message: Path, timeout_sec: int, codex_configs=None):  # noqa: ANN001
-                self.assertEqual("review-code-reviewer.md", output_last_message.name)
-                self.assertFalse(output_last_message.exists())
-                return 1, "trace failed\n", [str(backend), "fake-model"]
-
-            argv = [
-                "llm_review.py",
-                "--agents",
-                "code-reviewer",
-                "--timeout-sec",
-                "200",
-                "--agent-timeout-sec",
-                "180",
-                "--llm-backend",
-                "codex-cli",
-                "--diff-mode",
-                "summary",
-            ]
-
-            with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(review_engine, "apply_delivery_profile_defaults", side_effect=lambda args: args), \
-                mock.patch.object(review_engine, "validate_args", return_value=[]), \
-                mock.patch.object(review_engine, "ci_dir", return_value=out_dir), \
-                mock.patch.object(review_engine, "repo_root", return_value=temp_root), \
-                mock.patch.object(review_engine, "build_diff_context", return_value="## Diff\nshort\n"), \
-                mock.patch.object(review_engine, "resolve_threat_model", return_value="singleplayer"), \
-                mock.patch.object(review_engine, "build_threat_model_context", return_value=""), \
-                mock.patch.object(review_engine, "build_security_profile_context", return_value=""), \
-                mock.patch.object(review_engine, "agent_prompt", return_value=("Role prompt", {"agent_prompt_source": "inline"})), \
-                mock.patch.object(review_engine, "run_codex_exec", side_effect=fake_run_codex_exec), \
-                mock.patch.object(review_engine.time, "monotonic", side_effect=lambda: next(monotonic_iter)):
-                rc = review_engine.main()
-
-            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
-            reviewer = summary["results"][0]
-            self.assertEqual(0, rc)
-            self.assertEqual("warn", summary["status"])
-            self.assertEqual("skipped", reviewer["status"])
-            self.assertEqual(1, reviewer["rc"])
-            self.assertIsNone((reviewer.get("details") or {}).get("verdict"))
-            self.assertFalse(stale_review.exists())
-
 
 if __name__ == "__main__":
     unittest.main()

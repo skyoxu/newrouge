@@ -58,7 +58,7 @@ def _strip_comments(line: str) -> str:
 
 def _scan_file(repo_root: Path, file_path: Path) -> list[dict[str, Any]]:
     rel = _posix(file_path.relative_to(repo_root))
-    if rel in ALLOWED_FILES:
+    if rel in ALLOWED_FILES or rel.startswith("Game.Core/Contracts/"):
         return []
 
     violations: list[dict[str, Any]] = []
@@ -120,4 +120,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

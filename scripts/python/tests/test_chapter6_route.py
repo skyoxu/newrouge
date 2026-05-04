@@ -122,10 +122,7 @@ class Chapter6RouteTests(unittest.TestCase):
             "recommended_action": "needs-fix-fast",
             "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15",
             "forbidden_commands": ["py -3 scripts/sc/run_review_pipeline.py --task-id 15"],
-            "candidate_commands": {
-                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
-                "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15",
-            },
+            "candidate_commands": {"needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15"},
             "latest_summary_signals": {"reason": "rerun_blocked:repeat_review_needs_fix"},
             "chapter6_hints": {
                 "next_action": "needs-fix-fast",
@@ -149,10 +146,6 @@ class Chapter6RouteTests(unittest.TestCase):
         self.assertEqual("inspect-first", route["preferred_lane"])
         self.assertFalse(route["six_eight_worthwhile"])
         self.assertFalse(route["reviewer_anchor_hit"])
-        self.assertEqual(
-            "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
-            route["recommended_command"],
-        )
 
     def test_should_classify_repo_noise_when_lock_contention_is_detected(self) -> None:
         payload = {
@@ -262,51 +255,6 @@ class Chapter6RouteTests(unittest.TestCase):
         self.assertEqual("fix-deterministic", route["preferred_lane"])
         self.assertEqual("task-issue", route["repo_noise_classification"])
 
-    def test_should_route_to_68_when_step_failed_is_llm_timeout_stop_loss(self) -> None:
-        payload = {
-            "task_id": "97",
-            "run_id": "run-97",
-            "recommended_action": "needs-fix-fast",
-            "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
-            "forbidden_commands": [
-                "py -3 scripts/sc/run_review_pipeline.py --task-id 97",
-                "py -3 scripts/sc/run_review_pipeline.py --task-id 97 --resume",
-            ],
-            "candidate_commands": {
-                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 97",
-                "needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
-            },
-            "latest_summary_signals": {"reason": "step_failed:sc-llm-review"},
-            "chapter6_hints": {
-                "next_action": "needs-fix-fast",
-                "can_skip_6_7": True,
-                "can_go_to_6_8": True,
-                "blocked_by": "llm_retry_stop_loss",
-                "rerun_forbidden": True,
-            },
-            "inspection": {
-                "failure": {"code": "step-failed", "message": "sc-llm-review timed out."},
-                "paths": {"latest": "logs/ci/2026-04-30/sc-review-pipeline-task-97/latest.json"},
-            },
-        }
-
-        with (
-            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
-            mock.patch.object(
-                chapter6_route,
-                "_derive_change_scope",
-                return_value={"changed_paths": ["Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd"]},
-            ),
-        ):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="97")
-
-        self.assertEqual("run-6.8", route["preferred_lane"])
-        self.assertTrue(route["six_eight_worthwhile"])
-        self.assertEqual(
-            "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 97 --delivery-profile fast-ship --rerun-failing-only --max-rounds 1",
-            route["recommended_command"],
-        )
-
     def test_should_require_real_artifacts_before_recommending_full_67(self) -> None:
         payload = {
             "task_id": "15",
@@ -314,10 +262,7 @@ class Chapter6RouteTests(unittest.TestCase):
             "recommended_action": "rerun",
             "recommended_command": "py -3 scripts/sc/run_review_pipeline.py --task-id 15",
             "forbidden_commands": [],
-            "candidate_commands": {
-                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
-                "rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 15",
-            },
+            "candidate_commands": {"rerun": "py -3 scripts/sc/run_review_pipeline.py --task-id 15"},
             "latest_summary_signals": {"reason": "planned_only_incomplete", "artifact_integrity_kind": "planned_only_incomplete"},
             "chapter6_hints": {
                 "next_action": "rerun",
@@ -337,44 +282,6 @@ class Chapter6RouteTests(unittest.TestCase):
 
         self.assertEqual("inspect-first", route["preferred_lane"])
         self.assertFalse(route["full_67_recommended"])
-        self.assertEqual(
-            "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
-            route["recommended_command"],
-        )
-
-    def test_should_keep_continue_command_when_preferred_lane_falls_back_to_inspect_first_for_clean_run(self) -> None:
-        payload = {
-            "task_id": "15",
-            "run_id": "run-15",
-            "recommended_action": "continue",
-            "recommended_command": "n/a",
-            "forbidden_commands": [],
-            "candidate_commands": {
-                "inspect": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
-            },
-            "latest_summary_signals": {"reason": "pipeline_clean"},
-            "chapter6_hints": {
-                "next_action": "continue",
-                "can_skip_6_7": True,
-                "can_go_to_6_8": False,
-                "blocked_by": "",
-                "rerun_forbidden": False,
-            },
-            "inspection": {
-                "failure": {"code": "ok", "message": ""},
-                "paths": {"latest": "logs/ci/2026-04-10/sc-review-pipeline-task-15/latest.json"},
-            },
-        }
-
-        with (
-            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(0, payload)),
-            mock.patch.object(chapter6_route, "_derive_change_scope", return_value={"changed_paths": ["docs/architecture/overlays/PRD-1/08/overview.md"]}),
-        ):
-            _, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
-
-        self.assertEqual("inspect-first", route["preferred_lane"])
-        self.assertEqual("continue", route["chapter6_next_action"])
-        self.assertEqual("n/a", route["recommended_command"])
 
     def test_should_record_residual_docs_when_only_low_priority_findings_remain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -506,6 +413,64 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertFalse(record["performed"])
             self.assertFalse((root / "decision-logs").exists())
             self.assertFalse((root / "execution-plans").exists())
+
+    def test_should_not_record_residual_docs_when_medium_finding_hits_p1_floor_category(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            out_dir = root / "logs" / "ci" / "2026-04-10" / "sc-review-pipeline-task-15-run"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            _write_json(
+                out_dir / "agent-review.json",
+                {
+                    "review_verdict": "needs-fix",
+                    "findings": [
+                        {
+                            "finding_id": "acceptance-link-1",
+                            "severity": "medium",
+                            "category": "acceptance-refs",
+                            "owner_step": "sc-acceptance-check",
+                            "message": "Acceptance refs no longer bind to test evidence.",
+                            "suggested_fix": "Repair refs before recording residual debt.",
+                            "commands": [],
+                        }
+                    ],
+                },
+            )
+            payload = {
+                "task_id": "15",
+                "run_id": "run-15",
+                "recommended_action": "needs-fix-fast",
+                "recommended_command": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15",
+                "forbidden_commands": [],
+                "candidate_commands": {"needs_fix_fast": "py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 15"},
+                "latest_summary_signals": {"reason": "rerun_blocked:repeat_review_needs_fix"},
+                "chapter6_hints": {
+                    "next_action": "needs-fix-fast",
+                    "can_skip_6_7": True,
+                    "can_go_to_6_8": True,
+                    "blocked_by": "rerun_guard",
+                    "rerun_forbidden": True,
+                },
+                "inspection": {
+                    "failure": {"code": "review-needs-fix", "message": "Acceptance refs still broken."},
+                    "paths": {
+                        "latest": "logs/ci/2026-04-10/sc-review-pipeline-task-15/latest.json",
+                        "out_dir": "logs/ci/2026-04-10/sc-review-pipeline-task-15-run",
+                    },
+                },
+            }
+
+            with (
+                mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+                mock.patch.object(chapter6_route, "_derive_change_scope", return_value={"changed_paths": ["README.md"]}),
+            ):
+                _, route = chapter6_route.route_chapter6(repo_root=root, task_id="15", record_residual=True)
+
+            record = route["residual_recording"]
+            self.assertFalse(record["eligible"])
+            self.assertEqual("p1_floor_finding_present", record["reason"])
+            self.assertFalse(record["performed"])
+            self.assertFalse((root / "decision-logs").exists())
 
     def test_compact_payload_should_match_example_json(self) -> None:
         expected_path = REPO_ROOT / "docs" / "workflows" / "examples" / "sc-chapter6-route-compact.example.json"

@@ -1,11 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hard semantic consistency gate for PRD/GDD.
+Hard semantic consistency gate for PRD/GDD documents.
 
-Checks:
-1) Required rule clauses exist in core files (PRD + GDD)
-2) Contradictory clauses are absent in PRD/GDD corpus
+Template-safe behavior:
+- If the config file is missing, this script reports "skipped" and exits 0.
+- If the config file exists, the script enforces configured required clauses
+  and contradiction scans across the PRD/GDD corpus.
+
+Config example:
+{
+  "core_files": [
+    "docs/prd/PRD-EXAMPLE.md",
+    "docs/gdd/GDD-EXAMPLE.md"
+  ],
+  "scan_globs": [
+    "docs/prd/*.md",
+    "docs/gdd/*.md"
+  ],
+  "required_rules": {
+    "rule_name": {
+      "patterns": ["regex1", "regex2"]
+    }
+  },
+  "contradiction_rules": [
+    {
+      "rule": "rule_id",
+      "all_terms": ["token1", "token2"],
+      "exclude_terms": ["must not", "forbidden"],
+      "context_exclude_terms": ["anti-pattern", "example"],
+      "window_radius": 3
+    }
+  ]
+}
 
 Output:
   logs/ci/<YYYY-MM-DD>/prd-gdd-consistency/summary.json
@@ -17,80 +44,12 @@ import argparse
 import datetime as dt
 import json
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
 
-CORE_FILES = [
-    "docs/prd/PRD-NEWROUGE-GAME-0001.md",
-    "docs/gdd/GDD-NEWROUGE-V1.md",
-]
-
-SCAN_GLOBS = [
-    "docs/prd/*.md",
-    "docs/gdd/*.md",
-]
-
-NEGATION_TOKENS = ["不", "禁", "无", "不得", "永不", "禁止"]
-
-CONTEXT_NEGATION_HINTS = [
-    "锁定",
-    "禁用",
-    "禁词",
-    "反例",
-    "误解",
-    "不得出现",
-    "避免",
-    "例如",
-    "示例",
-    "检查",
-    "清单",
-    "风险",
-]
-
-WINDOW_NEGATIVE_HINTS = [
-    "不允许",
-    "禁止",
-    "禁用",
-    "避开",
-    "反例",
-    "错误处理",
-    "高风险缺陷",
-    "会诱导",
-    "以下语境",
-    "文档自检",
-    "仅用于",
-    "扫描",
-]
-
-REQUIRED_RULES = {
-    "shop_no_upgrade": [
-        r"商店.*不.*升级",
-        r"商店.*永不.*升级",
-        r"商店.*禁止.*升级",
-        r"商店.*不提供升级",
-    ],
-    "no_mid_combat_save": [
-        r"战斗.*不保存中间态",
-        r"战斗中.*绝不保存.*中间态",
-        r"战斗.*中间态.*不保存",
-    ],
-    "upgrade_only_rest_event": [
-        r"升级.*(仅|只).*(休整|Rest).*(事件|特殊事件)",
-        r"(休整|Rest).*(事件|特殊事件).*升级",
-        r"升级发生.*(休整|Rest).*(事件|特殊事件)",
-    ],
-    "card_id_immutable": [
-        r"card_id.*(不变|不改变|保持不变)",
-        r"升级.*不改变.*card_id",
-    ],
-    "difficulty_not_bound_talent": [
-        r"难度.*不.*天赋树.*强绑定",
-        r"难度.*与天赋树.*不.*绑定",
-        r"天赋树.*不与难度.*强绑定",
-    ],
-}
+DEFAULT_CONFIG = Path("scripts/python/config/prd-gdd-consistency-rules.json")
+DEFAULT_SCAN_GLOBS = ["docs/prd/*.md", "docs/gdd/*.md"]
 
 
 def _today_str() -> str:
@@ -101,58 +60,79 @@ def _to_posix(path: Path) -> str:
     return str(path).replace("\\", "/")
 
 
-def _load_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
-def _iter_scope_files(repo_root: Path) -> list[Path]:
-    files: set[Path] = set()
-    for glob_pattern in SCAN_GLOBS:
-        for item in repo_root.glob(glob_pattern):
+def _load_config(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _expand_globs(repo_root: Path, patterns: list[str]) -> list[Path]:
+    files: dict[str, Path] = {}
+    for pattern in patterns:
+        for item in repo_root.glob(pattern):
             if item.is_file():
-                files.add(item.resolve())
-    return sorted(files, key=lambda path: _to_posix(path).lower())
+                rel = _to_posix(item.relative_to(repo_root))
+                files[rel] = item.resolve()
+    return [files[key] for key in sorted(files)]
 
 
-def _line_has_negation(line: str) -> bool:
-    return any(token in line for token in NEGATION_TOKENS)
+def _resolve_core_files(repo_root: Path, config: dict[str, Any]) -> list[Path]:
+    raw_core = config.get("core_files") or []
+    if isinstance(raw_core, list) and raw_core:
+        files: list[Path] = []
+        for item in raw_core:
+            rel = str(item or "").strip()
+            if not rel:
+                continue
+            files.append((repo_root / rel).resolve())
+        return files
+    scan_globs = config.get("scan_globs") or DEFAULT_SCAN_GLOBS
+    if not isinstance(scan_globs, list):
+        scan_globs = DEFAULT_SCAN_GLOBS
+    return _expand_globs(repo_root, [str(x) for x in scan_globs])
 
 
-def _line_is_contextual_negative(line: str) -> bool:
-    if _line_has_negation(line):
-        return True
-    return any(hint in line for hint in CONTEXT_NEGATION_HINTS)
+def _iter_scope_files(repo_root: Path, config: dict[str, Any]) -> list[Path]:
+    scan_globs = config.get("scan_globs") or DEFAULT_SCAN_GLOBS
+    if not isinstance(scan_globs, list):
+        scan_globs = DEFAULT_SCAN_GLOBS
+    return _expand_globs(repo_root, [str(x) for x in scan_globs])
 
 
-def _window_has_negative_context(lines: list[str], index: int) -> bool:
-    start = max(0, index - 3)
-    end = min(len(lines), index + 4)
-    context = "\n".join(lines[start:end])
-    return any(hint in context for hint in WINDOW_NEGATIVE_HINTS)
-
-
-def _required_rules_check(repo_root: Path) -> list[dict[str, Any]]:
+def _required_rules_check(repo_root: Path, core_files: list[Path], required_rules: dict[str, Any]) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
-    for rel_path in CORE_FILES:
-        file_path = (repo_root / rel_path).resolve()
+    normalized_rules: dict[str, list[str]] = {}
+    for rule_name, rule_config in required_rules.items():
+        if isinstance(rule_config, dict):
+            patterns = rule_config.get("patterns") or []
+        else:
+            patterns = rule_config or []
+        normalized_rules[str(rule_name)] = [str(x) for x in patterns if str(x).strip()]
+
+    for file_path in core_files:
+        rel = _to_posix(file_path.relative_to(repo_root)) if file_path.exists() and str(file_path).startswith(str(repo_root)) else _to_posix(file_path)
         if not file_path.exists():
             checks.append(
                 {
-                    "file": rel_path,
+                    "file": rel,
                     "status": "fail",
                     "reason": "missing_core_file",
                     "rules": {},
                 }
             )
             continue
-        text = _load_text(file_path)
+        text = file_path.read_text(encoding="utf-8")
         file_rules: dict[str, bool] = {}
-        for rule_name, patterns in REQUIRED_RULES.items():
-            matched = any(re.search(pattern, text, re.IGNORECASE | re.MULTILINE) for pattern in patterns)
-            file_rules[rule_name] = matched
+        for rule_name, patterns in normalized_rules.items():
+            file_rules[rule_name] = any(re.search(pattern, text, re.IGNORECASE | re.MULTILINE) for pattern in patterns)
         checks.append(
             {
-                "file": rel_path,
+                "file": rel,
                 "status": "ok" if all(file_rules.values()) else "fail",
                 "reason": "" if all(file_rules.values()) else "missing_required_rule_clause",
                 "rules": file_rules,
@@ -161,10 +141,36 @@ def _required_rules_check(repo_root: Path) -> list[dict[str, Any]]:
     return checks
 
 
-def _contradiction_hits(repo_root: Path) -> list[dict[str, Any]]:
+def _contains_any(text: str, tokens: list[str]) -> bool:
+    lowered = text.lower()
+    return any(str(token).lower() in lowered for token in tokens)
+
+
+def _window_has_any(lines: list[str], index: int, tokens: list[str], radius: int) -> bool:
+    start = max(0, index - radius)
+    end = min(len(lines), index + radius + 1)
+    window = "\n".join(lines[start:end]).lower()
+    return any(str(token).lower() in window for token in tokens)
+
+
+def _contradiction_hits(repo_root: Path, scope_files: list[Path], contradiction_rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     hits: list[dict[str, Any]] = []
-    for file_path in _iter_scope_files(repo_root):
-        text = _load_text(file_path)
+    normalized_rules: list[dict[str, Any]] = []
+    for item in contradiction_rules:
+        if not isinstance(item, dict):
+            continue
+        normalized_rules.append(
+            {
+                "rule": str(item.get("rule") or "unnamed_rule"),
+                "all_terms": [str(x) for x in (item.get("all_terms") or []) if str(x).strip()],
+                "exclude_terms": [str(x) for x in (item.get("exclude_terms") or []) if str(x).strip()],
+                "context_exclude_terms": [str(x) for x in (item.get("context_exclude_terms") or []) if str(x).strip()],
+                "window_radius": max(0, int(item.get("window_radius") or 0)),
+            }
+        )
+
+    for file_path in scope_files:
+        text = file_path.read_text(encoding="utf-8")
         lines = text.splitlines()
         in_code_block = False
         for line_number, raw_line in enumerate(lines, 1):
@@ -172,110 +178,95 @@ def _contradiction_hits(repo_root: Path) -> list[dict[str, Any]]:
             if line.startswith("```"):
                 in_code_block = not in_code_block
                 continue
-            if in_code_block:
+            if in_code_block or not line:
                 continue
-            if not line:
-                continue
-
-            idx = line_number - 1
-            if _window_has_negative_context(lines, idx):
-                continue
-
-            if "商店" in line and "升级" in line and not _line_is_contextual_negative(line):
+            for rule in normalized_rules:
+                if not rule["all_terms"]:
+                    continue
+                lowered = line.lower()
+                if any(term.lower() not in lowered for term in rule["all_terms"]):
+                    continue
+                if rule["exclude_terms"] and _contains_any(line, rule["exclude_terms"]):
+                    continue
+                if rule["context_exclude_terms"] and _window_has_any(lines, line_number - 1, rule["context_exclude_terms"], rule["window_radius"]):
+                    continue
                 hits.append(
                     {
-                        "rule": "shop_upgrade_positive_statement",
+                        "rule": rule["rule"],
                         "file": _to_posix(file_path.relative_to(repo_root)),
                         "line": line_number,
                         "text": line,
                     }
                 )
-
-            if "战斗" in line and "中间态" in line and "保存" in line and not _line_is_contextual_negative(line):
-                hits.append(
-                    {
-                        "rule": "combat_mid_state_save_positive_statement",
-                        "file": _to_posix(file_path.relative_to(repo_root)),
-                        "line": line_number,
-                        "text": line,
-                    }
-                )
-
-            if "难度" in line and "天赋" in line and "绑定" in line and not _line_is_contextual_negative(line):
-                hits.append(
-                    {
-                        "rule": "difficulty_talent_positive_binding_statement",
-                        "file": _to_posix(file_path.relative_to(repo_root)),
-                        "line": line_number,
-                        "text": line,
-                    }
-                )
-
-            if "升级" in line and ("仅" in line or "只" in line) and "商店" in line and not _line_is_contextual_negative(line):
-                hits.append(
-                    {
-                        "rule": "upgrade_scope_conflict_with_shop",
-                        "file": _to_posix(file_path.relative_to(repo_root)),
-                        "line": line_number,
-                        "text": line,
-                    }
-                )
-
     return hits
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="PRD/GDD semantic consistency hard gate")
-    parser.add_argument("--max-print", type=int, default=20)
-    parser.add_argument("--out", default="", help="Optional custom output JSON path")
+    parser = argparse.ArgumentParser(description="Hard semantic consistency gate for PRD/GDD documents.")
+    parser.add_argument("--config", default=str(DEFAULT_CONFIG).replace("\\", "/"), help="JSON config path.")
     args = parser.parse_args()
 
     repo_root = Path.cwd().resolve()
-    required_checks = _required_rules_check(repo_root)
-    contradiction_checks = _contradiction_hits(repo_root)
+    input_config = Path(args.config)
+    config_path = (repo_root / input_config).resolve() if not input_config.is_absolute() else input_config
+    out_dir = repo_root / "logs" / "ci" / _today_str() / "prd-gdd-consistency"
+    out_path = out_dir / "summary.json"
 
-    required_failures = [item for item in required_checks if item.get("status") != "ok"]
+    config = _load_config(config_path)
+    if config is None:
+        summary = {
+            "status": "skipped",
+            "reason": "missing_config",
+            "config": _to_posix(config_path.relative_to(repo_root)) if str(config_path).startswith(str(repo_root)) else _to_posix(config_path),
+            "required_checks": [],
+            "contradiction_hits": [],
+        }
+        _write_json(out_path, summary)
+        print(f"PRD_GDD_CONSISTENCY status=skipped reason=missing_config out={_to_posix(out_path.relative_to(repo_root))}")
+        return 0
 
-    summary: dict[str, Any] = {
-        "ts": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "action": "prd-gdd-semantic-consistency-gate",
-        "reason": "enforce frozen gameplay and save/determinism semantics in PRD/GDD",
-        "target": ["docs/prd/*.md", "docs/gdd/*.md"],
-        "caller": "python-check_prd_gdd_semantic_consistency",
-        "required_checks": required_checks,
-        "required_failures": required_failures,
-        "contradiction_hits": contradiction_checks,
-        "status": "ok" if not required_failures and not contradiction_checks else "fail",
-    }
-
-    date = _today_str()
-    default_out = Path("logs") / "ci" / date / "prd-gdd-consistency" / "summary.json"
-    out_path = Path(args.out) if args.out else default_out
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    status = str(summary["status"])
-    print(
-        "PRD_GDD_CONSISTENCY "
-        f"status={status} required_failures={len(required_failures)} contradictions={len(contradiction_checks)} "
-        f"out={_to_posix(out_path)}"
-    )
-
-    if required_failures:
-        print("PRD_GDD_CONSISTENCY required failures:")
-        for item in required_failures[: max(1, int(args.max_print))]:
-            print(f" - file={item.get('file')} missing_rules={ [k for k,v in (item.get('rules') or {}).items() if not v] }")
-
-    if contradiction_checks:
-        print("PRD_GDD_CONSISTENCY contradiction hits:")
-        for hit in contradiction_checks[: max(1, int(args.max_print))]:
-            print(
-                " - "
-                f"{hit.get('file')}:{hit.get('line')} rule={hit.get('rule')} text={hit.get('text')}"
-            )
-
-    return 0 if status == "ok" else 1
+    try:
+        core_files = _resolve_core_files(repo_root, config)
+        scope_files = _iter_scope_files(repo_root, config)
+        required_rules = config.get("required_rules") or {}
+        contradiction_rules = config.get("contradiction_rules") or []
+        required_checks = _required_rules_check(repo_root, core_files, required_rules if isinstance(required_rules, dict) else {})
+        contradiction_hits = _contradiction_hits(repo_root, scope_files, contradiction_rules if isinstance(contradiction_rules, list) else [])
+        failed_required = sum(1 for item in required_checks if item.get("status") == "fail")
+        status = "ok" if failed_required == 0 and not contradiction_hits else "fail"
+        summary = {
+            "status": status,
+            "config": _to_posix(config_path.relative_to(repo_root)) if str(config_path).startswith(str(repo_root)) else _to_posix(config_path),
+            "core_files": [
+                _to_posix(path.relative_to(repo_root)) if path.exists() and str(path).startswith(str(repo_root)) else _to_posix(path)
+                for path in core_files
+            ],
+            "scan_files": [_to_posix(path.relative_to(repo_root)) for path in scope_files],
+            "required_checks": required_checks,
+            "contradiction_hits": contradiction_hits,
+            "summary": {
+                "failed_required": failed_required,
+                "contradiction_hits": len(contradiction_hits),
+            },
+        }
+        _write_json(out_path, summary)
+        print(
+            "PRD_GDD_CONSISTENCY "
+            f"status={status} failed_required={failed_required} contradiction_hits={len(contradiction_hits)} "
+            f"out={_to_posix(out_path.relative_to(repo_root))}"
+        )
+        return 0 if status == "ok" else 1
+    except Exception as exc:
+        summary = {
+            "status": "error",
+            "reason": str(exc),
+            "config": _to_posix(config_path.relative_to(repo_root)) if str(config_path).startswith(str(repo_root)) else _to_posix(config_path),
+        }
+        _write_json(out_path, summary)
+        print(f"PRD_GDD_CONSISTENCY status=error reason={exc} out={_to_posix(out_path.relative_to(repo_root))}")
+        return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
+

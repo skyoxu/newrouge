@@ -98,6 +98,12 @@ def task_requires_csharp_tests(*, root: Path, task_id: str) -> tuple[bool, list[
     master, back, gameplay = load_task_triplet_metadata(root=root, task_id=task_id)
     reasons: list[str] = []
 
+    for block in (master, back or {}, gameplay or {}):
+        contract_refs = block.get("contractRefs")
+        if isinstance(contract_refs, list) and any(str(item or "").strip() for item in contract_refs):
+            reasons.append("contract_refs_present")
+            break
+
     text_blobs: list[str] = []
     for block in (master, back or {}, gameplay or {}):
         for key in ("title", "details", "testStrategy"):

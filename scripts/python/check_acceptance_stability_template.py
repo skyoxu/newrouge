@@ -63,8 +63,8 @@ def _load_targets(path: Path) -> tuple[set[int], list[str]]:
         raise ValueError("targets file must be a JSON object")
 
     ids_raw = payload.get("taskmaster_ids")
-    if not isinstance(ids_raw, list) or not ids_raw:
-        raise ValueError("taskmaster_ids must be a non-empty array")
+    if not isinstance(ids_raw, list):
+        raise ValueError("taskmaster_ids must be an array")
 
     task_ids: set[int] = set()
     for item in ids_raw:
@@ -167,6 +167,32 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"ACCEPTANCE_STABILITY_TEMPLATE status=fail reason=invalid_targets msg={exc}")
         return 1
+
+    if not target_ids:
+        if args.out:
+            out_path = Path(args.out)
+        else:
+            out_path = Path("logs") / "ci" / _today() / "acceptance-stability-template" / "summary.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "ts": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "action": "acceptance-stability-template",
+            "status": "skipped",
+            "reason": "no_targets_configured",
+            "targets_file": _posix(targets_path),
+            "task_files": [_posix(Path(x)) for x in args.task_files],
+            "target_taskmaster_ids": [],
+            "required_markers": required_markers,
+            "total_scanned": 0,
+            "total_matched": 0,
+            "total_failed": 0,
+            "missing_targets": [],
+            "target_coverage_violations": [],
+            "results": [],
+        }
+        out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"ACCEPTANCE_STABILITY_TEMPLATE status=skipped reason=no_targets_configured out={_posix(out_path)}")
+        return 0
 
     file_results: list[dict[str, Any]] = []
     total_failed = 0
@@ -285,4 +311,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

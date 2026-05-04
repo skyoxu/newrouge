@@ -55,14 +55,8 @@ class GateBundleTemplateTests(unittest.TestCase):
             self.assertEqual("missing_task_files", gates["task_contract_refs_gate"].get("skip_reason"))
             self.assertTrue(gates["task_contract_refs_gate"].get("skipped"))
 
-            self.assertIn("contract_interface_docs", gates)
-            contract_gate = gates["contract_interface_docs"]
-            # Local adaptation: some repos already carry contracts/interfaces docs.
-            # In that case this gate should run and pass instead of being skipped.
-            if contract_gate.get("skipped"):
-                self.assertEqual("missing_contract_interfaces_dir", contract_gate.get("skip_reason"))
-            else:
-                self.assertEqual(0, int(contract_gate.get("rc", -1)), contract_gate)
+            self.assertEqual("missing_contract_interfaces_dir", gates["contract_interface_docs"].get("skip_reason"))
+            self.assertTrue(gates["contract_interface_docs"].get("skipped"))
 
             self.assertIn("validate_recovery_docs", gates)
             self.assertFalse(gates["validate_recovery_docs"].get("skipped"))

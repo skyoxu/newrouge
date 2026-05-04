@@ -29,18 +29,6 @@ py -3 scripts/python/check_domain_contracts.py
 py -3 scripts/python/validate_contracts.py
 ```
 
-4) 校验任务视图 `contractRefs`（含跨视图一致性硬门）：
-
-```powershell
-py -3 scripts/python/check_task_contract_refs.py --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json
-```
-
-一致性硬门说明：
-
-- 同一 `taskmaster_id` 在 `tasks_back.json` 与 `tasks_gameplay.json` 的 `contractRefs` 必须一致；
-- 如需受控差异，使用白名单 `.taskmaster/docs/contractrefs-consistency-whitelist.json`；
-- 白名单必须显式列出每个文件的期望 `contractRefs`，不允许隐式放行。
-
 ## 生成产物与版本控制规则
 
 - 生成产物默认写入 `logs/ci/<YYYY-MM-DD>/...`，作为 CI/本地审计证据。

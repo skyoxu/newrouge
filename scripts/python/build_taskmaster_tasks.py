@@ -12,7 +12,7 @@ This script:
   - taskmaster_id: 数字 ID（Task Master 使用）
   - taskmaster_exported: 是否已映射到 Task Master
 
-Constraints come from docs/task-master-constraints.md:
+Constraints are enforced by this script and the generated Task Master schema:
 - Root object must be { "<tag>": { "tasks": [...] }, ... }
 - id: number
 - dependencies: number[]

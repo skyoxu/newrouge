@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from solution_resolver import resolve_solution_path, resolve_test_solution_path
-
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -44,8 +42,37 @@ def _looks_like_test_solution(candidate: Path) -> bool:
 
 
 def resolve_solution_arg(solution: str, *, root: Path | None = None) -> str:
-    return resolve_solution_path(solution, repo_root=root or repo_root())
+    raw = str(solution or "").strip()
+    if raw and raw.lower() != "auto":
+        return raw
+
+    resolved_root = root or repo_root()
+    candidates = _discover_solutions(resolved_root)
+    if not candidates:
+        return "Game.sln"
+
+    preferred = _pick_by_preferred_name(candidates, _preferred_solution_names(resolved_root))
+    if preferred:
+        return preferred
+
+    return candidates[0].name
 
 
 def resolve_test_solution_arg(solution: str, *, root: Path | None = None) -> str:
-    return resolve_test_solution_path(solution, repo_root=root or repo_root())
+    raw = str(solution or "").strip()
+    if raw and raw.lower() != "auto":
+        return raw
+
+    resolved_root = root or repo_root()
+    candidates = _discover_solutions(resolved_root)
+    if not candidates:
+        return "Game.sln"
+
+    test_candidates = [candidate for candidate in candidates if _looks_like_test_solution(candidate)]
+    if test_candidates:
+        preferred = _pick_by_preferred_name(test_candidates, ("Game.sln",) + _preferred_solution_names(resolved_root))
+        if preferred:
+            return preferred
+        return test_candidates[0].name
+
+    return resolve_solution_arg(raw, root=resolved_root)

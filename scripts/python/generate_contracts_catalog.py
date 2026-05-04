@@ -163,7 +163,7 @@ def _md_escape(s: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate a contracts catalog (template-friendly).")
-    ap.add_argument("--prd-id", default=None, help="Optional PRD id for the catalog header (e.g. PRD-NEWROUGE-GAME-0001).")
+    ap.add_argument("--prd-id", default=None, help="Optional PRD id for the catalog header (e.g. PRD-Guild-Manager).")
     ap.add_argument(
         "--domain-prefix",
         default=(os.environ.get("DOMAIN_PREFIX") or "core").strip() or "core",

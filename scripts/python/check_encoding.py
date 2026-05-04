@@ -91,16 +91,6 @@ EXCLUDE_SUBSTRINGS = [
     "gitlog/export-logs.zip",
 ]
 
-EXCLUDE_PREFIXES = [
-    "_bmad/",
-    "backup/",
-    "Tests.Godot/addons/gdUnit4/",
-]
-
-EXCLUDE_EXACT = {
-    "docs/architecture/base/ZZZ-encoding-fixture-bad.md",
-}
-
 # Mojibake/garble indicators (heuristic, not a proof).
 MOJIBAKE_REGEXES = [
     ("FFFD_REPLACEMENT", re.compile("\uFFFD")),
@@ -134,18 +124,7 @@ def git_changed_today() -> List[str]:
 def is_text_file(path: str) -> bool:
     _, ext = os.path.splitext(path)
     ext = ext.lower()
-    if os.path.isabs(path):
-        try:
-            norm = os.path.relpath(path, os.getcwd()).replace("\\", "/")
-        except Exception:
-            norm = path.replace("\\", "/")
-    else:
-        norm = path.replace("\\", "/")
-    norm = norm.lstrip("./")
-    if norm in EXCLUDE_EXACT:
-        return False
-    if any(norm.startswith(prefix) for prefix in EXCLUDE_PREFIXES):
-        return False
+    norm = path.replace("\\", "/")
     if any(s in norm for s in EXCLUDE_SUBSTRINGS):
         return False
     if ext in BINARY_EXT:

@@ -216,7 +216,7 @@ def main():
                 if os.path.isfile(tests_csproj):
                     dotnet_projects.append(tests_csproj)
                 # Also try solution at repo root if present
-                sln = os.path.join(root, 'NewRouge.sln')
+                sln = os.path.join(root, 'GodotGame.sln')
                 # Prefer project build; if solution exists, add as secondary
                 build_logs = []
                 for item in (dotnet_projects or [sln] if os.path.isfile(sln) else []):

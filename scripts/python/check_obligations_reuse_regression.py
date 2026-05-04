@@ -20,7 +20,7 @@ from _obligations_extract_helpers import build_input_hash, is_view_present, norm
 from _obligations_guard import apply_deterministic_guards, build_obligation_prompt  # noqa: E402
 from _obligations_reuse_index import remember_reusable_ok_result_with_stats  # noqa: E402
 from _security_profile import resolve_security_profile  # noqa: E402
-from _taskmaster import iter_master_tasks, resolve_triplet  # noqa: E402
+from _taskmaster import default_paths, iter_master_tasks, resolve_triplet  # noqa: E402
 
 
 PROMPT_VERSION = "obligations-v3"
@@ -35,7 +35,7 @@ def _load_json(path: Path) -> Any:
 
 
 def _pick_task_id(task_files: list[str]) -> str:
-    tasks_json_path = REPO_ROOT / ".taskmaster" / "tasks" / "tasks.json"
+    tasks_json_path = default_paths()[0]
     tasks_obj = _load_json(tasks_json_path)
     master_tasks = iter_master_tasks(tasks_obj if isinstance(tasks_obj, dict) else {})
     numeric_ids: list[int] = []
@@ -226,7 +226,7 @@ def main() -> int:
     parser.add_argument(
         "--task-files",
         nargs="+",
-        default=[".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"],
+        default=[str(path.relative_to(REPO_ROOT)).replace("\\", "/") for path in default_paths()[1:]],
         help="Task view files for candidate lookup context.",
     )
     parser.add_argument("--round-prefix", default="reuse-regression", help="Round id prefix.")

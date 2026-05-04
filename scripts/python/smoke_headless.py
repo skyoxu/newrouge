@@ -26,55 +26,10 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 
 def _is_known_good_scene(scene: str) -> bool:
     return bool(scene) and scene.startswith("res://") and scene.lower().endswith(".tscn")
-
-
-def _launch_and_capture(
-    cmd: list[str],
-    timeout_sec: int,
-    out_path: Path,
-    err_path: Path,
-) -> dict[str, Any]:
-    print(f"[smoke_headless] starting Godot: {' '.join(cmd)} (timeout={timeout_sec}s)")
-    timed_out = False
-
-    with out_path.open("w", encoding="utf-8", errors="ignore") as f_out, \
-            err_path.open("w", encoding="utf-8", errors="ignore") as f_err:
-        try:
-            proc = subprocess.Popen(cmd, stdout=f_out, stderr=f_err, text=True)
-        except Exception as exc:  # pragma: no cover - environment-specific failure
-            raise RuntimeError(f"failed to start Godot: {exc}") from exc
-
-        try:
-            proc.wait(timeout=timeout_sec)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            print("[smoke_headless] timeout reached; terminating Godot (expected for smoke)")
-            try:
-                proc.kill()
-            except Exception:
-                pass
-
-    out_text = out_path.read_text(encoding="utf-8", errors="ignore") if out_path.is_file() else ""
-    err_text = err_path.read_text(encoding="utf-8", errors="ignore") if err_path.is_file() else ""
-    combined = out_text + ("\n" + err_text if err_text else "")
-    has_marker = "[TEMPLATE_SMOKE_READY]" in combined
-    has_db_open = "[DB] opened" in combined
-    has_any = bool(combined.strip())
-
-    return {
-        "timed_out": timed_out,
-        "out_text": out_text,
-        "err_text": err_text,
-        "combined": combined,
-        "has_marker": has_marker,
-        "has_db_open": has_db_open,
-        "has_any": has_any,
-    }
 
 
 def _run_smoke(
@@ -114,55 +69,39 @@ def _run_smoke(
 
     cmd = [str(bin_path), "--headless", "--path", project_path, "--scene", scene]
     cmd_text = " ".join(cmd)
-    try:
-        run = _launch_and_capture(cmd, timeout_sec, out_path, err_path)
-    except RuntimeError as exc:
-        print(f"[smoke_headless] {exc}", file=sys.stderr)
-        return 1
+    print(f"[smoke_headless] starting Godot: {' '.join(cmd)} (timeout={timeout_sec}s)")
 
-    retry_info: dict[str, Any] = {"attempted": False}
-    has_marker = bool(run["has_marker"])
-    has_db_open = bool(run["has_db_open"])
-    has_any = bool(run["has_any"])
-
-    # Strict mode stabilization for cold-start Mono compile:
-    # if marker/db evidence is absent, do one longer retry before failing.
-    if strict and not (has_marker or has_db_open):
-        retry_timeout = max(timeout_sec * 4, 20)
-        retry_out_path = dest / "headless.retry.out.log"
-        retry_err_path = dest / "headless.retry.err.log"
-        print(
-            "[smoke_headless] strict marker not found; retrying once with "
-            f"extended timeout={retry_timeout}s"
-        )
+    with out_path.open("w", encoding="utf-8", errors="ignore") as f_out, \
+            err_path.open("w", encoding="utf-8", errors="ignore") as f_err:
         try:
-            retry_run = _launch_and_capture(cmd, retry_timeout, retry_out_path, retry_err_path)
-            retry_info = {
-                "attempted": True,
-                "timeout_sec": retry_timeout,
-                "markers": {
-                    "template_smoke_ready": bool(retry_run["has_marker"]),
-                    "db_opened": bool(retry_run["has_db_open"]),
-                    "any_output": bool(retry_run["has_any"]),
-                },
-                "artifacts": {
-                    "out_log": str(retry_out_path),
-                    "err_log": str(retry_err_path),
-                },
-            }
-            if bool(retry_run["has_marker"]) or bool(retry_run["has_db_open"]):
-                run = retry_run
-                has_marker = bool(run["has_marker"])
-                has_db_open = bool(run["has_db_open"])
-                has_any = bool(run["has_any"])
-                out_path.write_text(str(run["out_text"]), encoding="utf-8", errors="ignore")
-                err_path.write_text(str(run["err_text"]), encoding="utf-8", errors="ignore")
-        except RuntimeError as exc:
-            retry_info = {"attempted": True, "error": str(exc)}
+            proc = subprocess.Popen(cmd, stdout=f_out, stderr=f_err, text=True)
+        except Exception as exc:  # pragma: no cover - environment-specific failure
+            print(f"[smoke_headless] failed to start Godot: {exc}", file=sys.stderr)
+            return 1
 
-    combined = str(run["combined"])
+        try:
+            proc.wait(timeout=timeout_sec)
+        except subprocess.TimeoutExpired:
+            print("[smoke_headless] timeout reached; terminating Godot (expected for smoke)")
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+    content_parts: list[str] = []
+    if out_path.is_file():
+        content_parts.append(out_path.read_text(encoding="utf-8", errors="ignore"))
+    if err_path.is_file():
+        content_parts.append("\n" + err_path.read_text(encoding="utf-8", errors="ignore"))
+
+    combined = "".join(content_parts)
     log_path.write_text(combined, encoding="utf-8", errors="ignore")
     print(f"[smoke_headless] log saved at {log_path} (out={out_path}, err={err_path})")
+
+    text = combined or ""
+    has_marker = "[TEMPLATE_SMOKE_READY]" in text
+    has_db_open = "[DB] opened" in text
+    has_any = bool(text.strip())
 
     if has_marker:
         print("SMOKE PASS (marker)")
@@ -194,7 +133,6 @@ def _run_smoke(
             "db_opened": has_db_open,
             "any_output": has_any,
         },
-        "retry": retry_info,
         "artifacts": {
             "out_log": str(out_path),
             "err_log": str(err_path),

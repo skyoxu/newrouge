@@ -171,19 +171,15 @@ overlays 只做引用：
 
 1) 口径文档（引用型）：
    - `docs/adr/ADR-0004-event-bus-and-contracts.md`
-   - `docs/architecture/overlays/<PRD-ID>/08/08-Feature-Slice-<slice>.md`（示例见 `PRD-NEWROUGE-GAME-0001`）
+   - `docs/architecture/overlays/<PRD-ID>/08/08-Contracts-CloudEvent.md`（示例见 `PRD-Guild-Manager`）
+   - `docs/architecture/overlays/<PRD-ID>/08/08-Contracts-CloudEvents-Core.md`（示例见 `PRD-Guild-Manager`）
 2) 契约自检（脚本生成报告，用于开工前对齐，非 SSoT）：
    - `py -3 scripts/python/check_domain_contracts.py`（输出到 `logs/ci/<YYYY-MM-DD>/domain-contracts-check/summary.json`）
    - `py -3 scripts/python/generate_contracts_catalog.py --prd-id <PRD-ID>`（输出到 `logs/ci/<YYYY-MM-DD>/contracts-catalog/`；说明见 `docs/workflows/contracts-catalog-guide.md`）
 3) 确定性校验（防漂移）：
    - `py -3 scripts/python/validate_contracts.py`
-   - `py -3 scripts/python/task_links_validate.py --mode all`
+   - `py -3 scripts/python/task_links_validate.py`
    - `py -3 scripts/python/validate_task_overlays.py`
-
-本仓库当前提供的最小可读示例（用于快速对齐格式与验收表达，不复制阈值/策略）：
-- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
-- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
-- `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md`
 
 ## 5. 任务视图如何引用 overlays（强制绑定规则）
 
@@ -219,6 +215,21 @@ overlays 只做引用：
    - 把每个 Task 的 `overlay_refs` 指到 `_index.md`、`ACCEPTANCE_CHECKLIST.md`、以及该任务对应页。
 6) 跑确定性校验（见下一节），确保回链不漂移。
 
+### 6.1 Overlay Generator Bootstrap
+
+When a new PRD wave first lands, do not hand-write the whole `08/` tree. Generate candidate pages first, then review and apply in small batches.
+
+- Quickstart: `docs/workflows/overlay-generation-quickstart.md`
+- SOP: `docs/workflows/overlay-generation-sop.md`
+- Batch entry: `py -3 scripts/sc/llm_generate_overlays_batch.py`
+- Single-page repair: `py -3 scripts/sc/llm_generate_overlays_from_prd.py`
+
+Stop-loss rules:
+
+- Every path listed in `--prd-docs` is treated as required input; a missing file hard-fails the run.
+- If `docs/architecture/overlays/<PRD-ID>/08/` already exists, the generator reuses the current page profile instead of forcing a rewrite.
+- First pass should be `dry-run -> simulate`; do not start with full `--apply`.
+
 ## 7. 推荐的确定性校验（Windows）
 
 执行顺序建议：
@@ -226,7 +237,7 @@ overlays 只做引用：
 1) overlays 回链与 checklist schema：
    - `py -3 scripts/python/validate_task_overlays.py`
 2) 任务回链与引用完整性：
-   - `py -3 scripts/python/task_links_validate.py --mode all`
+   - `py -3 scripts/python/task_links_validate.py`
    - `py -3 scripts/python/audit_task_ref_integrity.py`
 3) 文档编码与疑似乱码扫描（取证 + 防 PR 乱码）：
    - `py -3 scripts/ci/check_encoding_issues.py`

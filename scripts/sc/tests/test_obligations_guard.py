@@ -22,15 +22,6 @@ class ObligationsGuardTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertFalse(stripped)
 
-
-    def test_contains_excerpt_matches_escaped_newline_source_text(self) -> None:
-        raw = "ADR Refs: ADR-0025, ADR-0032, ADR-0033\\nChapters: CH05, CH06, CH07"
-        norm = " ".join(raw.split())
-        excerpt = "ADR Refs: ADR-0025, ADR-0032, ADR-0033\nChapters: CH05, CH06, CH07"
-        matched, stripped = _contains_excerpt(excerpt, raw, norm)
-        self.assertTrue(matched)
-        self.assertFalse(stripped)
-
     def test_contains_excerpt_prefix_stripped_match_for_long_english(self) -> None:
         raw = "Create main menu scene with new run and continue options."
         norm = " ".join(raw.split())

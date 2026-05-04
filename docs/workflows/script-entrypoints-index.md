@@ -42,6 +42,8 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/serve_project_health.py`
 - `scripts/python/resume_task.py`
 - `scripts/python/run_single_task_chapter6_lane.py`
+- `scripts/python/run_prototype_workflow.py`
+- `scripts/python/run_chapter7_ui_wiring.py`
 
 ### Repo hard gates
 
@@ -67,15 +69,36 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/run_single_task_chapter6_lane.py`
 - `scripts/python/merge_single_task_light_lane_summaries.py`
 
+### Task generation and triplet compilation
+
+- `scripts/python/extract_requirement_anchors.py`: extracts stable requirement anchors from configurable PRD, GDD, epics, stories, overlays, ADRs, and custom planning globs.
+- `scripts/python/generate_task_candidates_from_sources.py`: converts requirement anchors into normalized task candidates without writing final task files.
+- `scripts/python/enrich_task_candidates.py`: enriches normalized candidates with ADR, chapter, overlay, contract event, test, evidence, owner/layer, acceptance, and duplicate-candidate signals.
+- `scripts/python/audit_task_candidate_coverage.py`: audits candidate coverage against requirement anchors and blocks missing P0/P1 coverage.
+- `scripts/python/compile_task_triplet.py`: compiles enriched candidates into a reviewable triplet patch, or writes task view files with `--write`.
+
 ### Taskmaster / semantics / overlay
 
 - `scripts/python/task_links_validate.py`
 - `scripts/python/check_tasks_all_refs.py`
 - `scripts/python/validate_task_master_triplet.py`
+- `scripts/python/collect_ui_wiring_inputs.py`
 - `scripts/python/validate_contracts.py`
 - `scripts/python/check_domain_contracts.py`
 - `scripts/python/sync_task_overlay_refs.py`
 - `scripts/sc/llm_generate_overlays_batch.py`
+
+
+### Chapter 7 UI wiring closure
+
+- `scripts/python/collect_ui_wiring_inputs.py`: collects `status = done` master tasks, joins task views by `taskmaster_id`, and writes `logs/ci/<date>/chapter7-ui-wiring-inputs/summary.json`. Requires real task triplet files in business repos; skips in bare template.
+- `scripts/python/chapter7_ui_gdd_writer.py`: writes the governed `docs/gdd/ui-gdd-flow.md` plus `docs/gdd/ui-gdd-flow.candidates.json` candidate sidecar from collected Chapter 7 inputs. Supports `--chapter7-profile-path` for template-safe bucket/surface/title overrides.
+- `scripts/python/validate_chapter7_ui_wiring.py`: validates `docs/gdd/ui-gdd-flow.md` sections and done-task `T<id>` coverage. Included in hard gate bundle as `chapter7_ui_wiring_gate`.
+- `scripts/python/validate_chapter7_artifact_manifest.py`: validates `artifact-manifest.json` top-level fields, required artifact types, file existence, and SHA-256 integrity.
+- `scripts/python/create_chapter7_tasks_from_ui_candidates.py`: creates or refreshes Chapter 7 follow-up task rows from `docs/gdd/ui-gdd-flow.candidates.json`, with parameterized overlay root, story identity, and optional `--chapter7-profile-path` for ids/owners/labels/refs templating.
+- `scripts/python/run_chapter7_backlog_gap.py`: compares BMAD design/epics text against the current task triplet and recommends whether new Chapter 7 tasks are justified.
+- `scripts/python/apply_chapter7_status_patch.py`: applies or previews the machine-readable Chapter 7 task-status patch contract.
+- `scripts/python/run_chapter7_ui_wiring.py`: top-level Chapter 7 orchestrator. Prefer `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring`. It also emits `inputs.snapshot.json`, `closure-summary.json`, `task-status-patch-preview.json`, `task-status-patch-preview.md`, `task-status-patch.json`, `artifact-manifest.json`, and `artifact-manifest-validation.json`. Optional profile override file: `docs/workflows/chapter7-profile.json`; template seed: `docs/workflows/templates/chapter7-profile.template.json`; operator guide: `docs/workflows/chapter7-profile-guide.md`.
 
 ## Parameter Prerequisite Legend
 
@@ -127,6 +150,9 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/validate_security_audit_execution_evidence.py`
 - `scripts/python/validate_ui_event_json_guards.py`
 - `scripts/python/validate_ui_event_source_verification.py`
+- `scripts/python/chapter7_ui_gdd_writer.py`
+- `scripts/python/validate_chapter7_artifact_manifest.py`
+- `scripts/python/validate_chapter7_ui_wiring.py`
 - `scripts/sc/check_acceptance_garbled.py`
 
 ### LLM-assisted semantics and generation
@@ -587,7 +613,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Direct local deps: `scripts/sc/_acceptance_semantics_align.py`, `scripts/sc/_acceptance_semantics_runtime.py`, `scripts/sc/_delivery_profile.py`, `scripts/sc/_garbled_gate.py`, `scripts/sc/_taskmaster.py`, `scripts/sc/_util.py`
 - Transitive local deps: `scripts/sc/_acceptance_semantics_align.py`, `scripts/sc/_acceptance_semantics_runtime.py`, `scripts/sc/_delivery_profile.py`, `scripts/sc/_garbled_gate.py`, `scripts/sc/_taskmaster.py`, `scripts/sc/_taskmaster_paths.py`, `scripts/sc/_util.py`
 - Subcommands: None.
-- Declared args: `--delivery-profile`, `--llm-backend`, `--scope`, `--task-ids`, `--fail-on-missing-task-ids`, `--fail-on-missing-views`, `--strict-task-selection`, `--apply`, `--preflight-migrate-optional-hints`, `--skip-preflight-migrate-optional-hints`, `--structural-for-not-done`, `--append-only-for-done`, `--align-view-descriptions-to-master`, `--semantic-findings-json`, `--timeout-sec`, `--max-failures`, `--garbled-gate`, `--self-check`
+- Declared args: `--delivery-profile`, `--llm-backend`, `--scope`, `--task-ids`, `--fail-on-missing-task-ids`, `--fail-on-missing-views`, `--strict-task-selection`, `--apply`, `--preflight-migrate-optional-hints`, `--skip-preflight-migrate-optional-hints`, `--structural-for-not-done`, `--append-only-for-done`, `--align-view-descriptions-to-master`, `--semantic-findings-json`, `--timeout-sec`, `--max-failures`, `--max-rewrite-change-ratio`, `--garbled-gate`, `--self-check`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
@@ -613,6 +639,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Subcommands: None.
 - Declared args: `--all`, `--task-id`, `--llm-backend`, `--write`, `--overwrite-existing`, `--rewrite-placeholders`, `--timeout-sec`, `--max-refs-per-item`, `--candidate-limit`, `--max-tasks`, `--consensus-runs`, `--self-check`
 - Behavior notes: `--llm-backend codex-cli|openai-api` now routes the per-task consensus mapping call through the shared backend seam; `--self-check` stays deterministic.
+- Behavior notes: `--write` hard-fails when a proposed test ref file is missing or does not contain the matching `ACC:T<id>.<n>` anchor; keep dry-run until test evidence is anchor-bound.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.
@@ -832,10 +859,11 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Direct local deps: None.
 - Transitive local deps: None.
 - Subcommands: None.
-- Declared args: `--prd-id`, `--overlay-dir`, `--require-heading`
+- Declared args: `--prd-id`, `--overlay-dir`, `--require-heading`, `--strict-refs`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - PRD/overlay parameters require real PRD sources, overlay roots, and business-local `PRD-ID` values.
+  - Use `--strict-refs` after limited apply when missing `Arch-Refs` / `ADRs` / `Test-Refs` should block the overlay baseline.
 
 #### `scripts/python/validate_overlay_test_refs.py`
 
@@ -962,6 +990,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Behavior notes: reads recovery artifacts first, then routes Chapter 6 to `run-6.7`, `run-6.8`, `fix-deterministic`, `repo-noise-stop`, `record-residual`, or `inspect-first`.
 - Behavior notes: `6.8` is only recommended when current edits hit the previous reviewer anchors.
 - Behavior notes: `--record-residual` writes `decision-logs/**` and `execution-plans/**` when only low-priority findings remain.
+- Behavior notes: residual recording applies a deterministic P1 floor for acceptance refs, artifact integrity, planned-only, security-boundary, and false-green categories.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require real recovery artifacts under `logs/ci/**`.
@@ -1301,6 +1330,7 @@ Notes:
 - Transitive local deps: None.
 - Subcommands: None.
 - Declared args: `--task-ids`, `--task-id-start`, `--task-id-end`, `--max-tasks`, `--timeout-sec`, `--llm-timeout-sec`, `--out-dir`, `--no-resume`, `--fill-refs-after-extract-fail`, `--fill-refs-mode`, `--downstream-on-extract-fail`, `--batch-lane`, `--resume-failed-task-from`, `--stop-on-step-failure`, `--no-align-apply`, `--delivery-profile`, `--self-check`
+- Behavior notes: `--max-rewrite-change-ratio` forwards to `llm_align_acceptance_semantics.py` and hard-fails overly broad rewrite-only acceptance edits before task views are written.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/tasks.json` when real `.taskmaster/tasks/tasks.json` is absent.

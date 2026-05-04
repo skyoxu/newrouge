@@ -35,12 +35,12 @@ class SolutionTargetTests(unittest.TestCase):
 
     def test_auto_should_prefer_repo_name_solution(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
-            root = Path(tmpdir) / "newrouge"
+            root = Path(tmpdir) / "templategame"
             root.mkdir(parents=True, exist_ok=True)
-            (root / "NewRouge.sln").write_text("", encoding="utf-8")
+            (root / "templategame.sln").write_text("", encoding="utf-8")
             (root / "Game.sln").write_text("", encoding="utf-8")
             resolved = solution_target.resolve_solution_arg("", root=root)
-            self.assertEqual("NewRouge.sln", resolved)
+            self.assertEqual("templategame.sln", resolved)
 
     def test_auto_should_fallback_to_game_sln(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sample-") as tmpdir:
@@ -49,12 +49,12 @@ class SolutionTargetTests(unittest.TestCase):
             resolved = solution_target.resolve_solution_arg("auto", root=root)
             self.assertEqual("Game.sln", resolved)
 
-    def test_test_auto_should_prefer_repo_named_solution_even_when_game_sln_has_tests(self) -> None:
+    def test_test_auto_should_prefer_solution_with_test_projects(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
-            root = Path(tmpdir) / "newrouge"
+            root = Path(tmpdir) / "templategame"
             root.mkdir(parents=True, exist_ok=True)
-            (root / "NewRouge.sln").write_text(
-                'Project("{x}") = "NewRouge", "NewRouge.csproj", "{1}"\nEndProject\n',
+            (root / "templategame.sln").write_text(
+                'Project("{x}") = "templategame", "templategame.csproj", "{1}"\nEndProject\n',
                 encoding="utf-8",
             )
             (root / "Game.sln").write_text(
@@ -62,16 +62,16 @@ class SolutionTargetTests(unittest.TestCase):
                 encoding="utf-8",
             )
             resolved = solution_target.resolve_test_solution_arg("auto", root=root)
-            self.assertEqual("NewRouge.sln", resolved)
+            self.assertEqual("Game.sln", resolved)
 
     def test_test_auto_should_fallback_to_normal_resolution_without_test_projects(self) -> None:
         with tempfile.TemporaryDirectory(prefix="repo-") as tmpdir:
-            root = Path(tmpdir) / "newrouge"
+            root = Path(tmpdir) / "templategame"
             root.mkdir(parents=True, exist_ok=True)
-            (root / "NewRouge.sln").write_text("", encoding="utf-8")
+            (root / "templategame.sln").write_text("", encoding="utf-8")
             (root / "Game.sln").write_text("", encoding="utf-8")
             resolved = solution_target.resolve_test_solution_arg("auto", root=root)
-            self.assertEqual("NewRouge.sln", resolved)
+            self.assertEqual("templategame.sln", resolved)
 
     def test_auto_should_use_first_solution_when_no_preferred_name(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sample-") as tmpdir:
