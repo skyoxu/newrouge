@@ -80,4 +80,3 @@ def prune_gate_bundle_runs(
         "failed_count": len(failed),
         "failed": failed,
     }
-

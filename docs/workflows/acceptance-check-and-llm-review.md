@@ -70,13 +70,12 @@ CI 集成说明（Windows Quality Gate）：
 硬门禁（失败即阻断）：
 
 - ADR 合规：任务 `adrRefs/archRefs/overlay` 是否完整；ADR 文件存在；至少引用 ≥1 个 **Accepted** ADR
-- 任务回链：`py -3 scripts/python/task_links_validate.py --mode all`（可选：`--max-warnings <budget>`）
+- 任务回链：`py -3 scripts/python/task_links_validate.py`
 - Overlay 校验：`py -3 scripts/python/validate_task_overlays.py`
 - 契约一致性：`py -3 scripts/python/validate_contracts.py`
 - 架构边界：`Game.Core/**` 不得引用 `Godot.*`
 - 构建门禁：`dotnet build -warnaserror`（通过 sc build 入口）
 - 测试门禁：`py -3 scripts/sc/test.py --type all`（含 xUnit + GdUnit4 + smoke）
-- 安全档位：默认 `host-safe`；可通过 `--security-profile strict` 切到严格安全口径（优先级：CLI > `SECURITY_PROFILE` > 默认）
 
 软门禁（不阻断，只记录证据）：
 
@@ -91,11 +90,9 @@ CI 集成说明（Windows Quality Gate）：
 默认**不启用**（避免在 CI/机器差异下误伤）。启用方式：
 
 - 显式启用：  
-  `py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
+  `py -3 scripts/sc/acceptance_check.py --task-id 10 --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
 - 或设置环境变量：  
   `$env:PERF_P95_THRESHOLD_MS = "20"`
-- 发布前/出网/高风险场景：  
-  `py -3 scripts/sc/acceptance_check.py --task-id 10 --security-profile strict --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
 - legacy 快捷开关：  
   `--require-perf`（阈值取 `PERF_P95_THRESHOLD_MS`，否则默认 20ms；仍建议优先用 `--perf-p95-ms` 明示）
 
@@ -104,7 +101,7 @@ CI 集成说明（Windows Quality Gate）：
 - 如果只跑 `--only perf`，脚本不会自动跑 smoke 生成 `headless.log`，你需要先运行一次：
   - `py -3 scripts/sc/test.py --type all --godot-bin "$env:GODOT_BIN"`  
   或  
-  - `py -3 scripts/python/smoke_headless.py --godot-bin "$env:GODOT_BIN" --project-path . --scene res://Game.Godot/Scenes/Main.tscn --timeout-sec 5 --strict`
+  - `py -3 scripts/python/smoke_headless.py --godot-bin "$env:GODOT_BIN" --project . --scene res://Game.Godot/Scenes/Main.tscn --timeout-sec 5 --mode strict`
 
 ---
 
@@ -179,8 +176,7 @@ py -3 scripts/sc/llm_review.py --task-id 10 --base main --strict
 每完成一个 `tasks.json` 的任务（或一个子任务提交）后：
 
 1) **硬门禁**：  
-   `py -3 scripts/sc/acceptance_check.py --task-id <id> --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
-   （发布前/高风险改为 `--security-profile strict`）
+   `py -3 scripts/sc/acceptance_check.py --task-id <id> --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
 2) **软审查（可选）**：  
    `py -3 scripts/sc/llm_review.py --task-id <id> --base main`
 3) 通过后再进入下一个任务（避免质量债滚雪球）。
@@ -219,3 +215,12 @@ py -3 scripts/sc/llm_review.py --task-id 10 --base main --strict
 - 更新：`scripts/sc/README.md`（补充 llm_review 与 Claude agents 读取口径）
 
 > 说明：以上文件均属于“工具链/工作流层”，不应与游戏业务逻辑耦合。
+
+## 7. Update (2026-02)
+
+- `acceptance_check.py` (hard gate): profile-aware defaults via `--security-profile`; recommended to use `--require-task-test-refs` and `--require-executed-refs` for strict delivery phases.
+- `llm_review.py`: profile-aware risk context via `--security-profile`; task-specific output path is `sc-llm-review-task-<id>/` when `--task-id` is set.
+- `llm_extract_task_obligations.py`: use `--consensus-runs`, `--garbled-gate`, and `--auto-escalate` for stability.
+- `llm_check_subtasks_coverage.py`: supports `--consensus-runs`.
+- `llm_semantic_gate_all.py`: supports `--garbled-gate` precheck before LLM audit.
+- CI must emit: `SecurityProfile: <host-safe|strict>`.

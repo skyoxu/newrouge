@@ -123,41 +123,6 @@ class ScTestOrchestrationTests(unittest.TestCase):
             self.assertEqual("fail", summary["status"])
             self.assertEqual(["unit"], [item["name"] for item in summary["steps"]])
 
-    def test_main_should_set_soft_coverage_gate_mode_when_no_coverage_gate_flag_enabled(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_dir = Path(tmpdir) / "sc-test"
-            argv = ["test.py", "--type", "unit", "--run-id", "9" * 32, "--no-coverage-gate", "--no-coverage-report"]
-            unit_step = {
-                "name": "unit",
-                "cmd": ["py", "-3", "scripts/python/run_dotnet.py"],
-                "rc": 0,
-                "log": str(out_dir / "unit.log"),
-                "artifacts_dir": str(out_dir / "unit-artifacts"),
-                "status": "ok",
-            }
-            observed: dict[str, str | None] = {"mode": None}
-            conventions_step = {
-                "name": "csharp-test-conventions",
-                "cmd": ["py", "-3", "scripts/python/check_csharp_test_conventions.py"],
-                "rc": 0,
-                "log": str(out_dir / "csharp-test-conventions.log"),
-                "status": "ok",
-            }
-
-            def fake_run_unit(*args, **kwargs):  # type: ignore[no-untyped-def]
-                observed["mode"] = sc_test.os.environ.get("COVERAGE_GATE_MODE")
-                return unit_step
-
-            with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
-                mock.patch.object(sc_test, "run_unit", side_effect=fake_run_unit), \
-                mock.patch.object(sc_test, "run_csharp_test_conventions", return_value=conventions_step) as conventions_mock:
-                rc = sc_test.main()
-
-            self.assertEqual(0, rc)
-            self.assertEqual("soft", observed["mode"])
-            conventions_mock.assert_called_once()
-
     def test_main_should_fail_when_csharp_test_conventions_gate_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "sc-test"
@@ -190,69 +155,6 @@ class ScTestOrchestrationTests(unittest.TestCase):
             summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual("fail", summary["status"])
             self.assertEqual(["unit", "csharp-test-conventions"], [item["name"] for item in summary["steps"]])
-
-    def test_main_should_skip_csharp_test_conventions_when_flag_enabled(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_dir = Path(tmpdir) / "sc-test"
-            argv = [
-                "test.py",
-                "--type",
-                "all",
-                "--run-id",
-                "a" * 32,
-                "--task-id",
-                "15",
-                "--godot-bin",
-                "C:/Godot/Godot.exe",
-                "--skip-smoke",
-                "--skip-csharp-test-conventions",
-            ]
-            unit_step = {
-                "name": "unit",
-                "cmd": ["py", "-3", "scripts/python/run_dotnet.py"],
-                "rc": 0,
-                "log": str(out_dir / "unit.log"),
-                "artifacts_dir": str(out_dir / "unit-artifacts"),
-                "status": "ok",
-            }
-            coverage_step = {
-                "name": "coverage-report",
-                "cmd": ["reportgenerator"],
-                "rc": 0,
-                "log": str(out_dir / "coverage-report.log"),
-                "report_dir": str(out_dir / "coverage-report"),
-                "status": "ok",
-            }
-            gdunit_step = {
-                "name": "gdunit-hard",
-                "cmd": ["py", "-3", "scripts/python/run_gdunit.py"],
-                "rc": 0,
-                "log": str(out_dir / "gdunit-hard.log"),
-                "report_dir": str(out_dir / "gdunit-hard"),
-                "status": "ok",
-            }
-            with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
-                mock.patch.object(sc_test, "run_unit", return_value=unit_step), \
-                mock.patch.object(sc_test, "run_csharp_test_conventions") as conventions_mock, \
-                mock.patch.object(sc_test, "run_coverage_report", return_value=coverage_step), \
-                mock.patch.object(sc_test, "_task_scoped_gdunit_refs", return_value=["Tests.Godot/tests/UI/test_difficulty_select_confirm_selection.gd"]), \
-                mock.patch.object(sc_test, "run_gdunit_hard", return_value=gdunit_step) as gdunit_mock, \
-                mock.patch.object(sc_test, "run_smoke") as smoke_mock:
-                rc = sc_test.main()
-
-            self.assertEqual(0, rc)
-            conventions_mock.assert_not_called()
-            gdunit_mock.assert_called_once()
-            smoke_mock.assert_not_called()
-            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
-            self.assertEqual("ok", summary["status"])
-            self.assertEqual(
-                ["unit", "csharp-test-conventions", "coverage-report", "gdunit-hard"],
-                [item["name"] for item in summary["steps"]],
-            )
-            self.assertEqual("skipped", summary["steps"][1]["status"])
-            self.assertEqual("disabled_by_flag", summary["steps"][1]["reason"])
 
     def test_main_should_require_godot_bin_for_e2e_before_running_steps(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -355,55 +257,6 @@ class ScTestOrchestrationTests(unittest.TestCase):
             self.assertEqual("skipped", summary["steps"][3]["status"])
             self.assertEqual("task_scoped_no_gd_refs_unit_only", summary["steps"][3]["reason"])
             self.assertEqual("skipped", summary["steps"][4]["status"])
-
-    def test_main_should_skip_unit_lane_when_task_scoped_all_has_only_gd_refs(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_dir = Path(tmpdir) / "sc-test"
-            argv = ["test.py", "--type", "all", "--run-id", "6" * 32, "--task-id", "41", "--godot-bin", "C:/Godot/Godot.exe"]
-            gdunit_step = {
-                "name": "gdunit-hard",
-                "cmd": ["py", "-3", "scripts/python/run_gdunit.py"],
-                "rc": 0,
-                "log": str(out_dir / "gdunit-hard.log"),
-                "report_dir": str(out_dir / "gdunit-hard"),
-                "status": "ok",
-            }
-            smoke_step = {
-                "name": "smoke",
-                "cmd": ["py", "-3", "scripts/python/smoke_headless.py"],
-                "rc": 0,
-                "log": str(out_dir / "smoke.log"),
-                "status": "ok",
-            }
-            with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
-                mock.patch.object(sc_test, "_task_scoped_cs_refs", return_value=[]), \
-                mock.patch.object(sc_test, "_task_scoped_gdunit_refs", return_value=["Tests.Godot/tests/Tasks/test_task0041_acceptance.gd"]), \
-                mock.patch.object(sc_test, "run_unit") as run_unit_mock, \
-                mock.patch.object(sc_test, "run_csharp_test_conventions") as conventions_mock, \
-                mock.patch.object(sc_test, "run_coverage_report") as coverage_mock, \
-                mock.patch.object(sc_test, "run_gdunit_hard", return_value=gdunit_step) as gdunit_mock, \
-                mock.patch.object(sc_test, "run_smoke", return_value=smoke_step) as smoke_mock:
-                rc = sc_test.main()
-
-            self.assertEqual(0, rc)
-            run_unit_mock.assert_not_called()
-            conventions_mock.assert_not_called()
-            coverage_mock.assert_not_called()
-            gdunit_mock.assert_called_once()
-            smoke_mock.assert_called_once()
-            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
-            self.assertEqual("ok", summary["status"])
-            self.assertEqual(
-                ["unit", "csharp-test-conventions", "coverage-report", "gdunit-hard", "smoke"],
-                [item["name"] for item in summary["steps"]],
-            )
-            self.assertEqual("skipped", summary["steps"][0]["status"])
-            self.assertEqual("task_scoped_no_cs_refs_engine_only", summary["steps"][0]["reason"])
-            self.assertEqual("skipped", summary["steps"][1]["status"])
-            self.assertEqual("task_scoped_no_cs_refs_engine_only", summary["steps"][1]["reason"])
-            self.assertEqual("skipped", summary["steps"][2]["status"])
-            self.assertEqual("task_scoped_no_cs_refs_engine_only", summary["steps"][2]["reason"])
 
     def test_main_should_keep_fail_fast_for_explicit_e2e_when_no_gd_refs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

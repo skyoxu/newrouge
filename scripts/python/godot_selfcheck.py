@@ -13,7 +13,6 @@ Usage examples (Windows / py launcher):
 
 import argparse
 import datetime as dt
-import glob
 import io
 import json
 import os
@@ -87,32 +86,6 @@ def run_cmd(args: list[str], cwd: str | None = None, timeout: int = 120000) -> t
     return p.returncode, out, err
 
 
-def _find_fallback_selfcheck_json(date: str) -> str | None:
-    appdata = os.environ.get('APPDATA', '').strip()
-    if not appdata:
-        return None
-    root = os.path.join(appdata, 'Godot', 'app_userdata')
-    if not os.path.isdir(root):
-        return None
-
-    pattern = os.path.join(root, '*', 'e2e', date, 'composition_root_selfcheck.json')
-    matches = [p for p in glob.glob(pattern) if os.path.isfile(p)]
-    if not matches:
-        return None
-    matches.sort(key=lambda p: os.path.getmtime(p), reverse=True)
-    return matches[0]
-
-
-def _find_local_selfcheck_json(root: str, date: str) -> str | None:
-    """
-    Prefer project-local logs first when SELF_CHECK_OUT marker is missing.
-    """
-    candidate = os.path.join(root, 'logs', 'e2e', date, 'composition_root_selfcheck.json')
-    if os.path.isfile(candidate):
-        return candidate
-    return None
-
-
 def run_selfcheck(godot_bin: str, project_godot: str, build_solutions: bool) -> dict:
     root = os.path.dirname(os.path.abspath(project_godot))
     date = dt.date.today().strftime('%Y-%m-%d')
@@ -165,22 +138,12 @@ def run_selfcheck(godot_bin: str, project_godot: str, build_solutions: bool) -> 
         out = out2
         m = re.search(r'SELF_CHECK_OUT:(.*)$', out or '', flags=re.M)
         if not m:
-            fallback = _find_local_selfcheck_json(root, date) or _find_fallback_selfcheck_json(date)
-            if not fallback:
-                summary['reason'] = 'SELF_CHECK_OUT not found in console output'
-                return summary
-            user_json = fallback
-        else:
-            user_json = m.group(1).strip()
-    else:
-        user_json = m.group(1).strip()
-
-    if not os.path.exists(user_json):
-        fallback = _find_local_selfcheck_json(root, date) or _find_fallback_selfcheck_json(date)
-        if not fallback:
-            summary['reason'] = f'output not found at {user_json}'
+            summary['reason'] = 'SELF_CHECK_OUT not found in console output'
             return summary
-        user_json = fallback
+    user_json = m.group(1).strip()
+    if not os.path.exists(user_json):
+        summary['reason'] = f'output not found at {user_json}'
+        return summary
 
     dest = os.path.join(out_dir, 'composition_root_selfcheck.json')
     if os.path.normcase(os.path.abspath(user_json)) != os.path.normcase(os.path.abspath(dest)):

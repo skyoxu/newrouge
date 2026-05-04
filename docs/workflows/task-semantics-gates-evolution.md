@@ -23,7 +23,7 @@
 
 - `scripts/python/validate_task_master_triplet.py`：三份任务文件一致性（映射、depends_on、无环）+ ADR/CH/Overlay 全量引用校验（内部调用 `check_tasks_all_refs.py`）。
 - `scripts/python/verify_task_mapping.py`：人类可读 mapping 报告（不是 CI 硬门禁）。
-- `scripts/python/task_links_validate.py`：回链“一键硬门禁”（默认建议 `--mode all`；内部调用 `check_tasks_back_references.py` + `check_tasks_all_refs.py`）。
+- `scripts/python/task_links_validate.py`：回链“一键硬门禁”（内部调用 `check_tasks_back_references.py` + `check_tasks_all_refs.py`）。
 - `scripts/python/validate_task_overlays.py`：overlay 引用与 `ACCEPTANCE_CHECKLIST.md` Front Matter 校验。
 
 ### 确定性分析与证据链（无 LLM）
@@ -208,10 +208,10 @@ py -3 scripts/python/verify_task_mapping.py
   - 意义：回链的“一键硬门禁”。它会执行：
     1) `scripts/python/check_tasks_back_references.py`：只检查 backlog-only（`taskmaster_exported != true`）条目；
     2) `scripts/python/check_tasks_all_refs.py`：全量检查 `tasks_back.json + tasks_gameplay.json` 的 `adr_refs/chapter_refs/overlay_refs`。
-  - 建议用法：`--mode all`；CI 可加 `--max-warnings <budget>`；非 0 退出码视为 fail-fast。
+  - 建议用法：无参数；非 0 退出码视为 fail-fast。
 
 ```powershell
-py -3 scripts/python/task_links_validate.py --mode all
+py -3 scripts/python/task_links_validate.py
 ```
 
 - `scripts/python/validate_task_overlays.py`
@@ -396,21 +396,18 @@ py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
 - 需要“证据链严格”：加 `--require-task-test-refs` 与 `--require-executed-refs`。
 
 ```powershell
-# 默认全跑（确定性；单机/日常 CI 推荐 host-safe）
-py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile host-safe
+# 默认全跑（确定性）
+py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task
 
 # 涉及 Godot 测试 + 性能硬门禁（p95）
 $env:GODOT_BIN="C:\Godot\Godot_v4.5.1-stable_mono_win64_console.exe"
-py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20
+py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20
 
 # 证据链更严格（需要 anchors 被本次执行证明）
-py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile host-safe --require-task-test-refs --require-executed-refs
-
-# 发布前/出网/高风险场景：切换 strict
-py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile strict --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20 --require-task-test-refs --require-executed-refs
+py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --require-task-test-refs --require-executed-refs
 
 # 只跑 links+tests（用于快速回归）
-py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile host-safe --only links,tests
+py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --only links,tests
 ```
 
 #### 2.6 LLM 软审查（结构化模板；用确定性证据约束跑偏）
@@ -609,12 +606,11 @@ py -3 scripts/python/check_test_naming.py --style legacy
 
 #### B4) `scripts/sc/acceptance_check.py`
 
-- 意义：可复现的确定性验收门禁（ADR/links/overlay/contracts/arch/security/tests/perf/risk 等）。默认安全档位为 `host-safe`（单机/本地开发），发布前或高风险场景可切换 `strict`。
+- 意义：可复现的确定性验收门禁（ADR/links/overlay/contracts/arch/security/tests/perf/risk 等）。默认“安全/路径/SQL/审计 schema”是 require。
 - 输出：
   - 默认：`logs/ci/<YYYY-MM-DD>/sc-acceptance-check/`
   - 批量：建议加 `--out-per-task` 输出到 `sc-acceptance-check-task-<id>/` 防止覆盖。
 - 关键参数（常用）：
-  - `--security-profile host-safe|strict`：优先级最高；未传时读取 `SECURITY_PROFILE`，否则默认 `host-safe`。
   - `--only <steps>`：只跑指定步骤（如 `links,tests`）。
   - `--godot-bin`：涉及 `.gd`/e2e 时需要。
   - `--perf-p95-ms 20`：解析 headless.log 的 p95 作为硬门禁。
@@ -679,7 +675,7 @@ py -3 scripts/python/check_test_naming.py --style legacy
 
 #### C3) 回链与 Overlay
 
-- `scripts/python/task_links_validate.py`（建议 `--mode all`，CI 可选 `--max-warnings <budget>`）
+- `scripts/python/task_links_validate.py`
   - 作用：回链一键校验（内部调用 `check_tasks_back_references.py` 与 `check_tasks_all_refs.py`）。
 
 - `scripts/python/validate_task_overlays.py`
@@ -759,5 +755,14 @@ py -3 scripts/python/check_test_naming.py --style legacy
   2) `scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify auto --godot-bin "$env:GODOT_BIN"`
   3) `py -3 scripts/sc/build.py tdd --task-id <id> --stage green`
   4) `py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor`
-  5) `py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --security-profile host-safe --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
+  5) `py -3 scripts/sc/acceptance_check.py --task-id <id> --out-per-task --godot-bin "$env:GODOT_BIN" --perf-p95-ms 20`
   6) `py -3 scripts/sc/llm_review.py --task-id <id> --auto-commit --review-template scripts/sc/templates/llm_review/bmad-godot-review-template.txt`
+
+## 0) Delta alignment (2026-02)
+
+- `acceptance_check.py`: strengthened with `--security-profile`, `--require-task-test-refs`, `--require-executed-refs`, `--subtasks-coverage`, and `--out-per-task`.
+- `llm_review.py`: profile-aware risk context and task-scoped output path behavior.
+- `llm_extract_task_obligations.py`: stability controls via `--consensus-runs`, `--garbled-gate`, `--auto-escalate`.
+- `llm_check_subtasks_coverage.py`: supports `--consensus-runs`.
+- `llm_semantic_gate_all.py`: supports `--garbled-gate` precheck.
+- CI invariant: emit `SecurityProfile: <host-safe|strict>` in Step Summary.

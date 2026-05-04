@@ -89,3 +89,10 @@
 - 复盘为何 fail-fast
 - 对比治理前后差异
 - 作为 PR 证据链的一部分
+
+## 7. Parameter baseline (2026-02 alignment)
+
+- `llm_extract_task_obligations.py`: `--task-id <id> --consensus-runs 3 --garbled-gate on --auto-escalate on`
+- `llm_check_subtasks_coverage.py`: `--task-id <id> --consensus-runs 3`
+- `llm_semantic_gate_all.py`: `--task-ids <csv> --consensus-runs 3 --garbled-gate on`
+- Security-sensitive tasks should pass explicit `--security-profile host-safe|strict` and use `acceptance_check.py` as final authority.

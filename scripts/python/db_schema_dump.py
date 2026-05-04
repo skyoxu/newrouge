@@ -5,8 +5,8 @@ Dump schema_version from one or more SQLite databases.
 Windows-friendly, UTF-8 output. Best-effort: skips unreadable files.
 
 Usage:
-  py -3 scripts/python/db_schema_dump.py --glob "%APPDATA%\\Godot\\app_userdata\\newrouge\\*.db" --out logs/ci/<run_id>/schema-dump.json
-  py -3 scripts/python/db_schema_dump.py --db C:\\path\\to\\a.db --db C:\\path\\to\\b.db
+  py -3 scripts\python\db_schema_dump.py --glob "%APPDATA%\Godot\app_userdata\GodotGame\*.db" --out logs/ci/<run_id>/schema-dump.json
+  py -3 scripts\python\db_schema_dump.py --db C:\path\to\a.db --db C:\path\to\b.db
 """
 import argparse
 import datetime as dt

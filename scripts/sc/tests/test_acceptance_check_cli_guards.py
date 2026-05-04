@@ -9,15 +9,26 @@ import sys
 import unittest
 from pathlib import Path
 
+TESTS_DIR = Path(__file__).resolve().parent
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+SC_DIR = REPO_ROOT / "scripts" / "sc"
+if str(SC_DIR) not in sys.path:
+    sys.path.insert(0, str(SC_DIR))
+
+from _taskmaster_fixture import staged_taskmaster_triplet
+
 SCRIPT = REPO_ROOT / "scripts" / "sc" / "acceptance_check.py"
 
 
 class AcceptanceCheckCliGuardTests(unittest.TestCase):
     def _pick_task_id(self) -> str:
-        tasks_path = REPO_ROOT / ".taskmaster" / "tasks" / "tasks.json"
-        obj = json.loads(tasks_path.read_text(encoding="utf-8"))
+        from _taskmaster import default_paths
+
+        tasks_path, _, _ = default_paths()
+        obj = json.loads(Path(tasks_path).read_text(encoding="utf-8"))
         tasks = ((obj.get("master") or {}).get("tasks") or [])
         for t in tasks:
             if isinstance(t, dict) and str(t.get("id") or "").strip():
@@ -78,16 +89,17 @@ class AcceptanceCheckCliGuardTests(unittest.TestCase):
         self.assertIn("SC_ACCEPTANCE_SELF_CHECK status=fail", proc.stdout or "")
 
     def test_dry_run_plan_should_emit_step_plan_summary(self) -> None:
-        task_id = self._pick_task_id()
-        proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "--task-id", task_id, "--dry-run-plan", "--only", "links,tests,perf"],
-            cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-        )
+        with staged_taskmaster_triplet(include_task1=True):
+            task_id = self._pick_task_id()
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--task-id", task_id, "--dry-run-plan", "--only", "links,tests,perf"],
+                cwd=str(REPO_ROOT),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+            )
         self.assertEqual(0, proc.returncode)
         self.assertIn("SC_ACCEPTANCE_DRY_RUN_PLAN status=ok", proc.stdout or "")
         out_dir = Path(self._extract_out_dir(proc.stdout or ""))
@@ -99,16 +111,17 @@ class AcceptanceCheckCliGuardTests(unittest.TestCase):
         self.assertGreater(len(summary.get("step_plan") or []), 0)
 
     def test_normal_min_path_should_write_summary(self) -> None:
-        task_id = self._pick_task_id()
-        proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "--task-id", task_id, "--only", "links"],
-            cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-        )
+        with staged_taskmaster_triplet(include_task1=True):
+            task_id = self._pick_task_id()
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--task-id", task_id, "--only", "links"],
+                cwd=str(REPO_ROOT),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+            )
         self.assertIn(proc.returncode, (0, 1))
         self.assertIn("SC_ACCEPTANCE status=", proc.stdout or "")
         out_dir = Path(self._extract_out_dir(proc.stdout or ""))
@@ -119,24 +132,25 @@ class AcceptanceCheckCliGuardTests(unittest.TestCase):
         self.assertIn(summary.get("status"), ("ok", "fail"))
 
     def test_task1_require_headless_should_force_tests_all_and_post_gate(self) -> None:
-        proc = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT),
-                "--task-id",
-                "1",
-                "--dry-run-plan",
-                "--only",
-                "tests",
-                "--require-headless-e2e",
-            ],
-            cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-        )
+        with staged_taskmaster_triplet(include_task1=True):
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--task-id",
+                    "1",
+                    "--dry-run-plan",
+                    "--only",
+                    "tests",
+                    "--require-headless-e2e",
+                ],
+                cwd=str(REPO_ROOT),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+            )
         self.assertEqual(0, proc.returncode)
         self.assertIn("SC_ACCEPTANCE_DRY_RUN_PLAN status=ok", proc.stdout or "")
         out_dir = Path(self._extract_out_dir(proc.stdout or ""))

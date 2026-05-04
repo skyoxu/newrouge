@@ -238,7 +238,7 @@ SuperClaude v4 推荐的"黄金三角" MCP 工具组合:
 # - 填充 overlay 字段为对应路径
 
 # 当前仓库尚未提供自动填充 overlay 字段的脚本，可通过 task_links_validate.py 校验任务与文档回链：
-py -3 scripts/python/task_links_validate.py --mode all
+py -3 scripts/python/task_links_validate.py
 ```
 
 **产出示例**：
@@ -352,7 +352,7 @@ npx task-master set-status 1.1 in-progress
 
 # 1.4 验证 overlay 字段已填充
 # 打开 .taskmaster/tasks/tasks_back.json，确认任务 1.1 包含 overlay 字段
-# 如缺失，可手动补充 .taskmaster/tasks/*.json 中的 overlay/overlay_refs 字段，并使用 `py -3 scripts/python/task_links_validate.py --mode all` 校验回链（本仓库未提供自动批量填充 overlay 的脚本）。
+# 如缺失，可手动补充 .taskmaster/tasks/*.json 中的 overlay/overlay_refs 字段，并使用 `py -3 scripts/python/task_links_validate.py` 校验回链（本仓库未提供自动批量填充 overlay 的脚本）。
 ```
 
 ---
@@ -523,7 +523,7 @@ npx task-master set-status 1.1 done
 
 **问题 1：overlay 字段缺失**
 - 症状：/acceptance-check 报错"找不到 overlay 路径"
-- 解决：当前仓库未提供自动批量填充 overlay 的脚本，可手动在 `.taskmaster/tasks/*.json` 中补充 overlay/overlay_refs 字段，并运行 `py -3 scripts/python/task_links_validate.py --mode all` 校验回链
+- 解决：当前仓库未提供自动批量填充 overlay 的脚本，可手动在 `.taskmaster/tasks/*.json` 中补充 overlay/overlay_refs 字段，并运行 `py -3 scripts/python/task_links_validate.py` 校验回链
 
 **问题 2：架构验收报错"ACCEPTANCE_CHECKLIST.md 不存在"**
 - 症状：overlay 字段指向的文件不存在
@@ -626,7 +626,7 @@ npx task-master parse-prd .taskmaster/docs/prd.txt -n 30
 **3.3 校验 ADR/CH 回链**
 
 ```bash
-py -3 scripts/python/task_links_validate.py --mode all
+py -3 scripts/python/task_links_validate.py
 ```
 
 如果校验失败，手动编辑 `.taskmaster/tasks/tasks_back.json` 补充 `adrRefs` 和 `archRefs`。
@@ -1268,7 +1268,7 @@ reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"logs/unit/cover
 # 3. 覆盖率门禁校验（Python 脚本）
 $env:COVERAGE_LINES_MIN = "90"
 $env:COVERAGE_BRANCHES_MIN = "85"
-py -3 scripts/python/run_dotnet.py --configuration Debug
+py -3 scripts/python/run_dotnet.py --solution Game.sln --configuration Debug
 
 # 4. 场景/集成测试（可选，如果改动涉及 Godot 场景）
 # 本模板中无 godot_tests.py，E2E/场景冒烟建议使用 run_gdunit.py 或 smoke_headless.py：
@@ -2481,7 +2481,7 @@ superclaude review --staged
 - [ ] Skills 快速质量检查（TDD 模式、命名规范）
 - [ ] Subagents 深度审查（ADR 合规、安全、架构）
 - [ ] `superclaude review --staged` 生成 review notes
-- [ ] `py -3 scripts/python/task_links_validate.py --mode all` 通过
+- [ ] `py -3 scripts/python/task_links_validate.py` 通过
 - [ ] PR body 包含 ADR/CH refs 和 Test-Refs
 
 ### PR 合并后

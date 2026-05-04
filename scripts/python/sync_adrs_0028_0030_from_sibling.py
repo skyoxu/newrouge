@@ -44,44 +44,34 @@ def _write_utf8(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def _templateize_markdown(text: str, sibling_repo_names: list[str]) -> tuple[str, list[str]]:
+def _templateize_markdown(text: str) -> tuple[str, list[str]]:
     notes: list[str] = []
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     # Decouple obvious sibling repo identifiers.
-    replaced_any = False
-    for name in sibling_repo_names:
-        if not name:
-            continue
-        before = text
-        text = re.sub(rf"(?i)\\b{re.escape(name)}\\b", "本模板仓库", text)
-        if text != before:
-            replaced_any = True
-    if replaced_any:
+    before = text
+    text = re.sub(r"(?i)\\bnewguild\\b", "本模板仓库", text)
+    text = re.sub(r"(?i)\\bsanguo\\b", "本模板仓库", text)
+    if text != before:
         notes.append("replaced_sibling_repo_names")
 
     # Strip absolute build paths if present.
-    removed_any = False
-    for name in sibling_repo_names:
-        if not name:
-            continue
-        before = text
-        text = re.sub(rf"(?i)C:\\\\buildgame\\\\{re.escape(name)}\\\\", "", text)
-        if text != before:
-            removed_any = True
-    if removed_any:
+    before = text
+    text = re.sub(r"(?i)C:\\\\buildgame\\\\(newguild|sanguo)\\\\", "", text)
+    if text != before:
         notes.append("removed_absolute_build_paths")
 
     return text, notes
 
 
-def _forbidden_hits(text: str, sibling_repo_names: list[str]) -> list[str]:
-    forbidden: list[str] = ["????"]
-    for name in sibling_repo_names:
-        if not name:
-            continue
-        forbidden.append(rf"(?i)\\b{re.escape(name)}\\b")
-        forbidden.append(rf"\\bC:\\\\buildgame\\\\{re.escape(name)}\\b")
+def _forbidden_hits(text: str) -> list[str]:
+    forbidden = [
+        r"(?i)\\bnewguild\\b",
+        r"(?i)\\bsanguo\\b",
+        r"\\bC:\\\\buildgame\\\\newguild\\b",
+        r"\\bC:\\\\buildgame\\\\sanguo\\b",
+        "????",
+    ]
     hits: list[str] = []
     for token in forbidden:
         if token.startswith("(?i)") or token.startswith("\\b") or token.startswith("C:\\\\"):
@@ -188,14 +178,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=".", help="Current repo root (default: .)")
     parser.add_argument(
         "--sibling",
-        default=r"C:\buildgame\source_repo",
-        help=r"Sibling repo root (default: C:\buildgame\source_repo)",
+        default=r"C:\buildgame\sanguo",
+        help=r"Sibling repo root (default: C:\buildgame\sanguo)",
     )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
     sibling = Path(args.sibling).resolve()
-    sibling_repo_names = [sibling.name]
 
     copied: list[dict[str, object]] = []
     entries_for_index: list[tuple[str, str, str]] = []
@@ -210,8 +199,8 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         raw = _read_utf8(src)
-        out, notes = _templateize_markdown(raw, sibling_repo_names)
-        hits = _forbidden_hits(out, sibling_repo_names)
+        out, notes = _templateize_markdown(raw)
+        hits = _forbidden_hits(out)
         if hits:
             ok = False
         _write_utf8(dst, out)

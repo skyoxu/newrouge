@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from argparse import Namespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,16 +15,38 @@ SC_DIR = REPO_ROOT / "scripts" / "sc"
 sys.path.insert(0, str(SC_DIR))
 
 from _acceptance_runtime import (  # noqa: E402
+    apply_delivery_profile_defaults,
     compute_perf_p95_ms,
     normalize_subtasks_mode,
     parse_only_steps,
     should_mark_hard_failure,
     validate_arg_conflicts,
 )
-from _summary_schema_fallback import validate_sc_acceptance_without_jsonschema  # noqa: E402
 
 
 class AcceptanceCheckRuntimeTests(unittest.TestCase):
+    def test_apply_delivery_profile_defaults_should_promote_standard_hard_gates(self) -> None:
+        args = Namespace(
+            delivery_profile="standard",
+            perf_p95_ms=None,
+            strict_adr_status=False,
+            strict_test_quality=False,
+            strict_quality_rules=False,
+            require_task_test_refs=False,
+            require_executed_refs=False,
+            require_headless_e2e=False,
+            subtasks_coverage="skip",
+        )
+        resolved = apply_delivery_profile_defaults(args)
+        self.assertTrue(resolved.strict_adr_status)
+        self.assertTrue(resolved.strict_test_quality)
+        self.assertTrue(resolved.strict_quality_rules)
+        self.assertTrue(resolved.require_task_test_refs)
+        self.assertTrue(resolved.require_executed_refs)
+        self.assertTrue(resolved.require_headless_e2e)
+        self.assertEqual("require", resolved.subtasks_coverage)
+        self.assertEqual(20, resolved.perf_p95_ms)
+
     def test_parse_only_steps_should_parse_and_dedup(self) -> None:
         self.assertIsNone(parse_only_steps(None))
         self.assertEqual({"tests", "links"}, parse_only_steps("tests, links,tests"))
@@ -96,50 +119,6 @@ class AcceptanceCheckRuntimeTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(20, compute_perf_p95_ms(perf_p95_ms=None, require_perf=True))
             self.assertEqual(0, compute_perf_p95_ms(perf_p95_ms=None, require_perf=False))
-
-    def test_fallback_schema_should_allow_acceptance_refs_fields(self) -> None:
-        payload = {
-            "schema_version": "1.1.0",
-            "cmd": "sc-acceptance-check",
-            "mode": "run",
-            "date": "2026-04-17",
-            "only": "links",
-            "status": "ok",
-            "out_dir": "logs/ci/2026-04-17/sc-acceptance-check",
-            "subtasks_coverage_mode": "skip",
-            "security_profile": {
-                "profile": "host-safe",
-                "gate_defaults": {
-                    "path": "require",
-                    "sql": "require",
-                    "audit_schema": "warn",
-                    "ui_event_json_guards": "skip",
-                    "ui_event_source_verify": "skip",
-                    "audit_evidence": "skip",
-                },
-            },
-            "security_modes": {
-                "path": "require",
-                "sql": "require",
-                "audit_schema": "warn",
-                "ui_event_json_guards": "skip",
-                "ui_event_source_verify": "skip",
-                "audit_evidence": "skip",
-            },
-            "arg_validation": {"errors": [], "valid": True},
-            "run_id": "7a35fdd8d65e49b58d5392fb771be8ed",
-            "task_id": "1",
-            "title": "Set up project environment and dependencies",
-            "steps": [],
-            "adr_refs": ["ADR-0031", "ADR-0011"],
-            "chapter_refs": ["CH01", "CH06", "CH07", "CH10"],
-            "test_refs": [
-                "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
-            ],
-        }
-
-        errors = validate_sc_acceptance_without_jsonschema(payload)
-        self.assertEqual([], errors)
 
 
 if __name__ == "__main__":

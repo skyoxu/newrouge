@@ -44,7 +44,7 @@ EVENT_TYPES_MEMBER_RE = re.compile(
     r"\bpublic\s+const\s+string\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"([^\"]+)\"\s*;",
     re.MULTILINE,
 )
-DOC_DOMAIN_EVENT_RE = re.compile(r"\bDomain\s+event:\s*([a-z0-9.]+)\b", re.IGNORECASE)
+DOC_DOMAIN_EVENT_RE = re.compile(r"\bDomain\s+event:\s*([a-z0-9._]+)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -81,8 +81,6 @@ def _iter_contract_files(contracts_dir: Path) -> list[Path]:
 
 
 def _load_event_types_map(contracts_dir: Path) -> dict[str, str]:
-    """Load EventTypes constant map from Game.Core/Contracts/EventTypes.cs."""
-
     mapping: dict[str, str] = {}
     event_types_path = contracts_dir / "EventTypes.cs"
     if not event_types_path.exists():
@@ -108,12 +106,21 @@ def _validate_event_type(value: str, *, domain_prefix: str) -> list[str]:
 
     for part in parts:
         if not token_re.fullmatch(part):
-            issues.append(f"invalid segment: {part!r} (require [a-z][a-z0-9]*)")
+            issues.append(f"invalid segment: {part!r} (require [a-z][a-z0-9_]*)")
 
     if parts and parts[0] != domain_prefix:
         issues.append(f"domain prefix mismatch: expected '{domain_prefix}.'")
 
     return issues
+
+
+def _doc_value_for_position(doc_matches: list[re.Match[str]], position: int) -> str | None:
+    nearest: str | None = None
+    for match in doc_matches:
+        if match.start() > position:
+            break
+        nearest = match.group(1).strip()
+    return nearest
 
 
 def main() -> int:
@@ -149,33 +156,33 @@ def main() -> int:
 
     for cs in _iter_contract_files(contracts_dir):
         text = cs.read_text(encoding="utf-8", errors="ignore")
-        literal_values = EVENT_TYPE_LITERAL_RE.findall(text)
-        symbol_values = EVENT_TYPE_SYMBOL_RE.findall(text)
-        doc_values = DOC_DOMAIN_EVENT_RE.findall(text)
-        doc_value = doc_values[0].strip() if doc_values else None
+        doc_matches = list(DOC_DOMAIN_EVENT_RE.finditer(text))
+        resolved_values: list[tuple[int, str]] = []
 
-        resolved_values: list[tuple[str, str]] = []
-        for value in literal_values:
-            resolved_values.append((value, value))
+        for match in EVENT_TYPE_LITERAL_RE.finditer(text):
+            resolved_values.append((match.start(), match.group(1)))
 
-        for symbol in symbol_values:
-            if symbol in event_type_map:
-                resolved_values.append((f"EventTypes.{symbol}", event_type_map[symbol]))
-            else:
-                rel = _to_posix(cs.relative_to(root))
-                findings.append(
-                    Finding(
-                        file=rel,
-                        event_type=f"EventTypes.{symbol}",
-                        ok=False,
-                        issues=[f"unresolved EventTypes symbol: {symbol}"],
-                        warnings=[],
-                    )
+        for match in EVENT_TYPE_SYMBOL_RE.finditer(text):
+            symbol = match.group(1)
+            event_type = event_type_map.get(symbol)
+            if event_type:
+                resolved_values.append((match.start(), event_type))
+                continue
+            rel = _to_posix(cs.relative_to(root))
+            findings.append(
+                Finding(
+                    file=rel,
+                    event_type=f"EventTypes.{symbol}",
+                    ok=False,
+                    issues=[f"unresolved EventTypes symbol: {symbol}"],
+                    warnings=[],
                 )
+            )
 
-        for source_expr, event_type in resolved_values:
+        for source_pos, event_type in resolved_values:
             issues = _validate_event_type(event_type, domain_prefix=args.domain_prefix)
             warnings: list[str] = []
+            doc_value = _doc_value_for_position(doc_matches, source_pos)
             if doc_value and doc_value.lower() != event_type.strip().lower():
                 warnings.append(f"doc 'Domain event' mismatch: doc={doc_value!r} const={event_type!r}")
 
@@ -222,4 +229,3 @@ if __name__ == "__main__":
     except Exception as exc:  # noqa: BLE001
         print(f"DOMAIN_CONTRACTS_CHECK status=fail error={exc}")
         raise SystemExit(2)
-

@@ -46,6 +46,7 @@ TASK_FILE_DEPENDENT_GATES = {
     "acceptance_stability_template",
     "check_tasks_all_refs_warning_budget",
     "llm_align_acceptance_self_check",
+    "chapter7_ui_wiring_gate",
 }
 
 CONTRACT_INTERFACES_DIR = Path("Game.Core/Contracts/Interfaces")

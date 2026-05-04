@@ -56,6 +56,20 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 19. If two `6.8` rounds return the same `Needs Fix` category, severity, and anchors, stop and record instead of paying for a third similar rerun.
 20. Treat `status=ok` as clean only when the child `sc-llm-review` summary has no `Needs Fix`, no `Unknown`, and no timeout; if a round shows `failure_kind = timeout-no-summary`, treat it as observation gap, not clean.
 
+## Chapter 7 Fast-Ship Card
+
+Use this after Chapter 6 has closed the current completed backlog slice and you need the cheapest governed path for UI wiring planning.
+
+1. `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile fast-ship --self-check`
+2. `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile fast-ship --write-doc`
+3. `py -3 scripts/python/dev_cli.py run-chapter7-backlog-gap --design-doc-path <doc> --epics-doc-path <doc> --duplicate-audit-path <doc> --self-check`
+4. `py -3 scripts/python/collect_ui_wiring_inputs.py`
+5. `py -3 scripts/python/validate_chapter7_ui_wiring.py`
+6. `py -3 scripts/python/validate_chapter7_artifact_manifest.py --manifest logs/ci/<date>/chapter7-ui-wiring/artifact-manifest.json`
+7. `docs/gdd/ui-gdd-flow.md` is the governed Chapter 7 artifact and `docs/gdd/ui-gdd-flow.candidates.json` is the machine-readable candidate backlog sidecar.
+8. `docs/workflows/chapter7-profile-guide.md` explains the repo-local profile, override fields, and template seeds.
+9. `logs/ci/<date>/chapter7-ui-wiring/closure-summary.json`, `task-status-patch-preview.json`, and `task-status-patch.json` are the closure and write-back sidecars.
+
 ## By Topic
 - Project overview, startup, stack, and legacy AGENTS background sections:
   - [14-startup-stack-and-template-structure.md](14-startup-stack-and-template-structure.md)
@@ -81,6 +95,7 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
   - [../workflows/template-bootstrap-checklist.md](../workflows/template-bootstrap-checklist.md)
   - [../workflows/template-upgrade-protocol.md](../workflows/template-upgrade-protocol.md)
   - [../workflows/prototype-lane.md](../workflows/prototype-lane.md)
+  - [../gdd/ui-gdd-flow.md](../gdd/ui-gdd-flow.md)
   - [../architecture/ADR_INDEX_GODOT.md](../architecture/ADR_INDEX_GODOT.md)
 - AGENTS maintenance and information architecture:
   - [11-agents-construction-principles.md](11-agents-construction-principles.md)
@@ -95,3 +110,7 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 - `logs/ci/active-tasks/task-<id>.active.md` is the shortest task-scoped recovery pointer.
 - `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` is the preferred full recovery entry because it summarizes the latest run plus matching `execution-plans/` and `decision-logs/`.
 - `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` points to the latest local pipeline artifacts, including `summary.json`, `execution-context.json`, `repair-guide.*`, and `agent-review.*` when generated.
+
+## Prototype And Game Type Guides
+- `docs/game-type-guides/README.md` stores the extracted 24 BMAD/GDS game type guides.
+- `.agents/skills/prototype-7day-playable-godot-zh/SKILL.md` routes the Chinese 7-day playable prototype lane.

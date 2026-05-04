@@ -162,29 +162,6 @@ class CheckCsharpTestConventionsTests(unittest.TestCase):
 
         self.assertEqual(1, rc)
 
-    def test_main_should_pass_when_only_contract_refs_present_and_only_gd_refs(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            (root / "examples" / "taskmaster").mkdir(parents=True, exist_ok=True)
-            (root / "examples" / "taskmaster" / "tasks.json").write_text(
-                '{"master":{"tasks":[{"id":44,"status":"in-progress","title":"Task 44","details":"Headless integration checks."}]}}\n',
-                encoding="utf-8",
-            )
-            (root / "examples" / "taskmaster" / "tasks_back.json").write_text(
-                '[{"taskmaster_id":44,"test_refs":["Tests.Godot/tests/Tasks/test_task0044_acceptance.gd"],"contractRefs":["core.run.resumed"]}]\n',
-                encoding="utf-8",
-            )
-            (root / "examples" / "taskmaster" / "tasks_gameplay.json").write_text(
-                '[{"taskmaster_id":44,"test_refs":["Tests.Godot/tests/Tasks/test_task0044_acceptance.gd"],"contractRefs":["core.run.resumed"]}]\n',
-                encoding="utf-8",
-            )
-
-            with mock.patch.object(gate, "repo_root", return_value=root), \
-                mock.patch.object(sys, "argv", ["check_csharp_test_conventions.py", "--task-id", "44"]):
-                rc = gate.main()
-
-        self.assertEqual(0, rc)
-
 
 if __name__ == "__main__":
     unittest.main()

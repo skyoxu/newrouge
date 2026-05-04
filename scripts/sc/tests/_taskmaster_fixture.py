@@ -37,46 +37,37 @@ def _example_triplet() -> tuple[dict, list, list]:
 def _inject_task1(tasks_json: dict, tasks_back: list, tasks_gameplay: list) -> None:
     master = (tasks_json.get("master") or {}).get("tasks") or []
     if not any(str(t.get("id")) == "1" for t in master if isinstance(t, dict)):
-        master.insert(
-            0,
-            {
-                "id": 1,
-                "title": "Template Task1 evidence gate demo",
-                "status": "in-progress",
-                "adrRefs": ["ADR-0031", "ADR-0011"],
-                "archRefs": ["CH07"],
-                "overlay": "docs/architecture/overlays/PRD-Guild-Manager/08/ACCEPTANCE_CHECKLIST.md",
-            },
-        )
+        master.insert(0, {
+            "id": 1,
+            "title": "Template Task1 evidence gate demo",
+            "status": "in-progress",
+            "adrRefs": ["ADR-0031", "ADR-0011"],
+            "archRefs": ["CH07"],
+            "overlay": "docs/architecture/overlays/PRD-Guild-Manager/08/ACCEPTANCE_CHECKLIST.md",
+        })
     if not any(isinstance(t, dict) and t.get("taskmaster_id") == 1 for t in tasks_back):
-        tasks_back.insert(
-            0,
-            {
-                "id": "T1-back",
-                "taskmaster_id": 1,
-                "acceptance": [
-                    "ACC:T1.1 template headless evidence. Refs: Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"
-                ],
-                "test_refs": [
-                    "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
-                    "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
-                    "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
-                    "Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd",
-                ],
-            },
-        )
+        tasks_back.insert(0, {
+            "id": "T1-back",
+            "taskmaster_id": 1,
+            "acceptance": [
+                "ACC:T1.1 template headless evidence. Refs: Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"
+            ],
+            "test_refs": [
+                "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+                "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+                "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+                "Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd",
+            ],
+        })
     if not any(isinstance(t, dict) and t.get("taskmaster_id") == 1 for t in tasks_gameplay):
-        tasks_gameplay.insert(
-            0,
-            {
-                "id": "T1-gameplay",
-                "taskmaster_id": 1,
-                "acceptance": [
-                    "ACC:T1.2 template gd ref. Refs: Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"
-                ],
-                "test_refs": ["Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"],
-            },
-        )
+        tasks_gameplay.insert(0, {
+            "id": "T1-gameplay",
+            "taskmaster_id": 1,
+            "acceptance": [
+                "ACC:T1.2 template gd ref. Refs: Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"
+            ],
+            "test_refs": ["Tests.Godot/tests/Adapters/Config/test_settings_config_utf8.gd"],
+        })
 
 
 def _remove_tree_if_exists(path: Path) -> None:
