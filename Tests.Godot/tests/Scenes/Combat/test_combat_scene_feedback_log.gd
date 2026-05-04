@@ -9,6 +9,10 @@ func _new_scene() -> Node:
 
 # acceptance: ACC:T64.2
 # After each command attempt, HUD must show accepted/refused outcome text.
+# ACC:T78.2
+# ACC:T78.5
+# ACC:T78.6
+# ACC:T78.8
 func test_hud_feedback_shows_outcome_for_each_command_attempt() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -517,3 +521,245 @@ func test_t111_potion_shared_trigger_order_and_feedback_are_deterministic_and_pl
 
 	assert_that(second_order).is_equal(first_order)
 	assert_that(second_history).is_equal(first_history)
+
+
+# ACC:T78.1
+# ACC:T78.6
+func test_t78_card_play_feedback_exposes_damage_block_and_command_channels() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t78_fx", 30, 30))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t78_fx"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var strike_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(strike_feedback.find("dealt") >= 0).is_true()
+	assert_that(strike_feedback.find("damage") >= 0).is_true()
+
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var defend_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(defend_feedback.find("gained") >= 0).is_true()
+	assert_that(defend_feedback.find("block") >= 0).is_true()
+
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+	assert_that(history.size()).is_greater_equal(2)
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.size()).is_equal(7)
+	assert_that(str(cues[0])).is_equal("card_play_motion")
+	assert_that(str(cues[1])).is_equal("damage_number")
+	assert_that(str(cues[2])).is_equal("hit_feedback")
+	assert_that(str(cues[3])).is_equal("card_play_motion")
+	assert_that(str(cues[4])).is_equal("block_gain_number")
+	assert_that(cues.count("card_play_motion")).is_equal(2)
+	assert_that(cues.count("damage_number")).is_equal(1)
+	assert_that(cues.count("hit_feedback")).is_equal(1)
+	assert_that(cues.count("block_gain_number")).is_equal(1)
+	var sfx_hooks := scene.call("GetSfxHookHistoryForTest") as Array
+	assert_that(sfx_hooks.size()).is_equal(4)
+	assert_that(str(sfx_hooks[0])).is_equal("card_play")
+	assert_that(str(sfx_hooks[1])).is_equal("hit")
+	assert_that(str(sfx_hooks[2])).is_equal("card_play")
+	assert_that(str(sfx_hooks[3])).is_equal("block")
+	assert_that(sfx_hooks.count("card_play")).is_equal(2)
+	assert_that(sfx_hooks.count("hit")).is_equal(1)
+	assert_that(sfx_hooks.count("block")).is_equal(1)
+
+
+# ACC:T78.2
+# ACC:T78.5
+# ACC:T78.7
+# ACC:T78.9
+func test_t78_enemy_action_and_invalid_action_feedback_are_independently_observable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var enemy_state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var enemy_rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var enemy_action_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(enemy_action_feedback.find("enemy dealt") >= 0).is_true()
+	var enemy_state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var enemy_rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(enemy_state_after).is_not_equal(enemy_state_before)
+	assert_that(enemy_rng_after).is_greater_equal(enemy_rng_before)
+
+	var invalid_state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var invalid_rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var rejected := bool(scene.call("RequestTurnActionForTest", "invalid_action"))
+	assert_that(rejected).is_false()
+	var invalid_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(invalid_feedback.find("refused") >= 0).is_true()
+	assert_that(invalid_feedback.find("invalid") >= 0).is_true()
+	var invalid_state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var invalid_rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(invalid_state_after).is_equal(invalid_state_before)
+	assert_that(invalid_rng_after).is_equal(invalid_rng_before)
+	var sfx_hooks := scene.call("GetSfxHookHistoryForTest") as Array
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("enemy_action_feedback")).is_true()
+	assert_that(sfx_hooks.has("enemy_action")).is_true()
+	assert_that(sfx_hooks.has("invalid_action")).is_true()
+	assert_that(sfx_hooks.has("card_play")).is_false()
+	assert_that(str(enemy_state_before["playerHp"])).is_not_empty()
+	assert_that(str(enemy_state_after["playerHp"])).is_not_empty()
+
+
+# ACC:T78.2
+func test_t78_missing_audio_resource_noop_keeps_resolution_and_visible_feedback() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("SetSimulateMissingSfxForTest", true)
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t78_noaudio", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t78_noaudio"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	assert_that(bool(scene.call("RequestTurnActionForTest", "invalid_action"))).is_false()
+
+	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+	var history_joined := "\n".join(history).to_lower()
+	var sfx_hooks := scene.call("GetSfxHookHistoryForTest") as Array
+	var missing_hooks := scene.call("GetMissingSfxNoopHistoryForTest") as Array
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(latest_feedback).contains("refused")
+	assert_that(history.size()).is_greater_equal(3)
+	assert_that(history_joined.find("accepted") >= 0).is_true()
+	assert_that(history_joined.find("dealt") >= 0).is_true()
+	assert_that(history_joined.find("enemy dealt") >= 0).is_true()
+	assert_that(sfx_hooks.size()).is_equal(0)
+	assert_that(missing_hooks.has("card_play")).is_true()
+	assert_that(missing_hooks.has("hit")).is_true()
+	assert_that(missing_hooks.has("block")).is_true()
+	assert_that(missing_hooks.has("enemy_action")).is_true()
+	assert_that(missing_hooks.has("invalid_action")).is_true()
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("block_gain_number")).is_true()
+	assert_that(str(state_after["turnState"])).is_equal("PlayerTurn")
+	assert_that(rng_after).is_greater_equal(rng_before)
+	assert_that(str(state_before["playerHp"])).is_not_empty()
+
+
+# ACC:T78.5
+func test_t78_reduced_motion_mode_keeps_deterministic_feedback_without_wall_clock_dependency() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("SetReducedMotionForTest", true)
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(feedback.find("enemy dealt") >= 0).is_true()
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("card_play_motion")).is_true()
+	assert_that(cues.has("damage_number")).is_true()
+	assert_that(cues.has("block_gain_number")).is_true()
+	assert_that(cues.has("hit_feedback")).is_true()
+	assert_that(cues.has("reduced_motion:card_play_motion")).is_true()
+	assert_that(cues.has("reduced_motion:damage_number")).is_true()
+	assert_that(cues.has("reduced_motion:block_gain_number")).is_true()
+	assert_that(cues.has("reduced_motion:hit_feedback")).is_true()
+	assert_that(cues.has("enemy_action_feedback")).is_true()
+	assert_that(cues.has("reduced_motion:enemy_action_feedback")).is_true()
+	scene.call("ApplyHoverPreviewForTest", "t78_reduced_preview")
+	scene.call("CloseHoverPreviewForTest")
+	scene.call("HideTargetInspectionForTest")
+	cues = scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("reduced_motion:card_preview")).is_true()
+	assert_that(cues.has("reduced_motion:card_preview_closed")).is_true()
+	assert_that(cues.has("reduced_motion:intent_detail_hidden")).is_true()
+	var state_after_enemy := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_after_enemy := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(state_after_enemy).is_not_equal(state_before)
+	assert_that(rng_after_enemy).is_greater_equal(rng_before)
+
+	var invalid_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var invalid_rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(bool(scene.call("RequestTurnActionForTest", "invalid_action"))).is_false()
+	var invalid_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var invalid_rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	assert_that(invalid_after).is_equal(invalid_before)
+	assert_that(invalid_rng_after).is_equal(invalid_rng_before)
+
+
+# ACC:T78.8
+func test_t78_preview_negative_path_keeps_runtime_state_stable() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":2,"playerHp":20,"energy":2,"drawPileCount":9,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var accepted_before := int(scene.call("GetAcceptedCommandCountForTest"))
+
+	# invalid preview payload must be rejected and only emit refusal feedback
+	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t78_neg","intents":[]}]}'))).is_false()
+	var feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(feedback.find("refused") >= 0).is_true()
+
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var accepted_after := int(scene.call("GetAcceptedCommandCountForTest"))
+	assert_that(state_after).is_equal(state_before)
+	assert_that(rng_after).is_equal(rng_before)
+	assert_that(accepted_after).is_equal(accepted_before)
+
+
+# ACC:T78.9
+func test_t78_presentation_helpers_do_not_duplicate_runtime_resolution_or_rng_progression() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t78_guard", 30, 30))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t78_guard"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var after_card_state := scene.call("CaptureUiStateForTest") as Dictionary
+	var after_card_rng := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var after_card_accepted := int(scene.call("GetAcceptedCommandCountForTest"))
+	var enemy_hp_after_card := int(scene.call("GetEnemyHpForTest", "enemy_t78_guard"))
+
+	scene.call("ApplyHoverPreviewForTest", "t78_guard_preview")
+	scene.call("CloseHoverPreviewForTest")
+	scene.call("HideTargetInspectionForTest")
+	scene.call("ApplyTargetInspectionForTest", "enemy_t78_guard")
+
+	var after_helpers_state := scene.call("CaptureUiStateForTest") as Dictionary
+	var after_helpers_rng := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var after_helpers_accepted := int(scene.call("GetAcceptedCommandCountForTest"))
+	var enemy_hp_after_helpers := int(scene.call("GetEnemyHpForTest", "enemy_t78_guard"))
+	assert_that(after_helpers_state).is_equal(after_card_state)
+	assert_that(after_helpers_rng).is_equal(after_card_rng)
+	assert_that(after_helpers_accepted).is_equal(after_card_accepted)
+	assert_that(enemy_hp_after_helpers).is_equal(enemy_hp_after_card)

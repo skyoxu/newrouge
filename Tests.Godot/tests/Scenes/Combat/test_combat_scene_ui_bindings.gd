@@ -1234,6 +1234,7 @@ func test_end_turn_status_aware_transitions_decay_timed_status_once_per_turn() -
 
 
 # ACC:T105.3
+# ACC:T78.7
 func test_scene_local_feedback_path_does_not_mutate_combat_state() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -1438,6 +1439,7 @@ func test_invalid_snapshot_contract_json_is_rejected_without_ui_mutation() -> vo
 
 
 # ACC:T64.4
+# ACC:T78.8
 func test_turn_controls_flow_keeps_command_feedback_observable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -1510,6 +1512,9 @@ func test_accepted_command_feedback_includes_player_visible_result_summary() -> 
 # ACC:T64.6
 # ACC:T76.4
 # ACC:T76.5
+# ACC:T78.1
+# ACC:T78.3
+# ACC:T78.4
 func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -1518,6 +1523,8 @@ func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	assert_that(accepted).is_true()
 	var intent_payload := '{"enemyIntents":[{"enemyId":"enemy_m1_slime","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]}'
 	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", intent_payload))).is_true()
+	var semantic_payload := '{"enemyIntents":[{"enemyId":"enemy_t78_block","iconId":"icon_block","textKey":"intent.block.preview"},{"enemyId":"enemy_t78_status","iconId":"icon_status","textKey":"intent.status.preview"}]}'
+	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", semantic_payload))).is_true()
 	scene.call("ApplyCommandFeedbackForTest", "debug_invalid", false)
 
 	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
@@ -1525,7 +1532,28 @@ func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	var combat_rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
 
 	scene.call("ApplyHoverPreviewForTest", "card_1")
-	scene.call("ApplyTargetInspectionForTest", "enemy_alpha")
+	scene.call("ApplyTargetInspectionForTest", "enemy_m1_slime")
+	var hover_preview_text := str(scene.call("GetLastHoverPreviewTextForTest")).to_lower()
+	assert_that(hover_preview_text.find("cost=") >= 0).is_true()
+	assert_that(hover_preview_text.find("type=") >= 0).is_true()
+	assert_that(hover_preview_text.find("target=") >= 0).is_true()
+	assert_that(hover_preview_text.find("effect=") >= 0).is_true()
+	var intent_detail := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_m1_slime")).to_lower()
+	assert_that(intent_detail.find("attack") >= 0).is_true()
+	var block_detail := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t78_block")).to_lower()
+	var status_detail := str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t78_status")).to_lower()
+	assert_that(block_detail.find("block") >= 0).is_true()
+	assert_that(status_detail.find("status") >= 0).is_true()
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("card_preview")).is_true()
+	scene.call("CloseHoverPreviewForTest")
+	scene.call("HideTargetInspectionForTest")
+	var closed_preview := str(scene.call("GetLastHoverPreviewTextForTest"))
+	assert_that(closed_preview).is_equal("")
+	cues = scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(cues.has("intent_detail_opened")).is_true()
+	assert_that(cues.has("card_preview_closed")).is_true()
+	assert_that(cues.has("intent_detail_hidden")).is_true()
 
 	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
 	var feedback_after := str(scene.call("GetLatestFeedbackMessageForTest"))
@@ -1534,6 +1562,38 @@ func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	assert_that(state_after).is_equal(state_before)
 	assert_that(feedback_after).is_equal(feedback_before)
 	assert_that(combat_rng_after).is_equal(combat_rng_before)
+
+
+# ACC:T78.3
+# ACC:T78.4
+# ACC:T78.8
+# ACC:T78.9
+func test_hover_and_inspect_negative_path_does_not_leave_stale_preview_or_mutate_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":2,"playerHp":20,"energy":2,"drawPileCount":8,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	scene.call("ApplyCommandFeedbackForTest", "debug_invalid", false)
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.deselect_all()
+
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_before := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var rng_before := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var cues_before := scene.call("GetPresentationCueHistoryForTest") as Array
+
+	scene.call("ApplyHoverPreviewForTest", "invalid_preview")
+	scene.call("ApplyTargetInspectionForTest", "enemy_missing_target")
+
+	var preview_text := str(scene.call("GetLastHoverPreviewTextForTest"))
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_after := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
+	var cues_after := scene.call("GetPresentationCueHistoryForTest") as Array
+	assert_that(preview_text).is_equal("")
+	assert_that(state_after).is_equal(state_before)
+	assert_that(feedback_after).is_equal(feedback_before)
+	assert_that(rng_after).is_equal(rng_before)
+	assert_that(cues_after).is_equal(cues_before)
 
 
 func test_feedback_localization_zh_cn_keeps_human_readable_text() -> void:
