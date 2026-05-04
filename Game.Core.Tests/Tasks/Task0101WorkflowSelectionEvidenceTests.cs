@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,92 +8,58 @@ using Xunit;
 
 namespace Game.Core.Tests.Tasks;
 
-public sealed class Task0098WorkflowSelectionEvidenceTests
+public sealed class Task0101WorkflowSelectionEvidenceTests
 {
-    private const int TaskmasterId = 98;
-    private const string StrictEvidenceEnvName = "TASK0098_GATE_EVIDENCE_REQUIRED";
+    private const int TaskmasterId = 101;
+    private const string StrictEvidenceEnvName = "TASK0101_GATE_EVIDENCE_REQUIRED";
     private const string TasksBackPath = ".taskmaster/tasks/tasks_back.json";
     private const string TasksGameplayPath = ".taskmaster/tasks/tasks_gameplay.json";
-    private const string WorkflowSelectionSummaryRef = "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json";
-    private const string ThisTaskTestRef = "Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs";
-    private const string PipelineTaskPrefix = "sc-review-pipeline-task-98";
+    private const string ThisTaskTestRef = "Game.Core.Tests/Tasks/Task0101WorkflowSelectionEvidenceTests.cs";
+    private const string PipelineTaskPrefix = "sc-review-pipeline-task-101";
 
-    // ACC:T98.10
+    // ACC:T101.4
     [Theory]
     [InlineData(TasksBackPath)]
     [InlineData(TasksGameplayPath)]
-    public void ShouldRequireWorkflowSelectionEvidenceReferenceBeforeImplementationEvidenceReference_WhenReadingTaskAcceptance(string taskFilePath)
+    public void ShouldRequireTaskSpecificWorkflowSelectionEvidenceRef_WhenReadingTaskAcceptance(string taskFilePath)
     {
         var task = ReadTaskNode(taskFilePath, TaskmasterId);
         var testRefs = ReadStringArray(task, "test_refs");
-        var evidenceRefs = ReadStringArray(task, "evidence_refs");
+        var acceptance = ReadStringArray(task, "acceptance");
 
         testRefs.Should().Contain(ThisTaskTestRef);
-        evidenceRefs.Should().Contain(WorkflowSelectionSummaryRef);
+        acceptance.Any(line => line.Contains(ThisTaskTestRef, StringComparison.Ordinal)).Should().BeTrue(
+            "T101 acceptance must reference the task-specific workflow-selection evidence test.");
     }
 
-    // ACC:T98.10
-    [Fact]
-    public void ShouldRequireRealWorkflowSelectionArtifactBeforeImplementationEvidence_WhenValidatingGovernanceOrder()
-    {
-        if (!TryResolveLatestPipelineIndexPath(out var latestIndexPath, out var missingReason))
-        {
-            EnsurePipelineEvidenceOrSkip(missingReason);
-            return;
-        }
-
-        var latestIndex = ReadJsonRoot(latestIndexPath);
-        latestIndex.GetProperty("task_id").GetString().Should().Be("98");
-
-        var runEventsPath = latestIndex.GetProperty("run_events_path").GetString();
-        runEventsPath.Should().NotBeNullOrWhiteSpace();
-        File.Exists(runEventsPath!).Should().BeTrue("workflow selection order must be verifiable from run-events evidence");
-
-        var runEvents = ReadRunEvents(runEventsPath!);
-        runEvents.Should().NotBeEmpty();
-        if (!runEvents.Any(IsImplementationEvidenceEvent))
-        {
-            EnsurePipelineEvidenceOrSkip("latest run-events do not contain implementation evidence events");
-            return;
-        }
-
-        HasSelectionEventBeforeImplementationEvidence(runEvents).Should().BeTrue(
-            "workflow selection record must be emitted before implementation evidence events");
-    }
-
-    // ACC:T98.10
-    [Fact]
-    public void ShouldFailGovernanceValidation_WhenWorkflowSelectionRecordIsMissingFromRunEvents()
-    {
-        if (!TryResolveLatestPipelineIndexPath(out var latestIndexPath, out var missingReason))
-        {
-            EnsurePipelineEvidenceOrSkip(missingReason);
-            return;
-        }
-
-        var latestIndex = ReadJsonRoot(latestIndexPath);
-        var runEventsPath = latestIndex.GetProperty("run_events_path").GetString();
-        runEventsPath.Should().NotBeNullOrWhiteSpace();
-
-        var runEvents = ReadRunEvents(runEventsPath!);
-        runEvents.Should().NotBeEmpty();
-        if (!runEvents.Any(IsImplementationEvidenceEvent))
-        {
-            EnsurePipelineEvidenceOrSkip("latest run-events do not contain implementation evidence events");
-            return;
-        }
-
-        var withoutSelection = runEvents.Where(record => !IsSelectionEvent(record)).ToArray();
-        withoutSelection.Should().NotBeEmpty();
-
-        HasSelectionEventBeforeImplementationEvidence(withoutSelection).Should().BeFalse(
-            "workflow selection record is mandatory and cannot be inferred when run events miss it");
-    }
-
-    // ACC:T98.10
     // ACC:T101.4
     [Fact]
-    public void ShouldRefuseImplementationEntry_WhenWorkflowSelectionRecordIsMissingAndStateRemainsUnchanged()
+    public void ShouldRequireWorkflowSelectionEventBeforeImplementationEvidence_WhenTask101RunEventsAreValidated()
+    {
+        if (!TryResolveLatestPipelineIndexPath(out var latestIndexPath, out var missingReason))
+        {
+            EnsurePipelineEvidenceOrSkip(missingReason);
+            return;
+        }
+
+        var latestIndex = ReadJsonRoot(latestIndexPath);
+        latestIndex.GetProperty("task_id").GetString().Should().Be("101");
+
+        var runEventsPath = latestIndex.GetProperty("run_events_path").GetString();
+        runEventsPath.Should().NotBeNullOrWhiteSpace();
+        File.Exists(runEventsPath!).Should().BeTrue("workflow-selection order must be verifiable from run-events evidence");
+
+        var runEvents = ReadRunEvents(runEventsPath!);
+        runEvents.Should().NotBeEmpty();
+        runEvents.Any(IsImplementationEvidenceEvent).Should().BeTrue("Task101 run-events must include implementation evidence events.");
+
+        HasSelectionEventBeforeImplementationEvidence(runEvents).Should().BeTrue(
+            "workflow-selection record must appear before implementation evidence events.");
+    }
+
+    // ACC:T101.4
+    [Fact]
+    public void ShouldRefuseGovernanceOrdering_WhenWorkflowSelectionRecordIsRemoved()
     {
         if (!TryResolveLatestPipelineIndexPath(out var latestIndexPath, out var missingReason))
         {
@@ -103,41 +69,31 @@ public sealed class Task0098WorkflowSelectionEvidenceTests
 
         var latestIndex = ReadJsonRoot(latestIndexPath);
         var runEventsPath = latestIndex.GetProperty("run_events_path").GetString();
-
         runEventsPath.Should().NotBeNullOrWhiteSpace();
+
         var runEvents = ReadRunEvents(runEventsPath!);
         runEvents.Should().NotBeEmpty();
+        runEvents.Any(IsImplementationEvidenceEvent).Should().BeTrue("Task101 run-events must include implementation evidence events.");
 
-        var implementationEvents = runEvents
-            .Where(IsImplementationEvidenceEvent)
-            .OrderBy(record => record.Timestamp)
-            .ToArray();
-        if (implementationEvents.Length == 0)
-        {
-            EnsurePipelineEvidenceOrSkip("latest run-events do not contain implementation evidence events");
-            return;
-        }
-
-        var withoutSelection = runEvents
-            .Where(record => !IsSelectionEvent(record))
-            .OrderBy(record => record.Timestamp)
-            .ToArray();
-
+        var withoutSelection = runEvents.Where(record => !IsSelectionEvent(record)).OrderBy(record => record.Timestamp).ToArray();
+        withoutSelection.Should().NotBeEmpty();
         HasSelectionEventBeforeImplementationEvidence(withoutSelection).Should().BeFalse(
-            "implementation entry must be refused when workflow-selection record is missing");
+            "removing workflow-selection records must invalidate governance ordering.");
 
         var implementationWithoutSelection = withoutSelection
             .Where(IsImplementationEvidenceEvent)
             .OrderBy(record => record.Timestamp)
             .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
             .ToArray();
-        var implementationWithSelection = implementationEvents
+        var implementationWithSelection = runEvents
+            .Where(IsImplementationEvidenceEvent)
+            .OrderBy(record => record.Timestamp)
             .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
             .ToArray();
 
         implementationWithoutSelection.Should().Equal(
             implementationWithSelection,
-            "removing workflow-selection evidence must not mutate implementation evidence payload/order");
+            "selection evidence removal must not mutate implementation evidence payload/order.");
     }
 
     private static JsonElement ReadTaskNode(string taskFilePath, int taskmasterId)
@@ -194,7 +150,7 @@ public sealed class Task0098WorkflowSelectionEvidenceTests
 
         if (string.IsNullOrWhiteSpace(latestIndexPath))
         {
-            reason = "missing pipeline latest.json for task 98 under logs/ci/<date>/sc-review-pipeline-task-98*/latest.json";
+            reason = "missing pipeline latest.json for task 101 under logs/ci/<date>/sc-review-pipeline-task-101*/latest.json";
             return false;
         }
 
@@ -210,9 +166,9 @@ public sealed class Task0098WorkflowSelectionEvidenceTests
         }
 
         throw new Xunit.Sdk.XunitException(
-            "Task0098 pipeline evidence is required but missing. "
+            "Task0101 pipeline evidence is required but missing. "
             + reason
-            + " Set TASK0098_GATE_EVIDENCE_REQUIRED=0 (or unset) to suppress in CI/non-Task98 runs.");
+            + " Set TASK0101_GATE_EVIDENCE_REQUIRED=0 (or unset) to suppress in CI/non-Task101 runs.");
     }
 
     private static bool ShouldRequirePipelineEvidence()

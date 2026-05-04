@@ -3893,13 +3893,13 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
+      "Game.Core.Tests/Tasks/Task0101WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "Changes under T101 only update combat feedback surfaces that present shared runtime results to the player and do not change combat runtime logic. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "After trigger, fixed damage, and AOE resolution, the combat scene's player-visible feedback surfaces must display the same outcomes produced by the promoted shared runtime semantics, without expanding or altering those semantics. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Combat scene feedback tests must be added or updated so player-visible logs and indicators are asserted against the shared runtime outcomes for trigger, fixed-damage, and AOE resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "If T101 is not selected by workflow, the implementation entry must refuse to run, leave code and implementation state unchanged, and record workflow-selection evidence before any implementation evidence in review output. Refs: Game.Core.Tests/Tasks/Task0098WorkflowSelectionEvidenceTests.cs"
+      "Changes under T101 are limited to player-visible feedback/log presentation mappings over existing shared runtime results, and with identical runtime inputs/seeds the combat runtime outcomes remain unchanged while only surfaced text/indicators may differ. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "For trigger, fixed-damage, and AOE command paths, the combat scene must surface outcomes aligned with the same shared runtime result ordering (including trigger order) without introducing new combat rules or reordering runtime-owned resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Player-visible combat logs and HUD indicators must be asserted against the same shared runtime outcomes for trigger, fixed-damage, and AOE resolution, including refusal paths where runtime state remains unchanged and feedback explains refusal. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "If T101 is not selected by workflow, the implementation entry must refuse to run, leave code and implementation state unchanged, and record workflow-selection evidence before any implementation evidence in review output. Refs: Game.Core.Tests/Tasks/Task0101WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution."

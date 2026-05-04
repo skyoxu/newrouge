@@ -886,6 +886,7 @@ func test_draw_discard_counters_are_derived_from_applied_transition_and_not_scen
 
 # ACC:T72.2
 # ACC:T75.2
+# ACC:T101.3
 func test_mixed_effect_card_updates_hp_block_energy_and_piles_from_definition() -> void:
 	var snapshots: Array[Dictionary] = []
 	var feedbacks: Array[String] = []
@@ -1790,3 +1791,71 @@ func test_t111_repeated_runs_keep_potion_surface_visibility_and_inspection_deter
 	assert_that(visible_id_results[1]).is_equal(visible_id_results[0])
 	assert_that(surface_results[1]).is_equal(surface_results[0])
 	assert_that(inspect_results[1]).is_equal(inspect_results[0])
+
+
+# ACC:T101.3
+func test_t101_feedback_logs_and_indicators_align_with_runtime_and_are_deterministic() -> void:
+	var snapshots: Array[Dictionary] = []
+	var feedback_logs: Array[Array] = []
+	var cue_logs: Array[Array] = []
+	var sfx_logs: Array[Array] = []
+	for _run in range(2):
+		var scene := _new_scene()
+		await get_tree().process_frame
+		TranslationServer.set_locale("en")
+		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_ui", 30, 30))).is_true()
+		assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_ui"))).is_true()
+		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+		var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+		hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+		hand.select(0)
+		assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+		snapshots.append(scene.call("CaptureUiStateForTest") as Dictionary)
+		feedback_logs.append(scene.call("GetFeedbackHistoryForTest") as Array)
+		cue_logs.append(scene.call("GetPresentationCueHistoryForTest") as Array)
+		sfx_logs.append(scene.call("GetSfxHookHistoryForTest") as Array)
+
+	assert_that(str(feedback_logs[0][0]).find("dealt 6 damage") >= 0).is_true()
+	assert_that(str(feedback_logs[0][1]).find("gained 5 block") >= 0).is_true()
+	assert_that(int(snapshots[0]["energy"])).is_equal(1)
+	assert_that(cue_logs[0].count("damage_number")).is_equal(1)
+	assert_that(cue_logs[0].count("block_gain_number")).is_equal(1)
+	assert_that(sfx_logs[0].count("hit")).is_equal(1)
+	assert_that(sfx_logs[0].count("block")).is_equal(1)
+	assert_that(feedback_logs[1]).is_equal(feedback_logs[0])
+	assert_that(cue_logs[1]).is_equal(cue_logs[0])
+	assert_that(sfx_logs[1]).is_equal(sfx_logs[0])
+	assert_that(snapshots[1]).is_equal(snapshots[0])
+
+
+# ACC:T101.3
+func test_t101_refusal_path_keeps_ui_snapshot_stable_and_does_not_emit_success_indicators() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_ui_refusal", 20, 20))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_ui_refusal"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var cues_before := scene.call("GetPresentationCueHistoryForTest") as Array
+	var sfx_before := scene.call("GetSfxHookHistoryForTest") as Array
+	var history_before := scene.call("GetFeedbackHistoryForTest") as Array
+	var snapshot_before := scene.call("CaptureUiStateForTest") as Dictionary
+
+	var rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var snapshot_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var cues_after := scene.call("GetPresentationCueHistoryForTest") as Array
+	var sfx_after := scene.call("GetSfxHookHistoryForTest") as Array
+	var history_after := scene.call("GetFeedbackHistoryForTest") as Array
+	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+
+	assert_that(rejected).is_false()
+	assert_that(snapshot_after).is_equal(snapshot_before)
+	assert_that(history_after.size()).is_equal(history_before.size() + 1)
+	assert_that(cues_after).is_equal(cues_before)
+	assert_that(sfx_after).is_equal(sfx_before)
+	assert_that(latest_feedback.find("refused") >= 0).is_true()
+	assert_that(latest_feedback.find("insufficient energy") >= 0).is_true()
