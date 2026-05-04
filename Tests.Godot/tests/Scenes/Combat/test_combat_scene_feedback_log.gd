@@ -419,6 +419,9 @@ func test_status_card_and_exhaust_card_apply_expected_target_and_pile_routing() 
 
 	TranslationServer.set_locale(previous_locale)
 
+# ACC:T101.1
+# ACC:T101.2
+# ACC:T101.3
 # ACC:T106.3
 # ACC:T106.5
 func test_t106_shared_trigger_order_and_runtime_outcome_are_player_observable() -> void:
@@ -763,3 +766,108 @@ func test_t78_presentation_helpers_do_not_duplicate_runtime_resolution_or_rng_pr
 	assert_that(after_helpers_rng).is_equal(after_card_rng)
 	assert_that(after_helpers_accepted).is_equal(after_card_accepted)
 	assert_that(enemy_hp_after_helpers).is_equal(enemy_hp_after_card)
+
+
+# ACC:T101.1
+# ACC:T101.2
+func test_t101_trigger_fixed_and_aoe_feedback_align_with_shared_runtime_results() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	assert_that(bool(scene.call(
+		"TryApplyPowerRelicParticipantsContractJsonForTest",
+		'{"powers":[{"id":"focus_power","inspectText":"Power Focus +1","priority":20,"registrationOrder":2,"outcomeMessage":"Power adds +1"}],"relics":[{"id":"relic_echo","inspectText":"Relic Echo","priority":20,"registrationOrder":1,"outcomeMessage":"Relic echoes hit"}]}'
+	))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_primary", 30, 30))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_secondary", 18, 18))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_primary"))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t101.fixed","name_key":"card.t101.fixed.name","description_key":"card.t101.fixed.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}},{"id":"card.t101.aoe","name_key":"card.t101.aoe.name","description_key":"card.t101.aoe.description","cost":1,"type":"attack","target":"all_enemies","base_effect":{"damage":4}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t101.fixed","card.t101.aoe"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var fixed_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	var fixed_order := scene.call("GetLastPowerRelicTriggerOrderForTest") as Array
+	var fixed_outcomes := scene.call("GetLastPowerRelicOutcomeMessagesForTest") as Array
+	assert_that(fixed_feedback.find("dealt 6 damage") >= 0).is_true()
+	assert_that(fixed_order.size()).is_equal(2)
+	assert_that(str(fixed_order[0])).is_equal("Relic.relic_echo")
+	assert_that(str(fixed_order[1])).is_equal("Power.focus_power")
+	assert_that(fixed_outcomes.size()).is_equal(2)
+	assert_that(str(fixed_outcomes[0]).find("Relic.relic_echo: Relic echoes hit") >= 0).is_true()
+	assert_that(str(fixed_outcomes[1]).find("Power.focus_power: Power adds +1") >= 0).is_true()
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_primary"))).is_equal(24)
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_secondary"))).is_equal(18)
+
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var aoe_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(aoe_feedback.find("dealt 8 damage") >= 0).is_true()
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_primary"))).is_equal(20)
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_secondary"))).is_equal(14)
+
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T101.2
+# ACC:T101.3
+func test_t101_feedback_is_runtime_aligned_and_scene_local_feedback_path_does_not_mutate_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_stable", 28, 28))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_stable"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var before := scene.call("CaptureUiStateForTest") as Dictionary
+	var enemy_before := int(scene.call("GetEnemyHpForTest", "enemy_t101_stable"))
+	var accepted_before := int(scene.call("GetAcceptedCommandCountForTest"))
+	scene.call("ApplyCommandFeedbackForTest", "debug_scene_local", true)
+	var after_scene_local := scene.call("CaptureUiStateForTest") as Dictionary
+	var enemy_after_scene_local := int(scene.call("GetEnemyHpForTest", "enemy_t101_stable"))
+	assert_that(after_scene_local).is_equal(before)
+	assert_that(enemy_after_scene_local).is_equal(enemy_before)
+	assert_that(int(scene.call("GetAcceptedCommandCountForTest"))).is_equal(accepted_before + 1)
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var runtime_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	var state_after_play := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(runtime_feedback.find("dealt 6 damage") >= 0).is_true()
+	assert_that(state_after_play).is_not_equal(before)
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_stable"))).is_equal(enemy_before - 6)
+
+
+# ACC:T101.3
+func test_t101_refusal_path_keeps_runtime_state_unchanged_and_feedback_explains_refusal() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_refusal", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_refusal"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var before := scene.call("CaptureUiStateForTest") as Dictionary
+	var enemy_before := int(scene.call("GetEnemyHpForTest", "enemy_t101_refusal"))
+	var accepted_before := int(scene.call("GetAcceptedCommandCountForTest"))
+	var rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var after := scene.call("CaptureUiStateForTest") as Dictionary
+	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+
+	assert_that(rejected).is_false()
+	assert_that(after).is_equal(before)
+	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_refusal"))).is_equal(enemy_before)
+	assert_that(int(scene.call("GetAcceptedCommandCountForTest"))).is_equal(accepted_before)
+	assert_that(latest_feedback.find("refused") >= 0).is_true()
+	assert_that(latest_feedback.find("insufficient energy") >= 0).is_true()
+	assert_that(str(history[history.size() - 1]).to_lower()).contains("insufficient energy")
