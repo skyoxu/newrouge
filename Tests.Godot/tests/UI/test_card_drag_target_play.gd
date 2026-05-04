@@ -44,6 +44,9 @@ class SignalProbe:
 
 
 # acceptance: ACC:T34.6
+# acceptance anchor: ACC:T74.1
+# acceptance anchor: ACC:T74.2
+# acceptance anchor: ACC:T74.5
 func test_drag_to_valid_target_plays_card_and_removes_from_hand() -> void:
 	var controller := BuggyCardDragPlayController.new(["card_firebolt", "card_shield"])
 	var target := FakeTarget.new("enemy_slot_1", true)

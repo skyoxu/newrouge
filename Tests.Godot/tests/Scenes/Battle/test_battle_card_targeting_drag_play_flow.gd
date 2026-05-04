@@ -174,6 +174,7 @@ func test_all_enemy_card_mutates_each_living_enemy_in_multi_enemy_runtime() -> v
 # acceptance: ACC:T34.4
 # Invalid targets should provide observable feedback and keep card drag active.
 # acceptance anchor: ACC:T73.3
+# acceptance anchor: ACC:T74.3
 func test_drop_on_invalid_target_keeps_dragging_and_emits_feedback_without_play_request() -> void:
 	var sut := BattleCardTargetingDragFlowModel.new()
 	var events: Array[String] = []
