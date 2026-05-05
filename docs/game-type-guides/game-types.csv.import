@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c2xsp6kos4icx"
+
+[deps]
+
+files=["res://docs/game-type-guides/game-types.name.translation", "res://docs/game-type-guides/game-types.description.translation", "res://docs/game-type-guides/game-types.genre.translation", "res://docs/game-type-guides/game-types.fragment.translation"]
+
+source_file="res://docs/game-type-guides/game-types.csv"
+dest_files=["res://docs/game-type-guides/game-types.name.translation", "res://docs/game-type-guides/game-types.description.translation", "res://docs/game-type-guides/game-types.genre.translation", "res://docs/game-type-guides/game-types.fragment.translation"]
+
+[params]
+
+compress=true
+delimiter=0

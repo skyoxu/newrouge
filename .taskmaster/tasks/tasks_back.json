@@ -3345,17 +3345,16 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
-      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs",
+      "Game.Core.Tests/Services/ExternalProcessGuardTests.cs"
     ],
     "acceptance": [
-      "T93 appears in the executable main task path instead of remaining backlog-only, and review evidence shows this OS.execute guard work was promoted into the mainline task set. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json",
-      "When external process execution is requested, it is denied by default unless the request goes through the single guarded adapter boundary; direct OS.execute-style execution outside that boundary remains unavailable. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "For each denied request and each request allowed by the explicit Windows-friendly dev-mode allowlist, the guarded external-process path writes audit evidence that records the allow or deny decision rather than completing silently. Refs: Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "T93 deterministic gates pass only if xUnit and security tests verify deny-by-default behavior, explicit allowlist behavior, and audit evidence for both Windows-friendly dev-mode allow cases and deny paths. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs Tests.Godot/tests/Security/Hard/test_db_open_denied_writes_audit_log.gd",
-      "T93 changes are confined to the external-process safety boundary and its audit behavior, with no gameplay feature change or gameplay-surface expansion introduced. Refs: Game.Core.Tests/Tasks/Task0035AcceptanceTests.cs",
-      "If workflow has not explicitly selected T93, the implementation entry refuses to run and leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "T93 appears in the executable main task path instead of remaining backlog-only, and review evidence shows this OS.execute guard work was promoted into the mainline task set. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs",
+      "When external process execution is requested, it is denied by default unless the request goes through the single guarded adapter boundary; direct OS.execute-style execution outside that boundary remains unavailable. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs",
+      "For each denied request and each request allowed by the explicit Windows-friendly dev-mode allowlist, the guarded external-process path writes audit evidence that records the allow or deny decision rather than completing silently. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs Game.Core.Tests/Services/ExternalProcessGuardTests.cs",
+      "T93 deterministic gates pass only if xUnit tests verify deny-by-default behavior, explicit allowlist behavior, and audit evidence for both Windows-friendly dev-mode allow cases and deny paths. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs Game.Core.Tests/Services/ExternalProcessGuardTests.cs",
+      "T93 changes are confined to the external-process safety boundary and its audit behavior, with no gameplay feature change or gameplay-surface expansion introduced. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs",
+      "If workflow has not explicitly selected T93, the implementation entry refuses to run and leaves implementation/code state unchanged, and review evidence shows the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs Game.Core.Tests/Services/ExternalProcessGuardTests.cs"
     ],
     "test_strategy": [
       "xUnit tests cover deny-by-default and allowlist behavior with SECURITY_TEST_MODE=1."
