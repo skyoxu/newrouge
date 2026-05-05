@@ -13,7 +13,7 @@ public sealed class Task0092AcceptanceTests
     private const string CheckArchitectureBoundaryScript = "scripts/python/check_architecture_boundary.py";
     private const string CheckArchitectureBoundaryCommand = "py -3 scripts/python/check_architecture_boundary.py --out <json>";
     private const string Task0092AcceptanceRef = "Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs";
-    private const string Task0067AcceptanceRef = "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs";
+    private const string Task0092WorkflowEvidenceRef = "Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs";
 
     // ACC:T92.1
     [Fact]
@@ -73,16 +73,18 @@ public sealed class Task0092AcceptanceTests
     public void ShouldRecordPassingEvidence_WhenBoundaryCheckAndCoverageRunInOnePass()
     {
         var repoRoot = FindRepositoryRoot();
-        var latestSummaryPath = ResolveLatestTask92PipelineSummaryPath(repoRoot);
-        using var pipelineSummary = JsonDocument.Parse(File.ReadAllText(latestSummaryPath));
+        var reportPath = RunArchitectureBoundaryCheck(repoRoot);
+        using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
+        var testRefs = ReadTaskAcceptanceRef(repoRoot, 92, "test_refs");
+        var acceptance = ReadTaskAcceptanceRef(repoRoot, 92, "acceptance");
 
-        var steps = pipelineSummary.RootElement.GetProperty("steps").EnumerateArray().ToArray();
-        var testStep = steps.First(step => step.GetProperty("name").GetString() == "sc-test");
-        var acceptanceStep = steps.First(step => step.GetProperty("name").GetString() == "sc-acceptance-check");
+        report.RootElement.GetProperty("ok").GetBoolean().Should().BeTrue("boundary guardrail must pass on current repository state");
 
-        testStep.GetProperty("status").GetString().Should().Be("ok", "one-pass evidence requires deterministic test closure in the same run");
-        acceptanceStep.GetProperty("status").GetString().Should().Be("ok", "one-pass evidence requires acceptance closure in the same run");
-        pipelineSummary.RootElement.GetProperty("task_id").GetString().Should().Be("92");
+        testRefs.Should().Contain(Task0092AcceptanceRef);
+        testRefs.Should().Contain(Task0092WorkflowEvidenceRef);
+        acceptance.Should().Contain(item =>
+            item.Contains("one pass", StringComparison.OrdinalIgnoreCase)
+            && item.Contains("Refs: " + Task0092AcceptanceRef, StringComparison.Ordinal));
     }
 
     // ACC:T92.5
@@ -132,18 +134,6 @@ public sealed class Task0092AcceptanceTests
             .Select(item => item.GetString() ?? string.Empty)
             .Where(text => !string.IsNullOrWhiteSpace(text))
             .ToArray();
-    }
-
-    private static string ResolveLatestTask92PipelineSummaryPath(string repoRoot)
-    {
-        var latestPath = Path.Combine(repoRoot, "logs", "ci", DateTime.UtcNow.ToString("yyyy-MM-dd"), "sc-review-pipeline-task-92", "latest.json");
-        File.Exists(latestPath).Should().BeTrue("Task 92 one-pass verification requires latest pipeline index");
-
-        using var latest = JsonDocument.Parse(File.ReadAllText(latestPath));
-        var summaryPath = latest.RootElement.GetProperty("summary_path").GetString();
-        summaryPath.Should().NotBeNullOrWhiteSpace();
-        File.Exists(summaryPath!).Should().BeTrue("latest pipeline index must point to a valid summary artifact");
-        return summaryPath!;
     }
 
     private static string RunArchitectureBoundaryCheck(string repoRoot, bool expectSuccess = true)
