@@ -3284,17 +3284,17 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "scripts/python/check_architecture_boundary.py",
+      "Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs",
       "Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "T92 is promoted from backlog documentation into the executable main task line as a runnable guardrail that the active repository workflow can execute. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "The repository exposes an executable architecture boundary check that deterministically fails when Game.Core introduces any dependency on Godot APIs or Godot assemblies. Refs: scripts/python/check_architecture_boundary.py",
-      "The guardrail enforces that Game.Core stays free of Godot dependencies while adapter-layer integration points remain the only allowed boundary for Godot interaction. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "A passing verification scenario runs the architecture boundary check together with the required xUnit coverage in one pass and records the passing result as deterministic evidence for this task. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "An isolated temp branch or fixture with an intentional Game.Core-to-Godot dependency causes the guardrail verification to fail deterministically, proving the violating case is blocked. Refs: scripts/python/check_architecture_boundary.py Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
-      "If T92 has not been selected by the workflow, implementation entry refuses to run, leaves implementation and code state unchanged, and records workflow-selection evidence before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
+      "T92 is promoted from backlog documentation into the executable main task line as a runnable guardrail that the active repository workflow can execute. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "The repository exposes an executable architecture boundary check that deterministically fails when Game.Core introduces any dependency on Godot APIs or Godot assemblies. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs",
+      "The guardrail enforces that Game.Core stays free of Godot dependencies while adapter-layer integration points remain the only allowed boundary for Godot interaction. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "A passing verification scenario runs the architecture boundary check together with the required xUnit coverage in one pass and records the passing result as deterministic evidence for this task. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "An isolated temp branch or fixture with an intentional Game.Core-to-Godot dependency causes the guardrail verification to fail deterministically, proving the violating case is blocked. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs",
+      "If T92 has not been selected by the workflow, implementation entry refuses to run, leaves implementation and code state unchanged, and records workflow-selection evidence before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Introduce a small intentional violation in a temp branch to verify the test catches it."
