@@ -101,6 +101,17 @@ def extract_failed_tests(dotnet_test_output: str):
     return deduped
 
 
+def _env_timeout_ms(name: str, default_ms: int, min_ms: int = 60_000) -> int:
+    raw = str(os.environ.get(name, "")).strip()
+    if not raw:
+        return default_ms
+    try:
+        value = int(raw)
+    except ValueError:
+        return default_ms
+    return max(min_ms, value)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -133,6 +144,12 @@ def main():
         'status': 'ok'
     }
     hard_fail = False
+    dotnet_stage_timeout_ms = _env_timeout_ms('CI_DOTNET_STAGE_TIMEOUT_MS', 900_000)
+    selfcheck_stage_timeout_ms = _env_timeout_ms('CI_SELFCHECK_STAGE_TIMEOUT_MS', 600_000)
+    summary['stage_timeouts_ms'] = {
+        'dotnet_stage_timeout_ms': dotnet_stage_timeout_ms,
+        'selfcheck_stage_timeout_ms': selfcheck_stage_timeout_ms,
+    }
 
     # 0) Enforce unified task-level entrypoint command policy (hard gate)
     rc0, out0 = run_cmd([
@@ -175,7 +192,7 @@ def main():
     # 1) Dotnet tests + coverage (soft gate on coverage)
     rc, out = run_cmd(['py', '-3', 'scripts/python/run_dotnet.py',
                        '--solution', resolved_solution,
-                       '--configuration', args.configuration], cwd=root)
+                       '--configuration', args.configuration], cwd=root, timeout=dotnet_stage_timeout_ms)
     with io.open(os.path.join(ci_dir, 'run-dotnet-console.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     dotnet_sum = read_json(os.path.join('logs', 'unit', date, 'summary.json')) or {}
@@ -210,7 +227,7 @@ def main():
     sc_args = ['py', '-3', 'scripts/python/godot_selfcheck.py', 'run', '--godot-bin', args.godot_bin, '--project', args.project]
     if args.build_solutions:
         sc_args.append('--build-solutions')
-    rc2, out2 = run_cmd(sc_args, cwd=root, timeout=600_000)
+    rc2, out2 = run_cmd(sc_args, cwd=root, timeout=selfcheck_stage_timeout_ms)
     # persist raw stdout for diagnosis
     os.makedirs(os.path.join('logs', 'ci', date), exist_ok=True)
     with io.open(os.path.join('logs', 'ci', date, 'selfcheck-stdout.txt'), 'w', encoding='utf-8') as f:
