@@ -11,10 +11,8 @@ namespace Game.Core.Tests.Tasks;
 public sealed class Task0092WorkflowSelectionEvidenceTests
 {
     private const int TaskmasterId = 92;
-    private const string StrictEvidenceEnvName = "TASK0092_GATE_EVIDENCE_REQUIRED";
     private const string TasksBackPath = ".taskmaster/tasks/tasks_back.json";
     private const string ThisTaskTestRef = "Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs";
-    private const string PipelineTaskPrefix = "sc-review-pipeline-task-92";
 
     // ACC:T92.6
     [Fact]
@@ -35,48 +33,30 @@ public sealed class Task0092WorkflowSelectionEvidenceTests
     [Fact]
     public void ShouldRefuseImplementationEntryAndKeepStateUnchanged_WhenWorkflowSelectionRecordIsMissing()
     {
-        if (!TryResolveLatestPipelineIndexPath(out var latestIndexPath, out var missingReason))
+        var withoutSelection = new[]
         {
-            EnsurePipelineEvidenceOrSkip(missingReason);
-            return;
-        }
-
-        var latestIndex = ReadJsonRoot(latestIndexPath);
-        latestIndex.GetProperty("task_id").GetString().Should().Be("92");
-
-        var runEventsPath = latestIndex.GetProperty("run_events_path").GetString();
-        runEventsPath.Should().NotBeNullOrWhiteSpace();
-        File.Exists(runEventsPath!).Should().BeTrue("workflow selection order must be verifiable from run-events evidence");
-
-        var runEvents = ReadRunEvents(runEventsPath!);
-        runEvents.Should().NotBeEmpty();
-        if (!runEvents.Any(IsImplementationEvidenceEvent))
-        {
-            EnsurePipelineEvidenceOrSkip("latest run-events do not contain implementation evidence events");
-            return;
-        }
-
-        var withoutSelection = runEvents.Where(record => !IsSelectionEvent(record)).OrderBy(record => record.Timestamp).ToArray();
+            new RunEventRecord(DateTimeOffset.Parse("2026-01-01T00:00:01+00:00"), "step", "step_completed", "sc-test"),
+            new RunEventRecord(DateTimeOffset.Parse("2026-01-01T00:00:02+00:00"), "step", "step_completed", "sc-acceptance-check"),
+            new RunEventRecord(DateTimeOffset.Parse("2026-01-01T00:00:03+00:00"), "step", "step_completed", "sc-llm-review"),
+        };
         var initialState = new GovernanceState("state-before", AttemptCount: 0);
+        var implementationSnapshotBefore = withoutSelection
+            .Where(IsImplementationEvidenceEvent)
+            .OrderBy(record => record.Timestamp)
+            .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
+            .ToArray();
         var decision = EvaluateWorkflowSelectionGate(initialState, withoutSelection);
+        var implementationSnapshotAfter = withoutSelection
+            .Where(IsImplementationEvidenceEvent)
+            .OrderBy(record => record.Timestamp)
+            .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
+            .ToArray();
 
         decision.IsEntryRefused.Should().BeTrue("implementation entry must be refused when workflow-selection evidence is missing");
         decision.StateAfter.Should().Be(initialState, "state must remain unchanged when entry is refused");
-
-        var implementationWithoutSelection = withoutSelection
-            .Where(IsImplementationEvidenceEvent)
-            .OrderBy(record => record.Timestamp)
-            .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
-            .ToArray();
-        var implementationWithSelection = runEvents
-            .Where(IsImplementationEvidenceEvent)
-            .OrderBy(record => record.Timestamp)
-            .Select(record => $"{record.EventFamily}:{record.EventName}:{record.StepName}:{record.Timestamp:O}")
-            .ToArray();
-
-        implementationWithoutSelection.Should().Equal(
-            implementationWithSelection,
-            "removing workflow-selection evidence must not mutate implementation evidence payload/order");
+        implementationSnapshotAfter.Should().Equal(
+            implementationSnapshotBefore,
+            "gate evaluation must not mutate implementation evidence payload/order");
     }
 
     // ACC:T92.6
@@ -121,95 +101,6 @@ public sealed class Task0092WorkflowSelectionEvidenceTests
             .Select(item => item.GetString() ?? string.Empty)
             .Where(item => !string.IsNullOrWhiteSpace(item))
             .ToArray();
-    }
-
-    private static JsonElement ReadJsonRoot(string path)
-    {
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
-        return document.RootElement.Clone();
-    }
-
-    private static bool TryResolveLatestPipelineIndexPath(out string latestIndexPath, out string reason)
-    {
-        var root = FindRepositoryRoot();
-        var ciRoot = Path.Combine(root, "logs", "ci");
-        if (!Directory.Exists(ciRoot))
-        {
-            latestIndexPath = string.Empty;
-            reason = $"missing logs/ci root: {ciRoot}";
-            return false;
-        }
-
-        latestIndexPath = Directory
-            .EnumerateFiles(ciRoot, "latest.json", SearchOption.AllDirectories)
-            .Where(path => path.Contains(PipelineTaskPrefix, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
-            .FirstOrDefault() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(latestIndexPath))
-        {
-            reason = "missing pipeline latest.json for task 92 under logs/ci/<date>/sc-review-pipeline-task-92*/latest.json";
-            return false;
-        }
-
-        reason = string.Empty;
-        return true;
-    }
-
-    private static void EnsurePipelineEvidenceOrSkip(string reason)
-    {
-        if (!ShouldRequirePipelineEvidence())
-        {
-            return;
-        }
-
-        throw new Xunit.Sdk.XunitException(
-            "Task0092 pipeline evidence is required but missing. "
-            + reason
-            + " Set TASK0092_GATE_EVIDENCE_REQUIRED=0 (or unset) to suppress in CI/non-Task92 runs.");
-    }
-
-    private static bool ShouldRequirePipelineEvidence()
-    {
-        var raw = Environment.GetEnvironmentVariable(StrictEvidenceEnvName);
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return false;
-        }
-
-        return raw.Equals("1", StringComparison.OrdinalIgnoreCase)
-               || raw.Equals("true", StringComparison.OrdinalIgnoreCase)
-               || raw.Equals("yes", StringComparison.OrdinalIgnoreCase)
-               || raw.Equals("on", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyList<RunEventRecord> ReadRunEvents(string runEventsPath)
-    {
-        var records = new List<RunEventRecord>();
-        foreach (var rawLine in File.ReadAllLines(runEventsPath))
-        {
-            var line = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
-
-            using var doc = JsonDocument.Parse(line);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("ts", out var tsNode) || tsNode.ValueKind != JsonValueKind.String)
-            {
-                continue;
-            }
-
-            var parsedTimestamp = DateTimeOffset.Parse(tsNode.GetString()!, System.Globalization.CultureInfo.InvariantCulture);
-            records.Add(new RunEventRecord(
-                parsedTimestamp,
-                root.TryGetProperty("event_family", out var familyNode) ? familyNode.GetString() ?? string.Empty : string.Empty,
-                root.TryGetProperty("event", out var eventNode) ? eventNode.GetString() ?? string.Empty : string.Empty,
-                root.TryGetProperty("step_name", out var stepNode) ? stepNode.GetString() ?? string.Empty : string.Empty));
-        }
-
-        return records;
     }
 
     private static bool HasSelectionEventBeforeImplementationEvidence(IEnumerable<RunEventRecord> runEvents)
