@@ -3955,15 +3955,14 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "The sizing audit reviews the post-T70 Chapter 6 mainline tasks in T70-T101, and every task that still combines multiple owner boundaries or multiple unrelated deterministic closures is identified and split before that task is executed. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "Review evidence in docs/gdd/t1-t69-m1-wiring-audit.md records the sizing conclusion for the T70-T101 task set and shows that no unsplit task still bundles multiple unrelated deterministic closures that would predictably overrun Chapter 6 recovery and review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "Validation evidence for this sizing pass includes a task graph review, dependency consistency checks, and matching audit updates recorded in docs/gdd/t1-t69-m1-wiring-audit.md. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "Outputs from T102 are limited to governance audit findings and task-splitting updates for Chapter 6 sizing, and the task does not deliver gameplay feature implementation. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "If T102 has not been selected by the workflow, no implementation work advances under this task and the recorded state remains limited to sizing review evidence. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "The sizing audit reviews the post-T70 Chapter 6 mainline tasks in T70-T101, and every task that still combines multiple owner boundaries or multiple unrelated deterministic closures is identified and split before that task is executed. Refs: Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs",
+      "Review evidence in docs/gdd/t1-t69-m1-wiring-audit.md records the sizing conclusion for the T70-T101 task set and shows that no unsplit task still bundles multiple unrelated deterministic closures that would predictably overrun Chapter 6 recovery and review. Refs: Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs",
+      "Validation evidence for this sizing pass includes a task graph review, dependency consistency checks, and matching audit updates recorded in docs/gdd/t1-t69-m1-wiring-audit.md. Refs: Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs",
+      "Outputs from T102 are limited to governance audit findings and task-splitting updates for Chapter 6 sizing, and the task does not deliver gameplay feature implementation. Refs: Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs",
+      "If T102 has not been selected by the workflow, no implementation work advances under this task and the recorded state remains limited to sizing review evidence. Refs: Game.Core.Tests/Tasks/Task0102WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate task sizing through task graph review, dependency consistency checks, explicit T70-T101 scope coverage, and updated audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md."

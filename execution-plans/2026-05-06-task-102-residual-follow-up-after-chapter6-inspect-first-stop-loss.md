@@ -1,0 +1,21 @@
+# Task 102 residual follow-up after Chapter6 inspect-first stop-loss
+
+- Title: Task 102 residual follow-up after Chapter6 inspect-first stop-loss
+- Status: active
+- Branch: task/T102
+- Git Head: 0cfe834f76e4066a76a30510bd6ef3bcc85068ed
+- Goal: Close Task 102 with stronger acceptance semantics assertions without violating chapter6 rerun guards.
+- Scope: Limit next cycle to Task0102WorkflowSelectionEvidenceTests assertion-strength and optional negative-path semantics; no gameplay/runtime implementation changes.
+- Current step: Residual recorded; prepare targeted P3 assertion-strength patch before resume lane.
+- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
+- Stop-loss: Do not run full 'py -3 scripts/sc/run_review_pipeline.py --task-id 102' while forbidden_commands and recent_failure_summary remain active.
+- Next action: Start from inspect-run latest pointer, patch weak assertions, then run 'py -3 scripts/sc/run_review_pipeline.py --task-id 102 --resume'.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 102 --resume`
+- Open questions: none recorded yet
+- Exit criteria: resume/chapter6-route no longer report review-needs-fix or recent_failure_summary for same family; no unresolved P0/P1 findings.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-05-06-task-102-chapter6-residual-p3-weak-assertion-follow-up.md`
+- Related task id(s): `102`
+- Related run id: `7586fa616de34e28b199c64a33528161`
+- Related latest.json: `logs/ci/2026-05-06/sc-review-pipeline-task-102/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-06/sc-review-pipeline-task-102-7586fa616de34e28b199c64a33528161`
