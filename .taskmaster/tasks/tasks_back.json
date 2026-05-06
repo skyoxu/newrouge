@@ -4013,16 +4013,14 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "execution-plans/<latest>.md",
-      "decision-logs/<latest>.md",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "Review pipeline evidence must show Continue restore validation as two distinct lanes, one for primary boundaries and one for locked surfaces, instead of a single combined closure. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
-      "Execution-plan and decision-log evidence must both show that T87 and T98 are handled through the separated Continue restore lanes so each task can be executed and re-reviewed independently. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
-      "If any task-file dependency still forces the T87 and T98 closures back into one run, T103 does not pass. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
-      "T103 must remain limited to governance and workflow planning or review evidence for the split Continue restore validation and must not add gameplay feature implementation. Refs: execution-plans/<latest>.md decision-logs/<latest>.md",
-      "If workflow has not selected T103 for implementation, no implementation work may advance and the task must remain evidence-only. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Review pipeline evidence must show Continue restore validation as two distinct lanes, one for primary boundaries and one for locked surfaces, instead of a single combined closure. Refs: Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs",
+      "Execution-plan and decision-log evidence must both show that T87 and T98 are handled through the separated Continue restore lanes so each task can be executed and re-reviewed independently. Refs: Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs",
+      "If any task-file dependency still forces the T87 and T98 closures back into one run, T103 does not pass. Refs: Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs",
+      "T103 must remain limited to governance and workflow planning or review evidence for the split Continue restore validation and must not add gameplay feature implementation. Refs: Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs",
+      "If workflow has not selected T103 for implementation, no implementation work may advance and the task must remain evidence-only. Refs: Game.Core.Tests/Tasks/Task0103WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate execution-plan and decision-log evidence for separated Continue restore lanes and verify no task file dependency collapses the two closures back into one run."
