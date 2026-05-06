@@ -4072,16 +4072,14 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "execution-plans/<latest>.md",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "Planning and review evidence records three distinct combat-rule promotion lanes for core resolution, AOE ordering, and feedback alignment, and does not present them as one combined closure. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "Planning and review evidence assigns T90, T100, and T101 to the separated combat-rule promotion lanes so they are reviewed as distinct deterministic closures instead of one monolithic combat-rule promotion run. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "The task graph and audit evidence show that T90, T100, and T101 can each be executed, re-reviewed, and closed independently without re-merging the split combat-rule promotion closure. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "T104 is accepted only when its output is governance and workflow planning/review evidence, and gameplay feature implementation completion does not satisfy this task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "If T104 has not been selected by workflow, the accepted output remains governance evidence only and no implementation advancement counts toward completion. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Planning/review evidence must define lane boundaries for core rule integration, AOE ordering, and scene feedback reconciliation, including per-lane input/output and review owner, and must not collapse them into a single closure. Refs: Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs",
+      "Evidence must map T90 to the core rule integration lane, T100 to the AOE ordering lane, and T101 to the feedback reconciliation lane as separate deterministic closures with independent re-review records. Refs: Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs",
+      "Task graph/audit evidence must prove each lane can be re-run and re-reviewed without forcing re-open or merge of the other two lanes, and must record CH06 narrow-loop scope per lane. Refs: Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs",
+      "T104 is accepted only when its output is governance and workflow planning/review evidence, and gameplay feature implementation completion does not satisfy this task. Refs: Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs",
+      "If T104 is not workflow-selected, outputs remain evidence-only and must not transition T90, T100, or T101 into implementation execution through this task. Refs: Game.Core.Tests/Tasks/Task0104WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate task graph and audit evidence showing separated combat rule promotion lanes for core resolution, AOE ordering, and feedback alignment, with explicit T90/T100/T101 mapping and separate re-review closure evidence."
