@@ -3408,16 +3408,17 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd",
-      "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
+      "Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
     ],
     "acceptance": [
-      "A deterministic validation step verifies every security-sensitive signal against the expected signal name and argument contract, and the run fails immediately when any definition drifts from that contract instead of deferring detection to runtime. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "The security-sensitive signal-contract backlog item is surfaced in the executable main task line so repository guardrails and CI can run it directly rather than treating it as backlog-only tracking. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "T94 includes at least one intentionally drifted security-sensitive signal contract, and deterministic validation reports that drift as a reproducible failure. Refs: Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs",
-      "At least one integration-level security signal scenario shows the passing case still emits the expected guarded signal contract, and a drifted contract in the same validation scope is reported as a failing result instead of silently changing behavior. Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd",
-      "When workflow selection has not explicitly selected T94, implementation must refuse to start and leave implementation/code state unchanged, and the review evidence must show the workflow-selection record before any implementation evidence. Refs: logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
+      "A deterministic validation step verifies every security-sensitive signal against the expected signal name and argument contract, and the run fails immediately with a CI-consumable deterministic failure result (stable error code/category) when any definition drifts, instead of deferring detection to runtime. Refs: Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "The security-sensitive signal-contract backlog item is surfaced in the executable main task line so repository guardrails and CI can run it directly rather than treating it as backlog-only tracking. Refs: Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "T94 includes at least one intentionally drifted security-sensitive signal contract, and deterministic validation reports that drift as a reproducible failure. Refs: Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "At least one integration-level security signal scenario must assert the emitted signal contract (canonical signal name plus expected argument shape/order) in the passing case, and a drifted contract in the same validation scope must produce an explicit deterministic failing result (not skip, not silent behavior change). Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd",
+      "When workflow selection has not explicitly selected T94, implementation must refuse to start and leave implementation/code state unchanged, and the review evidence must show the workflow-selection record before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "Deterministic contract-drift failures are surfaced in a machine-readable form suitable for CI gating (stable failure code/category and failing status), so pipeline decisions do not depend on log text matching. Refs: Game.Core.Tests/Tasks/Task0094AcceptanceTests.cs",
+      "Integration-level deterministic contract-drift validation keeps a dedicated anchor independent from the pass-case signal emission check, so acceptance-to-test mapping remains one obligation per anchor. Refs: Tests.Godot/tests/Integration/Security/test_security_http_block_signal.gd"
     ],
     "test_strategy": [
       "Run headless GdUnit4 suite and confirm contract checks report PASS/FAIL deterministically."
