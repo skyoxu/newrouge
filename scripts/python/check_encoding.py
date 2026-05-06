@@ -80,6 +80,7 @@ BINARY_EXT = {
     ".sqlite",
     ".sav",
     ".bak",
+    ".translation",
 }
 
 # Exclude vendor/test asset folders and known binaries
@@ -251,4 +252,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

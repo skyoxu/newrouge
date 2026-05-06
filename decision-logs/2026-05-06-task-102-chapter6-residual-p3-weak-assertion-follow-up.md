@@ -1,0 +1,21 @@
+# Task 102 Chapter6 residual P3 weak-assertion follow-up
+
+- Title: Task 102 Chapter6 residual P3 weak-assertion follow-up
+- Date: 2026-05-06
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T102
+- Git Head: 0cfe834f76e4066a76a30510bd6ef3bcc85068ed
+- Why now: Two consecutive review-needs-fix runs share the same failure family and chapter6-route blocks full rerun by recent_failure_summary.
+- Context: resume-task/chapter6-route/inspect-run all report chapter6_next_action=inspect, preferred_lane=inspect-first, blocked_by=recent_failure_summary, forbidden_commands contains full run_review_pipeline rerun.
+- Decision: Record residual P3 weak-test findings for Task0102 and stop additional full reruns in this cycle; keep deterministic artifacts green and move to repository-level hard checks.
+- Consequences: Task 102 keeps P0/P1 clean in fast-ship, but retains documented P3 semantic-strength debt for follow-up tightening before stricter release posture.
+- Recovery impact: Next recovery should start from inspect-run latest pointer, apply targeted assertion-strength improvements, then resume pipeline using --resume instead of full rerun.
+- Validation: Evidence: logs/ci/2026-05-06/sc-review-pipeline-task-102-7586fa616de34e28b199c64a33528161/{summary.json,agent-review.json,repair-guide.json,run-events.jsonl}; logs/ci/2026-05-06/sc-llm-review-task-102/review-security-auditor.md
+- Related ADRs: none yet
+- Related execution plans: none yet
+- Related task id(s): `102`
+- Related run id: `7586fa616de34e28b199c64a33528161`
+- Related latest.json: `logs/ci/2026-05-06/sc-review-pipeline-task-102/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-06/sc-review-pipeline-task-102-7586fa616de34e28b199c64a33528161`
