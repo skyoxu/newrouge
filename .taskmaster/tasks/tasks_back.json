@@ -4329,16 +4329,14 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "execution-plans/<latest>.md",
-      "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs"
     ],
     "acceptance": [
-      "Task-graph evidence identifies enemy intent preview generation and enemy turn resolution as separate lanes that are tracked independently, and does not present them as a single combined review path. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "Audit evidence demonstrates that the preview-generation lane and the enemy-action-resolution lane can each be reviewed for T76 and T105 without requiring one collapsed enemy intent review. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "Planning and review evidence shows T76 and T105 can be run independently after the split and can be re-reviewed independently without recombining the two enemy-intent lanes. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "T108 deliverables are limited to governance, planning, and review evidence for the enemy intent lane split, and do not include gameplay feature implementation. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "If workflow has not selected T108, the task does not implement preview generation or enemy turn resolution, and the repository implementation state remains unchanged. Refs: logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
+      "Task-graph evidence in docs/gdd/t1-t69-m1-wiring-audit.md and execution-plans/2026-05-06-task-108-enemy-intent-review-split-governance-evidence.md identifies enemy intent preview generation and enemy turn resolution as separate lanes that are tracked independently, and does not present them as a single combined review path. Refs: Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs",
+      "Audit evidence in docs/gdd/t1-t69-m1-wiring-audit.md and execution-plans/2026-05-06-task-108-enemy-intent-review-split-governance-evidence.md demonstrates T76 (preview-generation lane) and T105 (enemy-action-resolution lane) are independently reviewable, and each review path explicitly states the other lane is not a prerequisite. Refs: Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs",
+      "Planning and review evidence defines no-repeat verification semantics: after the split, re-review of T76 or T105 must not trigger or require a recombined enemy-intent review lane, and duplicate combined-lane verification is treated as invalid evidence. Refs: Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs",
+      "T108 deliverables are limited to governance, planning, and review evidence for the enemy intent lane split, and do not include gameplay feature implementation. Governance evidence source: docs/gdd/t1-t69-m1-wiring-audit.md. Refs: Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs",
+      "When T108 is not workflow-selected, repository implementation state remains unchanged, and governance evidence still preserves the split boundary (no fallback to a combined enemy-intent review path). Supporting evidence path: logs/ci/2026-05-06/sc-build-tdd/summary.json. Refs: Game.Core.Tests/Tasks/Task0108WorkflowSelectionEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate task graph, planning, review, and audit evidence showing separated enemy intent lanes for preview generation and enemy action resolution, with independent T76/T105 run and re-review closure evidence."
@@ -4347,7 +4345,9 @@
     "taskmaster_exported": true,
     "contractRefs": [],
     "evidence_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md"
+      "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "execution-plans/2026-05-06-task-108-enemy-intent-review-split-governance-evidence.md",
+      "logs/ci/2026-05-06/sc-build-tdd/summary.json"
     ],
     "semantic_review_tier": "full"
   },
