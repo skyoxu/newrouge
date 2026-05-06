@@ -15,7 +15,6 @@ public sealed class Task0093AcceptanceTests
     private const string TasksMasterPath = ".taskmaster/tasks/tasks.json";
     private const string TasksBackPath = ".taskmaster/tasks/tasks_back.json";
     private const string ProcessGuardTestPath = "Game.Core.Tests/Services/ExternalProcessGuardTests.cs";
-    private const string AcceptanceCheckSummaryPath = "logs/ci/2026-05-05/sc-acceptance-check-task-93/summary.json";
     private const string ThisTaskTestRef = "Game.Core.Tests/Tasks/Task0093AcceptanceTests.cs";
 
     // ACC:T93.1
@@ -88,7 +87,7 @@ public sealed class Task0093AcceptanceTests
     {
         var backTask = ReadBackTaskNode(TaskmasterId);
         var acceptance = ReadStringArray(backTask, "acceptance");
-        var summaryPath = Path.Combine(FindRepositoryRoot(), AcceptanceCheckSummaryPath.Replace('/', Path.DirectorySeparatorChar));
+        var summaryPath = ResolveLatestAcceptanceCheckSummaryPath(TaskmasterId);
         File.Exists(summaryPath).Should().BeTrue("deterministic gate evidence should exist");
         using var summary = JsonDocument.Parse(File.ReadAllText(summaryPath));
         summary.RootElement.GetProperty("status").GetString().Should().Be("ok");
@@ -103,6 +102,31 @@ public sealed class Task0093AcceptanceTests
         acceptance[3].Should().Contain("deny-by-default behavior");
         acceptance[3].Should().Contain(ThisTaskTestRef);
         acceptance[3].Should().Contain(ProcessGuardTestPath);
+    }
+
+    private static string ResolveLatestAcceptanceCheckSummaryPath(int taskId)
+    {
+        var repoRoot = FindRepositoryRoot();
+        var ciRoot = Path.Combine(repoRoot, "logs", "ci");
+        if (!Directory.Exists(ciRoot))
+        {
+            throw new DirectoryNotFoundException($"CI logs directory not found: {ciRoot}");
+        }
+
+        var pattern = $"sc-acceptance-check-task-{taskId}";
+        var candidates = Directory
+            .EnumerateFiles(ciRoot, "summary.json", SearchOption.AllDirectories)
+            .Where(path =>
+            {
+                var normalized = path.Replace('\\', '/');
+                return normalized.Contains($"/{pattern}/", StringComparison.OrdinalIgnoreCase);
+            })
+            .Select(path => new FileInfo(path))
+            .OrderByDescending(info => info.LastWriteTimeUtc)
+            .ToArray();
+
+        candidates.Should().NotBeEmpty($"acceptance-check summary for task {taskId} should exist under logs/ci");
+        return candidates[0].FullName;
     }
 
     // ACC:T93.5
