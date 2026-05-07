@@ -386,8 +386,9 @@ public sealed class Task0046AcceptanceTests
             ? nameNode.GetString()
             : string.Empty;
 
-        return string.Equals(stepName, "security-hard", StringComparison.Ordinal)
-               && string.Equals(status, "fail", StringComparison.Ordinal);
+        return string.Equals(status, "fail", StringComparison.Ordinal)
+               && (string.Equals(stepName, "security-hard", StringComparison.Ordinal)
+                   || string.Equals(stepName, "architecture-boundary", StringComparison.Ordinal));
     }
 
     private static string FindRepositoryRoot()
