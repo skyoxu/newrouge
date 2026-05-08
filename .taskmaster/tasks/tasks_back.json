@@ -4721,15 +4721,13 @@
     ],
     "owner": "architecture",
     "test_refs": [
-      "docs/gdd/t1-t69-m1-wiring-audit.md",
-      "execution-plans/<latest>.md",
-      "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "Game.Core.Tests/Tasks/Task0112RelicRuntimeReviewEvidenceTests.cs"
     ],
     "acceptance": [
-      "Planning and review evidence explicitly permits T99 and T110 to execute and be re-reviewed independently, with relic combat trigger closure reviewed in a separate lane from run trigger closure rather than through a single combined path. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "The task graph and audit evidence record distinct relic runtime lanes for combat trigger closure and run trigger closure, and do not present them as one shared review lane. Refs: docs/gdd/t1-t69-m1-wiring-audit.md execution-plans/<latest>.md",
-      "T112 completion evidence is limited to governance and workflow artifacts, and gameplay feature implementation alone does not satisfy or close the task. Refs: docs/gdd/t1-t69-m1-wiring-audit.md",
-      "Until workflow explicitly selects T112, implementation activity does not advance under this task and its recorded state remains confined to planning and review evidence. Refs: logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
+      "ACC:T112.1 Planning and review evidence explicitly permits T99 and T110 to execute and be re-reviewed independently, with relic combat trigger closure reviewed in a separate lane from run trigger closure rather than through a single combined path. Refs: Game.Core.Tests/Tasks/Task0112RelicRuntimeReviewEvidenceTests.cs",
+      "ACC:T112.2 The task graph and audit evidence define two independent relic runtime review lanes (combat trigger closure and run trigger closure), and approval or failure in one lane MUST NOT be used as approval or failure evidence for the other lane. Refs: Game.Core.Tests/Tasks/Task0112RelicRuntimeReviewEvidenceTests.cs",
+      "ACC:T112.3 T112 completion evidence is restricted to governance and workflow artifacts that prove lane split and independent re-review readiness for T99 and T110; gameplay implementation artifacts alone MUST NOT close T112. Refs: Game.Core.Tests/Tasks/Task0112RelicRuntimeReviewEvidenceTests.cs",
+      "ACC:T112.4 Until workflow explicitly selects T112, any implementation activity or code delta MUST NOT advance T112 state, and recorded progress remains planning and review evidence only. Refs: Game.Core.Tests/Tasks/Task0112RelicRuntimeReviewEvidenceTests.cs"
     ],
     "test_strategy": [
       "Validate planning, review, task-graph, and audit evidence showing separated relic runtime lanes for combat trigger closure and run trigger closure."
