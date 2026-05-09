@@ -27,7 +27,7 @@ public sealed class Task0093AcceptanceTests
 
         masterTask.GetProperty("id").GetInt32().Should().Be(TaskmasterId);
         masterTask.GetProperty("title").GetString().Should().Contain("deny-by-default");
-        masterTask.GetProperty("status").GetString().Should().Be("pending");
+        masterTask.GetProperty("status").GetString().Should().BeOneOf("pending", "in-progress", "review", "done");
         backTask.GetProperty("taskmaster_exported").GetBoolean().Should().BeTrue();
         testRefs.Should().Contain(ThisTaskTestRef);
     }

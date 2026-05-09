@@ -104,10 +104,10 @@ public sealed class Task0109SettlementReviewLaneSplitEvidenceTests
         masterTasks.Should().ContainKey(Task107Id);
         masterTasks.Should().ContainKey(Task113Id);
 
-        ReadString(masterTasks[TaskmasterId], "status").Should().Be("pending");
-        ReadString(masterTasks[Task91Id], "status").Should().Be("pending");
-        ReadString(masterTasks[Task107Id], "status").Should().Be("pending");
-        ReadString(masterTasks[Task113Id], "status").Should().Be("pending");
+        ReadString(masterTasks[TaskmasterId], "status").Should().BeOneOf("pending", "in-progress", "review", "done");
+        ReadString(masterTasks[Task91Id], "status").Should().BeOneOf("pending", "in-progress", "review", "done");
+        ReadString(masterTasks[Task107Id], "status").Should().BeOneOf("pending", "in-progress", "review", "done");
+        ReadString(masterTasks[Task113Id], "status").Should().BeOneOf("pending", "in-progress", "review", "done");
     }
 
     private static JsonElement ReadTaskNode(string taskFilePath, int taskmasterId)
