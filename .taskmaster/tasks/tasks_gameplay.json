@@ -7358,8 +7358,7 @@
       "GM-0188",
       "GM-0191",
       "GM-0194",
-      "GM-0210",
-      "GM-0213"
+      "GM-0210"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 117,
@@ -7434,7 +7433,8 @@
         113
       ],
       "ui_entry": "MainMenu / Boot Flow"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0218",
@@ -7468,9 +7468,7 @@
       "GM-0198",
       "GM-0203",
       "GM-0207",
-      "GM-0209",
-      "GM-0214",
-      "GM-0215"
+      "GM-0209"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 118,
@@ -7559,7 +7557,8 @@
         115
       ],
       "ui_entry": "HUD / Prompt / Outcome Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0219",
@@ -7600,15 +7599,9 @@
       "GM-0195",
       "GM-0196",
       "GM-0197",
-      "GM-0199",
-      "GM-0200",
-      "GM-0201",
       "GM-0204",
       "GM-0205",
-      "GM-0206",
-      "GM-0211",
-      "GM-0212",
-      "GM-0216"
+      "GM-0206"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 119,
@@ -7710,7 +7703,8 @@
         116
       ],
       "ui_entry": "Combat HUD / Pressure / Camera Feedback"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0220",
@@ -7777,7 +7771,8 @@
         12
       ],
       "ui_entry": "Resource / Build / Progression Panels"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0221",
@@ -7882,7 +7877,8 @@
         108
       ],
       "ui_entry": "Settings / Save / Meta Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0222",
@@ -7946,7 +7942,9 @@
       "Config Audit And Migration Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T02, T31, T32, T33, T37, T40); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "Config Audit And Migration Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
     ],
-    "contractRefs": [],
+    "contractRefs": [
+      "core.run.state.transitioned"
+    ],
     "ui_wiring_candidate": {
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "screen_group": "Config Audit And Migration Surfaces",
@@ -7959,7 +7957,8 @@
         40
       ],
       "ui_entry": "Config Summary / Audit / Migration Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0223",
@@ -8036,7 +8035,8 @@
         103
       ],
       "ui_entry": "Map / Continue / Route Return Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0224",
@@ -8107,7 +8107,8 @@
         83
       ],
       "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0225",
@@ -8184,7 +8185,8 @@
         96
       ],
       "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0226",
@@ -8195,8 +8197,7 @@
       "GM-0176",
       "GM-0189",
       "GM-0205",
-      "GM-0208",
-      "GM-0216"
+      "GM-0208"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 126,
@@ -8261,7 +8262,8 @@
         116
       ],
       "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0227",
@@ -8273,8 +8275,6 @@
       "GM-0178",
       "GM-0179",
       "GM-0190",
-      "GM-0200",
-      "GM-0201",
       "GM-0204"
     ],
     "taskmaster_exported": true,
@@ -8342,7 +8342,8 @@
         104
       ],
       "ui_entry": "Combat Feedback / Status / Resolution Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0228",
@@ -8350,9 +8351,7 @@
     "owner": "gameplay",
     "depends_on": [
       "GM-0184",
-      "GM-0185",
-      "GM-0214",
-      "GM-0215"
+      "GM-0185"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 128,
@@ -8415,7 +8414,8 @@
         115
       ],
       "ui_entry": "Reward Scene / Offer Choice / Return Path"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0229",
@@ -8423,11 +8423,8 @@
     "owner": "gameplay",
     "depends_on": [
       "GM-0188",
-      "GM-0199",
       "GM-0206",
-      "GM-0210",
-      "GM-0211",
-      "GM-0212"
+      "GM-0210"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 129,
@@ -8492,7 +8489,8 @@
         112
       ],
       "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "GM-0230",
@@ -8501,8 +8499,7 @@
     "depends_on": [
       "GM-0191",
       "GM-0207",
-      "GM-0209",
-      "GM-0213"
+      "GM-0209"
     ],
     "taskmaster_exported": true,
     "taskmaster_id": 130,
@@ -8565,6 +8562,7 @@
         113
       ],
       "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   }
 ]
