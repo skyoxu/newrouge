@@ -1,4 +1,8 @@
 {
+  "task_scope": {
+    "min_task_id": 70,
+    "max_task_id": 116
+  },
   "surface_aliases": {
     "RuntimeHud": [
       "RuntimeHud",
@@ -42,51 +46,421 @@
     "default_story_templates": {
       "back": "BACKLOG-{repo_label_upper_underscore}-M1",
       "gameplay": "PRD-{repo_label_upper_underscore}-v1.2"
+    },
+    "priority_by_bucket": {
+      "map_path": "high",
+      "combat_card_play": "high",
+      "combat_runtime_bootstrap": "high",
+      "enemy_intent": "high",
+      "combat_rules": "high",
+      "reward_flow": "high",
+      "relic_participants": "high",
+      "settlement": "medium",
+      "review_governance": "medium",
+      "default": "medium"
+    },
+    "layer_by_bucket": {
+      "map_path": "adapter",
+      "combat_card_play": "adapter",
+      "combat_runtime_bootstrap": "adapter",
+      "enemy_intent": "adapter",
+      "combat_rules": "adapter",
+      "reward_flow": "adapter",
+      "relic_participants": "adapter",
+      "settlement": "adapter",
+      "review_governance": "core",
+      "default": "adapter"
+    },
+    "view_priority_map": {
+      "high": "P1",
+      "medium": "P2",
+      "low": "P3"
     }
   },
+  "bucket_order": [
+    "map_path",
+    "combat_card_play",
+    "combat_runtime_bootstrap",
+    "enemy_intent",
+    "combat_rules",
+    "reward_flow",
+    "relic_participants",
+    "settlement",
+    "review_governance"
+  ],
+  "fallback_bucket": "review_governance",
   "buckets": {
-    "entry": {
+    "map_path": {
+      "feature_task_ids": [
+        70,
+        86,
+        87,
+        97,
+        98,
+        103
+      ],
+      "slice_title": "Map Path, Continue, And Route Return",
+      "screen_group": "Map Path And Continue Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Map / Continue / Route Return Surfaces",
+      "player_action": "Resume a run, inspect route ownership, and return through locked reward or shop boundaries",
+      "system_response": "Show real route graph state, continue landing, locked-surface recovery, and owned path transitions without hidden state",
+      "suggested_surfaces": [
+        "MapScreen",
+        "ContinueGateDialog",
+        "RouteReturnPanel"
+      ],
       "section_headings": [
-        "### 6.1.1 MainMenu And Boot Flow",
-        "### 6.1.1 Entry And Bootstrap",
-        "### 6.1.1 MainMenu And Boot Flow（主菜单与启动流程）",
-        "### 6.1.1 Entry And Bootstrap（入口与启动）"
-      ]
+        "### 6.1.1 Map Path And Continue Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no active route ownership until autosave or current run route data is available.",
+        "failure": "Show continue denial, locked-surface refusal, or invalid route recovery explicitly instead of silently falling back.",
+        "completion": "Player can resume into the correct map or combat boundary and read owned route transitions from visible map surfaces."
+      },
+      "screen_contract": {
+        "must_show": "reachable route graph, selected path, continue landing, locked-surface restore state, and refusal feedback.",
+        "must_not_hide": "invalid route ownership, locked return-path refusal, or continue-boundary denial behind logs only.",
+        "validation_focus": "map graph visibility, continue landing, locked-surface recovery, and route-owned return behavior."
+      },
+      "screen_state": {
+        "entry_state": "show map or continue entry only when route ownership is known.",
+        "interaction_state": "show reachable nodes, selected route, and restore or return choices.",
+        "failure_state": "show continue denial, missing autosave, or locked-surface refusal explicitly.",
+        "recovery_exit": "retry continue, return to map, or return to the owned route boundary."
+      }
     },
-    "loop": {
+    "combat_card_play": {
+      "feature_task_ids": [
+        72,
+        74,
+        83
+      ],
+      "slice_title": "Combat Card Play And Targeting",
+      "screen_group": "Combat Card Play Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces",
+      "player_action": "Inspect cards, drag or click to play them, and target legal enemies during combat",
+      "system_response": "Show data-driven card text, legal targeting feedback, and CombatService-backed card-play resolution without scene-local branches",
+      "suggested_surfaces": [
+        "CombatHud",
+        "HandPanel",
+        "TargetPreviewOverlay"
+      ],
       "section_headings": [
-        "### 6.1.2 Runtime HUD And Outcome",
-        "### 6.1.2 Runtime HUD And Outcome Surfaces",
-        "### 6.1.2 Runtime HUD And Outcome（运行时 HUD 与结果）"
-      ]
+        "### 6.1.2 Combat Card Play Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no playable hand or targeting preview until combat runtime and hand state are available.",
+        "failure": "Show invalid target, missing definition, or rejected play feedback without mutating energy, HP, or pile state.",
+        "completion": "Player can read localized card content, target legal enemies, and resolve card plays through the shared combat runtime path."
+      },
+      "screen_contract": {
+        "must_show": "localized card text, cost, target preview, legal target highlight, and card-play feedback.",
+        "must_not_hide": "invalid target refusal, rejected play, or missing-definition fallback behind logs only.",
+        "validation_focus": "card text binding, drag or click play, legal targeting, and CombatService-backed play resolution."
+      },
+      "screen_state": {
+        "entry_state": "show hand and available play actions only when combat runtime is ready.",
+        "interaction_state": "show card hover, drag preview, selected target, and resolved play feedback.",
+        "failure_state": "show rejected play or invalid target without consuming state.",
+        "recovery_exit": "cancel targeting, return card to hand, or continue combat."
+      }
     },
-    "combat": {
+    "combat_runtime_bootstrap": {
+      "feature_task_ids": [
+        71,
+        80,
+        81,
+        82,
+        95,
+        96
+      ],
+      "slice_title": "Combat Runtime Bootstrap And Deck State",
+      "screen_group": "Combat Runtime Bootstrap Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces",
+      "player_action": "Enter combat, inspect deck lifecycle state, and read warrior deck or Rage-backed runtime setup",
+      "system_response": "Show DeckService-backed piles, reshuffle timing, deck totals, warrior starting state, and Rage visibility from shared runtime ownership",
+      "suggested_surfaces": [
+        "DeckStatePanel",
+        "CombatBootstrapPanel",
+        "PlayerRuntimeStatusPanel"
+      ],
       "section_headings": [
-        "### 6.1.3 Combat Pressure And Interaction",
-        "### 6.1.3 Combat Pressure And Interaction Surfaces",
-        "### 6.1.3 Combat Pressure And Interaction（战斗压强与交互）"
-      ]
+        "### 6.1.3 Combat Runtime Bootstrap Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no deck lifecycle or player runtime bootstrap state until CombatService and DeckService ownership are ready.",
+        "failure": "Show missing deck state, invalid reshuffle, or bootstrap denial explicitly instead of using scene-local counters.",
+        "completion": "Player can read shared deck lifecycle state, warrior starting deck setup, and Rage-backed runtime state from governed combat surfaces."
+      },
+      "screen_contract": {
+        "must_show": "draw, discard, exhaust, reshuffle, deck total, starting deck ownership, and player runtime bootstrap state.",
+        "must_not_hide": "scene-local pile ownership, missing reshuffle feedback, or bootstrap fallback behind logs only.",
+        "validation_focus": "DeckService-backed pile truth, reshuffle visibility, warrior deck bootstrap, and Rage runtime state."
+      },
+      "screen_state": {
+        "entry_state": "show no deck or bootstrap state until combat runtime is established.",
+        "interaction_state": "show live draw, discard, exhaust, total-count, and player runtime status updates.",
+        "failure_state": "show bootstrap or pile-state mismatch explicitly.",
+        "recovery_exit": "retry combat entry or continue once shared runtime ownership is restored."
+      }
     },
-    "economy": {
+    "enemy_intent": {
+      "feature_task_ids": [
+        73,
+        76,
+        89,
+        105,
+        108,
+        116
+      ],
+      "slice_title": "Enemy Intent, Turn Resolution, And Definitions",
+      "screen_group": "Enemy Intent And Resolution Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces",
+      "player_action": "Read enemy intents, verify no-repeat guardrails, and understand invalid-definition fallback during combat",
+      "system_response": "Show data-backed enemy previews, multi-enemy routing, resolved enemy turns, and invalid-definition fallback as visible combat state",
+      "suggested_surfaces": [
+        "EnemyIntentPanel",
+        "EnemyRosterPanel",
+        "EnemyFallbackNotice"
+      ],
       "section_headings": [
-        "### 6.1.4 Economy And Progression",
-        "### 6.1.4 Economy And Progression Panels",
-        "### 6.1.4 Economy And Progression（经济与成长）"
-      ]
+        "### 6.1.4 Enemy Intent And Resolution Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no enemy intent or roster state until runtime enemies are instantiated.",
+        "failure": "Show invalid enemy-definition fallback, illegal target rejection, or no-repeat guard refusal explicitly.",
+        "completion": "Player can inspect multi-enemy state, enemy intent previews, resolved enemy turns, and invalid-definition fallback on governed surfaces."
+      },
+      "screen_contract": {
+        "must_show": "enemy roster, current intent, selected target state, resolved enemy turn feedback, and invalid-definition fallback notice.",
+        "must_not_hide": "enemy-definition rejection, illegal selection, or no-repeat guard outcome behind logs only.",
+        "validation_focus": "enemy preview visibility, multi-enemy routing, turn resolution, and invalid-definition fallback."
+      },
+      "screen_state": {
+        "entry_state": "show no enemy preview until runtime enemies are ready.",
+        "interaction_state": "show selected enemy, intent preview, and resolved enemy-turn outcomes.",
+        "failure_state": "show invalid-definition or illegal-target refusal explicitly.",
+        "recovery_exit": "clear selection, continue combat, or await valid runtime enemy state."
+      }
     },
-    "meta": {
+    "combat_rules": {
+      "feature_task_ids": [
+        75,
+        77,
+        78,
+        79,
+        90,
+        100,
+        101,
+        104
+      ],
+      "slice_title": "Combat Rules, Triggers, And Feedback",
+      "screen_group": "Combat Rules And Feedback Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Combat Feedback / Status / Resolution Surfaces",
+      "player_action": "Read status effects, turn resolution, AOE or multi-hit ordering, and defeat or trigger outcomes during live combat",
+      "system_response": "Expose promoted rules, trigger hooks, fixed-damage ordering, and player-visible feedback without mutating deterministic combat ownership",
+      "suggested_surfaces": [
+        "StatusEffectPanel",
+        "CombatFeedbackPanel",
+        "ResolutionLogPanel"
+      ],
       "section_headings": [
-        "### 6.1.5 Save, Settings, And Meta",
-        "### 6.1.5 Save, Settings, And Meta Surfaces",
-        "### 6.1.5 Save, Settings, And Meta（存档、设置与元系统）"
-      ]
+        "### 6.1.5 Combat Rules And Feedback Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no status, trigger, or resolution history until combat rules are active.",
+        "failure": "Show blocked trigger, invalid ordering, or single-resolution guard refusal instead of leaving stale combat feedback.",
+        "completion": "Player can read statuses, trigger ordering, defeat resolution, and multi-hit or AOE feedback from governed combat surfaces."
+      },
+      "screen_contract": {
+        "must_show": "status stacks, trigger outcomes, fixed-damage ordering, defeat resolution, and player-visible combat feedback.",
+        "must_not_hide": "trigger refusal, stale status state, or duplicate defeat resolution behind logs only.",
+        "validation_focus": "status visibility, trigger ordering, defeat guardrails, and promoted combat feedback."
+      },
+      "screen_state": {
+        "entry_state": "show no rule-derived feedback until combat events begin.",
+        "interaction_state": "show live status updates, trigger outcomes, and resolution history.",
+        "failure_state": "show duplicate resolution or invalid trigger ordering explicitly.",
+        "recovery_exit": "acknowledge feedback and continue combat under the shared runtime owner."
+      }
     },
-    "governance": {
+    "reward_flow": {
+      "feature_task_ids": [
+        84,
+        85,
+        114,
+        115
+      ],
+      "slice_title": "Reward Offer, Confirm, And Return Flow",
+      "screen_group": "Reward Offer And Confirm Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Reward Scene / Offer Choice / Return Path",
+      "player_action": "Inspect reward offers, select one of three choices, skip when allowed, and return to the owned route boundary",
+      "system_response": "Render stable offer locking, invalid-pool fallback, confirm gating, writeback, and route-owned return behavior",
+      "suggested_surfaces": [
+        "RewardScene",
+        "RewardChoicePanel",
+        "RewardReturnPanel"
+      ],
       "section_headings": [
-        "### 6.1.6 Config Governance And Audit",
-        "### 6.1.6 Config Audit And Migration Surfaces",
-        "### 6.1.6 Config Governance And Audit（配置治理与审计）"
-      ]
+        "### 6.1.6 Reward Offer And Confirm Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no reward offers until the current reward boundary resolves a valid offer set.",
+        "failure": "Show invalid-pool fallback, re-entry lock refusal, or confirm or skip rejection explicitly instead of mutating route state silently.",
+        "completion": "Player can inspect a stable three-offer reward set, confirm or skip exactly once, and return through the owned route boundary."
+      },
+      "screen_contract": {
+        "must_show": "three-offer reward set, lock persistence, selected-card confirmation state, skip state, and route-owned return feedback.",
+        "must_not_hide": "invalid-pool fallback, confirm denial, skip denial, or duplicate resolution behind logs only.",
+        "validation_focus": "offer generation, lock persistence, confirm gating, writeback, and route-owned return behavior."
+      },
+      "screen_state": {
+        "entry_state": "show no reward selection until the offer set is resolved.",
+        "interaction_state": "show selected reward, confirm or skip affordances, and return-path state.",
+        "failure_state": "show invalid pool or duplicate confirm or skip refusal explicitly.",
+        "recovery_exit": "confirm reward, skip reward, or return through the owned route boundary."
+      }
+    },
+    "relic_participants": {
+      "feature_task_ids": [
+        88,
+        99,
+        106,
+        110,
+        111,
+        112
+      ],
+      "slice_title": "Relics, Powers, Potions, And Shared Triggers",
+      "screen_group": "Relic And Combat Participant Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback",
+      "player_action": "Acquire relics, inspect equipped participants, and understand combat or run-trigger effects from powers, relics, and potions",
+      "system_response": "Show acquisition, equip state, participant visibility, and both combat-boundary and run-boundary trigger outcomes on governed surfaces",
+      "suggested_surfaces": [
+        "RelicTray",
+        "ParticipantStatusPanel",
+        "TriggerFeedbackPanel"
+      ],
+      "section_headings": [
+        "### 6.1.7 Relic And Combat Participant Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no relic, power, or potion participant state until shared run or combat ownership is available.",
+        "failure": "Show participant fallback, trigger refusal, or missing equip state explicitly instead of hiding it behind shared runtime logs.",
+        "completion": "Player can inspect equipped relics, visible powers and potions, and shared trigger outcomes across combat and run boundaries."
+      },
+      "screen_contract": {
+        "must_show": "relic acquisition, equipped participants, potion or power participant visibility, and trigger feedback across combat and run boundaries.",
+        "must_not_hide": "missing equip state, trigger refusal, or participant fallback behind logs only.",
+        "validation_focus": "relic acquisition, participant visibility, combat-trigger feedback, and run-trigger feedback."
+      },
+      "screen_state": {
+        "entry_state": "show no participant surfaces until shared run or combat ownership is established.",
+        "interaction_state": "show equipped participants, trigger outcomes, and participant-affecting runtime changes.",
+        "failure_state": "show missing participant state or trigger refusal explicitly.",
+        "recovery_exit": "continue combat or run flow once participant ownership is restored."
+      }
+    },
+    "settlement": {
+      "feature_task_ids": [
+        91,
+        107,
+        109,
+        113
+      ],
+      "slice_title": "Settlement Summary, Metadata, And Resume Evidence",
+      "screen_group": "Settlement And Run Summary Surfaces",
+      "audience": "player-facing",
+      "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces",
+      "player_action": "Inspect stored-data-backed summary output, verify reward and relic settlement metadata, and confirm resume evidence after a run",
+      "system_response": "Render settlement ownership, reward or relic metadata, and resume evidence from stored run data instead of partial placeholder summaries",
+      "suggested_surfaces": [
+        "RunSummaryPanel",
+        "SettlementMetadataPanel",
+        "ResumeEvidencePanel"
+      ],
+      "section_headings": [
+        "### 6.1.8 Settlement And Run Summary Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no settlement summary until stored run data is available for the selected run.",
+        "failure": "Show missing settlement metadata, missing reward or relic fields, or absent resume evidence explicitly instead of showing partial placeholder summaries.",
+        "completion": "Player can inspect stored settlement outcome, reward or relic metadata, and resume evidence from governed summary surfaces."
+      },
+      "screen_contract": {
+        "must_show": "stored run outcome, reward or relic metadata, and resume evidence linked to the same settlement owner surface.",
+        "must_not_hide": "missing settlement metadata or missing resume evidence behind partial placeholder summaries.",
+        "validation_focus": "stored-data summary ownership, metadata visibility, and resume evidence visibility."
+      },
+      "screen_state": {
+        "entry_state": "show no settlement data until a stored run summary is selected.",
+        "interaction_state": "show summary outcome, reward or relic metadata, and resume evidence together.",
+        "failure_state": "show missing stored-data fields explicitly.",
+        "recovery_exit": "close summary, return to run flow, or inspect another stored settlement."
+      }
+    },
+    "review_governance": {
+      "candidate_mode": "audit-only",
+      "feature_task_ids": [
+        92,
+        93,
+        94,
+        102
+      ],
+      "slice_title": "Architecture, Security, And Review Governance",
+      "screen_group": "Governance And Audit Surfaces",
+      "audience": "operator-facing or mixed",
+      "ui_entry": "Audit / Boundary / Security Evidence Surfaces",
+      "player_action": "Inspect review governance, security-sensitive runtime guardrails, and architecture-boundary evidence for the current T70+ slice",
+      "system_response": "Surface boundary protection, external-process guardrails, signal validation, and Chapter 6 sizing evidence as auditable governed outputs",
+      "suggested_surfaces": [
+        "ArchitectureAuditPanel",
+        "SecurityGuardPanel",
+        "ReviewGovernancePanel"
+      ],
+      "section_headings": [
+        "### 6.1.9 Governance And Audit Surfaces"
+      ],
+      "closure_task_ids": [],
+      "wiring_task_id": 0,
+      "semantics_defaults": {
+        "empty": "Show no audit evidence until the current T70+ governance artifacts are available.",
+        "failure": "Show missing architecture-boundary evidence, denied external-process guard coverage, or signal-validation gaps explicitly in audit outputs.",
+        "completion": "Operator can inspect architecture-boundary, security, and Chapter 6 sizing evidence for the current T70+ slice without creating a new gameplay UI task."
+      },
+      "screen_contract": {
+        "must_show": "architecture-boundary evidence, external-process guard evidence, signal-validation evidence, and Chapter 6 sizing audit context.",
+        "must_not_hide": "missing audit evidence or governance gaps behind implementation-only notes.",
+        "validation_focus": "audit readability and governed evidence paths for architecture, security, and sizing."
+      },
+      "screen_state": {
+        "entry_state": "show no governance panel until audit artifacts are loaded.",
+        "interaction_state": "show current audit evidence and governance findings as read-only outputs.",
+        "failure_state": "show missing audit artifacts or blocked evidence explicitly.",
+        "recovery_exit": "record findings or return to the current implementation lane."
+      }
     }
   }
 }

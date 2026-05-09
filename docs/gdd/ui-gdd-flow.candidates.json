@@ -1,233 +1,274 @@
 {
-  "generated_at": "2026-05-05",
+  "generated_at": "2026-05-09",
   "source_gdd": "docs/gdd/ui-gdd-flow.md",
-  "completed_master_tasks_count": 58,
-  "needed_wiring_features_count": 58,
+  "completed_master_tasks_count": 47,
+  "needed_wiring_features_count": 47,
   "candidates": [
     {
-      "bucket": "entry",
-      "screen_group": "MainMenu And Boot Flow",
-      "matrix_link": "## 5. UI Wiring Matrix row Entry And Bootstrap (T01, T11, T14, T15, T16, T21, T26, T43, T45, T53)",
+      "bucket": "map_path",
+      "screen_group": "Map Path And Continue Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Map Path, Continue, And Route Return (T70, T86, T87, T97, T98, T103)",
       "scope_task_ids": [
-        1,
-        11,
-        14,
-        15,
-        16,
-        21,
-        26,
-        43,
-        45,
-        53
+        70,
+        86,
+        87,
+        97,
+        98,
+        103
       ],
-      "scope_task_refs": "T01, T11, T14, T15, T16, T21, T26, T43, T45, T53",
-      "ui_entry": "MainMenu / Boot Flow",
+      "scope_task_refs": "T70, T86, T87, T97, T98, T103",
+      "ui_entry": "Map / Continue / Route Return Surfaces",
       "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Launch, continue, retry bootstrap, or enter a run",
-      "system_response": "Show canonical startup path, valid continue behavior, and explicit startup failure recovery",
-      "empty_state": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
-      "failure_state": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
-      "completion_result": "task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.",
+      "player_action": "Resume a run, inspect route ownership, and return through locked reward or shop boundaries",
+      "system_response": "Show real route graph state, continue landing, locked-surface recovery, and owned path transitions without hidden state",
+      "empty_state": "Show no active route ownership until autosave or current run route data is available.",
+      "failure_state": "Show continue denial, locked-surface refusal, or invalid route recovery explicitly instead of silently falling back.",
+      "completion_result": "Player can resume into the correct map or combat boundary and read owned route transitions from visible map surfaces.",
       "requirement_ids": [],
       "validation_artifact_targets": [],
       "suggested_standalone_surfaces": [
-        "MainMenu",
-        "BootStatusPanel",
-        "ContinueGateDialog"
+        "MapScreen",
+        "ContinueGateDialog",
+        "RouteReturnPanel"
       ],
       "test_refs": [
-        "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
-        "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
-        "Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
-        "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs"
+        "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+        "Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs",
+        "Game.Core.Tests/Services/MapActConfigurationTests.cs",
+        "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
       ]
     },
     {
-      "bucket": "loop",
-      "screen_group": "Runtime HUD And Outcome Surfaces",
-      "matrix_link": "## 5. UI Wiring Matrix row Core Loop State And Outcome (T03, T07, T08, T09, T10, T13, T18, T19, T20, T22, T23, T24, T35, T36, T38, T39, T44)",
+      "bucket": "combat_card_play",
+      "screen_group": "Combat Card Play Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Combat Card Play And Targeting (T72, T74, T83)",
       "scope_task_ids": [
-        3,
-        7,
-        8,
-        9,
-        10,
-        13,
-        18,
-        19,
-        20,
-        22,
-        23,
-        24,
-        35,
-        36,
-        38,
-        39,
-        44
+        72,
+        74,
+        83
       ],
-      "scope_task_refs": "T03, T07, T08, T09, T10, T13, T18, T19, T20, T22, T23, T24, T35, T36, T38, T39, T44",
-      "ui_entry": "HUD / Prompt / Outcome Surfaces",
+      "scope_task_refs": "T72, T74, T83",
+      "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces",
       "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Play a run, observe timing, rewards, prompts, and terminal transitions",
-      "system_response": "Render readable phase, timer, HP, reward, prompt, and win/lose state from runtime events",
-      "empty_state": "Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance.",
-      "failure_state": "Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance.",
-      "completion_result": "In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes.",
-      "requirement_ids": [],
-      "validation_artifact_targets": [],
-      "suggested_standalone_surfaces": [
-        "RuntimeHud",
-        "OutcomePanel",
-        "RuntimePromptPanel"
-      ],
-      "test_refs": [
-        "Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
-        "Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
-        "Game.Core.Tests/Domain/GameEventContractsTests.cs",
-        "Tests.Godot/tests/Adapters/test_event_bus_adapter.gd"
-      ]
-    },
-    {
-      "bucket": "combat",
-      "screen_group": "Combat Pressure And Interaction Surfaces",
-      "matrix_link": "## 5. UI Wiring Matrix row Combat Pressure And Interaction (T04, T05, T06, T17, T25, T27, T34, T41, T42, T49, T51)",
-      "scope_task_ids": [
-        4,
-        5,
-        6,
-        17,
-        25,
-        27,
-        34,
-        41,
-        42,
-        49,
-        51
-      ],
-      "scope_task_refs": "T04, T05, T06, T17, T25, T27, T34, T41, T42, T49, T51",
-      "ui_entry": "Combat HUD / Pressure / Camera Feedback",
-      "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Fight, observe pressure, targeting, pathing, and camera responses",
-      "system_response": "Render enemy pressure, targeting, combat outcomes, and camera interaction without hidden state",
-      "empty_state": "ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail.",
-      "failure_state": "In valid constructed samples, `OfferLockSnapshot.rng_stream` equals `OfferProvenance.rng_stream`; any mismatch fails contract validation.",
-      "completion_result": "`OfferLockSnapshot` includes `stable_ids`, `display_order`, `provenance`, `rng_stream`, and `locked_at_save_point` semantics (implemented as `IsLockedAtSavePoint`), and `Provenance` remains intact through value-object round-trip serialization/deserialization.",
+      "player_action": "Inspect cards, drag or click to play them, and target legal enemies during combat",
+      "system_response": "Show data-driven card text, legal targeting feedback, and CombatService-backed card-play resolution without scene-local branches",
+      "empty_state": "Show no playable hand or targeting preview until combat runtime and hand state are available.",
+      "failure_state": "Show invalid target, missing definition, or rejected play feedback without mutating energy, HP, or pile state.",
+      "completion_result": "Player can read localized card content, target legal enemies, and resolve card plays through the shared combat runtime path.",
       "requirement_ids": [],
       "validation_artifact_targets": [],
       "suggested_standalone_surfaces": [
         "CombatHud",
-        "PressurePanel",
-        "CameraControlOverlay"
+        "HandPanel",
+        "TargetPreviewOverlay"
       ],
       "test_refs": [
-        "Game.Core.Tests/Domain/OfferLockingContractTests.cs",
-        "Game.Core.Tests/Domain/RngStreamTypeTests.cs",
-        "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
-        "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+        "Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+        "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
       ]
     },
     {
-      "bucket": "economy",
-      "screen_group": "Economy And Progression Panels",
-      "matrix_link": "## 5. UI Wiring Matrix row Economy Build And Progression (T12)",
+      "bucket": "combat_runtime_bootstrap",
+      "screen_group": "Combat Runtime Bootstrap Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Combat Runtime Bootstrap And Deck State (T71, T80, T81, T82, T95, T96)",
       "scope_task_ids": [
-        12
+        71,
+        80,
+        81,
+        82,
+        95,
+        96
       ],
-      "scope_task_refs": "T12",
-      "ui_entry": "Resource / Build / Progression Panels",
+      "scope_task_refs": "T71, T80, T81, T82, T95, T96",
+      "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces",
       "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Spend resources, place/build, train, upgrade, repair, or pick rewards",
-      "system_response": "Render deterministic resource, build, queue, upgrade, and progression changes with clear invalid-state feedback",
-      "empty_state": "show no active economy state until owned runtime data is available.",
-      "failure_state": "保存仅允许写入 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且目标位置不得产生任何落盘文件。",
-      "completion_result": "xUnit must verify atomic commit behavior by writing to a temp file first and replacing the target as one commit outcome.",
+      "player_action": "Enter combat, inspect deck lifecycle state, and read warrior deck or Rage-backed runtime setup",
+      "system_response": "Show DeckService-backed piles, reshuffle timing, deck totals, warrior starting state, and Rage visibility from shared runtime ownership",
+      "empty_state": "Show no deck lifecycle or player runtime bootstrap state until CombatService and DeckService ownership are ready.",
+      "failure_state": "Show missing deck state, invalid reshuffle, or bootstrap denial explicitly instead of using scene-local counters.",
+      "completion_result": "Player can read shared deck lifecycle state, warrior starting deck setup, and Rage-backed runtime state from governed combat surfaces.",
       "requirement_ids": [],
       "validation_artifact_targets": [],
       "suggested_standalone_surfaces": [
-        "ResourcePanel",
-        "BuildPanel",
-        "ProgressionPanel"
+        "DeckStatePanel",
+        "CombatBootstrapPanel",
+        "PlayerRuntimeStatusPanel"
       ],
       "test_refs": [
-        "Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
-        "Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
-        "Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
-        "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+        "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+        "Game.Core.Tests/Services/DeckServiceTests.cs",
+        "Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs"
       ]
     },
     {
-      "bucket": "meta",
-      "screen_group": "Save, Settings, And Meta Surfaces",
-      "matrix_link": "## 5. UI Wiring Matrix row Meta Systems And Platform (T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58)",
+      "bucket": "enemy_intent",
+      "screen_group": "Enemy Intent And Resolution Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Enemy Intent, Turn Resolution, And Definitions (T73, T76, T89, T105, T108, T116)",
       "scope_task_ids": [
-        28,
-        29,
-        30,
-        46,
-        47,
-        48,
-        50,
-        52,
-        54,
-        55,
-        56,
-        57,
-        58
+        73,
+        76,
+        89,
+        105,
+        108,
+        116
       ],
-      "scope_task_refs": "T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58",
-      "ui_entry": "Settings / Save / Meta Surfaces",
+      "scope_task_refs": "T73, T76, T89, T105, T108, T116",
+      "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces",
       "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Save, load, localize, tune audio, or inspect platform/runtime status",
-      "system_response": "Render persistence, localization, audio, performance, and platform status on governed player-visible surfaces",
-      "empty_state": "ActConfig is defined in Game.Core with schema_version, act_id, node_graph, pools, and encounters; loading a valid Act JSON yields matching field values without implicit normalization or rewrite.",
-      "failure_state": "If file read fails, JSON parsing fails, or required fields are missing, the result is IsSuccess=false, Config=null, with a stable ErrorCode and non-empty ErrorMessage.",
-      "completion_result": "schema_version must be present and supported; missing, unknown, or incompatible versions fail with an assertable error outcome.",
+      "player_action": "Read enemy intents, verify no-repeat guardrails, and understand invalid-definition fallback during combat",
+      "system_response": "Show data-backed enemy previews, multi-enemy routing, resolved enemy turns, and invalid-definition fallback as visible combat state",
+      "empty_state": "Show no enemy intent or roster state until runtime enemies are instantiated.",
+      "failure_state": "Show invalid enemy-definition fallback, illegal target rejection, or no-repeat guard refusal explicitly.",
+      "completion_result": "Player can inspect multi-enemy state, enemy intent previews, resolved enemy turns, and invalid-definition fallback on governed surfaces.",
       "requirement_ids": [],
       "validation_artifact_targets": [],
       "suggested_standalone_surfaces": [
-        "SettingsMenu",
-        "SavePanel",
-        "RunSummaryPanel"
+        "EnemyIntentPanel",
+        "EnemyRosterPanel",
+        "EnemyFallbackNotice"
       ],
       "test_refs": [
-        "Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
-        "Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
-        "Game.Core.Tests/Services/ActConfigLoaderTests.cs",
-        "Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+        "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+        "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+        "Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
       ]
     },
     {
-      "bucket": "governance",
-      "screen_group": "Config Audit And Migration Surfaces",
-      "matrix_link": "## 5. UI Wiring Matrix row Config Governance And Audit (T02, T31, T32, T33, T37, T40)",
+      "bucket": "combat_rules",
+      "screen_group": "Combat Rules And Feedback Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Combat Rules, Triggers, And Feedback (T75, T77, T78, T79, T90, T100, T101, T104)",
       "scope_task_ids": [
-        2,
-        31,
-        32,
-        33,
-        37,
-        40
+        75,
+        77,
+        78,
+        79,
+        90,
+        100,
+        101,
+        104
       ],
-      "scope_task_refs": "T02, T31, T32, T33, T37, T40",
-      "ui_entry": "Config Summary / Audit / Migration Surfaces",
+      "scope_task_refs": "T75, T77, T78, T79, T90, T100, T101, T104",
+      "ui_entry": "Combat Feedback / Status / Resolution Surfaces",
       "candidate_type": "task-shaped UI wiring spec",
-      "player_action": "Inspect config state, validation, governance, migration, and report metadata",
-      "system_response": "Render active config, schema status, fallback policy, migration status, and audit metadata without relying on logs-only evidence",
-      "empty_state": "Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance.",
-      "failure_state": "Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj.",
-      "completion_result": "Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/.",
+      "player_action": "Read status effects, turn resolution, AOE or multi-hit ordering, and defeat or trigger outcomes during live combat",
+      "system_response": "Expose promoted rules, trigger hooks, fixed-damage ordering, and player-visible feedback without mutating deterministic combat ownership",
+      "empty_state": "Show no status, trigger, or resolution history until combat rules are active.",
+      "failure_state": "Show blocked trigger, invalid ordering, or single-resolution guard refusal instead of leaving stale combat feedback.",
+      "completion_result": "Player can read statuses, trigger ordering, defeat resolution, and multi-hit or AOE feedback from governed combat surfaces.",
       "requirement_ids": [],
       "validation_artifact_targets": [],
       "suggested_standalone_surfaces": [
-        "ConfigAuditPanel",
-        "MigrationStatusDialog",
-        "ReportMetadataPanel"
+        "StatusEffectPanel",
+        "CombatFeedbackPanel",
+        "ResolutionLogPanel"
       ],
       "test_refs": [
-        "Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
-        "Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs",
-        "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+        "Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs",
+        "Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs"
+      ]
+    },
+    {
+      "bucket": "reward_flow",
+      "screen_group": "Reward Offer And Confirm Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Reward Offer, Confirm, And Return Flow (T84, T85, T114, T115)",
+      "scope_task_ids": [
+        84,
+        85,
+        114,
+        115
+      ],
+      "scope_task_refs": "T84, T85, T114, T115",
+      "ui_entry": "Reward Scene / Offer Choice / Return Path",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Inspect reward offers, select one of three choices, skip when allowed, and return to the owned route boundary",
+      "system_response": "Render stable offer locking, invalid-pool fallback, confirm gating, writeback, and route-owned return behavior",
+      "empty_state": "Show no reward offers until the current reward boundary resolves a valid offer set.",
+      "failure_state": "Show invalid-pool fallback, re-entry lock refusal, or confirm or skip rejection explicitly instead of mutating route state silently.",
+      "completion_result": "Player can inspect a stable three-offer reward set, confirm or skip exactly once, and return through the owned route boundary.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "RewardScene",
+        "RewardChoicePanel",
+        "RewardReturnPanel"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+        "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+        "Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+        "Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
+      ]
+    },
+    {
+      "bucket": "relic_participants",
+      "screen_group": "Relic And Combat Participant Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Relics, Powers, Potions, And Shared Triggers (T88, T99, T106, T110, T111, T112)",
+      "scope_task_ids": [
+        88,
+        99,
+        106,
+        110,
+        111,
+        112
+      ],
+      "scope_task_refs": "T88, T99, T106, T110, T111, T112",
+      "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Acquire relics, inspect equipped participants, and understand combat or run-trigger effects from powers, relics, and potions",
+      "system_response": "Show acquisition, equip state, participant visibility, and both combat-boundary and run-boundary trigger outcomes on governed surfaces",
+      "empty_state": "Show no relic, power, or potion participant state until shared run or combat ownership is available.",
+      "failure_state": "Show participant fallback, trigger refusal, or missing equip state explicitly instead of hiding it behind shared runtime logs.",
+      "completion_result": "Player can inspect equipped relics, visible powers and potions, and shared trigger outcomes across combat and run boundaries.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "RelicTray",
+        "ParticipantStatusPanel",
+        "TriggerFeedbackPanel"
+      ],
+      "test_refs": [
+        "Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+        "Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs",
+        "Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs",
         "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+      ]
+    },
+    {
+      "bucket": "settlement",
+      "screen_group": "Settlement And Run Summary Surfaces",
+      "matrix_link": "## 5. UI Wiring Matrix row Settlement Summary, Metadata, And Resume Evidence (T91, T107, T109, T113)",
+      "scope_task_ids": [
+        91,
+        107,
+        109,
+        113
+      ],
+      "scope_task_refs": "T91, T107, T109, T113",
+      "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces",
+      "candidate_type": "task-shaped UI wiring spec",
+      "player_action": "Inspect stored-data-backed summary output, verify reward and relic settlement metadata, and confirm resume evidence after a run",
+      "system_response": "Render settlement ownership, reward or relic metadata, and resume evidence from stored run data instead of partial placeholder summaries",
+      "empty_state": "Show no settlement summary until stored run data is available for the selected run.",
+      "failure_state": "Show missing settlement metadata, missing reward or relic fields, or absent resume evidence explicitly instead of showing partial placeholder summaries.",
+      "completion_result": "Player can inspect stored settlement outcome, reward or relic metadata, and resume evidence from governed summary surfaces.",
+      "requirement_ids": [],
+      "validation_artifact_targets": [],
+      "suggested_standalone_surfaces": [
+        "RunSummaryPanel",
+        "SettlementMetadataPanel",
+        "ResumeEvidencePanel"
+      ],
+      "test_refs": [
+        "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+        "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+        "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+        "Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs"
       ]
     }
   ]

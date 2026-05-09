@@ -149,7 +149,7 @@
             "title": "Define combat loop phases and transition guards",
             "details": "Define StartOfTurn, Draw, Main, and EndOfTurn phase transitions with explicit preconditions and failure behavior that leaves state unchanged.",
             "testStrategy": "Add xUnit tests for valid transitions and invalid transition rejection with unchanged state.",
-            "status": "pending",
+            "status": "done",
             "dependencies": []
           },
           {
@@ -157,7 +157,7 @@
             "title": "Specify deterministic PlayCard pipeline contract",
             "details": "Implement and lock the step order Validate -> ComputeCost -> PayCost -> BeforePlayTriggers -> ResolveEffect -> AfterPlayTriggers -> MoveCard -> DeathCheck.",
             "testStrategy": "Add xUnit trace-order tests asserting exact pipeline sequence for deterministic execution.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -167,7 +167,7 @@
             "title": "Implement damage multipliers and fixed-damage rules",
             "details": "Implement Strength, Weak, and Vulnerable multipliers and preserve fixed-damage exemption from mutable multipliers as defined by contracts.",
             "testStrategy": "Use table-driven xUnit tests to validate multiplier math and fixed-damage invariants.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2"
             ]
@@ -177,7 +177,7 @@
             "title": "Add OverplayTax and ordering determinism checks",
             "details": "Apply OverplayTax only when difficulty >= 10 and enforce deterministic ordering by combatant_id and stable_id.",
             "testStrategy": "Add xUnit tests for difficulty threshold behavior and same-input same-output ordering.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2",
               "3"
@@ -243,7 +243,7 @@
             "title": "Implement card definition lookup by card_id",
             "details": "Implement CardService lookup for CardDefinition by card_id with deterministic not-found failure behavior.",
             "testStrategy": "Add xUnit tests for hit/miss lookup behavior and deterministic failure outputs.",
-            "status": "pending",
+            "status": "done",
             "dependencies": []
           },
           {
@@ -251,7 +251,7 @@
             "title": "Implement card instance creation and base form init",
             "details": "Create CardInstance with instance_id, base form, and initialized modifier container consistent with contract fields.",
             "testStrategy": "Add xUnit tests for instance field initialization and identity separation from card definitions.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -261,7 +261,7 @@
             "title": "Implement U1 upgrade route constraints",
             "details": "Implement route A/B selection rules for U1 upgrades and enforce invalid route/tier combinations as hard failures.",
             "testStrategy": "Add xUnit positive and negative tests for route constraints and tier-route invariants.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2"
             ]
@@ -271,7 +271,7 @@
             "title": "Implement Ultimate transition and modifier inheritance",
             "details": "Implement transition to Ultimate and preserve permanent_card_instance_modifiers inheritance semantics across form transitions.",
             "testStrategy": "Add xUnit tests asserting modifier inheritance continuity and final-form transition constraints.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3"
             ]
@@ -362,7 +362,7 @@
             "title": "Implement PlayCard pipeline orchestrator skeleton",
             "details": "Create CombatService pipeline orchestrator and wire fixed phase sequence hooks without embedding UI concerns.",
             "testStrategy": "Add xUnit tests verifying pipeline step invocation order under nominal input.",
-            "status": "pending",
+            "status": "done",
             "dependencies": []
           },
           {
@@ -370,7 +370,7 @@
             "title": "Implement validation and cost payment gates",
             "details": "Implement Validate, ComputeCost, and PayCost stages with fail-fast semantics that prevent downstream stage execution on failure.",
             "testStrategy": "Add xUnit tests asserting blocked progression and unchanged state on validation or payment failure.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -380,7 +380,7 @@
             "title": "Implement resolve-effect and trigger stages",
             "details": "Implement BeforePlay, ResolveEffect, and AfterPlay stage behavior with deterministic ordering and stable side-effect boundaries.",
             "testStrategy": "Add xUnit tests for trigger ordering and deterministic effect resolution traces.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2"
             ]
@@ -390,7 +390,7 @@
             "title": "Implement MoveCard and DeathCheck finalization",
             "details": "Finalize pipeline with MoveCard and DeathCheck stages and guarantee same-input same-output deterministic end state.",
             "testStrategy": "Add xUnit tests for final stage behavior and deterministic final state snapshots.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3"
             ]
@@ -428,7 +428,7 @@
             "title": "Define run save serialization shape",
             "details": "Serialize schema_version, save_point_id, and offer locks into save payload and keep migration concerns out of this task scope.",
             "testStrategy": "Add xUnit round-trip serialization tests for required fields and shape stability.",
-            "status": "pending",
+            "status": "done",
             "dependencies": []
           },
           {
@@ -436,7 +436,7 @@
             "title": "Implement atomic write commit workflow",
             "details": "Write through a temporary file and replace target atomically to avoid partial save corruption on interruption.",
             "testStrategy": "Add xUnit tests that verify commit behavior and no partial-file state after write failures.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -446,7 +446,7 @@
             "title": "Enforce user:// path safety boundaries",
             "details": "Allow save writes only under user:// and reject absolute or traversal-like paths with fail-fast errors.",
             "testStrategy": "Add xUnit tests for allowed user:// path and denied invalid path cases.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -456,7 +456,7 @@
             "title": "Add persistence error propagation and evidence fields",
             "details": "Return contextual errors on save failure and emit required persistence evidence fields without mutating last valid save.",
             "testStrategy": "Add xUnit tests asserting error propagation and unchanged previous save on failure path.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2",
               "3"
@@ -637,7 +637,7 @@
             "title": "Build combat HUD shell structure",
             "details": "Create view shell for hand cards, energy, draw/discard piles, and turn controls with no embedded domain decision logic.",
             "testStrategy": "Add GdUnit4 presence tests for required HUD nodes and visibility defaults.",
-            "status": "pending",
+            "status": "done",
             "dependencies": []
           },
           {
@@ -645,7 +645,7 @@
             "title": "Bind HUD read model to core state",
             "details": "Bind HUD widgets to core state outputs for hand, energy, and pile counters with deterministic update mapping.",
             "testStrategy": "Add GdUnit4 binding tests asserting UI values match core state snapshots.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1"
             ]
@@ -655,7 +655,7 @@
             "title": "Implement turn-control command dispatch boundaries",
             "details": "Route turn-control interactions to command handlers while keeping scene layer as UI shell and avoiding direct core state mutation.",
             "testStrategy": "Add GdUnit4 interaction tests that verify dispatch events and blocked invalid actions.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2"
             ]
@@ -665,7 +665,7 @@
             "title": "Add UI localization and smoke verification",
             "details": "Ensure visible combat UI text resolves via translation keys and validate shell behavior through headless smoke-ready checks.",
             "testStrategy": "Add GdUnit4 tests for translated label rendering and basic smoke interaction paths.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3"
             ]
@@ -1822,7 +1822,7 @@
         "testStrategy": "Add one GdUnit integration smoke for the full run-entry path and one focused acceptance test asserting the real route target.\\n",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1851,7 +1851,7 @@
         "dependencies": [
           "59"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0025",
@@ -1878,7 +1878,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1907,7 +1907,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0025",
@@ -1935,7 +1935,7 @@
         "dependencies": [
           "59"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1964,7 +1964,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -1998,7 +1998,7 @@
           "69",
           "67"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2026,7 +2026,7 @@
           "59",
           "63"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2055,7 +2055,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2088,7 +2088,7 @@
           "67",
           "69"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2115,7 +2115,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2144,7 +2144,7 @@
         "dependencies": [
           "60"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2173,7 +2173,7 @@
         "dependencies": [
           "64"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2202,7 +2202,7 @@
         "dependencies": [
           "71"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2231,7 +2231,7 @@
         "dependencies": [
           "72"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2260,7 +2260,7 @@
         "dependencies": [
           "73"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2290,7 +2290,7 @@
           "72",
           "73"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2320,7 +2320,7 @@
           "73",
           "75"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2351,7 +2351,7 @@
           "75",
           "76"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2382,7 +2382,7 @@
           "73",
           "75"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2412,7 +2412,7 @@
         "dependencies": [
           "73"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2440,7 +2440,7 @@
         "dependencies": [
           "73"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2469,7 +2469,7 @@
           "79",
           "80"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2498,7 +2498,7 @@
           "80",
           "81"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2527,7 +2527,7 @@
           "72",
           "80"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2558,7 +2558,7 @@
           "46",
           "61"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2588,7 +2588,7 @@
           "61",
           "84"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2619,7 +2619,7 @@
           "28",
           "70"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2651,7 +2651,7 @@
           "63",
           "86"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2682,7 +2682,7 @@
           "31",
           "85"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2713,7 +2713,7 @@
           "73",
           "76"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2745,7 +2745,7 @@
           "77",
           "89"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2775,7 +2775,7 @@
           "66",
           "98"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2807,7 +2807,7 @@
           "99",
           "101"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0005",
@@ -2837,7 +2837,7 @@
         "dependencies": [
           "92"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0005",
@@ -2865,7 +2865,7 @@
         "dependencies": [
           "93"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0004",
@@ -2895,7 +2895,7 @@
           "33",
           "83"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2926,7 +2926,7 @@
           "75",
           "95"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2957,7 +2957,7 @@
           "70",
           "86"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2988,7 +2988,7 @@
           "114",
           "115"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3018,7 +3018,7 @@
           "77",
           "88"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3049,7 +3049,7 @@
           "89",
           "90"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3080,7 +3080,7 @@
           "90",
           "100"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3110,7 +3110,7 @@
           "57",
           "94"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3140,7 +3140,7 @@
           "98",
           "102"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3170,7 +3170,7 @@
           "101",
           "102"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3197,7 +3197,7 @@
         "dependencies": [
           "76"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3245,7 +3245,7 @@
           "77",
           "99"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3276,7 +3276,7 @@
           "99",
           "115"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3307,7 +3307,7 @@
           "105",
           "102"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3337,7 +3337,7 @@
           "113",
           "102"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3365,7 +3365,7 @@
           "88",
           "99"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3394,7 +3394,7 @@
         "dependencies": [
           "77"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3425,7 +3425,7 @@
           "110",
           "102"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3453,7 +3453,7 @@
           "91",
           "98"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3482,7 +3482,7 @@
         "dependencies": [
           "84"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3511,7 +3511,7 @@
         "dependencies": [
           "85"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3541,7 +3541,7 @@
           "89",
           "76"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -3559,6 +3559,515 @@
         "recommendedSubtasks": 0,
         "expansionPrompt": "Break down this task with a focus on binding combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies.",
         "updatedAt": null
+      },
+      {
+        "id": 117,
+        "title": "Wire UI: MainMenu And Boot Flow",
+        "description": "Create the Chapter 7 UI wiring slice for MainMenu And Boot Flow from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: MainMenu And Boot Flow\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T01, T11, T14, T15, T16, T21, T26, T43, T45, T53, T66, T88, T91, T94, T110, T113\nUI entry: MainMenu / Boot Flow\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: MainMenu, BootStatusPanel, ContinueGateDialog\nPlayer action: Launch, continue, retry bootstrap, or enter a run\nSystem response: Show canonical startup path, valid continue behavior, and explicit startup failure recovery\nEmpty state: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.\nFailure state: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.\nCompletion result: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          11,
+          14,
+          15,
+          16,
+          21,
+          26,
+          43,
+          45,
+          53,
+          66,
+          88,
+          91,
+          94,
+          110,
+          113
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 118,
+        "title": "Wire UI: Runtime HUD And Outcome Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Runtime HUD And Outcome Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Runtime HUD And Outcome Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T03, T07, T08, T09, T10, T13, T18, T19, T20, T22, T23, T24, T35, T36, T38, T39, T44, T61, T62, T67, T69, T79, T84, T85, T98, T103, T107, T109, T114, T115\nUI entry: HUD / Prompt / Outcome Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: RuntimeHud, OutcomePanel, RuntimePromptPanel\nPlayer action: Play a run, observe timing, rewards, prompts, and terminal transitions\nSystem response: Render readable phase, timer, HP, reward, prompt, and win/lose state from runtime events\nEmpty state: Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance.\nFailure state: Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance.\nCompletion result: In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          7,
+          8,
+          9,
+          10,
+          13,
+          18,
+          19,
+          20,
+          22,
+          23,
+          24,
+          35,
+          36,
+          38,
+          39,
+          44,
+          61,
+          62,
+          67,
+          69,
+          79,
+          84,
+          85,
+          98,
+          103,
+          107,
+          109,
+          114,
+          115
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 119,
+        "title": "Wire UI: Combat Pressure And Interaction Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Combat Pressure And Interaction Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Combat Pressure And Interaction Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T04, T05, T06, T17, T25, T27, T34, T41, T42, T49, T51, T59, T60, T64, T70, T71, T72, T73, T74, T75, T76, T77, T78, T80, T81, T82, T83, T86, T87, T89, T90, T95, T96, T97, T99, T100, T101, T104, T105, T106, T111, T112, T116\nUI entry: Combat HUD / Pressure / Camera Feedback\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: CombatHud, PressurePanel, CameraControlOverlay\nPlayer action: Fight, observe pressure, targeting, pathing, and camera responses\nSystem response: Render enemy pressure, targeting, combat outcomes, and camera interaction without hidden state\nEmpty state: ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail.\nFailure state: In valid constructed samples, `OfferLockSnapshot.rng_stream` equals `OfferProvenance.rng_stream`; any mismatch fails contract validation.\nCompletion result: `OfferLockSnapshot` includes `stable_ids`, `display_order`, `provenance`, `rng_stream`, and `locked_at_save_point` semantics (implemented as `IsLockedAtSavePoint`), and `Provenance` remains intact through value-object round-trip serialization/deserialization.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          5,
+          6,
+          17,
+          25,
+          27,
+          34,
+          41,
+          42,
+          49,
+          51,
+          59,
+          60,
+          64,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          80,
+          81,
+          82,
+          83,
+          86,
+          87,
+          89,
+          90,
+          95,
+          96,
+          97,
+          99,
+          100,
+          101,
+          104,
+          105,
+          106,
+          111,
+          112,
+          116
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 120,
+        "title": "Wire UI: Economy And Progression Panels",
+        "description": "Create the Chapter 7 UI wiring slice for Economy And Progression Panels from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Economy And Progression Panels\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T12\nUI entry: Resource / Build / Progression Panels\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: ResourcePanel, BuildPanel, ProgressionPanel\nPlayer action: Spend resources, place/build, train, upgrade, repair, or pick rewards\nSystem response: Render deterministic resource, build, queue, upgrade, and progression changes with clear invalid-state feedback\nEmpty state: show no active economy state until owned runtime data is available.\nFailure state: 保存仅允许写入 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且目标位置不得产生任何落盘文件。\nCompletion result: xUnit must verify atomic commit behavior by writing to a temp file first and replacing the target as one commit outcome.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          12
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 121,
+        "title": "Wire UI: Save, Settings, And Meta Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Save, Settings, And Meta Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Save, Settings, And Meta Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58, T63, T65, T68, T92, T93, T102, T108\nUI entry: Settings / Save / Meta Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: SettingsMenu, SavePanel, RunSummaryPanel\nPlayer action: Save, load, localize, tune audio, or inspect platform/runtime status\nSystem response: Render persistence, localization, audio, performance, and platform status on governed player-visible surfaces\nEmpty state: ActConfig is defined in Game.Core with schema_version, act_id, node_graph, pools, and encounters; loading a valid Act JSON yields matching field values without implicit normalization or rewrite.\nFailure state: If file read fails, JSON parsing fails, or required fields are missing, the result is IsSuccess=false, Config=null, with a stable ErrorCode and non-empty ErrorMessage.\nCompletion result: schema_version must be present and supported; missing, unknown, or incompatible versions fail with an assertable error outcome.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "medium",
+        "dependencies": [
+          28,
+          29,
+          30,
+          46,
+          47,
+          48,
+          50,
+          52,
+          54,
+          55,
+          56,
+          57,
+          58,
+          63,
+          65,
+          68,
+          92,
+          93,
+          102,
+          108
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 122,
+        "title": "Wire UI: Config Audit And Migration Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Config Audit And Migration Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Config Audit And Migration Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T02, T31, T32, T33, T37, T40\nUI entry: Config Summary / Audit / Migration Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: ConfigAuditPanel, MigrationStatusDialog, ReportMetadataPanel\nPlayer action: Inspect config state, validation, governance, migration, and report metadata\nSystem response: Render active config, schema status, fallback policy, migration status, and audit metadata without relying on logs-only evidence\nEmpty state: Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance.\nFailure state: Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj.\nCompletion result: Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          31,
+          32,
+          33,
+          37,
+          40
+        ],
+        "status": "cancelled",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 123,
+        "title": "Wire UI: Map Path And Continue Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Map Path And Continue Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Map Path And Continue Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T70, T86, T87, T97, T98, T103\nUI entry: Map / Continue / Route Return Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: MapScreen, ContinueGateDialog, RouteReturnPanel\nPlayer action: Resume a run, inspect route ownership, and return through locked reward or shop boundaries\nSystem response: Show real route graph state, continue landing, locked-surface recovery, and owned path transitions without hidden state\nEmpty state: Show no active route ownership until autosave or current run route data is available.\nFailure state: Show continue denial, locked-surface refusal, or invalid route recovery explicitly instead of silently falling back.\nCompletion result: Player can resume into the correct map or combat boundary and read owned route transitions from visible map surfaces.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          70,
+          86,
+          87,
+          97,
+          98,
+          103
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 124,
+        "title": "Wire UI: Combat Card Play Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Combat Card Play Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Combat Card Play Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T72, T74, T83\nUI entry: Combat Scene / Hand / Drag-To-Play Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: CombatHud, HandPanel, TargetPreviewOverlay\nPlayer action: Inspect cards, drag or click to play them, and target legal enemies during combat\nSystem response: Show data-driven card text, legal targeting feedback, and CombatService-backed card-play resolution without scene-local branches\nEmpty state: Show no playable hand or targeting preview until combat runtime and hand state are available.\nFailure state: Show invalid target, missing definition, or rejected play feedback without mutating energy, HP, or pile state.\nCompletion result: Player can read localized card content, target legal enemies, and resolve card plays through the shared combat runtime path.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          72,
+          74,
+          83
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 125,
+        "title": "Wire UI: Combat Runtime Bootstrap Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Combat Runtime Bootstrap Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Combat Runtime Bootstrap Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T71, T80, T81, T82, T95, T96\nUI entry: Combat HUD / Deck State / Runtime Bootstrap Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: DeckStatePanel, CombatBootstrapPanel, PlayerRuntimeStatusPanel\nPlayer action: Enter combat, inspect deck lifecycle state, and read warrior deck or Rage-backed runtime setup\nSystem response: Show DeckService-backed piles, reshuffle timing, deck totals, warrior starting state, and Rage visibility from shared runtime ownership\nEmpty state: Show no deck lifecycle or player runtime bootstrap state until CombatService and DeckService ownership are ready.\nFailure state: Show missing deck state, invalid reshuffle, or bootstrap denial explicitly instead of using scene-local counters.\nCompletion result: Player can read shared deck lifecycle state, warrior starting deck setup, and Rage-backed runtime state from governed combat surfaces.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          71,
+          80,
+          81,
+          82,
+          95,
+          96
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 126,
+        "title": "Wire UI: Enemy Intent And Resolution Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Enemy Intent And Resolution Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Enemy Intent And Resolution Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T73, T76, T89, T105, T108, T116\nUI entry: Enemy Intent Preview / Enemy Runtime Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: EnemyIntentPanel, EnemyRosterPanel, EnemyFallbackNotice\nPlayer action: Read enemy intents, verify no-repeat guardrails, and understand invalid-definition fallback during combat\nSystem response: Show data-backed enemy previews, multi-enemy routing, resolved enemy turns, and invalid-definition fallback as visible combat state\nEmpty state: Show no enemy intent or roster state until runtime enemies are instantiated.\nFailure state: Show invalid enemy-definition fallback, illegal target rejection, or no-repeat guard refusal explicitly.\nCompletion result: Player can inspect multi-enemy state, enemy intent previews, resolved enemy turns, and invalid-definition fallback on governed surfaces.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          73,
+          76,
+          89,
+          105,
+          108,
+          116
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 127,
+        "title": "Wire UI: Combat Rules And Feedback Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Combat Rules And Feedback Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Combat Rules And Feedback Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T75, T77, T78, T79, T90, T100, T101, T104\nUI entry: Combat Feedback / Status / Resolution Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: StatusEffectPanel, CombatFeedbackPanel, ResolutionLogPanel\nPlayer action: Read status effects, turn resolution, AOE or multi-hit ordering, and defeat or trigger outcomes during live combat\nSystem response: Expose promoted rules, trigger hooks, fixed-damage ordering, and player-visible feedback without mutating deterministic combat ownership\nEmpty state: Show no status, trigger, or resolution history until combat rules are active.\nFailure state: Show blocked trigger, invalid ordering, or single-resolution guard refusal instead of leaving stale combat feedback.\nCompletion result: Player can read statuses, trigger ordering, defeat resolution, and multi-hit or AOE feedback from governed combat surfaces.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          75,
+          77,
+          78,
+          79,
+          90,
+          100,
+          101,
+          104
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 128,
+        "title": "Wire UI: Reward Offer And Confirm Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Reward Offer And Confirm Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Reward Offer And Confirm Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T84, T85, T114, T115\nUI entry: Reward Scene / Offer Choice / Return Path\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: RewardScene, RewardChoicePanel, RewardReturnPanel\nPlayer action: Inspect reward offers, select one of three choices, skip when allowed, and return to the owned route boundary\nSystem response: Render stable offer locking, invalid-pool fallback, confirm gating, writeback, and route-owned return behavior\nEmpty state: Show no reward offers until the current reward boundary resolves a valid offer set.\nFailure state: Show invalid-pool fallback, re-entry lock refusal, or confirm or skip rejection explicitly instead of mutating route state silently.\nCompletion result: Player can inspect a stable three-offer reward set, confirm or skip exactly once, and return through the owned route boundary.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          84,
+          85,
+          114,
+          115
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 129,
+        "title": "Wire UI: Relic And Combat Participant Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Relic And Combat Participant Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Relic And Combat Participant Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T88, T99, T106, T110, T111, T112\nUI entry: Relic Display / Participant HUD / Shared Trigger Feedback\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: RelicTray, ParticipantStatusPanel, TriggerFeedbackPanel\nPlayer action: Acquire relics, inspect equipped participants, and understand combat or run-trigger effects from powers, relics, and potions\nSystem response: Show acquisition, equip state, participant visibility, and both combat-boundary and run-boundary trigger outcomes on governed surfaces\nEmpty state: Show no relic, power, or potion participant state until shared run or combat ownership is available.\nFailure state: Show participant fallback, trigger refusal, or missing equip state explicitly instead of hiding it behind shared runtime logs.\nCompletion result: Player can inspect equipped relics, visible powers and potions, and shared trigger outcomes across combat and run boundaries.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "high",
+        "dependencies": [
+          88,
+          99,
+          106,
+          110,
+          111,
+          112
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
+      },
+      {
+        "id": 130,
+        "title": "Wire UI: Settlement And Run Summary Surfaces",
+        "description": "Create the Chapter 7 UI wiring slice for Settlement And Run Summary Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+        "details": "Chapter7 Candidate: Settlement And Run Summary Surfaces\nSource: docs/gdd/ui-gdd-flow.candidates.json\nScope: T91, T107, T109, T113\nUI entry: Run Summary / Settlement / Resume Evidence Surfaces\nCandidate type: task-shaped UI wiring spec\nSuggested standalone surfaces: RunSummaryPanel, SettlementMetadataPanel, ResumeEvidencePanel\nPlayer action: Inspect stored-data-backed summary output, verify reward and relic settlement metadata, and confirm resume evidence after a run\nSystem response: Render settlement ownership, reward or relic metadata, and resume evidence from stored run data instead of partial placeholder summaries\nEmpty state: Show no settlement summary until stored run data is available for the selected run.\nFailure state: Show missing settlement metadata, missing reward or relic fields, or absent resume evidence explicitly instead of showing partial placeholder summaries.\nCompletion result: Player can inspect stored settlement outcome, reward or relic metadata, and resume evidence from governed summary surfaces.\nContract boundary: keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior\nRequirement IDs: n/a\nValidation artifact targets: n/a",
+        "testStrategy": "Validate the UI slice with the referenced GdUnit/xUnit tests and Chapter 7 artifact evidence.",
+        "priority": "medium",
+        "dependencies": [
+          91,
+          107,
+          109,
+          113
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+        "adrRefs": [
+          "ADR-0010",
+          "ADR-0011",
+          "ADR-0019",
+          "ADR-0025"
+        ],
+        "archRefs": [
+          "CH02",
+          "CH06",
+          "CH07",
+          "CH10"
+        ]
       }
     ],
     "metadata": {

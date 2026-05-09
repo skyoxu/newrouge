@@ -7338,5 +7338,1233 @@
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
     "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0217",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0101",
+      "GM-0111",
+      "GM-0114",
+      "GM-0115",
+      "GM-0116",
+      "GM-0121",
+      "GM-0126",
+      "GM-0143",
+      "GM-0145",
+      "GM-0153",
+      "GM-0166",
+      "GM-0188",
+      "GM-0191",
+      "GM-0194",
+      "GM-0210",
+      "GM-0213"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 117,
+    "title": "Wire UI: MainMenu And Boot Flow",
+    "description": "Create the Chapter 7 UI wiring slice for MainMenu And Boot Flow from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "entry"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs",
+      "Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs",
+      "Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs",
+      "Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs"
+    ],
+    "acceptance": [
+      "MainMenu And Boot Flow is implemented as a concrete Chapter 7 UI wiring slice using MainMenu / Boot Flow, and the player action is visible end-to-end: Launch, continue, retry bootstrap, or enter a run. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow renders the candidate system response from runtime events: Show canonical startup path, valid continue behavior, and explicit startup failure recovery. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow exposes the candidate empty-state rules without relying on logs-only evidence: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow exposes the candidate failure-state rules without relying on logs-only evidence: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance.. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow acceptance must explicitly map implementation and verification evidence to each scope item (T01, T11, T14, T15, T16, T21, T26, T43, T45, T53, T66, T88, T91, T94, T110, T113); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs",
+      "MainMenu And Boot Flow validation must include the referenced xUnit suite and an explicit GdUnit N/A record when no GdUnit case applies, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "MainMenu And Boot Flow",
+      "scope_task_ids": [
+        1,
+        11,
+        14,
+        15,
+        16,
+        21,
+        26,
+        43,
+        45,
+        53,
+        66,
+        88,
+        91,
+        94,
+        110,
+        113
+      ],
+      "ui_entry": "MainMenu / Boot Flow"
+    }
+  },
+  {
+    "id": "GM-0218",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0103",
+      "GM-0107",
+      "GM-0108",
+      "GM-0109",
+      "GM-0110",
+      "GM-0113",
+      "GM-0118",
+      "GM-0119",
+      "GM-0120",
+      "GM-0122",
+      "GM-0123",
+      "GM-0124",
+      "GM-0135",
+      "GM-0136",
+      "GM-0138",
+      "GM-0139",
+      "GM-0144",
+      "GM-0161",
+      "GM-0162",
+      "GM-0167",
+      "GM-0169",
+      "GM-0179",
+      "GM-0184",
+      "GM-0185",
+      "GM-0198",
+      "GM-0203",
+      "GM-0207",
+      "GM-0209",
+      "GM-0214",
+      "GM-0215"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 118,
+    "title": "Wire UI: Runtime HUD And Outcome Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Runtime HUD And Outcome Surfaces from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "loop"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs",
+      "Game.Core.Tests/Domain/GameEventContractsTests.cs",
+      "Tests.Godot/tests/Adapters/test_event_bus_adapter.gd"
+    ],
+    "acceptance": [
+      "Runtime HUD And Outcome Surfaces is implemented as a concrete Chapter 7 UI wiring slice using HUD / Prompt / Outcome Surfaces, and the player action is visible end-to-end: Play a run, observe timing, rewards, prompts, and terminal transitions. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces renders the candidate system response from runtime events: Render readable phase, timer, HP, reward, prompt, and win/lose state from runtime events. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance.. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance.. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes.. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T03, T07, T08, T09, T10, T13, T18, T19, T20, T22, T23, T24, T35, T36, T38, T39, T44, T61, T62, T67, T69, T79, T84, T85, T98, T103, T107, T109, T114, T115); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd",
+      "Runtime HUD And Outcome Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs Game.Core.Tests/Tasks/Task0007AcceptanceTests.cs Game.Core.Tests/Domain/GameEventContractsTests.cs Tests.Godot/tests/Adapters/test_event_bus_adapter.gd"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Runtime HUD And Outcome Surfaces",
+      "scope_task_ids": [
+        3,
+        7,
+        8,
+        9,
+        10,
+        13,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        35,
+        36,
+        38,
+        39,
+        44,
+        61,
+        62,
+        67,
+        69,
+        79,
+        84,
+        85,
+        98,
+        103,
+        107,
+        109,
+        114,
+        115
+      ],
+      "ui_entry": "HUD / Prompt / Outcome Surfaces"
+    }
+  },
+  {
+    "id": "GM-0219",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0104",
+      "GM-0105",
+      "GM-0106",
+      "GM-0117",
+      "GM-0125",
+      "GM-0127",
+      "GM-0134",
+      "GM-0141",
+      "GM-0142",
+      "GM-0149",
+      "GM-0151",
+      "GM-0159",
+      "GM-0160",
+      "GM-0164",
+      "GM-0170",
+      "GM-0171",
+      "GM-0172",
+      "GM-0173",
+      "GM-0174",
+      "GM-0175",
+      "GM-0176",
+      "GM-0177",
+      "GM-0178",
+      "GM-0180",
+      "GM-0181",
+      "GM-0182",
+      "GM-0183",
+      "GM-0186",
+      "GM-0187",
+      "GM-0189",
+      "GM-0190",
+      "GM-0195",
+      "GM-0196",
+      "GM-0197",
+      "GM-0199",
+      "GM-0200",
+      "GM-0201",
+      "GM-0204",
+      "GM-0205",
+      "GM-0206",
+      "GM-0211",
+      "GM-0212",
+      "GM-0216"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 119,
+    "title": "Wire UI: Combat Pressure And Interaction Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Combat Pressure And Interaction Surfaces from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "combat"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Domain/OfferLockingContractTests.cs",
+      "Game.Core.Tests/Domain/RngStreamTypeTests.cs",
+      "Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs",
+      "Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Combat Pressure And Interaction Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Combat HUD / Pressure / Camera Feedback, and the player action is visible end-to-end: Fight, observe pressure, targeting, pathing, and camera responses. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces renders the candidate system response from runtime events: Render enemy pressure, targeting, combat outcomes, and camera interaction without hidden state. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: ADR-0021 and ADR-0029 must be present in task=5 adr_refs of both tasks_back.json and tasks_gameplay.json; any missing or mismatch must fail.. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: In valid constructed samples, `OfferLockSnapshot.rng_stream` equals `OfferProvenance.rng_stream`; any mismatch fails contract validation.. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: `OfferLockSnapshot` includes `stable_ids`, `display_order`, `provenance`, `rng_stream`, and `locked_at_save_point` semantics (implemented as `IsLockedAtSavePoint`), and `Provenance` remains intact through value-object round-trip serialization/deserialization.. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T04, T05, T06, T17, T25, T27, T34, T41, T42, T49, T51, T59, T60, T64, T70, T71, T72, T73, T74, T75, T76, T77, T78, T80, T81, T82, T83, T86, T87, T89, T90, T95, T96, T97, T99, T100, T101, T104, T105, T106, T111, T112, T116); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs",
+      "Combat Pressure And Interaction Surfaces validation must include the referenced xUnit suite and an explicit GdUnit N/A record when no GdUnit case applies, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Domain/OfferLockingContractTests.cs Game.Core.Tests/Domain/RngStreamTypeTests.cs Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs Game.Core.Tests/Tasks/Task0004AcceptanceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Combat Pressure And Interaction Surfaces",
+      "scope_task_ids": [
+        4,
+        5,
+        6,
+        17,
+        25,
+        27,
+        34,
+        41,
+        42,
+        49,
+        51,
+        59,
+        60,
+        64,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        80,
+        81,
+        82,
+        83,
+        86,
+        87,
+        89,
+        90,
+        95,
+        96,
+        97,
+        99,
+        100,
+        101,
+        104,
+        105,
+        106,
+        111,
+        112,
+        116
+      ],
+      "ui_entry": "Combat HUD / Pressure / Camera Feedback"
+    }
+  },
+  {
+    "id": "GM-0220",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0112"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 120,
+    "title": "Wire UI: Economy And Progression Panels",
+    "description": "Create the Chapter 7 UI wiring slice for Economy And Progression Panels from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "economy"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs",
+      "Game.Core.Tests/Services/SaveServiceSerializationTests.cs",
+      "Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs",
+      "Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+    ],
+    "acceptance": [
+      "Economy And Progression Panels is implemented as a concrete Chapter 7 UI wiring slice using Resource / Build / Progression Panels, and the player action is visible end-to-end: Spend resources, place/build, train, upgrade, repair, or pick rewards. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels renders the candidate system response from runtime events: Render deterministic resource, build, queue, upgrade, and progression changes with clear invalid-state feedback. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels exposes the candidate empty-state rules without relying on logs-only evidence: show no active economy state until owned runtime data is available.. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels exposes the candidate failure-state rules without relying on logs-only evidence: 保存仅允许写入 user:// 下合法相对路径；输入绝对路径、越权路径或 traversal-like 路径时必须 fail-fast 返回错误，且目标位置不得产生任何落盘文件。. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: xUnit must verify atomic commit behavior by writing to a temp file first and replacing the target as one commit outcome.. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels acceptance must explicitly map implementation and verification evidence to each scope item (T12); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs",
+      "Economy And Progression Panels validation must include the referenced xUnit suite and an explicit GdUnit N/A record when no GdUnit case applies, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Tasks/Task0012AcceptanceTests.cs Game.Core.Tests/Services/SaveServiceSerializationTests.cs Game.Core.Tests/Services/SaveServiceVersionGuardTests.cs Game.Core.Tests/Services/SaveServiceAtomicWriteTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Economy And Progression Panels",
+      "scope_task_ids": [
+        12
+      ],
+      "ui_entry": "Resource / Build / Progression Panels"
+    }
+  },
+  {
+    "id": "GM-0221",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0128",
+      "GM-0129",
+      "GM-0130",
+      "GM-0146",
+      "GM-0147",
+      "GM-0148",
+      "GM-0150",
+      "GM-0152",
+      "GM-0154",
+      "GM-0155",
+      "GM-0156",
+      "GM-0157",
+      "GM-0158",
+      "GM-0163",
+      "GM-0165",
+      "GM-0168",
+      "GM-0192",
+      "GM-0193",
+      "GM-0202",
+      "GM-0208"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 121,
+    "title": "Wire UI: Save, Settings, And Meta Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Save, Settings, And Meta Surfaces from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P2",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "meta"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs",
+      "Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs",
+      "Game.Core.Tests/Services/ActConfigLoaderTests.cs",
+      "Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Save, Settings, And Meta Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Settings / Save / Meta Surfaces, and the player action is visible end-to-end: Save, load, localize, tune audio, or inspect platform/runtime status. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces renders the candidate system response from runtime events: Render persistence, localization, audio, performance, and platform status on governed player-visible surfaces. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: ActConfig is defined in Game.Core with schema_version, act_id, node_graph, pools, and encounters; loading a valid Act JSON yields matching field values without implicit normalization or rewrite.. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: If file read fails, JSON parsing fails, or required fields are missing, the result is IsSuccess=false, Config=null, with a stable ErrorCode and non-empty ErrorMessage.. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: schema_version must be present and supported; missing, unknown, or incompatible versions fail with an assertable error outcome.. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T28, T29, T30, T46, T47, T48, T50, T52, T54, T55, T56, T57, T58, T63, T65, T68, T92, T93, T102, T108); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs",
+      "Save, Settings, And Meta Surfaces validation must include the referenced xUnit suite and an explicit GdUnit N/A record when no GdUnit case applies, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs Game.Core.Tests/Services/ActConfigLoaderTests.cs Game.Core.Tests/Tasks/Task0029AcceptanceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Save, Settings, And Meta Surfaces",
+      "scope_task_ids": [
+        28,
+        29,
+        30,
+        46,
+        47,
+        48,
+        50,
+        52,
+        54,
+        55,
+        56,
+        57,
+        58,
+        63,
+        65,
+        68,
+        92,
+        93,
+        102,
+        108
+      ],
+      "ui_entry": "Settings / Save / Meta Surfaces"
+    }
+  },
+  {
+    "id": "GM-0222",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0102",
+      "GM-0131",
+      "GM-0132",
+      "GM-0133",
+      "GM-0137",
+      "GM-0140"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 122,
+    "title": "Wire UI: Config Audit And Migration Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Config Audit And Migration Surfaces from docs/gdd/ui-gdd-flow.candidates.json.\nSuperseded by T123-T130 after T70-T116 scoped Chapter 7 re-audit on 2026-05-09.",
+    "status": "cancelled",
+    "priority": "P2",
+    "layer": "core",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "governance"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0002_acceptance.gd",
+      "Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs",
+      "Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs",
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Config Audit And Migration Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Config Summary / Audit / Migration Surfaces, and the player action is visible end-to-end: Inspect config state, validation, governance, migration, and report metadata. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces renders the candidate system response from runtime events: Render active config, schema status, fallback policy, migration status, and audit metadata without relying on logs-only evidence. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Task 33 acceptance checklist must explicitly back-link ADR-0021 and ADR-0032 at item or footer level; missing either ADR link fails acceptance.. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj.. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/.. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T02, T31, T32, T33, T37, T40); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Config Audit And Migration Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Config Audit And Migration Surfaces",
+      "scope_task_ids": [
+        2,
+        31,
+        32,
+        33,
+        37,
+        40
+      ],
+      "ui_entry": "Config Summary / Audit / Migration Surfaces"
+    }
+  },
+  {
+    "id": "GM-0223",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0170",
+      "GM-0186",
+      "GM-0187",
+      "GM-0197",
+      "GM-0198",
+      "GM-0203"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 123,
+    "title": "Wire UI: Map Path And Continue Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Map Path And Continue Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "map_path"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd",
+      "Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs",
+      "Game.Core.Tests/Services/MapActConfigurationTests.cs",
+      "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "acceptance": [
+      "Map Path And Continue Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Map / Continue / Route Return Surfaces, and the player action is visible end-to-end: Resume a run, inspect route ownership, and return through locked reward or shop boundaries. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces renders the candidate system response from runtime events: Show real route graph state, continue landing, locked-surface recovery, and owned path transitions without hidden state. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no active route ownership until autosave or current run route data is available.. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show continue denial, locked-surface refusal, or invalid route recovery explicitly instead of silently falling back.. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can resume into the correct map or combat boundary and read owned route transitions from visible map surfaces.. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T70, T86, T87, T97, T98, T103); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "Map Path And Continue Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Scenes/Map/test_map_tree_route.gd Game.Core.Tests/Tasks/Task0070AcceptanceTests.cs Game.Core.Tests/Services/MapActConfigurationTests.cs Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Map Path And Continue Surfaces",
+      "scope_task_ids": [
+        70,
+        86,
+        87,
+        97,
+        98,
+        103
+      ],
+      "ui_entry": "Map / Continue / Route Return Surfaces"
+    }
+  },
+  {
+    "id": "GM-0224",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0172",
+      "GM-0174",
+      "GM-0183"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 124,
+    "title": "Wire UI: Combat Card Play Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Combat Card Play Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "combat_card_play"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "Combat Card Play Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Combat Scene / Hand / Drag-To-Play Surfaces, and the player action is visible end-to-end: Inspect cards, drag or click to play them, and target legal enemies during combat. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces renders the candidate system response from runtime events: Show data-driven card text, legal targeting feedback, and CombatService-backed card-play resolution without scene-local branches. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no playable hand or targeting preview until combat runtime and hand state are available.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show invalid target, missing definition, or rejected play feedback without mutating energy, HP, or pile state.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can read localized card content, target legal enemies, and resolve card plays through the shared combat runtime path.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T72, T74, T83); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Combat Card Play Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Combat Card Play Surfaces",
+      "scope_task_ids": [
+        72,
+        74,
+        83
+      ],
+      "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces"
+    }
+  },
+  {
+    "id": "GM-0225",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0171",
+      "GM-0180",
+      "GM-0181",
+      "GM-0182",
+      "GM-0195",
+      "GM-0196"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 125,
+    "title": "Wire UI: Combat Runtime Bootstrap Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Combat Runtime Bootstrap Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "combat_runtime_bootstrap"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Tasks/test_task0033_acceptance.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Services/DeckServiceTests.cs",
+      "Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs"
+    ],
+    "acceptance": [
+      "Combat Runtime Bootstrap Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Combat HUD / Deck State / Runtime Bootstrap Surfaces, and the player action is visible end-to-end: Enter combat, inspect deck lifecycle state, and read warrior deck or Rage-backed runtime setup. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces renders the candidate system response from runtime events: Show DeckService-backed piles, reshuffle timing, deck totals, warrior starting state, and Rage visibility from shared runtime ownership. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no deck lifecycle or player runtime bootstrap state until CombatService and DeckService ownership are ready.. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show missing deck state, invalid reshuffle, or bootstrap denial explicitly instead of using scene-local counters.. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can read shared deck lifecycle state, warrior starting deck setup, and Rage-backed runtime state from governed combat surfaces.. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T71, T80, T81, T82, T95, T96); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs",
+      "Combat Runtime Bootstrap Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Services/DeckServiceTests.cs Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Combat Runtime Bootstrap Surfaces",
+      "scope_task_ids": [
+        71,
+        80,
+        81,
+        82,
+        95,
+        96
+      ],
+      "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces"
+    }
+  },
+  {
+    "id": "GM-0226",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0173",
+      "GM-0176",
+      "GM-0189",
+      "GM-0205",
+      "GM-0208",
+      "GM-0216"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 126,
+    "title": "Wire UI: Enemy Intent And Resolution Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Enemy Intent And Resolution Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "enemy_intent"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
+    ],
+    "acceptance": [
+      "Enemy Intent And Resolution Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Enemy Intent Preview / Enemy Runtime Surfaces, and the player action is visible end-to-end: Read enemy intents, verify no-repeat guardrails, and understand invalid-definition fallback during combat. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces renders the candidate system response from runtime events: Show data-backed enemy previews, multi-enemy routing, resolved enemy turns, and invalid-definition fallback as visible combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no enemy intent or roster state until runtime enemies are instantiated.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show invalid enemy-definition fallback, illegal target rejection, or no-repeat guard refusal explicitly.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can inspect multi-enemy state, enemy intent previews, resolved enemy turns, and invalid-definition fallback on governed surfaces.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T73, T76, T89, T105, T108, T116); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
+      "Enemy Intent And Resolution Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Enemy Intent And Resolution Surfaces",
+      "scope_task_ids": [
+        73,
+        76,
+        89,
+        105,
+        108,
+        116
+      ],
+      "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces"
+    }
+  },
+  {
+    "id": "GM-0227",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0175",
+      "GM-0177",
+      "GM-0178",
+      "GM-0179",
+      "GM-0190",
+      "GM-0200",
+      "GM-0201",
+      "GM-0204"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 127,
+    "title": "Wire UI: Combat Rules And Feedback Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Combat Rules And Feedback Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "combat_rules"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs",
+      "Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs"
+    ],
+    "acceptance": [
+      "Combat Rules And Feedback Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Combat Feedback / Status / Resolution Surfaces, and the player action is visible end-to-end: Read status effects, turn resolution, AOE or multi-hit ordering, and defeat or trigger outcomes during live combat. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces renders the candidate system response from runtime events: Expose promoted rules, trigger hooks, fixed-damage ordering, and player-visible feedback without mutating deterministic combat ownership. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no status, trigger, or resolution history until combat rules are active.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show blocked trigger, invalid ordering, or single-resolution guard refusal instead of leaving stale combat feedback.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can read statuses, trigger ordering, defeat resolution, and multi-hit or AOE feedback from governed combat surfaces.. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T75, T77, T78, T79, T90, T100, T101, T104); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs",
+      "Combat Rules And Feedback Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0077WorkflowSelectionEvidenceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Combat Rules And Feedback Surfaces",
+      "scope_task_ids": [
+        75,
+        77,
+        78,
+        79,
+        90,
+        100,
+        101,
+        104
+      ],
+      "ui_entry": "Combat Feedback / Status / Resolution Surfaces"
+    }
+  },
+  {
+    "id": "GM-0228",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0184",
+      "GM-0185",
+      "GM-0214",
+      "GM-0215"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 128,
+    "title": "Wire UI: Reward Offer And Confirm Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Reward Offer And Confirm Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "reward_flow"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
+    ],
+    "acceptance": [
+      "Reward Offer And Confirm Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Reward Scene / Offer Choice / Return Path, and the player action is visible end-to-end: Inspect reward offers, select one of three choices, skip when allowed, and return to the owned route boundary. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces renders the candidate system response from runtime events: Render stable offer locking, invalid-pool fallback, confirm gating, writeback, and route-owned return behavior. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no reward offers until the current reward boundary resolves a valid offer set.. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show invalid-pool fallback, re-entry lock refusal, or confirm or skip rejection explicitly instead of mutating route state silently.. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can inspect a stable three-offer reward set, confirm or skip exactly once, and return through the owned route boundary.. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T84, T85, T114, T115); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Reward Offer And Confirm Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Reward Offer And Confirm Surfaces",
+      "scope_task_ids": [
+        84,
+        85,
+        114,
+        115
+      ],
+      "ui_entry": "Reward Scene / Offer Choice / Return Path"
+    }
+  },
+  {
+    "id": "GM-0229",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0188",
+      "GM-0199",
+      "GM-0206",
+      "GM-0210",
+      "GM-0211",
+      "GM-0212"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 129,
+    "title": "Wire UI: Relic And Combat Participant Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Relic And Combat Participant Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "relic_participants"
+    ],
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs",
+      "Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs",
+      "Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "Relic And Combat Participant Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Relic Display / Participant HUD / Shared Trigger Feedback, and the player action is visible end-to-end: Acquire relics, inspect equipped participants, and understand combat or run-trigger effects from powers, relics, and potions. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces renders the candidate system response from runtime events: Show acquisition, equip state, participant visibility, and both combat-boundary and run-boundary trigger outcomes on governed surfaces. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no relic, power, or potion participant state until shared run or combat ownership is available.. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show participant fallback, trigger refusal, or missing equip state explicitly instead of hiding it behind shared runtime logs.. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can inspect equipped relics, visible powers and potions, and shared trigger outcomes across combat and run boundaries.. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T88, T99, T106, T110, T111, T112); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
+      "Relic And Combat Participant Surfaces validation must include the referenced xUnit suite and an explicit GdUnit N/A record when no GdUnit case applies, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Game.Core.Tests/Tasks/Task0088AcceptanceTests.cs Game.Core.Tests/Tasks/Task0088WorkflowSelectionEvidenceTests.cs Game.Core.Tests/Tasks/Task0099AcceptanceTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Relic And Combat Participant Surfaces",
+      "scope_task_ids": [
+        88,
+        99,
+        106,
+        110,
+        111,
+        112
+      ],
+      "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback"
+    }
+  },
+  {
+    "id": "GM-0230",
+    "story_id": "PRD-TASKMASTER-v1.2",
+    "owner": "gameplay",
+    "depends_on": [
+      "GM-0191",
+      "GM-0207",
+      "GM-0209",
+      "GM-0213"
+    ],
+    "taskmaster_exported": true,
+    "taskmaster_id": 130,
+    "title": "Wire UI: Settlement And Run Summary Surfaces",
+    "description": "Create the Chapter 7 UI wiring slice for Settlement And Run Summary Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+    "status": "pending",
+    "priority": "P2",
+    "layer": "adapter",
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0011",
+      "ADR-0019",
+      "ADR-0025"
+    ],
+    "chapter_refs": [
+      "CH02",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "prd",
+      "taskmaster",
+      "taskmaster-view",
+      "chapter7-ui",
+      "settlement"
+    ],
+    "test_refs": [
+      "Tests.Godot/tests/UI/test_run_summary_surface.gd",
+      "Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs"
+    ],
+    "acceptance": [
+      "Settlement And Run Summary Surfaces is implemented as a concrete Chapter 7 UI wiring slice using Run Summary / Settlement / Resume Evidence Surfaces, and the player action is visible end-to-end: Inspect stored-data-backed summary output, verify reward and relic settlement metadata, and confirm resume evidence after a run. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces selects or creates the suggested standalone surfaces from docs/gdd/ui-gdd-flow.candidates.json before implementation is accepted. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces renders the candidate system response from runtime events: Render settlement ownership, reward or relic metadata, and resume evidence from stored run data instead of partial placeholder summaries. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces exposes the candidate empty-state rules without relying on logs-only evidence: Show no settlement summary until stored run data is available for the selected run.. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces exposes the candidate failure-state rules without relying on logs-only evidence: Show missing settlement metadata, missing reward or relic fields, or absent resume evidence explicitly instead of showing partial placeholder summaries.. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces satisfies the completion result, keeps deterministic domain state behind existing contracts, adds no unrelated gameplay behavior: Player can inspect stored settlement outcome, reward or relic metadata, and resume evidence from governed summary surfaces.. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T91, T107, T109, T113); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs",
+      "Settlement And Run Summary Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/UI/test_run_summary_surface.gd Game.Core.Tests/Tasks/Task0066AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0091WorkflowSelectionEvidenceTests.cs"
+    ],
+    "contractRefs": [],
+    "ui_wiring_candidate": {
+      "source": "docs/gdd/ui-gdd-flow.candidates.json",
+      "screen_group": "Settlement And Run Summary Surfaces",
+      "scope_task_ids": [
+        91,
+        107,
+        109,
+        113
+      ],
+      "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces"
+    }
   }
 ]

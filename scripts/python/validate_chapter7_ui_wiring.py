@@ -46,6 +46,7 @@ def validate(
         tasks_back_path=tasks_back_path,
         tasks_gameplay_path=tasks_gameplay_path,
         overlay_root_path=overlay_root_path,
+        chapter7_profile_path=chapter7_profile_path,
     )
     if summary.get('status') == 'skipped':
         payload = {
