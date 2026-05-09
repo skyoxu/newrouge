@@ -36,7 +36,7 @@ Test-Refs:
 
 ## 使用边界
 - 仅承载功能纵切：实体、事件、运行时路径、验收、测试回链。
-- 不承载实现细节代码与排期说明；任务 SSoT 以 `.taskmaster/tasks/*.json` 为准。
+- 不承载实现细节代码与排期说明；任务 SSoT 以 `.taskmaster/tasks/tasks.json` 为准。
 - 任何改动必须同步 `ACCEPTANCE_CHECKLIST.md` 的 `Test-Refs` 与任务回链。
 
 ## 文档目录
@@ -53,13 +53,13 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-05-09T08:00:21.876974+00:00",
+  "generated_at": "2026-05-09T09:28:53.293190+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "8bbc108b13c670f1ef5b711c5119e1ddd59d96d284a9f58f367fa08aa96bd7ed",
-      "bytes": 210974
+      "sha256": "83fa4fae6f42b0564093f262265b9d49129eda36ba1650693f418c625d50f82a",
+      "bytes": 226428
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
@@ -154,6 +154,6 @@ Test-Refs:
   - route ownership and `ActConfig`-driven map progression
   - Reward/settlement/Continue replay ownership
   - combat runtime truth-source handoff from scene-local logic to shared Core services
-  - public contract baseline under `Game.Core/Contracts/**`
+  - public contract baseline under `Game.Core/Contracts`
 - Contract-file updates are not automatic for every new task. They become mandatory only when implementation promotes a new public DTO / event / interface / ownership snapshot into the canonical baseline.
 - Current explicit future contract gap remains potion work (`T77`, `T111`). Until potion implementation is selected, keep that gap documented in `08-Contracts-M1.md` instead of inventing placeholder contract files.

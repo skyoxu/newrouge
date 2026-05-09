@@ -9,6 +9,13 @@ ADR-Refs:
   - ADR-0023-difficulty-system-and-balance-curve
   - ADR-0010-internationalization
   - ADR-0019-godot-security-baseline
+ADRs:
+  - ADR-0032-save-resume-determinism
+  - ADR-0033-card-identity-and-forms
+  - ADR-0021-run-state-machine-and-core-bounded-context
+  - ADR-0023-difficulty-system-and-balance-curve
+  - ADR-0010-internationalization
+  - ADR-0019-godot-security-baseline
 Arch-Refs:
   - CH01
   - CH02
@@ -25,7 +32,7 @@ Test-Refs:
   - Game.Core.Tests/Domain/ValueObjects/DamageTests.cs
   - Game.Core.Tests/State/CombatLoopPhaseTransitionTests.cs
   - Game.Core.Tests/Tasks/Task0006CombatContractsTraceabilityTests.cs
-  - Tests.Godot/Smoke/ContinueGateTests.gd
+  - Tests.Godot/tests/Adapters/Security/test_continue_gate_recoverability.gd
 ---
 
 # 08 功能纵切（M1: Warrior 最小可玩闭环）
@@ -235,7 +242,7 @@ The M1 playable route must be player-facing and route-owned:
 - Combat and Event must surface result feedback that is sufficient for player decisions without reading engineering logs.
 
 ### 7.3 Contract Boundary
-Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts/**` files unless implementation introduces new public DTOs, event families, or command interfaces. Even when no new contract file is added, these tasks must declare the existing `EventType` constants they consume in task `contractRefs` so UI consumer coverage stays machine-verifiable. If implementation adds or changes public contracts, update `08-Contracts-M1.md` and the relevant task `contractRefs` in the same change.
+Task59-69 are UI/adapter wiring tasks by default. They do not require new `Game.Core/Contracts` files unless implementation introduces new public DTOs, event families, or command interfaces. Even when no new contract file is added, these tasks must declare the existing `EventType` constants they consume in task `contractRefs` so UI consumer coverage stays machine-verifiable. If implementation adds or changes public contracts, update `08-Contracts-M1.md` and the relevant task `contractRefs` in the same change.
 
 ## 8. Runtime Closure Extension (T70-T116)
 
@@ -271,7 +278,7 @@ The following task groups promote existing M1 contracts and services into the li
 - Surface feedback on top of deterministic runtime results: T74, T75, T78, T101.
 
 These tasks are still governed by the same slice boundary:
-- Core runtime truth stays in `Game.Core/**`.
+- Core runtime truth stays in `Game.Core`.
 - Scene code consumes read models and commands; it does not fork parallel combat logic.
 - New player-visible behavior must either reuse an existing public contract or explicitly promote a new contract baseline before implementation is considered complete.
 
@@ -279,18 +286,18 @@ These tasks are still governed by the same slice boundary:
 T102, T103, T104, T108, T109, and T112 are not new gameplay slices. They are Chapter 6 cost-control and review-governance splits for the same M1 closure work.
 
 They must therefore inherit, not replace, the current slice baseline:
-- same overlay family: `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/**`
-- same contract SSoT: `Game.Core/Contracts/**`
+- same overlay family: `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08`
+- same contract SSoT: `Game.Core/Contracts`
 - same route-owner principle and acceptance ownership
 
 ### 8.5 Contract-Impact Rule For T70-T116
 T70-T116 should default to reusing the current M1 contract baseline. Contract file updates become mandatory only when implementation introduces one of the following:
 - a new public event family not already represented in `Game.Core/Contracts/EventTypes.cs`
 - a new public DTO or read model that crosses Core-to-Adapter boundaries
-- a new command interface or service interface under `Game.Core/Contracts/Interfaces/**`
+- a new command interface or service interface under `Game.Core/Contracts/Interfaces`
 
 Current evidence shows one explicit future-risk area:
-- Potions are named by T77 and T111 but are not yet represented in the current contract baseline. If potion work is selected for implementation, update `08-Contracts-M1.md` first and add the concrete `Game.Core/Contracts/**` files in the same change.
+- Potions are named by T77 and T111 but are not yet represented in the current contract baseline. If potion work is selected for implementation, update `08-Contracts-M1.md` first and add the concrete `Game.Core/Contracts` files in the same change.
 
 Current evidence also shows task-view drift:
 - Several T70-T116 `contractRefs` point to placeholder event names that are not currently defined in `EventTypes.cs`.
