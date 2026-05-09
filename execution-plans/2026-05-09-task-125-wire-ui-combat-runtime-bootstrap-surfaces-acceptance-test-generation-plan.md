@@ -6,16 +6,16 @@
 - Git Head: 4effdd55a6677d570d611d675eafe8f42d04af2b
 - Goal: Control acceptance-driven test generation complexity for task 125.
 - Scope: 0 missing refs across 0 test roots; seed refs: no missing refs detected
-- Current step: Review missing acceptance refs and choose the first safe red step.
-- Last completed step: n/a (new execution plan scaffold; no completed step recorded yet)
-- Stop-loss: Do not start Codex test generation until the ref mix and verify mode are explicit.
-- Next action: Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.
-- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 125 --resume`
-- Open questions: none recorded yet
-- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Current step: Review the recorded semantic Needs Fix and keep the task in stop-loss until the acceptance language is updated materially.
+- Last completed step: acceptance language cleanup applied to ACC:T125.4 / ACC:T125.5; decision log recorded.
+- Stop-loss: Do not start another full Chapter 6 rerun until the reviewer anchors change or the acceptance semantics are materially revised.
+- Next action: Re-read the recorded decision and the latest pipeline evidence before any future rerun or acceptance rewrite.
+- Recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id 125`
+- Open questions: whether the next change should target only acceptance semantics or also move flow/checklist items out of core acceptance.
+- Exit criteria: a materially revised acceptance set that removes the semantic ambiguity flagged by the reviewer.
 - Related ADRs: none yet
-- Related decision logs: none yet
+- Related decision logs: decision-logs/2026-05-09-task-125-chapter6-semantic-needs-fix-stop-loss.md
 - Related task id(s): `125`
-- Related run id: n/a (no pipeline run id linked yet)
-- Related latest.json: n/a (no task-scoped latest.json pointer resolved yet)
-- Related pipeline artifacts: n/a (no pipeline artifact directory resolved yet)
+- Related run id: `71c9adaa18664bb0b6181fa42451b0f6`
+- Related latest.json: `logs/ci/2026-05-09/sc-review-pipeline-task-125/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-09/sc-review-pipeline-task-125-71c9adaa18664bb0b6181fa42451b0f6`

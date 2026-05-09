@@ -710,6 +710,16 @@ func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_d
 	assert_that(state["draw"]).is_equal(str(runtime_draw_count))
 	assert_that(state["discard"]).is_equal(str(runtime_discard_count))
 
+	# ACC:T125.4 empty/hidden gate: if either ownership side is not ready,
+	# runtime fields must not be shown and scene-local fallback is forbidden.
+	var before_invalid := scene.call("CaptureUiStateForTest") as Dictionary
+	((scene as Control).get_node("HUD/DrawPileValue") as Label).text = "invalid-draw"
+	var rejected_gate := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var after_invalid := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(rejected_gate).is_false()
+	assert_that(after_invalid).is_equal(before_invalid)
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).to_lower().find("refused") >= 0).is_true()
+
 
 # ACC:T80.2
 # ACC:T80.4
@@ -794,6 +804,24 @@ func test_play_card_overplay_tax_and_end_turn_reset_follow_shared_runtime_progre
 	assert_that(state_after_reset_first["energy"]).is_equal("2")
 	assert_that(feedback_after_reset.find("Energy -1 (remaining 2)") >= 0).is_true()
 
+	# ACC:T125.5 explicit failure semantics: distinguishable failure surfaces.
+	var baseline := scene.call("CaptureUiStateForTest") as Dictionary
+	((scene as Control).get_node("HUD/DrawPileValue") as Label).text = "invalid-draw"
+	var missing_deck_rejected := bool(scene.call("RequestPlaySelectedCardForTest"))
+	var missing_deck_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(missing_deck_rejected).is_false()
+	assert_that((scene.call("CaptureUiStateForTest") as Dictionary)).is_equal(baseline)
+	assert_that(missing_deck_feedback.find("play_card") >= 0).is_true()
+
+	((scene as Control).get_node("HUD/DrawPileValue") as Label).text = str(baseline["draw"])
+	((scene as Control).get_node("HUD/PlayerHpValue") as Label).text = "invalid-hp"
+	var bootstrap_denied := bool(scene.call("RequestTurnActionForTest", "end_turn"))
+	var bootstrap_feedback := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	assert_that(bootstrap_denied).is_false()
+	assert_that((scene.call("CaptureUiStateForTest") as Dictionary)).is_equal(baseline)
+	assert_that(bootstrap_feedback.find("end_turn") >= 0).is_true()
+	assert_that(bootstrap_feedback).is_not_equal(missing_deck_feedback)
+
 
 # ACC:T83.3
 # ACC:T125.7
@@ -821,6 +849,19 @@ func test_combat_scene_owner_surfaces_remain_authoritative_across_play_and_end_t
 	assert_that(str(root.get_path_to(root.get_node("HUD/EnergyValue")))).is_equal(energy_path)
 	assert_that(str(root.get_path_to(root.get_node("HUD/FeedbackMessageLabel")))).is_equal(feedback_path)
 	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_not_empty()
+
+	# ACC:T125.7/8: cross-surface runtime snapshot consistency after reshuffle-shaped updates.
+	assert_that(bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":3,"discardPileCount":7,"turnState":"PlayerTurn"}'
+	))).is_true()
+	var snapshot_a := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(bool(scene.call(
+		"TryApplyCoreSnapshotContractJson",
+		'{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":3,"discardPileCount":7,"turnState":"PlayerTurn"}'
+	))).is_true()
+	var snapshot_b := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(snapshot_b).is_equal(snapshot_a)
 
 
 # ACC:T83.4
