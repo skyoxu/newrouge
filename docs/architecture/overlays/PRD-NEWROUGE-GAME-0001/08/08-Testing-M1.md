@@ -7,6 +7,11 @@ ADR-Refs:
   - ADR-0005-quality-gates
   - ADR-0032-save-resume-determinism
   - ADR-0033-card-identity-and-forms
+ADRs:
+  - ADR-0025-godot-test-strategy
+  - ADR-0005-quality-gates
+  - ADR-0032-save-resume-determinism
+  - ADR-0033-card-identity-and-forms
 Arch-Refs:
   - CH03
   - CH06
@@ -19,8 +24,8 @@ Test-Refs:
   - Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs
   - Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs
-  - Game.Core.Tests/Tasks/Task0057AcceptanceTests.cs
-  - Tests.Godot/Smoke/ContinueGateTests.gd
+  - Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs
+  - Tests.Godot/tests/Adapters/Security/test_continue_gate_recoverability.gd
 ---
 
 # 08 测试策略（M1）
@@ -202,7 +207,7 @@ T102, T103, T104, T108, T109, and T112 are Chapter 6 split/governance tasks. The
 ### 10.4 Contract Drift Guard
 If a T70-T116 task updates `contractRefs`, test evidence must show one of these is true:
 - the refs now point to existing `EventTypes` constants and corresponding contract files, or
-- the same change added the missing contract baseline under `Game.Core/Contracts/**`
+- the same change added the missing contract baseline under `Game.Core/Contracts`
 
 Task metadata must not be accepted when it references placeholder event names that have no corresponding contract baseline.
 
@@ -210,6 +215,6 @@ Task metadata must not be accepted when it references placeholder event names th
 The current Phase 0-2 review result for `T70-T116` is:
 - overlay documents must be kept in sync because these tasks expanded the runtime-closure scope of M1
 - tests may point at existing contract baselines or future contract promotion requirements, but they must not assume placeholder task metadata is already canonical contract truth
-- new `Game.Core/Contracts/**` files are only required when implementation in the selected task actually promotes a new public contract
+- new `Game.Core/Contracts` files are only required when implementation in the selected task actually promotes a new public contract
 - potion-related tests must continue to treat potion contracts as future work until `T77` or `T111` implementation lands with real contract files and `EventTypes` constants
 

@@ -7,6 +7,11 @@ ADR-Refs:
   - ADR-0019-godot-security-baseline
   - ADR-0032-save-resume-determinism
   - ADR-0005-quality-gates
+ADRs:
+  - ADR-0003-observability-release-health
+  - ADR-0019-godot-security-baseline
+  - ADR-0032-save-resume-determinism
+  - ADR-0005-quality-gates
 Arch-Refs:
   - CH02
   - CH03
@@ -15,7 +20,7 @@ Test-Refs:
   - Game.Core.Tests/Observability/StructuredLoggerTests.cs
   - Tests.Godot/tests/Adapters/Security/test_audit_log_jsonl.gd
   - Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs
-  - Game.Core.Tests/Tasks/Task0057AcceptanceTests.cs
+  - Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs
 ---
 
 # 08 可观测性与审计（M1）
@@ -66,13 +71,13 @@ T70-T116 expand M1 observability from basic route proof into runtime-closure pro
 ### 7.1 Task-View And Contract Drift Signal
 If a T70-T116 task references an event family that is not present in `Game.Core/Contracts/EventTypes.cs`, treat that mismatch as a traceability defect until one of the following happens:
 - the task refs are normalized back to existing contract constants, or
-- a real contract baseline is added under `Game.Core/Contracts/**`
+- a real contract baseline is added under `Game.Core/Contracts`
 
 This is especially important for Chapter 6 split tasks, because narrow review lanes must not normalize placeholder contract names into acceptance evidence by accident.
 
 ### 7.2 Potion Contract Readiness
 Potion-related work is currently observable only as backlog/task intent. Before T77 or T111 can claim contract-complete observability:
-- define the potion contract baseline under `Game.Core/Contracts/**`
+- define the potion contract baseline under `Game.Core/Contracts`
 - add the matching `EventTypes` constants
 - route any potion audit/replay evidence through the same JSONL and traceability gates as other M1 runtime events
 

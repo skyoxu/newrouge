@@ -9,6 +9,13 @@ ADR-Refs:
   - ADR-0032
   - ADR-0033
   - ADR-0010
+ADRs:
+  - ADR-0004
+  - ADR-0020
+  - ADR-0021
+  - ADR-0032
+  - ADR-0033
+  - ADR-0010
 Arch-Refs:
   - CH01
   - CH05
@@ -29,7 +36,7 @@ Test-Refs:
 # 08章契约规范（M1）
 
 ## 1. 契约落盘与约束
-- SSoT 位置：`Game.Core/Contracts/**`。
+- SSoT 位置：`Game.Core/Contracts`。
 - 契约必须纯 C#（仅 BCL），禁止 `Godot.*` 依赖。
 - 事件类型命名遵循 ADR-0004：`core.<entity>.<action>`、`ui.menu.<action>`、`screen.<name>.<action>`。
 - 事件名称常量统一存放在 `Game.Core/Contracts/EventTypes.cs`，业务代码禁止硬编码 `"core.*"`。
@@ -440,7 +447,7 @@ Test-Refs:
 Task59-69 remain UI/adapter wiring tasks. They do not require new contract skeletons at task-definition time, but they must still declare the existing runtime `EventType` entries they consume in task `contractRefs` so `check_task_contract_refs.py` can verify UI consumer coverage.
 
 Contract updates become mandatory when implementation introduces or changes public Core-facing events, DTOs, command interfaces, or event-family constants. In that case:
-- Add or update the concrete file under `Game.Core/Contracts/**`.
+- Add or update the concrete file under `Game.Core/Contracts`.
 - Keep the file BCL-only and free of `Godot.*` dependencies.
 - Add XML docs on the public contract surface.
 - Update this overlay and the relevant task `contractRefs` in the same change, using the consumed `EventType` constants rather than placeholder-empty arrays.
@@ -459,22 +466,22 @@ The following task groups should initially reuse the existing contract baseline 
 - Relic and settlement promotion: `RelicDefinition`, `RelicInstance`, `RelicGrantedEvent`, `RunSummaryMetadata`, `RunSummaryOwnerSurface`, `RunSummaryOwnershipSelection`.
 
 ### Phase 0-2 Decision For T70-T116
-- After checking `workflow.md` Phase 0-2 expectations against the current triplet and Overlay 08 baseline, no new `Game.Core/Contracts/**` file is required immediately just because `T70-T116` were added.
+- After checking `workflow.md` Phase 0-2 expectations against the current triplet and Overlay 08 baseline, no new `Game.Core/Contracts` file is required immediately just because `T70-T116` were added.
 - The current contract baseline is still the authority for map ownership, reward locking, save/resume, relic inventory, settlement metadata, combat loop, deck events, and status events.
 - For `T70-T116`, contract work should stay in one of two modes only:
-  - reuse an existing contract path or `EventTypes` constant that already exists in `Game.Core/Contracts/**`
+  - reuse an existing contract path or `EventTypes` constant that already exists in `Game.Core/Contracts`
   - or, if implementation truly introduces a new public contract, add the concrete contract file and matching constant in the same change
 - Do not create placeholder contract files only to mirror planning metadata from task views.
 
 ### Explicit Gap Requiring Future Contract Promotion
 Current baseline inspection shows one clear public-contract gap that must be handled before the corresponding task family is considered contract-complete:
 - Potions (`T77`, `T111`)
-  - No potion DTO, event, or interface baseline currently exists under `Game.Core/Contracts/**`.
+  - No potion DTO, event, or interface baseline currently exists under `Game.Core/Contracts`.
   - `08-Contracts-M1.md` therefore does not yet define potion ownership, payload shape, or event-family naming.
   - If potion implementation is selected, add the new potion contract files and matching `EventTypes` constants in the same change, then update both task views to consume the real constants instead of placeholder refs.
 
 ### Task-View Drift That Must Not Be Mistaken For Canonical Contracts
-Current `tasks_back.json` and `tasks_gameplay.json` entries for T70-T116 reference multiple event names that are not presently defined in `Game.Core/Contracts/EventTypes.cs` or `Game.Core/Contracts/Events/**`. Examples include:
+Current `tasks_back.json` and `tasks_gameplay.json` entries for T70-T116 reference multiple event names that are not presently defined in `Game.Core/Contracts/EventTypes.cs` or `Game.Core/Contracts/Events`. Examples include:
 - `core.map.node.completed`
 - `core.card.definition.loaded`
 - `core.combat.target.selected`
@@ -495,7 +502,7 @@ Current `tasks_back.json` and `tasks_gameplay.json` entries for T70-T116 referen
 
 These refs are currently planning metadata, not approved contract baseline. Before implementation or acceptance relies on them, do one of the following in the same change:
 - normalize the task `contractRefs` to already-existing `EventType` constants, or
-- promote the name into a real contract by adding the concrete file under `Game.Core/Contracts/**`, updating `EventTypes.cs`, and documenting it here
+- promote the name into a real contract by adding the concrete file under `Game.Core/Contracts`, updating `EventTypes.cs`, and documenting it here
 
 ### Required Validation When T70-T116 Touch Public Contracts
 When any T70-T116 implementation introduces or changes public contracts, the minimum validation bundle is:

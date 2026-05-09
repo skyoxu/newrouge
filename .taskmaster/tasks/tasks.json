@@ -5,79 +5,38 @@
         "id": 1,
         "title": "Set up project environment and dependencies",
         "description": "Initialize the project with Godot 4.5.1 .NET, .NET 8 SDK, and ensure packages.lock.json is present.",
-        "details": "Install Godot 4.5.1 .NET console binary, set GODOT_BIN environment variable. Ensure .NET 8 SDK is installed. Run 'dotnet restore .\\NewRouge.sln' to generate packages.lock.json if missing. Verify UTF-8 encoding and Windows-only compliance. Create logs/ directory structure for evidence. Refs: ADR-0031, ADR-0011.\n",
-        "testStrategy": "Check Godot version via '& $env:GODOT_BIN --version' as required evidence, check .NET version via 'dotnet --version', and verify packages.lock.json exists. If PATH is configured, 'godot --version' may be captured as optional supplementary evidence. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\n",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0031",
-          "ADR-0011"
-        ],
-        "archRefs": [
-          "CH01",
-          "CH06",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Set up project environment and dependencies.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0031; ADR-0011\nChapters: CH01; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs; Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs; Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs\nAcceptance: task-0001.json must include machine-readable fields for godot_version, dotnet_version, packages_lock_exists, and evidence_paths; missing any field fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; task-0001.json must provide explicit pass/fail conclusions for Windows-only and UTF-8 compliance with traceable evidence sources; vague statements (for example, \"checked\") fail acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; ACCEPTANCE_CHECKLIST.md must list all evidence paths for Task 1, and every path must resolve to an existing file under logs/ci/<YYYY-MM-DD>/env-evidence/; any broken path fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; On Windows, GODOT_BIN must be set to the absolute path of the Godot 4.5.1 .NET console executable, and .NET-console flavor must be proven by both executable identity evidence and version-command output captured from that exact path; task-0001.json must record godot_bin_env.env_var_name=\"GODOT_BIN\", godot_bin_env.env_var_value (absolute path), godot_bin_env.env_var_scope (Process/User/Machine), and installation verification result. Missing any required field or non-absolute path fails acceptance. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs; Must execute `& $env:GODOT_BIN --version`; command must succeed and stdout must include \"4.5.1\". Running `godot --version` is optional evidence when PATH is configured; if provided, it must also report \"4.5.1\". Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs; Must persist full stdout of `& $env:GODOT_BIN --version` to logs/ci/<YYYY-MM-DD>/env-evidence/godot-bin-version.txt; when `godot --version` is available, its full stdout must be persisted to logs/ci/<YYYY-MM-DD>/env-evidence/godot-version.txt. Missing required evidence file fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; task-0001.json must record command, exit_code, parsed_version, and evidence_file for each Godot version command; missing any key fails acceptance. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs; After installing .NET 8 SDK, running `dotnet --version` must start with \"8.\", and `dotnet --list-sdks` must contain at least one 8.x SDK entry; 7.x, 9.x, empty output, missing 8.x SDK entry, or command failure fails acceptance. Refs: Game.Core.Tests/Tasks/Task1ToolchainVersionChecksTests.cs; If packages.lock.json is missing before restore, running `dotnet restore .\\NewRouge.sln` must generate it; if it already exists, it must remain present and correspond to the same NewRouge.sln restore scope. A lock file outside the NewRouge.sln restore scope does not satisfy acceptance. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs; Before toolchain checks are accepted, `.\\NewRouge.sln` must exist in repository workspace and be the exact restore target used in evidence; missing solution file or mismatched restore target fails acceptance. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs; Must create logs/ directory structure for evidence, including at minimum logs/ci/<YYYY-MM-DD>/env-evidence/, and store readable evidence files covering Godot version checks, dotnet version, dotnet SDK list, packages.lock.json existence, Windows-only result, and UTF-8 result; any missing required directory or evidence file fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; Acceptance artifacts must explicitly back-link ADR-0031 and ADR-0011 (for example via refs in task-0001.json and ACCEPTANCE_CHECKLIST.md); missing either ADR reference fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; UTF-8 compliance must be validated at file level: task-0001.json, ACCEPTANCE_CHECKLIST.md, and generated evidence files under logs/ci/<YYYY-MM-DD>/env-evidence/ must decode as UTF-8 without errors; task-0001.json must include utf8_check.result=\"pass\", utf8_check.checked_files (non-empty), and utf8_check.evidence_file. Any decode failure or missing required field fails acceptance. Refs: Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs; Windows-only is a hard gate: os_platform must be Windows, and task-0001.json must include windows_only_check.result=\"pass\" with platform evidence. Non-Windows or missing evidence fails and must stop downstream gates. Refs: Game.Core.Tests/Tasks/Task1WindowsPlatformGateTests.cs; Must persist full stdout of `dotnet restore .\\NewRouge.sln` to logs/ci/<YYYY-MM-DD>/env-evidence/dotnet-restore.txt; missing evidence file fails acceptance. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs; task-0001.json must include dotnet_restore.command, dotnet_restore.exit_code, and dotnet_restore.evidence_file; dotnet_restore.command must target NewRouge.sln (semantic equivalent of `dotnet restore .\\NewRouge.sln`), and dotnet_restore.exit_code must equal 0. Missing any key, wrong restore target, or non-zero exit_code fails acceptance. Refs: Game.Core.Tests/Tasks/Task1DotnetRestoreLockfileTests.cs\nTest Strategy: Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.\nLabels: newrouge; m1; ci\nOwner: gameplay\nLayer: ci",
+        "testStrategy": "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 2,
         "title": "Create core project structure and namespaces",
         "description": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
-        "details": "Create directories: Game.Core/, Game.Godot/, Game.Core.Tests/, Tests.Godot/. Set up C# projects for Game.Core, Game.Core.Tests, and Tests.Godot with net8.0 target and Nullable enabled. Treat Game.Godot as script/resource directory under the root project (no standalone csproj). Ensure Game.Core does not reference Godot API. Use taskdoc/task-0002-change-set.json as authoritative Task 2 C# scope and enforce NewRouge.* namespace for listed files while allowing Game.* coexistence outside Task 2 scope. Refs: ADR-0024.\n",
-        "testStrategy": "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot. Verify Game.Godot behaves as script/resource directory. Use acceptance gate dotnet-build-warnaserror as the root build proof; if this gate is not executed or fails, Task 2 cannot be marked done. Refs: ADR-0024.\n",
+        "status": "done",
         "priority": "high",
         "dependencies": [
-          "1"
+          1
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0024"
-        ],
-        "archRefs": [
-          "CH01",
-          "CH06",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 2,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Create core project structure and namespaces.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0024\nChapters: CH01; CH06; CH07; CH05\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd; Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs; Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs\nAcceptance: Repository root must contain Game.Core/, Game.Godot/, Game.Core.Tests/, and Tests.Godot/. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs; Game.Core/, Game.Core.Tests/, and Tests.Godot/ must each contain a .csproj with TargetFramework=net8.0 and Nullable=enable; Game.Godot/ is a script/resource directory and must not contain any standalone .csproj. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs; Game.Core must not reference any Godot package or API. taskdoc/task-0002-change-set.json is the authoritative Task 2 C# scope and must include Game.Core/Conventions and Game.Core.Tests/Tasks/Task2* entries (plus optional Tests.Godot Task2 C# entries); every listed file must declare namespaces under NewRouge.*; legacy Game.* may remain outside Task 2 scope. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs; If legacy Game.* namespaces are present, they may coexist with NewRouge.*; Task 2 does not require full repository rename. Refs: Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs; Task 2 completion must include sc-acceptance-check step `dotnet-build-warnaserror` with exit_code=0 as root build proof; if this gate is not executed or fails, Task 2 must remain non-done and progression must be blocked. Refs: Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs\nTest Strategy: Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot; treat Game.Godot as script/resource directory. Refs: ADR-0024.; Gate evidence: root build pass is enforced by sc-acceptance-check dotnet-build-warnaserror (exit code 0, no compiler errors), and Task2RootBuildGateTests validates build output classification.; Evidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability.; Evidence note: capture sc-acceptance-check summary at logs/ci/<YYYY-MM-DD>/sc-acceptance-check-task-2/summary.json and keep dotnet-build-warnaserror step status for audit (non-Refs evidence).\nLabels: newrouge; m1; ui\nOwner: gameplay\nLayer: adapter",
+        "testStrategy": "Validate root directories and .csproj settings for Game.Core, Game.Core.Tests, and Tests.Godot; treat Game.Godot as script/resource directory. Refs: ADR-0024.\nGate evidence: root build pass is enforced by sc-acceptance-check dotnet-build-warnaserror (exit code 0, no compiler errors), and Task2RootBuildGateTests validates build output classification.\nEvidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability.\nEvidence note: capture sc-acceptance-check summary at logs/ci/<YYYY-MM-DD>/sc-acceptance-check-task-2/summary.json and keep dotnet-build-warnaserror step status for audit (non-Refs evidence).",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 3,
         "title": "Implement core contracts for card identity and forms",
         "description": "Define contracts in Game.Core/Contracts for card identity, forms (Base, U1A, U1B, Ultimate), and upgrade fields per ADR-0033.",
-        "details": "Create interfaces/classes for CardDefinition (with card_id) and CardInstance (with instance_id, upgrade_tier, upgrade_route). Define enums for Form (Base, U1A, U1B, Ultimate) and Route (A, B). Include fields for permanent_card_instance_modifiers. Ensure tier=2 implies route=null. Refs: ADR-0033, ADR-0020.\n",
-        "testStrategy": "Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020.\n",
+        "status": "done",
         "priority": "high",
         "dependencies": [
-          "2"
+          2
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0033",
-          "ADR-0020"
-        ],
-        "archRefs": [
-          "CH01",
-          "CH06",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Implement core contracts for card identity and forms.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0033; ADR-0020\nChapters: CH01; CH06; CH07; CH05\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs\nAcceptance: 在 Game.Core/Contracts 中定义 CardDefinition 与 CardInstance 契约：CardDefinition 至少包含 card_id，CardInstance 至少包含 instance_id、upgrade_tier、upgrade_route、permanent_card_instance_modifiers；并定义 Form 枚举（Base/U1A/U1B/Ultimate）与 Route 枚举（A/B）。上述契约需可被纯 .NET 测试项目直接引用并编译通过，且不得依赖任何 Godot 类型或命名空间。 Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs; 升级语义必须可被测试直接判定：当 upgrade_tier=2 时，upgrade_route 必须为 null；当 upgrade_tier 不为 2 且提供 upgrade_route 时，其值仅允许 A 或 B。对违反“tier=2 且 route 非 null”的输入，测试必须产生显式失败结果，且不能通过跳过断言、空测试、默认值回退或静默修正掩盖问题。 Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs; 在 Game.Core.Tests/Contracts 下新增或更新 xUnit 测试，覆盖契约字段定义、Form/Route 枚举成员完整性、以及 tier=2→route=null 约束的正反两类用例；并验证测试工程保持纯 .NET 依赖且未引入 Godot 依赖。 Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs; In Game.Core/Contracts, CardDefinition and CardInstance must be interface or class (record class allowed); reflection tests assert IsInterface or IsClass and reject other shapes. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs; Game.Core.Tests/Contracts must include reflection assertions that CardDefinition and CardInstance are IsInterface or IsClass (including record class); any other type shape fails acceptance. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs; Negative tests must assert explicit failure when CardDefinition or CardInstance is struct, enum, or any non interface/class shape; missing negative gate fails acceptance. Refs: Game.Core.Tests/Tasks/Task0003AcceptanceTests.cs\nTest Strategy: Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020.\nLabels: newrouge; m1; core; cards\nOwner: gameplay\nLayer: core",
+        "testStrategy": "Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 4,
@@ -1656,57 +1615,25 @@
         "id": 53,
         "title": "Headless smoke runner (Python) + strict mode",
         "description": "Implement a Python-first headless smoke runner for Godot on Windows, matching the existing PowerShell behavior. Add an optional strict mode that requires a success marker in logs. Source: docs/migration/Phase-12-Headless-Smoke-Backlog.md (B1/B2).",
-        "details": "Story: PH12-BACKLOG-B1-B2\nADR Refs: ADR-0005, ADR-0011, ADR-0018, ADR-0024\nChapters: CH01, CH06, CH07, CH10\nTest Refs: logs/ci/<date>/smoke/headless.out.log, logs/ci/<date>/smoke/headless.err.log, logs/ci/<date>/smoke/summary.json, Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs, Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs, Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd, Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd, Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs\nAcceptance: Provide scripts/python/smoke_headless.py with --godot-bin, --scene, --timeout-sec, --project-path, and --strict. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Write outputs under logs/ci/<date>/smoke/** and return non-zero on strict failures. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs; Strict mode passes only if logs contain [TEMPLATE_SMOKE_READY] or [DB] opened. Refs: Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd; Non-strict mode remains permissive to preserve template ergonomics. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs\nTest Strategy: Run locally on Windows against a known-good scene and verify exit code + artifacts. Run in CI headless and confirm logs are archived under logs/ci/**.\nLabels: ci, smoke, godot, python, headless\nOwner: architecture\nLayer: ci\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\n",
-        "testStrategy": "Run locally on Windows against a known-good scene and verify exit code + artifacts.\nRun in CI headless and confirm logs are archived under logs/ci/**.\n",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0005",
-          "ADR-0011",
-          "ADR-0018",
-          "ADR-0024"
-        ],
-        "archRefs": [
-          "CH01",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Headless smoke runner (Python) + strict mode.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1\nADR Refs: ADR-0005; ADR-0011; ADR-0018; ADR-0024\nChapters: CH01; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs; Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd; Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd; Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs\nAcceptance: 在 logs/ci/<date>/task-0053.json 记录本任务交付的 headless runner 与 strict 行为摘要（含参数、退出码、产物路径），用于追溯实现。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; 在 Windows 环境下运行 smoke_headless.py 的命令、退出码与日志产物路径被写入 logs/ci/<date>/task-0053.json，作为 Windows-only 运行证据。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; 更新 overlay 的 Test-Refs 清单，覆盖本任务相关测试并指向现有测试路径。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; 提供 scripts/python/smoke_headless.py，可在 Windows 运行并支持参数 --godot-bin、--scene、--timeout-sec、--project-path、--strict；参数缺失或无效时返回非零并输出可读错误信息。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; 运行后在 logs/ci/<date>/smoke/ 下产出 headless.out.log、headless.err.log、summary.json；三者均存在且包含本次运行信息。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs; Strict mode returns 0 only when logs contain either [TEMPLATE_SMOKE_READY] or [DB] opened; otherwise returns non-zero. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd Tests.Godot/tests/Adapters/Db/test_journal_modes_cross_restart.gd; 非严格模式允许在缺少成功标记时仍返回 0，但必须生成日志与 summary.json。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs; Timeout and exit-code semantics must stay aligned with the PowerShell headless runner and be validated by the same scenario comparison. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd; 本地 Windows 运行已完成，并验证退出码与产物可复核。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; CI headless 已运行并确认 logs/ci/** 归档可复核。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Acceptance explicitly records ADR Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Acceptance explicitly records chapter alignment: CH01/CH06/CH07/CH10. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; 在 ACCEPTANCE_CHECKLIST.md 的 Test-Refs 中逐条列出主任务 Test Refs 清单中的具体路径（含 logs/ci/<date>/smoke 与 Tests/...）。 Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Local Windows validation must specify and record a known-good scene path; missing known-good scene path fails acceptance. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; The same acceptance record must include run command, exit code, and verification results for all three artifacts (headless.out.log, headless.err.log, summary.json) for the known-good scene run. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Overlay index file `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md` must include Task 53 back-link with strict/non-strict behavior and artifact entry points; missing entry fails acceptance. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs; Feature slice file `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md` must include Task 53 Test-Refs and acceptance conclusion aligned with ACCEPTANCE_CHECKLIST.md; any mismatch fails acceptance. Refs: Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs\nTest Strategy: Run locally on Windows against a known-good scene and verify exit code + artifacts.; Run in CI headless and confirm logs are archived under logs/ci/**.\nLabels: backlog; guardrails; newrouge; m1; ci\nOwner: architecture\nLayer: ci",
+        "testStrategy": "Run locally on Windows against a known-good scene and verify exit code + artifacts.\nRun in CI headless and confirm logs are archived under logs/ci/**.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 54,
         "title": "Integrate GdUnit4 suites into quality_gates.py",
         "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
-        "details": "Story: PH13-BACKLOG-B2\nADR Refs: ADR-0005, ADR-0011, ADR-0024\nChapters: CH06, CH07, CH10\nTest Refs: logs/ci/<date>/quality-gates/summary.json, logs/e2e/<date>/gdunit/junit.xml, Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd, Game.Core.Tests/Tasks/Task32AcceptanceTests.cs\nAcceptance: quality_gates.py exposes flags to run GdUnit4 suites and includes them in the unified decision. Refs: Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd; Adapters+Security suite is treated as hard gate; Integration/UI remains soft gate initially. Refs: Game.Core.Tests/Tasks/Task32AcceptanceTests.cs; All outputs land under logs/ci/** and logs/e2e/** with a machine-readable summary. Refs: Game.Core.Tests/Tasks/Task32AcceptanceTests.cs\nTest Strategy: Run quality_gates.py locally with and without GdUnit4 flags to verify behavior. Validate CI job consumes the summary JSON for pass/fail decisions.\nLabels: ci, quality-gates, gdunit4, headless\nOwner: architecture\nLayer: ci\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\n",
-        "testStrategy": "Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.\nValidate CI job consumes the summary JSON for pass/fail decisions.\n",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "53"
+          53
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0005",
-          "ADR-0011",
-          "ADR-0024"
-        ],
-        "archRefs": [
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Integrate GdUnit4 suites into quality_gates.py.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1\nADR Refs: ADR-0005; ADR-0011; ADR-0024\nChapters: CH06; CH07; CH10; CH01\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs; Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs; Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd; Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs; Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs; Game.Core.Tests/Tasks/Task32AcceptanceTests.cs; Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd\nAcceptance: 在 Windows 环境运行 quality_gates.py 且启用 GdUnit4 参数时，必须在同次执行记录中看到被选 suite 的执行结果与门禁类型；未启用该参数时，必须将对应 suite 明确标记为未运行，并写入 logs/ci/<date>/task-0054.json。 Refs: Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; 在 Windows/PowerShell 下，quality_gates.py 必须能解析并实际执行 GdUnit4 相关参数；脚本退出码必须与总体门禁结论一致（通过=0，失败=非0），并将结果写入 logs/ci/<date>/task-0054.json。 Refs: Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; Overlay 文档的 Test-Refs 必须覆盖与 GdUnit4 接线相关的验证项，且每一项都能回链到本任务描述或测试策略，避免引入与本任务无关的引用。 Refs: Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; quality_gates.py 必须提供参数以显式选择是否运行 GdUnit4 suites，并在结果中区分 adapters/security 与 integration/UI 两类 suites。 Refs: Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; adapters/security suites 任一失败必须导致总体门禁失败；integration/UI suites 失败仅记录为软门禁，不阻断总体通过。 Refs: Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs; 执行后必须生成单一机器可读 summary JSON，包含各 suite 状态、门禁级别与总体门禁结论，并输出到 logs/ci/<date>/quality-gates/summary.json。 Refs: Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd; GdUnit4 的 JUnit/XML 输出必须写入 logs/e2e/<date>/gdunit/junit.xml；若未生成该文件，summary 必须明确记录未生成原因。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; 本地分别在开启与关闭 GdUnit4 参数运行 quality_gates.py 时，summary 中 suites 状态必须可区分为已运行与未运行，不能以缺失字段代替。 Refs: Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; CI 任务必须以 summary JSON 的总体门禁结论作为 pass/fail 判定依据，且结论变化时 CI 结果同步变化。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs; Test-Refs 列表必须包含 logs/ci/<date>/quality-gates/summary.json 与 logs/e2e/<date>/gdunit/junit.xml，且路径与实际产物一致。 Refs: Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs; Test-Refs 列表必须包含 Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd 与 Game.Core.Tests/Tasks/Task32AcceptanceTests.cs，并可对应到本任务验收项。 Refs: Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd; 在 ACCEPTANCE_CHECKLIST.md 中必须明确列出 ADR-0005、ADR-0011、ADR-0024 作为本任务门禁语义口径引用。 Refs: Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs\nTest Strategy: Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.; Validate CI job consumes the summary JSON for pass/fail decisions.\nLabels: backlog; guardrails; newrouge; m1; ci\nOwner: architecture\nLayer: ci",
+        "testStrategy": "Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.\nValidate CI job consumes the summary JSON for pass/fail decisions.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 55,

@@ -34,7 +34,7 @@ Test-Refs:
 - [ ] 状态推进遵循 Command-only 入口，不允许 UI 隐式推进决定性状态。
 
 ## 三、代码实现验收
-- [ ] 契约落盘在 `Game.Core/Contracts/**`，Core 不依赖 Godot API。
+- [ ] 契约落盘在 `Game.Core/Contracts`，Core 不依赖 Godot API。
 - [ ] 奖励候选集锁定包含可审计标识（stable ids / order / provenance）。
 - [ ] Continue 阻断路径可解释并可取证（坏档、迁移失败、校验失败）。
 - [ ] autosave 写失败路径可解释并可取证，至少覆盖 `temp_write_failed` 与 `atomic_replace_failed`，且失败后保留上一份有效 autosave。
@@ -60,12 +60,12 @@ Test-Refs:
 - `logs/ci/2026-02-14/sc-semantic-gate-all/summary.json`
 
 **Planned（后续实现落地）**
-- `Game.Core.Tests/Determinism/OfferLockingTests.cs`
-- `Game.Core.Tests/Save/SaveResumeBoundaryTests.cs`
-- `Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs`
-- `Tests.Godot/Smoke/ContinueGateTests.gd`
+- `Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs`
+- `Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs`
+- `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`
+- `Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd`
 - `Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs`
-- `Game.Core.Tests/Tasks/Task0057AcceptanceTests.cs`
+- `Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs`
 
 ## 七、Task1 Evidence Path Template（Task1 环境证据路径模板，ACC:T1.3）
 - `logs/ci/<YYYY-MM-DD>/env-evidence/godot-bin-env.txt`
@@ -245,7 +245,7 @@ GDD reference: `docs/gdd/ui-gdd-flow.md`.
   - Relic runtime closure across combat and run boundaries: `T88`, `T99`, `T110`, `T112`
 - Governance split tasks `T102`, `T103`, `T104`, `T108`, `T109`, and `T112` must be accepted as review-scope narrowing and evidence work, not as gameplay feature implementation.
 - Contract baseline rule for `T70-T116`:
-  - reuse existing `Game.Core/Contracts/**` files when the public boundary already exists
+  - reuse existing `Game.Core/Contracts` files when the public boundary already exists
   - add new contract files only when implementation promotes a truly new public DTO / event / interface / ownership snapshot
   - potion-related contract files remain a documented future gap until `T77` or `T111` implementation is actually selected
 
