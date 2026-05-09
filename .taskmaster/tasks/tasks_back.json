@@ -6603,7 +6603,12 @@
       ],
       "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "test_strategy": [
+      "Run targeted GdUnit: py -3 scripts/sc/test.py --type gdunit --task-id 125 --godot-bin $env:GODOT_BIN",
+      "Run targeted xUnit (deck/runtime evidence): dotnet test Game.Core.Tests/Game.Core.Tests.csproj --filter \"FullyQualifiedName~DeckServiceTests\"",
+      "Run targeted xUnit (workflow governance evidence): dotnet test Game.Core.Tests/Game.Core.Tests.csproj --filter \"FullyQualifiedName~Task0071WorkflowSelectionEvidenceTests\""
+    ]
   },
   {
     "id": "NG-0126",

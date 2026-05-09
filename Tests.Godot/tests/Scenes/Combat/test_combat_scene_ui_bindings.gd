@@ -553,6 +553,9 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 
 # ACC:T18.2
 # ACC:T64.1
+# ACC:T125.1
+# ACC:T125.2
+# ACC:T125.3
 func test_snapshot_binding_matches_hand_energy_draw_and_discard_values() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -665,6 +668,7 @@ func test_draw_transition_from_deckservice_updates_hand_membership_order_and_cou
 
 
 # ACC:T81.3
+# ACC:T125.4
 func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_deck_state() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -714,6 +718,7 @@ func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_d
 # ACC:T80.9
 # ACC:T80.10
 # ACC:T71.3
+# ACC:T125.6
 func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -749,6 +754,7 @@ func test_playing_existing_cards_updates_visible_combat_state_and_piles() -> voi
 
 # ACC:T83.1
 # ACC:T83.2
+# ACC:T125.5
 func test_play_card_overplay_tax_and_end_turn_reset_follow_shared_runtime_progression() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -790,6 +796,8 @@ func test_play_card_overplay_tax_and_end_turn_reset_follow_shared_runtime_progre
 
 
 # ACC:T83.3
+# ACC:T125.7
+# ACC:T125.8
 func test_combat_scene_owner_surfaces_remain_authoritative_across_play_and_end_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
