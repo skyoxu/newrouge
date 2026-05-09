@@ -5796,11 +5796,7 @@
       "NG-0045",
       "NG-0053",
       "NG-0066",
-      "NG-0088",
-      "NG-0091",
-      "NG-0094",
-      "NG-0110",
-      "NG-0113"
+      "NG-0088"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 117,
@@ -5875,7 +5871,8 @@
         113
       ],
       "ui_entry": "MainMenu / Boot Flow"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0118",
@@ -5905,13 +5902,7 @@
       "NG-0069",
       "NG-0079",
       "NG-0084",
-      "NG-0085",
-      "NG-0098",
-      "NG-0103",
-      "NG-0107",
-      "NG-0109",
-      "NG-0114",
-      "NG-0115"
+      "NG-0085"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 118,
@@ -6000,7 +5991,8 @@
         115
       ],
       "ui_entry": "HUD / Prompt / Outcome Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0119",
@@ -6035,21 +6027,7 @@
       "NG-0082",
       "NG-0083",
       "NG-0086",
-      "NG-0087",
-      "NG-0089",
-      "NG-0090",
-      "NG-0095",
-      "NG-0096",
-      "NG-0097",
-      "NG-0099",
-      "NG-0100",
-      "NG-0101",
-      "NG-0104",
-      "NG-0105",
-      "NG-0106",
-      "NG-0111",
-      "NG-0112",
-      "NG-0116"
+      "NG-0087"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 119,
@@ -6151,7 +6129,8 @@
         116
       ],
       "ui_entry": "Combat HUD / Pressure / Camera Feedback"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0120",
@@ -6218,7 +6197,8 @@
         12
       ],
       "ui_entry": "Resource / Build / Progression Panels"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0121",
@@ -6240,11 +6220,7 @@
       "NG-0058",
       "NG-0063",
       "NG-0065",
-      "NG-0068",
-      "NG-0092",
-      "NG-0093",
-      "NG-0102",
-      "NG-0108"
+      "NG-0068"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 121,
@@ -6323,7 +6299,8 @@
         108
       ],
       "ui_entry": "Settings / Save / Meta Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0122",
@@ -6387,7 +6364,9 @@
       "Config Audit And Migration Surfaces acceptance must explicitly map implementation and verification evidence to each scope item (T02, T31, T32, T33, T37, T40); missing any scope mapping fails acceptance, and out-of-scope gameplay changes do not count toward completion. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs",
       "Config Audit And Migration Surfaces validation must include both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence must record auditable pass/fail outcomes for each framework; when one framework has no applicable case, acceptance must explicitly record that framework as N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Tasks/test_task0002_acceptance.gd Game.Core.Tests/Tasks/Task2NamespaceCoexistenceTests.cs Game.Core.Tests/Tasks/Task2RootBuildGateTests.cs Game.Core.Tests/Tasks/Task0031AcceptanceTests.cs"
     ],
-    "contractRefs": [],
+    "contractRefs": [
+      "core.run.state.transitioned"
+    ],
     "ui_wiring_candidate": {
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "screen_group": "Config Audit And Migration Surfaces",
@@ -6400,7 +6379,8 @@
         40
       ],
       "ui_entry": "Config Summary / Audit / Migration Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0123",
@@ -6409,10 +6389,7 @@
     "depends_on": [
       "NG-0070",
       "NG-0086",
-      "NG-0087",
-      "NG-0097",
-      "NG-0098",
-      "NG-0103"
+      "NG-0087"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 123,
@@ -6477,7 +6454,8 @@
         103
       ],
       "ui_entry": "Map / Continue / Route Return Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0124",
@@ -6548,7 +6526,8 @@
         83
       ],
       "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0125",
@@ -6558,9 +6537,7 @@
       "NG-0071",
       "NG-0080",
       "NG-0081",
-      "NG-0082",
-      "NG-0095",
-      "NG-0096"
+      "NG-0082"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 125,
@@ -6625,7 +6602,8 @@
         96
       ],
       "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0126",
@@ -6633,11 +6611,7 @@
     "owner": "architecture",
     "depends_on": [
       "NG-0073",
-      "NG-0076",
-      "NG-0089",
-      "NG-0105",
-      "NG-0108",
-      "NG-0116"
+      "NG-0076"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 126,
@@ -6702,7 +6676,8 @@
         116
       ],
       "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0127",
@@ -6712,11 +6687,7 @@
       "NG-0075",
       "NG-0077",
       "NG-0078",
-      "NG-0079",
-      "NG-0090",
-      "NG-0100",
-      "NG-0101",
-      "NG-0104"
+      "NG-0079"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 127,
@@ -6783,7 +6754,8 @@
         104
       ],
       "ui_entry": "Combat Feedback / Status / Resolution Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0128",
@@ -6791,9 +6763,7 @@
     "owner": "architecture",
     "depends_on": [
       "NG-0084",
-      "NG-0085",
-      "NG-0114",
-      "NG-0115"
+      "NG-0085"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 128,
@@ -6856,19 +6826,15 @@
         115
       ],
       "ui_entry": "Reward Scene / Offer Choice / Return Path"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0129",
     "story_id": "BACKLOG-TASKMASTER-M1",
     "owner": "architecture",
     "depends_on": [
-      "NG-0088",
-      "NG-0099",
-      "NG-0106",
-      "NG-0110",
-      "NG-0111",
-      "NG-0112"
+      "NG-0088"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 129,
@@ -6933,18 +6899,14 @@
         112
       ],
       "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback"
-    }
+    },
+    "semantic_review_tier": "full"
   },
   {
     "id": "NG-0130",
     "story_id": "BACKLOG-TASKMASTER-M1",
     "owner": "architecture",
-    "depends_on": [
-      "NG-0091",
-      "NG-0107",
-      "NG-0109",
-      "NG-0113"
-    ],
+    "depends_on": [],
     "taskmaster_exported": false,
     "taskmaster_id": 130,
     "title": "Wire UI: Settlement And Run Summary Surfaces",
@@ -7006,6 +6968,7 @@
         113
       ],
       "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces"
-    }
+    },
+    "semantic_review_tier": "full"
   }
 ]
