@@ -1,0 +1,23 @@
+# task-125-chapter6-semantic-needs-fix-stop-loss
+
+- Title: task-125-chapter6-semantic-needs-fix-stop-loss
+- Date: 2026-05-09
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T125
+- Git Head: 4effdd55a6677d570d611d675eafe8f42d04af2b
+- Why now: Chapter 6 recovery and route both point to the same repeated review-needs-fix family, while the reviewer still flags a semantic-equivalence P1 in the acceptance language.
+- Context: The latest pipeline is green on deterministic evidence, but `sc-llm-review` still reports `semantic-equivalence-auditor` Needs Fix. The repeated-family stop-loss is active and `6.8` is not worthwhile for this round.
+- Decision: Record the semantic P1 as a stop-loss decision, keep the task open, and avoid another full Chapter 6 rerun until the acceptance language is changed materially.
+- Consequences: T125 remains Needs Fix at P1, but the next action is a targeted acceptance-language cleanup and documentation update rather than re-running the full review pipeline.
+- Recovery impact: Recovery should prefer the recorded decision and inspect evidence under the latest pipeline artifacts before any future rerun.
+- Validation: py -3 scripts/python/dev_cli.py resume-task --task-id 125 --recommendation-only --recommendation-format json
+- Validation: py -3 scripts/python/dev_cli.py chapter6-route --task-id 125 --recommendation-only --recommendation-format json
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-09/sc-review-pipeline-task-125/latest.json
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-05-09-task-125-wire-ui-combat-runtime-bootstrap-surfaces-acceptance-test-generation-plan.md
+- Related task id(s): `125`
+- Related run id: `71c9adaa18664bb0b6181fa42451b0f6`
+- Related latest.json: `logs/ci/2026-05-09/sc-review-pipeline-task-125/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-09/sc-review-pipeline-task-125-71c9adaa18664bb0b6181fa42451b0f6`
