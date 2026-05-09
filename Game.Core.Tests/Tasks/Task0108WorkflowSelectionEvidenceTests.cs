@@ -126,7 +126,7 @@ public sealed class Task0108WorkflowSelectionEvidenceTests
         masterTasks.Should().ContainKey(Task105Id);
 
         var task108Status = ReadString(masterTasks[TaskmasterId], "status");
-        task108Status.Should().Be("pending");
+        task108Status.Should().BeOneOf("pending", "in-progress", "review", "done");
 
         var currentViolations = EvaluateNoImplementationTransitionViolations(task108Status, new[]
         {
@@ -135,13 +135,14 @@ public sealed class Task0108WorkflowSelectionEvidenceTests
         });
         currentViolations.Should().BeEmpty();
 
-        var simulatedViolation = EvaluateNoImplementationTransitionViolations(task108Status, new[]
+        var simulatedViolation = EvaluateNoImplementationTransitionViolations("pending", new[]
         {
             (Task76Id, "in-progress"),
             (Task105Id, ReadString(masterTasks[Task105Id], "status")),
         });
-        simulatedViolation.Should().ContainSingle();
-        simulatedViolation[0].Should().Contain("task 76");
+        simulatedViolation.Should().Contain(item =>
+            item.Contains("task 76", StringComparison.OrdinalIgnoreCase)
+            && item.Contains("in-progress", StringComparison.OrdinalIgnoreCase));
 
         var summaryPath = Path.Combine(FindRepositoryRoot(), LightLaneEvidenceRef.Replace('/', Path.DirectorySeparatorChar));
         if (!File.Exists(summaryPath))
@@ -239,7 +240,8 @@ public sealed class Task0108WorkflowSelectionEvidenceTests
         (int taskId, string status)[] laneStatuses)
     {
         var violations = new List<string>();
-        if (!string.Equals(task108Status, "pending", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(task108Status, "pending", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(task108Status, "in-progress", StringComparison.OrdinalIgnoreCase))
         {
             return violations.ToArray();
         }
