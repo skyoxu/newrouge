@@ -63,6 +63,7 @@ def _canonical_input_snapshot(source_payload: dict[str, Any]) -> dict[str, Any]:
         'action': source_payload.get('action'),
         'repo_root': source_payload.get('repo_root'),
         'source_files': source_payload.get('source_files', []),
+        'task_scope': source_payload.get('task_scope', {}),
         'completed_master_tasks_count': source_payload.get('completed_master_tasks_count'),
         'needed_wiring_features_count': source_payload.get('needed_wiring_features_count'),
         'feature_family_counts': source_payload.get('feature_family_counts', {}),
@@ -457,13 +458,14 @@ def _build_closure_summary(
             [path for row in section_rows for path in _split_path_list(row.get('governance_path', ''))]
         )
         scope_task_ids = list(candidate.get('scope_task_ids') or [])
-        wiring_task_id = int(config.get('wiring_task_id') or 0)
-        related_wiring_row = next((row for row in task_rows if row.get('task') == f'T{wiring_task_id:02d}'), {})
+        raw_wiring_task_id = config.get('wiring_task_id')
+        wiring_task_id = int(raw_wiring_task_id) if isinstance(raw_wiring_task_id, int) and int(raw_wiring_task_id) > 0 else None
+        related_wiring_row = next((row for row in task_rows if wiring_task_id is not None and row.get('task') == f'T{wiring_task_id:02d}'), {})
         blocker_class = 'surface-missing' if pending_surfaces else ('evidence-missing' if evidence_status != 'runtime' else 'none')
         ready_for_done = evidence_status == 'runtime' and len(pending_surfaces) == 0 and not gap_to_close
         write_back_contract = {
             'task_id': wiring_task_id,
-            'task_ref': f'T{wiring_task_id:02d}',
+            'task_ref': f'T{wiring_task_id:02d}' if wiring_task_id is not None else '',
             'current_recommendation': write_back_recommendation,
             'ready_for_done': ready_for_done,
             'blocker_class': blocker_class,
@@ -574,6 +576,8 @@ def orchestrate(
             ],
         ),
     ]
+    if chapter7_profile_path:
+        commands[0][1].extend(['--chapter7-profile-path', str(chapter7_profile_path)])
     if write_doc:
         commands.append(
             (

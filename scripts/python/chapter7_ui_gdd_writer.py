@@ -190,20 +190,31 @@ def _extract_semantics(items: list[dict[str, Any]], *, bucket: str, profile: dic
             if any(key in low for key in ["complete only when", "passes only if", "must", "visible", "show", "display", "enters", "render", "publishes"]):
                 completion_texts.append(text)
 
-    def pick(texts: list[str], default: str) -> str:
+    def pick(texts: list[str]) -> str:
         for text in texts:
             candidate = text.split("Refs:")[0].strip()
             if candidate:
                 return candidate
-        return default
+        return ""
 
     defaults = dict(bucket_profile(profile, bucket).get("semantics_defaults") or {})
+    default_failure = str(defaults.get("failure") or "").strip()
+    default_empty = str(defaults.get("empty") or "").strip()
+    default_completion = str(defaults.get("completion") or "").strip()
+
+    picked_failure = pick(failure_texts)
+    picked_empty = pick(empty_texts)
+    picked_completion = pick(completion_texts)
 
     return {
-        "failure": pick(failure_texts, str(defaults.get("failure") or "")),
-        "empty": pick(empty_texts, str(defaults.get("empty") or "")),
-        "completion": pick(completion_texts, str(defaults.get("completion") or "")),
+        "failure": default_failure or picked_failure,
+        "empty": default_empty or picked_empty,
+        "completion": default_completion or picked_completion,
     }
+
+
+def _candidate_mode(profile: dict[str, Any], bucket: str) -> str:
+    return str(bucket_profile(profile, bucket).get("candidate_mode") or "task").strip().lower() or "task"
 
 
 def _build_candidate_specs(summary: dict[str, Any], *, profile: dict[str, Any]) -> list[dict[str, Any]]:
@@ -213,7 +224,7 @@ def _build_candidate_specs(summary: dict[str, Any], *, profile: dict[str, Any]) 
 
     candidates: list[dict[str, Any]] = []
     for bucket, items in buckets.items():
-        if not items:
+        if not items or _candidate_mode(profile, bucket) == "audit-only":
             continue
         title = _bucket_title(profile, bucket)
         semantics = _extract_semantics(items, bucket=bucket, profile=profile)
@@ -329,7 +340,9 @@ def _slice_lines(summary: dict[str, Any], *, profile: dict[str, Any]) -> tuple[l
                 "",
             ]
         )
-        candidate_spec = candidate_specs_by_bucket[bucket]
+        candidate_spec = candidate_specs_by_bucket.get(bucket)
+        if candidate_spec is None:
+            continue
         requirement_ids = candidate_spec["requirement_ids"]
         expected_logs = candidate_spec["validation_artifact_targets"]
         test_refs = candidate_spec["test_refs"]
@@ -583,6 +596,7 @@ def main(argv: list[str] | None = None) -> int:
         tasks_back_path=Path(args.tasks_back_path),
         tasks_gameplay_path=Path(args.tasks_gameplay_path),
         overlay_root_path=Path(args.overlay_root_path),
+        chapter7_profile_path=Path(args.chapter7_profile_path) if args.chapter7_profile_path else None,
     )
     out = write_ui_gdd_flow(
         repo_root=repo_root,
