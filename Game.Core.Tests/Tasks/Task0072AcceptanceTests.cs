@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -20,7 +20,7 @@ public sealed class Task0072AcceptanceTests
 
     // ACC:T72.2 / ACC:T72.8 governance: semantic anchors must point to behavior tests.
     [Fact]
-    public void ShouldBindSemanticAcceptanceToBehaviorTests_InsteadOfRefsOnlyChecks()
+    public void ShouldBindSemanticAcceptanceToBehaviorTests_WhenRefsAreValidated()
     {
         foreach (var taskFile in new[] { TasksBackPath, TasksGameplayPath })
         {
@@ -45,7 +45,7 @@ public sealed class Task0072AcceptanceTests
 
     // ACC:T72.8 implementation contract: no second card-definition path family.
     [Fact]
-    public void ShouldKeepCombatSceneOnExistingCardDefinitionDataFamily_WithoutFallbackModel()
+    public void ShouldKeepCombatSceneOnExistingCardDefinitionDataFamily_WhenFallbackModelIsAbsent()
     {
         var source = ReadRepositoryText(CombatScenePath);
         source.Should().Contain("CardDefinitionCandidatePaths", "card-definition loading must remain data-driven.");
@@ -56,7 +56,7 @@ public sealed class Task0072AcceptanceTests
 
     // ACC:T72.9 governance: workflow-selection record must exist before implementation evidence judgement.
     [Fact]
-    public void ShouldRequireWorkflowSelectionEvidenceBeforeImplementationEvidence()
+    public void ShouldRequireWorkflowSelectionEvidence_WhenClaimingImplementationDelivery()
     {
         var tempEvidenceDir = Path.Combine(Path.GetTempPath(), $"task0072-evidence-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempEvidenceDir);
@@ -206,3 +206,4 @@ public sealed class Task0072AcceptanceTests
         throw new DirectoryNotFoundException("Unable to locate repository root containing NewRouge.sln.");
     }
 }
+

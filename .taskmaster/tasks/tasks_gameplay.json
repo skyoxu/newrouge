@@ -8083,19 +8083,17 @@
     ],
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-      "Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs",
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs"
     ],
     "acceptance": [
-      "In Combat Scene / Hand / Drag-To-Play Surfaces, the Chapter 7 UI wiring slice allows the player to inspect cards, play a card by drag or click, and target only legal enemies during combat; if any of these actions cannot be completed in runtime, acceptance fails. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "The slice wires the standalone surfaces needed for this candidate (CombatHud, HandPanel, TargetPreviewOverlay) as selected or created surfaces, and card-play interactions are rendered through those wired surfaces rather than omitted placeholders. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "System response is driven by runtime data/events: card text is data-driven, legal-target feedback is shown during targeting, and card-play resolution runs through the CombatService-backed shared runtime path without scene-local branching; bypass paths fail acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Before combat runtime and hand state are available, the UI shows an explicit empty state with no playable hand actions and no targeting preview; showing playable controls or preview in that state fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "On invalid target, missing definition, or rejected play, the UI shows failure feedback and leaves energy, HP, and pile state unchanged after the rejected action; any mutation of those states on rejection fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Completion is satisfied only when localized card content is readable, legal enemies can be targeted, and valid plays resolve through the shared combat runtime while deterministic domain state remains behind existing contracts and no unrelated gameplay behavior is introduced. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Acceptance evidence explicitly maps implementation and verification to each scope item T72, T74, and T83; if any one scope item lacks mapping, the task fails, and out-of-scope gameplay changes are excluded from completion credit. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Validation includes both referenced GdUnit and xUnit suites, and Chapter 7 artifacts record auditable pass/fail outcomes per framework; if one framework has no applicable case, the artifact must explicitly mark it N/A with rationale instead of omitting it. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+      "In Combat Scene / Hand / Drag-To-Play Surfaces, the Chapter 7 UI wiring slice allows the player to inspect card information, and to play a selected card through both drag-to-play and click-to-play interactions, with both entry modes resolving through the same CombatService-backed runtime card-play path; only legal enemies can be targeted during combat, and if any of these interactions cannot be completed at runtime, acceptance fails. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs",
+      "The slice wires the standalone surfaces needed for this candidate (CombatHud, HandPanel, TargetPreviewOverlay) as selected or created surfaces, and card-play interactions are rendered through those wired surfaces rather than omitted placeholders. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs",
+      "System response is driven by runtime data/events: card text is data-driven, legal-target feedback is shown during targeting, and card-play resolution runs through the CombatService-backed shared runtime path without scene-local branching; bypass paths fail acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs",
+      "Until both combat runtime and hand state are available, the UI stays in explicit empty state: no playable hand action and no targeting preview are shown; if either prerequisite is missing and playable controls or targeting preview are shown, acceptance fails. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs",
+      "On invalid target, missing definition, or rejected play, the UI shows failure feedback and leaves energy, HP, and pile state unchanged after the rejected action; any mutation of those states on rejection fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs",
+      "Completion is satisfied only when localized card content is readable, legal enemies can be targeted, and valid plays resolve through the shared combat runtime path with deterministic contract-bound state transitions and without introducing scene-local alternate card-play branches. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0124AcceptanceTests.cs"
     ],
     "contractRefs": [],
     "ui_wiring_candidate": {
@@ -8108,7 +8106,12 @@
       ],
       "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "test_strategy": [
+      "Run task-scoped GdUnit coverage for combat UI bindings and feedback surfaces.",
+      "Run task-scoped xUnit acceptance checks for combat card play runtime path and rejection invariants.",
+      "Capture Chapter 7 artifact evidence mapping pass/fail (or N/A with rationale) across both frameworks."
+    ]
   },
   {
     "id": "GM-0225",
