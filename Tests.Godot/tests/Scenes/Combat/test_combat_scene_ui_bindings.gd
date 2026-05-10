@@ -1,4 +1,5 @@
-﻿extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
+﻿# ACC:T124.1
+extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
 const COMBAT_SCENE := preload("res://Game.Godot/Scenes/Combat.tscn")
 
@@ -23,6 +24,9 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 # ACC:T116.3
 # ACC:T116.4
 # ACC:T116.6
+
+
+# ACC:T124.1
 func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -186,6 +190,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 # ACC:T89.4
 # ACC:T89.5
 # ACC:T95.7
+# ACC:T124.2
 func test_task89_data_backed_enemy_runtime_ownership_paths_and_negative_path_stability() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -221,6 +226,7 @@ func test_task89_data_backed_enemy_runtime_ownership_paths_and_negative_path_sta
 
 # ACC:T77.1
 # ACC:T77.3
+# ACC:T124.3
 func test_shared_runtime_play_card_pipeline_has_deterministic_fingerprint_and_single_ordering_key_path() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -265,6 +271,7 @@ func test_shared_runtime_play_card_pipeline_has_deterministic_fingerprint_and_si
 
 # ACC:T77.1
 # ACC:T77.3
+# ACC:T124.4
 func test_shared_runtime_play_card_pipeline_rejection_path_is_deterministic_and_state_stable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -310,6 +317,7 @@ func test_shared_runtime_play_card_pipeline_rejection_path_is_deterministic_and_
 
 # ACC:T76.2
 # ACC:T76.6
+# ACC:T124.5
 func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_position() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -341,6 +349,7 @@ func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_posi
 
 
 # ACC:T76.3
+# ACC:T124.6
 func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_execution() -> void:
 	var ai_definitions_payload := '{"combatState":"Opening","rngStream":[0],"enemies":[{"enemyId":"enemy_t76_d1","intents":[{"intentId":"intent.attack","iconId":"icon_sword","textKey":"combat.intent.attack_6"}]},{"enemyId":"enemy_t76_d2","intents":[{"intentId":"intent.block","iconId":"icon_shield","textKey":"combat.intent.block_4"}]}]}'
 	var output_once: Array[String] = []
@@ -381,6 +390,7 @@ func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_
 
 
 # ACC:T75.1
+# ACC:T124.7
 func test_status_surface_shows_explicit_status_labels_stacks_and_feedback_details() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -457,6 +467,7 @@ func test_status_surface_shows_explicit_status_labels_stacks_and_feedback_detail
 
 
 # ACC:T75.5
+# ACC:T124.8
 func test_status_texts_on_combat_surface_render_in_en_and_zh_cn_without_raw_keys() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -1910,3 +1921,4 @@ func test_t101_refusal_path_keeps_ui_snapshot_stable_and_does_not_emit_success_i
 	assert_that(sfx_after).is_equal(sfx_before)
 	assert_that(latest_feedback.find("refused") >= 0).is_true()
 	assert_that(latest_feedback.find("insufficient energy") >= 0).is_true()
+
