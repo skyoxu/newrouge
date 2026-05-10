@@ -8243,18 +8243,16 @@
     "test_refs": [
       "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
       "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
-      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
-      "Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
     ],
     "acceptance": [
-      "In combat runtime, Enemy Intent Preview / Enemy Runtime Surfaces must present enemy intents, no-repeat guardrail outcomes, and invalid-definition fallback information so the player can read and verify these states directly in UI, not only through logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Before this slice is accepted, the UI wiring must explicitly use or instantiate the candidate standalone surfaces (EnemyIntentPanel, EnemyRosterPanel, EnemyFallbackNotice) and evidence must show which surfaces are used. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Given runtime combat data/events, the UI must show data-backed enemy previews, multi-enemy routing, resolved enemy turns, and invalid-definition fallback as visible state changes; missing any listed state fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Until runtime enemies are instantiated, enemy intent and roster surfaces must remain in an explicit empty state with no enemy entries rendered, and tests/evidence must confirm this pre-instantiation behavior. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "On invalid enemy definition, illegal target attempt, or no-repeat guard refusal, the UI must render an explicit failure/fallback indication in combat state; silent ignore or logs-only signaling does not satisfy acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Completion requires governed surfaces where the player can inspect multi-enemy state, enemy intent previews, resolved enemy turns, and invalid-definition fallback, while deterministic domain state remains behind existing contracts and no unrelated gameplay behavior is introduced. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Acceptance evidence must map implementation and verification to each scope item (T73, T76, T89, T105, T108, T116); if any scope item lacks mapping, the task fails, and out-of-scope gameplay changes cannot be counted as completion evidence. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-      "Validation evidence must include both referenced GdUnit and xUnit suites with auditable pass/fail results per framework; if one framework has no applicable case, evidence must explicitly mark it N/A with rationale instead of omission. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
+      "In combat runtime, Enemy Intent Preview / Enemy Runtime Surfaces must render per-enemy intent preview and no-repeat guard outcomes in UI state (not logs), so players can directly verify intent visibility and refusal outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "EnemyIntentPanel, EnemyRosterPanel, and EnemyFallbackNotice must expose readable, player-facing enemy intent/roster/fallback information in runtime UI state (not node presence only), and evidence must map each responsibility to concrete rendered text/state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Given runtime combat data/events, UI must show per-enemy routed intent previews, resolved enemy-turn state transitions (pre-resolution -> post-resolution), and invalid-definition fallback as visible state changes; cross-enemy data bleed or missing any listed state fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Until runtime enemies are instantiated, enemy intent and roster surfaces must remain in an explicit empty state with no enemy entries rendered; once the first runtime enemy is instantiated, the same surfaces must leave empty state and render enemy-bound intent/roster data in the same update cycle or next deterministic UI tick. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "On invalid enemy definition, illegal target rejection, or no-repeat guard refusal, UI must show an explicit per-event fallback/refusal marker with player-readable reason text, and preserve deterministic unchanged state for the rejected action; silent ignore or logs-only signaling fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "Contract-boundary closure: Enemy intent/resolution surfaces consume existing contracts only and must not mutate gameplay state outside the documented enemy-intent/resolution UI flow; this closure item cannot substitute for behavior assertions in ACC:T126.1-T126.5 and ACC:T126.7. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "When multiple enemies exist, switching/targeting/routing between enemies must keep each enemy intent/resolution bound to its own identity; showing another enemy's intent/result in the current slot fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd"
     ],
     "contractRefs": [],
     "ui_wiring_candidate": {
@@ -8270,7 +8268,12 @@
       ],
       "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "test_strategy": [
+      "xunit",
+      "gdunit4",
+      "acceptance_refs"
+    ]
   },
   {
     "id": "GM-0227",
