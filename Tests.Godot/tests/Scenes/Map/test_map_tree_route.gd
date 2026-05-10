@@ -81,6 +81,9 @@ const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
 # ACC:T97.8
 # ACC:T97.9
 # ACC:T97.10
+# ACC:T123.1
+# ACC:T123.2
+# ACC:T123.3
 func test_map_exposes_five_floor_route_tree_and_only_first_floor_is_initially_available() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)
@@ -159,6 +162,9 @@ func test_map_exposes_five_floor_route_tree_and_only_first_floor_is_initially_av
 # ACC:T97.3
 # ACC:T97.4
 # ACC:T97.5
+# ACC:T123.4
+# ACC:T123.5
+# ACC:T123.6
 func test_tree_node_click_routes_current_floor_and_unlocks_next_floor_after_completion() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)
@@ -229,6 +235,7 @@ func test_tree_node_click_routes_current_floor_and_unlocks_next_floor_after_comp
 # acceptance: ACC:T70.1
 # acceptance: ACC:T70.4
 # acceptance: ACC:T70.7
+# ACC:T123.7
 func test_route_transitions_cover_all_m1_node_types_without_parallel_execution_path() -> void:
 	var main := await _load_main_on_map()
 	await _walk_m1_route(main, ["combat-01", "event-02", "shop-03", "rest-04"])
@@ -251,6 +258,7 @@ func test_route_transitions_cover_all_m1_node_types_without_parallel_execution_p
 
 # acceptance: ACC:T70.7
 # acceptance: ACC:T86.4
+# ACC:T123.8
 func test_locked_future_floor_node_refuses_route_without_progress_mutation() -> void:
 	var main := await _load_main_on_map()
 	var map = _current_scene_instance(main)
