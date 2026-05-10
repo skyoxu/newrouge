@@ -191,6 +191,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 # ACC:T89.5
 # ACC:T95.7
 # ACC:T124.2
+# ACC:T126.1
 func test_task89_data_backed_enemy_runtime_ownership_paths_and_negative_path_stability() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -315,6 +316,7 @@ func test_shared_runtime_play_card_pipeline_rejection_path_is_deterministic_and_
 
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
+# ACC:T126.2
 # ACC:T76.2
 # ACC:T76.6
 # ACC:T124.5
@@ -348,6 +350,7 @@ func test_enemy_intent_preview_ui_only_operations_do_not_advance_intent_rng_posi
 	assert_that(turn_after).is_equal(turn_before)
 
 
+# ACC:T126.3
 # ACC:T76.3
 # ACC:T124.6
 func test_enemy_intent_preview_is_repeatable_for_same_inputs_without_enemy_turn_execution() -> void:
@@ -1101,6 +1104,7 @@ func test_missing_definition_source_rejects_play_and_never_uses_hardcoded_card_f
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
+# ACC:T126.4
 # ACC:T76.5
 func test_enemy_intent_default_surface_follows_external_ai_definitions_without_hardcoded_fallback() -> void:
 	var scene := _new_scene()
@@ -1118,6 +1122,7 @@ func test_enemy_intent_default_surface_follows_external_ai_definitions_without_h
 # ACC:T83.7
 # ACC:T77.4
 # ACC:T105.1
+# ACC:T126.6
 func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -1151,6 +1156,7 @@ func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	assert_that(intent_turn_after_end).is_equal(2)
 
 
+# ACC:T126.5
 # ACC:T105.5
 func test_end_turn_executes_currently_displayed_intent_snapshot_without_pre_resolution_substitution() -> void:
 	var scene := _new_scene()
@@ -1398,6 +1404,7 @@ func test_play_card_rejects_when_runtime_snapshot_is_invalid_and_keeps_state_sta
 	assert_that(feedback.find("refused") >= 0).is_true()
 
 
+# ACC:T126.7
 # acceptance anchor: ACC:T73.4
 func test_dead_enemy_is_removed_from_target_set_and_remaining_enemy_state_stays_deterministic_with_visible_intent() -> void:
 	var scene := _new_scene()
@@ -1501,6 +1508,7 @@ func test_invalid_snapshot_contract_json_is_rejected_without_ui_mutation() -> vo
 	assert_that(after_invalid).is_equal(before_invalid)
 
 
+# ACC:T126.8
 # ACC:T64.4
 # ACC:T78.8
 func test_turn_controls_flow_keeps_command_feedback_observable() -> void:
