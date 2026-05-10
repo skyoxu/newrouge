@@ -8036,7 +8036,12 @@
       ],
       "ui_entry": "Map / Continue / Route Return Surfaces"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "test_strategy": [
+      "Run task-scoped GdUnit coverage for map route, node selection, and continue transition surfaces.",
+      "Run task-scoped xUnit acceptance checks for map act configuration and route state invariants.",
+      "Capture Chapter 7 artifact evidence mapping pass/fail (or N/A with rationale) across both frameworks."
+    ]
   },
   {
     "id": "GM-0224",
