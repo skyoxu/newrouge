@@ -23,6 +23,7 @@ public sealed class Task0084AcceptanceTests
     private static readonly string RepoRoot = ResolveRepoRoot();
 
     // acceptance: ACC:T84.1
+    // ACC:T128.1
     [Fact]
     [Trait("acceptance", "ACC:T84.1")]
     public void ShouldBindFirstEntryThreeOfferGenerationToSharedPoolRefs_WhenValidatingT84AcceptanceLine1()
@@ -37,6 +38,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.2
+    // ACC:T128.2
     [Fact]
     [Trait("acceptance", "ACC:T84.2")]
     public void ShouldBindDeterministicFirstEntryConstraintToPoolServiceRef_WhenValidatingT84AcceptanceLine2()
@@ -51,6 +53,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.3
+    // ACC:T128.3
     [Fact]
     [Trait("acceptance", "ACC:T84.3")]
     public void ShouldBindChapter6ScopeConstraintToTestRefsOnly_WhenValidatingT84AcceptanceLine3()
@@ -67,6 +70,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.4
+    // ACC:T128.4
     [Fact]
     [Trait("acceptance", "ACC:T84.4")]
     public void ShouldBindInvalidPoolFallbackDeferralToRewardSceneRef_WhenValidatingT84AcceptanceLine4()
@@ -88,6 +92,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.5
+    // ACC:T128.5
     [Fact]
     [Trait("acceptance", "ACC:T84.5")]
     public void ShouldRequireWorkflowSelectionEvidenceBeforeImplementationEvidence_WhenValidatingT84AcceptanceLine5()
@@ -122,6 +127,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.5
+    // ACC:T128.6
     [Fact]
     [Trait("acceptance", "ACC:T84.5")]
     public void ShouldRejectWorkflowSelectionGuard_WhenSelectionEvidenceIsMissing()
@@ -147,6 +153,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.6
+    // ACC:T128.7
     [Fact]
     [Trait("acceptance", "ACC:T84.6")]
     public void ShouldBindSceneAndIntegrationCoverageForFirstEntryOfferGeneration_WhenValidatingT84AcceptanceLine6()
@@ -162,6 +169,7 @@ public sealed class Task0084AcceptanceTests
     }
 
     // acceptance: ACC:T84.7
+    // ACC:T128.8
     [Fact]
     [Trait("acceptance", "ACC:T84.7")]
     public void ShouldBindSharedPoolOwnerConstraintToCoreAndSceneRefs_WhenValidatingT84AcceptanceLine7()

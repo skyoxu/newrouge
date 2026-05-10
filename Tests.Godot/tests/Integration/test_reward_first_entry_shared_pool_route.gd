@@ -38,6 +38,7 @@ func _extract_offer_ids(snapshot: Dictionary) -> Array[String]:
 
 
 # acceptance: ACC:T84.6
+# acceptance: ACC:T128.3
 func test_first_entry_reward_offer_must_use_shared_pool_on_existing_route() -> void:
 	var main := await _load_main_on_map_for_t84()
 	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
@@ -74,6 +75,7 @@ func test_first_entry_reward_offer_must_use_shared_pool_on_existing_route() -> v
 
 
 # acceptance: ACC:T84.2
+# acceptance: ACC:T128.7
 func test_first_entry_reward_offer_should_be_deterministic_across_independent_entries_for_same_context() -> void:
 	var main_a := await _load_main_on_map_for_t84()
 	var start_a := main_a.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary

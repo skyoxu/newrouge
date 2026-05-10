@@ -167,6 +167,7 @@ func _contains_non_gameplay_route_target(history: Array[String]) -> bool:
 
 
 # acceptance: ACC:T61.1
+# acceptance: ACC:T128.2
 # RED-FIRST: this fails until encounter completion routes into a real standalone Reward scene asset.
 func test_combat_completion_routes_to_real_reward_scene_asset_not_placeholder_or_harness() -> void:
     var main := await _load_main_on_map()
@@ -174,6 +175,14 @@ func test_combat_completion_routes_to_real_reward_scene_asset_not_placeholder_or
     assert_bool(ResourceLoader.exists(REWARD_SCENE)).is_true()
 
     await _start_and_complete_encounter(main, "combat-01", "combat")
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+    assert_object(reward_scene.get_node_or_null("VBox/CardList")).is_not_null()
+    assert_object(reward_scene.get_node_or_null("VBox/Actions")).is_not_null()
+    assert_object(reward_scene.get_node_or_null("VBox/Actions/ConfirmButton")).is_not_null()
+    assert_object(reward_scene.get_node_or_null("VBox/Actions/SkipButton")).is_not_null()
+    assert_object(reward_scene.get_node_or_null("VBox/Feedback")).is_not_null()
+
     var history := _route_history(main)
 
     assert_str(_current_scene_path(main)).is_equal(REWARD_SCENE)
@@ -186,6 +195,7 @@ func test_combat_completion_routes_to_real_reward_scene_asset_not_placeholder_or
 # acceptance: ACC:T85.4
 # acceptance: ACC:T115.1
 # acceptance: ACC:T115.4
+# acceptance: ACC:T128.5
 # RED-FIRST: this fails until Reward confirm resolves exactly once and returns to Map.
 func test_confirm_from_reward_resolves_once_then_refuses_second_resolution_without_route_mutation() -> void:
     var main := await _load_main_on_map()
@@ -251,6 +261,7 @@ func test_confirm_after_reselection_writes_final_selected_card_id_only_once() ->
 # acceptance: ACC:T61.2
 # acceptance: ACC:T85.4
 # acceptance: ACC:T115.2
+# acceptance: ACC:T128.6
 func test_event_completion_then_skip_reward_resolves_once_without_deck_mutation_and_second_skip_is_refused() -> void:
     var main := await _load_main_on_map()
 
@@ -277,6 +288,7 @@ func test_event_completion_then_skip_reward_resolves_once_without_deck_mutation_
     assert_int(history_after_second.size()).is_equal(history_after_first.size())
 
 # acceptance: ACC:T115.3
+# acceptance: ACC:T128.2
 func test_confirm_and_skip_return_to_same_route_owned_owner_target_without_secondary_flow() -> void:
     var main := await _load_main_on_map()
 
@@ -377,6 +389,32 @@ func test_reward_scene_skip_locks_reward_surface_and_blocks_late_confirm() -> vo
     assert_bool(select_after_skip).is_false()
     assert_bool(bool(reward_scene.call("IsLockedForTest"))).is_true()
 
+# acceptance: ACC:T128.6
+func test_skip_not_allowed_is_rejected_without_route_or_deck_mutation_after_resolution() -> void:
+    var main := await _load_main_on_map()
+    await _start_and_complete_encounter(main, "combat-12", "combat")
+
+    var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+    assert_bool(bool(reward_scene.call("SelectChoiceForTest", 0))).is_true()
+
+    var confirm_first := _resolve_reward_once(main, "confirm")
+    await get_tree().process_frame
+    assert_bool(bool(confirm_first.get("ok", false))).is_true()
+    assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
+
+    var history_before := _route_history(main)
+    var deck_before := _run_deck_ids(main)
+
+    var skip_not_allowed := _resolve_reward_once(main, "skip")
+    await get_tree().process_frame
+    var history_after := _route_history(main)
+    var deck_after := _run_deck_ids(main)
+
+    assert_bool(bool(skip_not_allowed.get("ok", false))).is_false()
+    assert_array(history_after).is_equal(history_before)
+    assert_array(deck_after).is_equal(deck_before)
+
 
 # acceptance: ACC:T85.5
 func test_reward_resolution_does_not_mutate_run_hp_or_gold_within_selection_phase_scope() -> void:
@@ -403,6 +441,8 @@ func test_reward_resolution_does_not_mutate_run_hp_or_gold_within_selection_phas
 
 # acceptance: ACC:T61.5
 # acceptance: ACC:T85.7
+# acceptance: ACC:T128.7
+# acceptance: ACC:T128.4
 func test_reenter_reward_does_not_refresh_locked_offer_and_illegal_action_is_rejected() -> void:
     var main := await _load_main_on_map()
 

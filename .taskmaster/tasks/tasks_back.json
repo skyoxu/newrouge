@@ -6818,17 +6818,18 @@
       "Game.Core.Tests/Services/CardPoolSelectionTests.cs",
       "Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
       "Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs",
-      "Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
+      "Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd"
     ],
     "acceptance": [
-      "In the Reward Scene / Offer Choice / Return Path flow, the player can inspect reward offers, choose exactly one of three offers, skip only when skip is allowed, and then return through the owned route boundary in one end-to-end run. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "The UI wiring includes concrete standalone surfaces for this slice (RewardScene, RewardChoicePanel, RewardReturnPanel, or explicit equivalent surfaces), and acceptance fails if these surfaces are missing or not wired to the Reward Offer And Confirm flow. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "At runtime, the slice visibly enforces stable offer locking, invalid-pool fallback, confirm gating, writeback, and owned-route return behavior; each behavior is observable in UI/state outcomes rather than inferred from implementation internals. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "Before a valid offer set is resolved at the current reward boundary, the UI shows no reward offers; once a valid set is resolved, offers are shown, and any display of offers before resolution fails acceptance. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "On failure paths, the UI explicitly shows invalid-pool fallback, re-entry lock refusal, and confirm/skip rejection outcomes as applicable, and route state remains unchanged when these refusals occur (no silent mutation). Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "Completion is satisfied only when the player can inspect one stable three-offer set, perform confirm or skip exactly once, and return through the owned route boundary, while deterministic domain state remains behind existing contracts and no unrelated gameplay behavior is introduced. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "Acceptance evidence explicitly maps implementation and verification to each scope item (T84, T85, T114, T115); missing any scope mapping fails this task, and out-of-scope gameplay changes do not count toward completion. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
-      "Validation includes both referenced GdUnit and xUnit suites, and Chapter 7 artifact evidence records auditable pass/fail for each framework; if one framework has no applicable case, it is explicitly recorded as N/A with rationale instead of being omitted. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd"
+      "ACC:T128.1 In Reward Scene / Offer Choice / Return Path, player can inspect offers, choose one, and return through the owned route boundary in an end-to-end run. Refs: Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "ACC:T128.2 UI wiring exposes RewardScene, RewardChoicePanel, and RewardReturnPanel as standalone surfaces; before resolution, confirm is rejected without a valid selection and the return surface remains route-owned. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd",
+      "ACC:T128.3 Stable shared-pool offer locking is visible in runtime outcomes and deterministic for same context before resolution. Refs: Game.Core.Tests/Services/CardPoolSelectionTests.cs Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "ACC:T128.4 Invalid-pool fallback, re-entry lock refusal, and invalid confirm/skip rejection are explicit user-visible outcomes; each failure-path action leaves route state unchanged (no silent mutation). Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "ACC:T128.5 Confirm gating enforces single successful resolution and refuses repeated confirm attempts without route mutation. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "ACC:T128.6 Skip path is allowed only when skip eligibility is true; when allowed it resolves exactly once, blocks late confirm/selection, and preserves route-owned return behavior; when not allowed it is explicitly rejected without route mutation. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "ACC:T128.7 Completion requires exactly one stable three-offer set and exactly one confirm/skip resolution with owned-route return. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd",
+      "ACC:T128.8 Empty-state invariant: before the active reward boundary resolves a valid three-offer set, RewardChoicePanel shows no reward offers and confirm/skip actions are explicitly rejected without route-state mutation. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd"
     ],
     "contractRefs": [],
     "ui_wiring_candidate": {
@@ -6842,7 +6843,10 @@
       ],
       "ui_entry": "Reward Scene / Offer Choice / Return Path"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "test_strategy": [
+      "Validate reward UI wiring with task-level and route-roundtrip runtime assertions for stable offers, confirm/skip gating, invalid/failure outcomes, and owned-route return semantics. Refs: Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs, Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd, Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd, Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd."
+    ]
   },
   {
     "id": "NG-0129",
