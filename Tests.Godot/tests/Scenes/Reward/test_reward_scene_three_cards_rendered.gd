@@ -160,6 +160,7 @@ func test_reward_scene_uses_shared_pool_offer_on_first_entry_route() -> void:
 	assert_str(card1_text).is_not_equal("Reward Card 1")
 	assert_bool(card1_text.begins_with("ui.reward.card")).is_false()
 
+# acceptance: ACC:T128.4
 func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void:
 	var main := await _load_main_on_map()
 	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
@@ -193,6 +194,46 @@ func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void
 	assert_object(card_list).is_not_null()
 	var card1_text := str(card_list.get_child(0).text)
 	assert_str(card1_text).is_equal(feedback)
+
+# acceptance: ACC:T128.8
+func test_reward_scene_empty_state_hides_offers_and_rejects_actions_before_valid_offer_resolution() -> void:
+	var main := await _load_main_on_map()
+	var nav := main.get_node_or_null("ScreenNavigator")
+	assert_object(nav).is_not_null()
+	var route_before := []
+	if nav.has_method("GetRouteHistoryForTest"):
+		route_before = nav.call("GetRouteHistoryForTest")
+
+	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_bool(bool(enter_result.get("ok", false))).is_true()
+
+	var context_id := _resolve_reward_context_id(main, "combat-01", "combat", 1)
+	assert_bool(context_id.is_empty()).is_false()
+	_inject_invalid_shared_pool_offer(main, context_id)
+
+	var complete_result := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_bool(bool(complete_result.get("ok", false))).is_true()
+	assert_str(str(complete_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+	await get_tree().process_frame
+
+	var reward = _current_scene_instance(main)
+	assert_object(reward).is_not_null()
+	assert_bool(reward.has_method("GetCardCountForTest")).is_true()
+	assert_bool(reward.has_method("SelectChoiceForTest")).is_true()
+	assert_bool(reward.has_method("ConfirmSelectedForTest")).is_true()
+	assert_bool(reward.has_method("SkipForTest")).is_true()
+
+	assert_int(int(reward.call("GetCardCountForTest"))).is_equal(0)
+	var card_list := reward.get_node_or_null("VBox/CardList")
+	assert_object(card_list).is_not_null()
+	assert_int(card_list.get_child_count()).is_equal(0)
+	assert_bool(bool(reward.call("SelectChoiceForTest", 0))).is_false()
+	assert_bool(bool(reward.call("ConfirmSelectedForTest"))).is_false()
+	assert_bool(bool(reward.call("SkipForTest"))).is_false()
+
+	if nav.has_method("GetRouteHistoryForTest"):
+		var route_after = nav.call("GetRouteHistoryForTest")
+		assert_array(route_after).is_equal(route_before)
 
 # acceptance: ACC:T84.6
 func test_reward_scene_first_entry_offer_is_deterministic_for_same_context_before_resolution() -> void:
