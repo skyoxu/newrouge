@@ -6,6 +6,8 @@ sc-acceptance-check: local, reproducible acceptance gate.
 from __future__ import annotations
 
 import os
+import json
+import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
@@ -37,6 +39,46 @@ from _summary_schema import SummarySchemaError, validate_sc_acceptance_summary
 from _taskmaster import resolve_triplet
 from _unit_metrics import collect_unit_metrics
 from _util import ci_dir, repo_root, today_str, write_json, write_text
+
+
+def _is_example_task_fixture_payload(tasks_json: Path, tasks_back: Path, tasks_gameplay: Path) -> bool:
+    try:
+        if not (tasks_json.exists() and tasks_back.exists() and tasks_gameplay.exists()):
+            return False
+        master = json.loads(tasks_json.read_text(encoding="utf-8"))
+        back = json.loads(tasks_back.read_text(encoding="utf-8"))
+        gameplay = json.loads(tasks_gameplay.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if not isinstance(back, list) or not isinstance(gameplay, list):
+        return False
+    if len(back) <= 2 and len(gameplay) <= 2:
+        back_ids = {str(x.get("id")) for x in back if isinstance(x, dict)}
+        gameplay_ids = {str(x.get("id")) for x in gameplay if isinstance(x, dict)}
+        if {"EX-0011", "T1-back"} & back_ids or {"EX-0011", "T1-gameplay"} & gameplay_ids:
+            return True
+    tasks = ((master.get("master") or {}).get("tasks") or []) if isinstance(master, dict) else []
+    if isinstance(tasks, list):
+        for item in tasks:
+            if isinstance(item, dict) and str(item.get("title") or "").strip() == "Template Task1 evidence gate demo":
+                return True
+    return False
+
+
+def _restore_task_triplet_from_head_if_needed() -> None:
+    root = repo_root()
+    tasks_dir = root / ".taskmaster" / "tasks"
+    tasks_json = tasks_dir / "tasks.json"
+    tasks_back = tasks_dir / "tasks_back.json"
+    tasks_gameplay = tasks_dir / "tasks_gameplay.json"
+    if not _is_example_task_fixture_payload(tasks_json, tasks_back, tasks_gameplay):
+        return
+    rels = [
+        ".taskmaster/tasks/tasks.json",
+        ".taskmaster/tasks/tasks_back.json",
+        ".taskmaster/tasks/tasks_gameplay.json",
+    ]
+    subprocess.run(["git", "checkout", "--", *rels], cwd=str(root), check=False, capture_output=True, text=True)
 
 
 def _collect_metrics(steps: list[StepResult]) -> dict[str, Any]:
@@ -243,6 +285,11 @@ def main() -> int:
     args = build_parser().parse_args()
     if bool(getattr(args, "self_check", False)):
         return _run_self_check(args)
+
+    # CI guardrail: some test fixtures may stage example taskmaster triplets into .taskmaster/tasks.
+    # Ensure acceptance-check reads the committed task triplet instead of fixture payloads.
+    _restore_task_triplet_from_head_if_needed()
+
     task_id = parse_task_id(args.task_id)
 
     try:
