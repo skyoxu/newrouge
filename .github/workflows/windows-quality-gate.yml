@@ -296,7 +296,11 @@ jobs:
               $spec = "${{ github.event.pull_request.title }}"
             }
 
-            if ($spec -match 'Task\s*\[([^\]]+)\]') { $spec = $Matches[1] }
+            if ($spec -match 'Task\s*\[([^\]]+)\]') {
+              $spec = $Matches[1]
+            } elseif ($spec -match '(?i)\btask\s*[:#-]?\s*(\d+(?:\.\d+)?)\b') {
+              $spec = $Matches[1]
+            }
             $spec = ([string]$spec -replace '\s', '').Trim()
 
             if ([string]::IsNullOrWhiteSpace($spec)) {
