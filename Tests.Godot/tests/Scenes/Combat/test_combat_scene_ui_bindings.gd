@@ -1528,11 +1528,10 @@ func test_turn_controls_flow_keeps_command_feedback_observable() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
-	var root := scene as Control
-	var hand := root.get_node("HUD/HandCards") as ItemList
-	hand.select(0)
-
-	var requested := bool(scene.call("RequestPlaySelectedCardForTest"))
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t126_ui", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t126_ui"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var requested := bool(scene.call("RequestTurnActionForTest", "end_turn"))
 	assert_that(requested).is_true()
 
 	var dispatched := scene.call("GetDispatchedCommandsForTest") as Array
@@ -1540,7 +1539,7 @@ func test_turn_controls_flow_keeps_command_feedback_observable() -> void:
 	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
 
 	assert_that(dispatched.size()).is_equal(1)
-	assert_that(str(dispatched[0])).is_equal("play_card")
+	assert_that(str(dispatched[0])).is_equal("end_turn")
 	assert_that(feedback_history.size()).is_equal(1)
 	assert_that(latest_feedback).is_not_empty()
 	assert_that(latest_feedback.find("accepted") >= 0).is_true()
