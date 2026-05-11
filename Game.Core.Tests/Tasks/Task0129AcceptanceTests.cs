@@ -17,7 +17,6 @@ public sealed class Task0129AcceptanceTests
     private const string TasksBackPath = ".taskmaster/tasks/tasks_back.json";
     private const string TasksGameplayPath = ".taskmaster/tasks/tasks_gameplay.json";
     private const string CandidatesPath = "docs/gdd/ui-gdd-flow.candidates.json";
-    private const string AcceptanceSummaryPath = "logs/ci/2026-05-11/sc-acceptance-check-task-129/summary.json";
     private const string CombatUiBindingsGdPath = "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd";
     private const string ThisTestRef = "Game.Core.Tests/Tasks/Task0129AcceptanceTests.cs";
 
@@ -260,7 +259,7 @@ public sealed class Task0129AcceptanceTests
         afterSnapshot.FeedbackMessage.Should().Contain("accepted");
 
         // Keep framework-status checks as secondary audit evidence.
-        var summary = LoadJsonFromRepoRoot(AcceptanceSummaryPath);
+        var summary = LoadJsonFromRepoRoot(ResolveAcceptanceSummaryPath());
         summary.GetProperty("status").GetString().Should().Be("ok");
     }
 
@@ -487,6 +486,65 @@ private static string LoadTextFromRepoRoot(string repoRelativePath)
         {
             var candidate = Path.Combine(current.FullName, repoRelativePath.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        return repoRelativePath;
+    }
+
+    private static string ResolveAcceptanceSummaryPath()
+    {
+        var roots = new[]
+        {
+            "logs/ci",
+            "logs\\ci",
+        };
+
+        foreach (var root in roots)
+        {
+            var absoluteRoot = ResolveDirectoryFromRepoRoot(root);
+            if (!Directory.Exists(absoluteRoot))
+            {
+                continue;
+            }
+
+            var preferred = Directory.EnumerateFiles(absoluteRoot, "summary.json", SearchOption.AllDirectories)
+                .Where(path => path.Replace('\\', '/').Contains("/sc-acceptance-check-task-129/"))
+                .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(preferred))
+            {
+                return preferred;
+            }
+
+            var fallback = Directory.EnumerateFiles(absoluteRoot, "summary.json", SearchOption.AllDirectories)
+                .Where(path =>
+                {
+                    var normalized = path.Replace('\\', '/');
+                    return normalized.Contains("/sc-acceptance-check-task-") || normalized.Contains("/sc-acceptance-check/");
+                })
+                .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(fallback))
+            {
+                return fallback;
+            }
+        }
+
+        return "logs/ci/sc-acceptance-check/summary.json";
+    }
+
+    private static string ResolveDirectoryFromRepoRoot(string repoRelativePath)
+    {
+        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, repoRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (Directory.Exists(candidate))
             {
                 return candidate;
             }
