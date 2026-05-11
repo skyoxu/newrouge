@@ -305,7 +305,7 @@ jobs:
 
             if ([string]::IsNullOrWhiteSpace($spec) -and "${{ github.event_name }}" -eq "pull_request") {
               $headRef = "${{ github.head_ref }}"
-              if ($headRef -match '(?i)\btask[\/_-]?(\d+(?:\.\d+)?)\b') {
+              if ($headRef -match '(?i)\btask[\/_-]?t?(\d+(?:\.\d+)?)\b') {
                 $spec = $Matches[1]
               }
             }
