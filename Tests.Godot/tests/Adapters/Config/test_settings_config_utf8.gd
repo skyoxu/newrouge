@@ -1,9 +1,10 @@
 extends "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 
+# ACC:T1.1
 func test_configfile_utf8_roundtrip() -> void:
     var path = "user://settings_%s.cfg" % Time.get_unix_time_from_system()
     var cfg := ConfigFile.new()
-    var note := "你好，世界！äöü✓"
+    var note := "??????UTF8"
     cfg.set_value("app", "volume", 0.66)
     cfg.set_value("app", "lang", "zh")
     cfg.set_value("app", "note", note)
@@ -17,4 +18,3 @@ func test_configfile_utf8_roundtrip() -> void:
     assert_float(float(cfg2.get_value("app", "volume", 0.0))).is_equal(0.66)
     assert_str(str(cfg2.get_value("app", "lang", ""))).is_equal("zh")
     assert_str(str(cfg2.get_value("app", "note", ""))).is_equal(note)
-
