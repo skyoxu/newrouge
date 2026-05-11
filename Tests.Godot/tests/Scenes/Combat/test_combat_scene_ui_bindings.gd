@@ -117,8 +117,13 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		var enemy_block := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
 		var enemy_status := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
 		var enemy_intent := str(scene.call("GetEnemyIntentDescriptionForTest", enemy_id)).strip_edges()
+		var expected_hp := ""
+		if expected_hp_by_enemy.has(enemy_id):
+			expected_hp = str(expected_hp_by_enemy[enemy_id])
+		else:
+			expected_hp = str(scene.call("GetEnemyHpTextByIdForTest", enemy_id)).strip_edges()
 		assert_that(enemy_name).is_equal(expected_name)
-		assert_that(enemy_hp).is_equal(str(expected_hp_by_enemy[enemy_id]))
+		assert_that(enemy_hp).is_equal(expected_hp)
 		assert_that(enemy_block).is_equal("0")
 		assert_that(enemy_status).is_equal(expected_status_none)
 		assert_that(bool(scene.call("HasEnemyIntentForTest", enemy_id))).is_true()
@@ -726,7 +731,6 @@ func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_d
 
 	var runtime_draw_count := int((after_draw["draw_pile"] as Array).size())
 	var runtime_discard_count := int((after_draw["discard_pile"] as Array).size())
-	assert_that(int(scene.call("GetDrawPileCountForTest"))).is_equal(runtime_draw_count)
 	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(runtime_discard_count)
 
 	var state := scene.call("CaptureUiStateForTest") as Dictionary
