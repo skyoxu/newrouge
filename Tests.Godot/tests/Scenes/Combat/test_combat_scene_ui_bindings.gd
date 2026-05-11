@@ -1939,3 +1939,56 @@ func test_t101_refusal_path_keeps_ui_snapshot_stable_and_does_not_emit_success_i
 	assert_that(latest_feedback.find("refused") >= 0).is_true()
 	assert_that(latest_feedback.find("insufficient energy") >= 0).is_true()
 
+
+
+# ACC:T129.9
+func test_t129_trigger_feedback_shows_distinct_power_relic_potion_sources_across_boundaries() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}],"potions":[{"id":"healing_draught","inspectText":"Potion healing_draught","priority":8,"registrationOrder":2,"outcomeMessage":"Potion restored 6 hp"}]}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", snapshot))).is_true()
+
+	assert_that((scene.call("GetVisiblePowerIdsForTest") as Array).has("berserk_aura")).is_true()
+	assert_that((scene.call("GetVisibleRelicIdsForTest") as Array).has("obsidian_mirror")).is_true()
+	assert_that((scene.call("GetVisiblePotionIdsForTest") as Array).has("healing_draught")).is_true()
+
+	assert_that(bool(scene.call("RequestPotionInspectFromCombatSurfaceActionForTest", "healing_draught"))).is_true()
+	var potion_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(potion_feedback).contains("healing_draught")
+	assert_that(potion_feedback).contains("outcome=Potion restored 6 hp")
+
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t129_ui", 24, 24))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t129_ui"))).is_true()
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+
+	var history := scene.call("GetFeedbackHistoryForTest") as Array
+	var joined := "\n".join(history)
+	assert_that(joined.find("Power.berserk_aura") >= 0).is_true()
+	assert_that(joined.find("Relic.obsidian_mirror") >= 0).is_true()
+	assert_that(str(scene.call("GetPotionOutcomeMessageForTest", "healing_draught"))).is_equal("Potion restored 6 hp")
+
+
+# ACC:T129.10
+func test_t129_failure_visible_state_takes_precedence_over_generic_empty_placeholder() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_before := scene.call("GetFeedbackHistoryForTest") as Array
+
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_false()
+
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var feedback_after := scene.call("GetFeedbackHistoryForTest") as Array
+	assert_that(state_after).is_equal(state_before)
+	assert_that(feedback_after.size()).is_greater(int(feedback_before.size()))
+	var latest := str(feedback_after[feedback_after.size() - 1]).to_lower()
+	assert_that(latest.find("invalid") >= 0 or latest.find("reject") >= 0 or latest.find("denied") >= 0).is_true()
