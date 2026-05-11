@@ -87,6 +87,14 @@ public sealed class Task0129AcceptanceTests
         combatResult.Success.Should().BeTrue();
         combatResult.OrderingKey.Should().StartWith("combatant.player.main|");
         runSnapshot.AcquiredRelicIds.Should().BeEmpty("run boundary starts with empty ownership until acquisition");
+
+        var runService = BuildRunRelicStateService();
+        runService.TryGrantAndEquip(FirstRelicId).Should().BeTrue();
+        var runBefore = runService.CreateSnapshot();
+        runService.TryEquipExisting("relic.undefined_marker").Should().BeFalse();
+        var runAfter = runService.CreateSnapshot();
+        runAfter.AcquiredRelicIds.Should().Equal(runBefore.AcquiredRelicIds);
+        runAfter.EquippedRelicId.Should().Be(runBefore.EquippedRelicId);
     }
 
     // ACC:T129.4
@@ -123,6 +131,22 @@ public sealed class Task0129AcceptanceTests
         unknownEquip.Should().BeFalse();
         after.AcquiredRelicIds.Should().Equal(before.AcquiredRelicIds);
         after.EquippedRelicId.Should().Be(before.EquippedRelicId);
+
+        // Failure-visible UI semantics must be represented by executable behavior, not file-text grep.
+        var hud = new CombatHudExplainabilityService();
+        var baseState = new CombatHudExplainabilityState(
+            Difficulty: 1,
+            PlayerHp: 80,
+            Energy: 0,
+            DrawPileCount: 7,
+            DiscardPileCount: 0,
+            EnemyIntent: "attack",
+            TurnState: "PlayerTurn",
+            SelectedCommandOutcome: "idle");
+        var invalidAction = hud.TryInvalidAction(baseState, "invalid_preview");
+        var invalidSnapshot = hud.BuildSnapshot(invalidAction.NewState, invalidAction.FeedbackMessage);
+        invalidSnapshot.FeedbackMessage.Should().Contain("refused");
+        invalidSnapshot.FeedbackMessage.Should().Contain("invalid action");
     }
 
     // ACC:T129.6
@@ -146,62 +170,100 @@ public sealed class Task0129AcceptanceTests
     // ACC:T129.7
     [Fact]
     [Trait("acceptance", "ACC:T129.7")]
-    public void ShouldMapScopeTaskIdsAndGdUnitAnchors_WhenValidatingLine7()
+    public void ShouldMapScopeTaskIdsAndKeepOutOfScopeGameplayExcluded_WhenValidatingLine7()
     {
         AssertRefs(6);
 
         var scope = LoadRelicParticipantCandidate().GetProperty("scope_task_ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
         scope.Should().Equal(new[] { 88, 99, 106, 110, 111, 112 });
 
-        var accBack = LoadAcceptanceLines(TasksBackPath, 129);
-        accBack.Should().Contain(line => line.StartsWith("ACC:T129.7", StringComparison.Ordinal));
-        accBack.Should().Contain(line => line.Contains("Out-of-scope gameplay changes", StringComparison.OrdinalIgnoreCase));
+        // Out-of-scope gameplay exclusion: no scene-local effect stack usage in this slice behavior path.
+        var combatService = new CombatService();
+        var result = combatService.ExecutePlayCardPipeline(new PlayCardPipelineInput(
+            DifficultyId: 10,
+            CardsPlayedThisTurn: 1,
+            OverplayTriggerN: 3,
+            OverplayTaxPerCard: 1,
+            BaseCardCost: 1,
+            EnergyBefore: 3,
+            BaseDamage: 8,
+            Strength: 2,
+            WeakMultiplier: 1.0,
+            VulnerableMultiplier: 1.0,
+            IsFixedDamage: false,
+            CombatantId: "combatant.player.main",
+            StableId: FirstRelicId));
+        result.Success.Should().BeTrue();
+        result.ExecutedSteps.Should().Contain(PlayCardPipelineStep.ResolveEffect);
 
-        var gd = LoadTextFromRepoRoot(CombatUiBindingsGdPath);
-        gd.Should().Contain("ACC:T106.1");
-        gd.Should().Contain("ACC:T106.2");
-        gd.Should().Contain("ACC:T106.4");
-        gd.Should().Contain("test_t106_power_and_relic_participants_are_visible_and_inspectable_without_scene_local_stack");
-        gd.Should().Contain("GetVisiblePowerIdsForTest");
-        gd.Should().Contain("GetVisibleRelicIdsForTest");
-        gd.Should().Contain("HasPowerRelicSurfaceForTest");
+        // Out-of-scope gameplay mutation must not be introduced by this UI-wiring slice:
+        // same combat input should keep deterministic gameplay outputs unchanged.
+        var baselineInput = new PlayCardPipelineInput(
+            DifficultyId: 10,
+            CardsPlayedThisTurn: 1,
+            OverplayTriggerN: 3,
+            OverplayTaxPerCard: 1,
+            BaseCardCost: 1,
+            EnergyBefore: 3,
+            BaseDamage: 8,
+            Strength: 2,
+            WeakMultiplier: 1.0,
+            VulnerableMultiplier: 1.0,
+            IsFixedDamage: false,
+            CombatantId: "combatant.player.main",
+            StableId: FirstRelicId);
+        var before = combatService.ExecutePlayCardPipeline(baselineInput);
+        var after = combatService.ExecutePlayCardPipeline(baselineInput);
+        var expectedDamage = CombatService.CalculateDamageWithStatusMultipliers(
+            baseDamage: baselineInput.BaseDamage,
+            strength: baselineInput.Strength,
+            weakMultiplier: baselineInput.WeakMultiplier,
+            vulnerableMultiplier: baselineInput.VulnerableMultiplier,
+            isFixedDamage: baselineInput.IsFixedDamage);
+        after.Success.Should().Be(before.Success);
+        after.OverplayTax.Should().Be(before.OverplayTax);
+        after.ExecutionFingerprint.Should().Be(before.ExecutionFingerprint);
+        after.ExecutedSteps.Should().Equal(before.ExecutedSteps);
+        before.StateAfter.FinalDamage.Should().Be(expectedDamage);
+        after.StateAfter.FinalDamage.Should().Be(expectedDamage);
     }
 
     // ACC:T129.8
     [Fact]
     [Trait("acceptance", "ACC:T129.8")]
-    public void ShouldExposeAuditableXUnitAndGdUnitStatus_WhenValidatingLine8()
+    public void ShouldUseBehaviorAssertionsNotOnlyFrameworkStatus_WhenValidatingLine8()
     {
         AssertRefs(7);
 
+        // Behavior evidence from Task-local assertions: runtime ownership transitions are observable and deterministic.
+        var service = BuildRunRelicStateService();
+        service.TryGrantAndEquip(FirstRelicId).Should().BeTrue();
+        service.TryGrantAndEquip(SecondRelicId).Should().BeTrue();
+        var snapshot = service.CreateSnapshot();
+        snapshot.AcquiredRelicIds.Should().Contain(new[] { FirstRelicId, SecondRelicId });
+        snapshot.EquippedRelicId.Should().NotBeEmpty();
+
+        // Task-local UI behavior evidence: snapshot text/state must change on command acceptance.
+        var hud = new CombatHudExplainabilityService();
+        var beforeState = new CombatHudExplainabilityState(
+            Difficulty: 1,
+            PlayerHp: 80,
+            Energy: 3,
+            DrawPileCount: 7,
+            DiscardPileCount: 0,
+            EnemyIntent: "attack",
+            TurnState: "PlayerTurn",
+            SelectedCommandOutcome: "idle");
+        var accepted = hud.ApplyCommand(beforeState, "strike");
+        var afterSnapshot = hud.BuildSnapshot(accepted.NewState, accepted.FeedbackMessage);
+        afterSnapshot.Energy.Should().Be(2);
+        afterSnapshot.FeedbackMessage.Should().Contain("accepted");
+
+        // Keep framework-status checks as secondary audit evidence.
         var summary = LoadJsonFromRepoRoot(AcceptanceSummaryPath);
-
-        var accGameplay = LoadAcceptanceLines(TasksGameplayPath, 129);
-        accGameplay.Should().Contain(line => line.StartsWith("ACC:T129.8", StringComparison.Ordinal));
-        accGameplay.Should().Contain(line => line.Contains("behavior assertions tied to this slice", StringComparison.OrdinalIgnoreCase));
         summary.GetProperty("status").GetString().Should().Be("ok");
-
-        var testQuality = summary
-            .GetProperty("steps")
-            .EnumerateArray()
-            .First(step => string.Equals(step.GetProperty("name").GetString(), "test-quality", StringComparison.Ordinal))
-            .GetProperty("details");
-        var gdunit = testQuality.GetProperty("gdunit");
-        gdunit.GetProperty("tests_scanned").GetInt32().Should().BeGreaterThan(0);
-        gdunit.GetProperty("behavior_tests_total").GetInt32().Should().BeGreaterThan(0);
-
-        var unit = summary.GetProperty("metrics").GetProperty("unit").GetProperty("tests");
-        unit.GetProperty("passed").GetInt32().Should().BeGreaterThan(0);
-        unit.GetProperty("failed").GetInt32().Should().Be(0);
-
-        var taskRefsBack = LoadTaskTestRefs(TasksBackPath, 129);
-        var taskRefsGameplay = LoadTaskTestRefs(TasksGameplayPath, 129);
-        taskRefsBack.Should().Contain(item => item.EndsWith("test_combat_scene_ui_bindings.gd", StringComparison.OrdinalIgnoreCase));
-        taskRefsGameplay.Should().Contain(item => item.EndsWith("test_combat_scene_ui_bindings.gd", StringComparison.OrdinalIgnoreCase));
-
     }
 
-    
     // ACC:T129.9
     [Fact]
     [Trait("acceptance", "ACC:T129.9")]
@@ -209,14 +271,56 @@ public sealed class Task0129AcceptanceTests
     {
         AssertRefs(8);
 
-        var gd = LoadTextFromRepoRoot(CombatUiBindingsGdPath);
-        gd.Should().Contain("Power.berserk_aura");
-        gd.Should().Contain("Relic.obsidian_mirror");
-        gd.Should().Contain("WasPotionRuntimeClosureExecutedForTest");
+        // Power/relic attribution on combat boundary via stable id and ordering key.
+        var combatService = new CombatService();
+        var powerBoundary = combatService.ExecutePlayCardPipeline(new PlayCardPipelineInput(
+            DifficultyId: 10,
+            CardsPlayedThisTurn: 1,
+            OverplayTriggerN: 3,
+            OverplayTaxPerCard: 1,
+            BaseCardCost: 1,
+            EnergyBefore: 3,
+            BaseDamage: 8,
+            Strength: 2,
+            WeakMultiplier: 1.0,
+            VulnerableMultiplier: 1.0,
+            IsFixedDamage: false,
+            CombatantId: "combatant.player.main",
+            StableId: "Power.berserk_aura"));
+        powerBoundary.Success.Should().BeTrue();
+        powerBoundary.OrderingKey.Should().Contain("combatant.player.main|");
 
-        var candidate = LoadRelicParticipantCandidate();
-        var response = candidate.GetProperty("system_response").GetString() ?? string.Empty;
-        response.Should().Contain("trigger outcomes").And.Contain("combat-boundary").And.Contain("run-boundary");
+        var relicBoundary = combatService.ExecutePlayCardPipeline(new PlayCardPipelineInput(
+            DifficultyId: 10,
+            CardsPlayedThisTurn: 1,
+            OverplayTriggerN: 3,
+            OverplayTaxPerCard: 1,
+            BaseCardCost: 1,
+            EnergyBefore: 3,
+            BaseDamage: 8,
+            Strength: 2,
+            WeakMultiplier: 1.0,
+            VulnerableMultiplier: 1.0,
+            IsFixedDamage: false,
+            CombatantId: "combatant.player.main",
+            StableId: "Relic.obsidian_mirror"));
+        relicBoundary.Success.Should().BeTrue();
+
+        // Run boundary attribution via executable runtime contract (not source-text grep).
+        var hud = new CombatHudExplainabilityService();
+        var baseState = new CombatHudExplainabilityState(
+            Difficulty: 1,
+            PlayerHp: 80,
+            Energy: 3,
+            DrawPileCount: 7,
+            DiscardPileCount: 0,
+            EnemyIntent: "attack",
+            TurnState: "PlayerTurn",
+            SelectedCommandOutcome: "idle");
+        var accepted = hud.ApplyCommand(baseState, "strike");
+        var snapshot = hud.BuildSnapshot(accepted.NewState, accepted.FeedbackMessage);
+        snapshot.FeedbackMessage.Should().Contain("accepted");
+        snapshot.FeedbackMessage.Should().Contain("remaining");
     }
 
     // ACC:T129.10
@@ -226,19 +330,55 @@ public sealed class Task0129AcceptanceTests
     {
         AssertRefs(9);
 
+        // Empty state before ownership.
         var service = BuildRunRelicStateService();
         var empty = service.CreateSnapshot();
         empty.AcquiredRelicIds.Should().BeEmpty();
 
+        // Failure-visible semantics: once ownership exists, refusal keeps prior visible state (not generic empty reset).
         service.TryGrantAndEquip(FirstRelicId).Should().BeTrue();
         var before = service.CreateSnapshot();
-        var refusal = service.TryEquipExisting("relic.undefined_marker");
-        refusal.Should().BeFalse();
+        service.TryEquipExisting("relic.undefined_marker").Should().BeFalse();
         var after = service.CreateSnapshot();
 
         after.AcquiredRelicIds.Should().Equal(before.AcquiredRelicIds);
         after.EquippedRelicId.Should().Be(before.EquippedRelicId);
         after.EquippedDisplayName.Should().Be(before.EquippedDisplayName);
+        after.EquippedRelicId.Should().NotBeEmpty("failure-visible state should preserve existing owned/equipped visibility");
+
+        var hud = new CombatHudExplainabilityService();
+        var combatState = new CombatHudExplainabilityState(
+            Difficulty: 1,
+            PlayerHp: 80,
+            Energy: 0,
+            DrawPileCount: 7,
+            DiscardPileCount: 0,
+            EnemyIntent: "attack",
+            TurnState: "PlayerTurn",
+            SelectedCommandOutcome: "idle");
+        var refused = hud.ApplyCommand(combatState, "strike");
+        var refusedSnapshot = hud.BuildSnapshot(refused.NewState, refused.FeedbackMessage);
+        refusedSnapshot.FeedbackMessage.Should().Contain("refused");
+        refusedSnapshot.FeedbackMessage.Should().Contain("insufficient energy");
+    }
+
+
+    // ACC:T129.11
+    [Fact]
+    [Trait("acceptance", "ACC:T129.11")]
+    public void ShouldKeepInspectionStateSelective_WhenParticipantVisibleButNotEquipped()
+    {
+        AssertRefs(10);
+
+        var service = BuildRunRelicStateService();
+        service.TryGrantAndEquip(FirstRelicId).Should().BeTrue();
+        service.TryGrantAndEquip(SecondRelicId).Should().BeTrue();
+        service.TryEquipExisting(FirstRelicId).Should().BeTrue();
+
+        var snapshot = service.CreateSnapshot();
+        snapshot.AcquiredRelicIds.Should().Contain(new[] { FirstRelicId, SecondRelicId });
+        snapshot.EquippedRelicId.Should().Be(FirstRelicId);
+        snapshot.EquippedRelicId.Should().NotBe(SecondRelicId, "visible but not equipped participants must not be treated as equipped inspect target");
     }
 
 private static RunRelicStateService BuildRunRelicStateService()
