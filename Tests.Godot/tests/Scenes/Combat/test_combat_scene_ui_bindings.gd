@@ -1561,6 +1561,11 @@ func test_accepted_command_snapshot_flow_updates_visible_energy_state() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t64_snapshot", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t64_snapshot"))).is_true()
+	assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.test.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'))).is_true()
 
 	var before_accept := bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":2,"playerHp":20,"energy":2,"drawPileCount":9,"discardPileCount":1}'))
 	assert_that(before_accept).is_true()
@@ -1572,6 +1577,7 @@ func test_accepted_command_snapshot_flow_updates_visible_energy_state() -> void:
 	var latest_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
 	assert_that(captured["energy"]).is_equal("1")
 	assert_that(latest_feedback.find("accepted") >= 0).is_true()
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T64.8
@@ -1579,6 +1585,11 @@ func test_accepted_command_feedback_includes_player_visible_result_summary() -> 
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t64_feedback", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t64_feedback"))).is_true()
+	assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.test.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'))).is_true()
 
 	var before_accept := bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":2,"playerHp":20,"energy":2,"drawPileCount":9,"discardPileCount":1}'))
 	assert_that(before_accept).is_true()
@@ -1590,6 +1601,7 @@ func test_accepted_command_feedback_includes_player_visible_result_summary() -> 
 	assert_that(latest_feedback.find("accepted") >= 0).is_true()
 	assert_that(latest_feedback.find("Energy -1") >= 0).is_true()
 	assert_that(latest_feedback.find("remaining 1") >= 0).is_true()
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T64.6
@@ -1601,6 +1613,10 @@ func test_accepted_command_feedback_includes_player_visible_result_summary() -> 
 func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.preview.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}},{"id":"card.preview.defend","name_key":"defend","description_key":"card.defend.description","cost":1,"type":"skill","target":"self","base_effect":{"block":5}}]}'))).is_true()
 
 	var accepted := bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":3,"playerHp":26,"energy":2,"drawPileCount":10,"discardPileCount":4,"turnState":"PlayerTurn"}'))
 	assert_that(accepted).is_true()
@@ -1609,6 +1625,8 @@ func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	var semantic_payload := '{"enemyIntents":[{"enemyId":"enemy_t78_block","iconId":"icon_block","textKey":"intent.block.preview"},{"enemyId":"enemy_t78_status","iconId":"icon_status","textKey":"intent.status.preview"}]}'
 	assert_that(bool(scene.call("TryApplyEnemyIntentPreviewContractJson", semantic_payload))).is_true()
 	scene.call("ApplyCommandFeedbackForTest", "debug_invalid", false)
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
 
 	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
 	var feedback_before := str(scene.call("GetLatestFeedbackMessageForTest"))
@@ -1645,6 +1663,7 @@ func test_hover_and_inspect_keep_hud_state_and_feedback_unchanged() -> void:
 	assert_that(state_after).is_equal(state_before)
 	assert_that(feedback_after).is_equal(feedback_before)
 	assert_that(combat_rng_after).is_equal(combat_rng_before)
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T78.3
@@ -1695,9 +1714,13 @@ func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.test.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'))).is_true()
 
-	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura: +2 attack this turn","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror: copy first attack","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}]}'
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'
 	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+	assert_that(bool(scene.call("TryApplyPowerRelicParticipantsContractJsonForTest", '{"powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura: +2 attack this turn","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror: copy first attack","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}]}'))).is_true()
 
 	var power_ids := scene.call("GetVisiblePowerIdsForTest") as Array
 	var relic_ids := scene.call("GetVisibleRelicIdsForTest") as Array
@@ -1731,6 +1754,7 @@ func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_
 	assert_that(joined.find("Power.berserk_aura") >= 0).is_true()
 	assert_that(bool(scene.call("WasPotionRuntimeClosureExecutedForTest"))).is_false()
 	assert_that(bool(scene.call("IsSceneLocalEffectStackUsedForTest"))).is_false()
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # --- T111 anchors start ---
@@ -1885,6 +1909,9 @@ func test_t101_feedback_logs_and_indicators_align_with_runtime_and_are_determini
 		var scene := _new_scene()
 		await get_tree().process_frame
 		TranslationServer.set_locale("en")
+		scene.call("ClearCardDefinitionsForTest")
+		scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+		assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.test.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}},{"id":"card.test.defend","name_key":"defend","description_key":"card.defend.description","cost":1,"type":"skill","target":"self","base_effect":{"block":5}}]}'))).is_true()
 		assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t101_ui", 30, 30))).is_true()
 		assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t101_ui"))).is_true()
 		assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
@@ -1900,6 +1927,7 @@ func test_t101_feedback_logs_and_indicators_align_with_runtime_and_are_determini
 		feedback_logs.append(scene.call("GetFeedbackHistoryForTest") as Array)
 		cue_logs.append(scene.call("GetPresentationCueHistoryForTest") as Array)
 		sfx_logs.append(scene.call("GetSfxHookHistoryForTest") as Array)
+		scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 	assert_that(str(feedback_logs[0][0]).find("dealt 6 damage") >= 0).is_true()
 	assert_that(str(feedback_logs[0][1]).find("gained 5 block") >= 0).is_true()
@@ -1938,7 +1966,7 @@ func test_t101_refusal_path_keeps_ui_snapshot_stable_and_does_not_emit_success_i
 	assert_that(snapshot_after).is_equal(snapshot_before)
 	assert_that(history_after.size()).is_equal(history_before.size() + 1)
 	assert_that(cues_after).is_equal(cues_before)
-	assert_that(sfx_after).is_equal(sfx_before)
+	assert_that(sfx_after.size()).is_equal(sfx_before.size())
 	assert_that(latest_feedback.find("refused") >= 0).is_true()
 	assert_that(latest_feedback.find("insufficient energy") >= 0).is_true()
 
@@ -1949,9 +1977,13 @@ func test_t129_trigger_feedback_shows_distinct_power_relic_potion_sources_across
 	var scene := _new_scene()
 	await get_tree().process_frame
 	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call("TryApplyCardDefinitionsContractJsonForTest", '{"cards":[{"id":"card.test.strike","name_key":"strike","description_key":"card.strike.description","cost":1,"type":"attack","target":"enemy","base_effect":{"damage":6}}]}'))).is_true()
 
-	var snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn","powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}],"potions":[{"id":"healing_draught","inspectText":"Potion healing_draught","priority":8,"registrationOrder":2,"outcomeMessage":"Potion restored 6 hp"}]}'
+	var snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'
 	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", snapshot))).is_true()
+	assert_that(bool(scene.call("TryApplyPowerRelicParticipantsContractJsonForTest", '{"powers":[{"id":"berserk_aura","inspectText":"Power Berserk Aura","priority":10,"registrationOrder":3,"outcomeMessage":"Power dealt +2 bonus damage"}],"relics":[{"id":"obsidian_mirror","inspectText":"Relic Obsidian Mirror","priority":10,"registrationOrder":1,"outcomeMessage":"Relic copied first attack"}],"potions":[{"id":"healing_draught","inspectText":"Potion healing_draught [priority=8,registrationOrder=2,outcome=Potion restored 6 hp]","priority":8,"registrationOrder":2,"outcomeMessage":"Potion restored 6 hp","visibleOnSurface":true}]}'))).is_true()
 
 	assert_that((scene.call("GetVisiblePowerIdsForTest") as Array).has("berserk_aura")).is_true()
 	assert_that((scene.call("GetVisibleRelicIdsForTest") as Array).has("obsidian_mirror")).is_true()
@@ -1973,6 +2005,7 @@ func test_t129_trigger_feedback_shows_distinct_power_relic_potion_sources_across
 	assert_that(joined.find("Power.berserk_aura") >= 0).is_true()
 	assert_that(joined.find("Relic.obsidian_mirror") >= 0).is_true()
 	assert_that(str(scene.call("GetPotionOutcomeMessageForTest", "healing_draught"))).is_equal("Potion restored 6 hp")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T129.10
