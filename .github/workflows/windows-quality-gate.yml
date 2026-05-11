@@ -289,11 +289,21 @@ jobs:
               exit 0
             }
 
+            $eventName = [string]$env:GITHUB_EVENT_NAME
+            $eventPayload = $null
+            if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_EVENT_PATH) -and (Test-Path $env:GITHUB_EVENT_PATH)) {
+              try {
+                $eventPayload = Get-Content -Raw -Path $env:GITHUB_EVENT_PATH | ConvertFrom-Json
+              } catch {
+                $eventPayload = $null
+              }
+            }
+
             $spec = ""
-            if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ($eventName -eq "workflow_dispatch") {
               $spec = "${{ inputs.task_id }}"
-            } elseif ("${{ github.event_name }}" -eq "pull_request") {
-              $spec = "${{ github.event.pull_request.title }}"
+            } elseif ($eventName -eq "pull_request") {
+              $spec = [string]$eventPayload.pull_request.title
             }
 
             if ($spec -match 'Task\s*\[([^\]]+)\]') {
@@ -303,15 +313,15 @@ jobs:
             }
             $spec = ([string]$spec -replace '\s', '').Trim()
 
-            if ([string]::IsNullOrWhiteSpace($spec) -and "${{ github.event_name }}" -eq "pull_request") {
-              $headRef = "${{ github.head_ref }}"
+            if ([string]::IsNullOrWhiteSpace($spec) -and $eventName -eq "pull_request") {
+              $headRef = [string]$eventPayload.pull_request.head.ref
               if ($headRef -match '(?i)\btask[\/_-]?t?(\d+(?:\.\d+)?)\b') {
                 $spec = $Matches[1]
               }
             }
 
             if ([string]::IsNullOrWhiteSpace($spec)) {
-              if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              if ($eventName -eq "workflow_dispatch") {
                 Write-Host "SC_ACCEPTANCE skipped: workflow_dispatch input task_id is empty"
                 Set-ScTaskIds ""
                 exit 0
