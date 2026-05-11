@@ -3951,7 +3951,7 @@
           111,
           112
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
