@@ -58,7 +58,6 @@ public partial class ScreenNavigator : Node
     public void ClearRouteHistoryForTest()
     {
         _routeHistory.Clear();
-        _currentScenePath = string.Empty;
     }
 
     private void DoSwitch(PackedScene packed, string scenePath)

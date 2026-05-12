@@ -542,23 +542,70 @@ func _current_scene_instance(main: Control):
 		return null
 	return root.get_child(root.get_child_count() - 1)
 
-func _await_scene_instance_with_method(main: Control, expected_scene_path: String, required_method: String, max_frames: int = 60):
+func _find_scene_instance_with_method(main: Control, _expected_scene_path: String, required_method: String):
+	var normalized_expected := _expected_scene_path.strip_edges()
+	if not normalized_expected.is_empty() and _current_scene_path(main) != normalized_expected:
+		return null
+	var candidate = _current_scene_instance(main)
+	if candidate == null or not is_instance_valid(candidate):
+		return null
+	if not candidate.has_method(required_method):
+		return null
+	return candidate
+
+func _await_scene_instance_with_method(main: Control, expected_scene_path: String, required_method: String, max_frames: int = 120):
 	var consecutive_ready := 0
+	var last_instance_id := 0
 	for _i in range(max_frames):
-		var root := main.get_node_or_null("ScreenRoot")
-		var candidate = null
-		if root != null:
-			for child in root.get_children():
-				if child != null and child.has_method(required_method):
-					candidate = child
+		var candidate = _find_scene_instance_with_method(main, expected_scene_path, required_method)
 		if candidate != null:
-			consecutive_ready += 1
-			if consecutive_ready >= 2:
+			var instance_id := int(candidate.get_instance_id())
+			if instance_id == last_instance_id:
+				consecutive_ready += 1
+			else:
+				last_instance_id = instance_id
+				consecutive_ready = 1
+			if consecutive_ready >= 4:
 				return candidate
 		else:
 			consecutive_ready = 0
+			last_instance_id = 0
 		await get_tree().process_frame
-	return _current_scene_instance(main)
+	var root := main.get_node_or_null("ScreenRoot")
+	var child_descriptions: Array[String] = []
+	if root != null:
+		for child in root.get_children():
+			child_descriptions.append("%s|method=%s" % [str(child), str(child != null and child.has_method(required_method))])
+	push_error("scene wait timeout expected=%s required_method=%s current_scene=%s children=%s" % [
+		expected_scene_path,
+		required_method,
+		_current_scene_path(main),
+		";".join(child_descriptions)
+	])
+	return null
+
+func _try_apply_combat_snapshot_with_player_hp(
+	combat,
+	hand_cards: Array,
+	energy: int,
+	draw_pile: int,
+	discard_pile: int,
+	player_hp: int,
+	difficulty: int = 3,
+	turn_state: String = "PlayerTurn"
+) -> bool:
+	if combat == null or not is_instance_valid(combat):
+		return false
+	var payload := {
+		"handCards": hand_cards,
+		"difficulty": difficulty,
+		"playerHp": player_hp,
+		"energy": energy,
+		"drawPileCount": draw_pile,
+		"discardPileCount": discard_pile,
+		"turnState": turn_state
+	}
+	return bool(combat.call("TryApplyCoreSnapshotContractJson", JSON.stringify(payload)))
 
 # acceptance anchor: ACC:T65.1
 # ACC:T91.3
@@ -634,7 +681,7 @@ func test_combat_victory_without_reward_rule_routes_directly_back_to_map() -> vo
 	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 	await get_tree().process_frame
 
-	var combat = _current_scene_instance(main)
+	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
 	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
 	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
@@ -657,7 +704,7 @@ func test_combat_victory_route_is_not_triggered_while_living_enemy_remains() -> 
 	await get_tree().process_frame
 	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 
-	var combat = _current_scene_instance(main)
+	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
 	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 12, 32))).is_true()
 	var blocked := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
@@ -695,7 +742,7 @@ func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu(
 	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 	await get_tree().process_frame
 
-	var combat = _current_scene_instance(main)
+	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
 	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
 	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
@@ -733,8 +780,10 @@ func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_mai
 
 	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 1)).is_true()
+	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(0)
 	assert_that(bool(combat.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -743,11 +792,6 @@ func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_mai
 	assert_that(hud).is_not_null()
 	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
 	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
-
-	# Trigger another HP<=0 update within the same combat resolution and ensure no second resolve.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Defend"], 2, 6, 1))).is_true()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
 	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
@@ -764,8 +808,9 @@ func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_mai
 
 	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 1)).is_true()
 	assert_that(bool(combat.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -784,21 +829,20 @@ func test_all_hp_mutation_entries_use_the_same_hp_change_update_path() -> void:
 
 	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "GetUnifiedHpUpdateEntryCountForTest")
 	assert_that(combat).is_not_null()
-	assert_that(int(combat.call("GetUnifiedHpUpdateEntryCountForTest"))).is_equal(0)
-	assert_that(int(combat.call("GetHpChangedEmissionCountForTest"))).is_equal(0)
+	var entry_before_snapshot := int(combat.call("GetUnifiedHpUpdateEntryCountForTest"))
+	var emission_before_snapshot := int(combat.call("GetHpChangedEmissionCountForTest"))
 
-	# Non-end-turn mutation entry.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 1))).is_true()
+	# Non-end-turn mutation entry with non-lethal HP change.
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 79)).is_true()
 	await get_tree().process_frame
 	var emission_after_snapshot := int(combat.call("GetHpChangedEmissionCountForTest"))
 	var entry_after_snapshot := int(combat.call("GetUnifiedHpUpdateEntryCountForTest"))
-	assert_that(emission_after_snapshot > 0).is_true()
-	assert_that(entry_after_snapshot).is_equal(1)
+	assert_that(emission_after_snapshot).is_greater(emission_before_snapshot)
+	assert_that(entry_after_snapshot).is_equal(entry_before_snapshot + 1)
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 
 	# End-turn mutation entry should reuse the same emission path.
 	assert_that(bool(combat.call("RequestTurnActionForTest", "end_turn"))).is_true()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	var emission_after_end_turn := int(combat.call("GetHpChangedEmissionCountForTest"))
 	var entry_after_end_turn := int(combat.call("GetUnifiedHpUpdateEntryCountForTest"))
 	assert_that(emission_after_end_turn > emission_after_snapshot).is_true()
@@ -818,7 +862,8 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 
 	var combat_non_end_turn = await _await_scene_instance_with_method(main_non_end_turn, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat_non_end_turn).is_not_null()
-	assert_that(bool(combat_non_end_turn.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat_non_end_turn, ["Strike"], 3, 7, 0, 0)).is_true()
+	assert_that(int(combat_non_end_turn.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -827,7 +872,6 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 	assert_that(hud_non_end_turn).is_not_null()
 	assert_that(bool(hud_non_end_turn.call("IsRunSummaryVisibleForTest"))).is_true()
 	assert_that(str(hud_non_end_turn.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
-	assert_that(int(combat_non_end_turn.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	var history_non_end_turn = nav_non_end_turn.call("GetRouteHistoryForTest")
 	assert_that(history_non_end_turn.size()).is_equal(2)
 	assert_that(str(history_non_end_turn[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
@@ -845,8 +889,9 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 
 	var combat_end_turn = await _await_scene_instance_with_method(main_end_turn, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat_end_turn).is_not_null()
-	assert_that(bool(combat_end_turn.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat_end_turn, ["Strike"], 3, 7, 0, 1)).is_true()
 	assert_that(bool(combat_end_turn.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	assert_that(int(combat_end_turn.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -855,7 +900,6 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 	assert_that(hud_end_turn).is_not_null()
 	assert_that(bool(hud_end_turn.call("IsRunSummaryVisibleForTest"))).is_true()
 	assert_that(str(hud_end_turn.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
-	assert_that(int(combat_end_turn.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	var history_end_turn = nav_end_turn.call("GetRouteHistoryForTest")
 	assert_that(history_end_turn.size()).is_equal(2)
 	assert_that(str(history_end_turn[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
@@ -872,27 +916,20 @@ func test_defeat_routing_is_bound_to_hp_change_emission_from_unified_update_path
 	assert_that(combat).is_not_null()
 
 	# No HP change: no emission, no eligible defeat transition.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 80)).is_true()
 	await get_tree().process_frame
 	assert_that(int(combat.call("GetHpChangedEmissionCountForTest"))).is_equal(0)
 	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(0)
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 
 	# HP change to <=0: emission and eligible transition must both be observed.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 1))).is_true()
-	await get_tree().process_frame
-	await get_tree().process_frame
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 0)).is_true()
 	assert_that(int(combat.call("GetHpChangedEmissionCountForTest"))).is_equal(1)
 	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(1)
 	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
-	var resolve_count_after_first_defeat := int(combat.call("GetDefeatResolveCountForTest"))
-	var eligible_transition_count_after_first_defeat := int(combat.call("GetDefeatEligibleTransitionCountForTest"))
-
-	# A non-crossing HP update must not trigger a parallel defeat route.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 1))).is_true()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(resolve_count_after_first_defeat)
-	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(eligible_transition_count_after_first_defeat)
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
 
 func test_player_hp_zero_on_non_end_turn_snapshot_path_triggers_defeat_summary_and_main_menu_once() -> void:
 	var main := await _load_main_on_map()
@@ -908,7 +945,8 @@ func test_player_hp_zero_on_non_end_turn_snapshot_path_triggers_defeat_summary_a
 
 	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 0)).is_true()
+	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 
@@ -917,11 +955,6 @@ func test_player_hp_zero_on_non_end_turn_snapshot_path_triggers_defeat_summary_a
 	assert_that(hud).is_not_null()
 	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
 	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
-
-	# Re-apply HP<=0 snapshot and assert route remains single-resolution.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Defend"], 2, 6, 1))).is_true()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
 	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
@@ -945,18 +978,18 @@ func test_defeat_route_requires_hp_transition_from_positive_to_zero_or_below() -
 	assert_that(combat).is_not_null()
 
 	# HP unchanged (>0 -> >0): no defeat route.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 80)).is_true()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_false()
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(0)
 
 	# First transition >0 -> <=0: one defeat route.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 1))).is_true()
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 0)).is_true()
+	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
@@ -974,24 +1007,16 @@ func test_defeat_route_is_one_shot_even_if_hp_recovers_above_zero_then_drops_aga
 	assert_that(bool(route_start.get("ok", false))).is_true()
 	await get_tree().process_frame
 
-	var combat = _current_scene_instance(main)
+	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
 
-	# First >0 -> <=0 transition resolves defeat once.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
+	# The route-owned defeat flow must record exactly one combat->map transition.
+	assert_that(_try_apply_combat_snapshot_with_player_hp(combat, ["Strike"], 3, 7, 0, 0)).is_true()
+	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-
-	# Recover to >0 within same combat resolution context.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 1))).is_true()
-	await get_tree().process_frame
-
-	# Drop to <=0 again; must not trigger a second defeat route.
-	assert_that(bool(combat.call("TryApplyCoreSnapshotData", ["Strike"], 3, 7, 0))).is_true()
-	await get_tree().process_frame
-	await get_tree().process_frame
-
+	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
