@@ -316,7 +316,7 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	_refresh_surface_locale(combat)
 	await get_tree().process_frame
 	var root := combat as Control
-	var card_row := root.get_node_or_null("HUD/CardButtonRow") as HBoxContainer
+	var card_row := root.get_node_or_null("HUD/CardButtonRow") as Control
 	assert(card_row != null, "Combat scene missing card button row.")
 	assert(card_row.get_child_count() >= 2, "Combat scene must expose at least two card buttons.")
 	var strike_button := card_row.get_child(0) as Button
@@ -330,7 +330,7 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	var contract_ready := false
 	for _i in range(120):
 		if not is_instance_valid(card_row):
-			card_row = combat.get_node_or_null("CardRow") as VBoxContainer
+			card_row = combat.get_node_or_null("CardRow") as Control
 		if card_row == null or card_row.get_child_count() < 2:
 			await get_tree().process_frame
 			continue
