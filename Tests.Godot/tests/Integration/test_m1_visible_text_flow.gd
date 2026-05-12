@@ -551,7 +551,7 @@ func _await_scene_instance_with_method(main: Control, expected_scene_path: Strin
 			for child in root.get_children():
 				if child != null and child.has_method(required_method):
 					candidate = child
-		if _current_scene_path(main) == expected_scene_path and candidate != null:
+		if candidate != null:
 			consecutive_ready += 1
 			if consecutive_ready >= 2:
 				return candidate
