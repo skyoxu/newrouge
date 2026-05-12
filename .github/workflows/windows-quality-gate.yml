@@ -320,9 +320,22 @@ jobs:
               }
             }
 
+            if ([string]::IsNullOrWhiteSpace($spec) -and $eventName -eq "pull_request") {
+              $headRefEnv = [string]$env:GITHUB_HEAD_REF
+              if ($headRefEnv -match '(?i)\btask[\/_-]?t?(\d+(?:\.\d+)?)\b') {
+                $spec = $Matches[1]
+              }
+            }
+
             if ([string]::IsNullOrWhiteSpace($spec)) {
               if ($eventName -eq "workflow_dispatch") {
                 Write-Host "SC_ACCEPTANCE skipped: workflow_dispatch input task_id is empty"
+                Set-ScTaskIds ""
+                exit 0
+              }
+
+              if ($eventName -eq "pull_request") {
+                Write-Host "SC_ACCEPTANCE skipped: unable to resolve task id from PR title/head ref"
                 Set-ScTaskIds ""
                 exit 0
               }
