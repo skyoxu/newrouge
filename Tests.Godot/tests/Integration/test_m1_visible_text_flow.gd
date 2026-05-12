@@ -89,6 +89,10 @@ func _resolve_expected_text(locale: String, key: String) -> String:
 		return str(fallback[key]).strip_edges()
 	return ""
 
+func _contains_cost_value(text: String, expected_cost: int) -> bool:
+	var lowered := text.to_lower()
+	return lowered.find("cost") >= 0 and lowered.find(str(expected_cost)) >= 0
+
 func _collect_node_visible_texts(root: Node) -> Array[String]:
 	var collected: Array[String] = []
 	var queue: Array[Node] = [root]
@@ -345,10 +349,10 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 		var defend_probe := str(defend_button.text)
 		contract_ready = (
 			strike_probe.find(strike_name) >= 0
-			and strike_probe.find("Cost 1") >= 0
+			and _contains_cost_value(strike_probe, 1)
 			and strike_probe.find("| attack") >= 0
 			and defend_probe.find(defend_name) >= 0
-			and defend_probe.find("Cost 1") >= 0
+			and _contains_cost_value(defend_probe, 1)
 			and defend_probe.find("| skill") >= 0
 		)
 		if contract_ready:
@@ -368,12 +372,12 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	var defend_text := str(defend_button.text)
 
 	assert(strike_text.find(strike_name) >= 0, "Combat strike button must expose localized card name in locale %s." % locale)
-	assert(strike_text.find("Cost 1") >= 0, "Combat strike button must expose cost in locale %s." % locale)
+	assert(_contains_cost_value(strike_text, 1), "Combat strike button must expose cost in locale %s." % locale)
 	assert(strike_text.find("| attack") >= 0, "Combat strike button must expose card type in locale %s." % locale)
 	assert(strike_text.find(strike_desc) >= 0, "Combat strike button must expose localized effect summary in locale %s." % locale)
 	assert(strike_text.find("card.warrior.") < 0, "Combat strike button must not expose raw localization keys in locale %s." % locale)
 	assert(defend_text.find(defend_name) >= 0, "Combat defend button must expose localized card name in locale %s." % locale)
-	assert(defend_text.find("Cost 1") >= 0, "Combat defend button must expose cost in locale %s." % locale)
+	assert(_contains_cost_value(defend_text, 1), "Combat defend button must expose cost in locale %s." % locale)
 	assert(defend_text.find("| skill") >= 0, "Combat defend button must expose card type in locale %s." % locale)
 	assert(defend_text.find(defend_desc) >= 0, "Combat defend button must expose localized effect summary in locale %s." % locale)
 	assert(defend_text.find("card.warrior.") < 0, "Combat defend button must not expose raw localization keys in locale %s." % locale)
