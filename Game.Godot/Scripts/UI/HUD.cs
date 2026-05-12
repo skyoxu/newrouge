@@ -23,6 +23,9 @@ public partial class HUD : Control
     private Label _summaryOutcome = default!;
     private Label _summaryNodeProgress = default!;
     private Label _summaryReason = default!;
+    private Label _rewardMetadataLabel = default!;
+    private Label _relicMetadataLabel = default!;
+    private Label _resumeEvidenceLabel = default!;
     private EventBusAdapter? _eventBus;
     private Callable _domainEventCallable = default!;
     private RunDifficultyLockPolicy _difficultyPolicy = new();
@@ -30,6 +33,9 @@ public partial class HUD : Control
     private string _summaryOutcomeText = string.Empty;
     private string _summaryNodeProgressText = string.Empty;
     private string _summaryReasonText = string.Empty;
+    private string _rewardMetadataText = string.Empty;
+    private string _relicMetadataText = string.Empty;
+    private string _resumeEvidenceText = string.Empty;
     private static Dictionary<string, string>? _textFallbacks;
     private static readonly JsonDocumentOptions EventJsonOptions = new()
     {
@@ -53,6 +59,9 @@ public partial class HUD : Control
         _summaryOutcome = GetNode<Label>("RunSummaryPanel/VBox/SummaryOutcomeLabel");
         _summaryNodeProgress = GetNode<Label>("RunSummaryPanel/VBox/SummaryNodeProgressLabel");
         _summaryReason = GetNode<Label>("RunSummaryPanel/VBox/SummaryReasonLabel");
+        _rewardMetadataLabel = GetNode<Label>("RunSummaryPanel/VBox/SettlementMetadataPanel/SettlementMetadataVBox/RewardMetadataLabel");
+        _relicMetadataLabel = GetNode<Label>("RunSummaryPanel/VBox/SettlementMetadataPanel/SettlementMetadataVBox/RelicMetadataLabel");
+        _resumeEvidenceLabel = GetNode<Label>("RunSummaryPanel/VBox/ResumeEvidencePanel/ResumeEvidenceVBox/ResumeEvidenceLabel");
         _domainEventCallable = new Callable(this, nameof(OnDomainEventEmitted));
         _saveService = CompositionRoot.Instance?.SaveService;
 
@@ -81,6 +90,9 @@ public partial class HUD : Control
         _summaryOutcome.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _summaryNodeProgress.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
         _summaryReason.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
+        _rewardMetadataLabel.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
+        _relicMetadataLabel.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
+        _resumeEvidenceLabel.AutoTranslateMode = AutoTranslateModeEnum.Disabled;
     }
 
     public override void _ExitTree()
@@ -197,6 +209,12 @@ public partial class HUD : Control
 
     public string GetSummaryReasonTextForTest() => _summaryReasonText;
 
+    public string GetRewardMetadataTextForTest() => _rewardMetadataText;
+
+    public string GetRelicMetadataTextForTest() => _relicMetadataText;
+
+    public string GetResumeEvidenceTextForTest() => _resumeEvidenceText;
+
     private bool ApplyDifficultySelection(int difficultyId)
     {
         if (!_difficultyPolicy.SelectDifficulty(difficultyId))
@@ -236,24 +254,36 @@ public partial class HUD : Control
 
         if (metadata is null || metadata.OwnerSurface != RunSummaryOwnerSurface.HudOverlay)
         {
+            _runSummaryPanel.Visible = false;
             return;
         }
 
+        _runSummaryPanel.Visible = true;
         CallDeferred(
             nameof(ApplyRunSummaryMetadataDeferred),
             metadata.DifficultyId,
             metadata.Outcome,
             metadata.NodeProgress,
-            metadata.FailureOrRecoveryReason);
+            metadata.FailureOrRecoveryReason,
+            metadata.HasRewardMetadataEvidence,
+            metadata.HasRelicMetadataEvidence,
+            metadata.HasResumeEvidence);
     }
 
     public void ShowRunSummaryForTest(string outcome, int nodeProgress, string reason)
     {
         _runSummaryPanel.Visible = true;
-        ApplyRunSummaryMetadataDeferred(_difficultyPolicy.SelectedDifficultyId, outcome, nodeProgress, reason);
+        ApplyRunSummaryMetadataDeferred(_difficultyPolicy.SelectedDifficultyId, outcome, nodeProgress, reason, false, false, false);
     }
 
-    private void ApplyRunSummaryMetadataDeferred(int difficultyId, string outcome, int nodeProgress, string reason)
+    private void ApplyRunSummaryMetadataDeferred(
+        int difficultyId,
+        string outcome,
+        int nodeProgress,
+        string reason,
+        bool hasRewardMetadataEvidence,
+        bool hasRelicMetadataEvidence,
+        bool hasResumeEvidence)
     {
         if (!_difficultyPolicy.IsLocked && difficultyId >= 1 && difficultyId <= 10)
         {
@@ -261,6 +291,7 @@ public partial class HUD : Control
         }
 
         SetRunSummaryText(outcome, nodeProgress, reason);
+        SetEvidenceText(hasRewardMetadataEvidence, hasRelicMetadataEvidence, hasResumeEvidence);
     }
 
     private void SetRunSummaryText(string outcome, int nodeProgress, string reason)
@@ -272,6 +303,22 @@ public partial class HUD : Control
         _summaryOutcome.Text = _summaryOutcomeText;
         _summaryNodeProgress.Text = _summaryNodeProgressText;
         _summaryReason.Text = _summaryReasonText;
+    }
+
+    private void SetEvidenceText(bool hasRewardMetadataEvidence, bool hasRelicMetadataEvidence, bool hasResumeEvidence)
+    {
+        _rewardMetadataText = BuildEvidenceLine("Reward Metadata", hasRewardMetadataEvidence);
+        _relicMetadataText = BuildEvidenceLine("Relic Metadata", hasRelicMetadataEvidence);
+        _resumeEvidenceText = BuildEvidenceLine("Resume Evidence", hasResumeEvidence);
+
+        _rewardMetadataLabel.Text = _rewardMetadataText;
+        _relicMetadataLabel.Text = _relicMetadataText;
+        _resumeEvidenceLabel.Text = _resumeEvidenceText;
+    }
+
+    private static string BuildEvidenceLine(string label, bool hasEvidence)
+    {
+        return $"{label}: {(hasEvidence ? "Present" : "Missing")}";
     }
 
     private static string FormatRunSummaryLine(string labelKey, string value)

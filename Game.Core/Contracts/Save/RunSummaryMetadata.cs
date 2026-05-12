@@ -26,13 +26,25 @@ public sealed class RunSummaryMetadata
     [JsonPropertyName("owner_surface")]
     public RunSummaryOwnerSurface OwnerSurface { get; }
 
+    [JsonPropertyName("has_reward_metadata_evidence")]
+    public bool HasRewardMetadataEvidence { get; }
+
+    [JsonPropertyName("has_relic_metadata_evidence")]
+    public bool HasRelicMetadataEvidence { get; }
+
+    [JsonPropertyName("has_resume_evidence")]
+    public bool HasResumeEvidence { get; }
+
     public RunSummaryMetadata(
         string RunId,
         int DifficultyId,
         string Outcome,
         int NodeProgress,
         string FailureOrRecoveryReason,
-        RunSummaryOwnerSurface OwnerSurface)
+        RunSummaryOwnerSurface OwnerSurface,
+        bool HasRewardMetadataEvidence,
+        bool HasRelicMetadataEvidence,
+        bool HasResumeEvidence)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(RunId);
         ArgumentOutOfRangeException.ThrowIfLessThan(DifficultyId, 1);
@@ -47,5 +59,8 @@ public sealed class RunSummaryMetadata
         this.NodeProgress = NodeProgress;
         this.FailureOrRecoveryReason = FailureOrRecoveryReason;
         this.OwnerSurface = OwnerSurface;
+        this.HasRewardMetadataEvidence = HasRewardMetadataEvidence;
+        this.HasRelicMetadataEvidence = HasRelicMetadataEvidence;
+        this.HasResumeEvidence = HasResumeEvidence;
     }
 }

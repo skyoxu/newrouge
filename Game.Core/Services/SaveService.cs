@@ -184,7 +184,10 @@ public sealed class SaveService : ISaveService
             Outcome: summarySnapshot.Outcome,
             NodeProgress: summarySnapshot.NodeProgress,
             FailureOrRecoveryReason: summarySnapshot.FailureOrRecoveryReason,
-            OwnerSurface: summarySnapshot.OwnerSurface);
+            OwnerSurface: summarySnapshot.OwnerSurface,
+            HasRewardMetadataEvidence: summarySnapshot.HasRewardMetadataEvidence,
+            HasRelicMetadataEvidence: summarySnapshot.HasRelicMetadataEvidence,
+            HasResumeEvidence: summarySnapshot.HasResumeEvidence);
     }
 
     public async Task<ContinueLoadValidationResult> ValidateContinueLoadAsync()
@@ -405,7 +408,18 @@ public sealed class SaveService : ISaveService
                 return RunSummarySnapshot.Default;
             }
 
-            return new RunSummarySnapshot(outcome, nodeProgress, reason, ownerSurface);
+            var hasRewardMetadataEvidence = HasMetadataEvidence(document.RootElement, "reward_metadata", "reward");
+            var hasRelicMetadataEvidence = HasMetadataEvidence(document.RootElement, "relic_metadata", "relic");
+            var hasResumeEvidence = HasMetadataEvidence(document.RootElement, "resume_metadata", "resume");
+
+            return new RunSummarySnapshot(
+                outcome,
+                nodeProgress,
+                reason,
+                ownerSurface,
+                hasRewardMetadataEvidence,
+                hasRelicMetadataEvidence,
+                hasResumeEvidence);
         }
         catch (JsonException)
         {
@@ -527,6 +541,58 @@ public sealed class SaveService : ISaveService
         }
 
         return false;
+    }
+
+    private static bool HasMetadataEvidence(JsonElement root, string directPropertyName, string fallbackPropertyName)
+    {
+        if (TryReadObjectOrArrayEvidence(root, directPropertyName))
+        {
+            return true;
+        }
+
+        if (root.TryGetProperty("deferred_metadata_probe", out var probe) && probe.ValueKind == JsonValueKind.Object)
+        {
+            if (TryReadObjectOrArrayEvidence(probe, directPropertyName))
+            {
+                return true;
+            }
+
+            if (TryReadObjectOrArrayEvidence(probe, fallbackPropertyName))
+            {
+                return true;
+            }
+        }
+
+        if (root.TryGetProperty("run_summary", out var summary) && summary.ValueKind == JsonValueKind.Object)
+        {
+            if (TryReadObjectOrArrayEvidence(summary, directPropertyName))
+            {
+                return true;
+            }
+
+            if (TryReadObjectOrArrayEvidence(summary, fallbackPropertyName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryReadObjectOrArrayEvidence(JsonElement source, string propertyName)
+    {
+        if (!source.TryGetProperty(propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.Object => property.EnumerateObject().Any(),
+            JsonValueKind.Array => property.GetArrayLength() > 0,
+            JsonValueKind.String => !string.IsNullOrWhiteSpace(property.GetString()),
+            _ => false,
+        };
     }
 
     private static bool TryReadIntValue(JsonElement source, string propertyName, out int value)
@@ -821,12 +887,18 @@ public sealed class SaveService : ISaveService
         string Outcome,
         int NodeProgress,
         string FailureOrRecoveryReason,
-        RunSummaryOwnerSurface OwnerSurface)
+        RunSummaryOwnerSurface OwnerSurface,
+        bool HasRewardMetadataEvidence,
+        bool HasRelicMetadataEvidence,
+        bool HasResumeEvidence)
     {
         public static RunSummarySnapshot Default { get; } = new(
             Outcome: "Unknown",
             NodeProgress: 0,
             FailureOrRecoveryReason: "No stored run summary reason.",
-            OwnerSurface: RunSummaryOwnerSurface.HudOverlay);
+            OwnerSurface: RunSummaryOwnerSurface.HudOverlay,
+            HasRewardMetadataEvidence: false,
+            HasRelicMetadataEvidence: false,
+            HasResumeEvidence: false);
     }
 }

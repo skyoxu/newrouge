@@ -1,0 +1,21 @@
+# Task 130 Wire UI: Settlement And Run Summary Surfaces acceptance-test generation plan
+
+- Title: Task 130 Wire UI: Settlement And Run Summary Surfaces acceptance-test generation plan
+- Status: active
+- Branch: task/T130
+- Git Head: 64dfce7d92b400a4229c04c2996a43ad771c90f1
+- Goal: Control acceptance-driven test generation complexity for task 130.
+- Scope: 0 missing refs across 0 test roots; seed refs: no missing refs detected
+- Current step: Residual Needs Fix recorded after forked recovery; wait for a later change that hits the recorded reviewer anchors before paying for another 6.8.
+- Last completed step: Forked recovery closed deterministic gates and then stopped on medium sc-llm-review Needs Fix findings.
+- Stop-loss: Do not reopen 6.7 without a fresh deterministic failure. Do not rerun 6.8 when current edits do not hit the recorded reviewer anchors.
+- Next action: Prefer `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-12/sc-review-pipeline-task-130/latest.json` and only resume when new anchor hits appear.
+- Recovery command: `py -3 scripts/sc/run_review_pipeline.py --task-id 130 --resume`
+- Open questions: none recorded yet
+- Exit criteria: The next acceptance-driven test generation step is explicit and low-ambiguity.
+- Related ADRs: none yet
+- Related decision logs: `decision-logs/2026-05-12-task-130-chapter6-residual-needs-fix.md`
+- Related task id(s): `130`
+- Related run id: `e4b4c469c6ee4e7cad1155331c0a10b7`
+- Related latest.json: `logs/ci/2026-05-12/sc-review-pipeline-task-130/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-12/sc-review-pipeline-task-130-e4b4c469c6ee4e7cad1155331c0a10b7`

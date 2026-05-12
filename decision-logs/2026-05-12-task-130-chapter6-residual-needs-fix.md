@@ -1,0 +1,21 @@
+# task-130-chapter6-residual-needs-fix
+
+- Title: task-130-chapter6-residual-needs-fix
+- Date: 2026-05-12
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: task/T130
+- Git Head: 64dfce7d92b400a4229c04c2996a43ad771c90f1
+- Why now: Chapter 6 routing determined that another immediate 6.8 rerun would not be cost-effective.
+- Context: The forked recovery run is green on deterministic gates, but agent review still reports medium Needs Fix findings on sc-llm-review.
+- Decision: Record the residual Needs Fix items and stop the current fast-ship closure loop until a later change hits the same reviewer anchors.
+- Consequences: The task keeps explicit follow-up evidence instead of paying for another same-shape 6.8 rerun.
+- Recovery impact: Recovery should prefer the recorded follow-up plan over reopening 6.7 or repeating 6.8 without fresh anchor hits.
+- Validation: py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --latest logs/ci/2026-05-12/sc-review-pipeline-task-130/latest.json
+- Related ADRs: none yet
+- Related execution plans: execution-plans/2026-05-12-task-130-wire-ui-settlement-and-run-summary-surfaces-acceptance-test-generation-plan.md
+- Related task id(s): `130`
+- Related run id: `e4b4c469c6ee4e7cad1155331c0a10b7`
+- Related latest.json: `logs/ci/2026-05-12/sc-review-pipeline-task-130/latest.json`
+- Related pipeline artifacts: `logs/ci/2026-05-12/sc-review-pipeline-task-130-e4b4c469c6ee4e7cad1155331c0a10b7`
