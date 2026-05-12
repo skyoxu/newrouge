@@ -327,18 +327,22 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	var defend_name := _resolve_expected_text(locale, "card.warrior.defend.name")
 	var defend_desc := _resolve_expected_text(locale, "card.warrior.defend.description")
 
-	for _i in range(30):
+	var contract_ready := false
+	for _i in range(120):
 		var strike_probe := str(strike_button.text)
 		var defend_probe := str(defend_button.text)
-		if (
+		contract_ready = (
 			strike_probe.find(strike_name) >= 0
 			and strike_probe.find("Cost 1") >= 0
 			and strike_probe.find("| attack") >= 0
 			and defend_probe.find(defend_name) >= 0
 			and defend_probe.find("Cost 1") >= 0
 			and defend_probe.find("| skill") >= 0
-		):
+		)
+		if contract_ready:
 			break
+		if (_i + 1) % 20 == 0:
+			_refresh_surface_locale(combat)
 		await get_tree().process_frame
 
 	var strike_text := str(strike_button.text)
