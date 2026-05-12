@@ -32,6 +32,7 @@ const MAP_REQUIRED_NODES: Array[String] = ["combat_icon", "event_icon", "shop_ic
 const STRICT_EVIDENCE_ENV: String = "TASK0065_GATE_EVIDENCE_REQUIRED"
 const EN_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/en.csv"
 const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
+const CARD_DEFINITIONS_JSON_FILE := "res://../Game.Core/Data/m1-card-definitions.json"
 const MAIN_MENU_BLOCKED_MESSAGE_PATH := "ContinueBlockedDialog/MarginContainer/VBox/MessageLabel"
 const MAP_TITLE_KEY := "ui.map.title"
 const MAP_HINT_KEY := "ui.map.hint"
@@ -58,6 +59,14 @@ func _read_text_file(res_path: String) -> String:
 	var content := file.get_as_text()
 	file.close()
 	return content
+
+func _prime_combat_card_definitions(combat: Node) -> void:
+	if combat == null or not combat.has_method("TryApplyCardDefinitionsContractJsonForTest"):
+		return
+	var payload := _read_text_file(CARD_DEFINITIONS_JSON_FILE).strip_edges()
+	assert(not payload.is_empty(), "Missing card definitions payload for combat localization test.")
+	var applied := bool(combat.call("TryApplyCardDefinitionsContractJsonForTest", payload))
+	assert(applied, "Combat scene failed to apply card definitions payload for localization test.")
 
 func _load_translation_values(csv_path: String) -> Dictionary:
 	var values := {}
@@ -333,6 +342,7 @@ func _assert_combat_invalid_action_feedback_for_locale(locale: String) -> void:
 func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	TranslationServer.set_locale(locale)
 	var combat := await _instantiate_surface("Combat")
+	_prime_combat_card_definitions(combat)
 	_refresh_surface_locale(combat)
 	await get_tree().process_frame
 	var root := combat as Control
