@@ -93,6 +93,22 @@ func _contains_cost_value(text: String, expected_cost: int) -> bool:
 	var lowered := text.to_lower()
 	return lowered.find("cost") >= 0 and lowered.find(str(expected_cost)) >= 0
 
+func _read_button_visible_text(button: Button) -> String:
+	if button == null:
+		return ""
+	var tokens: Array[String] = []
+	var own_text := str(button.text).strip_edges()
+	if not own_text.is_empty():
+		tokens.append(own_text)
+	for child_text in _collect_node_visible_texts(button):
+		var normalized := str(child_text).strip_edges()
+		if normalized.is_empty():
+			continue
+		if tokens.has(normalized):
+			continue
+		tokens.append(normalized)
+	return " ".join(tokens)
+
 func _collect_node_visible_texts(root: Node) -> Array[String]:
 	var collected: Array[String] = []
 	var queue: Array[Node] = [root]
@@ -345,8 +361,8 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 		if strike_button == null or defend_button == null:
 			await get_tree().process_frame
 			continue
-		var strike_probe := str(strike_button.text)
-		var defend_probe := str(defend_button.text)
+		var strike_probe := _read_button_visible_text(strike_button)
+		var defend_probe := _read_button_visible_text(defend_button)
 		contract_ready = (
 			strike_probe.find(strike_name) >= 0
 			and _contains_cost_value(strike_probe, 1)
@@ -368,8 +384,8 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	defend_button = card_row.get_child(1) as Button
 	assert(strike_button != null and defend_button != null, "Combat scene card buttons must stay valid before final text assertions.")
 
-	var strike_text := str(strike_button.text)
-	var defend_text := str(defend_button.text)
+	var strike_text := _read_button_visible_text(strike_button)
+	var defend_text := _read_button_visible_text(defend_button)
 
 	assert(strike_text.find(strike_name) >= 0, "Combat strike button must expose localized card name in locale %s." % locale)
 	assert(_contains_cost_value(strike_text, 1), "Combat strike button must expose cost in locale %s." % locale)
@@ -391,7 +407,7 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	if not is_instance_valid(card_row):
 		card_row = combat.get_node_or_null("CardRow") as Control
 	assert(card_row != null and card_row.get_child_count() >= 1, "Combat scene card row must stay valid for missing-definition assertion.")
-	strike_text = str((card_row.get_child(0) as Button).text)
+	strike_text = _read_button_visible_text(card_row.get_child(0) as Button)
 	assert(strike_text.find("Cost ") < 0, "Combat strike button must not synthesize hardcoded cost when definitions are unavailable in locale %s." % locale)
 	assert(strike_text.find("|") < 0, "Combat strike button must not synthesize hardcoded type when definitions are unavailable in locale %s." % locale)
 	assert(strike_text.find("card.warrior.") < 0, "Combat strike button must not leak raw localization keys when definitions are unavailable in locale %s." % locale)
