@@ -329,6 +329,18 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 
 	var contract_ready := false
 	for _i in range(120):
+		if not is_instance_valid(card_row):
+			card_row = combat.get_node_or_null("CardRow") as VBoxContainer
+		if card_row == null or card_row.get_child_count() < 2:
+			await get_tree().process_frame
+			continue
+		if not is_instance_valid(strike_button):
+			strike_button = card_row.get_child(0) as Button
+		if not is_instance_valid(defend_button):
+			defend_button = card_row.get_child(1) as Button
+		if strike_button == null or defend_button == null:
+			await get_tree().process_frame
+			continue
 		var strike_probe := str(strike_button.text)
 		var defend_probe := str(defend_button.text)
 		contract_ready = (
