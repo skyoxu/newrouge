@@ -357,6 +357,13 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 			_refresh_surface_locale(combat)
 		await get_tree().process_frame
 
+	if not is_instance_valid(card_row):
+		card_row = combat.get_node_or_null("CardRow") as Control
+	assert(card_row != null and card_row.get_child_count() >= 2, "Combat scene must keep card button row valid before final text assertions.")
+	strike_button = card_row.get_child(0) as Button
+	defend_button = card_row.get_child(1) as Button
+	assert(strike_button != null and defend_button != null, "Combat scene card buttons must stay valid before final text assertions.")
+
 	var strike_text := str(strike_button.text)
 	var defend_text := str(defend_button.text)
 
@@ -377,6 +384,9 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	combat.call("SetCardDefinitionAutoLoadEnabledForTest", false)
 	_refresh_surface_locale(combat)
 	await get_tree().process_frame
+	if not is_instance_valid(card_row):
+		card_row = combat.get_node_or_null("CardRow") as Control
+	assert(card_row != null and card_row.get_child_count() >= 1, "Combat scene card row must stay valid for missing-definition assertion.")
 	strike_text = str((card_row.get_child(0) as Button).text)
 	assert(strike_text.find("Cost ") < 0, "Combat strike button must not synthesize hardcoded cost when definitions are unavailable in locale %s." % locale)
 	assert(strike_text.find("|") < 0, "Combat strike button must not synthesize hardcoded type when definitions are unavailable in locale %s." % locale)
