@@ -319,13 +319,30 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	var card_row := root.get_node_or_null("HUD/CardButtonRow") as HBoxContainer
 	assert(card_row != null, "Combat scene missing card button row.")
 	assert(card_row.get_child_count() >= 2, "Combat scene must expose at least two card buttons.")
-	var strike_text := str((card_row.get_child(0) as Button).text)
-	var defend_text := str((card_row.get_child(1) as Button).text)
+	var strike_button := card_row.get_child(0) as Button
+	var defend_button := card_row.get_child(1) as Button
 
 	var strike_name := _resolve_expected_text(locale, "card.warrior.strike.name")
 	var strike_desc := _resolve_expected_text(locale, "card.warrior.strike.description")
 	var defend_name := _resolve_expected_text(locale, "card.warrior.defend.name")
 	var defend_desc := _resolve_expected_text(locale, "card.warrior.defend.description")
+
+	for _i in range(30):
+		var strike_probe := str(strike_button.text)
+		var defend_probe := str(defend_button.text)
+		if (
+			strike_probe.find(strike_name) >= 0
+			and strike_probe.find("Cost 1") >= 0
+			and strike_probe.find("| attack") >= 0
+			and defend_probe.find(defend_name) >= 0
+			and defend_probe.find("Cost 1") >= 0
+			and defend_probe.find("| skill") >= 0
+		):
+			break
+		await get_tree().process_frame
+
+	var strike_text := str(strike_button.text)
+	var defend_text := str(defend_button.text)
 
 	assert(strike_text.find(strike_name) >= 0, "Combat strike button must expose localized card name in locale %s." % locale)
 	assert(strike_text.find("Cost 1") >= 0, "Combat strike button must expose cost in locale %s." % locale)
