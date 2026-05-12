@@ -543,11 +543,20 @@ func _current_scene_instance(main: Control):
 	return root.get_child(root.get_child_count() - 1)
 
 func _await_scene_instance_with_method(main: Control, expected_scene_path: String, required_method: String, max_frames: int = 60):
+	var consecutive_ready := 0
 	for _i in range(max_frames):
-		if _current_scene_path(main) == expected_scene_path:
-			var instance = _current_scene_instance(main)
-			if instance != null and instance.has_method(required_method):
-				return instance
+		var root := main.get_node_or_null("ScreenRoot")
+		var candidate = null
+		if root != null:
+			for child in root.get_children():
+				if child != null and child.has_method(required_method):
+					candidate = child
+		if _current_scene_path(main) == expected_scene_path and candidate != null:
+			consecutive_ready += 1
+			if consecutive_ready >= 2:
+				return candidate
+		else:
+			consecutive_ready = 0
 		await get_tree().process_frame
 	return _current_scene_instance(main)
 
