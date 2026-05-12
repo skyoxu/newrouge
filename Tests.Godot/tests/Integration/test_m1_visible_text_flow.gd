@@ -568,7 +568,7 @@ func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> v
 	assert_that(str(route_start.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Combat.tscn")
 	await get_tree().process_frame
 
-	var combat = _current_scene_instance(main)
+	var combat = await _await_scene_instance_with_method(main, "res://Game.Godot/Scenes/Combat.tscn", "TryApplyCoreSnapshotData")
 	assert_that(combat).is_not_null()
 	assert_that(bool(combat.call("SetEnemyHpForTest", "enemy_m1_slime", 0, 32))).is_true()
 	var victory := combat.call("RequestVictoryRouteToRewardForTest") as Dictionary
