@@ -15,6 +15,9 @@ func _read_hand_cards(list: ItemList) -> Array[String]:
 		cards.append(list.get_item_text(index))
 	return cards
 
+func _enemy_hp_text(scene: Node, enemy_id: String) -> String:
+	return str(scene.call("GetEnemyHpTextByIdForTest", enemy_id))
+
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
 # ACC:T76.1
@@ -39,6 +42,10 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		"HUD/HandCards",
 		"HUD/CardButtonRow",
 		"HUD/EnemyStatusPanel",
+		"HUD/EnemyStatusPanel/EnemyPortraitFrame",
+		"HUD/EnemyStatusPanel/EnemyTargetHighlight",
+		"HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait",
+		"HUD/DragCardGhost",
 		"HUD/EnemyStatusPanel/EnemyNameValue",
 		"HUD/EnemyStatusPanel/EnemyHpValue",
 		"HUD/EnemyStatusPanel/EnemyBlockValue",
@@ -56,8 +63,11 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	for path in required_paths:
 		var node := root.get_node_or_null(path)
 		assert_that(node).is_not_null()
-		assert_that((node as CanvasItem).visible).is_true()
 		assert_that(str(root.get_path_to(node))).is_equal(path)
+		if path == "HUD/EnemyStatusPanel/EnemyTargetHighlight" or path == "HUD/DragCardGhost":
+			assert_that((node as CanvasItem).visible).is_false()
+		else:
+			assert_that((node as CanvasItem).visible).is_true()
 
 	TranslationServer.set_locale("en")
 	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t76_attack", 32, 32))).is_true()
@@ -566,6 +576,150 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	var accepted := bool(scene.call("RequestPlaySelectedCardForTest"))
 	assert_that(bool(accepted) or str(scene.call("GetLatestFeedbackMessageForTest")).find("refused") >= 0).is_true()
 	assert_that(str(scene.call("GetLatestFeedbackMessageForTest"))).is_not_empty()
+
+
+# ACC:T74.1
+# ACC:T74.2
+# ACC:T74.4
+# ACC:T74.6
+func test_real_combat_scene_drag_start_hover_and_valid_release_reuse_existing_play_path() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_true()
+	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(0)
+
+	scene.call("HoverEnemyTargetForTest", "enemy_m1_slime")
+
+	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("enemy_m1_slime")
+	assert_that(str(scene.call("GetSelectedEnemyTargetIdForTest"))).is_equal("enemy_m1_slime")
+	assert_that(str(scene.call("GetLastHoverPreviewTextForTest")).to_lower().find("cost=") >= 0).is_true()
+	assert_that(str(scene.call("GetActionHintTextForTest")).find("Release to play") >= 0).is_true()
+
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(bool(scene.call("ReleaseDraggedCardForTest"))).is_true()
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+
+	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_false()
+	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(-1)
+	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("")
+	assert_that(state_after["energy"]).is_equal("1")
+	assert_that(state_after["discard"]).is_equal("2")
+	assert_that(state_after["selectedCommandState"]).is_equal("accepted:Strike")
+	assert_that(_enemy_hp_text(scene, "enemy_m1_slime")).is_equal("26/32")
+	assert_that(state_after["hand"]).is_not_equal(state_before["hand"])
+	assert_that(cues.has("card_preview")).is_true()
+	assert_that(cues.has("intent_detail_opened")).is_true()
+	assert_that(cues.has("card_play_motion")).is_true()
+
+
+# ACC:T74.3
+func test_real_combat_scene_invalid_drag_release_keeps_state_and_drag_active() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t74_dead", 0, 32))).is_true()
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	scene.call("HoverEnemyTargetForTest", "enemy_t74_dead")
+	var before := scene.call("CaptureUiStateForTest") as Dictionary
+
+	assert_that(bool(scene.call("ReleaseDraggedCardForTest"))).is_false()
+	var after := scene.call("CaptureUiStateForTest") as Dictionary
+
+	assert_that(after).is_equal(before)
+	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_true()
+	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(0)
+	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("enemy_t74_dead")
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("invalid target") >= 0).is_true()
+	assert_that(str(scene.call("GetActionHintTextForTest")).find("Invalid target") >= 0).is_true()
+
+
+# ACC:T74.3
+func test_real_combat_scene_cancel_drag_clears_preview_and_preserves_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	scene.call("HoverEnemyTargetForTest", "enemy_m1_slime")
+	var before := scene.call("CaptureUiStateForTest") as Dictionary
+
+	scene.call("CancelCardDragForTest")
+	var after := scene.call("CaptureUiStateForTest") as Dictionary
+	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
+
+	assert_that(after).is_equal(before)
+	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_false()
+	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(-1)
+	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("")
+	assert_that(str(scene.call("GetLastHoverPreviewTextForTest"))).is_equal("")
+	assert_that(str(scene.call("GetActionHintTextForTest")).find("Select a card") >= 0).is_true()
+	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_false()
+	assert_that(cues.has("card_preview_closed")).is_true()
+	assert_that(cues.has("intent_detail_hidden")).is_true()
+
+
+# ACC:T74.7
+func test_enemy_target_portrait_and_drag_highlight_are_visible_in_live_scene() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+
+	var root := scene as Control
+	var portrait_frame := root.get_node("HUD/EnemyStatusPanel/EnemyPortraitFrame") as PanelContainer
+	var target_highlight := root.get_node("HUD/EnemyStatusPanel/EnemyTargetHighlight") as ColorRect
+	var portrait := root.get_node("HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait") as TextureRect
+	var drag_ghost := root.get_node("HUD/DragCardGhost") as PanelContainer
+	var ghost_title := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostTitle") as Label
+	var ghost_cost := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge/GhostCost") as Label
+	var ghost_type := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow/GhostTypeBadge/GhostType") as Label
+	var ghost_summary := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostSummary") as Label
+	var drag_origin := drag_ghost.position
+
+	assert_that(portrait_frame.visible).is_true()
+	assert_that(target_highlight.visible).is_false()
+	assert_that(portrait.visible).is_true()
+	assert_that(portrait.texture).is_not_null()
+	var portrait_style := portrait_frame.get_theme_stylebox("panel")
+	assert_that(portrait_style).is_not_null()
+	if portrait_style is StyleBoxFlat:
+		assert_that((portrait_style as StyleBoxFlat).bg_color.a <= 0.01).is_true()
+	assert_that(str(scene.call("GetRuntimeDebugPortraitTextForTest")).find("fallback:") < 0).is_true()
+	assert_that(str(scene.call("GetRuntimeDebugPortraitTextForTest")).find("portrait: ok") >= 0).is_true()
+	assert_that(drag_ghost.visible).is_false()
+	assert_that(ghost_title.text).is_empty()
+	assert_that(ghost_cost.text).is_empty()
+	assert_that(ghost_type.text).is_empty()
+	assert_that(ghost_summary.text).is_empty()
+	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_false()
+	assert_that(bool(scene.call("IsDragGhostVisibleForTest"))).is_false()
+
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(412, 244)
+	motion.global_position = motion.position
+	(root.get_viewport() as Viewport).push_input(motion)
+	scene.call("HoverEnemyTargetForTest", "enemy_m1_slime")
+
+	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_true()
+	assert_that(target_highlight.visible).is_true()
+	assert_that(bool(scene.call("IsDragGhostVisibleForTest"))).is_true()
+	assert_that(drag_ghost.visible).is_true()
+	assert_that(ghost_title.text.find("Strike") >= 0).is_true()
+	assert_that(ghost_cost.text).is_equal("1")
+	assert_that(ghost_type.text).is_equal("ATTACK")
+	assert_that(ghost_summary.text.find("Deal 6 damage") >= 0).is_true()
+	assert_that(drag_ghost.position).is_not_equal(drag_origin)
+	assert_that(str(scene.call("GetDragGhostTextForTest")).find("Strike") >= 0).is_true()
 
 
 # ACC:T18.2

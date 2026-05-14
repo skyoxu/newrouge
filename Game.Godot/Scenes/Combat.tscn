@@ -1,6 +1,54 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://Game.Godot/Scripts/UI/CombatScene.cs" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drag_card_ghost"]
+bg_color = Color(0.929412, 0.87451, 0.72549, 0.960784)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.341176, 0.243137, 0.145098, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.22)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drag_cost_badge"]
+bg_color = Color(0.717647, 0.235294, 0.152941, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drag_type_badge"]
+bg_color = Color(0.270588, 0.341176, 0.305882, 0.92)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enemy_portrait_frame"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.368627, 0.313726, 0.219608, 0.85)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [node name="Combat" type="Control"]
 layout_mode = 3
@@ -47,12 +95,31 @@ layout_mode = 2
 offset_left = 448.0
 offset_top = 72.0
 offset_right = 862.0
-offset_bottom = 184.0
+offset_bottom = 356.0
 theme_override_constants/separation = 4
 
 [node name="EnemyStatusTitle" type="Label" parent="HUD/EnemyStatusPanel"]
 layout_mode = 2
 text = "combat.enemy.title"
+
+[node name="EnemyPortraitFrame" type="PanelContainer" parent="HUD/EnemyStatusPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 160)
+theme_override_styles/panel = SubResource("StyleBoxFlat_enemy_portrait_frame")
+
+[node name="EnemyTargetHighlight" type="ColorRect" parent="HUD/EnemyStatusPanel"]
+visible = false
+custom_minimum_size = Vector2(160, 8)
+layout_mode = 2
+color = Color(1, 0.9, 0.35, 1)
+
+[node name="EnemyPortrait" type="TextureRect" parent="HUD/EnemyStatusPanel/EnemyPortraitFrame"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 160)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
 
 [node name="EnemyNameValue" type="Label" parent="HUD/EnemyStatusPanel"]
 layout_mode = 2
@@ -134,6 +201,66 @@ offset_right = 862.0
 offset_bottom = 136.0
 text = "combat.action.hint"
 
+[node name="DragCardGhost" type="PanelContainer" parent="HUD"]
+visible = false
+layout_mode = 2
+offset_left = 24.0
+offset_top = 136.0
+offset_right = 260.0
+offset_bottom = 208.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_drag_card_ghost")
+
+[node name="GhostMargin" type="MarginContainer" parent="HUD/DragCardGhost"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="GhostBody" type="VBoxContainer" parent="HUD/DragCardGhost/GhostMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GhostHeader" type="VBoxContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="GhostHeaderRow" type="HBoxContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GhostTitle" type="Label" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+
+[node name="GhostCostBadge" type="PanelContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_drag_cost_badge")
+
+[node name="GhostCost" type="Label" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge"]
+layout_mode = 2
+horizontal_alignment = 1
+text = ""
+
+[node name="GhostMetaRow" type="HBoxContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GhostTypeBadge" type="PanelContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_drag_type_badge")
+
+[node name="GhostType" type="Label" parent="HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow/GhostTypeBadge"]
+layout_mode = 2
+horizontal_alignment = 1
+text = ""
+
+[node name="GhostSummary" type="Label" parent="HUD/DragCardGhost/GhostMargin/GhostBody"]
+layout_mode = 2
+autowrap_mode = 3
+text = ""
+
 [node name="EnemyIntentPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
 offset_left = 448.0
@@ -214,3 +341,45 @@ offset_left = 24.0
 offset_top = 532.0
 offset_right = 860.0
 offset_bottom = 640.0
+
+[node name="DebugPanel" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 880.0
+offset_top = 360.0
+offset_right = 1260.0
+offset_bottom = 640.0
+
+[node name="DebugMargin" type="MarginContainer" parent="HUD/DebugPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="DebugVBox" type="VBoxContainer" parent="HUD/DebugPanel/DebugMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DebugTitle" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+text = "Runtime Debug"
+
+[node name="DebugScenePath" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "scene: --"
+
+[node name="DebugPortraitStatus" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "portrait: --"
+
+[node name="DebugDragState" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "drag: --"
+
+[node name="DebugMouseState" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "mouse: --"
