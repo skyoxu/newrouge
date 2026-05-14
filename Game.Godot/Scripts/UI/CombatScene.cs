@@ -32,6 +32,9 @@ public partial class CombatScene : Control
     private ItemList _potionParticipantList = default!;
     private HBoxContainer _cardButtonRow = default!;
     private Label _enemyStatusTitleLabel = default!;
+    private PanelContainer _enemyPortraitFrame = default!;
+    private ColorRect _enemyTargetHighlight = default!;
+    private TextureRect _enemyPortrait = default!;
     private Label _enemyNameValue = default!;
     private Label _enemyHpValue = default!;
     private Label _enemyBlockValue = default!;
@@ -42,6 +45,15 @@ public partial class CombatScene : Control
     private Label _turnTitleLabel = default!;
     private Label _actionHintLabel = default!;
     private Label _handTitleLabel = default!;
+    private Label _debugScenePathLabel = default!;
+    private Label _debugPortraitStatusLabel = default!;
+    private Label _debugDragStateLabel = default!;
+    private Label _debugMouseStateLabel = default!;
+    private PanelContainer _dragCardGhost = default!;
+    private Label _dragCardGhostTitle = default!;
+    private Label _dragCardGhostCost = default!;
+    private Label _dragCardGhostType = default!;
+    private Label _dragCardGhostSummary = default!;
 
     private readonly List<string> _dispatchedCommands = new();
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new()
@@ -81,6 +93,13 @@ public partial class CombatScene : Control
     private readonly List<string> _sfxHookHistory = new();
     private readonly List<string> _missingSfxNoopHistory = new();
     private string _lastHoverPreviewText = string.Empty;
+    private bool _isCardDragActive;
+    private int _draggedHandIndex = -1;
+    private string _draggedTargetEnemyId = string.Empty;
+    private bool _wasLeftMousePressed;
+    private bool _runtimePointerStateOverrideEnabled;
+    private Vector2 _runtimePointerPositionOverride = Vector2.Zero;
+    private bool _runtimePointerPressedOverride;
     private bool _reducedMotionForTest;
     private bool _simulateMissingSfxForTest;
     private int _lastPlayCardOverplayTax;
@@ -114,19 +133,23 @@ public partial class CombatScene : Control
     private static readonly string[] CardDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-card-definitions.json",
+        "res://../Game.Core/Data/m1-card-definitions.json",
     };
     private static readonly string[] EnemyIntentDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-enemy-intent-definitions.json",
     };
     private Texture2D? _enemyIntentFallbackTexture;
+    private Texture2D? _enemyPortraitFallbackTexture;
     private bool _defeatResolvedForCurrentHpDrop;
     private int _hpChangedEmissionCount;
     private int _defeatEligibleTransitionCount;
     private int _defeatResolveCount;
     private int _unifiedHpUpdateEntryCount;
     private int _cardsPlayedThisTurn;
+    private float _targetHighlightPulsePhase;
     private readonly CombatService _combatService = new();
+    private string _lastResolvedEnemyPortraitPath = "unresolved";
 
     public override void _Ready()
     {
@@ -148,6 +171,9 @@ public partial class CombatScene : Control
         _potionParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/PotionParticipantList");
         _cardButtonRow = GetNode<HBoxContainer>("HUD/CardButtonRow");
         _enemyStatusTitleLabel = GetNode<Label>("HUD/EnemyStatusPanel/EnemyStatusTitle");
+        _enemyPortraitFrame = GetNode<PanelContainer>("HUD/EnemyStatusPanel/EnemyPortraitFrame");
+        _enemyTargetHighlight = GetNode<ColorRect>("HUD/EnemyStatusPanel/EnemyTargetHighlight");
+        _enemyPortrait = GetNode<TextureRect>("HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait");
         _enemyNameValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyNameValue");
         _enemyHpValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyHpValue");
         _enemyBlockValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyBlockValue");
@@ -158,10 +184,21 @@ public partial class CombatScene : Control
         _turnTitleLabel = GetNode<Label>("HUD/TurnTitleLabel");
         _actionHintLabel = GetNode<Label>("HUD/ActionHintLabel");
         _handTitleLabel = GetNode<Label>("HUD/HandTitleLabel");
+        _debugScenePathLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugScenePath");
+        _debugPortraitStatusLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugPortraitStatus");
+        _debugDragStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugDragState");
+        _debugMouseStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugMouseState");
+        _dragCardGhost = GetNode<PanelContainer>("HUD/DragCardGhost");
+        _dragCardGhostTitle = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostTitle");
+        _dragCardGhostCost = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge/GhostCost");
+        _dragCardGhostType = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow/GhostTypeBadge/GhostType");
+        _dragCardGhostSummary = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostSummary");
 
         _startTurnButton.Pressed += OnStartTurnPressed;
         _playSelectedCardButton.Pressed += OnPlaySelectedCardPressed;
         _endTurnButton.Pressed += OnEndTurnPressed;
+        _handCards.ItemClicked += OnHandCardClicked;
+        _handCards.GuiInput += OnHandCardsGuiInput;
         _startTurnButton.Visible = false;
         _startTurnButton.Text = ResolveUiText("combat.turn.start");
         _playSelectedCardButton.Text = ResolveUiText("combat.action.play_selected");
@@ -179,6 +216,7 @@ public partial class CombatScene : Control
         ApplyDefaultM1EnemyIntentIfEmpty();
         EnsureCardDefinitionsLoaded();
         EnsureDefaultHandSelection();
+        RefreshRuntimeDebugPanel();
     }
 
     public override void _ExitTree()
@@ -196,6 +234,12 @@ public partial class CombatScene : Control
         if (_endTurnButton is not null)
         {
             _endTurnButton.Pressed -= OnEndTurnPressed;
+        }
+
+        if (_handCards is not null)
+        {
+            _handCards.ItemClicked -= OnHandCardClicked;
+            _handCards.GuiInput -= OnHandCardsGuiInput;
         }
     }
 
@@ -383,13 +427,7 @@ public partial class CombatScene : Control
 
     public void ApplyHoverPreviewForTest(string previewId)
     {
-        var selectedItems = _handCards.GetSelectedItems();
-        if (selectedItems.Length <= 0)
-        {
-            _lastHoverPreviewText = string.Empty;
-            return;
-        }
-        var selectedIndex = selectedItems[0];
+        var selectedIndex = _isCardDragActive ? _draggedHandIndex : ResolveSelectedHandIndex();
         if (selectedIndex < 0 || selectedIndex >= _handCards.ItemCount)
         {
             _lastHoverPreviewText = string.Empty;
@@ -416,9 +454,16 @@ public partial class CombatScene : Control
     public void ApplyTargetInspectionForTest(string targetId)
     {
         var normalized = string.IsNullOrWhiteSpace(targetId) ? string.Empty : targetId.Trim();
-        if (!string.IsNullOrEmpty(normalized) && _enemyIntentByEnemy.ContainsKey(normalized))
+        if (!string.IsNullOrEmpty(normalized)
+            && (_enemyIntentByEnemy.ContainsKey(normalized) || _enemyCombatById.ContainsKey(normalized)))
         {
             PublishPresentationCue("intent_detail_opened");
+        }
+        if (_isCardDragActive)
+        {
+            _draggedTargetEnemyId = normalized;
+            _ = TrySelectEnemyTarget(normalized);
+            UpdateActionHintForCurrentInteraction();
         }
         _ = TryInspectParticipant(targetId);
     }
@@ -457,6 +502,183 @@ public partial class CombatScene : Control
     public string GetLastHoverPreviewTextForTest()
     {
         return _lastHoverPreviewText;
+    }
+
+    public bool BeginCardDragForTest(int handIndex)
+    {
+        return BeginCardDrag(handIndex);
+    }
+
+    public void HoverEnemyTargetForTest(string enemyId)
+    {
+        HoverEnemyTarget(enemyId);
+    }
+
+    public bool ReleaseDraggedCardForTest()
+    {
+        return ReleaseDraggedCard();
+    }
+
+    public void CancelCardDragForTest()
+    {
+        CancelCardDrag();
+    }
+
+    public bool IsCardDragActiveForTest()
+    {
+        return _isCardDragActive;
+    }
+
+    public int GetDraggedHandIndexForTest()
+    {
+        return _draggedHandIndex;
+    }
+
+    public string GetDraggedTargetEnemyIdForTest()
+    {
+        return _draggedTargetEnemyId;
+    }
+
+    public string GetActionHintTextForTest()
+    {
+        return _actionHintLabel.Text;
+    }
+
+    public bool IsEnemyTargetHighlightActiveForTest()
+    {
+        return _isCardDragActive
+            && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
+            && _enemyCombatById.TryGetValue(_draggedTargetEnemyId, out var hoveredState)
+            && hoveredState.CurrentHp > 0;
+    }
+
+    public bool IsDragGhostVisibleForTest()
+    {
+        return _dragCardGhost.Visible;
+    }
+
+    public string GetDragGhostTextForTest()
+    {
+        return _dragCardGhostTitle.Text;
+    }
+
+    public string GetRuntimeDebugSceneTextForTest()
+    {
+        return _debugScenePathLabel.Text;
+    }
+
+    public string GetRuntimeDebugPortraitTextForTest()
+    {
+        return _debugPortraitStatusLabel.Text;
+    }
+
+    public string GetRuntimeDebugDragTextForTest()
+    {
+        return _debugDragStateLabel.Text;
+    }
+
+    public void SetRuntimePointerStateForTest(Vector2 position, bool isLeftPressed)
+    {
+        _runtimePointerStateOverrideEnabled = true;
+        _runtimePointerPositionOverride = position;
+        _runtimePointerPressedOverride = isLeftPressed;
+    }
+
+    public bool SetRuntimePointerToHandCardForTest(int handIndex, bool isLeftPressed)
+    {
+        if (handIndex < 0 || handIndex >= _handCards.ItemCount)
+        {
+            return false;
+        }
+
+        SetRuntimePointerStateForTest(GetHandCardPointerForTest(handIndex), isLeftPressed);
+        return true;
+    }
+
+    public bool SetRuntimePointerToEnemyTargetForTest(string enemyId, bool isLeftPressed)
+    {
+        var pointer = GetEnemyTargetPointerForTest(enemyId);
+        if (pointer == Vector2.Zero)
+        {
+            return false;
+        }
+
+        SetRuntimePointerStateForTest(pointer, isLeftPressed);
+        return true;
+    }
+
+    public void ClearRuntimePointerStateOverrideForTest()
+    {
+        _runtimePointerStateOverrideEnabled = false;
+        _runtimePointerPositionOverride = Vector2.Zero;
+        _runtimePointerPressedOverride = false;
+    }
+
+    public void AdvanceRuntimeInputFrameForTest()
+    {
+        ProcessRuntimePointerState();
+        RefreshRuntimeDebugPanel();
+    }
+
+    public Vector2 GetHandCardPointerForTest(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handCards.ItemCount)
+        {
+            return Vector2.Zero;
+        }
+
+        var itemRect = _handCards.GetItemRect(handIndex);
+        var candidateLocals = new[]
+        {
+            itemRect.Position + itemRect.Size / 2.0f,
+            itemRect.Position + new Vector2(8.0f, 8.0f),
+            itemRect.Position + new Vector2(Mathf.Max(8.0f, itemRect.Size.X - 8.0f), 8.0f),
+            itemRect.Position + new Vector2(8.0f, Mathf.Max(8.0f, itemRect.Size.Y - 8.0f)),
+        };
+
+        foreach (var local in candidateLocals)
+        {
+            if (_handCards.GetItemAtPosition(local, true) == handIndex)
+            {
+                return _handCards.GlobalPosition + local;
+            }
+        }
+
+        return _handCards.GlobalPosition + itemRect.Position + itemRect.Size / 2.0f;
+    }
+
+    public Vector2 GetEnemyPanelPointerForTest()
+    {
+        return _enemyStatusValue.GetParent<Control>().GetGlobalRect().GetCenter();
+    }
+
+    public Vector2 GetEnemyTargetPointerForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return Vector2.Zero;
+        }
+
+        var normalizedEnemyId = enemyId.Trim();
+        foreach (var child in _enemyIntentList.GetChildren())
+        {
+            if (child is not Control row || !row.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            if (string.Equals(row.GetMeta("enemy_id").AsString(), normalizedEnemyId, StringComparison.Ordinal))
+            {
+                return row.GetGlobalRect().GetCenter();
+            }
+        }
+
+        if (_enemyCombatById.ContainsKey(normalizedEnemyId))
+        {
+            return GetEnemyPanelPointerForTest();
+        }
+
+        return Vector2.Zero;
     }
 
     public global::Godot.Collections.Array<string> GetPresentationCueHistoryForTest()
@@ -898,15 +1120,8 @@ public partial class CombatScene : Control
 
     public bool RequestPlaySelectedCard()
     {
-        var selectedItems = _handCards.GetSelectedItems();
-        if (selectedItems.Length <= 0)
-        {
-            AppendCommandFeedback("play_card", accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.no_card_selected");
-            return false;
-        }
-
-        var selectedIndex = selectedItems[0];
-        if (selectedIndex < 0 || selectedIndex >= _handCards.ItemCount)
+        var selectedIndex = ResolveSelectedHandIndex();
+        if (selectedIndex < 0)
         {
             AppendCommandFeedback("play_card", accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.no_card_selected");
             return false;
@@ -1029,6 +1244,8 @@ public partial class CombatScene : Control
             difficulty,
             playerHp,
             _turnStateValue.Text));
+        ClearDragState(resetHint: false);
+        UpdateActionHintForCurrentInteraction();
         AppendCommandFeedback(normalizedCard, accepted: true, detail: BuildAcceptedCardDetail(result, remainingEnergy, definition.Cost));
         TryAutoCompleteVictoryRoute();
         return true;
@@ -2281,6 +2498,7 @@ public partial class CombatScene : Control
         _selectedEnemyTargetId = normalized;
         _hasPendingInvalidTargetSelection = false;
         RefreshPrimaryEnemyPanel();
+        UpdateActionHintForCurrentInteraction();
         return true;
     }
 
@@ -2308,6 +2526,7 @@ public partial class CombatScene : Control
         }
 
         RefreshEnemyIntentRows();
+        UpdateActionHintForCurrentInteraction();
     }
 
     private void RefreshPrimaryEnemyPanel()
@@ -2315,6 +2534,10 @@ public partial class CombatScene : Control
         var aliveEnemies = GetAliveEnemyIds();
         if (aliveEnemies.Count <= 0)
         {
+            _enemyPortrait.Texture = EnsureEnemyPortraitFallbackTexture();
+            _lastResolvedEnemyPortraitPath = "fallback:empty";
+            _enemyPortraitFrame.SelfModulate = Colors.White;
+            _enemyTargetHighlight.Visible = false;
             _enemyNameValue.Text = "--";
             _enemyHpValue.Text = "0/0";
             _enemyBlockValue.Text = "0";
@@ -2329,10 +2552,12 @@ public partial class CombatScene : Control
             preferredState = _enemyCombatById[preferredId];
         }
 
+        _enemyPortrait.Texture = ResolveEnemyPortraitTexture(preferredId);
         _enemyNameValue.Text = preferredState.Name;
         _enemyHpValue.Text = $"{preferredState.CurrentHp}/{preferredState.MaxHp}";
         _enemyBlockValue.Text = preferredState.Block.ToString(CultureInfo.InvariantCulture);
         _enemyStatusValue.Text = preferredState.Status;
+        RefreshEnemyTargetHighlight(preferredId);
     }
 
     private void TryAutoCompleteVictoryRoute()
@@ -2468,6 +2693,9 @@ public partial class CombatScene : Control
             "combat.turn.start" => isZh ? "开始回合" : "Start Turn",
             "combat.action.play_selected" => isZh ? "打出选中卡牌" : "Play Selected Card",
             "combat.action.hint" => isZh ? "选择一张手牌，然后点击“打出选中卡牌”；没有合适操作时点击“结束回合”。" : "Select a card, then click Play Selected Card. Click End Turn when you are done.",
+            "combat.action.hint.drag_active" => isZh ? "拖拽手牌到敌人身上以打出。" : "Drag a card onto an enemy target.",
+            "combat.action.hint.drag_release" => isZh ? "松开以打出这张牌。" : "Release to play this card.",
+            "combat.action.hint.drag_invalid_target" => isZh ? "无效目标，请拖到可攻击的敌人身上。" : "Invalid target. Drag onto a living enemy.",
             "combat.hand.title" => isZh ? "手牌" : "Hand",
             "combat.enemy.title" => isZh ? "敌人" : "Enemy",
             "combat.turn.end" => isZh ? "结束回合" : "End Turn",
@@ -2802,6 +3030,7 @@ public partial class CombatScene : Control
             };
             button.Pressed += () =>
             {
+                CancelCardDrag();
                 _handCards.DeselectAll();
                 _handCards.Select(cardIndex);
                 RequestPlaySelectedCard();
@@ -2875,6 +3104,16 @@ public partial class CombatScene : Control
         return string.Join(" ", parts);
     }
 
+    private static string ResolveCardTypeBadgeText(CardDefinitionRuntime definition)
+    {
+        if (string.IsNullOrWhiteSpace(definition.Type))
+        {
+            return string.Empty;
+        }
+
+        return definition.Type.Trim().ToUpperInvariant();
+    }
+
     private void RefreshEnemyIntentRows()
     {
         foreach (var child in _enemyIntentList.GetChildren())
@@ -2901,6 +3140,383 @@ public partial class CombatScene : Control
         }
 
         _handCards.Select(0);
+        UpdateActionHintForCurrentInteraction();
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseMotion motion && _isCardDragActive)
+        {
+            UpdateDragGhostPosition(motion.Position);
+            var hoveredEnemy = ResolveEnemyTargetIdAtPosition(motion.Position);
+            if (!string.Equals(hoveredEnemy, _draggedTargetEnemyId, StringComparison.Ordinal))
+            {
+                HoverEnemyTarget(hoveredEnemy);
+            }
+        }
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        _ = @event;
+    }
+
+    public override void _Process(double delta)
+    {
+        ProcessRuntimePointerState();
+
+        if (_isCardDragActive)
+        {
+            UpdateDragGhostPosition(ResolveRuntimePointerPosition());
+        }
+
+        RefreshRuntimeDebugPanel();
+
+        if (!_enemyTargetHighlight.Visible)
+        {
+            _targetHighlightPulsePhase = 0.0f;
+            _enemyTargetHighlight.Modulate = Colors.White;
+            return;
+        }
+
+        _targetHighlightPulsePhase += (float)delta * 5.0f;
+        var pulse = 0.78f + (MathF.Sin(_targetHighlightPulsePhase) * 0.12f + 0.12f);
+        _enemyTargetHighlight.Modulate = new Color(1.0f, 1.0f, 1.0f, pulse);
+    }
+
+    private void OnHandCardClicked(long index, Vector2 _atPosition, long mouseButtonIndex)
+    {
+        if (mouseButtonIndex != (long)MouseButton.Left)
+        {
+            return;
+        }
+
+        if (_isCardDragActive)
+        {
+            return;
+        }
+
+        CancelCardDrag();
+        _handCards.DeselectAll();
+        if (index >= 0 && index < _handCards.ItemCount)
+        {
+            _handCards.Select((int)index);
+            UpdateActionHintForCurrentInteraction();
+        }
+    }
+
+    private void OnHandCardsGuiInput(InputEvent @event)
+    {
+        _ = @event;
+    }
+
+    private bool BeginCardDrag(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handCards.ItemCount)
+        {
+            return false;
+        }
+
+        _handCards.DeselectAll();
+        _handCards.Select(handIndex);
+        _isCardDragActive = true;
+        _draggedHandIndex = handIndex;
+        _draggedTargetEnemyId = string.Empty;
+        _selectedEnemyTargetId = string.Empty;
+        _hasPendingInvalidTargetSelection = false;
+        RefreshDragGhost(handIndex);
+        _dragCardGhost.Visible = true;
+        ApplyHoverPreviewForTest($"drag:{handIndex}");
+        UpdateActionHintForCurrentInteraction();
+        return true;
+    }
+
+    private void HoverEnemyTarget(string enemyId)
+    {
+        if (!_isCardDragActive)
+        {
+            return;
+        }
+
+        _draggedTargetEnemyId = string.IsNullOrWhiteSpace(enemyId) ? string.Empty : enemyId.Trim();
+        ApplyTargetInspectionForTest(_draggedTargetEnemyId);
+        if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId))
+        {
+            ApplyHoverPreviewForTest($"drag:{_draggedHandIndex}:{_draggedTargetEnemyId}");
+        }
+        UpdateActionHintForCurrentInteraction();
+    }
+
+    private bool ReleaseDraggedCard()
+    {
+        if (!_isCardDragActive || _draggedHandIndex < 0 || _draggedHandIndex >= _handCards.ItemCount)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId))
+        {
+            _ = TrySelectEnemyTarget(_draggedTargetEnemyId);
+        }
+
+        if (ResolveSelectedHandIndex() != _draggedHandIndex)
+        {
+            _handCards.DeselectAll();
+            _handCards.Select(_draggedHandIndex);
+        }
+
+        var accepted = RequestPlaySelectedCard();
+        if (accepted)
+        {
+            _selectedEnemyTargetId = string.Empty;
+            ClearDragState(resetHint: false);
+            UpdateActionHintForCurrentInteraction();
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId) && _hasPendingInvalidTargetSelection)
+        {
+            var cardName = _draggedHandIndex >= 0 && _draggedHandIndex < _handCards.ItemCount
+                ? _handCards.GetItemText(_draggedHandIndex)
+                : "play_card";
+            AppendCommandFeedback(cardName, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_target");
+        }
+
+        UpdateActionHintForCurrentInteraction();
+        return false;
+    }
+
+    private void CancelCardDrag()
+    {
+        if (!_isCardDragActive)
+        {
+            return;
+        }
+
+        ClearDragState(resetHint: true);
+    }
+
+    private void ClearDragState(bool resetHint)
+    {
+        _isCardDragActive = false;
+        _draggedHandIndex = -1;
+        _draggedTargetEnemyId = string.Empty;
+        _hasPendingInvalidTargetSelection = false;
+        _dragCardGhost.Visible = false;
+        _dragCardGhostTitle.Text = string.Empty;
+        _dragCardGhostCost.Text = string.Empty;
+        _dragCardGhostType.Text = string.Empty;
+        _dragCardGhostSummary.Text = string.Empty;
+        CloseHoverPreviewForTest();
+        HideTargetInspectionForTest();
+        if (resetHint)
+        {
+            UpdateActionHintForCurrentInteraction();
+        }
+    }
+
+    private int ResolveSelectedHandIndex()
+    {
+        if (_isCardDragActive && _draggedHandIndex >= 0 && _draggedHandIndex < _handCards.ItemCount)
+        {
+            return _draggedHandIndex;
+        }
+
+        var selectedItems = _handCards.GetSelectedItems();
+        if (selectedItems.Length <= 0)
+        {
+            return -1;
+        }
+
+        var selectedIndex = selectedItems[0];
+        return selectedIndex >= 0 && selectedIndex < _handCards.ItemCount ? selectedIndex : -1;
+    }
+
+    private void ProcessRuntimePointerState()
+    {
+        var pointerPosition = ResolveRuntimePointerPosition();
+        var isLeftPressed = ResolveRuntimeLeftPressed();
+
+        if (isLeftPressed && !_wasLeftMousePressed)
+        {
+            var handIndex = ResolveHandIndexAtPosition(pointerPosition);
+            if (handIndex >= 0)
+            {
+                BeginCardDrag(handIndex);
+            }
+        }
+
+        if (_isCardDragActive)
+        {
+            UpdateDragGhostPosition(pointerPosition);
+            var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
+            if (!string.Equals(hoveredEnemy, _draggedTargetEnemyId, StringComparison.Ordinal))
+            {
+                HoverEnemyTarget(hoveredEnemy);
+            }
+        }
+
+        if (!isLeftPressed && _wasLeftMousePressed && _isCardDragActive)
+        {
+            var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
+            if (!string.IsNullOrWhiteSpace(hoveredEnemy))
+            {
+                HoverEnemyTarget(hoveredEnemy);
+                _ = ReleaseDraggedCard();
+            }
+            else
+            {
+                CancelCardDrag();
+            }
+        }
+
+        _wasLeftMousePressed = isLeftPressed;
+    }
+
+    private Vector2 ResolveRuntimePointerPosition()
+    {
+        return _runtimePointerStateOverrideEnabled ? _runtimePointerPositionOverride : GetGlobalMousePosition();
+    }
+
+    private bool ResolveRuntimeLeftPressed()
+    {
+        return _runtimePointerStateOverrideEnabled
+            ? _runtimePointerPressedOverride
+            : Input.IsMouseButtonPressed(MouseButton.Left);
+    }
+
+    private void UpdateActionHintForCurrentInteraction()
+    {
+        if (_isCardDragActive)
+        {
+            if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
+                && _enemyCombatById.TryGetValue(_draggedTargetEnemyId, out var hoveredState)
+                && hoveredState.CurrentHp > 0)
+            {
+                _actionHintLabel.Text = ResolveUiText("combat.action.hint.drag_release");
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId))
+            {
+                _actionHintLabel.Text = ResolveUiText("combat.action.hint.drag_invalid_target");
+                return;
+            }
+
+            _actionHintLabel.Text = ResolveUiText("combat.action.hint.drag_active");
+            return;
+        }
+
+        _actionHintLabel.Text = ResolveUiText("combat.action.hint");
+    }
+
+    private void RefreshEnemyTargetHighlight(string preferredId)
+    {
+        if (_isCardDragActive
+            && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
+            && _enemyCombatById.TryGetValue(_draggedTargetEnemyId, out var hoveredState)
+            && hoveredState.CurrentHp > 0)
+        {
+            _enemyPortraitFrame.SelfModulate = new Color(1.0f, 0.9f, 0.55f, 1.0f);
+            _enemyTargetHighlight.Visible = true;
+            return;
+        }
+
+        _enemyPortraitFrame.SelfModulate = Colors.White;
+        _enemyTargetHighlight.Visible = false;
+    }
+
+    private void RefreshDragGhost(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handCards.ItemCount)
+        {
+            _dragCardGhostTitle.Text = string.Empty;
+            _dragCardGhostCost.Text = string.Empty;
+            _dragCardGhostType.Text = string.Empty;
+            _dragCardGhostSummary.Text = string.Empty;
+            return;
+        }
+
+        var cardName = _handCards.GetItemText(handIndex);
+        if (TryResolveCardDefinition(cardName, out var definition))
+        {
+            _dragCardGhostTitle.Text = ResolveCardDisplayName(definition);
+            _dragCardGhostCost.Text = definition.Cost.ToString(CultureInfo.InvariantCulture);
+            _dragCardGhostType.Text = ResolveCardTypeBadgeText(definition);
+            _dragCardGhostSummary.Text = ResolveCardEffectSummary(definition);
+            return;
+        }
+
+        _dragCardGhostTitle.Text = cardName;
+        _dragCardGhostCost.Text = string.Empty;
+        _dragCardGhostType.Text = string.Empty;
+        _dragCardGhostSummary.Text = string.Empty;
+    }
+
+    private void UpdateDragGhostPosition(Vector2 pointerPosition)
+    {
+        if (!_dragCardGhost.Visible)
+        {
+            return;
+        }
+
+        _dragCardGhost.Position = pointerPosition + new Vector2(18.0f, -24.0f);
+    }
+
+    private int ResolveHandIndexAtPosition(Vector2 position)
+    {
+        if (!_handCards.GetGlobalRect().HasPoint(position))
+        {
+            return -1;
+        }
+
+        var local = position - _handCards.GlobalPosition;
+        return _handCards.GetItemAtPosition(local, true);
+    }
+
+    private string ResolveEnemyTargetIdAtPosition(Vector2 position)
+    {
+        foreach (var enemyId in GetAliveEnemyIds())
+        {
+            if (IsEnemyTargetHovered(enemyId, position))
+            {
+                return enemyId;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private bool IsEnemyTargetHovered(string enemyId, Vector2 position)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return false;
+        }
+
+        if (_enemyIntentByEnemy.ContainsKey(enemyId))
+        {
+            foreach (var child in _enemyIntentList.GetChildren())
+            {
+                if (child is not Control row || !row.HasMeta("enemy_id"))
+                {
+                    continue;
+                }
+
+                var rowEnemyId = row.GetMeta("enemy_id").AsString();
+                if (string.Equals(rowEnemyId, enemyId, StringComparison.Ordinal) && row.GetGlobalRect().HasPoint(position))
+                {
+                    return true;
+                }
+            }
+        }
+
+        if (string.Equals(_selectedEnemyTargetId, enemyId, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(_selectedEnemyTargetId))
+        {
+            return _enemyStatusValue.GetParent<Control>().GetGlobalRect().HasPoint(position);
+        }
+
+        return false;
     }
 
     private void AddEnemyIntentRow(EnemyIntentState state)
@@ -2980,6 +3596,29 @@ public partial class CombatScene : Control
         return resolved;
     }
 
+    private Texture2D ResolveEnemyPortraitTexture(string enemyId)
+    {
+        var portraitKey = string.IsNullOrWhiteSpace(enemyId) ? DefaultEnemyId : enemyId.Trim();
+        foreach (var path in BuildEnemyPortraitTextureCandidates(portraitKey))
+        {
+            if (ResourceLoader.Exists(path) && ResourceLoader.Load(path) is Texture2D texture)
+            {
+                _lastResolvedEnemyPortraitPath = $"resource:{path}";
+                return texture;
+            }
+
+            var rawTexture = TryLoadRawTexture(path);
+            if (rawTexture is not null)
+            {
+                _lastResolvedEnemyPortraitPath = $"raw:{path}";
+                return rawTexture;
+            }
+        }
+
+        _lastResolvedEnemyPortraitPath = $"fallback:{portraitKey}";
+        return EnsureEnemyPortraitFallbackTexture();
+    }
+
     private static Texture2D? TryLoadEnemyIntentTexture(string iconKey)
     {
         foreach (var path in BuildEnemyIntentTextureCandidates(iconKey))
@@ -2996,6 +3635,29 @@ public partial class CombatScene : Control
         }
 
         return null;
+    }
+
+    private static Texture2D? TryLoadRawTexture(string resourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(resourcePath) || !resourcePath.StartsWith("res://", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var absolutePath = ProjectSettings.GlobalizePath(resourcePath);
+        if (!global::System.IO.File.Exists(absolutePath))
+        {
+            return null;
+        }
+
+        var image = new Image();
+        var error = image.Load(absolutePath);
+        if (error != Error.Ok)
+        {
+            return null;
+        }
+
+        return ImageTexture.CreateFromImage(image);
     }
 
     private static IEnumerable<string> BuildEnemyIntentTextureCandidates(string iconKey)
@@ -3016,6 +3678,22 @@ public partial class CombatScene : Control
         yield return $"res://Game.Godot/Assets/UI/EnemyIntent/{iconKey}.svg";
     }
 
+    private static IEnumerable<string> BuildEnemyPortraitTextureCandidates(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            yield break;
+        }
+
+        if (string.Equals(enemyId, DefaultEnemyId, StringComparison.Ordinal))
+        {
+            yield return "res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png";
+        }
+        yield return $"res://Game.Godot/Assets/Textures/Combat/Enemies/{enemyId}.png";
+        yield return $"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png";
+        yield return $"res://logs/aiart/t74-enemy-target-2026-05-13/processed/clean.png";
+    }
+
     private Texture2D EnsureEnemyIntentFallbackTexture()
     {
         if (_enemyIntentFallbackTexture is not null)
@@ -3027,6 +3705,32 @@ public partial class CombatScene : Control
         image.Fill(new Color(0.55f, 0.57f, 0.61f, 1.0f));
         _enemyIntentFallbackTexture = ImageTexture.CreateFromImage(image);
         return _enemyIntentFallbackTexture;
+    }
+
+    private Texture2D EnsureEnemyPortraitFallbackTexture()
+    {
+        if (_enemyPortraitFallbackTexture is not null)
+        {
+            return _enemyPortraitFallbackTexture;
+        }
+
+        var image = Image.CreateEmpty(160, 160, false, Image.Format.Rgba8);
+        image.Fill(new Color(0.24f, 0.28f, 0.22f, 1.0f));
+        _enemyPortraitFallbackTexture = ImageTexture.CreateFromImage(image);
+        return _enemyPortraitFallbackTexture;
+    }
+
+    private void RefreshRuntimeDebugPanel()
+    {
+        _debugScenePathLabel.Text = $"scene: {SceneFilePath}";
+        var portraitState = _enemyPortrait.Texture is null ? "missing" : "ok";
+        _debugPortraitStatusLabel.Text = $"portrait: {portraitState} | path: {_lastResolvedEnemyPortraitPath}";
+        _debugDragStateLabel.Text = $"drag: active={_isCardDragActive} hand={_draggedHandIndex} target={_draggedTargetEnemyId}";
+        var mouse = ResolveRuntimePointerPosition();
+        var pointerSource = _runtimePointerStateOverrideEnabled ? "override" : "live";
+        var hoveredHandIndex = ResolveHandIndexAtPosition(mouse);
+        var hoveredEnemyId = ResolveEnemyTargetIdAtPosition(mouse);
+        _debugMouseStateLabel.Text = $"mouse: {mouse.X:0.0}, {mouse.Y:0.0} left={ResolveRuntimeLeftPressed()} src={pointerSource} hand={hoveredHandIndex} enemy={hoveredEnemyId}";
     }
 
     private string ResolveIntentDescription(string textKey)
