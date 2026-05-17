@@ -50,6 +50,36 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_player_portrait_frame"]
+bg_color = Color(0.109804, 0.113725, 0.101961, 0.35)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.611765, 0.560784, 0.396078, 0.95)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.28)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_badge"]
+bg_color = Color(0.113725, 0.121569, 0.105882, 0.84)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.745098, 0.647059, 0.364706, 0.9)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+
 [node name="Combat" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -67,15 +97,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HandTitleLabel" type="Label" parent="HUD"]
-layout_mode = 2
-offset_left = 24.0
-offset_top = 142.0
-offset_right = 420.0
-offset_bottom = 172.0
-text = "combat.hand.title"
-
 [node name="HandCards" type="ItemList" parent="HUD"]
+modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 offset_left = 24.0
 offset_top = 176.0
@@ -83,6 +106,7 @@ offset_right = 420.0
 offset_bottom = 360.0
 
 [node name="CardButtonRow" type="HBoxContainer" parent="HUD"]
+modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 offset_left = 24.0
 offset_top = 360.0
@@ -90,13 +114,102 @@ offset_right = 862.0
 offset_bottom = 432.0
 theme_override_constants/separation = 10
 
+[node name="HandTitleLabel" type="Label" parent="HUD"]
+layout_mode = 2
+offset_left = 456.0
+offset_top = 492.0
+offset_right = 840.0
+offset_bottom = 526.0
+horizontal_alignment = 1
+text = "combat.hand.title"
+
+[node name="PlayerBattleStagePanel" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 38.0
+offset_top = 150.0
+offset_right = 350.0
+offset_bottom = 566.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_player_portrait_frame")
+
+[node name="PlayerBattleStageMargin" type="MarginContainer" parent="HUD/PlayerBattleStagePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="PlayerBattleStage" type="VBoxContainer" parent="HUD/PlayerBattleStagePanel/PlayerBattleStageMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="PlayerPortraitFrame" type="PanelContainer" parent="HUD/PlayerBattleStagePanel/PlayerBattleStageMargin/PlayerBattleStage"]
+layout_mode = 2
+custom_minimum_size = Vector2(284, 348)
+theme_override_styles/panel = SubResource("StyleBoxFlat_player_portrait_frame")
+
+[node name="PlayerPortrait" type="TextureRect" parent="HUD/PlayerBattleStagePanel/PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame"]
+layout_mode = 2
+custom_minimum_size = Vector2(284, 348)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="HandFanLayer" type="Control" parent="HUD"]
+layout_mode = 2
+offset_left = 262.0
+offset_top = 536.0
+offset_right = 1048.0
+offset_bottom = 798.0
+
 [node name="EnemyStatusPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
-offset_left = 448.0
+offset_left = 888.0
 offset_top = 72.0
-offset_right = 862.0
-offset_bottom = 356.0
+offset_right = 1260.0
+offset_bottom = 412.0
 theme_override_constants/separation = 4
+
+[node name="EnemyRosterPanel" type="VBoxContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 888.0
+offset_top = 72.0
+offset_right = 1260.0
+offset_bottom = 224.0
+theme_override_constants/separation = 6
+
+[node name="EnemyRosterTitle" type="Label" parent="HUD/EnemyRosterPanel"]
+layout_mode = 2
+text = "combat.enemy.title"
+
+[node name="EnemyRosterContainer" type="HBoxContainer" parent="HUD/EnemyRosterPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="EnemyBattleStagePanel" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 412.0
+offset_top = 138.0
+offset_right = 1134.0
+offset_bottom = 548.0
+
+[node name="EnemyBattleStageMargin" type="MarginContainer" parent="HUD/EnemyBattleStagePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="EnemyBattleStage" type="HBoxContainer" parent="HUD/EnemyBattleStagePanel/EnemyBattleStageMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 52
 
 [node name="EnemyStatusTitle" type="Label" parent="HUD/EnemyStatusPanel"]
 layout_mode = 2
@@ -163,19 +276,73 @@ text = "--"
 
 [node name="DrawPileValue" type="Label" parent="HUD"]
 layout_mode = 2
-offset_left = 384.0
-offset_top = 24.0
-offset_right = 488.0
-offset_bottom = 56.0
+offset_left = 82.0
+offset_top = 714.0
+offset_right = 162.0
+offset_bottom = 750.0
+horizontal_alignment = 1
+vertical_alignment = 1
 text = "--"
 
 [node name="DiscardPileValue" type="Label" parent="HUD"]
 layout_mode = 2
-offset_left = 504.0
-offset_top = 24.0
-offset_right = 608.0
-offset_bottom = 56.0
+offset_left = 1140.0
+offset_top = 714.0
+offset_right = 1220.0
+offset_bottom = 750.0
+horizontal_alignment = 1
+vertical_alignment = 1
 text = "--"
+
+[node name="DrawPileBadge" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 42.0
+offset_top = 668.0
+offset_right = 202.0
+offset_bottom = 776.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_badge")
+
+[node name="DrawPileBadgeMargin" type="MarginContainer" parent="HUD/DrawPileBadge"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="DrawPileBadgeVBox" type="VBoxContainer" parent="HUD/DrawPileBadge/DrawPileBadgeMargin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="DrawPileTitle" type="Label" parent="HUD/DrawPileBadge/DrawPileBadgeMargin/DrawPileBadgeVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Draw"
+
+[node name="DiscardPileBadge" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 1100.0
+offset_top = 668.0
+offset_right = 1260.0
+offset_bottom = 776.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_badge")
+
+[node name="DiscardPileBadgeMargin" type="MarginContainer" parent="HUD/DiscardPileBadge"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="DiscardPileBadgeVBox" type="VBoxContainer" parent="HUD/DiscardPileBadge/DiscardPileBadgeMargin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="DiscardPileTitle" type="Label" parent="HUD/DiscardPileBadge/DiscardPileBadgeMargin/DiscardPileBadgeVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Discard"
 
 [node name="TurnTitleLabel" type="Label" parent="HUD"]
 layout_mode = 2
@@ -263,10 +430,10 @@ text = ""
 
 [node name="EnemyIntentPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
-offset_left = 448.0
-offset_top = 200.0
-offset_right = 862.0
-offset_bottom = 360.0
+offset_left = 888.0
+offset_top = 428.0
+offset_right = 1260.0
+offset_bottom = 588.0
 theme_override_constants/separation = 6
 
 [node name="EnemyIntentTitle" type="Label" parent="HUD/EnemyIntentPanel"]
@@ -280,10 +447,10 @@ theme_override_constants/separation = 4
 
 [node name="PowerRelicPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
-offset_left = 448.0
-offset_top = 368.0
-offset_right = 862.0
-offset_bottom = 488.0
+offset_left = 888.0
+offset_top = 596.0
+offset_right = 1260.0
+offset_bottom = 716.0
 visible = false
 theme_override_constants/separation = 6
 
@@ -308,10 +475,11 @@ size_flags_horizontal = 3
 
 [node name="TurnControls" type="HBoxContainer" parent="HUD"]
 layout_mode = 2
-offset_left = 24.0
-offset_top = 440.0
-offset_right = 340.0
-offset_bottom = 488.0
+offset_left = 420.0
+offset_top = 736.0
+offset_right = 844.0
+offset_bottom = 784.0
+alignment = 1
 theme_override_constants/separation = 8
 
 [node name="StartTurnButton" type="Button" parent="HUD/TurnControls"]
@@ -329,18 +497,19 @@ text = "combat.turn.end"
 
 [node name="FeedbackMessageLabel" type="Label" parent="HUD"]
 layout_mode = 2
-offset_left = 24.0
-offset_top = 496.0
-offset_right = 860.0
-offset_bottom = 528.0
+offset_left = 380.0
+offset_top = 32.0
+offset_right = 920.0
+offset_bottom = 64.0
+horizontal_alignment = 1
 text = ""
 
 [node name="FeedbackHistoryList" type="ItemList" parent="HUD"]
 layout_mode = 2
-offset_left = 24.0
-offset_top = 532.0
-offset_right = 860.0
-offset_bottom = 640.0
+offset_left = 420.0
+offset_top = 84.0
+offset_right = 844.0
+offset_bottom = 180.0
 
 [node name="DebugPanel" type="PanelContainer" parent="HUD"]
 layout_mode = 2
@@ -383,3 +552,8 @@ text = "drag: --"
 layout_mode = 2
 autowrap_mode = 3
 text = "mouse: --"
+
+[node name="DebugCombatRuntime" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "runtime: --"
