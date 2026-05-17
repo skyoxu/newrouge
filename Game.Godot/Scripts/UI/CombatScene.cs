@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using Game.Core.Contracts.Config;
 using Game.Core.Contracts.Combat;
 using Game.Core.Services;
 
@@ -25,13 +26,19 @@ public partial class CombatScene : Control
     private ItemList _feedbackHistoryList = default!;
     private Label _enemyIntentTitleLabel = default!;
     private VBoxContainer _enemyIntentList = default!;
+    private Label _enemyRosterTitleLabel = default!;
+    private HBoxContainer _enemyRosterContainer = default!;
     private VBoxContainer _powerRelicPanel = default!;
     private Label _powerRelicTitleLabel = default!;
     private ItemList _powerParticipantList = default!;
     private ItemList _relicParticipantList = default!;
     private ItemList _potionParticipantList = default!;
     private HBoxContainer _cardButtonRow = default!;
+    private Control _handFanLayer = default!;
     private Label _enemyStatusTitleLabel = default!;
+    private HBoxContainer _enemyBattleStage = default!;
+    private PanelContainer _playerBattleStagePanel = default!;
+    private TextureRect _playerPortrait = default!;
     private PanelContainer _enemyPortraitFrame = default!;
     private ColorRect _enemyTargetHighlight = default!;
     private TextureRect _enemyPortrait = default!;
@@ -49,6 +56,7 @@ public partial class CombatScene : Control
     private Label _debugPortraitStatusLabel = default!;
     private Label _debugDragStateLabel = default!;
     private Label _debugMouseStateLabel = default!;
+    private Label _debugCombatRuntimeLabel = default!;
     private PanelContainer _dragCardGhost = default!;
     private Label _dragCardGhostTitle = default!;
     private Label _dragCardGhostCost = default!;
@@ -105,6 +113,7 @@ public partial class CombatScene : Control
     private int _lastPlayCardOverplayTax;
     private bool _lastPlayCardPipelineSuccess;
     private const string DefaultEnemyId = "enemy_m1_slime";
+    private const string DefaultEnemySupportId = "enemy_m1_slime_b";
     private readonly Dictionary<string, EnemyCombatState> _enemyCombatById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, int>> _enemyStatusStacksByEnemy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _playerStatusStacks = new(StringComparer.Ordinal);
@@ -138,6 +147,12 @@ public partial class CombatScene : Control
     private static readonly string[] EnemyIntentDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-enemy-intent-definitions.json",
+        "res://../Game.Core/Data/m1-enemy-intent-definitions.json",
+    };
+    private static readonly string[] ActConfigCandidatePaths =
+    {
+        "res://Game.Core/Data/act1-config.json",
+        "res://../Game.Core/Data/act1-config.json",
     };
     private Texture2D? _enemyIntentFallbackTexture;
     private Texture2D? _enemyPortraitFallbackTexture;
@@ -150,6 +165,17 @@ public partial class CombatScene : Control
     private float _targetHighlightPulsePhase;
     private readonly CombatService _combatService = new();
     private string _lastResolvedEnemyPortraitPath = "unresolved";
+    private bool _bootstrappedEnemyRuntimeActive;
+    private bool _manualEnemyRuntimeOverrideUsedForTest;
+    private readonly List<Control> _handFanCards = new();
+    private readonly List<Vector2> _handFanBasePositions = new();
+    private int _hoveredHandFanIndex = -1;
+    private Texture2D? _playerPortraitTexture;
+    private Texture2D? _cardFaceTexture;
+    private const string DefaultPlayerPortraitId = "player_fungal_knight";
+    private readonly DeckService _deckService = new();
+    private DeckState? _deckState;
+    private int _runtimeDeckInstanceCounter;
 
     public override void _Ready()
     {
@@ -162,6 +188,8 @@ public partial class CombatScene : Control
         _turnStateValue = GetNode<Label>("HUD/TurnStateValue");
         _feedbackMessageLabel = GetNode<Label>("HUD/FeedbackMessageLabel");
         _feedbackHistoryList = GetNode<ItemList>("HUD/FeedbackHistoryList");
+        _enemyRosterTitleLabel = GetNode<Label>("HUD/EnemyRosterPanel/EnemyRosterTitle");
+        _enemyRosterContainer = GetNode<HBoxContainer>("HUD/EnemyRosterPanel/EnemyRosterContainer");
         _enemyIntentTitleLabel = GetNode<Label>("HUD/EnemyIntentPanel/EnemyIntentTitle");
         _enemyIntentList = GetNode<VBoxContainer>("HUD/EnemyIntentPanel/EnemyIntentList");
         _powerRelicPanel = GetNode<VBoxContainer>("HUD/PowerRelicPanel");
@@ -170,7 +198,11 @@ public partial class CombatScene : Control
         _relicParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/RelicParticipantList");
         _potionParticipantList = GetNode<ItemList>("HUD/PowerRelicPanel/PotionParticipantList");
         _cardButtonRow = GetNode<HBoxContainer>("HUD/CardButtonRow");
+        _handFanLayer = GetNode<Control>("HUD/HandFanLayer");
         _enemyStatusTitleLabel = GetNode<Label>("HUD/EnemyStatusPanel/EnemyStatusTitle");
+        _enemyBattleStage = GetNode<HBoxContainer>("HUD/EnemyBattleStagePanel/EnemyBattleStageMargin/EnemyBattleStage");
+        _playerBattleStagePanel = GetNode<PanelContainer>("HUD/PlayerBattleStagePanel");
+        _playerPortrait = GetNode<TextureRect>("HUD/PlayerBattleStagePanel/PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame/PlayerPortrait");
         _enemyPortraitFrame = GetNode<PanelContainer>("HUD/EnemyStatusPanel/EnemyPortraitFrame");
         _enemyTargetHighlight = GetNode<ColorRect>("HUD/EnemyStatusPanel/EnemyTargetHighlight");
         _enemyPortrait = GetNode<TextureRect>("HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait");
@@ -188,6 +220,7 @@ public partial class CombatScene : Control
         _debugPortraitStatusLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugPortraitStatus");
         _debugDragStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugDragState");
         _debugMouseStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugMouseState");
+        _debugCombatRuntimeLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugCombatRuntime");
         _dragCardGhost = GetNode<PanelContainer>("HUD/DragCardGhost");
         _dragCardGhostTitle = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostTitle");
         _dragCardGhostCost = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge/GhostCost");
@@ -206,11 +239,13 @@ public partial class CombatScene : Control
         _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
         _actionHintLabel.Text = ResolveUiText("combat.action.hint");
         _handTitleLabel.Text = ResolveUiText("combat.hand.title");
+        _enemyRosterTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
         _feedbackMessageLabel.Text = string.Empty;
         _powerRelicTitleLabel.Text = "Power/Relic/Potion Participants";
         _powerRelicPanel.Visible = false;
+        _playerPortrait.Texture = ResolvePlayerPortraitTexture();
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
         ApplyDefaultM1EnemyIntentIfEmpty();
@@ -539,6 +574,26 @@ public partial class CombatScene : Control
         return _draggedTargetEnemyId;
     }
 
+    public int GetVisibleHandFanCardCountForTest()
+    {
+        return _handFanCards.Count;
+    }
+
+    public int GetHoveredHandFanCardIndexForTest()
+    {
+        return _hoveredHandFanIndex;
+    }
+
+    public float GetHandFanCardScaleForTest(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handFanCards.Count)
+        {
+            return 0.0f;
+        }
+
+        return _handFanCards[handIndex].Scale.X;
+    }
+
     public string GetActionHintTextForTest()
     {
         return _actionHintLabel.Text;
@@ -570,6 +625,12 @@ public partial class CombatScene : Control
     public string GetRuntimeDebugPortraitTextForTest()
     {
         return _debugPortraitStatusLabel.Text;
+    }
+
+    public string GetEnemyPortraitPathForTest(string enemyId)
+    {
+        _ = ResolveEnemyPortraitTexture(enemyId);
+        return _lastResolvedEnemyPortraitPath;
     }
 
     public string GetRuntimeDebugDragTextForTest()
@@ -627,6 +688,11 @@ public partial class CombatScene : Control
             return Vector2.Zero;
         }
 
+        if (handIndex < _handFanCards.Count)
+        {
+            return _handFanCards[handIndex].GetGlobalRect().GetCenter();
+        }
+
         var itemRect = _handCards.GetItemRect(handIndex);
         var candidateLocals = new[]
         {
@@ -660,22 +726,15 @@ public partial class CombatScene : Control
         }
 
         var normalizedEnemyId = enemyId.Trim();
-        foreach (var child in _enemyIntentList.GetChildren())
+        var battleStageUnit = FindEnemyBattleStageUnit(normalizedEnemyId);
+        if (battleStageUnit is not null)
         {
-            if (child is not Control row || !row.HasMeta("enemy_id"))
+            if (battleStageUnit.GetNodeOrNull<Control>("EnemyPortraitFrame") is { } portraitFrame)
             {
-                continue;
+                return portraitFrame.GetGlobalRect().GetCenter();
             }
 
-            if (string.Equals(row.GetMeta("enemy_id").AsString(), normalizedEnemyId, StringComparison.Ordinal))
-            {
-                return row.GetGlobalRect().GetCenter();
-            }
-        }
-
-        if (_enemyCombatById.ContainsKey(normalizedEnemyId))
-        {
-            return GetEnemyPanelPointerForTest();
+            return battleStageUnit.GetGlobalRect().GetCenter();
         }
 
         return Vector2.Zero;
@@ -1227,7 +1286,23 @@ public partial class CombatScene : Control
             PublishPresentationCue("block_gain_number");
             PublishSfxHook("block");
         }
-        handCards.RemoveAt(selectedIndex);
+        var updatedDeckState = _deckState;
+        if (updatedDeckState is not null && selectedIndex >= 0 && selectedIndex < updatedDeckState.Hand.Count)
+        {
+            var playedInstanceId = updatedDeckState.Hand[selectedIndex];
+            updatedDeckState = result.MovedToExhaust
+                ? _deckService.Exhaust(updatedDeckState, playedInstanceId)
+                : _deckService.Discard(updatedDeckState, new[] { playedInstanceId });
+            _deckState = updatedDeckState;
+            handCards = updatedDeckState.Hand
+                .Select(ResolveRuntimeCardLabel)
+                .ToList();
+        }
+        else
+        {
+            handCards.RemoveAt(selectedIndex);
+        }
+
         var remainingEnergy = pipelineResult.StateAfter.Energy;
         _cardsPlayedThisTurn = pipelineResult.StateAfter.CardsPlayedThisTurn;
         if (result.MovedToExhaust)
@@ -1235,11 +1310,12 @@ public partial class CombatScene : Control
             _exhaustPileCount += 1;
         }
 
-        var nextDiscardPile = result.MovedToExhaust ? discardPile : discardPile + 1;
+        var nextDrawPile = updatedDeckState?.DrawPile.Count ?? drawPile;
+        var nextDiscardPile = updatedDeckState?.DiscardPile.Count ?? (result.MovedToExhaust ? discardPile : discardPile + 1);
         ApplyCoreSnapshot(new CombatHudSnapshot(
             handCards,
             remainingEnergy,
-            drawPile,
+            nextDrawPile,
             nextDiscardPile,
             difficulty,
             playerHp,
@@ -1437,6 +1513,11 @@ public partial class CombatScene : Control
         return ResolveFeedbackTemplate(localizationKey);
     }
 
+    public string GetEnemyNameForTest()
+    {
+        return _enemyNameValue.Text;
+    }
+
     public string GetTurnTitleTextForTest()
     {
         return _turnTitleLabel.Text;
@@ -1509,6 +1590,16 @@ public partial class CombatScene : Control
     public void SetEnemyIntentDefinitionAutoLoadEnabledForTest(bool enabled)
     {
         _enemyIntentDefinitionAutoLoadEnabledForTest = enabled;
+        if (!enabled)
+        {
+            _enemyIntentByEnemy.Clear();
+            foreach (var child in _enemyIntentList.GetChildren())
+            {
+                child.QueueFree();
+            }
+
+            _enemyIntentList.Visible = false;
+        }
     }
 
     public string GetPlayerStatusSummaryForTest()
@@ -1556,10 +1647,27 @@ public partial class CombatScene : Control
             return false;
         }
 
+        if (_bootstrappedEnemyRuntimeActive && !_manualEnemyRuntimeOverrideUsedForTest)
+        {
+            _enemyCombatById.Clear();
+            _enemyStatusStacksByEnemy.Clear();
+            _enemyIntentByEnemy.Clear();
+            _selectedEnemyTargetId = string.Empty;
+            _bootstrappedEnemyRuntimeActive = false;
+            _manualEnemyRuntimeOverrideUsedForTest = true;
+        }
+
         var hasEnemy = _enemyCombatById.TryGetValue(enemyId, out var existingState);
         var state = hasEnemy && existingState is not null
             ? existingState
-            : new EnemyCombatState(enemyId, ResolveUiText("enemy.act1.slime_scout.name"), maxHp, 0, ResolveUiText("combat.enemy.status.none"));
+            : new EnemyCombatState(
+                enemyId,
+                ResolveEnemyDisplayName(enemyId),
+                maxHp,
+                0,
+                ResolveUiText("combat.enemy.status.none"),
+                maxHp,
+                ResolveEnemyNameKey(enemyId));
 
         var clampedHp = Math.Min(maxHp, currentHp);
         _enemyCombatById[enemyId] = state with { CurrentHp = clampedHp, MaxHp = maxHp };
@@ -1604,6 +1712,7 @@ public partial class CombatScene : Control
         _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
         _actionHintLabel.Text = ResolveUiText("combat.action.hint");
         _handTitleLabel.Text = ResolveUiText("combat.hand.title");
+        _enemyRosterTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
         var handCards = new List<string>();
@@ -1772,6 +1881,7 @@ public partial class CombatScene : Control
         _turnStateValue.Text = string.IsNullOrWhiteSpace(snapshot.TurnState)
             ? _turnTitleLabel.Text
             : snapshot.TurnState;
+        SyncRuntimeDeckState(snapshot.HandCards, snapshot.DrawPileCount, snapshot.DiscardPileCount);
         _coreStateMutationCount += 1;
         RebuildCardButtons(snapshot.HandCards);
         EnsureDefaultHandSelection();
@@ -1801,15 +1911,19 @@ public partial class CombatScene : Control
                 IntentDamage: intentDamage,
                 FallbackDamage: _combatService.CalculateDamage(
                     new Game.Core.Domain.ValueObjects.Damage(6, Game.Core.Domain.ValueObjects.DamageType.Physical, false))));
-        var nextHandCards = new List<string> { "Strike", "Defend", "Strike" };
+        var nextDeckState = ResolveNextDeckStateAfterEndTurn(handCards);
+        var nextHandCards = nextDeckState.Hand
+            .Select(ResolveRuntimeCardLabel)
+            .ToList();
+        _deckState = nextDeckState;
         var progression = _combatService.ResolveEndTurnProgression(
             new EndTurnProgressionInput(
                 Difficulty: difficulty,
                 PlayerHp: playerHp,
                 PlayerBlock: _playerBlock,
-                DrawPileCount: drawPile,
-                DiscardPileCount: discardPile,
-                HandCount: handCards.Count,
+                DrawPileCount: nextDeckState.DrawPile.Count,
+                DiscardPileCount: nextDeckState.DiscardPile.Count,
+                HandCount: 0,
                 IncomingEnemyDamage: incomingDamage,
                 NextHandCards: nextHandCards));
 
@@ -1820,8 +1934,8 @@ public partial class CombatScene : Control
         ApplyCoreSnapshot(new CombatHudSnapshot(
             progression.NextHandCards,
             progression.NextEnergy,
-            progression.NextDrawPileCount,
-            progression.NextDiscardPileCount,
+            nextDeckState.DrawPile.Count,
+            nextDeckState.DiscardPile.Count,
             difficulty,
             progression.NextPlayerHp,
             "PlayerTurn"));
@@ -1840,15 +1954,24 @@ public partial class CombatScene : Control
 
     private int TryResolveIncomingEnemyDamageFromIntent()
     {
-        if (string.IsNullOrWhiteSpace(_selectedEnemyTargetId)
-            || !_enemyIntentByEnemy.TryGetValue(_selectedEnemyTargetId, out var intentState))
+        var totalDamage = 0;
+        foreach (var enemyId in GetAliveEnemyIds())
         {
-            return 0;
+            if (!_enemyIntentByEnemy.TryGetValue(enemyId, out var intentState))
+            {
+                continue;
+            }
+
+            totalDamage += TryParseDamageFromIntentDescription(intentState.Description);
         }
 
-        var description = intentState.Description ?? string.Empty;
+        return Math.Max(0, totalDamage);
+    }
+
+    private static int TryParseDamageFromIntentDescription(string? description)
+    {
         var digits = new List<char>();
-        foreach (var ch in description)
+        foreach (var ch in description ?? string.Empty)
         {
             if (char.IsDigit(ch))
             {
@@ -2001,7 +2124,14 @@ public partial class CombatScene : Control
         var resolvedEnemyId = string.IsNullOrWhiteSpace(enemyId) ? DefaultEnemyId : enemyId.Trim();
         if (!_enemyCombatById.TryGetValue(resolvedEnemyId, out var enemyState))
         {
-            enemyState = new EnemyCombatState(resolvedEnemyId, ResolveUiText("enemy.act1.slime_scout.name"), 32, 0, ResolveUiText("combat.enemy.status.none"));
+            enemyState = new EnemyCombatState(
+                resolvedEnemyId,
+                ResolveEnemyDisplayName(resolvedEnemyId),
+                32,
+                0,
+                ResolveUiText("combat.enemy.status.none"),
+                32,
+                ResolveEnemyNameKey(resolvedEnemyId));
         }
 
         var currentHp = enemyState.CurrentHp;
@@ -2532,10 +2662,13 @@ public partial class CombatScene : Control
     private void RefreshPrimaryEnemyPanel()
     {
         var aliveEnemies = GetAliveEnemyIds();
+        RefreshEnemyRosterCards(aliveEnemies);
+        RefreshEnemyBattleStageUnits(aliveEnemies);
         if (aliveEnemies.Count <= 0)
         {
-            _enemyPortrait.Texture = EnsureEnemyPortraitFallbackTexture();
+            _enemyPortrait.Texture = null;
             _lastResolvedEnemyPortraitPath = "fallback:empty";
+            _enemyPortraitFrame.Visible = false;
             _enemyPortraitFrame.SelfModulate = Colors.White;
             _enemyTargetHighlight.Visible = false;
             _enemyNameValue.Text = "--";
@@ -2552,12 +2685,200 @@ public partial class CombatScene : Control
             preferredState = _enemyCombatById[preferredId];
         }
 
-        _enemyPortrait.Texture = ResolveEnemyPortraitTexture(preferredId);
+        _enemyPortrait.Texture = null;
+        _enemyPortrait.Visible = false;
+        _enemyPortraitFrame.Visible = false;
         _enemyNameValue.Text = preferredState.Name;
         _enemyHpValue.Text = $"{preferredState.CurrentHp}/{preferredState.MaxHp}";
         _enemyBlockValue.Text = preferredState.Block.ToString(CultureInfo.InvariantCulture);
         _enemyStatusValue.Text = preferredState.Status;
         RefreshEnemyTargetHighlight(preferredId);
+    }
+
+    private void RefreshEnemyBattleStageUnits(IReadOnlyList<string> aliveEnemies)
+    {
+        foreach (var child in _enemyBattleStage.GetChildren())
+        {
+            _enemyBattleStage.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        _enemyBattleStage.Visible = aliveEnemies.Count > 0;
+        foreach (var enemyId in aliveEnemies)
+        {
+            if (!_enemyCombatById.TryGetValue(enemyId, out var state))
+            {
+                continue;
+            }
+
+            _enemyBattleStage.AddChild(CreateEnemyBattleStageUnit(state));
+        }
+    }
+
+    private Control CreateEnemyBattleStageUnit(EnemyCombatState state)
+    {
+        var unit = new VBoxContainer
+        {
+            Name = $"EnemyStage_{state.EnemyId}",
+            CustomMinimumSize = new Vector2(176.0f, 248.0f),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Stop,
+        };
+        unit.SetMeta("enemy_id", state.EnemyId);
+
+        var portraitFrame = new PanelContainer
+        {
+            Name = "EnemyPortraitFrame",
+            CustomMinimumSize = new Vector2(176.0f, 176.0f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        portraitFrame.AddThemeStyleboxOverride("panel", _enemyPortraitFrame.GetThemeStylebox("panel"));
+
+        var portrait = new TextureRect
+        {
+            Name = "EnemyPortrait",
+            CustomMinimumSize = new Vector2(176.0f, 176.0f),
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Texture = ResolveEnemyPortraitTexture(state.EnemyId),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        portraitFrame.AddChild(portrait);
+
+        var name = new Label
+        {
+            Name = "EnemyName",
+            Text = state.Name,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        var hp = new Label
+        {
+            Name = "EnemyHp",
+            Text = $"{state.CurrentHp}/{state.MaxHp}",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        unit.AddChild(portraitFrame);
+        unit.AddChild(name);
+        unit.AddChild(hp);
+        return unit;
+    }
+
+    private Control? FindEnemyBattleStageUnit(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return null;
+        }
+
+        foreach (var child in _enemyBattleStage.GetChildren())
+        {
+            if (child is not Control unit || !unit.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            if (string.Equals(unit.GetMeta("enemy_id").AsString(), enemyId, StringComparison.Ordinal))
+            {
+                return unit;
+            }
+        }
+
+        return null;
+    }
+
+    private void RefreshEnemyRosterCards(IReadOnlyList<string> aliveEnemies)
+    {
+        foreach (var child in _enemyRosterContainer.GetChildren())
+        {
+            _enemyRosterContainer.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        _enemyRosterContainer.Visible = aliveEnemies.Count > 0;
+        foreach (var enemyId in aliveEnemies)
+        {
+            if (!_enemyCombatById.TryGetValue(enemyId, out var state))
+            {
+                continue;
+            }
+
+            _enemyRosterContainer.AddChild(CreateEnemyRosterCard(state));
+        }
+    }
+
+    private Control CreateEnemyRosterCard(EnemyCombatState state)
+    {
+        var card = new VBoxContainer
+        {
+            Name = $"EnemyRoster_{state.EnemyId}",
+            CustomMinimumSize = new Vector2(168.0f, 96.0f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.SetMeta("enemy_id", state.EnemyId);
+
+        var enemyName = new Label
+        {
+            Name = "EnemyName",
+            Text = state.Name,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        var enemyHp = new Label
+        {
+            Name = "EnemyHp",
+            Text = $"{state.CurrentHp}/{state.MaxHp}",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        var enemyBlock = new Label
+        {
+            Name = "EnemyBlock",
+            Text = $"Block {state.Block.ToString(CultureInfo.InvariantCulture)}",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        var enemyStatus = new Label
+        {
+            Name = "EnemyStatus",
+            Text = state.Status,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        card.AddChild(enemyName);
+        card.AddChild(enemyHp);
+        card.AddChild(enemyBlock);
+        card.AddChild(enemyStatus);
+        return card;
+    }
+
+    private Control? FindEnemyRosterCard(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return null;
+        }
+
+        foreach (var child in _enemyRosterContainer.GetChildren())
+        {
+            if (child is not Control card || !card.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            if (string.Equals(card.GetMeta("enemy_id").AsString(), enemyId, StringComparison.Ordinal))
+            {
+                return card;
+            }
+        }
+
+        return null;
     }
 
     private void TryAutoCompleteVictoryRoute()
@@ -2849,14 +3170,456 @@ public partial class CombatScene : Control
             return;
         }
 
+        if (TryApplyDefaultEncounterEnemyStateFromActConfig())
+        {
+            return;
+        }
+
         _enemyCombatById[DefaultEnemyId] = new EnemyCombatState(
             DefaultEnemyId,
             ResolveUiText("enemy.act1.slime_scout.name"),
             32,
             0,
-            ResolveUiText("combat.enemy.status.none"));
+            ResolveUiText("combat.enemy.status.none"),
+            32,
+            "enemy.act1.slime_scout.name");
+        _enemyCombatById[DefaultEnemySupportId] = new EnemyCombatState(
+            DefaultEnemySupportId,
+            ResolveUiText("enemy.act1.slime_scout.name"),
+            24,
+            0,
+            ResolveUiText("combat.enemy.status.none"),
+            24,
+            "enemy.act1.slime_scout.name");
         _selectedEnemyTargetId = DefaultEnemyId;
+        _bootstrappedEnemyRuntimeActive = true;
         RefreshPrimaryEnemyPanel();
+    }
+
+    private bool TryApplyDefaultEncounterEnemyStateFromActConfig()
+    {
+        var loadedConfig = TryLoadActConfigFromCandidates();
+        if (loadedConfig is null)
+        {
+            return false;
+        }
+
+        var (config, sourcePath) = loadedConfig.Value;
+        if (!TryResolveStartEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
+        {
+            return false;
+        }
+
+        var definitionsPath = TryResolveEnemyDefinitionsPath(config, sourcePath);
+        if (string.IsNullOrWhiteSpace(definitionsPath))
+        {
+            return false;
+        }
+
+        var definitions = TryLoadEnemyDefinitions(definitionsPath!);
+        if (definitions is null || definitions.Count <= 0)
+        {
+            return false;
+        }
+
+        var roster = TryResolveEncounterRoster(config, encounterId!);
+        if (roster is null || roster.Count <= 0)
+        {
+            return false;
+        }
+
+        foreach (var rosterEntry in roster)
+        {
+            if (!definitions.TryGetValue(rosterEntry.EnemyId, out var definition))
+            {
+                return false;
+            }
+
+            _enemyCombatById[rosterEntry.RuntimeId] = new EnemyCombatState(
+                rosterEntry.RuntimeId,
+                ResolveUiText(definition.NameKey),
+                definition.Hp,
+                0,
+                ResolveUiText("combat.enemy.status.none"),
+                definition.Hp,
+                definition.NameKey);
+        }
+
+        _selectedEnemyTargetId = roster[0].RuntimeId;
+        _bootstrappedEnemyRuntimeActive = true;
+        RefreshPrimaryEnemyPanel();
+        return true;
+    }
+
+    private static (ActConfig Config, string SourcePath)? TryLoadActConfigFromCandidates()
+    {
+        var loader = new ActConfigLoader();
+        foreach (var path in ActConfigCandidatePaths)
+        {
+            if (!FileAccess.FileExists(path))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            var result = loader.LoadFromJson(file.GetAsText(), path);
+            if (result.IsSuccess && result.Config is not null)
+            {
+                return (result.Config, path);
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryResolveStartEncounterId(ActConfig config, out string? encounterId)
+    {
+        encounterId = null;
+        if (config.NodeGraph.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!config.NodeGraph.TryGetProperty("start_node_id", out var startNodeIdNode) || startNodeIdNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var startNodeId = startNodeIdNode.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(startNodeId))
+        {
+            return false;
+        }
+
+        if (!config.NodeGraph.TryGetProperty("nodes", out var nodesNode) || nodesNode.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var node in nodesNode.EnumerateArray())
+        {
+            if (node.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            if (!node.TryGetProperty("id", out var idNode) || idNode.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            if (!string.Equals(idNode.GetString()?.Trim(), startNodeId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!node.TryGetProperty("encounter_id", out var encounterIdNode) || encounterIdNode.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            encounterId = encounterIdNode.GetString()?.Trim();
+            return !string.IsNullOrWhiteSpace(encounterId);
+        }
+
+        return false;
+    }
+
+    private static string? TryResolveEnemyDefinitionsPath(ActConfig config, string actConfigPath)
+    {
+        if (config.Encounters.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!config.Encounters.TryGetProperty("enemy_definitions_file", out var pathNode) || pathNode.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var relativePath = pathNode.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return null;
+        }
+
+        if (relativePath.StartsWith("res://", StringComparison.Ordinal))
+        {
+            return FileAccess.FileExists(relativePath) ? relativePath : null;
+        }
+
+        var normalizedRelative = relativePath.Replace('\\', '/').TrimStart('/');
+        var candidates = new List<string>
+        {
+            $"res://{normalizedRelative}",
+            $"res://../{normalizedRelative}",
+        };
+        if (actConfigPath.StartsWith("res://../", StringComparison.Ordinal))
+        {
+            candidates.Insert(0, $"res://../{normalizedRelative}");
+        }
+
+        foreach (var candidate in candidates.Distinct(StringComparer.Ordinal))
+        {
+            if (FileAccess.FileExists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<EncounterRosterEntry>? TryResolveEncounterRoster(ActConfig config, string encounterId)
+    {
+        if (config.Encounters.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!config.Encounters.TryGetProperty("encounter_rosters", out var rostersNode) || rostersNode.ValueKind != JsonValueKind.Object)
+        {
+            return new List<EncounterRosterEntry>
+            {
+                new(encounterId, encounterId),
+            };
+        }
+
+        if (!rostersNode.TryGetProperty(encounterId, out var rosterNode) || rosterNode.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var roster = new List<EncounterRosterEntry>();
+        foreach (var itemNode in rosterNode.EnumerateArray())
+        {
+            if (!TryBuildEncounterRosterEntry(itemNode, out var entry))
+            {
+                return null;
+            }
+
+            roster.Add(entry);
+        }
+
+        return roster;
+    }
+
+    private static bool TryBuildEncounterRosterEntry(JsonElement itemNode, out EncounterRosterEntry entry)
+    {
+        entry = default!;
+        if (itemNode.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!itemNode.TryGetProperty("runtime_id", out var runtimeIdNode) || runtimeIdNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        if (!itemNode.TryGetProperty("enemy_id", out var enemyIdNode) || enemyIdNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var runtimeId = runtimeIdNode.GetString()?.Trim() ?? string.Empty;
+        var enemyId = enemyIdNode.GetString()?.Trim() ?? string.Empty;
+        if (runtimeId.Length <= 0 || enemyId.Length <= 0)
+        {
+            return false;
+        }
+
+        entry = new EncounterRosterEntry(runtimeId, enemyId);
+        return true;
+    }
+
+    private static Dictionary<string, EncounterEnemyDefinition>? TryLoadEnemyDefinitions(string path)
+    {
+        if (!FileAccess.FileExists(path))
+        {
+            return null;
+        }
+
+        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+        if (file is null)
+        {
+            return null;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(file.GetAsText(), SafeJsonDocumentOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        using (document)
+        {
+            if (!document.RootElement.TryGetProperty("enemy_definitions", out var definitionsNode) || definitionsNode.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var definitions = new Dictionary<string, EncounterEnemyDefinition>(StringComparer.Ordinal);
+            foreach (var definitionNode in definitionsNode.EnumerateArray())
+            {
+                if (!TryBuildEncounterEnemyDefinition(definitionNode, out var definition))
+                {
+                    continue;
+                }
+
+                definitions[definition.Id] = definition;
+            }
+
+            return definitions;
+        }
+    }
+
+    private static bool TryBuildEncounterEnemyDefinition(JsonElement definitionNode, out EncounterEnemyDefinition definition)
+    {
+        definition = default!;
+        if (definitionNode.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!definitionNode.TryGetProperty("id", out var idNode) || idNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        if (!definitionNode.TryGetProperty("name_key", out var nameKeyNode) || nameKeyNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        if (!definitionNode.TryGetProperty("stats", out var statsNode) || statsNode.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!statsNode.TryGetProperty("hp", out var hpNode) || hpNode.ValueKind != JsonValueKind.Number)
+        {
+            return false;
+        }
+
+        var id = idNode.GetString()?.Trim() ?? string.Empty;
+        var nameKey = nameKeyNode.GetString()?.Trim() ?? string.Empty;
+        var hp = Math.Max(1, hpNode.GetInt32());
+        if (id.Length <= 0 || nameKey.Length <= 0)
+        {
+            return false;
+        }
+
+        definition = new EncounterEnemyDefinition(id, nameKey, hp);
+        return true;
+    }
+
+    private Dictionary<string, List<string>> BuildRuntimeEnemyIntentMappings()
+    {
+        var mappings = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var (runtimeId, state) in _enemyCombatById)
+        {
+            AddRuntimeEnemyIntentMapping(mappings, runtimeId, runtimeId);
+            AddRuntimeEnemyIntentMapping(mappings, runtimeId, state.NameKey);
+        }
+
+        var loadedConfig = TryLoadActConfigFromCandidates();
+        if (loadedConfig is null)
+        {
+            return mappings;
+        }
+
+        var (config, sourcePath) = loadedConfig.Value;
+        if (!TryResolveStartEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
+        {
+            return mappings;
+        }
+
+        var roster = TryResolveEncounterRoster(config, encounterId!);
+        if (roster is null || roster.Count <= 0)
+        {
+            return mappings;
+        }
+
+        var definitionsPath = TryResolveEnemyDefinitionsPath(config, sourcePath);
+        if (string.IsNullOrWhiteSpace(definitionsPath))
+        {
+            return mappings;
+        }
+
+        var definitions = TryLoadEnemyDefinitions(definitionsPath!);
+        if (definitions is null || definitions.Count <= 0)
+        {
+            return mappings;
+        }
+
+        foreach (var entry in roster)
+        {
+            AddRuntimeEnemyIntentMapping(mappings, entry.RuntimeId, entry.RuntimeId);
+            AddRuntimeEnemyIntentMapping(mappings, entry.RuntimeId, entry.EnemyId);
+            if (definitions.TryGetValue(entry.EnemyId, out var definition))
+            {
+                AddRuntimeEnemyIntentMapping(mappings, entry.RuntimeId, definition.NameKey);
+            }
+        }
+
+        return mappings;
+    }
+
+    private static void AddRuntimeEnemyIntentMapping(Dictionary<string, List<string>> mappings, string runtimeId, string mappingKey)
+    {
+        if (string.IsNullOrWhiteSpace(runtimeId) || string.IsNullOrWhiteSpace(mappingKey))
+        {
+            return;
+        }
+
+        var normalizedKey = mappingKey.Trim();
+        if (!mappings.TryGetValue(normalizedKey, out var runtimeIds))
+        {
+            runtimeIds = new List<string>();
+            mappings[normalizedKey] = runtimeIds;
+        }
+
+        if (!runtimeIds.Contains(runtimeId, StringComparer.Ordinal))
+        {
+            runtimeIds.Add(runtimeId);
+        }
+    }
+
+    private bool TryResolveRuntimeEnemyIntentTargets(
+        string enemyKey,
+        IReadOnlyDictionary<string, List<string>> rosterMappings,
+        out IReadOnlyList<string> runtimeEnemyIds)
+    {
+        runtimeEnemyIds = Array.Empty<string>();
+        var normalizedKey = enemyKey.Trim();
+        if (normalizedKey.Length <= 0)
+        {
+            return false;
+        }
+
+        if (rosterMappings.TryGetValue(normalizedKey, out var mappedRuntimeIds) && mappedRuntimeIds.Count > 0)
+        {
+            runtimeEnemyIds = mappedRuntimeIds;
+            return true;
+        }
+
+        if (_enemyCombatById.ContainsKey(normalizedKey))
+        {
+            runtimeEnemyIds = new[] { normalizedKey };
+            return true;
+        }
+
+        return false;
     }
 
     private void RefreshDefaultM1EnemyStateLocale()
@@ -2871,8 +3634,8 @@ public partial class CombatScene : Control
             var state = _enemyCombatById[enemyId];
             _enemyCombatById[enemyId] = state with
             {
-                Name = ResolveUiText("enemy.act1.slime_scout.name"),
-                Status = ResolveUiText("combat.enemy.status.none"),
+                Name = ResolveUiText(state.NameKey),
+                Status = RebuildEnemyStatusSummaryForLocale(enemyId),
             };
         }
 
@@ -2949,12 +3712,18 @@ public partial class CombatScene : Control
         var rngStreamBase = payload.RngStream ?? new List<int>();
         var selector = new EnemyIntentSelectionService();
         var previews = new List<EnemyIntentPreviewItemPayload>();
+        var rosterMappings = BuildRuntimeEnemyIntentMappings();
 
         foreach (var enemy in payload.Enemies)
         {
             if (string.IsNullOrWhiteSpace(enemy.EnemyId) || enemy.Intents is null || enemy.Intents.Count <= 0)
             {
                 return false;
+            }
+
+            if (!TryResolveRuntimeEnemyIntentTargets(enemy.EnemyId, rosterMappings, out var runtimeEnemyIds))
+            {
+                continue;
             }
 
             var intentById = new Dictionary<string, EnemyIntentFromAiBehaviorPayload>(StringComparer.Ordinal);
@@ -2993,10 +3762,13 @@ public partial class CombatScene : Control
                 return false;
             }
 
-            previews.Add(new EnemyIntentPreviewItemPayload(
-                enemy.EnemyId,
-                selectedIntent.IconId ?? string.Empty,
-                selectedIntent.TextKey ?? string.Empty));
+            foreach (var runtimeEnemyId in runtimeEnemyIds)
+            {
+                previews.Add(new EnemyIntentPreviewItemPayload(
+                    runtimeEnemyId,
+                    selectedIntent.IconId ?? string.Empty,
+                    selectedIntent.TextKey ?? string.Empty));
+            }
         }
 
         if (previews.Count <= 0)
@@ -3037,6 +3809,113 @@ public partial class CombatScene : Control
             };
             _cardButtonRow.AddChild(button);
         }
+
+        RebuildVisibleHandFan(handCards);
+    }
+
+    private void RebuildVisibleHandFan(IReadOnlyList<string> handCards)
+    {
+        foreach (var child in _handFanLayer.GetChildren())
+        {
+            _handFanLayer.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        _handFanCards.Clear();
+        _handFanBasePositions.Clear();
+        _hoveredHandFanIndex = -1;
+        _handFanLayer.Visible = handCards.Count > 0;
+        if (handCards.Count <= 0)
+        {
+            return;
+        }
+
+        const float cardWidth = 184.0f;
+        const float cardHeight = 262.0f;
+        const float spacing = 112.0f;
+        const float fanArc = 22.0f;
+        const float baseY = 6.0f;
+        var totalWidth = (handCards.Count - 1) * spacing;
+        var centerX = _handFanLayer.Size.X / 2.0f;
+
+        for (var index = 0; index < handCards.Count; index++)
+        {
+            var visual = CreateHandFanCard(handCards[index], index, cardWidth, cardHeight);
+            var normalized = handCards.Count == 1 ? 0.0f : (index / (float)(handCards.Count - 1) * 2.0f - 1.0f);
+            var x = centerX - cardWidth / 2.0f + (index * spacing) - totalWidth / 2.0f;
+            var y = baseY + MathF.Abs(normalized) * 34.0f;
+            var rotation = normalized * fanArc;
+            visual.Position = new Vector2(x, y);
+            visual.RotationDegrees = rotation;
+            visual.SetMeta("hand_index", index);
+            visual.PivotOffset = new Vector2(cardWidth / 2.0f, cardHeight * 0.78f);
+            _handFanLayer.AddChild(visual);
+            _handFanCards.Add(visual);
+            _handFanBasePositions.Add(new Vector2(x, y));
+        }
+
+        RefreshHandFanVisualState();
+    }
+
+    private Control CreateHandFanCard(string cardName, int handIndex, float cardWidth, float cardHeight)
+    {
+        var card = new Control
+        {
+            Name = $"HandFanCard_{handIndex}",
+            CustomMinimumSize = new Vector2(cardWidth, cardHeight),
+            Size = new Vector2(cardWidth, cardHeight),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        var face = new TextureRect
+        {
+            Name = "CardFace",
+            Texture = ResolveCardFaceTexture(),
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(cardWidth, cardHeight),
+            Size = new Vector2(cardWidth, cardHeight),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.AddChild(face);
+
+        var title = new Label
+        {
+            Name = "CardTitle",
+            Position = new Vector2(28.0f, 20.0f),
+            Size = new Vector2(cardWidth - 56.0f, 28.0f),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Text = ResolveHandFanCardTitle(cardName),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.AddChild(title);
+
+        var cost = new Label
+        {
+            Name = "CardCost",
+            Position = new Vector2(24.0f, 20.0f),
+            Size = new Vector2(40.0f, 40.0f),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Text = ResolveHandFanCardCost(cardName),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.AddChild(cost);
+
+        var summary = new Label
+        {
+            Name = "CardSummary",
+            Position = new Vector2(26.0f, cardHeight - 86.0f),
+            Size = new Vector2(cardWidth - 52.0f, 60.0f),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            Text = ResolveHandFanCardSummary(cardName),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.AddChild(summary);
+
+        return card;
     }
 
     private string BuildCardButtonText(string cardName)
@@ -3112,6 +3991,27 @@ public partial class CombatScene : Control
         }
 
         return definition.Type.Trim().ToUpperInvariant();
+    }
+
+    private string ResolveHandFanCardTitle(string cardName)
+    {
+        return TryResolveCardDefinition(cardName, out var definition)
+            ? ResolveCardDisplayName(definition)
+            : cardName;
+    }
+
+    private string ResolveHandFanCardCost(string cardName)
+    {
+        return TryResolveCardDefinition(cardName, out var definition)
+            ? definition.Cost.ToString(CultureInfo.InvariantCulture)
+            : string.Empty;
+    }
+
+    private string ResolveHandFanCardSummary(string cardName)
+    {
+        return TryResolveCardDefinition(cardName, out var definition)
+            ? ResolveCardEffectSummary(definition)
+            : string.Empty;
     }
 
     private void RefreshEnemyIntentRows()
@@ -3336,6 +4236,7 @@ public partial class CombatScene : Control
     {
         var pointerPosition = ResolveRuntimePointerPosition();
         var isLeftPressed = ResolveRuntimeLeftPressed();
+        UpdateHoveredHandFan(pointerPosition);
 
         if (isLeftPressed && !_wasLeftMousePressed)
         {
@@ -3370,6 +4271,7 @@ public partial class CombatScene : Control
             }
         }
 
+        RefreshEnemyTargetHighlight(_selectedEnemyTargetId);
         _wasLeftMousePressed = isLeftPressed;
     }
 
@@ -3412,6 +4314,48 @@ public partial class CombatScene : Control
 
     private void RefreshEnemyTargetHighlight(string preferredId)
     {
+        foreach (var child in _enemyBattleStage.GetChildren())
+        {
+            if (child is not Control unit || !unit.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            var unitEnemyId = unit.GetMeta("enemy_id").AsString();
+            var isHoveredUnit = _isCardDragActive
+                && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
+                && string.Equals(unitEnemyId, _draggedTargetEnemyId, StringComparison.Ordinal)
+                && _enemyCombatById.TryGetValue(unitEnemyId, out var hoveredUnitState)
+                && hoveredUnitState.CurrentHp > 0;
+            var isSelectedUnit = !_isCardDragActive
+                && !string.IsNullOrWhiteSpace(preferredId)
+                && string.Equals(unitEnemyId, preferredId, StringComparison.Ordinal);
+            unit.SelfModulate = isHoveredUnit
+                ? new Color(1.0f, 0.9f, 0.55f, 1.0f)
+                : (isSelectedUnit ? new Color(0.93f, 0.97f, 0.88f, 1.0f) : Colors.White);
+        }
+
+        foreach (var child in _enemyRosterContainer.GetChildren())
+        {
+            if (child is not Control card || !card.HasMeta("enemy_id"))
+            {
+                continue;
+            }
+
+            var cardEnemyId = card.GetMeta("enemy_id").AsString();
+            var isHoveredCard = _isCardDragActive
+                && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
+                && string.Equals(cardEnemyId, _draggedTargetEnemyId, StringComparison.Ordinal)
+                && _enemyCombatById.TryGetValue(cardEnemyId, out var hoveredCardState)
+                && hoveredCardState.CurrentHp > 0;
+            var isSelectedCard = !_isCardDragActive
+                && !string.IsNullOrWhiteSpace(preferredId)
+                && string.Equals(cardEnemyId, preferredId, StringComparison.Ordinal);
+            card.SelfModulate = isHoveredCard
+                ? new Color(1.0f, 0.9f, 0.55f, 1.0f)
+                : (isSelectedCard ? new Color(0.93f, 0.97f, 0.88f, 1.0f) : Colors.White);
+        }
+
         if (_isCardDragActive
             && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
             && _enemyCombatById.TryGetValue(_draggedTargetEnemyId, out var hoveredState)
@@ -3465,13 +4409,71 @@ public partial class CombatScene : Control
 
     private int ResolveHandIndexAtPosition(Vector2 position)
     {
-        if (!_handCards.GetGlobalRect().HasPoint(position))
+        for (var index = _handFanCards.Count - 1; index >= 0; index--)
+        {
+            var card = _handFanCards[index];
+            if (card.GetGlobalRect().HasPoint(position))
+            {
+                return index;
+            }
+        }
+
+        if (!_handCards.Visible || !_handCards.GetGlobalRect().HasPoint(position))
         {
             return -1;
         }
 
         var local = position - _handCards.GlobalPosition;
         return _handCards.GetItemAtPosition(local, true);
+    }
+
+    private void UpdateHoveredHandFan(Vector2 pointerPosition)
+    {
+        var hovered = -1;
+        for (var index = _handFanCards.Count - 1; index >= 0; index--)
+        {
+            if (_handFanCards[index].GetGlobalRect().HasPoint(pointerPosition))
+            {
+                hovered = index;
+                break;
+            }
+        }
+
+        if (_hoveredHandFanIndex == hovered)
+        {
+            return;
+        }
+
+        _hoveredHandFanIndex = hovered;
+        RefreshHandFanVisualState();
+    }
+
+    private void RefreshHandFanVisualState()
+    {
+        for (var index = 0; index < _handFanCards.Count; index++)
+        {
+            var card = _handFanCards[index];
+            var basePosition = index < _handFanBasePositions.Count ? _handFanBasePositions[index] : card.Position;
+            var scale = Vector2.One;
+            var zIndex = index;
+            var offset = Vector2.Zero;
+
+            if (index == _hoveredHandFanIndex)
+            {
+                scale = new Vector2(1.16f, 1.16f);
+                offset = new Vector2(0.0f, -56.0f);
+                zIndex = 200;
+            }
+            else if (_hoveredHandFanIndex >= 0 && Math.Abs(index - _hoveredHandFanIndex) == 1)
+            {
+                offset = new Vector2(index < _hoveredHandFanIndex ? -24.0f : 24.0f, -12.0f);
+                zIndex = 120;
+            }
+
+            card.Scale = scale;
+            card.ZIndex = zIndex;
+            card.Position = basePosition + offset;
+        }
     }
 
     private string ResolveEnemyTargetIdAtPosition(Vector2 position)
@@ -3494,29 +4496,167 @@ public partial class CombatScene : Control
             return false;
         }
 
-        if (_enemyIntentByEnemy.ContainsKey(enemyId))
+        var battleStageUnit = FindEnemyBattleStageUnit(enemyId);
+        if (battleStageUnit?.GetNodeOrNull<Control>("EnemyPortraitFrame") is { } portraitFrame
+            && portraitFrame.GetGlobalRect().HasPoint(position))
         {
-            foreach (var child in _enemyIntentList.GetChildren())
-            {
-                if (child is not Control row || !row.HasMeta("enemy_id"))
-                {
-                    continue;
-                }
+            return true;
+        }
 
-                var rowEnemyId = row.GetMeta("enemy_id").AsString();
-                if (string.Equals(rowEnemyId, enemyId, StringComparison.Ordinal) && row.GetGlobalRect().HasPoint(position))
+        return false;
+    }
+
+    private void SyncRuntimeDeckState(IReadOnlyList<string> visibleHandCards, int drawPileCount, int discardPileCount)
+    {
+        if (_deckState is not null
+            && _deckState.DrawPile.Count == drawPileCount
+            && _deckState.DiscardPile.Count == discardPileCount
+            && _deckState.Hand.Count == visibleHandCards.Count
+            && _deckState.Hand.Select(ResolveRuntimeCardLabel).SequenceEqual(visibleHandCards))
+        {
+            return;
+        }
+
+        var hand = visibleHandCards
+            .Select(CreateRuntimeCardInstanceId)
+            .ToList();
+        var drawPile = new List<string>(Math.Max(0, drawPileCount));
+        for (var index = 0; index < drawPileCount; index++)
+        {
+            drawPile.Add(CreateRuntimeCardInstanceId(DefaultDeckCardNameForIndex(index)));
+        }
+
+        var discardPile = new List<string>(Math.Max(0, discardPileCount));
+        for (var index = 0; index < discardPileCount; index++)
+        {
+            discardPile.Add(CreateRuntimeCardInstanceId(DefaultDeckCardNameForIndex(index + drawPileCount)));
+        }
+
+        _deckState = new DeckState(
+            DrawPile: drawPile,
+            Hand: hand,
+            DiscardPile: discardPile,
+            ExhaustPile: Array.Empty<string>(),
+            RetainedInstanceIds: new HashSet<string>(StringComparer.Ordinal),
+            HandLimit: 10);
+    }
+
+    private DeckState ResolveNextDeckStateAfterEndTurn(IReadOnlyList<string> visibleHandCards)
+    {
+        if (_deckState is null)
+        {
+            SyncRuntimeDeckState(
+                visibleHandCards,
+                TryParseIntLabel(_drawPileValue, out var drawPile) ? drawPile : 0,
+                TryParseIntLabel(_discardPileValue, out var discardPile) ? discardPile : 0);
+        }
+
+        var currentState = _deckState!;
+        var endState = _deckService.EndOfTurn(currentState);
+        var drawCount = Math.Min(3, endState.DrawPile.Count);
+        var nextState = _deckService.Draw(endState, drawCount);
+        return nextState;
+    }
+
+    private string ResolveRuntimeCardLabel(string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+        {
+            return string.Empty;
+        }
+
+        var separator = instanceId.IndexOf('#', StringComparison.Ordinal);
+        return separator > 0 ? instanceId[..separator] : instanceId;
+    }
+
+    private string CreateRuntimeCardInstanceId(string cardName)
+    {
+        var normalized = string.IsNullOrWhiteSpace(cardName) ? "Card" : cardName.Trim();
+        _runtimeDeckInstanceCounter += 1;
+        return $"{normalized}#{_runtimeDeckInstanceCounter}";
+    }
+
+    private static string DefaultDeckCardNameForIndex(int index)
+    {
+        return index % 2 == 0 ? "Strike" : "Defend";
+    }
+
+    private string ResolveEnemyDisplayName(string runtimeOrDefinitionId)
+    {
+        return ResolveUiText(ResolveEnemyNameKey(runtimeOrDefinitionId));
+    }
+
+    private string ResolveEnemyNameKey(string runtimeOrDefinitionId)
+    {
+        var normalized = runtimeOrDefinitionId?.Trim() ?? string.Empty;
+        if (normalized.Length <= 0)
+        {
+            return "enemy.act1.slime_scout.name";
+        }
+
+        if (TryResolveEnemyDefinitionByRuntimeOrDefinitionId(normalized, out var definition))
+        {
+            return definition.NameKey;
+        }
+
+        return "enemy.act1.slime_scout.name";
+    }
+
+    private bool TryResolveEnemyDefinitionByRuntimeOrDefinitionId(string runtimeOrDefinitionId, out EncounterEnemyDefinition definition)
+    {
+        definition = default!;
+        var loadedConfig = TryLoadActConfigFromCandidates();
+        if (loadedConfig is null)
+        {
+            return false;
+        }
+
+        var (config, sourcePath) = loadedConfig.Value;
+        var definitionsPath = TryResolveEnemyDefinitionsPath(config, sourcePath);
+        if (string.IsNullOrWhiteSpace(definitionsPath))
+        {
+            return false;
+        }
+
+        var definitions = TryLoadEnemyDefinitions(definitionsPath!);
+        if (definitions is null || definitions.Count <= 0)
+        {
+            return false;
+        }
+
+        if (definitions.TryGetValue(runtimeOrDefinitionId, out definition))
+        {
+            return true;
+        }
+
+        if (TryResolveStartEncounterId(config, out var encounterId) && !string.IsNullOrWhiteSpace(encounterId))
+        {
+            var roster = TryResolveEncounterRoster(config, encounterId!);
+            if (roster is not null)
+            {
+                foreach (var entry in roster)
                 {
-                    return true;
+                    if (!string.Equals(entry.RuntimeId, runtimeOrDefinitionId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    return definitions.TryGetValue(entry.EnemyId, out definition);
                 }
             }
         }
 
-        if (string.Equals(_selectedEnemyTargetId, enemyId, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(_selectedEnemyTargetId))
+        return false;
+    }
+
+    private string RebuildEnemyStatusSummaryForLocale(string enemyId)
+    {
+        if (!_enemyStatusStacksByEnemy.TryGetValue(enemyId, out var statusMap) || statusMap.Count <= 0)
         {
-            return _enemyStatusValue.GetParent<Control>().GetGlobalRect().HasPoint(position);
+            return ResolveUiText("combat.enemy.status.none");
         }
 
-        return false;
+        return BuildStatusSummary(statusMap);
     }
 
     private void AddEnemyIntentRow(EnemyIntentState state)
@@ -3619,6 +4759,60 @@ public partial class CombatScene : Control
         return EnsureEnemyPortraitFallbackTexture();
     }
 
+    private Texture2D ResolvePlayerPortraitTexture()
+    {
+        if (_playerPortraitTexture is not null)
+        {
+            return _playerPortraitTexture;
+        }
+
+        foreach (var path in BuildPlayerPortraitTextureCandidates(DefaultPlayerPortraitId))
+        {
+            if (ResourceLoader.Exists(path) && ResourceLoader.Load(path) is Texture2D texture)
+            {
+                _playerPortraitTexture = texture;
+                return texture;
+            }
+
+            var rawTexture = TryLoadRawTexture(path);
+            if (rawTexture is not null)
+            {
+                _playerPortraitTexture = rawTexture;
+                return rawTexture;
+            }
+        }
+
+        _playerPortraitTexture = EnsureEnemyPortraitFallbackTexture();
+        return _playerPortraitTexture;
+    }
+
+    private Texture2D ResolveCardFaceTexture()
+    {
+        if (_cardFaceTexture is not null)
+        {
+            return _cardFaceTexture;
+        }
+
+        foreach (var path in BuildCardFaceTextureCandidates())
+        {
+            if (ResourceLoader.Exists(path) && ResourceLoader.Load(path) is Texture2D texture)
+            {
+                _cardFaceTexture = texture;
+                return texture;
+            }
+
+            var rawTexture = TryLoadRawTexture(path);
+            if (rawTexture is not null)
+            {
+                _cardFaceTexture = rawTexture;
+                return rawTexture;
+            }
+        }
+
+        _cardFaceTexture = EnsureEnemyPortraitFallbackTexture();
+        return _cardFaceTexture;
+    }
+
     private static Texture2D? TryLoadEnemyIntentTexture(string iconKey)
     {
         foreach (var path in BuildEnemyIntentTextureCandidates(iconKey))
@@ -3689,9 +4883,34 @@ public partial class CombatScene : Control
         {
             yield return "res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png";
         }
+        if (string.Equals(enemyId, DefaultEnemySupportId, StringComparison.Ordinal))
+        {
+            yield return "res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png";
+        }
+        if (string.Equals(enemyId, "act1-slime-scout-b", StringComparison.Ordinal))
+        {
+            yield return "res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png";
+        }
         yield return $"res://Game.Godot/Assets/Textures/Combat/Enemies/{enemyId}.png";
         yield return $"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png";
         yield return $"res://logs/aiart/t74-enemy-target-2026-05-13/processed/clean.png";
+    }
+
+    private static IEnumerable<string> BuildPlayerPortraitTextureCandidates(string portraitId)
+    {
+        if (string.IsNullOrWhiteSpace(portraitId))
+        {
+            yield break;
+        }
+
+        yield return $"res://Game.Godot/Assets/Textures/Combat/Player/{portraitId}.png";
+        yield return $"res://logs/aiart/combat-player-2026-05-17/player_fungal_knight_raw.png";
+    }
+
+    private static IEnumerable<string> BuildCardFaceTextureCandidates()
+    {
+        yield return "res://Game.Godot/Assets/Textures/Cards/card_spore_slash.png";
+        yield return "res://logs/aiart/combat-card-2026-05-17/slay_card_face_raw.png";
     }
 
     private Texture2D EnsureEnemyIntentFallbackTexture()
@@ -3723,7 +4942,7 @@ public partial class CombatScene : Control
     private void RefreshRuntimeDebugPanel()
     {
         _debugScenePathLabel.Text = $"scene: {SceneFilePath}";
-        var portraitState = _enemyPortrait.Texture is null ? "missing" : "ok";
+        var portraitState = _enemyBattleStage.GetChildCount() > 0 ? "ok" : "missing";
         _debugPortraitStatusLabel.Text = $"portrait: {portraitState} | path: {_lastResolvedEnemyPortraitPath}";
         _debugDragStateLabel.Text = $"drag: active={_isCardDragActive} hand={_draggedHandIndex} target={_draggedTargetEnemyId}";
         var mouse = ResolveRuntimePointerPosition();
@@ -3731,6 +4950,8 @@ public partial class CombatScene : Control
         var hoveredHandIndex = ResolveHandIndexAtPosition(mouse);
         var hoveredEnemyId = ResolveEnemyTargetIdAtPosition(mouse);
         _debugMouseStateLabel.Text = $"mouse: {mouse.X:0.0}, {mouse.Y:0.0} left={ResolveRuntimeLeftPressed()} src={pointerSource} hand={hoveredHandIndex} enemy={hoveredEnemyId}";
+        var aliveIds = string.Join(",", GetAliveEnemyIds());
+        _debugCombatRuntimeLabel.Text = $"runtime: alive=[{aliveIds}] stage={_enemyBattleStage.GetChildCount()} intents={_enemyIntentByEnemy.Count} incoming={TryResolveIncomingEnemyDamageFromIntent()} selected={_selectedEnemyTargetId}";
     }
 
     private string ResolveIntentDescription(string textKey)
@@ -3966,7 +5187,19 @@ public partial class CombatScene : Control
         int CurrentHp,
         int Block,
         string Status,
-        int MaxHp = 32
+        int MaxHp = 32,
+        string NameKey = "enemy.act1.slime_scout.name"
+    );
+
+    private sealed record EncounterEnemyDefinition(
+        string Id,
+        string NameKey,
+        int Hp
+    );
+
+    private sealed record EncounterRosterEntry(
+        string RuntimeId,
+        string EnemyId
     );
 
     private sealed record CardEffectResult(int Damage, int Block, string StatusDetail, bool MovedToExhaust);

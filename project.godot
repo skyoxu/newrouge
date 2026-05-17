@@ -12,7 +12,7 @@ config_version=5
 
 config/name="newrouge"
 run/main_scene="res://Game.Godot/Scenes/Main.tscn"
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/features=PackedStringArray("4.5", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -32,8 +32,8 @@ CompositionRoot="*res://Game.Godot/Autoloads/CompositionRoot.cs"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+window/size/viewport_width=1600
+window/size/viewport_height=900
 window/stretch/mode="viewport"
 
 [dotnet]
