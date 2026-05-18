@@ -22,6 +22,7 @@ func _load_main_on_map() -> Control:
     var main := MAIN_SCENE.instantiate() as Control
     add_child(auto_free(main))
     await get_tree().process_frame
+    TranslationServer.set_locale("en")
 
     var nav := main.get_node_or_null("ScreenNavigator")
     if nav != null:
@@ -81,7 +82,8 @@ func _current_scene_instance(main: Control):
 func _start_and_complete_encounter(main: Control, node_id: String, node_type: String) -> void:
     var enter_result := main.call("StartMapNodeRouteForTest", node_id, node_type, true, "") as Dictionary
     assert_bool(bool(enter_result.get("ok", false))).is_true()
-    assert_str(str(enter_result.get("scene_path", ""))).is_equal(node_type == "combat" ? COMBAT_SCENE : EVENT_SCENE)
+    var expected_scene := COMBAT_SCENE if node_type == "combat" else EVENT_SCENE
+    assert_str(str(enter_result.get("scene_path", ""))).is_equal(expected_scene)
 
     var complete_result := main.call("CompleteMapNodeFlowForTest") as Dictionary
     assert_bool(bool(complete_result.get("ok", false))).is_true()
@@ -103,36 +105,46 @@ func _resolve_reward_once(main: Control, action: String) -> Dictionary:
     var normalized := action.strip_edges().to_lower()
     if normalized == "confirm":
         var selected_card_id := ""
+        var selected_index := -1
+        if reward_scene.has_method("GetSelectedIndexForTest"):
+            selected_index = int(reward_scene.call("GetSelectedIndexForTest"))
         if reward_scene.has_method("GetOfferedCardIdsForTest"):
             var offered_ids = reward_scene.call("GetOfferedCardIdsForTest") as Array[String]
-            if offered_ids.size() > 0:
+            if selected_index >= 0 and selected_index < offered_ids.size():
+                selected_card_id = offered_ids[selected_index]
+            elif offered_ids.size() > 0:
                 selected_card_id = offered_ids[0]
-        if reward_scene.has_method("SelectChoiceForTest"):
-            reward_scene.call("SelectChoiceForTest", 0)
-        elif reward_scene.has_method("SelectOptionForTest"):
-            reward_scene.call("SelectOptionForTest", "reward_card_1")
+        if selected_index < 0:
+            if reward_scene.has_method("SelectChoiceForTest"):
+                reward_scene.call("SelectChoiceForTest", 0)
+                selected_index = 0
+            elif reward_scene.has_method("SelectOptionForTest"):
+                reward_scene.call("SelectOptionForTest", "reward_card_1")
+                selected_index = 0
 
         if reward_scene.has_method("ConfirmSelectedForTest"):
             return {
                 "ok": bool(reward_scene.call("ConfirmSelectedForTest")),
                 "reason": "",
                 "source": "scene",
-                "selected_card_id": selected_card_id
+                "selected_card_id": selected_card_id,
+                "scene_path": _current_scene_path(main)
             }
         if reward_scene.has_method("ConfirmForTest"):
             return {
                 "ok": bool(reward_scene.call("ConfirmForTest")),
                 "reason": "",
                 "source": "scene",
-                "selected_card_id": selected_card_id
+                "selected_card_id": selected_card_id,
+                "scene_path": _current_scene_path(main)
             }
         return {"ok": false, "reason": "confirm-hook-missing", "source": "scene"}
 
     if normalized == "skip":
         if reward_scene.has_method("SkipForTest"):
-            return {"ok": bool(reward_scene.call("SkipForTest")), "reason": "", "source": "scene"}
+            return {"ok": bool(reward_scene.call("SkipForTest")), "reason": "", "source": "scene", "scene_path": _current_scene_path(main)}
         if reward_scene.has_method("SkipRewardForTest"):
-            return {"ok": bool(reward_scene.call("SkipRewardForTest")), "reason": "", "source": "scene"}
+            return {"ok": bool(reward_scene.call("SkipRewardForTest")), "reason": "", "source": "scene", "scene_path": _current_scene_path(main)}
         return {"ok": false, "reason": "skip-hook-missing", "source": "scene"}
 
     return {"ok": false, "reason": "unsupported-action", "source": "test"}
@@ -325,9 +337,12 @@ func test_reward_scene_exposes_three_cards_confirm_skip_and_visible_feedback() -
     var main := await _load_main_on_map()
     await _start_and_complete_encounter(main, "combat-03", "combat")
 
-    _assert_reward_scene_interaction_surface(main)
-
     var reward_scene = _current_scene_instance(main)
+    assert_object(reward_scene).is_not_null()
+    assert_bool(reward_scene.has_method("GetCardCountForTest")).is_true()
+    assert_bool(reward_scene.has_method("GetFeedbackForTest")).is_true()
+    assert_bool(reward_scene.has_method("SkipForTest")).is_true()
+    assert_int(int(reward_scene.call("GetCardCountForTest"))).is_equal(3)
     var skip_ok := bool(reward_scene.call("SkipForTest"))
     assert_bool(skip_ok).is_true()
     assert_str(str(reward_scene.call("GetFeedbackForTest"))).is_equal("Reward skipped.")
