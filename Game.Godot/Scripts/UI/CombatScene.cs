@@ -21,6 +21,9 @@ public partial class CombatScene : Control
     private Label _energyValue = default!;
     private Label _drawPileValue = default!;
     private Label _discardPileValue = default!;
+    private PanelContainer _drawPileBadge = default!;
+    private PanelContainer _discardPileBadge = default!;
+    private PanelContainer _exhaustPileBadge = default!;
     private Label _turnStateValue = default!;
     private Label _feedbackMessageLabel = default!;
     private ItemList _feedbackHistoryList = default!;
@@ -38,6 +41,7 @@ public partial class CombatScene : Control
     private Label _enemyStatusTitleLabel = default!;
     private HBoxContainer _enemyBattleStage = default!;
     private PanelContainer _playerBattleStagePanel = default!;
+    private PanelContainer _playerTargetHighlight = default!;
     private TextureRect _playerPortrait = default!;
     private PanelContainer _enemyPortraitFrame = default!;
     private ColorRect _enemyTargetHighlight = default!;
@@ -57,11 +61,22 @@ public partial class CombatScene : Control
     private Label _debugDragStateLabel = default!;
     private Label _debugMouseStateLabel = default!;
     private Label _debugCombatRuntimeLabel = default!;
+    private Control _combatFxLayer = default!;
+    private AudioStreamPlayer _combatSfxPlayer = default!;
     private PanelContainer _dragCardGhost = default!;
+    private Control _dragCardGhostBody = default!;
+    private TextureRect _dragCardGhostFace = default!;
     private Label _dragCardGhostTitle = default!;
     private Label _dragCardGhostCost = default!;
     private Label _dragCardGhostType = default!;
     private Label _dragCardGhostSummary = default!;
+    private Line2D _dragArrow = default!;
+    private Button _masterDeckButton = default!;
+    private Control _pileViewerOverlay = default!;
+    private Button _pileViewerBackButton = default!;
+    private Label _pileViewerTitle = default!;
+    private GridContainer _pileViewerGrid = default!;
+    private TextureRect _enemyPortraitInStatusPanel = default!;
 
     private readonly List<string> _dispatchedCommands = new();
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new()
@@ -100,6 +115,9 @@ public partial class CombatScene : Control
     private readonly List<string> _presentationCueHistory = new();
     private readonly List<string> _sfxHookHistory = new();
     private readonly List<string> _missingSfxNoopHistory = new();
+    private readonly List<CombatFloatFxState> _activeCombatFloatFx = new();
+    private readonly Dictionary<string, int> _hitFlashTokensByTarget = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AudioStreamWav> _sfxToneCache = new(StringComparer.Ordinal);
     private string _lastHoverPreviewText = string.Empty;
     private bool _isCardDragActive;
     private int _draggedHandIndex = -1;
@@ -110,6 +128,13 @@ public partial class CombatScene : Control
     private bool _runtimePointerPressedOverride;
     private bool _reducedMotionForTest;
     private bool _simulateMissingSfxForTest;
+    private int _pendingDamageFloatValue;
+    private string _pendingDamageTargetEnemyId = string.Empty;
+    private int _pendingBlockFloatValue;
+    private int _pendingEnemyActionDamage;
+    private string _pendingHitTargetId = string.Empty;
+    private string _lastResolvedSfxHook = string.Empty;
+    private int _resolvedSfxPlaybackCount;
     private int _lastPlayCardOverplayTax;
     private bool _lastPlayCardPipelineSuccess;
     private const string DefaultEnemyId = "enemy_m1_slime";
@@ -169,13 +194,23 @@ public partial class CombatScene : Control
     private bool _manualEnemyRuntimeOverrideUsedForTest;
     private readonly List<Control> _handFanCards = new();
     private readonly List<Vector2> _handFanBasePositions = new();
+    private readonly List<float> _handFanBaseRotations = new();
     private int _hoveredHandFanIndex = -1;
     private Texture2D? _playerPortraitTexture;
     private Texture2D? _cardFaceTexture;
+    private Vector2 _dragCardGhostFaceDefaultMinimumSize;
+    private float _dragGhostVisualScaleForTest = 1.0f;
     private const string DefaultPlayerPortraitId = "player_fungal_knight";
+    private const int DefaultDrawCountPerTurn = 5;
+    private const int DefaultHandLimit = 10;
+    private const int PileViewerOverlayZIndex = 1000;
+    private const int DragOverlayZIndex = 2000;
+    private const int CombatFxLayerZIndex = 2500;
+    private const string PlayerHitTargetId = "player";
     private readonly DeckService _deckService = new();
     private DeckState? _deckState;
     private int _runtimeDeckInstanceCounter;
+    private string _pileViewerSource = "master";
 
     public override void _Ready()
     {
@@ -185,7 +220,11 @@ public partial class CombatScene : Control
         _energyValue = GetNode<Label>("HUD/EnergyValue");
         _drawPileValue = GetNode<Label>("HUD/DrawPileValue");
         _discardPileValue = GetNode<Label>("HUD/DiscardPileValue");
+        _drawPileBadge = GetNode<PanelContainer>("HUD/DrawPileBadge");
+        _discardPileBadge = GetNode<PanelContainer>("HUD/DiscardPileBadge");
+        _exhaustPileBadge = GetNode<PanelContainer>("HUD/ExhaustPileBadge");
         _turnStateValue = GetNode<Label>("HUD/TurnStateValue");
+        _masterDeckButton = GetNode<Button>("HUD/MasterDeckButton");
         _feedbackMessageLabel = GetNode<Label>("HUD/FeedbackMessageLabel");
         _feedbackHistoryList = GetNode<ItemList>("HUD/FeedbackHistoryList");
         _enemyRosterTitleLabel = GetNode<Label>("HUD/EnemyRosterPanel/EnemyRosterTitle");
@@ -202,10 +241,12 @@ public partial class CombatScene : Control
         _enemyStatusTitleLabel = GetNode<Label>("HUD/EnemyStatusPanel/EnemyStatusTitle");
         _enemyBattleStage = GetNode<HBoxContainer>("HUD/EnemyBattleStagePanel/EnemyBattleStageMargin/EnemyBattleStage");
         _playerBattleStagePanel = GetNode<PanelContainer>("HUD/PlayerBattleStagePanel");
+        _playerTargetHighlight = GetNode<PanelContainer>("HUD/PlayerBattleStagePanel/PlayerTargetHighlight");
         _playerPortrait = GetNode<TextureRect>("HUD/PlayerBattleStagePanel/PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame/PlayerPortrait");
         _enemyPortraitFrame = GetNode<PanelContainer>("HUD/EnemyStatusPanel/EnemyPortraitFrame");
         _enemyTargetHighlight = GetNode<ColorRect>("HUD/EnemyStatusPanel/EnemyTargetHighlight");
         _enemyPortrait = GetNode<TextureRect>("HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait");
+        _enemyPortraitInStatusPanel = _enemyPortrait;
         _enemyNameValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyNameValue");
         _enemyHpValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyHpValue");
         _enemyBlockValue = GetNode<Label>("HUD/EnemyStatusPanel/EnemyBlockValue");
@@ -221,24 +262,44 @@ public partial class CombatScene : Control
         _debugDragStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugDragState");
         _debugMouseStateLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugMouseState");
         _debugCombatRuntimeLabel = GetNode<Label>("HUD/DebugPanel/DebugMargin/DebugVBox/DebugCombatRuntime");
+        _combatFxLayer = GetNode<Control>("HUD/CombatFxLayer");
+        _combatSfxPlayer = GetNode<AudioStreamPlayer>("HUD/CombatSfxPlayer");
+        _dragArrow = GetNode<Line2D>("HUD/DragArrow");
         _dragCardGhost = GetNode<PanelContainer>("HUD/DragCardGhost");
+        _dragCardGhostBody = GetNode<Control>("HUD/DragCardGhost/GhostMargin/GhostBody");
+        _dragCardGhostFace = GetNode<TextureRect>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostFace");
+        _dragCardGhostFaceDefaultMinimumSize = _dragCardGhostFace.CustomMinimumSize;
         _dragCardGhostTitle = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostTitle");
         _dragCardGhostCost = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge/GhostCost");
         _dragCardGhostType = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow/GhostTypeBadge/GhostType");
         _dragCardGhostSummary = GetNode<Label>("HUD/DragCardGhost/GhostMargin/GhostBody/GhostSummary");
+        _pileViewerOverlay = GetNode<Control>("HUD/PileViewerOverlay");
+        _pileViewerBackButton = GetNode<Button>("HUD/PileViewerOverlay/PileViewerShell/BackColumn/BackButton");
+        _pileViewerTitle = GetNode<Label>("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerTitle");
+        _pileViewerGrid = GetNode<GridContainer>("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll/PileViewerGrid");
 
         _startTurnButton.Pressed += OnStartTurnPressed;
         _playSelectedCardButton.Pressed += OnPlaySelectedCardPressed;
         _endTurnButton.Pressed += OnEndTurnPressed;
+        _masterDeckButton.Pressed += OnMasterDeckPressed;
+        _pileViewerBackButton.Pressed += OnPileViewerBackPressed;
+        _drawPileBadge.GuiInput += OnDrawPileBadgeGuiInput;
+        _discardPileBadge.GuiInput += OnDiscardPileBadgeGuiInput;
+        _exhaustPileBadge.GuiInput += OnExhaustPileBadgeGuiInput;
         _handCards.ItemClicked += OnHandCardClicked;
         _handCards.GuiInput += OnHandCardsGuiInput;
         _startTurnButton.Visible = false;
         _startTurnButton.Text = ResolveUiText("combat.turn.start");
         _playSelectedCardButton.Text = ResolveUiText("combat.action.play_selected");
+        _playSelectedCardButton.Visible = false;
         _endTurnButton.Text = ResolveUiText("combat.turn.end");
         _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
         _actionHintLabel.Text = ResolveUiText("combat.action.hint");
         _handTitleLabel.Text = ResolveUiText("combat.hand.title");
+        _pileViewerOverlay.ZIndex = PileViewerOverlayZIndex;
+        _combatFxLayer.ZIndex = CombatFxLayerZIndex;
+        _dragCardGhost.ZIndex = DragOverlayZIndex;
+        _dragArrow.ZIndex = DragOverlayZIndex + 1;
         _enemyRosterTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyStatusTitleLabel.Text = ResolveUiText("combat.enemy.title");
         _enemyIntentTitleLabel.Text = ResolveUiText("combat.intent.title");
@@ -246,6 +307,7 @@ public partial class CombatScene : Control
         _powerRelicTitleLabel.Text = "Power/Relic/Potion Participants";
         _powerRelicPanel.Visible = false;
         _playerPortrait.Texture = ResolvePlayerPortraitTexture();
+        _masterDeckButton.Text = "Deck 0";
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
         ApplyDefaultM1EnemyIntentIfEmpty();
@@ -259,6 +321,21 @@ public partial class CombatScene : Control
         if (_startTurnButton is not null)
         {
             _startTurnButton.Pressed -= OnStartTurnPressed;
+        }
+
+        if (_drawPileBadge is not null)
+        {
+            _drawPileBadge.GuiInput -= OnDrawPileBadgeGuiInput;
+        }
+
+        if (_discardPileBadge is not null)
+        {
+            _discardPileBadge.GuiInput -= OnDiscardPileBadgeGuiInput;
+        }
+
+        if (_exhaustPileBadge is not null)
+        {
+            _exhaustPileBadge.GuiInput -= OnExhaustPileBadgeGuiInput;
         }
 
         if (_playSelectedCardButton is not null)
@@ -612,9 +689,85 @@ public partial class CombatScene : Control
         return _dragCardGhost.Visible;
     }
 
+    public bool IsPlayerTargetHighlightActiveForTest()
+    {
+        return _playerTargetHighlight.Visible;
+    }
+
     public string GetDragGhostTextForTest()
     {
         return _dragCardGhostTitle.Text;
+    }
+
+    public float GetHandFanCardRotationForTest(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handFanCards.Count)
+        {
+            return 0.0f;
+        }
+
+        return _handFanCards[handIndex].RotationDegrees;
+    }
+
+    public float GetDragGhostVisualScaleForTest()
+    {
+        return _dragGhostVisualScaleForTest;
+    }
+
+    public bool IsDraggedEnemySourceCardEmphasisActiveForTest()
+    {
+        return _isCardDragActive
+            && CurrentDraggedCardTargetsEnemy()
+            && _draggedHandIndex >= 0
+            && _hoveredHandFanIndex == _draggedHandIndex;
+    }
+
+    public bool SetExhaustPileCountForTest(int count)
+    {
+        _exhaustPileCount = Math.Max(0, count);
+        if (_deckState is not null)
+        {
+            var exhaustPile = BuildRuntimeExhaustPile(_exhaustPileCount, _deckState.DrawPile.Count + _deckState.Hand.Count + _deckState.DiscardPile.Count);
+            _deckState = _deckState with
+            {
+                ExhaustPile = exhaustPile,
+            };
+        }
+
+        RefreshMasterDeckButton();
+        return true;
+    }
+
+    public bool OpenPileViewerForTest(string pileSource)
+    {
+        return ShowPileViewer(pileSource);
+    }
+
+    public void ClosePileViewerForTest()
+    {
+        HidePileViewer();
+    }
+
+    public int GetPileViewerVisibleCardCountForTest()
+    {
+        if (_pileViewerSource == "draw")
+        {
+            return _deckState?.DrawPile.Count ?? (TryParseIntLabel(_drawPileValue, out var drawCount) ? drawCount : 0);
+        }
+
+        if (_pileViewerSource == "discard")
+        {
+            return _deckState?.DiscardPile.Count ?? (TryParseIntLabel(_discardPileValue, out var discardCount) ? discardCount : 0);
+        }
+
+        if (_pileViewerSource == "exhaust")
+        {
+            return _exhaustPileCount;
+        }
+
+        return (_deckState?.Hand.Count ?? _handCards.ItemCount)
+            + (_deckState?.DrawPile.Count ?? (TryParseIntLabel(_drawPileValue, out var masterDrawCount) ? masterDrawCount : 0))
+            + (_deckState?.DiscardPile.Count ?? (TryParseIntLabel(_discardPileValue, out var masterDiscardCount) ? masterDiscardCount : 0));
     }
 
     public string GetRuntimeDebugSceneTextForTest()
@@ -627,10 +780,20 @@ public partial class CombatScene : Control
         return _debugPortraitStatusLabel.Text;
     }
 
+    public bool IsPileViewerVisibleForTest()
+    {
+        return _pileViewerOverlay.Visible;
+    }
+
     public string GetEnemyPortraitPathForTest(string enemyId)
     {
         _ = ResolveEnemyPortraitTexture(enemyId);
         return _lastResolvedEnemyPortraitPath;
+    }
+
+    public string GetMasterDeckButtonTextForTest()
+    {
+        return _masterDeckButton.Text;
     }
 
     public string GetRuntimeDebugDragTextForTest()
@@ -681,6 +844,11 @@ public partial class CombatScene : Control
         RefreshRuntimeDebugPanel();
     }
 
+    public void ProcessInputEventForTest(InputEvent @event)
+    {
+        _Input(@event);
+    }
+
     public Vector2 GetHandCardPointerForTest(int handIndex)
     {
         if (handIndex < 0 || handIndex >= _handCards.ItemCount)
@@ -716,6 +884,21 @@ public partial class CombatScene : Control
     public Vector2 GetEnemyPanelPointerForTest()
     {
         return _enemyStatusValue.GetParent<Control>().GetGlobalRect().GetCenter();
+    }
+
+    public Vector2 GetPlayerTargetPointerForTest()
+    {
+        if (_playerTargetHighlight.Visible)
+        {
+            return _playerTargetHighlight.GetGlobalRect().GetCenter();
+        }
+
+        if (_playerBattleStagePanel.GetNodeOrNull<Control>("PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame") is { } portraitFrame)
+        {
+            return portraitFrame.GetGlobalRect().GetCenter();
+        }
+
+        return _playerBattleStagePanel.GetGlobalRect().GetCenter();
     }
 
     public Vector2 GetEnemyTargetPointerForTest(string enemyId)
@@ -758,6 +941,42 @@ public partial class CombatScene : Control
             hooks.Add(hook);
         }
         return hooks;
+    }
+
+    public global::Godot.Collections.Array<string> GetVisibleCombatFloatTextsForTest()
+    {
+        var texts = new global::Godot.Collections.Array<string>();
+        foreach (var fx in _activeCombatFloatFx.ToArray())
+        {
+            if (!GodotObject.IsInstanceValid(fx.Label) || !fx.Label.Visible)
+            {
+                continue;
+            }
+
+            texts.Add(fx.Descriptor);
+        }
+
+        return texts;
+    }
+
+    public bool IsHitFlashActiveForTest(string targetId)
+    {
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return false;
+        }
+
+        return _hitFlashTokensByTarget.ContainsKey(targetId.Trim());
+    }
+
+    public int GetResolvedSfxPlaybackCountForTest()
+    {
+        return _resolvedSfxPlaybackCount;
+    }
+
+    public string GetLastResolvedSfxHookForTest()
+    {
+        return _lastResolvedSfxHook;
     }
 
     public global::Godot.Collections.Array<string> GetMissingSfxNoopHistoryForTest()
@@ -1186,7 +1405,16 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var accepted = TryPlayCard(_handCards.GetItemText(selectedIndex), selectedIndex);
+        var selectedCardName = _handCards.GetItemText(selectedIndex);
+        var clearSelectionOnFailure = TryResolveCardDefinition(selectedCardName, out var previewDefinition)
+            && TryParseIntLabel(_energyValue, out var previewEnergy)
+            && previewEnergy < previewDefinition.Cost;
+        var accepted = TryPlayCard(selectedCardName, selectedIndex);
+        if (!accepted && clearSelectionOnFailure)
+        {
+            CancelSelectedCardInteraction();
+        }
+
         if (accepted)
         {
             _dispatchedCommands.Add("play_card");
@@ -1225,6 +1453,7 @@ public partial class CombatScene : Control
         if (!TryParseIntLabel(_energyValue, out var energy) || energy < definition.Cost)
         {
             AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
+            CancelSelectedCardInteraction();
             return false;
         }
 
@@ -1277,12 +1506,16 @@ public partial class CombatScene : Control
         PublishSfxHook("card_play");
         if (result.Damage > 0)
         {
+            _pendingDamageFloatValue = result.Damage;
+            _pendingDamageTargetEnemyId = targetEnemyId;
+            _pendingHitTargetId = string.IsNullOrWhiteSpace(targetEnemyId) ? DefaultEnemyId : targetEnemyId.Trim();
             PublishPresentationCue("damage_number");
             PublishPresentationCue("hit_feedback");
             PublishSfxHook("hit");
         }
         if (result.Block > 0)
         {
+            _pendingBlockFloatValue = result.Block;
             PublishPresentationCue("block_gain_number");
             PublishSfxHook("block");
         }
@@ -1708,6 +1941,7 @@ public partial class CombatScene : Control
     {
         _startTurnButton.Text = ResolveUiText("combat.turn.start");
         _playSelectedCardButton.Text = ResolveUiText("combat.action.play_selected");
+        _playSelectedCardButton.Visible = false;
         _endTurnButton.Text = ResolveUiText("combat.turn.end");
         _turnTitleLabel.Text = ResolveUiText("combat.turn.title");
         _actionHintLabel.Text = ResolveUiText("combat.action.hint");
@@ -1724,6 +1958,7 @@ public partial class CombatScene : Control
         RebuildCardButtons(handCards);
         RefreshDefaultM1EnemyStateLocale();
         RefreshEnemyIntentRows();
+        RefreshMasterDeckButton();
     }
 
     public bool TryApplyEnemyIntentPreviewContractJson(string intentJson)
@@ -1882,6 +2117,7 @@ public partial class CombatScene : Control
             ? _turnTitleLabel.Text
             : snapshot.TurnState;
         SyncRuntimeDeckState(snapshot.HandCards, snapshot.DrawPileCount, snapshot.DiscardPileCount);
+        RefreshMasterDeckButton();
         _coreStateMutationCount += 1;
         RebuildCardButtons(snapshot.HandCards);
         EnsureDefaultHandSelection();
@@ -1940,6 +2176,8 @@ public partial class CombatScene : Control
             progression.NextPlayerHp,
             "PlayerTurn"));
         ApplyDefaultM1EnemyIntentIfEmpty();
+        _pendingEnemyActionDamage = progression.DamageTaken;
+        _pendingHitTargetId = PlayerHitTargetId;
         PublishPresentationCue("enemy_action_feedback");
         PublishSfxHook("enemy_action");
         var detailParts = new List<string> { $"Enemy dealt {progression.DamageTaken} damage. Turn {_turnIndex} started." };
@@ -2051,6 +2289,7 @@ public partial class CombatScene : Control
         }
         var normalized = cue.Trim();
         _presentationCueHistory.Add(normalized);
+        DispatchPresentationCueRuntime(normalized);
         if (_reducedMotionForTest)
         {
             _presentationCueHistory.Add($"reduced_motion:{normalized}");
@@ -2070,6 +2309,251 @@ public partial class CombatScene : Control
             return;
         }
         _sfxHookHistory.Add(normalized);
+        PlayRuntimeSfx(normalized);
+    }
+
+    private void DispatchPresentationCueRuntime(string cue)
+    {
+        switch (cue)
+        {
+            case "damage_number":
+                if (_pendingDamageFloatValue > 0)
+                {
+                    ShowCombatFloat(
+                        text: $"-{_pendingDamageFloatValue}",
+                        descriptor: $"damage:-{_pendingDamageFloatValue}",
+                        globalAnchor: ResolveEnemyCombatFxAnchor(_pendingDamageTargetEnemyId),
+                        color: new Color(1.0f, 0.42f, 0.34f, 1.0f));
+                }
+
+                _pendingDamageFloatValue = 0;
+                _pendingDamageTargetEnemyId = string.Empty;
+                break;
+            case "block_gain_number":
+                if (_pendingBlockFloatValue > 0)
+                {
+                    ShowCombatFloat(
+                        text: $"+{_pendingBlockFloatValue} Block",
+                        descriptor: $"block:+{_pendingBlockFloatValue}",
+                        globalAnchor: ResolvePlayerCombatFxAnchor(),
+                        color: new Color(0.47f, 0.86f, 1.0f, 1.0f));
+                }
+
+                _pendingBlockFloatValue = 0;
+                break;
+            case "hit_feedback":
+                if (!string.IsNullOrWhiteSpace(_pendingHitTargetId))
+                {
+                    BeginHitFlash(_pendingHitTargetId);
+                }
+
+                _pendingHitTargetId = string.Empty;
+                break;
+            case "enemy_action_feedback":
+                if (_pendingEnemyActionDamage > 0)
+                {
+                    ShowCombatFloat(
+                        text: $"-{_pendingEnemyActionDamage}",
+                        descriptor: $"enemy_damage:-{_pendingEnemyActionDamage}",
+                        globalAnchor: ResolvePlayerCombatFxAnchor(),
+                        color: new Color(1.0f, 0.56f, 0.42f, 1.0f));
+                }
+
+                if (!string.IsNullOrWhiteSpace(_pendingHitTargetId))
+                {
+                    BeginHitFlash(_pendingHitTargetId);
+                }
+
+                _pendingEnemyActionDamage = 0;
+                _pendingHitTargetId = string.Empty;
+                break;
+        }
+    }
+
+    private void ShowCombatFloat(string text, string descriptor, Vector2 globalAnchor, Color color)
+    {
+        if (_combatFxLayer is null || !GodotObject.IsInstanceValid(_combatFxLayer))
+        {
+            return;
+        }
+
+        var label = new Label
+        {
+            Text = text,
+            Visible = true,
+            MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        label.AddThemeColorOverride("font_color", color);
+        label.AddThemeColorOverride("font_outline_color", new Color(0.05f, 0.06f, 0.08f, 0.92f));
+        label.AddThemeConstantOverride("outline_size", 8);
+        label.AddThemeFontSizeOverride("font_size", _reducedMotionForTest ? 26 : 32);
+        _combatFxLayer.AddChild(label);
+        label.ResetSize();
+        label.Size = label.GetMinimumSize();
+        label.PivotOffset = label.Size / 2.0f;
+
+        var localAnchor = globalAnchor - _combatFxLayer.GlobalPosition;
+        var startPosition = localAnchor - label.Size / 2.0f;
+        label.Position = startPosition;
+        label.Scale = _reducedMotionForTest ? new Vector2(1.0f, 1.0f) : new Vector2(0.92f, 0.92f);
+        label.Modulate = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+
+        var fxState = new CombatFloatFxState(label, descriptor);
+        _activeCombatFloatFx.Add(fxState);
+
+        var travelDistance = _reducedMotionForTest ? 18.0f : 42.0f;
+        var duration = _reducedMotionForTest ? 0.18f : 0.48f;
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(label, "position", startPosition + new Vector2(0.0f, -travelDistance), duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(label, "scale", _reducedMotionForTest ? new Vector2(1.04f, 1.04f) : Vector2.One, duration * 0.45f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(label, "modulate:a", 0.0f, duration)
+            .SetDelay(_reducedMotionForTest ? 0.02f : 0.08f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        tween.Finished += () => RemoveCombatFloatFx(fxState);
+    }
+
+    private void RemoveCombatFloatFx(CombatFloatFxState fxState)
+    {
+        _activeCombatFloatFx.Remove(fxState);
+        if (GodotObject.IsInstanceValid(fxState.Label))
+        {
+            fxState.Label.QueueFree();
+        }
+    }
+
+    private void BeginHitFlash(string targetId)
+    {
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return;
+        }
+
+        var normalizedTargetId = targetId.Trim();
+        var flashToken = _hitFlashTokensByTarget.TryGetValue(normalizedTargetId, out var currentToken)
+            ? currentToken + 1
+            : 1;
+        _hitFlashTokensByTarget[normalizedTargetId] = flashToken;
+        ApplyHitFlashVisual(normalizedTargetId, active: true);
+
+        var tween = CreateTween();
+        tween.TweenInterval(_reducedMotionForTest ? 0.08f : 0.16f);
+        tween.Finished += () =>
+        {
+            if (_hitFlashTokensByTarget.TryGetValue(normalizedTargetId, out var activeToken) && activeToken == flashToken)
+            {
+                _hitFlashTokensByTarget.Remove(normalizedTargetId);
+                ApplyHitFlashVisual(normalizedTargetId, active: false);
+            }
+        };
+    }
+
+    private void ApplyHitFlashVisual(string targetId, bool active)
+    {
+        var tint = active
+            ? new Color(1.0f, 0.72f, 0.72f, 1.0f)
+            : Colors.White;
+        if (string.Equals(targetId, PlayerHitTargetId, StringComparison.Ordinal))
+        {
+            _playerPortrait.SelfModulate = tint;
+            return;
+        }
+
+        _enemyPortrait.SelfModulate = tint;
+        if (FindEnemyBattleStageUnit(targetId)?.GetNodeOrNull<TextureRect>("EnemyPortraitFrame/EnemyPortrait") is { } portrait)
+        {
+            portrait.SelfModulate = tint;
+        }
+    }
+
+    private Vector2 ResolveEnemyCombatFxAnchor(string enemyId)
+    {
+        var normalizedEnemyId = string.IsNullOrWhiteSpace(enemyId) ? DefaultEnemyId : enemyId.Trim();
+        if (FindEnemyBattleStageUnit(normalizedEnemyId)?.GetNodeOrNull<Control>("EnemyPortraitFrame") is { } portraitFrame)
+        {
+            var rect = portraitFrame.GetGlobalRect();
+            return new Vector2(rect.GetCenter().X, rect.Position.Y + rect.Size.Y * 0.28f);
+        }
+
+        var fallbackRect = _enemyPortraitFrame.GetGlobalRect();
+        return new Vector2(fallbackRect.GetCenter().X, fallbackRect.Position.Y + fallbackRect.Size.Y * 0.30f);
+    }
+
+    private Vector2 ResolvePlayerCombatFxAnchor()
+    {
+        if (_playerBattleStagePanel.GetNodeOrNull<Control>("PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame") is { } portraitFrame)
+        {
+            var rect = portraitFrame.GetGlobalRect();
+            return new Vector2(rect.GetCenter().X, rect.Position.Y + rect.Size.Y * 0.24f);
+        }
+
+        var fallbackRect = _playerBattleStagePanel.GetGlobalRect();
+        return new Vector2(fallbackRect.GetCenter().X, fallbackRect.Position.Y + fallbackRect.Size.Y * 0.24f);
+    }
+
+    private void PlayRuntimeSfx(string hook)
+    {
+        if (_combatSfxPlayer is null || !GodotObject.IsInstanceValid(_combatSfxPlayer))
+        {
+            return;
+        }
+
+        var toneProfile = ResolveSfxToneProfile(hook);
+        if (!_sfxToneCache.TryGetValue(hook, out var stream))
+        {
+            stream = CreateSfxTone(toneProfile.FrequencyHz, toneProfile.DurationSeconds);
+            _sfxToneCache[hook] = stream;
+        }
+
+        _combatSfxPlayer.Stop();
+        _combatSfxPlayer.Stream = stream;
+        _combatSfxPlayer.VolumeDb = Mathf.LinearToDb(toneProfile.VolumeLinear);
+        _combatSfxPlayer.Play();
+        _lastResolvedSfxHook = hook;
+        _resolvedSfxPlaybackCount += 1;
+    }
+
+    private static SfxToneProfile ResolveSfxToneProfile(string hook)
+    {
+        return hook switch
+        {
+            "card_play" => new SfxToneProfile(520.0f, 0.08f, 0.38f),
+            "hit" => new SfxToneProfile(180.0f, 0.14f, 0.64f),
+            "block" => new SfxToneProfile(760.0f, 0.10f, 0.36f),
+            "enemy_action" => new SfxToneProfile(146.0f, 0.18f, 0.70f),
+            "invalid_action" => new SfxToneProfile(240.0f, 0.12f, 0.30f),
+            _ => new SfxToneProfile(400.0f, 0.10f, 0.32f),
+        };
+    }
+
+    private static AudioStreamWav CreateSfxTone(float frequencyHz, float durationSeconds)
+    {
+        const int sampleRate = 22050;
+        var frameCount = Math.Max(1, (int)MathF.Ceiling(sampleRate * Math.Max(0.02f, durationSeconds)));
+        var pcmData = new byte[frameCount * 2];
+        for (var index = 0; index < frameCount; index++)
+        {
+            var normalizedTime = (float)index / sampleRate;
+            var envelope = MathF.Min(1.0f, index / 300.0f) * (1.0f - normalizedTime / Math.Max(durationSeconds, 0.02f));
+            var sampleValue = MathF.Sin(normalizedTime * frequencyHz * Mathf.Tau) * envelope * 0.72f;
+            var pcmSample = (short)Mathf.Clamp(sampleValue * short.MaxValue, short.MinValue, short.MaxValue);
+            pcmData[index * 2] = (byte)(pcmSample & 0xff);
+            pcmData[index * 2 + 1] = (byte)((pcmSample >> 8) & 0xff);
+        }
+
+        return new AudioStreamWav
+        {
+            Format = AudioStreamWav.FormatEnum.Format16Bits,
+            MixRate = sampleRate,
+            Stereo = false,
+            Data = pcmData,
+        };
     }
 
     private CardEffectResult ResolveCardEffect(CardDefinitionRuntime definition, string targetEnemyId, CardResolutionResult runtimeResult)
@@ -2303,12 +2787,12 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var target = cardNode.TryGetProperty("target", out var targetNode) && targetNode.ValueKind == JsonValueKind.String
-            ? targetNode.GetString()?.Trim() ?? "enemy"
-            : "enemy";
         var type = cardNode.TryGetProperty("type", out var typeNode) && typeNode.ValueKind == JsonValueKind.String
             ? typeNode.GetString()?.Trim() ?? "unknown"
             : "unknown";
+        var target = ResolveCardTargetByType(type, cardNode.TryGetProperty("target", out var targetNode) && targetNode.ValueKind == JsonValueKind.String
+            ? targetNode.GetString()?.Trim() ?? string.Empty
+            : string.Empty);
         var nameKey = cardNode.TryGetProperty("name_key", out var nameKeyNode) && nameKeyNode.ValueKind == JsonValueKind.String
             ? nameKeyNode.GetString()?.Trim() ?? string.Empty
             : string.Empty;
@@ -2394,6 +2878,23 @@ public partial class CombatScene : Control
 
         definition = new CardDefinitionRuntime(id, target, type, nameKey, descriptionKey, cost, damage, block, statusId, statusStacks, exhaust);
         return true;
+    }
+
+    private static string ResolveCardTargetByType(string type, string explicitTarget)
+    {
+        var normalizedType = (type ?? string.Empty).Trim().ToLowerInvariant();
+        var normalizedExplicitTarget = (explicitTarget ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalizedType == "attack")
+        {
+            return "enemy";
+        }
+
+        if (normalizedType == "skill" || normalizedType == "power")
+        {
+            return "self";
+        }
+
+        return normalizedExplicitTarget.Length > 0 ? normalizedExplicitTarget : "enemy";
     }
 
     private void RegisterCardDefinition(CardDefinitionRuntime definition)
@@ -2764,6 +3265,7 @@ public partial class CombatScene : Control
         unit.AddChild(portraitFrame);
         unit.AddChild(name);
         unit.AddChild(hp);
+        ApplyEnemyPortraitFrameHighlight(portraitFrame, isHovered: false, isSelected: false);
         return unit;
     }
 
@@ -3013,7 +3515,7 @@ public partial class CombatScene : Control
         {
             "combat.turn.start" => isZh ? "开始回合" : "Start Turn",
             "combat.action.play_selected" => isZh ? "打出选中卡牌" : "Play Selected Card",
-            "combat.action.hint" => isZh ? "选择一张手牌，然后点击“打出选中卡牌”；没有合适操作时点击“结束回合”。" : "Select a card, then click Play Selected Card. Click End Turn when you are done.",
+            "combat.action.hint" => isZh ? "拖拽或选择一张手牌来使用；右键或 Esc 取消当前选牌；没有合适操作时点击“结束回合”。" : "Drag or select a card to play it. Right-click or Esc cancels. Click End Turn when you are done.",
             "combat.action.hint.drag_active" => isZh ? "拖拽手牌到敌人身上以打出。" : "Drag a card onto an enemy target.",
             "combat.action.hint.drag_release" => isZh ? "松开以打出这张牌。" : "Release to play this card.",
             "combat.action.hint.drag_invalid_target" => isZh ? "无效目标，请拖到可攻击的敌人身上。" : "Invalid target. Drag onto a living enemy.",
@@ -3154,9 +3656,9 @@ public partial class CombatScene : Control
         }
 
         ApplyCoreSnapshot(new CombatHudSnapshot(
-            new List<string> { "Strike", "Defend", "Strike" },
+            new List<string> { "Strike", "Defend", "Strike", "Defend", "Strike" },
             3,
-            7,
+            5,
             0,
             1,
             80,
@@ -3823,6 +4325,7 @@ public partial class CombatScene : Control
 
         _handFanCards.Clear();
         _handFanBasePositions.Clear();
+        _handFanBaseRotations.Clear();
         _hoveredHandFanIndex = -1;
         _handFanLayer.Visible = handCards.Count > 0;
         if (handCards.Count <= 0)
@@ -3832,8 +4335,8 @@ public partial class CombatScene : Control
 
         const float cardWidth = 184.0f;
         const float cardHeight = 262.0f;
-        const float spacing = 112.0f;
-        const float fanArc = 22.0f;
+        const float spacing = 116.0f;
+        const float fanArc = 10.0f;
         const float baseY = 6.0f;
         var totalWidth = (handCards.Count - 1) * spacing;
         var centerX = _handFanLayer.Size.X / 2.0f;
@@ -3843,7 +4346,7 @@ public partial class CombatScene : Control
             var visual = CreateHandFanCard(handCards[index], index, cardWidth, cardHeight);
             var normalized = handCards.Count == 1 ? 0.0f : (index / (float)(handCards.Count - 1) * 2.0f - 1.0f);
             var x = centerX - cardWidth / 2.0f + (index * spacing) - totalWidth / 2.0f;
-            var y = baseY + MathF.Abs(normalized) * 34.0f;
+            var y = baseY + MathF.Abs(normalized) * 12.0f;
             var rotation = normalized * fanArc;
             visual.Position = new Vector2(x, y);
             visual.RotationDegrees = rotation;
@@ -3852,9 +4355,193 @@ public partial class CombatScene : Control
             _handFanLayer.AddChild(visual);
             _handFanCards.Add(visual);
             _handFanBasePositions.Add(new Vector2(x, y));
+            _handFanBaseRotations.Add(rotation);
         }
 
         RefreshHandFanVisualState();
+    }
+
+    private void RefreshMasterDeckButton()
+    {
+        if (_masterDeckButton is null)
+        {
+            return;
+        }
+
+        var drawCount = _deckState?.DrawPile.Count ?? (TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : 0);
+        var discardCount = _deckState?.DiscardPile.Count ?? (TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : 0);
+        var handCount = _deckState?.Hand.Count ?? _handCards.ItemCount;
+        var total = drawCount + discardCount + handCount;
+        _masterDeckButton.Text = $"Deck {total}";
+    }
+
+    private bool ShowPileViewer(string pileSource)
+    {
+        _pileViewerSource = NormalizePileSource(pileSource);
+        _pileViewerOverlay.Visible = true;
+        _pileViewerOverlay.SetAnchorsPreset(LayoutPreset.FullRect);
+        _pileViewerOverlay.Size = GetViewportRect().Size;
+        _pileViewerOverlay.MouseFilter = MouseFilterEnum.Stop;
+        _pileViewerOverlay.FocusMode = FocusModeEnum.All;
+        _pileViewerOverlay.GrabFocus();
+        _pileViewerTitle.Text = ResolvePileViewerTitle(_pileViewerSource);
+        RebuildPileViewerGrid();
+        return true;
+    }
+
+    private void HidePileViewer()
+    {
+        _pileViewerOverlay.Visible = false;
+        _pileViewerOverlay.ReleaseFocus();
+    }
+
+    private void RebuildPileViewerGrid()
+    {
+        foreach (var child in _pileViewerGrid.GetChildren())
+        {
+            _pileViewerGrid.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        foreach (var cardName in ResolvePileViewerCards())
+        {
+            _pileViewerGrid.AddChild(CreatePileViewerCard(cardName));
+        }
+        RefreshMasterDeckButton();
+    }
+
+    private IReadOnlyList<string> ResolvePileViewerCards()
+    {
+        if (_pileViewerSource == "draw")
+        {
+            return _deckState?.DrawPile.Select(ResolveRuntimeCardLabel).ToList() ?? new List<string>();
+        }
+
+        if (_pileViewerSource == "discard")
+        {
+            return _deckState?.DiscardPile.Select(ResolveRuntimeCardLabel).ToList() ?? new List<string>();
+        }
+
+        if (_pileViewerSource == "exhaust")
+        {
+            if (_deckState is not null && _deckState.ExhaustPile.Count > 0)
+            {
+                return _deckState.ExhaustPile.Select(ResolveRuntimeCardLabel).ToList();
+            }
+
+            return BuildRuntimeExhaustPile(_exhaustPileCount, 0);
+        }
+
+        if (_pileViewerSource == "master")
+        {
+            var cards = new List<string>();
+            if (_deckState is not null)
+            {
+                cards.AddRange(_deckState.Hand.Select(ResolveRuntimeCardLabel));
+                cards.AddRange(_deckState.DrawPile.Select(ResolveRuntimeCardLabel));
+                cards.AddRange(_deckState.DiscardPile.Select(ResolveRuntimeCardLabel));
+            }
+            return cards;
+        }
+
+        return new List<string>();
+    }
+
+    private static List<string> BuildRuntimeExhaustPile(int count, int baseIndex)
+    {
+        var exhaustPile = new List<string>(Math.Max(0, count));
+        for (var index = 0; index < count; index++)
+        {
+            exhaustPile.Add(DefaultDeckCardNameForIndex(baseIndex + index));
+        }
+
+        return exhaustPile;
+    }
+
+    private static string NormalizePileSource(string pileSource)
+    {
+        return pileSource.Trim().ToLowerInvariant() switch
+        {
+            "draw" => "draw",
+            "discard" => "discard",
+            "exhaust" => "exhaust",
+            _ => "master",
+        };
+    }
+
+    private static string ResolvePileViewerTitle(string pileSource)
+    {
+        return pileSource switch
+        {
+            "draw" => "Draw Pile",
+            "discard" => "Discard Pile",
+            "exhaust" => "Exhaust Pile",
+            _ => "Master Deck",
+        };
+    }
+
+    private Control CreatePileViewerCard(string cardName)
+    {
+        var card = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(160.0f, 230.0f),
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        var face = new TextureRect
+        {
+            Texture = ResolveCardFaceTexture(),
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(160.0f, 190.0f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            SelfModulate = Colors.White,
+        };
+        card.AddChild(face);
+
+        var title = new Label
+        {
+            Text = cardName,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        card.AddChild(title);
+        return card;
+    }
+
+    private void OnMasterDeckPressed()
+    {
+        ShowPileViewer("master");
+    }
+
+    private void OnPileViewerBackPressed()
+    {
+        HidePileViewer();
+    }
+
+    private void OnDrawPileBadgeGuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
+        {
+            ShowPileViewer("draw");
+        }
+    }
+
+    private void OnDiscardPileBadgeGuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
+        {
+            ShowPileViewer("discard");
+        }
+    }
+
+    private void OnExhaustPileBadgeGuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
+        {
+            ShowPileViewer("exhaust");
+        }
     }
 
     private Control CreateHandFanCard(string cardName, int handIndex, float cardWidth, float cardHeight)
@@ -4058,7 +4745,35 @@ public partial class CombatScene : Control
 
     public override void _Input(InputEvent @event)
     {
-        _ = @event;
+        if (@event is InputEventAction actionEvent
+            && actionEvent.Pressed
+            && string.Equals(actionEvent.Action.ToString(), "ui_cancel", StringComparison.Ordinal))
+        {
+            if (CancelSelectedCardInteraction())
+            {
+                AcceptEvent();
+            }
+
+            return;
+        }
+
+        if (@event.IsActionPressed("ui_cancel"))
+        {
+            if (CancelSelectedCardInteraction())
+            {
+                AcceptEvent();
+            }
+
+            return;
+        }
+
+        if (@event is InputEventMouseButton mouseButton
+            && mouseButton.Pressed
+            && mouseButton.ButtonIndex == MouseButton.Right
+            && CancelSelectedCardInteraction())
+        {
+            AcceptEvent();
+        }
     }
 
     public override void _Process(double delta)
@@ -4076,12 +4791,23 @@ public partial class CombatScene : Control
         {
             _targetHighlightPulsePhase = 0.0f;
             _enemyTargetHighlight.Modulate = Colors.White;
-            return;
+        }
+        else
+        {
+            _targetHighlightPulsePhase += (float)delta * 5.0f;
+            var pulse = 0.78f + (MathF.Sin(_targetHighlightPulsePhase) * 0.12f + 0.12f);
+            _enemyTargetHighlight.Modulate = new Color(1.0f, 1.0f, 1.0f, pulse);
         }
 
-        _targetHighlightPulsePhase += (float)delta * 5.0f;
-        var pulse = 0.78f + (MathF.Sin(_targetHighlightPulsePhase) * 0.12f + 0.12f);
-        _enemyTargetHighlight.Modulate = new Color(1.0f, 1.0f, 1.0f, pulse);
+        if (_playerTargetHighlight.Visible)
+        {
+            var pulse = 0.76f + (MathF.Sin(_targetHighlightPulsePhase) * 0.10f + 0.10f);
+            _playerTargetHighlight.Modulate = new Color(1.0f, 1.0f, 1.0f, pulse);
+        }
+        else
+        {
+            _playerTargetHighlight.Modulate = Colors.White;
+        }
     }
 
     private void OnHandCardClicked(long index, Vector2 _atPosition, long mouseButtonIndex)
@@ -4124,8 +4850,12 @@ public partial class CombatScene : Control
         _draggedTargetEnemyId = string.Empty;
         _selectedEnemyTargetId = string.Empty;
         _hasPendingInvalidTargetSelection = false;
+        if (CurrentDraggedCardTargetsEnemy())
+        {
+            _hoveredHandFanIndex = handIndex;
+        }
         RefreshDragGhost(handIndex);
-        _dragCardGhost.Visible = true;
+        RefreshDragPresentationForCurrentCard(handIndex);
         ApplyHoverPreviewForTest($"drag:{handIndex}");
         UpdateActionHintForCurrentInteraction();
         return true;
@@ -4139,11 +4869,17 @@ public partial class CombatScene : Control
         }
 
         _draggedTargetEnemyId = string.IsNullOrWhiteSpace(enemyId) ? string.Empty : enemyId.Trim();
+        if (CurrentDraggedCardTargetsEnemy() && _draggedHandIndex >= 0)
+        {
+            _hoveredHandFanIndex = _draggedHandIndex;
+        }
         ApplyTargetInspectionForTest(_draggedTargetEnemyId);
+        RefreshDragPresentationForCurrentCard(_draggedHandIndex);
         if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId))
         {
             ApplyHoverPreviewForTest($"drag:{_draggedHandIndex}:{_draggedTargetEnemyId}");
         }
+        RefreshEnemyTargetHighlight(_selectedEnemyTargetId);
         UpdateActionHintForCurrentInteraction();
     }
 
@@ -4203,15 +4939,90 @@ public partial class CombatScene : Control
         _draggedTargetEnemyId = string.Empty;
         _hasPendingInvalidTargetSelection = false;
         _dragCardGhost.Visible = false;
+        _dragArrow.Visible = false;
+        _dragArrow.ClearPoints();
         _dragCardGhostTitle.Text = string.Empty;
         _dragCardGhostCost.Text = string.Empty;
         _dragCardGhostType.Text = string.Empty;
         _dragCardGhostSummary.Text = string.Empty;
+        _dragCardGhostFace.Texture = null;
+        _dragCardGhost.Scale = Vector2.One;
+        _dragCardGhost.Set("scale", Vector2.One);
+        _dragCardGhostBody.Scale = Vector2.One;
+        _dragCardGhostBody.Set("scale", Vector2.One);
+        _dragCardGhostFace.CustomMinimumSize = _dragCardGhostFaceDefaultMinimumSize;
+        _dragGhostVisualScaleForTest = 1.0f;
+        _dragCardGhost.RotationDegrees = 0.0f;
+        _playerTargetHighlight.Visible = false;
+        _playerBattleStagePanel.SelfModulate = Colors.White;
         CloseHoverPreviewForTest();
         HideTargetInspectionForTest();
+        RefreshHandFanVisualState();
         if (resetHint)
         {
             UpdateActionHintForCurrentInteraction();
+        }
+    }
+
+    private bool CancelSelectedCardInteraction()
+    {
+        var hadInteraction = _isCardDragActive
+            || ResolveSelectedHandIndex() >= 0
+            || !string.IsNullOrWhiteSpace(_selectedEnemyTargetId);
+        if (!hadInteraction)
+        {
+            return false;
+        }
+
+        if (_isCardDragActive)
+        {
+            ClearDragState(resetHint: false);
+        }
+
+        ForceClearHiddenHandSelection();
+        _selectedEnemyTargetId = string.Empty;
+        _draggedTargetEnemyId = string.Empty;
+        _hasPendingInvalidTargetSelection = false;
+        CloseHoverPreviewForTest();
+        HideTargetInspectionForTest();
+        RefreshEnemyTargetHighlight(string.Empty);
+        UpdateActionHintForCurrentInteraction();
+        return true;
+    }
+
+    private void ForceClearHiddenHandSelection()
+    {
+        _handCards.DeselectAll();
+        _handCards.Call("deselect_all");
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            _handCards.Deselect(index);
+            _handCards.Call("deselect", index);
+        }
+
+        if (_handCards.GetSelectedItems().Length <= 0)
+        {
+            return;
+        }
+
+        var cards = new List<string>(_handCards.ItemCount);
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            cards.Add(_handCards.GetItemText(index));
+        }
+
+        _handCards.Clear();
+        foreach (var cardName in cards)
+        {
+            _handCards.AddItem(cardName);
+        }
+
+        _handCards.DeselectAll();
+        _handCards.Call("deselect_all");
+        for (var index = 0; index < _handCards.ItemCount; index++)
+        {
+            _handCards.Deselect(index);
+            _handCards.Call("deselect", index);
         }
     }
 
@@ -4234,6 +5045,13 @@ public partial class CombatScene : Control
 
     private void ProcessRuntimePointerState()
     {
+        if (_pileViewerOverlay.Visible)
+        {
+            _wasLeftMousePressed = ResolveRuntimeLeftPressed();
+            RefreshRuntimeDebugPanel();
+            return;
+        }
+
         var pointerPosition = ResolveRuntimePointerPosition();
         var isLeftPressed = ResolveRuntimeLeftPressed();
         UpdateHoveredHandFan(pointerPosition);
@@ -4249,25 +5067,41 @@ public partial class CombatScene : Control
 
         if (_isCardDragActive)
         {
-            UpdateDragGhostPosition(pointerPosition);
-            var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
-            if (!string.Equals(hoveredEnemy, _draggedTargetEnemyId, StringComparison.Ordinal))
+            if (CurrentDraggedCardTargetsEnemy())
             {
-                HoverEnemyTarget(hoveredEnemy);
+                var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
+                if (!string.Equals(hoveredEnemy, _draggedTargetEnemyId, StringComparison.Ordinal))
+                {
+                    HoverEnemyTarget(hoveredEnemy);
+                }
             }
+            else
+            {
+                _draggedTargetEnemyId = string.Empty;
+                RefreshDragPresentationForCurrentCard(_draggedHandIndex);
+            }
+
+            UpdateDragGhostPosition(pointerPosition);
         }
 
         if (!isLeftPressed && _wasLeftMousePressed && _isCardDragActive)
         {
-            var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
-            if (!string.IsNullOrWhiteSpace(hoveredEnemy))
+            if (CurrentDraggedCardTargetsEnemy())
             {
-                HoverEnemyTarget(hoveredEnemy);
-                _ = ReleaseDraggedCard();
+                var hoveredEnemy = ResolveEnemyTargetIdAtPosition(pointerPosition);
+                if (!string.IsNullOrWhiteSpace(hoveredEnemy))
+                {
+                    HoverEnemyTarget(hoveredEnemy);
+                    _ = ReleaseDraggedCard();
+                }
+                else
+                {
+                    CancelCardDrag();
+                }
             }
             else
             {
-                CancelCardDrag();
+                _ = ReleaseDraggedCard();
             }
         }
 
@@ -4314,6 +5148,7 @@ public partial class CombatScene : Control
 
     private void RefreshEnemyTargetHighlight(string preferredId)
     {
+        var selfTargetActive = _isCardDragActive && CurrentDraggedCardTargetsSelf();
         foreach (var child in _enemyBattleStage.GetChildren())
         {
             if (child is not Control unit || !unit.HasMeta("enemy_id"))
@@ -4330,9 +5165,11 @@ public partial class CombatScene : Control
             var isSelectedUnit = !_isCardDragActive
                 && !string.IsNullOrWhiteSpace(preferredId)
                 && string.Equals(unitEnemyId, preferredId, StringComparison.Ordinal);
-            unit.SelfModulate = isHoveredUnit
-                ? new Color(1.0f, 0.9f, 0.55f, 1.0f)
-                : (isSelectedUnit ? new Color(0.93f, 0.97f, 0.88f, 1.0f) : Colors.White);
+            unit.SelfModulate = Colors.White;
+            if (unit.GetNodeOrNull<PanelContainer>("EnemyPortraitFrame") is { } portraitFrame)
+            {
+                ApplyEnemyPortraitFrameHighlight(portraitFrame, isHoveredUnit, isSelectedUnit);
+            }
         }
 
         foreach (var child in _enemyRosterContainer.GetChildren())
@@ -4352,28 +5189,84 @@ public partial class CombatScene : Control
                 && !string.IsNullOrWhiteSpace(preferredId)
                 && string.Equals(cardEnemyId, preferredId, StringComparison.Ordinal);
             card.SelfModulate = isHoveredCard
-                ? new Color(1.0f, 0.9f, 0.55f, 1.0f)
-                : (isSelectedCard ? new Color(0.93f, 0.97f, 0.88f, 1.0f) : Colors.White);
+                ? new Color(1.0f, 0.96f, 0.84f, 1.0f)
+                : (isSelectedCard ? new Color(0.97f, 0.98f, 0.92f, 1.0f) : Colors.White);
         }
+
+        _playerTargetHighlight.Visible = selfTargetActive;
+        _playerBattleStagePanel.SelfModulate = selfTargetActive
+            ? new Color(1.0f, 0.94f, 0.72f, 1.0f)
+            : Colors.White;
 
         if (_isCardDragActive
             && !string.IsNullOrWhiteSpace(_draggedTargetEnemyId)
             && _enemyCombatById.TryGetValue(_draggedTargetEnemyId, out var hoveredState)
             && hoveredState.CurrentHp > 0)
         {
-            _enemyPortraitFrame.SelfModulate = new Color(1.0f, 0.9f, 0.55f, 1.0f);
+            _enemyPortraitFrame.SelfModulate = Colors.White;
+            ApplyEnemyPortraitFrameHighlight(_enemyPortraitFrame, isHovered: true, isSelected: false);
             _enemyTargetHighlight.Visible = true;
             return;
         }
 
         _enemyPortraitFrame.SelfModulate = Colors.White;
+        ApplyEnemyPortraitFrameHighlight(_enemyPortraitFrame, isHovered: false, isSelected: false);
         _enemyTargetHighlight.Visible = false;
+    }
+
+    private static void ApplyEnemyPortraitFrameHighlight(PanelContainer portraitFrame, bool isHovered, bool isSelected)
+    {
+        if (portraitFrame.GetThemeStylebox("panel") is not StyleBoxFlat existingStyle)
+        {
+            return;
+        }
+
+        var style = existingStyle.Duplicate() as StyleBoxFlat;
+        if (style is null)
+        {
+            return;
+        }
+
+        style.BgColor = new Color(style.BgColor, 0.0f);
+        if (isHovered)
+        {
+            style.BorderWidthLeft = 4;
+            style.BorderWidthTop = 4;
+            style.BorderWidthRight = 4;
+            style.BorderWidthBottom = 4;
+            style.BorderColor = new Color(1.0f, 0.9f, 0.45f, 0.96f);
+            style.ShadowColor = new Color(1.0f, 0.85f, 0.26f, 0.24f);
+            style.ShadowSize = 14;
+        }
+        else if (isSelected)
+        {
+            style.BorderWidthLeft = 2;
+            style.BorderWidthTop = 2;
+            style.BorderWidthRight = 2;
+            style.BorderWidthBottom = 2;
+            style.BorderColor = new Color(0.88f, 0.94f, 0.78f, 0.88f);
+            style.ShadowColor = new Color(0.78f, 0.88f, 0.66f, 0.16f);
+            style.ShadowSize = 8;
+        }
+        else
+        {
+            style.BorderWidthLeft = 0;
+            style.BorderWidthTop = 0;
+            style.BorderWidthRight = 0;
+            style.BorderWidthBottom = 0;
+            style.BorderColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            style.ShadowColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            style.ShadowSize = 0;
+        }
+
+        portraitFrame.AddThemeStyleboxOverride("panel", style);
     }
 
     private void RefreshDragGhost(int handIndex)
     {
         if (handIndex < 0 || handIndex >= _handCards.ItemCount)
         {
+            _dragCardGhostFace.Texture = null;
             _dragCardGhostTitle.Text = string.Empty;
             _dragCardGhostCost.Text = string.Empty;
             _dragCardGhostType.Text = string.Empty;
@@ -4382,6 +5275,7 @@ public partial class CombatScene : Control
         }
 
         var cardName = _handCards.GetItemText(handIndex);
+        _dragCardGhostFace.Texture = ResolveCardFaceTexture();
         if (TryResolveCardDefinition(cardName, out var definition))
         {
             _dragCardGhostTitle.Text = ResolveCardDisplayName(definition);
@@ -4397,14 +5291,69 @@ public partial class CombatScene : Control
         _dragCardGhostSummary.Text = string.Empty;
     }
 
+    private void RefreshDragPresentationForCurrentCard(int handIndex)
+    {
+        var targetsEnemy = CardTargetsEnemy(handIndex);
+        _dragCardGhost.Visible = !targetsEnemy;
+        _dragArrow.Visible = targetsEnemy;
+        var ghostScale = targetsEnemy ? Vector2.One : new Vector2(1.3f, 1.3f);
+        _dragGhostVisualScaleForTest = ghostScale.X;
+        _dragCardGhost.Scale = Vector2.One;
+        _dragCardGhost.Set("scale", Vector2.One);
+        _dragCardGhostBody.Scale = Vector2.One;
+        _dragCardGhostBody.Set("scale", Vector2.One);
+        _dragCardGhostFace.CustomMinimumSize = targetsEnemy
+            ? _dragCardGhostFaceDefaultMinimumSize
+            : _dragCardGhostFaceDefaultMinimumSize * ghostScale;
+        _dragCardGhost.RotationDegrees = 0.0f;
+        _dragCardGhost.QueueSort();
+        _dragCardGhost.ResetSize();
+        if (!targetsEnemy)
+        {
+            _dragArrow.ClearPoints();
+        }
+
+        RefreshHandFanVisualState();
+    }
+
     private void UpdateDragGhostPosition(Vector2 pointerPosition)
     {
-        if (!_dragCardGhost.Visible)
+        if (_dragCardGhost.Visible)
+        {
+            var ghostSize = ResolveVisibleDragGhostSize();
+            _dragCardGhost.GlobalPosition = pointerPosition - (ghostSize * 0.5f);
+        }
+
+        if (!_dragArrow.Visible)
         {
             return;
         }
 
-        _dragCardGhost.Position = pointerPosition + new Vector2(18.0f, -24.0f);
+        _dragArrow.ClearPoints();
+        var from = GetHandCardPointerForTest(Math.Clamp(_draggedHandIndex, 0, Math.Max(0, _handCards.ItemCount - 1)));
+        var to = pointerPosition;
+        var mid = from.Lerp(to, 0.55f) + new Vector2(0.0f, -48.0f);
+        _dragArrow.AddPoint(from);
+        _dragArrow.AddPoint(mid);
+        _dragArrow.AddPoint(to);
+    }
+
+    private Vector2 ResolveVisibleDragGhostSize()
+    {
+        var minimumSize = _dragCardGhost.GetCombinedMinimumSize();
+        if (minimumSize.X > 0.0f && minimumSize.Y > 0.0f)
+        {
+            _dragCardGhost.Size = minimumSize;
+            return minimumSize;
+        }
+
+        var currentSize = _dragCardGhost.Size;
+        if (currentSize.X > 0.0f && currentSize.Y > 0.0f)
+        {
+            return currentSize;
+        }
+
+        return _dragCardGhostFace.CustomMinimumSize;
     }
 
     private int ResolveHandIndexAtPosition(Vector2 position)
@@ -4429,6 +5378,17 @@ public partial class CombatScene : Control
 
     private void UpdateHoveredHandFan(Vector2 pointerPosition)
     {
+        if (_isCardDragActive && CurrentDraggedCardTargetsEnemy() && _draggedHandIndex >= 0)
+        {
+            if (_hoveredHandFanIndex != _draggedHandIndex)
+            {
+                _hoveredHandFanIndex = _draggedHandIndex;
+                RefreshHandFanVisualState();
+            }
+
+            return;
+        }
+
         var hovered = -1;
         for (var index = _handFanCards.Count - 1; index >= 0; index--)
         {
@@ -4454,11 +5414,15 @@ public partial class CombatScene : Control
         {
             var card = _handFanCards[index];
             var basePosition = index < _handFanBasePositions.Count ? _handFanBasePositions[index] : card.Position;
+            var baseRotation = index < _handFanBaseRotations.Count ? _handFanBaseRotations[index] : card.RotationDegrees;
             var scale = Vector2.One;
             var zIndex = index;
             var offset = Vector2.Zero;
+            var isDraggedEnemyCard = _isCardDragActive
+                && CurrentDraggedCardTargetsEnemy()
+                && index == _draggedHandIndex;
 
-            if (index == _hoveredHandFanIndex)
+            if (isDraggedEnemyCard || index == _hoveredHandFanIndex)
             {
                 scale = new Vector2(1.16f, 1.16f);
                 offset = new Vector2(0.0f, -56.0f);
@@ -4471,8 +5435,10 @@ public partial class CombatScene : Control
             }
 
             card.Scale = scale;
+            card.Set("scale", scale);
             card.ZIndex = zIndex;
             card.Position = basePosition + offset;
+            card.RotationDegrees = baseRotation;
         }
     }
 
@@ -4504,6 +5470,42 @@ public partial class CombatScene : Control
         }
 
         return false;
+    }
+
+    private bool CurrentDraggedCardTargetsEnemy()
+    {
+        return CardTargetsEnemy(_draggedHandIndex);
+    }
+
+    private bool CurrentDraggedCardTargetsSelf()
+    {
+        return CardTargetsSelf(_draggedHandIndex);
+    }
+
+    private bool CardTargetsEnemy(int handIndex)
+    {
+        return ResolveDraggedCardTarget(handIndex) == "enemy";
+    }
+
+    private bool CardTargetsSelf(int handIndex)
+    {
+        return ResolveDraggedCardTarget(handIndex) == "self";
+    }
+
+    private string ResolveDraggedCardTarget(int handIndex)
+    {
+        if (handIndex < 0 || handIndex >= _handCards.ItemCount)
+        {
+            return string.Empty;
+        }
+
+        var cardName = _handCards.GetItemText(handIndex);
+        if (TryResolveCardDefinition(cardName, out var definition))
+        {
+            return definition.Target.Trim().ToLowerInvariant();
+        }
+
+        return "enemy";
     }
 
     private void SyncRuntimeDeckState(IReadOnlyList<string> visibleHandCards, int drawPileCount, int discardPileCount)
@@ -4538,7 +5540,7 @@ public partial class CombatScene : Control
             DiscardPile: discardPile,
             ExhaustPile: Array.Empty<string>(),
             RetainedInstanceIds: new HashSet<string>(StringComparer.Ordinal),
-            HandLimit: 10);
+            HandLimit: DefaultHandLimit);
     }
 
     private DeckState ResolveNextDeckStateAfterEndTurn(IReadOnlyList<string> visibleHandCards)
@@ -4553,9 +5555,7 @@ public partial class CombatScene : Control
 
         var currentState = _deckState!;
         var endState = _deckService.EndOfTurn(currentState);
-        var drawCount = Math.Min(3, endState.DrawPile.Count);
-        var nextState = _deckService.Draw(endState, drawCount);
-        return nextState;
+        return _deckService.Draw(endState, DefaultDrawCountPerTurn);
     }
 
     private string ResolveRuntimeCardLabel(string instanceId)
@@ -4951,7 +5951,11 @@ public partial class CombatScene : Control
         var hoveredEnemyId = ResolveEnemyTargetIdAtPosition(mouse);
         _debugMouseStateLabel.Text = $"mouse: {mouse.X:0.0}, {mouse.Y:0.0} left={ResolveRuntimeLeftPressed()} src={pointerSource} hand={hoveredHandIndex} enemy={hoveredEnemyId}";
         var aliveIds = string.Join(",", GetAliveEnemyIds());
-        _debugCombatRuntimeLabel.Text = $"runtime: alive=[{aliveIds}] stage={_enemyBattleStage.GetChildCount()} intents={_enemyIntentByEnemy.Count} incoming={TryResolveIncomingEnemyDamageFromIntent()} selected={_selectedEnemyTargetId}";
+        var liveHandCount = _deckState?.Hand.Count ?? _handCards.ItemCount;
+        var liveDrawCount = _deckState?.DrawPile.Count ?? (TryParseIntLabel(_drawPileValue, out var parsedDraw) ? parsedDraw : -1);
+        var liveDiscardCount = _deckState?.DiscardPile.Count ?? (TryParseIntLabel(_discardPileValue, out var parsedDiscard) ? parsedDiscard : -1);
+        _debugCombatRuntimeLabel.Text =
+            $"runtime: alive=[{aliveIds}] stage={_enemyBattleStage.GetChildCount()} intents={_enemyIntentByEnemy.Count} incoming={TryResolveIncomingEnemyDamageFromIntent()} selected={_selectedEnemyTargetId} hand={liveHandCount} draw={liveDrawCount} discard={liveDiscardCount} exhaust={_exhaustPileCount} pileViewer={_pileViewerOverlay.Visible}";
     }
 
     private string ResolveIntentDescription(string textKey)
@@ -5200,6 +6204,17 @@ public partial class CombatScene : Control
     private sealed record EncounterRosterEntry(
         string RuntimeId,
         string EnemyId
+    );
+
+    private sealed record CombatFloatFxState(
+        Label Label,
+        string Descriptor
+    );
+
+    private sealed record SfxToneProfile(
+        float FrequencyHz,
+        float DurationSeconds,
+        float VolumeLinear
     );
 
     private sealed record CardEffectResult(int Damage, int Block, string StatusDetail, bool MovedToExhaust);

@@ -7,6 +7,13 @@ func _new_scene() -> Node:
 	add_child(auto_free(scene))
 	return scene
 
+func _array_contains_substring(entries: Array, fragment: String) -> bool:
+	for entry in entries:
+		if str(entry).find(fragment) >= 0:
+			return true
+
+	return false
+
 # acceptance: ACC:T64.2
 # After each command attempt, HUD must show accepted/refused outcome text.
 # ACC:T78.2
@@ -711,6 +718,42 @@ func test_t78_reduced_motion_mode_keeps_deterministic_feedback_without_wall_cloc
 	var invalid_rng_after := int(scene.call("GetCombatRngStreamPositionForTest"))
 	assert_that(invalid_after).is_equal(invalid_before)
 	assert_that(invalid_rng_after).is_equal(invalid_rng_before)
+
+
+# ACC:T78.1
+# ACC:T78.2
+# ACC:T78.5
+func test_t78_live_feedback_creates_runtime_float_flash_and_sfx_effects() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t78_live_fx", 30, 30))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_t78_live_fx"))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	var hand := (scene as Control).get_node("HUD/HandCards") as ItemList
+
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var strike_floats := scene.call("GetVisibleCombatFloatTextsForTest") as Array
+	assert_that(strike_floats.size()).is_greater_equal(1)
+	assert_that(_array_contains_substring(strike_floats, "damage:")).is_true()
+	assert_that(bool(scene.call("IsHitFlashActiveForTest", "enemy_t78_live_fx"))).is_true()
+	assert_that(int(scene.call("GetResolvedSfxPlaybackCountForTest"))).is_greater_equal(2)
+	assert_that(str(scene.call("GetLastResolvedSfxHookForTest"))).is_equal("hit")
+
+	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	var defend_floats := scene.call("GetVisibleCombatFloatTextsForTest") as Array
+	assert_that(_array_contains_substring(defend_floats, "block:")).is_true()
+	assert_that(str(scene.call("GetLastResolvedSfxHookForTest"))).is_equal("block")
+
+	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
+	var enemy_action_floats := scene.call("GetVisibleCombatFloatTextsForTest") as Array
+	assert_that(_array_contains_substring(enemy_action_floats, "enemy_damage:")).is_true()
+	assert_that(bool(scene.call("IsHitFlashActiveForTest", "player"))).is_true()
+	assert_that(str(scene.call("GetLastResolvedSfxHookForTest"))).is_equal("enemy_action")
 
 
 # ACC:T78.8
