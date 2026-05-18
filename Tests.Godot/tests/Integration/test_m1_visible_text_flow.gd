@@ -7,6 +7,7 @@ const REQUIRED_SURFACES: Array[String] = [
 	"CharacterSelect",
 	"Map",
 	"Combat",
+	"Settlement",
 	"Reward",
 	"Shop",
 	"Rest",
@@ -22,6 +23,7 @@ const SURFACE_SCENE_PATHS := {
 	"CharacterSelect": "res://Game.Godot/Scenes/UI/CharacterSelect.tscn",
 	"Map": "res://Game.Godot/Scenes/Map/Map.tscn",
 	"Combat": "res://Game.Godot/Scenes/Combat.tscn",
+	"Settlement": "res://Game.Godot/Scenes/Settlement.tscn",
 	"Reward": "res://Game.Godot/Scenes/Reward.tscn",
 	"Shop": "res://Game.Godot/Scenes/Shop.tscn",
 	"Rest": "res://Game.Godot/Scenes/Rest.tscn",
@@ -584,6 +586,27 @@ func _await_scene_instance_with_method(main: Control, expected_scene_path: Strin
 	])
 	return null
 
+func _await_settlement_scene(main: Control):
+	return await _await_scene_instance_with_method(
+		main,
+		"res://Game.Godot/Scenes/Settlement.tscn",
+		"RequestReturnToMainMenuForTest"
+	)
+
+func _assert_settlement_scene_and_return(main: Control, expected_outcome_fragment: String) -> void:
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find(expected_outcome_fragment) >= 0).is_true()
+	var hud := main.get_node_or_null("HUD")
+	if hud != null and hud.has_method("IsRunSummaryVisibleForTest"):
+		assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_false()
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_false()
+	assert_that(bool(settlement.call("RequestReturnToMainMenuForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+
 func _try_apply_combat_snapshot_with_player_hp(
 	combat,
 	hand_cards: Array,
@@ -758,11 +781,7 @@ func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu(
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud := main.get_node_or_null("HUD")
-	assert_that(hud).is_not_null()
-	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Victory") >= 0).is_true()
+	await _assert_settlement_scene_and_return(main, "Victory")
 
 # acceptance anchor: ACC:T79.2
 func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_main_menu_single_resolution_guard() -> void:
@@ -787,17 +806,19 @@ func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_mai
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud := main.get_node_or_null("HUD")
-	assert_that(hud).is_not_null()
-	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_false()
+	assert_that(bool(settlement.call("RequestReturnToMainMenuForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
 	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
 
 # acceptance anchor: ACC:T79.3
 func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_main_menu() -> void:
@@ -814,11 +835,7 @@ func test_player_hp_zero_on_end_turn_immediately_triggers_defeat_summary_and_mai
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud := main.get_node_or_null("HUD")
-	assert_that(hud).is_not_null()
-	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	await _assert_settlement_scene_and_return(main, "Defeat")
 
 # acceptance anchor: ACC:T79.1
 func test_all_hp_mutation_entries_use_the_same_hp_change_update_path() -> void:
@@ -867,15 +884,17 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main_non_end_turn.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud_non_end_turn := main_non_end_turn.get_node_or_null("HUD")
-	assert_that(hud_non_end_turn).is_not_null()
-	assert_that(bool(hud_non_end_turn.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud_non_end_turn.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	var settlement_non_end_turn = await _await_settlement_scene(main_non_end_turn)
+	assert_that(settlement_non_end_turn).is_not_null()
+	assert_that(str(settlement_non_end_turn.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 	var history_non_end_turn = nav_non_end_turn.call("GetRouteHistoryForTest")
 	assert_that(history_non_end_turn.size()).is_equal(2)
 	assert_that(str(history_non_end_turn[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(history_non_end_turn[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(history_non_end_turn[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
+	assert_that(bool(settlement_non_end_turn.call("RequestReturnToMainMenuForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_that(bool(main_non_end_turn.call("IsMainMenuVisibleForTest"))).is_true()
 
 	# Path B: end-turn HP mutation entry.
 	var main_end_turn := await _load_main_on_map()
@@ -895,15 +914,17 @@ func test_end_turn_and_non_end_turn_entries_produce_identical_defeat_resolution_
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main_end_turn.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud_end_turn := main_end_turn.get_node_or_null("HUD")
-	assert_that(hud_end_turn).is_not_null()
-	assert_that(bool(hud_end_turn.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud_end_turn.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	var settlement_end_turn = await _await_settlement_scene(main_end_turn)
+	assert_that(settlement_end_turn).is_not_null()
+	assert_that(str(settlement_end_turn.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 	var history_end_turn = nav_end_turn.call("GetRouteHistoryForTest")
 	assert_that(history_end_turn.size()).is_equal(2)
 	assert_that(str(history_end_turn[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(history_end_turn[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(history_end_turn[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
+	assert_that(bool(settlement_end_turn.call("RequestReturnToMainMenuForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_that(bool(main_end_turn.call("IsMainMenuVisibleForTest"))).is_true()
 
 # acceptance anchor: ACC:T79.5
 func test_defeat_routing_is_bound_to_hp_change_emission_from_unified_update_path() -> void:
@@ -929,7 +950,9 @@ func test_defeat_routing_is_bound_to_hp_change_emission_from_unified_update_path
 	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 
 func test_player_hp_zero_on_non_end_turn_snapshot_path_triggers_defeat_summary_and_main_menu_once() -> void:
 	var main := await _load_main_on_map()
@@ -950,17 +973,19 @@ func test_player_hp_zero_on_non_end_turn_snapshot_path_triggers_defeat_summary_a
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
-	var hud := main.get_node_or_null("HUD")
-	assert_that(hud).is_not_null()
-	assert_that(bool(hud.call("IsRunSummaryVisibleForTest"))).is_true()
-	assert_that(str(hud.call("GetSummaryOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
+	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_false()
+	assert_that(bool(settlement.call("RequestReturnToMainMenuForTest"))).is_true()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
 	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
 
 # acceptance anchor: ACC:T79.8
 func test_defeat_route_requires_hp_transition_from_positive_to_zero_or_below() -> void:
@@ -989,11 +1014,13 @@ func test_defeat_route_requires_hp_transition_from_positive_to_zero_or_below() -
 	assert_that(int(combat.call("GetDefeatEligibleTransitionCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
 
 # acceptance anchor: ACC:T79.7
 func test_defeat_route_is_one_shot_even_if_hp_recovers_above_zero_then_drops_again() -> void:
@@ -1015,12 +1042,14 @@ func test_defeat_route_is_one_shot_even_if_hp_recovers_above_zero_then_drops_aga
 	assert_that(int(combat.call("GetDefeatResolveCountForTest"))).is_equal(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_that(bool(main.call("IsMainMenuVisibleForTest"))).is_true()
+	var settlement = await _await_settlement_scene(main)
+	assert_that(settlement).is_not_null()
+	assert_that(str(settlement.call("GetOutcomeTextForTest")).find("Defeat") >= 0).is_true()
 	assert_that(main.call("GetMapRouteStartInvocationCountForTest")).is_equal(1)
 	var route_history = nav.call("GetRouteHistoryForTest")
 	assert_that(route_history.size()).is_equal(2)
 	assert_that(str(route_history[0])).is_equal("res://Game.Godot/Scenes/Combat.tscn")
-	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
+	assert_that(str(route_history[1])).is_equal("res://Game.Godot/Scenes/Settlement.tscn")
 
 # acceptance anchor: ACC:T65.2
 func test_m1_locales_en_and_zh_cn_have_readable_text_and_negative_guard() -> void:
