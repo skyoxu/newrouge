@@ -40,29 +40,48 @@ content_margin_bottom = 3.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enemy_portrait_frame"]
 bg_color = Color(0, 0, 0, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.368627, 0.313726, 0.219608, 0.85)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0, 0, 0, 0)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_player_portrait_frame"]
-bg_color = Color(0.109804, 0.113725, 0.101961, 0.35)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.611765, 0.560784, 0.396078, 0.95)
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0, 0, 0, 0)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 shadow_color = Color(0, 0, 0, 0.28)
 shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_player_target_highlight"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 0.898039, 0.498039, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drag_card_ghost_transparent"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_badge"]
 bg_color = Color(0.113725, 0.121569, 0.105882, 0.84)
@@ -130,6 +149,18 @@ offset_top = 150.0
 offset_right = 350.0
 offset_bottom = 566.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_player_portrait_frame")
+
+[node name="PlayerTargetHighlight" type="PanelContainer" parent="HUD/PlayerBattleStagePanel"]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_player_target_highlight")
 
 [node name="PlayerBattleStageMargin" type="MarginContainer" parent="HUD/PlayerBattleStagePanel"]
 layout_mode = 2
@@ -327,6 +358,31 @@ offset_right = 1260.0
 offset_bottom = 776.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_pile_badge")
 
+[node name="ExhaustPileBadge" type="PanelContainer" parent="HUD"]
+layout_mode = 2
+offset_left = 1100.0
+offset_top = 548.0
+offset_right = 1260.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_badge")
+
+[node name="ExhaustPileBadgeMargin" type="MarginContainer" parent="HUD/ExhaustPileBadge"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="ExhaustPileBadgeVBox" type="VBoxContainer" parent="HUD/ExhaustPileBadge/ExhaustPileBadgeMargin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="ExhaustPileTitle" type="Label" parent="HUD/ExhaustPileBadge/ExhaustPileBadgeMargin/ExhaustPileBadgeVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Exhaust"
+
 [node name="DiscardPileBadgeMargin" type="MarginContainer" parent="HUD/DiscardPileBadge"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
@@ -360,6 +416,14 @@ offset_right = 760.0
 offset_bottom = 56.0
 text = "--"
 
+[node name="MasterDeckButton" type="Button" parent="HUD"]
+layout_mode = 2
+offset_left = 1184.0
+offset_top = 22.0
+offset_right = 1360.0
+offset_bottom = 58.0
+text = "Deck 0"
+
 [node name="ActionHintLabel" type="Label" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0
@@ -373,20 +437,29 @@ visible = false
 layout_mode = 2
 offset_left = 24.0
 offset_top = 136.0
-offset_right = 260.0
-offset_bottom = 208.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_drag_card_ghost")
+offset_right = 252.0
+offset_bottom = 452.0
+mouse_filter = 2
+z_index = 2000
+theme_override_styles/panel = SubResource("StyleBoxFlat_drag_card_ghost_transparent")
 
 [node name="GhostMargin" type="MarginContainer" parent="HUD/DragCardGhost"]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="GhostBody" type="VBoxContainer" parent="HUD/DragCardGhost/GhostMargin"]
 layout_mode = 2
 theme_override_constants/separation = 4
+
+[node name="GhostFace" type="TextureRect" parent="HUD/DragCardGhost/GhostMargin/GhostBody"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 320)
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
 
 [node name="GhostHeader" type="VBoxContainer" parent="HUD/DragCardGhost/GhostMargin/GhostBody"]
 layout_mode = 2
@@ -427,6 +500,19 @@ text = ""
 layout_mode = 2
 autowrap_mode = 3
 text = ""
+
+[node name="DragArrow" type="Line2D" parent="HUD"]
+visible = false
+layout_mode = 2
+z_index = 2001
+width = 6.0
+default_color = Color(1, 1, 1, 1)
+antialiased = true
+joint_mode = 1
+begin_cap_mode = 1
+end_cap_mode = 2
+round_precision = 8
+mouse_filter = 2
 
 [node name="EnemyIntentPanel" type="VBoxContainer" parent="HUD"]
 layout_mode = 2
@@ -475,11 +561,11 @@ size_flags_horizontal = 3
 
 [node name="TurnControls" type="HBoxContainer" parent="HUD"]
 layout_mode = 2
-offset_left = 420.0
-offset_top = 736.0
-offset_right = 844.0
-offset_bottom = 784.0
-alignment = 1
+offset_left = 1288.0
+offset_top = 696.0
+offset_right = 1512.0
+offset_bottom = 752.0
+alignment = 0
 theme_override_constants/separation = 8
 
 [node name="StartTurnButton" type="Button" parent="HUD/TurnControls"]
@@ -489,6 +575,7 @@ text = "combat.turn.start"
 
 [node name="PlaySelectedCardButton" type="Button" parent="HUD/TurnControls"]
 layout_mode = 2
+visible = false
 text = "combat.action.play_selected"
 
 [node name="EndTurnButton" type="Button" parent="HUD/TurnControls"]
@@ -511,12 +598,26 @@ offset_top = 84.0
 offset_right = 844.0
 offset_bottom = 180.0
 
+[node name="CombatFxLayer" type="Control" parent="HUD"]
+layout_mode = 3
+z_index = 2500
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CombatSfxPlayer" type="AudioStreamPlayer" parent="HUD"]
+bus = &"Master"
+
 [node name="DebugPanel" type="PanelContainer" parent="HUD"]
+custom_minimum_size = Vector2(520, 360)
 layout_mode = 2
-offset_left = 880.0
-offset_top = 360.0
+offset_left = 740.0
+offset_top = 320.0
 offset_right = 1260.0
-offset_bottom = 640.0
+offset_bottom = 680.0
 
 [node name="DebugMargin" type="MarginContainer" parent="HUD/DebugPanel"]
 layout_mode = 2
@@ -555,5 +656,68 @@ text = "mouse: --"
 
 [node name="DebugCombatRuntime" type="Label" parent="HUD/DebugPanel/DebugMargin/DebugVBox"]
 layout_mode = 2
+size_flags_vertical = 3
 autowrap_mode = 3
 text = "runtime: --"
+
+[node name="PileViewerOverlay" type="Control" parent="HUD"]
+visible = false
+layout_mode = 3
+z_index = 1000
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PileViewerDim" type="ColorRect" parent="HUD/PileViewerOverlay"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.05, 0.76)
+mouse_filter = 2
+
+[node name="PileViewerShell" type="HBoxContainer" parent="HUD/PileViewerOverlay"]
+layout_mode = 2
+offset_left = 56.0
+offset_top = 52.0
+offset_right = 1544.0
+offset_bottom = 620.0
+theme_override_constants/separation = 32
+
+[node name="BackColumn" type="CenterContainer" parent="HUD/PileViewerOverlay/PileViewerShell"]
+custom_minimum_size = Vector2(372, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BackButton" type="Button" parent="HUD/PileViewerOverlay/PileViewerShell/BackColumn"]
+custom_minimum_size = Vector2(220, 84)
+layout_mode = 2
+text = "Back"
+
+[node name="ContentColumn" type="VBoxContainer" parent="HUD/PileViewerOverlay/PileViewerShell"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="PileViewerTitle" type="Label" parent="HUD/PileViewerOverlay/PileViewerShell/ContentColumn"]
+layout_mode = 2
+text = "Pile Viewer"
+
+[node name="PileViewerScroll" type="ScrollContainer" parent="HUD/PileViewerOverlay/PileViewerShell/ContentColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PileViewerGrid" type="GridContainer" parent="HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 5
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 28
