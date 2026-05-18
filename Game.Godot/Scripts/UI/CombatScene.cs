@@ -6,6 +6,7 @@ using System.Text.Json;
 using Godot;
 using Game.Core.Contracts.Config;
 using Game.Core.Contracts.Combat;
+using Game.Core.Contracts.Status;
 using Game.Core.Services;
 
 namespace Game.Godot.Scripts.UI;
@@ -141,7 +142,7 @@ public partial class CombatScene : Control
     private const string DefaultEnemySupportId = "enemy_m1_slime_b";
     private readonly Dictionary<string, EnemyCombatState> _enemyCombatById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, int>> _enemyStatusStacksByEnemy = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, int> _playerStatusStacks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, StatusInstance> _playerStatuses = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CardDefinitionRuntime> _cardDefinitionsByLookup = new(StringComparer.Ordinal);
     private string _selectedEnemyTargetId = string.Empty;
     private bool _hasPendingInvalidTargetSelection;
@@ -208,6 +209,7 @@ public partial class CombatScene : Control
     private const int CombatFxLayerZIndex = 2500;
     private const string PlayerHitTargetId = "player";
     private readonly DeckService _deckService = new();
+    private readonly StatusService _statusService = new();
     private DeckState? _deckState;
     private int _runtimeDeckInstanceCounter;
     private string _pileViewerSource = "master";
@@ -1406,15 +1408,7 @@ public partial class CombatScene : Control
         }
 
         var selectedCardName = _handCards.GetItemText(selectedIndex);
-        var clearSelectionOnFailure = TryResolveCardDefinition(selectedCardName, out var previewDefinition)
-            && TryParseIntLabel(_energyValue, out var previewEnergy)
-            && previewEnergy < previewDefinition.Cost;
         var accepted = TryPlayCard(selectedCardName, selectedIndex);
-        if (!accepted && clearSelectionOnFailure)
-        {
-            CancelSelectedCardInteraction();
-        }
-
         if (accepted)
         {
             _dispatchedCommands.Add("play_card");
@@ -1453,7 +1447,6 @@ public partial class CombatScene : Control
         if (!TryParseIntLabel(_energyValue, out var energy) || energy < definition.Cost)
         {
             AppendCommandFeedback(normalizedCard, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.insufficient_energy");
-            CancelSelectedCardInteraction();
             return false;
         }
 
@@ -1837,15 +1830,26 @@ public partial class CombatScene : Control
 
     public string GetPlayerStatusSummaryForTest()
     {
-        if (_playerStatusStacks.Count <= 0)
+        if (_playerStatuses.Count <= 0)
         {
             return string.Empty;
         }
 
         var parts = new List<string>();
-        foreach (var (statusId, stacks) in _playerStatusStacks)
+        foreach (var status in _playerStatuses.Values)
         {
-            parts.Add($"{statusId}:{stacks}");
+            var visibleAmount = ResolveVisiblePlayerStatusValue(status);
+            if (visibleAmount <= 0)
+            {
+                continue;
+            }
+
+            parts.Add($"{status.StatusId}:{visibleAmount}");
+        }
+
+        if (parts.Count <= 0)
+        {
+            return string.Empty;
         }
 
         parts.Sort(StringComparer.Ordinal);
@@ -2683,6 +2687,7 @@ public partial class CombatScene : Control
         var baseDamage = Math.Max(0, definition.Damage);
         var triggerN = 3;
         var taxPerCard = 2;
+        var rageStacks = _statusService.GetRageStacks(_playerStatuses);
         return new PlayCardPipelineInput(
             DifficultyId: TryParseIntLabel(_difficultyValue, out var difficulty) ? difficulty : 1,
             CardsPlayedThisTurn: Math.Max(0, _cardsPlayedThisTurn),
@@ -2696,7 +2701,8 @@ public partial class CombatScene : Control
             VulnerableMultiplier: 1.0,
             IsFixedDamage: false,
             CombatantId: "player",
-            StableId: $"turn-{_turnIndex}");
+            StableId: $"turn-{_turnIndex}",
+            RageStacks: rageStacks);
     }
 
     private bool TryResolveCardDefinition(string cardName, out CardDefinitionRuntime definition)
@@ -2969,8 +2975,13 @@ public partial class CombatScene : Control
 
     private void ApplyStatusToPlayer(string statusId, int stacks)
     {
-        _playerStatusStacks.TryGetValue(statusId, out var current);
-        _playerStatusStacks[statusId] = current + stacks;
+        var normalizedStatusId = (statusId ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedStatusId) || stacks <= 0)
+        {
+            return;
+        }
+
+        _statusService.ApplyToTarget(_playerStatuses, BuildPlayerStatusInstance(normalizedStatusId, stacks));
     }
 
     private string BuildStatusSummary(IReadOnlyDictionary<string, int> statusMap)
@@ -3044,29 +3055,37 @@ public partial class CombatScene : Control
             }
         }
 
-        var playerStatusIds = new List<string>(_playerStatusStacks.Keys);
+        var playerStatusIds = _playerStatuses.Keys.ToArray();
+        var previousVisibleValues = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var statusId in playerStatusIds)
         {
-            if (!ShouldDecayStatusAtEndTurn(statusId))
+            if (!_playerStatuses.TryGetValue(statusId, out var currentStatus))
             {
                 continue;
             }
 
-            if (!_playerStatusStacks.TryGetValue(statusId, out var currentStacks))
+            previousVisibleValues[statusId] = ResolveVisiblePlayerStatusValue(currentStatus);
+        }
+
+        _statusService.ProcessTurnPhase(_playerStatuses, ExpiresTiming.OwnerEndOfTurnCleanup);
+
+        foreach (var statusId in playerStatusIds)
+        {
+            previousVisibleValues.TryGetValue(statusId, out var previousVisible);
+            if (_playerStatuses.TryGetValue(statusId, out var nextStatus))
             {
+                var nextVisible = ResolveVisiblePlayerStatusValue(nextStatus);
+                if (previousVisible > 0 && nextVisible > 0 && nextVisible != previousVisible)
+                {
+                    details.Add($"decayed {statusId} to {nextVisible} on self");
+                }
+
                 continue;
             }
 
-            var nextStacks = Math.Max(0, currentStacks - 1);
-            if (nextStacks <= 0)
+            if (previousVisible > 0)
             {
-                _playerStatusStacks.Remove(statusId);
                 details.Add($"expired {statusId} on self");
-            }
-            else
-            {
-                _playerStatusStacks[statusId] = nextStacks;
-                details.Add($"decayed {statusId} to {nextStacks} on self");
             }
         }
 
@@ -3084,6 +3103,53 @@ public partial class CombatScene : Control
         return statusId.StartsWith("status.temp_", StringComparison.OrdinalIgnoreCase)
                || string.Equals(statusId, "status.weak", StringComparison.OrdinalIgnoreCase)
                || string.Equals(statusId, "status.vulnerable", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private StatusInstance BuildPlayerStatusInstance(string statusId, int stacks)
+    {
+        var normalizedStatusId = statusId.Trim();
+        var decaysAtEndTurn = ShouldDecayStatusAtEndTurn(normalizedStatusId);
+        var statusType = ResolvePlayerStatusType(normalizedStatusId);
+        var visibleStacks = Math.Max(0, stacks);
+        var durationTurns = decaysAtEndTurn ? visibleStacks : 0;
+
+        return new StatusInstance(
+            StableId: $"player.{normalizedStatusId}",
+            StatusId: normalizedStatusId,
+            StatusType: statusType,
+            Stacks: visibleStacks,
+            DurationTurns: durationTurns,
+            SourceId: "combat_scene",
+            ExpiresTiming: decaysAtEndTurn ? ExpiresTiming.OwnerEndOfTurnCleanup : ExpiresTiming.Never,
+            Strength: 0);
+    }
+
+    private static StatusType ResolvePlayerStatusType(string statusId)
+    {
+        if (string.IsNullOrWhiteSpace(statusId))
+        {
+            return StatusType.Buff;
+        }
+
+        if (string.Equals(statusId, "status.weak", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(statusId, "status.vulnerable", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(statusId, "status.poison", StringComparison.OrdinalIgnoreCase)
+            || statusId.EndsWith("_down", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusType.Debuff;
+        }
+
+        return StatusType.Buff;
+    }
+
+    private static int ResolveVisiblePlayerStatusValue(StatusInstance status)
+    {
+        if (status.ExpiresTiming == ExpiresTiming.OwnerEndOfTurnCleanup)
+        {
+            return Math.Max(0, status.DurationTurns);
+        }
+
+        return Math.Max(0, status.Stacks);
     }
 
     private bool TryResolveSelectedAliveTarget(out string enemyId)
@@ -3655,10 +3721,34 @@ public partial class CombatScene : Control
             return;
         }
 
+        var starterDeck = WarriorStartingDeckService.BuildStartingDeck()
+            .Select(card => card.CardId)
+            .ToList();
+        if (starterDeck.Count <= 0)
+        {
+            return;
+        }
+
+        var openingHand = starterDeck
+            .Take(DefaultDrawCountPerTurn)
+            .ToList();
+        var drawPile = starterDeck
+            .Skip(DefaultDrawCountPerTurn)
+            .ToList();
+
+        _runtimeDeckInstanceCounter = 0;
+        _deckState = new DeckState(
+            DrawPile: drawPile.Select(CreateRuntimeCardInstanceId).ToList(),
+            Hand: openingHand.Select(CreateRuntimeCardInstanceId).ToList(),
+            DiscardPile: Array.Empty<string>(),
+            ExhaustPile: Array.Empty<string>(),
+            RetainedInstanceIds: new HashSet<string>(StringComparer.Ordinal),
+            HandLimit: DefaultHandLimit);
+
         ApplyCoreSnapshot(new CombatHudSnapshot(
-            new List<string> { "Strike", "Defend", "Strike", "Defend", "Strike" },
+            openingHand,
             3,
-            5,
+            drawPile.Count,
             0,
             1,
             80,
@@ -5578,7 +5668,14 @@ public partial class CombatScene : Control
 
     private static string DefaultDeckCardNameForIndex(int index)
     {
-        return index % 2 == 0 ? "Strike" : "Defend";
+        var starterDeck = WarriorStartingDeckService.BuildStartingDeck();
+        if (starterDeck.Count <= 0)
+        {
+            return index % 2 == 0 ? "Strike" : "Defend";
+        }
+
+        var normalizedIndex = Math.Abs(index) % starterDeck.Count;
+        return starterDeck[normalizedIndex].CardId;
     }
 
     private string ResolveEnemyDisplayName(string runtimeOrDefinitionId)
