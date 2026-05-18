@@ -60,6 +60,23 @@ public partial class ScreenNavigator : Node
         _routeHistory.Clear();
     }
 
+    public bool ClearCurrentSceneForTest()
+    {
+        if (_current != null)
+        {
+            if (_current.HasMethod("Exit"))
+            {
+                _current.CallDeferred("Exit");
+            }
+
+            _current.QueueFree();
+            _current = null;
+        }
+
+        _currentScenePath = string.Empty;
+        return true;
+    }
+
     private void DoSwitch(PackedScene packed, string scenePath)
     {
         // Call Exit on current if present, then remove

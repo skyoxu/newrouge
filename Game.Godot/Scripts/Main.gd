@@ -18,6 +18,7 @@ const EVENT_SCENE := "res://Game.Godot/Scenes/Event.tscn"
 const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
 const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
 const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
+const SETTLEMENT_SCENE := "res://Game.Godot/Scenes/Settlement.tscn"
 const REWARD_OFFER_PROVIDER_SCRIPT := preload("res://Game.Godot/Scripts/Reward/RewardOfferProvider.cs")
 const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
@@ -40,6 +41,7 @@ var _reward_offer_active_context_id: String = ""
 var _reward_offer_seed_counter: int = 0
 var _map_route_last_selected_node_type: String = ""
 var _map_route_last_selected_node_floor: int = 1
+var _pending_settlement_payload: Dictionary = {}
 
 func _should_show_template_demo_overlay() -> bool:
     var ff = get_node_or_null("/root/FeatureFlags")
@@ -199,6 +201,21 @@ func _handle_continue_resume(nav: Node) -> void:
         return
     _switch_to(nav, target)
 
+func _set_main_menu_visible(visible: bool) -> void:
+    var menu = get_node_or_null("MenuLayer/MainMenu")
+    if menu == null:
+        return
+    if visible:
+        if menu.has_method("ShowMenu"):
+            menu.call("ShowMenu")
+        else:
+            menu.visible = true
+        return
+    if menu.has_method("HideMenu"):
+        menu.call("HideMenu")
+    else:
+        menu.visible = false
+
 func _resolve_continue_resume_scene() -> String:
     var autosave_path := "user://autosave_slot.json"
     if not FileAccess.file_exists(autosave_path):
@@ -245,6 +262,15 @@ func _clear_hud_run_summary() -> void:
     if panel != null:
         panel.visible = false
 
+func _build_settlement_payload(outcome: String, node_progress: int, reason: String) -> Dictionary:
+    return {
+        "outcome": outcome.strip_edges(),
+        "node_progress": node_progress,
+        "reason": reason.strip_edges(),
+        "title": "Run Settlement",
+        "action_label": "Return to Main Menu"
+    }
+
 func _is_gameplay_scene(scene_path: String) -> bool:
     if scene_path == MAP_SCENE:
         return true
@@ -261,26 +287,14 @@ func _update_hud_visibility_for_scene(scene_path: String) -> void:
     _hud_node.visible = _is_gameplay_scene(normalized)
     _hud_visibility_initialized = true
 
-func _show_run_summary_and_return_to_main_menu(outcome: String, node_progress: int, reason: String) -> void:
+func _show_settlement_scene(outcome: String, node_progress: int, reason: String) -> void:
     var nav = _resolve_navigator()
-    var current_scene := ""
-    if nav != null and nav.has_method("GetCurrentScenePathForTest"):
-        current_scene = str(nav.call("GetCurrentScenePathForTest"))
-
-    if nav != null and current_scene != MAP_SCENE:
-        _switch_to(nav, MAP_SCENE)
-
-    if _hud_node != null:
-        _hud_node.visible = true
-        if _hud_node.has_method("ShowRunSummaryForTest"):
-            _hud_node.call("ShowRunSummaryForTest", outcome, node_progress, reason)
-
-    var menu = get_node_or_null("MenuLayer/MainMenu")
-    if menu != null:
-        if menu.has_method("ShowMenu"):
-            menu.call("ShowMenu")
-        else:
-            menu.visible = true
+    if nav == null:
+        return
+    _pending_settlement_payload = _build_settlement_payload(outcome, node_progress, reason)
+    _clear_hud_run_summary()
+    _set_main_menu_visible(false)
+    _switch_to(nav, SETTLEMENT_SCENE)
 
 func IsMainMenuVisibleForTest() -> bool:
     var menu = get_node_or_null("MenuLayer/MainMenu")
@@ -294,14 +308,29 @@ func HandleCombatDefeatForTest(reason: String = "Player HP reached zero.") -> Di
     _reward_route_resolved = false
     _active_shop_node_id = ""
     _sync_hud_run_resources()
-    _show_run_summary_and_return_to_main_menu("Defeat", _map_route_completed_nodes, reason)
+    _show_settlement_scene("Defeat", _map_route_completed_nodes, reason)
     return {
         "ok": true,
         "reason": "",
-        "scene_path": MAP_SCENE,
+        "scene_path": SETTLEMENT_SCENE,
         "outcome": "defeat",
         "menu_visible": IsMainMenuVisibleForTest()
     }
+
+func GetSettlementPayloadForScene() -> Dictionary:
+    return _pending_settlement_payload.duplicate(true)
+
+func ReturnToMainMenuFromSettlementForTest() -> Dictionary:
+    var nav = _resolve_navigator()
+    if nav == null:
+        return {"ok": false, "reason": "navigator-missing", "scene_path": ""}
+    if nav.has_method("ClearCurrentSceneForTest"):
+        nav.call("ClearCurrentSceneForTest")
+    _pending_settlement_payload.clear()
+    _clear_hud_run_summary()
+    _update_hud_visibility_for_scene("")
+    _set_main_menu_visible(true)
+    return {"ok": true, "reason": "", "scene_path": "", "menu_visible": IsMainMenuVisibleForTest()}
 
 func _resolve_navigator() -> Node:
     var nav = get_node_or_null("ScreenNavigator")
@@ -600,11 +629,11 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
     var deck_after := _run_deck_card_ids.size()
     var is_boss_completion := _map_route_last_selected_node_id.strip_edges().to_lower().begins_with("boss")
     if is_boss_completion:
-        _show_run_summary_and_return_to_main_menu("Victory", _map_route_completed_nodes, "Boss defeated.")
+        _show_settlement_scene("Victory", _map_route_completed_nodes, "Boss defeated.")
         return {
             "ok": true,
             "reason": "",
-            "scene_path": MAP_SCENE,
+            "scene_path": SETTLEMENT_SCENE,
             "outcome": "victory",
             "menu_visible": IsMainMenuVisibleForTest(),
             "deck_before_count": deck_before,
