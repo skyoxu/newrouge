@@ -32,10 +32,12 @@ var _translations_by_locale := {}
 var _offer_snapshot: Dictionary = {}
 var _offered_cards: Array = []
 var _offer_snapshot_valid: bool = true
+var _card_labels: Array[Label] = []
 
 func _ready() -> void:
 	_confirm_button.pressed.connect(_on_confirm_pressed)
 	_skip_button.pressed.connect(_on_skip_pressed)
+	_card_labels = [_card1_label, _card2_label, _card3_label]
 	_load_offer_snapshot_from_main()
 	_refresh_offer_snapshot_validity()
 	RefreshLocaleForTest()
@@ -90,6 +92,9 @@ func ConfirmSelectedForTest() -> bool:
 	return true
 
 func SkipForTest() -> bool:
+	if not _offer_snapshot_valid:
+		_feedback_label.text = _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
+		return false
 	if _is_resolution_locked():
 		_feedback_label.text = _resolve_text(FEEDBACK_LOCKED_KEY)
 		return false
@@ -112,7 +117,14 @@ func GetFeedbackForTest() -> String:
 	return _feedback_label.text
 
 func GetCardCountForTest() -> int:
-	return _offered_cards.size()
+	return _offered_cards.size() if _offer_snapshot_valid else 0
+
+func GetVisibleCardSlotCountForTest() -> int:
+	var count := 0
+	for label in _card_labels:
+		if is_instance_valid(label) and label.visible:
+			count += 1
+	return count
 
 func GetOfferSourceForTest() -> String:
 	return str(_offer_snapshot.get("source", ""))
@@ -203,11 +215,13 @@ func _resolve_offer_label_text(index: int, fallback_key: String) -> String:
 
 func _refresh_offer_labels() -> void:
 	if not _offer_snapshot_valid:
-		var fallback_text := _resolve_text(FEEDBACK_MISSING_CONTENT_KEY)
-		_card1_label.text = fallback_text
-		_card2_label.text = fallback_text
-		_card3_label.text = fallback_text
+		for label in _card_labels:
+			if is_instance_valid(label):
+				label.visible = false
 		return
+	for label in _card_labels:
+		if is_instance_valid(label):
+			label.visible = true
 	_card1_label.text = _resolve_offer_label_text(0, CARD1_KEY)
 	_card2_label.text = _resolve_offer_label_text(1, CARD2_KEY)
 	_card3_label.text = _resolve_offer_label_text(2, CARD3_KEY)

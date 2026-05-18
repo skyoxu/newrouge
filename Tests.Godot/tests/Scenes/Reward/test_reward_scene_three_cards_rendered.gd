@@ -51,6 +51,7 @@ func _load_main_on_map() -> Control:
 	var main := MAIN_SCENE.instantiate() as Control
 	add_child(auto_free(main))
 	await get_tree().process_frame
+	TranslationServer.set_locale("en")
 	var nav := main.get_node_or_null("ScreenNavigator")
 	assert(nav != null, "Main scene missing ScreenNavigator.")
 	nav.UseFadeTransition = false
@@ -177,6 +178,7 @@ func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void
 	var reward = _current_scene_instance(main)
 	assert_object(reward).is_not_null()
 	assert_bool(reward.has_method("GetCardCountForTest")).is_true()
+	assert_bool(reward.has_method("GetVisibleCardSlotCountForTest")).is_true()
 	assert_bool(reward.has_method("GetFeedbackForTest")).is_true()
 	assert_bool(reward.has_method("SelectChoiceForTest")).is_true()
 	assert_bool(reward.has_method("ConfirmSelectedForTest")).is_true()
@@ -192,8 +194,7 @@ func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void
 
 	var card_list := reward.get_node_or_null("VBox/CardList")
 	assert_object(card_list).is_not_null()
-	var card1_text := str(card_list.get_child(0).text)
-	assert_str(card1_text).is_equal(feedback)
+	assert_int(int(reward.call("GetVisibleCardSlotCountForTest"))).is_equal(0)
 
 # acceptance: ACC:T128.8
 func test_reward_scene_empty_state_hides_offers_and_rejects_actions_before_valid_offer_resolution() -> void:
@@ -215,10 +216,14 @@ func test_reward_scene_empty_state_hides_offers_and_rejects_actions_before_valid
 	assert_bool(bool(complete_result.get("ok", false))).is_true()
 	assert_str(str(complete_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
 	await get_tree().process_frame
+	var route_after_entry := []
+	if nav.has_method("GetRouteHistoryForTest"):
+		route_after_entry = nav.call("GetRouteHistoryForTest")
 
 	var reward = _current_scene_instance(main)
 	assert_object(reward).is_not_null()
 	assert_bool(reward.has_method("GetCardCountForTest")).is_true()
+	assert_bool(reward.has_method("GetVisibleCardSlotCountForTest")).is_true()
 	assert_bool(reward.has_method("SelectChoiceForTest")).is_true()
 	assert_bool(reward.has_method("ConfirmSelectedForTest")).is_true()
 	assert_bool(reward.has_method("SkipForTest")).is_true()
@@ -226,14 +231,15 @@ func test_reward_scene_empty_state_hides_offers_and_rejects_actions_before_valid
 	assert_int(int(reward.call("GetCardCountForTest"))).is_equal(0)
 	var card_list := reward.get_node_or_null("VBox/CardList")
 	assert_object(card_list).is_not_null()
-	assert_int(card_list.get_child_count()).is_equal(0)
+	assert_int(int(reward.call("GetVisibleCardSlotCountForTest"))).is_equal(0)
 	assert_bool(bool(reward.call("SelectChoiceForTest", 0))).is_false()
 	assert_bool(bool(reward.call("ConfirmSelectedForTest"))).is_false()
 	assert_bool(bool(reward.call("SkipForTest"))).is_false()
 
 	if nav.has_method("GetRouteHistoryForTest"):
 		var route_after = nav.call("GetRouteHistoryForTest")
-		assert_array(route_after).is_equal(route_before)
+		assert_array(route_after).is_equal(route_after_entry)
+		assert_int(route_after.size()).is_greater(route_before.size())
 
 # acceptance: ACC:T84.6
 func test_reward_scene_first_entry_offer_is_deterministic_for_same_context_before_resolution() -> void:
