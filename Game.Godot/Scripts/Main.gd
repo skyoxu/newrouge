@@ -19,11 +19,16 @@ const SHOP_SCENE := "res://Game.Godot/Scenes/Shop.tscn"
 const REST_SCENE := "res://Game.Godot/Scenes/Rest.tscn"
 const REWARD_SCENE := "res://Game.Godot/Scenes/Reward.tscn"
 const SETTLEMENT_SCENE := "res://Game.Godot/Scenes/Settlement.tscn"
+const START_SCENE_OVERRIDE_ENV := "NEWROUGE_START_SCENE"
 const REWARD_OFFER_PROVIDER_SCRIPT := preload("res://Game.Godot/Scripts/Reward/RewardOfferProvider.cs")
 const LEGACY_START_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
 const _ROUTABLE_NODE_SCENES := [COMBAT_SCENE, EVENT_SCENE, SHOP_SCENE, REST_SCENE]
 const _REWARD_ENTRY_SCENES := [COMBAT_SCENE, EVENT_SCENE]
+const ACT_CONFIG_CANDIDATE_PATHS := [
+    "res://Game.Core/Data/act1-config.json",
+    "res://../Game.Core/Data/act1-config.json"
+]
 
 var _map_route_completed_nodes: int = 0
 var _map_route_completed_node_ids: Array[String] = []
@@ -41,6 +46,7 @@ var _reward_offer_active_context_id: String = ""
 var _reward_offer_seed_counter: int = 0
 var _map_route_last_selected_node_type: String = ""
 var _map_route_last_selected_node_floor: int = 1
+var _startup_scene_override_for_test: String = ""
 var _pending_settlement_payload: Dictionary = {}
 
 func _should_show_template_demo_overlay() -> bool:
@@ -94,6 +100,7 @@ func _ready() -> void:
     _update_hud_visibility_for_scene("")
     _ensure_reward_offer_provider()
     _reset_run_deck_for_test()
+    call_deferred("_apply_startup_scene_override_if_needed")
 
 func _exit_tree() -> void:
     var bus = get_node_or_null("/root/EventBus")
@@ -200,6 +207,60 @@ func _handle_continue_resume(nav: Node) -> void:
     if target.is_empty():
         return
     _switch_to(nav, target)
+
+func SetStartupSceneOverrideForTest(scene_key: String) -> void:
+    _startup_scene_override_for_test = scene_key.strip_edges()
+
+func ApplyStartupSceneOverrideForTest(scene_key: String) -> bool:
+    _startup_scene_override_for_test = scene_key.strip_edges()
+    return _apply_startup_scene_override_if_needed()
+
+func GetStartupSceneOverrideForTest() -> String:
+    return _resolve_startup_scene_override_key()
+
+func _apply_startup_scene_override_if_needed() -> bool:
+    var override_key := _resolve_startup_scene_override_key()
+    if override_key.is_empty():
+        return false
+
+    var destination := _resolve_debug_start_scene(override_key)
+    if destination.is_empty():
+        return false
+
+    var nav = _resolve_navigator()
+    if nav == null:
+        return false
+
+    _set_main_menu_visible(false)
+    _clear_hud_run_summary()
+    _sync_hud_run_resources()
+    _switch_to(nav, destination)
+    return true
+
+func _resolve_startup_scene_override_key() -> String:
+    if not _startup_scene_override_for_test.is_empty():
+        return _startup_scene_override_for_test.to_lower()
+
+    if OS.has_environment(START_SCENE_OVERRIDE_ENV):
+        return str(OS.get_environment(START_SCENE_OVERRIDE_ENV)).strip_edges().to_lower()
+
+    return ""
+
+func _resolve_debug_start_scene(scene_key: String) -> String:
+    var normalized := scene_key.strip_edges().to_lower()
+    if normalized == "combat":
+        return COMBAT_SCENE
+    if normalized == "map":
+        return MAP_SCENE
+    if normalized == "event":
+        return EVENT_SCENE
+    if normalized == "shop":
+        return SHOP_SCENE
+    if normalized == "rest":
+        return REST_SCENE
+    if normalized == "reward":
+        return REWARD_SCENE
+    return ""
 
 func _set_main_menu_visible(visible: bool) -> void:
     var menu = get_node_or_null("MenuLayer/MainMenu")
@@ -393,13 +454,16 @@ func _build_first_entry_reward_offer(context_id: String, encounter_type: String,
     var stream_position: int = int(max(0, _map_route_completed_nodes))
     var seed := _build_reward_offer_seed(context_id)
     _reward_offer_seed_counter += 1
+    var reward_pool_id := _resolve_reward_pool_id_for_active_context()
     var result = _reward_offer_provider.call(
         "BuildFirstEntryOfferForContext",
         1,
         encounter_type,
         seed,
         stream_position,
-        3
+        3,
+        context_id,
+        reward_pool_id
     )
     if typeof(result) != TYPE_ARRAY:
         return []
@@ -447,6 +511,47 @@ func _ensure_reward_offer_for_active_context() -> Dictionary:
 
 func GetRewardOfferSnapshotForScene() -> Dictionary:
     return _ensure_reward_offer_for_active_context()
+
+func _resolve_reward_pool_id_for_active_context() -> String:
+    var node_id := _map_route_last_selected_node_id.strip_edges()
+    if node_id.is_empty():
+        return ""
+    var node := _resolve_act_node_config(node_id)
+    if node.is_empty():
+        return ""
+    return str(node.get("reward_pool_id", "")).strip_edges()
+    
+func _resolve_act_node_config(node_id: String) -> Dictionary:
+    var normalized_id := node_id.strip_edges()
+    if normalized_id.is_empty():
+        return {}
+    for candidate_path in ACT_CONFIG_CANDIDATE_PATHS:
+        if not FileAccess.file_exists(candidate_path):
+            continue
+        var file := FileAccess.open(candidate_path, FileAccess.READ)
+        if file == null:
+            continue
+        var payload := str(file.get_as_text()).strip_edges()
+        file.close()
+        if payload.is_empty():
+            continue
+        var parsed = JSON.parse_string(payload)
+        if typeof(parsed) != TYPE_DICTIONARY:
+            continue
+        var root := parsed as Dictionary
+        var node_graph = root.get("node_graph", {})
+        if typeof(node_graph) != TYPE_DICTIONARY:
+            continue
+        var nodes = (node_graph as Dictionary).get("nodes", [])
+        if typeof(nodes) != TYPE_ARRAY:
+            continue
+        for node_variant in nodes:
+            if typeof(node_variant) != TYPE_DICTIONARY:
+                continue
+            var node = node_variant as Dictionary
+            if str(node.get("id", "")).strip_edges() == normalized_id:
+                return node.duplicate(true)
+    return {}
 
 func _build_default_shop_state(node_id: String) -> Dictionary:
     var normalized := node_id.strip_edges()

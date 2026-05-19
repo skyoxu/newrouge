@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
 using Godot;
 
 namespace Game.Godot.Scripts.UI;
@@ -35,7 +37,12 @@ public partial class MapScene : Control
     private string _lastLocale = string.Empty;
     private string _lastInvokedAction = string.Empty;
     private static readonly string[] DefaultNodeOrder = { "combat", "event", "shop", "rest" };
-    private readonly List<RouteNode> _routeNodes = new()
+    private static readonly string[] ActConfigCandidatePaths =
+    {
+        "res://Game.Core/Data/act1-config.json",
+        "res://../Game.Core/Data/act1-config.json",
+    };
+    private static readonly List<RouteNode> FallbackRouteNodes = new()
     {
         new("combat-01", "combat", 1, "F1 Combat", "F1 战斗"),
         new("event-02", "event", 2, "F2 Event", "F2 事件"),
@@ -45,6 +52,18 @@ public partial class MapScene : Control
         new("rest-04", "rest", 4, "F4 Rest", "F4 休息"),
         new("boss-05", "combat", 5, "F5 Boss", "F5 首领"),
     };
+    private static readonly List<RouteEdge> FallbackRouteEdges = new()
+    {
+        new("combat-01", "event-02", 1, 2),
+        new("combat-01", "combat-02", 1, 2),
+        new("event-02", "shop-03", 2, 3),
+        new("combat-02", "combat-03", 2, 3),
+        new("shop-03", "rest-04", 3, 4),
+        new("combat-03", "rest-04", 3, 4),
+        new("rest-04", "boss-05", 4, 5),
+    };
+    private readonly List<RouteNode> _routeNodes;
+    private readonly List<RouteEdge> _routeEdges;
     private readonly Dictionary<string, Button> _routeButtonsById = new(StringComparer.Ordinal);
     private static readonly Color NodeStateReachableColor = new(0.78f, 1.0f, 0.78f, 1.0f);
     private static readonly Color NodeStateLockedColor = new(0.66f, 0.66f, 0.66f, 1.0f);
@@ -58,6 +77,12 @@ public partial class MapScene : Control
     private sealed record RouteNode(string Id, string Type, int Floor, string EnglishLabel, string ChineseLabel);
     private sealed record RouteEdge(string FromId, string ToId, int FromFloor, int ToFloor);
 
+    public MapScene()
+    {
+        var graph = LoadRouteGraph();
+        _routeNodes = graph.Nodes;
+        _routeEdges = graph.Edges;
+    }
 
     public override void _Ready()
     {
@@ -159,7 +184,7 @@ public partial class MapScene : Control
 
     public int GetRouteTreeFloorCountForTest()
     {
-        return 5;
+        return _routeNodes.Count == 0 ? 0 : _routeNodes.Max(node => node.Floor);
     }
 
     public global::Godot.Collections.Array<string> GetReachableRouteNodeIdsForTest()
@@ -381,7 +406,7 @@ public partial class MapScene : Control
         var selectedNodeId = ResolveSelectedNodeId();
         var reachableFloor = ResolveCurrentReachableFloor();
         var result = new global::Godot.Collections.Array<global::Godot.Collections.Dictionary>();
-        foreach (var edge in ResolveRouteEdges())
+        foreach (var edge in _routeEdges)
         {
             var state = ResolveEdgeVisualState(
                 edge.FromId,
@@ -427,11 +452,10 @@ public partial class MapScene : Control
             return false;
         }
 
-        var edges = ResolveRouteEdges();
         if (reachableFloor == 1)
         {
-            var hasOutgoing = edges.Exists(edge => string.Equals(edge.FromId, node.Id, StringComparison.Ordinal));
-            var hasIncoming = edges.Exists(edge => string.Equals(edge.ToId, node.Id, StringComparison.Ordinal));
+            var hasOutgoing = _routeEdges.Exists(edge => string.Equals(edge.FromId, node.Id, StringComparison.Ordinal));
+            var hasIncoming = _routeEdges.Exists(edge => string.Equals(edge.ToId, node.Id, StringComparison.Ordinal));
             return hasOutgoing && !hasIncoming;
         }
 
@@ -441,7 +465,7 @@ public partial class MapScene : Control
             return false;
         }
 
-        return edges.Exists(edge =>
+        return _routeEdges.Exists(edge =>
             string.Equals(edge.FromId, selectedNodeId, StringComparison.Ordinal)
             && string.Equals(edge.ToId, node.Id, StringComparison.Ordinal));
     }
@@ -478,20 +502,6 @@ public partial class MapScene : Control
         }
 
         return GetNodeOrNull<Node>("/root/Main");
-    }
-
-    private static List<RouteEdge> ResolveRouteEdges()
-    {
-        return new List<RouteEdge>
-        {
-            new("combat-01", "event-02", 1, 2),
-            new("combat-01", "combat-02", 1, 2),
-            new("event-02", "shop-03", 2, 3),
-            new("combat-02", "combat-03", 2, 3),
-            new("shop-03", "rest-04", 3, 4),
-            new("combat-03", "rest-04", 3, 4),
-            new("rest-04", "boss-05", 4, 5),
-        };
     }
 
     private string ResolveSelectedNodeId()
@@ -642,7 +652,7 @@ public partial class MapScene : Control
         var selectedNodeId = ResolveSelectedNodeId();
         var reachableFloor = ResolveCurrentReachableFloor();
         var edgeItems = new List<string>();
-        foreach (var edge in ResolveRouteEdges())
+        foreach (var edge in _routeEdges)
         {
             var state = ResolveEdgeVisualState(
                 edge.FromId,
@@ -668,7 +678,7 @@ public partial class MapScene : Control
         var completedEdgeKeys = BuildCompletedEdgeKeys(completedNodeOrder);
         var selectedNodeId = ResolveSelectedNodeId();
         var reachableFloor = ResolveCurrentReachableFloor();
-        foreach (var edge in ResolveRouteEdges())
+        foreach (var edge in _routeEdges)
         {
             var edgeName = edge.FromId.Replace('-', '_') + "__" + edge.ToId.Replace('-', '_');
             var edgeLabel = _routeEdgeContainer.GetNodeOrNull<Label>(edgeName);
@@ -810,13 +820,161 @@ public partial class MapScene : Control
         return map;
     }
 
-    private static string NormalizeLocale(string locale)
+    private static (List<RouteNode> Nodes, List<RouteEdge> Edges) LoadRouteGraph()
     {
-        if (string.IsNullOrWhiteSpace(locale))
+        foreach (var candidate in ActConfigCandidatePaths)
         {
-            return "en";
+            try
+            {
+                var absolutePath = ProjectSettings.GlobalizePath(candidate);
+                if (!File.Exists(absolutePath))
+                {
+                    continue;
+                }
+
+                var json = File.ReadAllText(absolutePath);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    continue;
+                }
+
+                using var document = JsonDocument.Parse(json);
+                if (!document.RootElement.TryGetProperty("node_graph", out var nodeGraph)
+                    || nodeGraph.ValueKind != JsonValueKind.Object
+                    || !nodeGraph.TryGetProperty("nodes", out var nodesElement)
+                    || nodesElement.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                var nodes = new List<RouteNode>();
+                var edges = new List<RouteEdge>();
+                var floorLookup = new Dictionary<string, int>(StringComparer.Ordinal);
+
+                foreach (var nodeElement in nodesElement.EnumerateArray())
+                {
+                    if (nodeElement.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var id = ReadRequiredString(nodeElement, "id");
+                    var type = ReadRequiredString(nodeElement, "type");
+                    var floor = ReadRequiredInt(nodeElement, "floor");
+                    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(type) || floor <= 0)
+                    {
+                        continue;
+                    }
+
+                    var normalizedType = NormalizeRouteType(type);
+                    var fallbackEnglishLabel = BuildFloorLabel(floor, normalizedType, id);
+                    var englishLabel = ReadOptionalString(nodeElement, "label_en", fallbackEnglishLabel);
+                    var chineseLabel = ReadOptionalString(nodeElement, "label_zh", englishLabel);
+                    nodes.Add(new RouteNode(id, normalizedType, floor, englishLabel, chineseLabel));
+                    floorLookup[id] = floor;
+                }
+
+                if (nodes.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var nodeElement in nodesElement.EnumerateArray())
+                {
+                    if (nodeElement.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var fromId = ReadRequiredString(nodeElement, "id");
+                    if (string.IsNullOrWhiteSpace(fromId)
+                        || !floorLookup.TryGetValue(fromId, out var fromFloor)
+                        || !nodeElement.TryGetProperty("next", out var nextElement)
+                        || nextElement.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    foreach (var nextNode in nextElement.EnumerateArray())
+                    {
+                        if (nextNode.ValueKind != JsonValueKind.String)
+                        {
+                            continue;
+                        }
+
+                        var toId = nextNode.GetString()?.Trim() ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(toId) || !floorLookup.TryGetValue(toId, out var toFloor))
+                        {
+                            continue;
+                        }
+
+                        edges.Add(new RouteEdge(fromId, toId, fromFloor, toFloor));
+                    }
+                }
+
+                if (edges.Count == 0)
+                {
+                    continue;
+                }
+
+                return (
+                    nodes.OrderBy(node => node.Floor).ThenBy(node => node.Id, StringComparer.Ordinal).ToList(),
+                    edges.OrderBy(edge => edge.FromFloor).ThenBy(edge => edge.FromId, StringComparer.Ordinal).ThenBy(edge => edge.ToId, StringComparer.Ordinal).ToList());
+            }
+            catch
+            {
+                // Fallback to the legacy graph if the act config cannot be parsed.
+            }
         }
 
-        return locale.Trim().Replace('_', '-').ToLowerInvariant();
+        return (
+            FallbackRouteNodes.Select(node => node with { }).ToList(),
+            FallbackRouteEdges.Select(edge => edge with { }).ToList());
+    }
+
+    private static string ReadRequiredString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String)
+        {
+            return string.Empty;
+        }
+
+        return value.GetString()?.Trim() ?? string.Empty;
+    }
+
+    private static string ReadOptionalString(JsonElement element, string propertyName, string fallback)
+    {
+        var value = ReadRequiredString(element, propertyName);
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
+
+    private static int ReadRequiredInt(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Number)
+        {
+            return 0;
+        }
+
+        return value.TryGetInt32(out var result) ? result : 0;
+    }
+
+    private static string NormalizeRouteType(string type)
+    {
+        var normalized = type.Trim().ToLowerInvariant();
+        return normalized == "boss" ? "combat" : normalized;
+    }
+
+    private static string BuildFloorLabel(int floor, string type, string nodeId)
+    {
+        var suffix = type switch
+        {
+            "combat" => "Combat",
+            "event" => "Event",
+            "shop" => "Shop",
+            "rest" => "Rest",
+            _ => nodeId,
+        };
+
+        return $"F{floor} {suffix}";
     }
 }

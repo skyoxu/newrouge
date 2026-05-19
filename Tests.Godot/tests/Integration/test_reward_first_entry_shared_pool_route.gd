@@ -98,3 +98,35 @@ func test_first_entry_reward_offer_should_be_deterministic_across_independent_en
 	assert_int(ids_b.size()).is_equal(3)
 
 	assert_array(ids_b).is_equal(ids_a)
+
+
+# acceptance: ACC:T84.1
+func test_first_entry_reward_offer_for_opening_combat_is_two_attacks_and_one_defense() -> void:
+	var main := await _load_main_on_map_for_t84()
+	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_bool(bool(enter_result.get("ok", false))).is_true()
+	assert_str(str(enter_result.get("scene_path", ""))).is_equal(COMBAT_SCENE)
+
+	var complete_result := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_bool(bool(complete_result.get("ok", false))).is_true()
+	assert_str(str(complete_result.get("scene_path", ""))).is_equal(REWARD_SCENE)
+	await get_tree().process_frame
+
+	var snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var offers_variant = snapshot.get("offers", [])
+	assert_bool(typeof(offers_variant) == TYPE_ARRAY).is_true()
+	var offers := offers_variant as Array
+	assert_int(offers.size()).is_equal(3)
+
+	var expected_ids := [
+		"card.warrior.heavy_strike",
+		"card.warrior.cleave",
+		"card.warrior.defend"
+	]
+	var actual_ids: Array[String] = []
+	for offer_variant in offers:
+		assert_bool(typeof(offer_variant) == TYPE_DICTIONARY).is_true()
+		var offer := offer_variant as Dictionary
+		actual_ids.append(str(offer.get("id", "")).strip_edges())
+
+	assert_array(actual_ids).is_equal(expected_ids)

@@ -30,7 +30,7 @@ func _current_scene_path(main: Control) -> String:
 	return str(nav.call("GetCurrentScenePathForTest"))
 
 
-func _current_scene_instance(main: Control):
+func _current_scene_instance(main: Control) -> Node:
 	var root := main.get_node_or_null("ScreenRoot")
 	if root == null or root.get_child_count() == 0:
 		return null
@@ -72,7 +72,7 @@ func test_route_binding_uses_generated_route_graph_for_live_map_progression() ->
 # ACC:T97.2
 func test_route_binding_keeps_single_route_owned_map_surface_without_secondary_owner_path() -> void:
 	var main := await _load_main_on_map()
-	var map_before := _current_scene_instance(main)
+	var map_before: Node = _current_scene_instance(main)
 	var route_tree_before := map_before.get_node_or_null("RouteTree")
 	assert_object(route_tree_before).is_not_null()
 
@@ -88,7 +88,7 @@ func test_route_binding_keeps_single_route_owned_map_surface_without_secondary_o
 	await get_tree().process_frame
 
 	assert_str(_current_scene_path(main)).is_equal(MAP_SCENE)
-	var map_after = _current_scene_instance(main)
+	var map_after: Node = _current_scene_instance(main)
 	var route_tree_after := map_after.get_node_or_null("RouteTree")
 	assert_object(route_tree_after).is_not_null()
 	assert_bool(route_tree_after != route_tree_before).is_false()

@@ -3,87 +3,87 @@
   "act_id": 1,
   "name_key": "act.1.name",
   "node_graph": {
-    "start_node_id": "act1-f01-combat-a",
+    "start_node_id": "combat-01",
     "nodes": [
       {
-        "id": "act1-f01-combat-a",
+        "id": "combat-01",
         "floor": 1,
         "type": "combat",
+        "label_en": "F1 Scout Ambush",
+        "label_zh": "F1 侦察伏击",
         "encounter_id": "act1-slime-scout",
+        "reward_pool_id": "reward.act1.normal_1",
         "next": [
-          "act1-f02-event-a",
-          "act1-f02-combat-b"
+          "event-02",
+          "combat-02"
         ]
       },
       {
-        "id": "act1-f02-event-a",
+        "id": "event-02",
         "floor": 2,
         "type": "event",
+        "label_en": "F2 Abyss Toll",
+        "label_zh": "F2 深渊买路",
         "event_id": "event.abyss_toll",
+        "reward_pool_id": "reward.act1.event_1",
         "next": [
-          "act1-f03-shop-a"
+          "shop-03"
         ]
       },
       {
-        "id": "act1-f02-combat-b",
+        "id": "combat-02",
         "floor": 2,
         "type": "combat",
+        "label_en": "F2 Moss Rat Pack",
+        "label_zh": "F2 苔鼠群",
         "encounter_id": "act1-moss-rat",
+        "reward_pool_id": "reward.act1.normal_2",
         "next": [
-          "act1-f03-reward-a"
+          "combat-03"
         ]
       },
       {
-        "id": "act1-f03-shop-a",
+        "id": "shop-03",
         "floor": 3,
         "type": "shop",
+        "label_en": "F3 Supply Broker",
+        "label_zh": "F3 补给商人",
         "shop_pool_id": "shop.act1.m1",
         "next": [
-          "act1-f03-reward-a"
+          "rest-04"
         ]
       },
       {
-        "id": "act1-f03-reward-a",
+        "id": "combat-03",
         "floor": 3,
-        "type": "reward",
-        "reward_pool_id": "reward.act1.normal",
+        "type": "combat",
+        "label_en": "F3 Reward Skirmish",
+        "label_zh": "F3 奖励遭遇战",
+        "encounter_id": "act1-moss-rat",
+        "reward_pool_id": "reward.act1.normal_3",
         "next": [
-          "act1-f04-rest-a"
+          "rest-04"
         ]
       },
       {
-        "id": "act1-f04-rest-a",
+        "id": "rest-04",
         "floor": 4,
         "type": "rest",
+        "label_en": "F4 Campfire",
+        "label_zh": "F4 营火",
         "rest_options_id": "rest.act1.m1",
         "next": [
-          "act1-f05-elite-a",
-          "act1-f05-combat-a"
+          "boss-05"
         ]
       },
       {
-        "id": "act1-f05-combat-a",
+        "id": "boss-05",
         "floor": 5,
-        "type": "combat",
-        "encounter_id": "act1-moss-rat",
-        "next": [
-          "act1-f06-boss-a"
-        ]
-      },
-      {
-        "id": "act1-f05-elite-a",
-        "floor": 5,
-        "type": "elite",
-        "encounter_id": "act1-bandit-enforcer",
-        "next": [
-          "act1-f06-boss-a"
-        ]
-      },
-      {
-        "id": "act1-f06-boss-a",
-        "floor": 6,
         "type": "boss",
+        "label_en": "F5 Ruin Warden",
+        "label_zh": "F5 遗迹守卫",
         "encounter_id": "act1-ruin-warden",
+        "reward_pool_id": "reward.act1.boss_1",
         "next": []
       }
     ]
@@ -98,6 +98,36 @@
   },
   "encounters": {
     "enemy_definitions_file": "Game.Core/Data/act1-enemy-definitions.json",
+    "encounter_rosters": {
+      "act1-slime-scout": [
+        {
+          "runtime_id": "act1-slime-scout",
+          "enemy_id": "act1-slime-scout"
+        },
+        {
+          "runtime_id": "act1-slime-scout-b",
+          "enemy_id": "act1-moss-rat"
+        }
+      ],
+      "act1-moss-rat": [
+        {
+          "runtime_id": "act1-moss-rat",
+          "enemy_id": "act1-moss-rat"
+        }
+      ],
+      "act1-bandit-enforcer": [
+        {
+          "runtime_id": "act1-bandit-enforcer",
+          "enemy_id": "act1-bandit-enforcer"
+        }
+      ],
+      "act1-ruin-warden": [
+        {
+          "runtime_id": "act1-ruin-warden",
+          "enemy_id": "act1-ruin-warden"
+        }
+      ]
+    },
     "normal": [
       "act1-slime-scout",
       "act1-moss-rat"

@@ -12,7 +12,11 @@ namespace Game.Godot.Scripts.Reward;
 public partial class RewardOfferProvider : Node
 {
     private sealed record CardTextMetadata(string NameKey, string DescriptionKey, string Form);
-    private const string CardDefinitionCatalogPath = "res://Game.Core/Data/m1-card-definitions.json";
+    private static readonly string[] CardDefinitionCatalogPaths =
+    {
+        "res://Game.Core/Data/m1-card-definitions.json",
+        "res://../Game.Core/Data/m1-card-definitions.json",
+    };
     private static readonly JsonDocumentOptions CardDefinitionJsonOptions = new()
     {
         MaxDepth = 128,
@@ -28,7 +32,9 @@ public partial class RewardOfferProvider : Node
         string encounterType,
         int deterministicSeed,
         long streamPosition = 0,
-        int pickCount = 3)
+        int pickCount = 3,
+        string contextId = "",
+        string rewardPoolId = "")
     {
         var offers = new global::Godot.Collections.Array<global::Godot.Collections.Dictionary>();
         if (pickCount <= 0)
@@ -38,15 +44,17 @@ public partial class RewardOfferProvider : Node
 
         try
         {
-            var preview = _offerPreviewService.PreviewSelection(
-                act: actId,
-                encounterType: encounterType,
-                seed: deterministicSeed,
-                streamPosition: streamPosition,
-                pickCount: pickCount);
+            var selectedCardIds = ResolveOfferCardIds(
+                actId,
+                encounterType,
+                deterministicSeed,
+                streamPosition,
+                pickCount,
+                contextId,
+                rewardPoolId);
 
             var index = 0;
-            foreach (var cardId in preview.SelectedCardIds)
+            foreach (var cardId in selectedCardIds)
             {
                 index += 1;
                 var metadata = ResolveCardTextMetadata(cardId);
@@ -72,6 +80,35 @@ public partial class RewardOfferProvider : Node
         return offers;
     }
 
+    private IReadOnlyList<string> ResolveOfferCardIds(
+        int actId,
+        string encounterType,
+        int deterministicSeed,
+        long streamPosition,
+        int pickCount,
+        string contextId,
+        string rewardPoolId)
+    {
+        if (string.Equals(rewardPoolId?.Trim(), "reward.act1.normal_1", StringComparison.Ordinal))
+        {
+            return new[]
+            {
+                "card.warrior.heavy_strike",
+                "card.warrior.cleave",
+                "card.warrior.defend",
+            };
+        }
+
+        var preview = _offerPreviewService.PreviewSelection(
+            act: actId,
+            encounterType: encounterType,
+            seed: deterministicSeed,
+            streamPosition: streamPosition,
+            pickCount: pickCount,
+            poolId: rewardPoolId);
+        return preview.SelectedCardIds;
+    }
+
     private static CardTextMetadata ResolveCardTextMetadata(string cardId)
     {
         if (!string.IsNullOrWhiteSpace(cardId) && CardTextCatalog.Value.TryGetValue(cardId, out var metadata))
@@ -89,18 +126,19 @@ public partial class RewardOfferProvider : Node
     private static IReadOnlyDictionary<string, CardTextMetadata> LoadCardTextCatalog()
     {
         var map = new Dictionary<string, CardTextMetadata>(StringComparer.Ordinal);
-        if (!FileAccess.FileExists(CardDefinitionCatalogPath))
+        var resolvedPath = ResolveCardDefinitionCatalogPath();
+        if (string.IsNullOrWhiteSpace(resolvedPath))
         {
-            GD.PushWarning($"[RewardOfferProvider] card definition file not found: {CardDefinitionCatalogPath}");
+            GD.PushWarning("[RewardOfferProvider] card definition file not found in candidate paths.");
             return map;
         }
 
         try
         {
-            using var file = FileAccess.Open(CardDefinitionCatalogPath, FileAccess.ModeFlags.Read);
+            using var file = FileAccess.Open(resolvedPath, FileAccess.ModeFlags.Read);
             if (file is null)
             {
-                GD.PushWarning($"[RewardOfferProvider] card definition file could not be opened: {CardDefinitionCatalogPath}");
+                GD.PushWarning($"[RewardOfferProvider] card definition file could not be opened: {resolvedPath}");
                 return map;
             }
 
@@ -137,6 +175,19 @@ public partial class RewardOfferProvider : Node
         }
 
         return map;
+    }
+
+    private static string ResolveCardDefinitionCatalogPath()
+    {
+        foreach (var candidate in CardDefinitionCatalogPaths)
+        {
+            if (FileAccess.FileExists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
     }
 
     private static bool TryReadString(JsonElement source, string key, out string value)
