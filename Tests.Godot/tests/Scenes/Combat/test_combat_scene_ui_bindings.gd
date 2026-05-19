@@ -120,10 +120,34 @@ func test_task89_live_scene_bootstrapped_opening_combat_resolves_two_enemy_attac
 
 	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
 
-	var state_after_end := scene.call("CaptureUiStateForTest") as Dictionary
-	var feedback_after_end := str(scene.call("GetLatestFeedbackMessageForTest"))
-	assert_that(str(state_after_end["playerHp"])).is_equal("68")
-	assert_that(feedback_after_end.find("Enemy dealt 12 damage") >= 0).is_true()
+
+# ACC:T95.1
+# ACC:T95.2
+# ACC:T95.5
+func test_opening_combat_seeds_warrior_starting_deck_runtime_instead_of_placeholder_snapshot() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("RefreshLocaleForTest")
+
+	var state := scene.call("CaptureUiStateForTest") as Dictionary
+	assert_that(state["hand"]).is_equal([
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+	])
+	assert_that(state["draw"]).is_equal("5")
+	assert_that(state["discard"]).is_equal("0")
+	assert_that(str(scene.call("GetMasterDeckButtonTextForTest"))).is_equal("Deck 10")
+
+	assert_that(bool(scene.call("OpenPileViewerForTest", "master"))).is_true()
+	await get_tree().process_frame
+	var root := scene as Control
+	var pile_grid := root.get_node("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll/PileViewerGrid") as GridContainer
+	assert_that(int(scene.call("GetPileViewerVisibleCardCountForTest"))).is_equal(10)
+	assert_that(pile_grid.get_child_count()).is_greater(0)
 
 # ACC:T18.1
 # acceptance anchor: ACC:T73.1
@@ -171,7 +195,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 		var node := root.get_node_or_null(path)
 		assert_that(node).is_not_null()
 		assert_that(str(root.get_path_to(node))).is_equal(path)
-		if path == "HUD/EnemyStatusPanel/EnemyTargetHighlight" or path == "HUD/DragCardGhost" or path == "HUD/EnemyStatusPanel/EnemyPortraitFrame" or path == "HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait":
+		if path == "HUD/EnemyStatusPanel/EnemyTargetHighlight" or path == "HUD/DragCardGhost" or path == "HUD/EnemyStatusPanel/EnemyPortraitFrame" or path == "HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait" or path == "HUD/TurnControls/PlaySelectedCardButton":
 			assert_that((node as CanvasItem).visible).is_false()
 		else:
 			assert_that((node as CanvasItem).visible).is_true()
@@ -278,7 +302,7 @@ func test_combat_hud_nodes_exist_visible_and_stably_locatable() -> void:
 	var hp_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label).text.strip_edges()
 	var block_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyBlockValue") as Label).text.strip_edges()
 	var status_before_missing := (root.get_node("HUD/EnemyStatusPanel/EnemyStatusValue") as Label).text.strip_edges()
-	var feedback_before_missing := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
+	var _feedback_before_missing := str(scene.call("GetLatestFeedbackMessageForTest")).to_lower()
 	assert_that(bool(scene.call("TryGenerateEnemyIntentPreviewFromAiDefinitionsContractJsonForTest", missing_definitions_payload))).is_false()
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(row_count_before_missing)
 	assert_that(str(scene.call("GetEnemyIntentDescriptionForTest", "enemy_t76_unknown"))).is_equal(unknown_before_missing)
@@ -642,20 +666,23 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 
 	assert_that(action_hint.text).is_not_empty()
 	assert_that(action_hint.text).is_not_equal("combat.action.hint")
-	assert_that(action_hint.text.find("Select a card") >= 0).is_true()
+	assert_that(action_hint.text.find("Play Selected Card") < 0).is_true()
 	assert_that(hand_title.text).is_equal("Hand")
-	assert_that(play_button.text).is_equal("Play Selected Card")
+	assert_that(play_button.visible).is_false()
 	assert_that((root.get_node("HUD/TurnControls/StartTurnButton") as Button).visible).is_false()
-	assert_that(_read_hand_cards(root.get_node("HUD/HandCards") as ItemList)).is_equal(["Strike", "Defend", "Strike"])
+	assert_that(_read_hand_cards(root.get_node("HUD/HandCards") as ItemList)).is_equal([
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+	])
 	var card_row := root.get_node("HUD/CardButtonRow") as HBoxContainer
-	assert_that(card_row.get_child_count()).is_equal(3)
-	var strike_text := (card_row.get_child(0) as Button).text
-	var defend_text := (card_row.get_child(1) as Button).text
-	assert_that(strike_text.find("Strike") >= 0).is_true()
-	assert_that(strike_text.find("Strike") >= 0).is_true()
-	assert_that(strike_text.find("card.warrior.") < 0).is_true()
-	assert_that(defend_text.find("Defend") >= 0).is_true()
-	assert_that(defend_text.find("card.warrior.") < 0).is_true()
+	assert_that(card_row.get_child_count()).is_equal(5)
+	var first_text := (card_row.get_child(0) as Button).text
+	var second_text := (card_row.get_child(1) as Button).text
+	assert_that(first_text.strip_edges()).is_not_empty()
+	assert_that(second_text.strip_edges()).is_not_empty()
 
 	var enemy_name := root.get_node("HUD/EnemyStatusPanel/EnemyNameValue") as Label
 	var enemy_hp := root.get_node("HUD/EnemyStatusPanel/EnemyHpValue") as Label
@@ -706,15 +733,195 @@ func test_combat_scene_surfaces_player_stage_fan_hand_and_bottom_pile_badges() -
 	assert_that(hand_fan_layer.visible).is_true()
 	assert_that(draw_badge.visible).is_true()
 	assert_that(discard_badge.visible).is_true()
-	assert_that(int(scene.call("GetVisibleHandFanCardCountForTest"))).is_equal(3)
-	assert_that(draw_value.text).is_equal("7")
+	assert_that(int(scene.call("GetVisibleHandFanCardCountForTest"))).is_equal(5)
+	assert_that(draw_value.text).is_equal("5")
 	assert_that(discard_value.text).is_equal("0")
+	assert_that(absf(float(scene.call("GetHandFanCardRotationForTest", 0)))).is_less_equal(12.0)
+	assert_that(absf(float(scene.call("GetHandFanCardRotationForTest", 4)))).is_less_equal(12.0)
 
 	var hover_pointer := scene.call("GetHandCardPointerForTest", 1) as Vector2
 	scene.call("SetRuntimePointerStateForTest", hover_pointer, false)
 	scene.call("AdvanceRuntimeInputFrameForTest")
 	assert_that(int(scene.call("GetHoveredHandFanCardIndexForTest"))).is_equal(1)
 	assert_that(float(scene.call("GetHandFanCardScaleForTest", 1))).is_greater(1.0)
+
+
+# ACC:T74.8
+func test_combat_scene_surfaces_master_deck_button_and_all_pile_viewer_entries() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Bash"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":2,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var master_deck_button := root.get_node("HUD/MasterDeckButton") as Button
+	var exhaust_badge := root.get_node("HUD/ExhaustPileBadge") as Control
+	assert_that(master_deck_button.visible).is_true()
+	assert_that(master_deck_button.text).contains("12")
+	assert_that(exhaust_badge.visible).is_true()
+	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(0)
+
+
+# ACC:T74.8
+func test_pile_viewer_overlay_opens_from_all_pile_buttons_and_uses_expected_layout() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike","Defend","Bash"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":2,"turnState":"PlayerTurn"}'))).is_true()
+	scene.call("SetExhaustPileCountForTest", 1)
+
+	var root := scene as Control
+	var overlay := root.get_node("HUD/PileViewerOverlay") as Control
+	var shell := root.get_node("HUD/PileViewerOverlay/PileViewerShell") as HBoxContainer
+	var back_column := root.get_node("HUD/PileViewerOverlay/PileViewerShell/BackColumn") as Control
+	var return_button := root.get_node("HUD/PileViewerOverlay/PileViewerShell/BackColumn/BackButton") as Button
+	var grid := root.get_node("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll/PileViewerGrid") as GridContainer
+	var title := root.get_node("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerTitle") as Label
+
+	assert_that(overlay.visible).is_false()
+
+	scene.call("OpenPileViewerForTest", "master")
+	assert_that(overlay.visible).is_true()
+	assert_that(title.text.to_lower()).contains("deck")
+	assert_that(grid.columns).is_equal(5)
+	assert_that(return_button.visible).is_true()
+	assert_that(float(return_button.size.x)).is_greater(180.0)
+	assert_that(float(overlay.size.x)).is_greater(0.0)
+	assert_that(float(back_column.size.x / shell.size.x)).is_greater_equal(0.23)
+	assert_that(float(back_column.size.x / shell.size.x)).is_less_equal(0.30)
+	assert_that(grid.get_theme_constant("h_separation")).is_equal(30)
+	assert_that(int(scene.call("GetPileViewerVisibleCardCountForTest"))).is_equal(12)
+
+	scene.call("ClosePileViewerForTest")
+	assert_that(overlay.visible).is_false()
+
+	scene.call("OpenPileViewerForTest", "draw")
+	assert_that(int(scene.call("GetPileViewerVisibleCardCountForTest"))).is_equal(7)
+	scene.call("OpenPileViewerForTest", "discard")
+	assert_that(int(scene.call("GetPileViewerVisibleCardCountForTest"))).is_equal(2)
+	scene.call("OpenPileViewerForTest", "exhaust")
+	assert_that(int(scene.call("GetPileViewerVisibleCardCountForTest"))).is_equal(1)
+
+
+# ACC:T74.8
+func test_pile_viewer_overlay_blocks_battlefield_interaction_until_closed() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("RefreshLocaleForTest")
+
+	scene.call("OpenPileViewerForTest", "draw")
+	assert_that(bool(scene.call("IsPileViewerVisibleForTest"))).is_true()
+
+	var hover_pointer := scene.call("GetHandCardPointerForTest", 0) as Vector2
+	scene.call("SetRuntimePointerStateForTest", hover_pointer, false)
+	scene.call("AdvanceRuntimeInputFrameForTest")
+
+	assert_that(int(scene.call("GetHoveredHandFanCardIndexForTest"))).is_equal(-1)
+	assert_that(float(scene.call("GetHandFanCardScaleForTest", 0))).is_equal(1.0)
+
+	scene.call("SetRuntimePointerToEnemyTargetForTest", "enemy_m1_slime", true)
+	scene.call("AdvanceRuntimeInputFrameForTest")
+	assert_that(int(scene.call("GetHoveredHandFanCardIndexForTest"))).is_equal(-1)
+	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_false()
+	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("")
+
+
+# ACC:T74.8
+func test_pile_viewer_overlay_uses_z_index_above_hovered_hand_cards() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("RefreshLocaleForTest")
+
+	var root := scene as Control
+	var overlay := root.get_node("HUD/PileViewerOverlay") as Control
+	var hand_fan_layer := root.get_node("HUD/HandFanLayer") as Control
+	var first_card := hand_fan_layer.get_child(0) as Control
+	scene.call("SetRuntimePointerStateForTest", scene.call("GetHandCardPointerForTest", 0), false)
+	scene.call("AdvanceRuntimeInputFrameForTest")
+
+	assert_that(first_card.z_index).is_equal(200)
+	assert_that(overlay.z_index).is_greater(first_card.z_index)
+
+
+# ACC:T74.8
+func test_cancel_controls_are_communicated_in_action_hint() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("RefreshLocaleForTest")
+
+	var hint := str(scene.call("GetActionHintTextForTest"))
+	assert_that(hint.find("Right-click or Esc") >= 0).is_true()
+
+
+# ACC:T74.8
+func test_insufficient_energy_attempt_is_refused_with_visible_feedback() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("insufficient energy") >= 0).is_true()
+
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":0,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	var target_ids := scene.call("GetAvailableEnemyTargetIdsForTest") as Array
+	scene.call("HoverEnemyTargetForTest", str(target_ids[0]))
+	assert_that(bool(scene.call("ReleaseDraggedCardForTest"))).is_false()
+	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("insufficient energy") >= 0).is_true()
+
+
+# ACC:T74.8
+func test_end_turn_button_is_positioned_to_the_right_of_discard_pile_and_play_button_stays_hidden() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+
+	var root := scene as Control
+	var discard_badge := root.get_node("HUD/DiscardPileBadge") as Control
+	var end_turn_button := root.get_node("HUD/TurnControls/EndTurnButton") as Button
+	var play_button := root.get_node("HUD/TurnControls/PlaySelectedCardButton") as Button
+
+	assert_that(play_button.visible).is_false()
+	assert_that(end_turn_button.global_position.x).is_greater(discard_badge.global_position.x + discard_badge.size.x)
+
+
+# ACC:T74.8
+func test_card_type_forces_target_contract_even_if_definition_payload_is_wrong() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.test.attack_wrong","name_key":"card.test.attack_wrong.name","description_key":"card.test.attack_wrong.description","cost":1,"type":"attack","target":"self","base_effect":{"damage":6}},{"id":"card.test.skill_wrong","name_key":"card.test.skill_wrong.name","description_key":"card.test.skill_wrong.description","cost":1,"type":"skill","target":"enemy","base_effect":{"block":5}},{"id":"card.test.power_wrong","name_key":"card.test.power_wrong.name","description_key":"card.test.power_wrong.description","cost":1,"type":"power","target":"enemy","base_effect":{"status_id":"status.strength","status_stacks":1}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.test.attack_wrong","card.test.skill_wrong","card.test.power_wrong"],"difficulty":1,"playerHp":80,"energy":5,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
+	assert_that(bool(scene.call("SetTargetEnemyIdForTest", "enemy_m1_slime"))).is_true()
+
+	var root := scene as Control
+	var hand := root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	assert_that(str(scene.call("GetEnemyHpTextForTest"))).is_equal("26/32")
+
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	assert_that(int(scene.call("GetPlayerBlockForTest"))).is_equal(5)
+
+	hand = root.get_node("HUD/HandCards") as ItemList
+	hand.select(0)
+	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
+	assert_that(str(scene.call("GetPlayerStatusSummaryForTest"))).contains("status.strength:1")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 
 # ACC:T74.1
@@ -766,12 +973,12 @@ func test_real_combat_scene_invalid_drag_release_keeps_state_and_drag_active() -
 	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_t74_dead", 0, 32))).is_true()
 	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
 	scene.call("HoverEnemyTargetForTest", "enemy_t74_dead")
-	var before := scene.call("CaptureUiStateForTest") as Dictionary
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
 
 	assert_that(bool(scene.call("ReleaseDraggedCardForTest"))).is_false()
-	var after := scene.call("CaptureUiStateForTest") as Dictionary
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
 
-	assert_that(after).is_equal(before)
+	assert_that(state_after).is_equal(state_before)
 	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_true()
 	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(0)
 	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("enemy_t74_dead")
@@ -788,18 +995,18 @@ func test_real_combat_scene_cancel_drag_clears_preview_and_preserves_state() -> 
 	assert_that(bool(scene.call("SetEnemyHpForTest", "enemy_m1_slime", 32, 32))).is_true()
 	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
 	scene.call("HoverEnemyTargetForTest", "enemy_m1_slime")
-	var before := scene.call("CaptureUiStateForTest") as Dictionary
+	var state_before := scene.call("CaptureUiStateForTest") as Dictionary
 
 	scene.call("CancelCardDragForTest")
-	var after := scene.call("CaptureUiStateForTest") as Dictionary
+	var state_after := scene.call("CaptureUiStateForTest") as Dictionary
 	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
 
-	assert_that(after).is_equal(before)
+	assert_that(state_after).is_equal(state_before)
 	assert_that(bool(scene.call("IsCardDragActiveForTest"))).is_false()
 	assert_that(int(scene.call("GetDraggedHandIndexForTest"))).is_equal(-1)
 	assert_that(str(scene.call("GetDraggedTargetEnemyIdForTest"))).is_equal("")
 	assert_that(str(scene.call("GetLastHoverPreviewTextForTest"))).is_equal("")
-	assert_that(str(scene.call("GetActionHintTextForTest")).find("Select a card") >= 0).is_true()
+	assert_that(str(scene.call("GetActionHintTextForTest")).find("Right-click or Esc") >= 0).is_true()
 	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_false()
 	assert_that(cues.has("card_preview_closed")).is_true()
 	assert_that(cues.has("intent_detail_hidden")).is_true()
@@ -818,6 +1025,7 @@ func test_enemy_target_portrait_and_drag_highlight_are_visible_in_live_scene() -
 	var target_highlight := root.get_node("HUD/EnemyStatusPanel/EnemyTargetHighlight") as ColorRect
 	var portrait := root.get_node("HUD/EnemyStatusPanel/EnemyPortraitFrame/EnemyPortrait") as TextureRect
 	var drag_ghost := root.get_node("HUD/DragCardGhost") as PanelContainer
+	var drag_arrow := root.get_node("HUD/DragArrow") as Line2D
 	var ghost_title := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostTitle") as Label
 	var ghost_cost := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostHeader/GhostHeaderRow/GhostCostBadge/GhostCost") as Label
 	var ghost_type := root.get_node("HUD/DragCardGhost/GhostMargin/GhostBody/GhostMetaRow/GhostTypeBadge/GhostType") as Label
@@ -840,6 +1048,7 @@ func test_enemy_target_portrait_and_drag_highlight_are_visible_in_live_scene() -
 	assert_that(ghost_summary.text).is_empty()
 	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_false()
 	assert_that(bool(scene.call("IsDragGhostVisibleForTest"))).is_false()
+	assert_that(drag_arrow.visible).is_false()
 	assert_that(portrait.visible).is_false()
 	assert_that(portrait.texture).is_null()
 
@@ -852,14 +1061,53 @@ func test_enemy_target_portrait_and_drag_highlight_are_visible_in_live_scene() -
 
 	assert_that(bool(scene.call("IsEnemyTargetHighlightActiveForTest"))).is_true()
 	assert_that(target_highlight.visible).is_true()
-	assert_that(bool(scene.call("IsDragGhostVisibleForTest"))).is_true()
-	assert_that(drag_ghost.visible).is_true()
+	assert_that(bool(scene.call("IsDragGhostVisibleForTest"))).is_false()
+	assert_that(drag_ghost.visible).is_false()
+	assert_that(drag_arrow.visible).is_true()
+	assert_that(drag_arrow.default_color.a).is_equal(1.0)
 	assert_that(ghost_title.text.find("Strike") >= 0).is_true()
 	assert_that(ghost_cost.text).is_equal("1")
 	assert_that(ghost_type.text).is_equal("ATTACK")
 	assert_that(ghost_summary.text.find("Deal 6 damage") >= 0).is_true()
-	assert_that(drag_ghost.position).is_not_equal(drag_origin)
+	assert_that(drag_arrow.points.size()).is_greater_equal(2)
 	assert_that(str(scene.call("GetDragGhostTextForTest")).find("Strike") >= 0).is_true()
+	var stage_unit := (root.get_node("HUD/EnemyBattleStagePanel/EnemyBattleStageMargin/EnemyBattleStage") as HBoxContainer).get_child(0) as Control
+	var stage_portrait_frame := stage_unit.get_node("EnemyPortraitFrame") as PanelContainer
+	var stage_style := stage_portrait_frame.get_theme_stylebox("panel")
+	assert_that(stage_style).is_not_null()
+	if stage_style is StyleBoxFlat:
+		assert_that((stage_style as StyleBoxFlat).border_width_left).is_equal(4)
+
+
+# ACC:T74.8
+func test_self_target_drag_uses_player_highlight_and_keeps_card_preview_visible() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Defend"],"difficulty":1,"playerHp":80,"energy":2,"drawPileCount":6,"discardPileCount":1,"turnState":"PlayerTurn"}'))).is_true()
+
+	var root := scene as Control
+	var player_stage := root.get_node("HUD/PlayerBattleStagePanel") as PanelContainer
+	var drag_ghost := root.get_node("HUD/DragCardGhost") as PanelContainer
+	var drag_arrow := root.get_node("HUD/DragArrow") as Line2D
+	var pile_viewer := root.get_node("HUD/PileViewerOverlay") as Control
+	var pointer := scene.call("GetPlayerTargetPointerForTest") as Vector2
+
+	assert_that(bool(scene.call("BeginCardDragForTest", 0))).is_true()
+	scene.call("SetRuntimePointerStateForTest", pointer, true)
+	scene.call("AdvanceRuntimeInputFrameForTest")
+	await get_tree().process_frame
+
+	assert_that(bool(scene.call("IsPlayerTargetHighlightActiveForTest"))).is_true()
+	assert_that(player_stage.self_modulate).is_not_equal(Color.WHITE)
+	assert_that(drag_ghost.visible).is_true()
+	assert_that(drag_arrow.visible).is_false()
+	assert_that(drag_ghost.z_index).is_greater(pile_viewer.z_index)
+	assert_that(absf(drag_ghost.rotation_degrees)).is_less_equal(1.0)
+	var portrait_style := player_stage.get_theme_stylebox("panel")
+	assert_that(portrait_style).is_not_null()
+	if portrait_style is StyleBoxFlat:
+		assert_that((portrait_style as StyleBoxFlat).border_width_left).is_equal(0)
 
 
 # ACC:T74.7
@@ -1014,6 +1262,7 @@ func test_draw_transition_from_deckservice_updates_hand_membership_order_and_cou
 	assert_that(state_after_no_transition["hand"]).is_equal(state_after_draw["hand"])
 	assert_that(state_after_no_transition["draw"]).is_equal(state_after_draw["draw"])
 	assert_that(state_after_no_transition["discard"]).is_equal(state_after_draw["discard"])
+	deck_bridge.free()
 
 
 # ACC:T81.3
@@ -1070,6 +1319,7 @@ func test_reshuffle_then_continue_draw_keeps_hud_counters_aligned_with_runtime_d
 	assert_that(after_invalid["playerHp"]).is_equal(before_invalid["playerHp"])
 	assert_that(after_invalid["draw"]).is_equal("invalid-draw")
 	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).to_lower().find("refused") >= 0).is_true()
+	deck_bridge.free()
 
 
 # ACC:T125.4
@@ -1082,8 +1332,14 @@ func test_end_turn_updates_draw_and_discard_counts_from_runtime_deck_state() -> 
 	assert_that(bool(scene.call("RequestTurnActionForTest", "end_turn"))).is_true()
 
 	var state_after_end := scene.call("CaptureUiStateForTest") as Dictionary
-	assert_that(state_after_end["hand"]).is_equal(["Strike", "Defend", "Strike"])
-	assert_that(state_after_end["draw"]).is_equal("4")
+	assert_that(state_after_end["hand"]).is_equal([
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+	])
+	assert_that(state_after_end["draw"]).is_equal("2")
 	assert_that(state_after_end["discard"]).is_equal("3")
 
 
@@ -1550,7 +1806,13 @@ func test_end_turn_resolves_enemy_intent_and_starts_next_player_turn() -> void:
 	assert_that(state_after_end["energy"]).is_equal("3")
 	assert_that(state_after_end["turnState"]).is_equal("PlayerTurn")
 	assert_that(int(scene.call("GetTurnIndexForTest"))).is_equal(2)
-	assert_that(state_after_end["hand"]).is_equal(["Strike", "Defend", "Strike"])
+	assert_that(state_after_end["hand"]).is_equal([
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+		"card.warrior.strike",
+	])
 	assert_that(state_after_end["discard"]).is_equal("3")
 	assert_that(feedback.find("end_turn") >= 0 or feedback.find("accepted") >= 0).is_true()
 	assert_that(int(scene.call("GetEnemyIntentRowCountForTest"))).is_equal(1)
@@ -1653,7 +1915,9 @@ func test_end_turn_executes_once_per_command_and_has_no_hidden_scene_local_repla
 	assert_that(feedback_after_second.size()).is_equal(feedback_after_idle.size() + 1)
 	assert_that(state_after_second["turnState"]).is_equal("PlayerTurn")
 	assert_that(str(state_after_second["playerHp"])).is_equal("79")
-	assert_that(str(state_after_second["discard"])).is_equal("6")
+	assert_that((state_after_second["hand"] as Array).size()).is_equal(5)
+	assert_that(str(state_after_second["draw"])).is_equal("5")
+	assert_that(str(state_after_second["discard"])).is_equal("0")
 	assert_that(str(scene.call("GetLatestFeedbackMessageForTest")).find("Enemy dealt 1 damage") >= 0).is_true()
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 

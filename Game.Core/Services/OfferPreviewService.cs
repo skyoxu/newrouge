@@ -18,7 +18,8 @@ public sealed class OfferPreviewService
         string encounterType,
         int seed,
         long streamPosition,
-        int pickCount)
+        int pickCount,
+        string? poolId = null)
     {
         if (act <= 0)
         {
@@ -35,7 +36,7 @@ public sealed class OfferPreviewService
             throw new ArgumentOutOfRangeException(nameof(pickCount));
         }
 
-        var pool = ResolvePool(act, encounterType);
+        var pool = ResolvePool(act, encounterType, poolId);
         var rng = new Random(DeriveStableSeed(act, NormalizeEncounterType(encounterType), seed, streamPosition));
         var selectedCardIds = new List<string>(pickCount);
 
@@ -66,7 +67,7 @@ public sealed class OfferPreviewService
             throw new ArgumentOutOfRangeException(nameof(drawCount));
         }
 
-        _ = ResolvePool(act, encounterType);
+        _ = ResolvePool(act, encounterType, poolId: null);
         var rng = new Random(DeriveStableSeed(act, NormalizeEncounterType(encounterType), seed, streamPosition: 0));
         var weights = ResolveWeights(encounterType);
         var result = new List<string>(drawCount);
@@ -79,8 +80,13 @@ public sealed class OfferPreviewService
         return result;
     }
 
-    private static CardPoolDefinition ResolvePool(int act, string encounterType)
+    private static CardPoolDefinition ResolvePool(int act, string encounterType, string? poolId)
     {
+        if (!string.IsNullOrWhiteSpace(poolId) && CardPoolCatalog.TryGetPoolById(poolId, out var poolById))
+        {
+            return poolById;
+        }
+
         var normalizedEncounterType = NormalizeEncounterType(encounterType);
         if (!CardPoolCatalog.TryGetPool(act, normalizedEncounterType, out var pool))
         {

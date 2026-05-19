@@ -12,29 +12,38 @@ namespace Game.Core.Services;
 /// </remarks>
 public static class CardPoolCatalog
 {
-    private static readonly IReadOnlyDictionary<string, CardPoolDefinition> Pools =
+    private static readonly IReadOnlyList<CardPoolDefinition> AllPools =
         BuildPools();
+    private static readonly IReadOnlyDictionary<string, CardPoolDefinition> PoolsByKey =
+        BuildPoolsByKey(AllPools);
+    private static readonly IReadOnlyDictionary<string, CardPoolDefinition> PoolsById =
+        BuildPoolsById(AllPools);
 
     public static bool TryGetPool(int actId, string encounterType, out CardPoolDefinition pool)
     {
         var key = BuildKey(actId, encounterType);
-        return Pools.TryGetValue(key, out pool!);
+        return PoolsByKey.TryGetValue(key, out pool!);
+    }
+
+    public static bool TryGetPoolById(string poolId, out CardPoolDefinition pool)
+    {
+        var normalizedPoolId = poolId.Trim();
+        return PoolsById.TryGetValue(normalizedPoolId, out pool!);
     }
 
     public static IReadOnlyCollection<CardPoolDefinition> GetAll()
     {
-        return (IReadOnlyCollection<CardPoolDefinition>)Pools.Values;
+        return (IReadOnlyCollection<CardPoolDefinition>)AllPools;
     }
 
-    private static IReadOnlyDictionary<string, CardPoolDefinition> BuildPools()
+    private static IReadOnlyList<CardPoolDefinition> BuildPools()
     {
-        var map = new Dictionary<string, CardPoolDefinition>(StringComparer.Ordinal);
+        var pools = new List<CardPoolDefinition>();
         for (var actId = 1; actId <= 3; actId++)
         {
             if (actId == 1)
             {
-                Add(
-                    map,
+                pools.Add(
                     BuildPoolWithCards(
                         actId: 1,
                         encounterType: "normal",
@@ -42,8 +51,7 @@ public static class CardPoolCatalog
                         commonCards: new[] { "card.warrior.heavy_strike", "card.warrior.iron_wave", "card.warrior.cleave" },
                         uncommonCards: new[] { "card.warrior.power_through", "card.warrior.battle_focus" },
                         rareCards: new[] { "card.warrior.power_through" }));
-                Add(
-                    map,
+                pools.Add(
                     BuildPoolWithCards(
                         actId: 1,
                         encounterType: "elite",
@@ -51,8 +59,7 @@ public static class CardPoolCatalog
                         commonCards: new[] { "card.warrior.iron_wave", "card.warrior.cleave" },
                         uncommonCards: new[] { "card.warrior.power_through", "card.warrior.heavy_strike" },
                         rareCards: new[] { "card.warrior.power_through" }));
-                Add(
-                    map,
+                pools.Add(
                     BuildPoolWithCards(
                         actId: 1,
                         encounterType: "boss",
@@ -60,8 +67,7 @@ public static class CardPoolCatalog
                         commonCards: new[] { "card.warrior.heavy_strike", "card.warrior.iron_wave" },
                         uncommonCards: new[] { "card.warrior.power_through", "card.warrior.cleave" },
                         rareCards: new[] { "card.warrior.power_through" }));
-                Add(
-                    map,
+                pools.Add(
                     BuildPoolWithCards(
                         actId: 1,
                         encounterType: "shop",
@@ -69,8 +75,7 @@ public static class CardPoolCatalog
                         commonCards: new[] { "card.warrior.iron_wave", "card.warrior.cleave" },
                         uncommonCards: new[] { "card.warrior.power_through", "card.warrior.heavy_strike" },
                         rareCards: new[] { "card.warrior.power_through" }));
-                Add(
-                    map,
+                pools.Add(
                     BuildPoolWithCards(
                         actId: 1,
                         encounterType: "event",
@@ -78,14 +83,88 @@ public static class CardPoolCatalog
                         commonCards: new[] { "card.warrior.iron_wave", "card.warrior.heavy_strike" },
                         uncommonCards: new[] { "card.warrior.power_through", "card.warrior.cleave" },
                         rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "normal",
+                        poolId: "reward.act1.normal_1",
+                        commonCards: new[] { "card.warrior.heavy_strike", "card.warrior.cleave" },
+                        uncommonCards: new[] { "card.warrior.defend", "card.warrior.power_through" },
+                        rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "normal",
+                        poolId: "reward.act1.normal_2",
+                        commonCards: new[] { "card.warrior.iron_wave", "card.warrior.heavy_strike" },
+                        uncommonCards: new[] { "card.warrior.defend", "card.warrior.battle_focus" },
+                        rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "normal",
+                        poolId: "reward.act1.normal_3",
+                        commonCards: new[] { "card.warrior.cleave", "card.warrior.iron_wave" },
+                        uncommonCards: new[] { "card.warrior.power_through", "card.warrior.defend" },
+                        rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "elite",
+                        poolId: "reward.act1.elite_1",
+                        commonCards: new[] { "card.warrior.iron_wave", "card.warrior.cleave" },
+                        uncommonCards: new[] { "card.warrior.power_through", "card.warrior.defend" },
+                        rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "boss",
+                        poolId: "reward.act1.boss_1",
+                        commonCards: new[] { "card.warrior.heavy_strike", "card.warrior.cleave" },
+                        uncommonCards: new[] { "card.warrior.power_through", "card.warrior.defend" },
+                        rareCards: new[] { "card.warrior.power_through" }));
+                pools.Add(
+                    BuildPoolWithCards(
+                        actId: 1,
+                        encounterType: "event",
+                        poolId: "reward.act1.event_1",
+                        commonCards: new[] { "card.warrior.iron_wave" },
+                        uncommonCards: new[] { "card.warrior.power_through", "card.warrior.defend" },
+                        rareCards: new[] { "card.warrior.power_through" }));
                 continue;
             }
 
-            Add(map, BuildPool(actId, "normal", $"act{actId}-normal-pool", $"a{actId}n"));
-            Add(map, BuildPool(actId, "elite", $"act{actId}-elite-pool", $"a{actId}e"));
-            Add(map, BuildPool(actId, "boss", $"act{actId}-boss-pool", $"a{actId}b"));
-            Add(map, BuildPool(actId, "shop", $"act{actId}-shop-pool", $"a{actId}s"));
-            Add(map, BuildPool(actId, "event", $"act{actId}-event-pool", $"a{actId}v"));
+            pools.Add(BuildPool(actId, "normal", $"act{actId}-normal-pool", $"a{actId}n"));
+            pools.Add(BuildPool(actId, "elite", $"act{actId}-elite-pool", $"a{actId}e"));
+            pools.Add(BuildPool(actId, "boss", $"act{actId}-boss-pool", $"a{actId}b"));
+            pools.Add(BuildPool(actId, "shop", $"act{actId}-shop-pool", $"a{actId}s"));
+            pools.Add(BuildPool(actId, "event", $"act{actId}-event-pool", $"a{actId}v"));
+        }
+
+        return pools;
+    }
+
+    private static IReadOnlyDictionary<string, CardPoolDefinition> BuildPoolsByKey(IReadOnlyList<CardPoolDefinition> pools)
+    {
+        var map = new Dictionary<string, CardPoolDefinition>(StringComparer.Ordinal);
+        foreach (var pool in pools)
+        {
+            var key = BuildKey(pool.ActId, pool.EncounterType);
+            if (!map.ContainsKey(key))
+            {
+                map[key] = pool;
+            }
+        }
+
+        return map;
+    }
+
+    private static IReadOnlyDictionary<string, CardPoolDefinition> BuildPoolsById(IReadOnlyList<CardPoolDefinition> pools)
+    {
+        var map = new Dictionary<string, CardPoolDefinition>(StringComparer.Ordinal);
+        foreach (var pool in pools)
+        {
+            map[pool.PoolId] = pool;
         }
 
         return map;
@@ -127,11 +206,6 @@ public static class CardPoolCatalog
             EncounterType: encounterType,
             PoolId: poolId,
             CardsByRarity: cardsByRarity);
-    }
-
-    private static void Add(IDictionary<string, CardPoolDefinition> map, CardPoolDefinition pool)
-    {
-        map[BuildKey(pool.ActId, pool.EncounterType)] = pool;
     }
 
     private static string BuildKey(int actId, string encounterType)

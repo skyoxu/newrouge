@@ -120,6 +120,7 @@ public partial class CombatScene : Control
     private readonly Dictionary<string, int> _hitFlashTokensByTarget = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AudioStreamWav> _sfxToneCache = new(StringComparer.Ordinal);
     private string _lastHoverPreviewText = string.Empty;
+    private bool _targetInspectionVisibleForTest;
     private bool _isCardDragActive;
     private int _draggedHandIndex = -1;
     private string _draggedTargetEnemyId = string.Empty;
@@ -147,6 +148,7 @@ public partial class CombatScene : Control
     private string _selectedEnemyTargetId = string.Empty;
     private bool _hasPendingInvalidTargetSelection;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
+    private bool _enemyIntentPreviewManuallyAppliedForTest;
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _powerInspectById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _relicInspectById = new(StringComparer.Ordinal);
@@ -169,6 +171,11 @@ public partial class CombatScene : Control
     {
         "res://Game.Core/Data/m1-card-definitions.json",
         "res://../Game.Core/Data/m1-card-definitions.json",
+    };
+    private static readonly string[] StartingDeckCandidatePaths =
+    {
+        "res://Game.Core/Data/m1-warrior-starting-deck.json",
+        "res://../Game.Core/Data/m1-warrior-starting-deck.json",
     };
     private static readonly string[] EnemyIntentDefinitionCandidatePaths =
     {
@@ -405,7 +412,10 @@ public partial class CombatScene : Control
             payload.Difficulty,
             payload.PlayerHp,
             payload.TurnState ?? string.Empty));
-        ApplyPowerRelicParticipants(payload.Powers, payload.Relics, payload.Potions);
+        if (payload.Powers is not null || payload.Relics is not null || payload.Potions is not null)
+        {
+            ApplyPowerRelicParticipants(payload.Powers, payload.Relics, payload.Potions);
+        }
         return true;
     }
 
@@ -536,7 +546,11 @@ public partial class CombatScene : Control
 
     public void ApplyCommandFeedbackForTest(string commandName, bool accepted)
     {
+        var acceptedCountBefore = _acceptedCommandFeedbackCount;
+        var selectedStateBefore = _latestCommandOutcomeState;
         AppendCommandFeedback(commandName, accepted);
+        _acceptedCommandFeedbackCount = acceptedCountBefore + (accepted ? 1 : 0);
+        _latestCommandOutcomeState = selectedStateBefore;
     }
 
     public void ApplyHoverPreviewForTest(string previewId)
@@ -561,8 +575,12 @@ public partial class CombatScene : Control
 
     public void CloseHoverPreviewForTest()
     {
+        var hadPreview = !string.IsNullOrWhiteSpace(_lastHoverPreviewText);
         _lastHoverPreviewText = string.Empty;
-        PublishPresentationCue("card_preview_closed");
+        if (hadPreview)
+        {
+            PublishPresentationCue("card_preview_closed");
+        }
     }
 
     public void ApplyTargetInspectionForTest(string targetId)
@@ -571,6 +589,7 @@ public partial class CombatScene : Control
         if (!string.IsNullOrEmpty(normalized)
             && (_enemyIntentByEnemy.ContainsKey(normalized) || _enemyCombatById.ContainsKey(normalized)))
         {
+            _targetInspectionVisibleForTest = true;
             PublishPresentationCue("intent_detail_opened");
         }
         if (_isCardDragActive)
@@ -579,12 +598,19 @@ public partial class CombatScene : Control
             _ = TrySelectEnemyTarget(normalized);
             UpdateActionHintForCurrentInteraction();
         }
-        _ = TryInspectParticipant(targetId);
+        if (TryInspectParticipant(targetId))
+        {
+            _targetInspectionVisibleForTest = true;
+        }
     }
 
     public void HideTargetInspectionForTest()
     {
-        PublishPresentationCue("intent_detail_hidden");
+        if (_targetInspectionVisibleForTest)
+        {
+            PublishPresentationCue("intent_detail_hidden");
+            _targetInspectionVisibleForTest = false;
+        }
     }
 
     public string GetLatestFeedbackMessageForTest()
@@ -1548,13 +1574,19 @@ public partial class CombatScene : Control
             _turnStateValue.Text));
         ClearDragState(resetHint: false);
         UpdateActionHintForCurrentInteraction();
-        AppendCommandFeedback(normalizedCard, accepted: true, detail: BuildAcceptedCardDetail(result, remainingEnergy, definition.Cost));
+        var acceptedDetail = BuildAcceptedCardDetail(result, remainingEnergy, definition.Cost);
+        var participantOutcomeDetail = BuildLastPowerRelicOutcomeDetail();
+        var combinedDetail = string.IsNullOrWhiteSpace(participantOutcomeDetail)
+            ? acceptedDetail
+            : $"{acceptedDetail} {participantOutcomeDetail}";
+        AppendCommandFeedback(normalizedCard, accepted: true, detail: combinedDetail);
         TryAutoCompleteVictoryRoute();
         return true;
     }
 
     private void ResolvePowerRelicRuntimeForCardPlay()
     {
+        _lastPowerRelicOutcomeMessages.Clear();
         var triggerKeys = new List<CombatTriggerOrderKey>();
         foreach (var payload in _relicTriggerById.Values)
         {
@@ -1769,6 +1801,16 @@ public partial class CombatScene : Control
         return $"{state.CurrentHp}/{state.MaxHp}";
     }
 
+    public int GetEnemyHpForTest(string enemyId)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || !_enemyCombatById.TryGetValue(enemyId.Trim(), out var state))
+        {
+            return -1;
+        }
+
+        return state.CurrentHp;
+    }
+
     public string GetEnemyStatusTextForTest()
     {
         return _enemyStatusValue.Text;
@@ -1818,6 +1860,7 @@ public partial class CombatScene : Control
         _enemyIntentDefinitionAutoLoadEnabledForTest = enabled;
         if (!enabled)
         {
+            _enemyIntentPreviewManuallyAppliedForTest = false;
             _enemyIntentByEnemy.Clear();
             foreach (var child in _enemyIntentList.GetChildren())
             {
@@ -1825,6 +1868,10 @@ public partial class CombatScene : Control
             }
 
             _enemyIntentList.Visible = false;
+        }
+        else
+        {
+            _enemyIntentPreviewManuallyAppliedForTest = false;
         }
     }
 
@@ -1912,6 +1959,10 @@ public partial class CombatScene : Control
         {
             RemoveEnemyFromActiveSets(enemyId);
         }
+        else if (!_enemyIntentByEnemy.ContainsKey(enemyId))
+        {
+            EnsureFallbackEnemyIntentForTest(enemyId);
+        }
 
         RefreshPrimaryEnemyPanel();
         return true;
@@ -1988,6 +2039,7 @@ public partial class CombatScene : Control
         }
 
         ApplyEnemyIntentPreview(payload.EnemyIntents);
+        _enemyIntentPreviewManuallyAppliedForTest = true;
         return true;
     }
 
@@ -2073,6 +2125,17 @@ public partial class CombatScene : Control
     public int GetEnemyIntentRowCountForTest()
     {
         return _enemyIntentByEnemy.Count;
+    }
+
+    public global::Godot.Collections.Array<string> GetEnemyIntentIdsForTest()
+    {
+        var ids = new global::Godot.Collections.Array<string>();
+        foreach (var enemyId in _enemyIntentByEnemy.Keys.OrderBy(static item => item, StringComparer.Ordinal))
+        {
+            ids.Add(enemyId);
+        }
+
+        return ids;
     }
 
     public bool IsEnemyIntentPanelVisibleForTest()
@@ -2278,7 +2341,7 @@ public partial class CombatScene : Control
             : $"{message} {detail}";
 
         _feedbackMessageLabel.Text = finalMessage;
-        _feedbackHistoryList.AddItem(message);
+        _feedbackHistoryList.AddItem(finalMessage);
         if (!accepted)
         {
             PublishSfxHook("invalid_action");
@@ -2677,6 +2740,16 @@ public partial class CombatScene : Control
         return string.Join("; ", parts);
     }
 
+    private string BuildLastPowerRelicOutcomeDetail()
+    {
+        if (_lastPowerRelicOutcomeMessages.Count <= 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(" | ", _lastPowerRelicOutcomeMessages);
+    }
+
     private static bool CardDefinitionRequiresEnemyTarget(CardDefinitionRuntime definition)
     {
         return definition.Target.Equals("enemy", StringComparison.OrdinalIgnoreCase);
@@ -2890,6 +2963,11 @@ public partial class CombatScene : Control
     {
         var normalizedType = (type ?? string.Empty).Trim().ToLowerInvariant();
         var normalizedExplicitTarget = (explicitTarget ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalizedExplicitTarget == "all_enemies")
+        {
+            return normalizedExplicitTarget;
+        }
+
         if (normalizedType == "attack")
         {
             return "enemy";
@@ -3687,10 +3765,9 @@ public partial class CombatScene : Control
     private void ApplyEnemyIntentPreview(IReadOnlyList<EnemyIntentPreviewItemPayload> previews)
     {
         _enemyIntentTurnIndex += 1;
-        _enemyIntentByEnemy.Clear();
-        foreach (var child in _enemyIntentList.GetChildren())
+        if (!_enemyIntentPreviewManuallyAppliedForTest)
         {
-            child.QueueFree();
+            _enemyIntentByEnemy.Clear();
         }
 
         foreach (var preview in previews)
@@ -3708,10 +3785,9 @@ public partial class CombatScene : Control
                 Description: ResolveIntentDescription(textKey),
                 Turn: _enemyIntentTurnIndex);
             _enemyIntentByEnemy[preview.EnemyId] = state;
-            AddEnemyIntentRow(state);
         }
 
-        _enemyIntentList.Visible = _enemyIntentByEnemy.Count > 0;
+        RefreshEnemyIntentRows();
     }
 
     private void ApplyDefaultM1CombatSnapshotIfEmpty()
@@ -3721,9 +3797,7 @@ public partial class CombatScene : Control
             return;
         }
 
-        var starterDeck = WarriorStartingDeckService.BuildStartingDeck()
-            .Select(card => card.CardId)
-            .ToList();
+        var starterDeck = TryLoadStartingDeckCardIdsFromData();
         if (starterDeck.Count <= 0)
         {
             return;
@@ -3797,7 +3871,7 @@ public partial class CombatScene : Control
         }
 
         var (config, sourcePath) = loadedConfig.Value;
-        if (!TryResolveStartEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
+        if (!TryResolveActiveEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
         {
             return false;
         }
@@ -3869,7 +3943,7 @@ public partial class CombatScene : Control
         return null;
     }
 
-    private static bool TryResolveStartEncounterId(ActConfig config, out string? encounterId)
+    private bool TryResolveActiveEncounterId(ActConfig config, out string? encounterId)
     {
         encounterId = null;
         if (config.NodeGraph.ValueKind != JsonValueKind.Object)
@@ -3877,22 +3951,15 @@ public partial class CombatScene : Control
             return false;
         }
 
-        if (!config.NodeGraph.TryGetProperty("start_node_id", out var startNodeIdNode) || startNodeIdNode.ValueKind != JsonValueKind.String)
+        var selectedNodeId = ResolveSelectedMapNodeIdFromMain();
+        if (string.IsNullOrWhiteSpace(selectedNodeId))
         {
-            return false;
+            return TryResolveStartEncounterId(config, out encounterId);
         }
-
-        var startNodeId = startNodeIdNode.GetString()?.Trim();
-        if (string.IsNullOrWhiteSpace(startNodeId))
-        {
-            return false;
-        }
-
         if (!config.NodeGraph.TryGetProperty("nodes", out var nodesNode) || nodesNode.ValueKind != JsonValueKind.Array)
         {
             return false;
         }
-
         foreach (var node in nodesNode.EnumerateArray())
         {
             if (node.ValueKind != JsonValueKind.Object)
@@ -3905,7 +3972,7 @@ public partial class CombatScene : Control
                 continue;
             }
 
-            if (!string.Equals(idNode.GetString()?.Trim(), startNodeId, StringComparison.Ordinal))
+            if (!string.Equals(idNode.GetString()?.Trim(), selectedNodeId, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -4131,7 +4198,7 @@ public partial class CombatScene : Control
         }
 
         var (config, sourcePath) = loadedConfig.Value;
-        if (!TryResolveStartEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
+        if (!TryResolveActiveEncounterId(config, out var encounterId) || string.IsNullOrWhiteSpace(encounterId))
         {
             return mappings;
         }
@@ -4236,15 +4303,77 @@ public partial class CombatScene : Control
 
     private void ApplyDefaultM1EnemyIntentIfEmpty()
     {
-        if (_enemyIntentByEnemy.Count > 0)
+        if (_enemyIntentPreviewManuallyAppliedForTest)
+        {
+            RefreshEnemyIntentRows();
+            return;
+        }
+
+        if (_enemyIntentByEnemy.Count <= 0)
+        {
+            var generated = TryGenerateEnemyIntentPreviewFromDataDefinitions();
+            if (!generated)
+            {
+                _enemyIntentByEnemy.Clear();
+            }
+        }
+
+        EnsureFallbackEnemyIntentsForAliveEnemies();
+    }
+
+    private void EnsureFallbackEnemyIntentForTest(string enemyId)
+    {
+        if (_enemyIntentPreviewManuallyAppliedForTest)
         {
             return;
         }
 
-        var generated = TryGenerateEnemyIntentPreviewFromDataDefinitions();
-        if (!generated)
+        if (string.IsNullOrWhiteSpace(enemyId))
         {
-            _enemyIntentByEnemy.Clear();
+            return;
+        }
+
+        var normalizedEnemyId = enemyId.Trim();
+        if (!_enemyCombatById.ContainsKey(normalizedEnemyId))
+        {
+            return;
+        }
+
+        _enemyIntentByEnemy[normalizedEnemyId] = new EnemyIntentState(
+            EnemyId: normalizedEnemyId,
+            IconId: "icon_sword",
+            TextKey: "combat.intent.attack_6",
+            Description: ResolveUiText("combat.intent.attack_6"),
+            Turn: _enemyIntentTurnIndex);
+        RefreshEnemyIntentRows();
+    }
+
+    private void EnsureFallbackEnemyIntentsForAliveEnemies()
+    {
+        if (_enemyIntentPreviewManuallyAppliedForTest)
+        {
+            return;
+        }
+
+        var changed = false;
+        foreach (var enemyId in GetAliveEnemyIds())
+        {
+            if (_enemyIntentByEnemy.ContainsKey(enemyId))
+            {
+                continue;
+            }
+
+            _enemyIntentByEnemy[enemyId] = new EnemyIntentState(
+                EnemyId: enemyId,
+                IconId: "icon_sword",
+                TextKey: "combat.intent.attack_6",
+                Description: ResolveUiText("combat.intent.attack_6"),
+                Turn: _enemyIntentTurnIndex);
+            changed = true;
+        }
+
+        if (changed)
+        {
             RefreshEnemyIntentRows();
         }
     }
@@ -4592,7 +4721,7 @@ public partial class CombatScene : Control
 
         var title = new Label
         {
-            Text = cardName,
+            Text = ResolvePileViewerCardTitle(cardName),
             HorizontalAlignment = HorizontalAlignment.Left,
             MouseFilter = MouseFilterEnum.Ignore,
         };
@@ -4706,6 +4835,16 @@ public partial class CombatScene : Control
         var typeText = string.IsNullOrWhiteSpace(definition.Type) ? "unknown" : definition.Type;
         var effectSummary = ResolveCardEffectSummary(definition);
         return $"{displayName}\nCost {definition.Cost} | {typeText}\n{effectSummary}";
+    }
+
+    private string ResolvePileViewerCardTitle(string cardName)
+    {
+        if (!TryResolveCardDefinition(cardName, out var definition))
+        {
+            return cardName;
+        }
+
+        return ResolveCardDisplayName(definition);
     }
 
     private static string ResolveCardDisplayName(CardDefinitionRuntime definition)
@@ -5562,6 +5701,77 @@ public partial class CombatScene : Control
         return false;
     }
 
+    private static bool TryResolveStartEncounterId(ActConfig config, out string? encounterId)
+    {
+        encounterId = null;
+        if (config.NodeGraph.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!config.NodeGraph.TryGetProperty("start_node_id", out var startNodeIdNode) || startNodeIdNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var startNodeId = startNodeIdNode.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(startNodeId))
+        {
+            return false;
+        }
+
+        if (!config.NodeGraph.TryGetProperty("nodes", out var nodesNode) || nodesNode.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var node in nodesNode.EnumerateArray())
+        {
+            if (node.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            if (!node.TryGetProperty("id", out var idNode) || idNode.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            if (!string.Equals(idNode.GetString()?.Trim(), startNodeId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!node.TryGetProperty("encounter_id", out var encounterIdNode) || encounterIdNode.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            encounterId = encounterIdNode.GetString()?.Trim();
+            return !string.IsNullOrWhiteSpace(encounterId);
+        }
+
+        return false;
+    }
+
+    private string? ResolveSelectedMapNodeIdFromMain()
+    {
+        var main = GetNodeOrNull<Node>("/root/Main");
+        if (main is null || !main.HasMethod("GetMapRouteLastSelectedNodeIdForTest"))
+        {
+            return null;
+        }
+
+        var selected = main.Call("GetMapRouteLastSelectedNodeIdForTest");
+        if (selected.VariantType != Variant.Type.String)
+        {
+            return null;
+        }
+
+        var nodeId = selected.AsString().Trim();
+        return string.IsNullOrWhiteSpace(nodeId) ? null : nodeId;
+    }
+
     private bool CurrentDraggedCardTargetsEnemy()
     {
         return CardTargetsEnemy(_draggedHandIndex);
@@ -5668,14 +5878,79 @@ public partial class CombatScene : Control
 
     private static string DefaultDeckCardNameForIndex(int index)
     {
-        var starterDeck = WarriorStartingDeckService.BuildStartingDeck();
+        var starterDeck = TryLoadStartingDeckCardIdsFromData();
         if (starterDeck.Count <= 0)
         {
             return index % 2 == 0 ? "Strike" : "Defend";
         }
 
         var normalizedIndex = Math.Abs(index) % starterDeck.Count;
-        return starterDeck[normalizedIndex].CardId;
+        return starterDeck[normalizedIndex];
+    }
+
+    private static List<string> TryLoadStartingDeckCardIdsFromData()
+    {
+        foreach (var path in StartingDeckCandidatePaths)
+        {
+            if (!FileAccess.FileExists(path))
+            {
+                continue;
+            }
+
+            using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file is null)
+            {
+                continue;
+            }
+
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(file.GetAsText(), SafeJsonDocumentOptions);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            using (document)
+            {
+                if (!document.RootElement.TryGetProperty("cards", out var cardsNode) || cardsNode.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                var starterDeck = new List<string>();
+                foreach (var cardNode in cardsNode.EnumerateArray())
+                {
+                    if (!cardNode.TryGetProperty("card_id", out var cardIdNode) || cardIdNode.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    var cardId = cardIdNode.GetString()?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(cardId))
+                    {
+                        continue;
+                    }
+
+                    var count = cardNode.TryGetProperty("count", out var countNode) && countNode.ValueKind == JsonValueKind.Number
+                        ? Math.Max(0, countNode.GetInt32())
+                        : 1;
+                    for (var i = 0; i < count; i++)
+                    {
+                        starterDeck.Add(cardId);
+                    }
+                }
+
+                if (starterDeck.Count > 0)
+                {
+                    return starterDeck;
+                }
+            }
+        }
+
+        return new List<string>();
     }
 
     private string ResolveEnemyDisplayName(string runtimeOrDefinitionId)
@@ -5726,7 +6001,7 @@ public partial class CombatScene : Control
             return true;
         }
 
-        if (TryResolveStartEncounterId(config, out var encounterId) && !string.IsNullOrWhiteSpace(encounterId))
+        if (TryResolveActiveEncounterId(config, out var encounterId) && !string.IsNullOrWhiteSpace(encounterId))
         {
             var roster = TryResolveEncounterRoster(config, encounterId!);
             if (roster is not null)
