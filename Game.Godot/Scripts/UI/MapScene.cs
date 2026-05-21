@@ -838,7 +838,10 @@ public partial class MapScene : Control
                     continue;
                 }
 
-                using var document = JsonDocument.Parse(json);
+                using var document = JsonDocument.Parse(json, new JsonDocumentOptions
+                {
+                    MaxDepth = 128,
+                });
                 if (!document.RootElement.TryGetProperty("node_graph", out var nodeGraph)
                     || nodeGraph.ValueKind != JsonValueKind.Object
                     || !nodeGraph.TryGetProperty("nodes", out var nodesElement)
@@ -976,5 +979,15 @@ public partial class MapScene : Control
         };
 
         return $"F{floor} {suffix}";
+    }
+
+    private static string NormalizeLocale(string locale)
+    {
+        if (string.IsNullOrWhiteSpace(locale))
+        {
+            return "en";
+        }
+
+        return locale.Trim().Replace('_', '-').ToLowerInvariant();
     }
 }

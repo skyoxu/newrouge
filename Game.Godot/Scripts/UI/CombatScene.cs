@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
+using System.Reflection;
 using Godot;
 using Game.Core.Contracts.Config;
 using Game.Core.Contracts.Combat;
@@ -73,10 +74,16 @@ public partial class CombatScene : Control
     private Label _dragCardGhostSummary = default!;
     private Line2D _dragArrow = default!;
     private Button _masterDeckButton = default!;
+    private Button _mapButton = default!;
     private Control _pileViewerOverlay = default!;
     private Button _pileViewerBackButton = default!;
     private Label _pileViewerTitle = default!;
     private GridContainer _pileViewerGrid = default!;
+    private Control _mapOverlay = default!;
+    private Button _mapOverlayBackButton = default!;
+    private Label _mapOverlayTitle = default!;
+    private Control _mapOverlayContent = default!;
+    private Control? _mapOverlayScene;
     private TextureRect _enemyPortraitInStatusPanel = default!;
 
     private readonly List<string> _dispatchedCommands = new();
@@ -167,6 +174,7 @@ public partial class CombatScene : Control
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private bool _cardDefinitionAutoLoadEnabledForTest = true;
     private bool _enemyIntentDefinitionAutoLoadEnabledForTest = true;
+    private bool _uiSignalsBound;
     private static readonly string[] CardDefinitionCandidatePaths =
     {
         "res://Game.Core/Data/m1-card-definitions.json",
@@ -189,6 +197,7 @@ public partial class CombatScene : Control
     };
     private Texture2D? _enemyIntentFallbackTexture;
     private Texture2D? _enemyPortraitFallbackTexture;
+    private readonly Dictionary<string, Texture2D> _cardFaceTextureCache = new(StringComparer.Ordinal);
     private bool _defeatResolvedForCurrentHpDrop;
     private int _hpChangedEmissionCount;
     private int _defeatEligibleTransitionCount;
@@ -205,7 +214,6 @@ public partial class CombatScene : Control
     private readonly List<float> _handFanBaseRotations = new();
     private int _hoveredHandFanIndex = -1;
     private Texture2D? _playerPortraitTexture;
-    private Texture2D? _cardFaceTexture;
     private Vector2 _dragCardGhostFaceDefaultMinimumSize;
     private float _dragGhostVisualScaleForTest = 1.0f;
     private const string DefaultPlayerPortraitId = "player_fungal_knight";
@@ -220,6 +228,8 @@ public partial class CombatScene : Control
     private DeckState? _deckState;
     private int _runtimeDeckInstanceCounter;
     private string _pileViewerSource = "master";
+    private const int MapOverlayZIndex = 1001;
+    private static readonly PackedScene? MapOverlayScenePacked = LoadMapOverlayScenePacked();
 
     public override void _Ready()
     {
@@ -234,6 +244,7 @@ public partial class CombatScene : Control
         _exhaustPileBadge = GetNode<PanelContainer>("HUD/ExhaustPileBadge");
         _turnStateValue = GetNode<Label>("HUD/TurnStateValue");
         _masterDeckButton = GetNode<Button>("HUD/MasterDeckButton");
+        _mapButton = GetNode<Button>("HUD/MapButton");
         _feedbackMessageLabel = GetNode<Label>("HUD/FeedbackMessageLabel");
         _feedbackHistoryList = GetNode<ItemList>("HUD/FeedbackHistoryList");
         _enemyRosterTitleLabel = GetNode<Label>("HUD/EnemyRosterPanel/EnemyRosterTitle");
@@ -286,17 +297,12 @@ public partial class CombatScene : Control
         _pileViewerBackButton = GetNode<Button>("HUD/PileViewerOverlay/PileViewerShell/BackColumn/BackButton");
         _pileViewerTitle = GetNode<Label>("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerTitle");
         _pileViewerGrid = GetNode<GridContainer>("HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll/PileViewerGrid");
+        _mapOverlay = GetNode<Control>("HUD/MapOverlay");
+        _mapOverlayBackButton = GetNode<Button>("HUD/MapOverlay/MapOverlayShell/BackColumn/BackButton");
+        _mapOverlayTitle = GetNode<Label>("HUD/MapOverlay/MapOverlayShell/ContentColumn/MapOverlayTitle");
+        _mapOverlayContent = GetNode<Control>("HUD/MapOverlay/MapOverlayShell/ContentColumn/MapOverlayScroll/MapOverlayContent");
 
-        _startTurnButton.Pressed += OnStartTurnPressed;
-        _playSelectedCardButton.Pressed += OnPlaySelectedCardPressed;
-        _endTurnButton.Pressed += OnEndTurnPressed;
-        _masterDeckButton.Pressed += OnMasterDeckPressed;
-        _pileViewerBackButton.Pressed += OnPileViewerBackPressed;
-        _drawPileBadge.GuiInput += OnDrawPileBadgeGuiInput;
-        _discardPileBadge.GuiInput += OnDiscardPileBadgeGuiInput;
-        _exhaustPileBadge.GuiInput += OnExhaustPileBadgeGuiInput;
-        _handCards.ItemClicked += OnHandCardClicked;
-        _handCards.GuiInput += OnHandCardsGuiInput;
+        BindUiSignalsOnce();
         _startTurnButton.Visible = false;
         _startTurnButton.Text = ResolveUiText("combat.turn.start");
         _playSelectedCardButton.Text = ResolveUiText("combat.action.play_selected");
@@ -306,6 +312,7 @@ public partial class CombatScene : Control
         _actionHintLabel.Text = ResolveUiText("combat.action.hint");
         _handTitleLabel.Text = ResolveUiText("combat.hand.title");
         _pileViewerOverlay.ZIndex = PileViewerOverlayZIndex;
+        _mapOverlay.ZIndex = MapOverlayZIndex;
         _combatFxLayer.ZIndex = CombatFxLayerZIndex;
         _dragCardGhost.ZIndex = DragOverlayZIndex;
         _dragArrow.ZIndex = DragOverlayZIndex + 1;
@@ -317,6 +324,7 @@ public partial class CombatScene : Control
         _powerRelicPanel.Visible = false;
         _playerPortrait.Texture = ResolvePlayerPortraitTexture();
         _masterDeckButton.Text = "Deck 0";
+        _mapButton.Text = "Map";
         ApplyDefaultM1CombatSnapshotIfEmpty();
         ApplyDefaultM1EnemyStateIfEmpty();
         ApplyDefaultM1EnemyIntentIfEmpty();
@@ -327,6 +335,7 @@ public partial class CombatScene : Control
 
     public override void _ExitTree()
     {
+        _uiSignalsBound = false;
         if (_startTurnButton is not null)
         {
             _startTurnButton.Pressed -= OnStartTurnPressed;
@@ -357,11 +366,53 @@ public partial class CombatScene : Control
             _endTurnButton.Pressed -= OnEndTurnPressed;
         }
 
+        if (_masterDeckButton is not null)
+        {
+            _masterDeckButton.Pressed -= OnMasterDeckPressed;
+        }
+
+        if (_mapButton is not null)
+        {
+            _mapButton.Pressed -= OnMapButtonPressed;
+        }
+
+        if (_pileViewerBackButton is not null)
+        {
+            _pileViewerBackButton.Pressed -= OnPileViewerBackPressed;
+        }
+
+        if (_mapOverlayBackButton is not null)
+        {
+            _mapOverlayBackButton.Pressed -= OnMapOverlayBackPressed;
+        }
+
         if (_handCards is not null)
         {
             _handCards.ItemClicked -= OnHandCardClicked;
             _handCards.GuiInput -= OnHandCardsGuiInput;
         }
+    }
+
+    private void BindUiSignalsOnce()
+    {
+        if (_uiSignalsBound)
+        {
+            return;
+        }
+
+        _uiSignalsBound = true;
+        _startTurnButton.Pressed += OnStartTurnPressed;
+        _playSelectedCardButton.Pressed += OnPlaySelectedCardPressed;
+        _endTurnButton.Pressed += OnEndTurnPressed;
+        _masterDeckButton.Pressed += OnMasterDeckPressed;
+        _mapButton.Pressed += OnMapButtonPressed;
+        _pileViewerBackButton.Pressed += OnPileViewerBackPressed;
+        _mapOverlayBackButton.Pressed += OnMapOverlayBackPressed;
+        _drawPileBadge.GuiInput += OnDrawPileBadgeGuiInput;
+        _discardPileBadge.GuiInput += OnDiscardPileBadgeGuiInput;
+        _exhaustPileBadge.GuiInput += OnExhaustPileBadgeGuiInput;
+        _handCards.ItemClicked += OnHandCardClicked;
+        _handCards.GuiInput += OnHandCardsGuiInput;
     }
 
     public bool TryApplyCoreSnapshotData(global::Godot.Collections.Array handCards, int energy, int drawPile, int discardPile)
@@ -822,6 +873,11 @@ public partial class CombatScene : Control
     public string GetMasterDeckButtonTextForTest()
     {
         return _masterDeckButton.Text;
+    }
+
+    public bool IsMapOverlayVisibleForTest()
+    {
+        return _mapOverlay.Visible;
     }
 
     public string GetRuntimeDebugDragTextForTest()
@@ -3797,7 +3853,11 @@ public partial class CombatScene : Control
             return;
         }
 
-        var starterDeck = TryLoadStartingDeckCardIdsFromData();
+        var starterDeck = TryLoadRunDeckCardIdsFromMain();
+        if (starterDeck.Count <= 0)
+        {
+            starterDeck = TryLoadStartingDeckCardIdsFromData();
+        }
         if (starterDeck.Count <= 0)
         {
             return;
@@ -3827,6 +3887,34 @@ public partial class CombatScene : Control
             1,
             80,
             "PlayerTurn"));
+    }
+
+    private List<string> TryLoadRunDeckCardIdsFromMain()
+    {
+        var main = GetTree()?.Root?.GetNodeOrNull<Node>("/root/Main");
+        if (main is null || !main.HasMethod("GetRunDeckCardIdsForTest"))
+        {
+            return new List<string>();
+        }
+
+        var variant = main.Call("GetRunDeckCardIdsForTest");
+        var array = variant.As<global::Godot.Collections.Array>();
+        if (array.Count <= 0)
+        {
+            return new List<string>();
+        }
+
+        var cards = new List<string>(array.Count);
+        foreach (var item in array)
+        {
+            var cardId = item.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(cardId))
+            {
+                cards.Add(cardId);
+            }
+        }
+
+        return cards;
     }
 
     private void ApplyDefaultM1EnemyStateIfEmpty()
@@ -4018,9 +4106,10 @@ public partial class CombatScene : Control
             $"res://{normalizedRelative}",
             $"res://../{normalizedRelative}",
         };
-        if (actConfigPath.StartsWith("res://../", StringComparison.Ordinal))
+        var parentPrefix = string.Concat("res://", "..", "/");
+        if (actConfigPath.StartsWith(parentPrefix, StringComparison.Ordinal))
         {
-            candidates.Insert(0, $"res://../{normalizedRelative}");
+            candidates.Insert(0, string.Concat(parentPrefix, normalizedRelative));
         }
 
         foreach (var candidate in candidates.Distinct(StringComparer.Ordinal))
@@ -4614,6 +4703,91 @@ public partial class CombatScene : Control
         _pileViewerOverlay.ReleaseFocus();
     }
 
+    private void ShowMapOverlay()
+    {
+        EnsureMapOverlayScene();
+        RefreshMapOverlay();
+        _mapOverlay.Visible = true;
+        _mapOverlay.GrabFocus();
+    }
+
+    private void HideMapOverlay()
+    {
+        _mapOverlay.Visible = false;
+        _mapOverlay.ReleaseFocus();
+    }
+
+    private void RefreshMapOverlay()
+    {
+        _mapOverlayTitle.Text = "Map";
+        if (_mapOverlayBackButton is not null)
+        {
+            _mapOverlayBackButton.Text = "Back";
+        }
+
+        if (_mapOverlayScene is null)
+        {
+            return;
+        }
+
+        if (_mapOverlayScene.HasMethod("RefreshVisibleTextForTest"))
+        {
+            _mapOverlayScene.Call("RefreshVisibleTextForTest");
+        }
+    }
+
+    private void EnsureMapOverlayScene()
+    {
+        if (_mapOverlayScene is not null && GodotObject.IsInstanceValid(_mapOverlayScene))
+        {
+            return;
+        }
+
+        if (MapOverlayScenePacked is null)
+        {
+            return;
+        }
+
+        if (MapOverlayScenePacked.Instantiate() is not Control mapScene)
+        {
+            return;
+        }
+
+        mapScene.Name = "MapOverlayScene";
+        mapScene.MouseFilter = MouseFilterEnum.Ignore;
+        mapScene.SetAnchorsPreset(LayoutPreset.FullRect);
+        _mapOverlayContent.AddChild(mapScene);
+        _mapOverlayScene = mapScene;
+        DisableMapOverlayActionButtons(mapScene);
+    }
+
+    private static PackedScene? LoadMapOverlayScenePacked()
+    {
+        return ResourceLoader.Load<PackedScene>("res://Game.Godot/Scenes/Map/Map.tscn");
+    }
+
+    private static void DisableMapOverlayActionButtons(Control mapScene)
+    {
+        var actionRow = mapScene.GetNodeOrNull<Control>("ActionRow");
+        if (actionRow is not null)
+        {
+            actionRow.Visible = false;
+        }
+
+        foreach (var nodePath in new[] { "btn_combat", "btn_event", "btn_shop", "btn_rest" })
+        {
+            if (mapScene.GetNodeOrNull<Button>($"ActionRow/{nodePath}") is { } button)
+            {
+                button.Disabled = true;
+            }
+        }
+
+        if (mapScene.GetType().GetMethod("RefreshVisibleTextForTest", BindingFlags.Instance | BindingFlags.Public) is not null)
+        {
+            mapScene.Call("RefreshVisibleTextForTest");
+        }
+    }
+
     private void RebuildPileViewerGrid()
     {
         foreach (var child in _pileViewerGrid.GetChildren())
@@ -4710,7 +4884,7 @@ public partial class CombatScene : Control
 
         var face = new TextureRect
         {
-            Texture = ResolveCardFaceTexture(),
+            Texture = ResolveCardFaceTextureForCardId(cardName),
             ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             CustomMinimumSize = new Vector2(160.0f, 190.0f),
@@ -4731,7 +4905,14 @@ public partial class CombatScene : Control
 
     private void OnMasterDeckPressed()
     {
+        HideMapOverlay();
         ShowPileViewer("master");
+    }
+
+    private void OnMapButtonPressed()
+    {
+        HidePileViewer();
+        ShowMapOverlay();
     }
 
     private void OnPileViewerBackPressed()
@@ -4739,10 +4920,16 @@ public partial class CombatScene : Control
         HidePileViewer();
     }
 
+    private void OnMapOverlayBackPressed()
+    {
+        HideMapOverlay();
+    }
+
     private void OnDrawPileBadgeGuiInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
         {
+            HideMapOverlay();
             ShowPileViewer("draw");
         }
     }
@@ -4751,6 +4938,7 @@ public partial class CombatScene : Control
     {
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
         {
+            HideMapOverlay();
             ShowPileViewer("discard");
         }
     }
@@ -4759,6 +4947,7 @@ public partial class CombatScene : Control
     {
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
         {
+            HideMapOverlay();
             ShowPileViewer("exhaust");
         }
     }
@@ -4776,7 +4965,7 @@ public partial class CombatScene : Control
         var face = new TextureRect
         {
             Name = "CardFace",
-            Texture = ResolveCardFaceTexture(),
+            Texture = ResolveCardFaceTextureForCardId(cardName),
             ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             CustomMinimumSize = new Vector2(cardWidth, cardHeight),
@@ -4974,6 +5163,42 @@ public partial class CombatScene : Control
 
     public override void _Input(InputEvent @event)
     {
+        if (@event is InputEventAction overlayActionEvent
+            && overlayActionEvent.Pressed
+            && string.Equals(overlayActionEvent.Action.ToString(), "ui_cancel", StringComparison.Ordinal))
+        {
+            if (_mapOverlay.Visible)
+            {
+                HideMapOverlay();
+                AcceptEvent();
+                return;
+            }
+
+            if (_pileViewerOverlay.Visible)
+            {
+                HidePileViewer();
+                AcceptEvent();
+                return;
+            }
+        }
+
+        if (@event.IsActionPressed("ui_cancel"))
+        {
+            if (_mapOverlay.Visible)
+            {
+                HideMapOverlay();
+                AcceptEvent();
+                return;
+            }
+
+            if (_pileViewerOverlay.Visible)
+            {
+                HidePileViewer();
+                AcceptEvent();
+                return;
+            }
+        }
+
         if (@event is InputEventAction actionEvent
             && actionEvent.Pressed
             && string.Equals(actionEvent.Action.ToString(), "ui_cancel", StringComparison.Ordinal))
@@ -5504,7 +5729,7 @@ public partial class CombatScene : Control
         }
 
         var cardName = _handCards.GetItemText(handIndex);
-        _dragCardGhostFace.Texture = ResolveCardFaceTexture();
+        _dragCardGhostFace.Texture = ResolveCardFaceTextureForCardId(cardName);
         if (TryResolveCardDefinition(cardName, out var definition))
         {
             _dragCardGhostTitle.Text = ResolveCardDisplayName(definition);
@@ -6160,29 +6385,36 @@ public partial class CombatScene : Control
 
     private Texture2D ResolveCardFaceTexture()
     {
-        if (_cardFaceTexture is not null)
+        return ResolveCardFaceTextureForCardId(string.Empty);
+    }
+
+    private Texture2D ResolveCardFaceTextureForCardId(string cardId)
+    {
+        var key = string.IsNullOrWhiteSpace(cardId) ? "__default__" : NormalizeCardLookupKey(cardId);
+        if (_cardFaceTextureCache.TryGetValue(key, out var cachedTexture))
         {
-            return _cardFaceTexture;
+            return cachedTexture;
         }
 
-        foreach (var path in BuildCardFaceTextureCandidates())
+        foreach (var path in BuildCardFaceTextureCandidates(cardId))
         {
             if (ResourceLoader.Exists(path) && ResourceLoader.Load(path) is Texture2D texture)
             {
-                _cardFaceTexture = texture;
+                _cardFaceTextureCache[key] = texture;
                 return texture;
             }
 
             var rawTexture = TryLoadRawTexture(path);
             if (rawTexture is not null)
             {
-                _cardFaceTexture = rawTexture;
+                _cardFaceTextureCache[key] = rawTexture;
                 return rawTexture;
             }
         }
 
-        _cardFaceTexture = EnsureEnemyPortraitFallbackTexture();
-        return _cardFaceTexture;
+        var fallback = EnsureEnemyPortraitFallbackTexture();
+        _cardFaceTextureCache[key] = fallback;
+        return fallback;
     }
 
     private static Texture2D? TryLoadEnemyIntentTexture(string iconKey)
@@ -6279,8 +6511,15 @@ public partial class CombatScene : Control
         yield return $"res://logs/aiart/combat-player-2026-05-17/player_fungal_knight_raw.png";
     }
 
-    private static IEnumerable<string> BuildCardFaceTextureCandidates()
+    private static IEnumerable<string> BuildCardFaceTextureCandidates(string cardId)
     {
+        if (!string.IsNullOrWhiteSpace(cardId))
+        {
+            var normalized = cardId.Trim();
+            yield return $"res://Game.Godot/Assets/Textures/Cards/{normalized}.png";
+            yield return $"res://Game.Godot/Assets/Textures/Cards/{normalized}_raw.png";
+            yield return $"res://Game.Godot/Assets/Textures/Cards/card_reward_{normalized[(normalized.LastIndexOf('.') + 1)..]}.png";
+        }
         yield return "res://Game.Godot/Assets/Textures/Cards/card_spore_slash.png";
         yield return "res://logs/aiart/combat-card-2026-05-17/slay_card_face_raw.png";
     }
