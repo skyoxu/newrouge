@@ -1,0 +1,26 @@
+# task-74-live-scene-gap-reopen
+
+- Title: task-74-live-scene-gap-reopen
+- Date: 2026-05-13
+- Status: accepted
+- Supersedes: none
+- Superseded by: none
+- Branch: current workspace
+- Git Head: n/a (documented from an uncommitted workspace state)
+- Why now: Live-scene verification showed that T74 drag-to-play behavior was marked done in the master task view even though the real Combat scene still exposes only click or button activation paths.
+- Context: `CombatScene.cs` already wires data-driven card text and CombatService-backed play resolution, but it does not implement `_Input`, `_GuiInput`, drag tracking, target-hover preview, release-to-play, or invalid drop return flow. Existing drag coverage lives in test harnesses such as `Tests.Godot/tests/UI/test_card_drag_target_play.gd` and `Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd`, not in the live scene runtime.
+- Decision: Reopen T74 as a real gameplay gap in the master task view, keep T72 and T83 as partially landed live-scene capabilities rather than full M1 closure, and require follow-up work to promote drag-targeting behavior from tests into real Combat scene input handling.
+- Consequences: M1 combat is not a closed player-facing loop yet. The repo can currently demonstrate localized card text plus CombatService-backed button/click card play, but not Slay-the-Spire-style drag UX in the live scene.
+- Recovery impact: Recovery and Chapter 7 closure should treat T74 as open player-path debt and should not claim full combat UI closure from test-only drag artifacts.
+- Validation: `rg -n "_Input|GuiInput|drag|Drop|drop|dragging|target hover" Game.Godot/Scripts/UI/CombatScene.cs` and `rg -n "RequestPlaySelectedCard|TryPlayCard|_combatService\\.PlayCard|_combatService\\.ResolveCardRuntime|BuildCardButtonText|ApplyDefaultM1CombatSnapshotIfEmpty" Game.Godot/Scripts/UI/CombatScene.cs`
+- Related ADRs: ADR-0010, ADR-0025, ADR-0032
+- Related execution plans: execution-plans/2026-05-13-task-74-live-scene-gap-follow-up-plan.md
+- Related task id(s): `72`, `74`, `83`
+- Related run id: n/a (no CI run linked)
+- Related latest.json: n/a (no task-scoped latest.json pointer was resolved)
+- Related pipeline artifacts: n/a (no pipeline artifact directory was resolved)
+- Related evidence:
+  - `Game.Godot/Scripts/UI/CombatScene.cs`
+  - `Tests.Godot/tests/UI/test_card_drag_target_play.gd`
+  - `Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd`
+  - `.taskmaster/tasks/tasks.json`
