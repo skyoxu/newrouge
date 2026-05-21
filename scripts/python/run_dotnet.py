@@ -18,6 +18,7 @@ import datetime as dt
 import io
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -38,6 +39,31 @@ def run_cmd(args, cwd=None, timeout=900_000):
         out, _ = p.communicate()
         return 124, out
     return p.returncode, out
+
+
+def _best_effort_cleanup_testhosts(cwd: str) -> None:
+    if platform.system().lower() != "windows":
+        return
+    cleanup_cmd = [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        (
+            "$targets = Get-Process testhost -ErrorAction SilentlyContinue; "
+            "if ($targets) { $targets | Stop-Process -Force -ErrorAction SilentlyContinue }"
+        ),
+    ]
+    try:
+        subprocess.run(
+            cleanup_cmd,
+            cwd=cwd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=15,
+        )
+    except Exception:
+        pass
 
 
 def _script_repo_root() -> str:
@@ -271,6 +297,7 @@ def main(argv=None):
     attempts_log = []
     while test_attempt <= retry_on_fail:
         test_attempt += 1
+        _best_effort_cleanup_testhosts(root)
         test_cmd = ['dotnet', 'test', resolved_solution,
                     f'-c', args.configuration,
                     '--collect:XPlat Code Coverage',
