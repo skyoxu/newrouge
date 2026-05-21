@@ -3,7 +3,7 @@
 - Title: Task 74 live scene gap follow-up plan
 - Status: active
 - Branch: current workspace
-- Git Head: current workspace
+- Git Head: n/a (documented from an uncommitted workspace state)
 - Goal: Keep the combat player-path audit aligned with real live-scene behavior and stop test-only drag coverage from being counted as shipped UX.
 - Scope: T72, T74, and T83 live-scene verification, stable image-bridge closure for asset skills, and follow-up backlog guidance for missing combat UI behavior.
 - Current step: Reopen T74 in the master task view, record the mismatch, and preserve the verified split between live-scene behavior and test-only behavior.
@@ -11,10 +11,11 @@
 - Stop-loss: Do not claim M1 combat closure until drag-target hover, release-to-play, cancel return, and invalid-drop feedback exist in the real Combat scene. Do not treat test harness drag models as player-facing runtime evidence.
 - Next action: Implement T74 through a real Combat scene input path with TDD, then rerun the relevant Godot scene tests and player-path verification.
 - Recovery command: `py -3 scripts/python/dev_cli.py resume-task --task-id 74`
-- Open questions:
-  - Whether keyboard/controller fallback should ship in the same reopening slice as mouse drag, or remain as a follow-up sub-slice under T74 acceptance.
-  - Whether the current placeholder combat snapshot should remain for smoke entry once drag UX lands.
+- Open questions: whether keyboard/controller fallback should ship in the same reopening slice as mouse drag, and whether the current placeholder combat snapshot should remain for smoke entry once drag UX lands.
 - Exit criteria: T74 no longer relies on test-only drag harnesses, and live-scene verification shows real drag-target play behavior through the same validated CombatService path.
 - Related ADRs: ADR-0010, ADR-0025, ADR-0032
 - Related decision logs: `decision-logs/2026-05-13-task-74-live-scene-gap-reopen.md`
 - Related task id(s): `72`, `74`, `83`
+- Related run id: n/a (no CI run linked)
+- Related latest.json: n/a (no task-scoped latest.json pointer was resolved)
+- Related pipeline artifacts: n/a (no pipeline artifact directory was resolved)
