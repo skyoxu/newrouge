@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Game.Core.Contracts.Save;
 using Game.Core.Services;
@@ -20,7 +21,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.1
     [Fact]
     [Trait("acceptance", "ACC:T130.1")]
-    public void ShouldExposeStoredSummaryFields_WhenValidatingAccT130Line1()
+    public async Task ShouldExposeStoredSummaryFields_WhenValidatingAccT130Line1()
     {
         AssertAcceptanceRefs(0);
 
@@ -45,14 +46,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc1",
             SavePointId: "node-12",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.Outcome.Should().Be("Victory");
         summary.NodeProgress.Should().Be(12);
@@ -89,7 +90,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.3
     [Fact]
     [Trait("acceptance", "ACC:T130.3")]
-    public void ShouldRenderStoredRunDataWithoutPlaceholderFallback_WhenValidatingAccT130Line3()
+    public async Task ShouldRenderStoredRunDataWithoutPlaceholderFallback_WhenValidatingAccT130Line3()
     {
         AssertAcceptanceRefs(2);
 
@@ -114,14 +115,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc3",
             SavePointId: "node-8",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.Outcome.Should().Be("Defeat");
         summary.NodeProgress.Should().Be(8);
@@ -138,7 +139,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.3
     [Fact]
     [Trait("acceptance", "ACC:T130.3")]
-    public void ShouldExposeSettlementEvidenceFlagsFromStoredRunData_WhenValidatingAccT130Line3()
+    public async Task ShouldExposeSettlementEvidenceFlagsFromStoredRunData_WhenValidatingAccT130Line3()
     {
         AssertAcceptanceRefs(2);
 
@@ -169,14 +170,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc3-evidence",
             SavePointId: "node-9",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.HasRewardMetadataEvidence.Should().BeTrue();
         summary.HasRelicMetadataEvidence.Should().BeTrue();
@@ -186,21 +187,21 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.4
     [Fact]
     [Trait("acceptance", "ACC:T130.4")]
-    public void ShouldReturnNoSummaryWithoutStoredRunData_WhenValidatingAccT130Line4()
+    public async Task ShouldReturnNoSummaryWithoutStoredRunData_WhenValidatingAccT130Line4()
     {
         AssertAcceptanceRefs(3);
 
         using var sandbox = SaveServiceSandbox.Create();
         var service = sandbox.CreateService();
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().BeNull();
     }
 
     // ACC:T130.5
     [Fact]
     [Trait("acceptance", "ACC:T130.5")]
-    public void ShouldExposeMissingFieldsAsDefaultSummaryState_WhenValidatingAccT130Line5()
+    public async Task ShouldExposeMissingFieldsAsDefaultSummaryState_WhenValidatingAccT130Line5()
     {
         AssertAcceptanceRefs(4);
         var gameplayTask = LoadTaskNode(TasksGameplayPath, 130);
@@ -225,14 +226,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc5",
             SavePointId: "node-3",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.Outcome.Should().Be("Unknown");
         summary.NodeProgress.Should().Be(0);
@@ -247,7 +248,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.5
     [Fact]
     [Trait("acceptance", "ACC:T130.5")]
-    public void ShouldExposeOnlyRewardEvidence_WhenOnlyRewardMetadataExists()
+    public async Task ShouldExposeOnlyRewardEvidence_WhenOnlyRewardMetadataExists()
     {
         AssertAcceptanceRefs(4);
 
@@ -275,14 +276,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc5-reward-only",
             SavePointId: "node-6",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: DateTimeOffset.UtcNow)).GetAwaiter().GetResult();
+            SavedAt: DateTimeOffset.UtcNow));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.HasRewardMetadataEvidence.Should().BeTrue();
         summary.HasRelicMetadataEvidence.Should().BeFalse();
@@ -292,7 +293,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.5
     [Fact]
     [Trait("acceptance", "ACC:T130.5")]
-    public void ShouldExposeOnlyRelicEvidence_WhenOnlyRelicMetadataExists()
+    public async Task ShouldExposeOnlyRelicEvidence_WhenOnlyRelicMetadataExists()
     {
         AssertAcceptanceRefs(4);
 
@@ -320,14 +321,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc5-relic-only",
             SavePointId: "node-6",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: DateTimeOffset.UtcNow)).GetAwaiter().GetResult();
+            SavedAt: DateTimeOffset.UtcNow));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.HasRewardMetadataEvidence.Should().BeFalse();
         summary.HasRelicMetadataEvidence.Should().BeTrue();
@@ -337,7 +338,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.5
     [Fact]
     [Trait("acceptance", "ACC:T130.5")]
-    public void ShouldExposeOnlyResumeEvidence_WhenOnlyResumeMetadataExists()
+    public async Task ShouldExposeOnlyResumeEvidence_WhenOnlyResumeMetadataExists()
     {
         AssertAcceptanceRefs(4);
 
@@ -365,14 +366,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc5-resume-only",
             SavePointId: "node-6",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: DateTimeOffset.UtcNow)).GetAwaiter().GetResult();
+            SavedAt: DateTimeOffset.UtcNow));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.HasRewardMetadataEvidence.Should().BeFalse();
         summary.HasRelicMetadataEvidence.Should().BeFalse();
@@ -382,7 +383,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.6
     [Fact]
     [Trait("acceptance", "ACC:T130.6")]
-    public void ShouldKeepRunSummaryDeterministicAcrossRepeatedReads_WhenValidatingAccT130Line6()
+    public async Task ShouldKeepRunSummaryDeterministicAcrossRepeatedReads_WhenValidatingAccT130Line6()
     {
         AssertAcceptanceRefs(5);
 
@@ -407,15 +408,15 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc6",
             SavePointId: "node-5",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var first = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
-        var second = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var first = await service.ReadRunSummaryMetadataAsync();
+        var second = await service.ReadRunSummaryMetadataAsync();
 
         second.Should().BeEquivalentTo(first);
     }
@@ -423,7 +424,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.7
     [Fact]
     [Trait("acceptance", "ACC:T130.7")]
-    public void ShouldMapScopeCoverageToExpectedTaskIds_WhenValidatingAccT130Line7()
+    public async Task ShouldMapScopeCoverageToExpectedTaskIds_WhenValidatingAccT130Line7()
     {
         AssertAcceptanceRefs(6);
 
@@ -461,14 +462,14 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc7-scope-context",
             SavePointId: "node-12",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: DateTimeOffset.UtcNow)).GetAwaiter().GetResult();
+            SavedAt: DateTimeOffset.UtcNow));
 
-        var summary = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var summary = await service.ReadRunSummaryMetadataAsync();
         summary.Should().NotBeNull();
         summary!.Outcome.Should().Be("Victory");
         summary.HasRewardMetadataEvidence.Should().BeTrue();
@@ -479,7 +480,7 @@ public sealed class Task0130AcceptanceTests
     // ACC:T130.8
     [Fact]
     [Trait("acceptance", "ACC:T130.8")]
-    public void ShouldNotMutateRunProgressionOrSettlementOwnership_WhenInspectingSummarySurfaces()
+    public async Task ShouldNotMutateRunProgressionOrSettlementOwnership_WhenInspectingSummarySurfaces()
     {
         AssertAcceptanceRefs(7);
 
@@ -510,15 +511,15 @@ public sealed class Task0130AcceptanceTests
             }
         });
 
-        service.WriteAutosaveAsync(new AutosaveSnapshot(
+        await service.WriteAutosaveAsync(new AutosaveSnapshot(
             RunId: "run-t130-acc8",
             SavePointId: "node-14",
             SchemaVersion: "1.0.0",
             StateJson: stateJson,
-            SavedAt: savedAt)).GetAwaiter().GetResult();
+            SavedAt: savedAt));
 
-        var first = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
-        var second = service.ReadRunSummaryMetadataAsync().GetAwaiter().GetResult();
+        var first = await service.ReadRunSummaryMetadataAsync();
+        var second = await service.ReadRunSummaryMetadataAsync();
 
         first.Should().NotBeNull();
         second.Should().NotBeNull();
