@@ -77,6 +77,20 @@ def _is_retryable_coverlet_file_lock_abort(output: str) -> bool:
     )
 
 
+def _is_retryable_post_run_abort(output: str) -> bool:
+    text = str(output or "")
+    lowered = text.lower()
+    if _is_retryable_coverlet_file_lock_abort(text):
+        return True
+    return (
+        "the active test run was aborted" in lowered
+        and "test run aborted" in lowered
+        and "results file:" in lowered
+        and "attachments:" in lowered
+        and "passed!  - failed:     0" in lowered
+    )
+
+
 def _clean_retry_test_outputs(root: str, configuration: str) -> None:
     paths = [
         os.path.join(root, "Game.Core.Tests", "TestResults"),
@@ -335,7 +349,7 @@ def main(argv=None):
         if args.filter:
             test_cmd.extend(['--filter', args.filter])
         rc, out = run_cmd(test_cmd, cwd=root, timeout=test_timeout_ms)
-        retryable_coverlet_file_lock = rc == 0 and _is_retryable_coverlet_file_lock_abort(out)
+        retryable_coverlet_file_lock = _is_retryable_post_run_abort(out)
         attempts_log.append({
             'attempt': test_attempt,
             'rc': rc,

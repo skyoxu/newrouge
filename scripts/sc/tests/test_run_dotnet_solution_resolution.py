@@ -242,6 +242,58 @@ Failed!  - Failed:     1, Passed:   10, Skipped:     0, Total:    11, Duration: 
             self.assertEqual(1, len(summary["test_attempts"]))
             self.assertFalse(summary["test_attempts"][0]["retryable_coverlet_file_lock"])
 
+    def test_main_should_retry_when_post_run_abort_happens_after_all_tests_pass(self) -> None:
+        commands: list[list[str]] = []
+        first_test_output = r"""
+Starting test execution, please wait...
+The active test run was aborted. Reason: Test host process crashed
+Results File: D:\repo\Game.Core.Tests\TestResults\attempt-1\tests.trx
+
+Passed!  - Failed:     0, Passed:   592, Skipped:     0, Total:   592, Duration: 4 s - Game.Core.Tests.dll (net8.0)
+Test Run Aborted.
+
+Attachments:
+  D:\repo\Game.Core.Tests\TestResults\attempt-1\abc\coverage.cobertura.xml
+"""
+        second_test_output = r"D:\repo\Game.Core.Tests\TestResults\attempt-2\tests.trx" + "\n" + r"D:\repo\Game.Core.Tests\TestResults\attempt-2\abc\coverage.cobertura.xml"
+
+        def _fake_run_cmd(args, cwd=None, timeout=900_000):
+            commands.append(list(args))
+            if args[:2] == ["dotnet", "restore"]:
+                return 0, "restore ok\n"
+            if args[:2] != ["dotnet", "test"]:
+                return 0, ""
+            dotnet_test_calls = [cmd for cmd in commands if cmd[:2] == ["dotnet", "test"]]
+            if len(dotnet_test_calls) == 1:
+                return 1, first_test_output
+            results_dir = Path(args[args.index("--results-directory") + 1])
+            results_dir.mkdir(parents=True, exist_ok=True)
+            (results_dir / "tests.trx").write_text("trx", encoding="utf-8")
+            (results_dir / "coverage.cobertura.xml").write_text(
+                '<coverage lines-covered="95" lines-valid="100" branches-covered="90" branches-valid="100"></coverage>',
+                encoding="utf-8",
+            )
+            return 0, second_test_output
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "newrouge"
+            root.mkdir(parents=True, exist_ok=True)
+            (root / "NewRouge.sln").write_text("", encoding="utf-8")
+
+            with mock.patch.object(run_dotnet.os, "getcwd", return_value=str(root)), \
+                mock.patch.object(run_dotnet, "run_cmd", side_effect=_fake_run_cmd), \
+                mock.patch.object(run_dotnet, "_best_effort_cleanup_testhosts", return_value=None), \
+                mock.patch.dict(run_dotnet.os.environ, {"DOTNET_TEST_RETRY_ON_FAIL": "1"}, clear=False):
+                rc = run_dotnet.main(["--solution", "NewRouge.sln", "--out-dir", str(root / "logs" / "unit" / "manual")])
+
+            self.assertEqual(0, rc)
+            dotnet_test_calls = [cmd for cmd in commands if cmd[:2] == ["dotnet", "test"]]
+            self.assertEqual(2, len(dotnet_test_calls))
+            summary = json.loads((root / "logs" / "unit" / "manual" / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("ok", summary["status"])
+            self.assertEqual(2, len(summary["test_attempts"]))
+            self.assertTrue(summary["test_attempts"][0]["retryable_coverlet_file_lock"])
+
 
 if __name__ == "__main__":
     unittest.main()
