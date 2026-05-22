@@ -324,11 +324,11 @@ def main(argv=None):
         return 1
 
     # Test with coverage (retry once for known transient file-lock failures)
-    retry_on_fail = 1
+    retry_on_fail = 2
     try:
-        retry_on_fail = int(os.environ.get('DOTNET_TEST_RETRY_ON_FAIL', '1') or '1')
+        retry_on_fail = int(os.environ.get('DOTNET_TEST_RETRY_ON_FAIL', '2') or '2')
     except ValueError:
-        retry_on_fail = 1
+        retry_on_fail = 2
     retry_on_fail = max(0, retry_on_fail)
 
     test_attempt = 0
