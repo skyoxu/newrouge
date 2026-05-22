@@ -207,6 +207,41 @@ Test Run Aborted.
             second_results_dir = dotnet_test_calls[1][dotnet_test_calls[1].index("--results-directory") + 1]
             self.assertNotEqual(first_results_dir, second_results_dir)
 
+    def test_main_should_not_retry_when_first_test_run_is_non_retryable_failure(self) -> None:
+        commands: list[list[str]] = []
+        first_test_output = """
+Starting test execution, please wait...
+[xUnit.net 00:00:00.71]     Game.Core.Tests.Tasks.Task0100AcceptanceTests.ShouldFailSemanticGateWhenOrderDriftsFromSharedRuleOrder_WhenEvaluatingCombatRuleTests [FAIL]
+Failed!  - Failed:     1, Passed:   10, Skipped:     0, Total:    11, Duration: 1 s - Game.Core.Tests.dll (net8.0)
+"""
+
+        def _fake_run_cmd(args, cwd=None, timeout=900_000):
+            commands.append(list(args))
+            if args[:2] == ["dotnet", "restore"]:
+                return 0, "restore ok\n"
+            if args[:2] == ["dotnet", "test"]:
+                return 1, first_test_output
+            return 0, ""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "newrouge"
+            root.mkdir(parents=True, exist_ok=True)
+            (root / "NewRouge.sln").write_text("", encoding="utf-8")
+
+            with mock.patch.object(run_dotnet.os, "getcwd", return_value=str(root)), \
+                mock.patch.object(run_dotnet, "run_cmd", side_effect=_fake_run_cmd), \
+                mock.patch.object(run_dotnet, "_best_effort_cleanup_testhosts", return_value=None), \
+                mock.patch.dict(run_dotnet.os.environ, {"DOTNET_TEST_RETRY_ON_FAIL": "1"}, clear=False):
+                rc = run_dotnet.main(["--solution", "NewRouge.sln", "--out-dir", str(root / "logs" / "unit" / "manual")])
+
+            self.assertEqual(1, rc)
+            dotnet_test_calls = [cmd for cmd in commands if cmd[:2] == ["dotnet", "test"]]
+            self.assertEqual(1, len(dotnet_test_calls))
+            summary = json.loads((root / "logs" / "unit" / "manual" / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("tests_failed", summary["status"])
+            self.assertEqual(1, len(summary["test_attempts"]))
+            self.assertFalse(summary["test_attempts"][0]["retryable_coverlet_file_lock"])
+
 
 if __name__ == "__main__":
     unittest.main()

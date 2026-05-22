@@ -343,7 +343,7 @@ def main(argv=None):
         })
         with io.open(os.path.join(out_dir, f'dotnet-test-output-attempt-{test_attempt}.txt'), 'w', encoding='utf-8') as f:
             f.write(out)
-        if rc == 0 and not retryable_coverlet_file_lock:
+        if not retryable_coverlet_file_lock:
             break
 
     with io.open(os.path.join(out_dir, 'dotnet-test-output.txt'), 'w', encoding='utf-8') as f:
