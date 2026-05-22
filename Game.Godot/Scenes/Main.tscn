@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3 uid="uid://dlak3545f33s7"]
 
 [ext_resource type="Script" path="res://Game.Godot/Scripts/Main.gd" id="1_0k4m0"]
 [ext_resource type="PackedScene" path="res://Game.Godot/Scenes/UI/HUD.tscn" id="2"]
@@ -8,8 +8,8 @@
 [ext_resource type="PackedScene" path="res://Game.Godot/Scenes/UI/SettingsPanel.tscn" id="7"]
 [ext_resource type="Script" path="res://Game.Godot/Scripts/UI/ThemeApplier.cs" id="8"]
 [ext_resource type="Script" path="res://Game.Godot/Scripts/UI/SettingsLoader.cs" id="11"]
-[ext_resource type="Script" path="res://Game.Godot/Scripts/Navigation/ScreenNavigator.cs" id="13"]
 [ext_resource type="Script" path="res://Game.Godot/Scripts/Bootstrap/InputMapper.cs" id="12"]
+[ext_resource type="Script" path="res://Game.Godot/Scripts/Navigation/ScreenNavigator.cs" id="13"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -18,16 +18,14 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_0k4m0")
 theme = ExtResource("5")
+script = ExtResource("1_0k4m0")
 
 [node name="InputMapper" type="Node" parent="."]
 script = ExtResource("12")
-theme = ExtResource("5")
 
 [node name="SettingsLoader" type="Node" parent="."]
 script = ExtResource("11")
-theme = ExtResource("5")
 
 [node name="ThemeApplier" type="Node" parent="."]
 script = ExtResource("8")
@@ -36,6 +34,7 @@ script = ExtResource("8")
 script = ExtResource("6")
 
 [node name="HUD" parent="." instance=ExtResource("2")]
+layout_mode = 1
 mouse_filter = 2
 
 [node name="MenuLayer" type="CanvasLayer" parent="."]
@@ -44,7 +43,7 @@ layer = 100
 [node name="MainMenu" parent="MenuLayer" instance=ExtResource("3")]
 
 [node name="ScreenRoot" type="Control" parent="."]
-layout_mode = 3
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -54,22 +53,16 @@ mouse_filter = 2
 
 [node name="ScreenNavigator" type="Node" parent="."]
 script = ExtResource("13")
-ScreenRootPath = NodePath("../ScreenRoot")
-
 
 [node name="Overlays" type="Control" parent="."]
-layout_mode = 3
+z_index = 100
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-z_index = 100
 mouse_filter = 2
-
-
-
-
 
 [node name="SettingsLayer" type="CanvasLayer" parent="."]
 layer = 200
@@ -77,7 +70,8 @@ layer = 200
 [node name="SettingsPanel" parent="SettingsLayer" instance=ExtResource("7")]
 
 [node name="VBox" type="VBoxContainer" parent="."]
-layout_mode = 2
+visible = false
+layout_mode = 0
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 420.0
@@ -106,4 +100,3 @@ text = "+10 Score"
 [node name="LoseHpBtn" type="Button" parent="VBox"]
 layout_mode = 2
 text = "-5 HP"
-

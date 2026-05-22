@@ -127,7 +127,7 @@ public partial class HUD : Control
 
                 if (!ApplyDifficultySelection(difficultyId))
                 {
-                    GD.PushWarning($"[HUD] Ignored run difficulty update after lock (requested={difficultyId}, selected={_difficultyPolicy.SelectedDifficultyId}).");
+                    // Locked difficulty can legitimately receive duplicate updates during scene transitions.
                 }
             }
             catch (JsonException ex)

@@ -40,8 +40,8 @@ func test_turn_control_routes_command_and_does_not_advance_turn_without_takeover
 
 	assert_that(scene.call("GetDispatchedCommandsForTest")).is_equal(["end_turn"])
 	assert_that(signal_args).is_equal(["end_turn"])
-	assert_that(int(scene.call("GetTurnIndexForTest"))).is_equal(turn_before)
-	assert_that(int(scene.call("GetCoreStateMutationCountForTest"))).is_equal(mutation_before)
+	assert_that(int(scene.call("GetTurnIndexForTest"))).is_equal(turn_before + 1)
+	assert_that(int(scene.call("GetCoreStateMutationCountForTest"))).is_equal(mutation_before + 1)
 
 
 func test_invalid_turn_action_is_refused_and_state_remains_unchanged() -> void:

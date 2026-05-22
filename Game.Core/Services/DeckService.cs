@@ -6,6 +6,8 @@ namespace Game.Core.Services;
 
 public sealed class DeckService
 {
+    private static readonly Random Rng = new();
+
     public DeckState Draw(DeckState snapshot, int count)
     {
         if (count <= 0)
@@ -30,8 +32,15 @@ public sealed class DeckService
                 discardPile.Clear();
             }
 
-            hand.Add(drawPile[0]);
+            var nextCard = drawPile[0];
             drawPile.RemoveAt(0);
+            if (hand.Count >= snapshot.HandLimit)
+            {
+                discardPile.Add(nextCard);
+                continue;
+            }
+
+            hand.Add(nextCard);
         }
 
         var boundedAfterDraw = ApplyHandLimit(hand, discardPile, snapshot.HandLimit);
@@ -117,6 +126,7 @@ public sealed class DeckService
             }
         }
 
+        retained.Sort(StringComparer.Ordinal);
         var boundedAfterRetain = ApplyHandLimit(retained, discardPile, snapshot.HandLimit);
         return snapshot with
         {
@@ -135,9 +145,19 @@ public sealed class DeckService
 
     private static List<string> BuildShuffledDrawPile(IEnumerable<string> cards)
     {
-        return cards
-            .OrderBy(BuildInstanceSortKey)
-            .ToList();
+        var shuffled = cards.ToList();
+        for (var i = shuffled.Count - 1; i > 0; i--)
+        {
+            var swapIndex = Rng.Next(i + 1);
+            if (swapIndex == i)
+            {
+                continue;
+            }
+
+            (shuffled[i], shuffled[swapIndex]) = (shuffled[swapIndex], shuffled[i]);
+        }
+
+        return shuffled;
     }
 
     private static (List<string> Hand, List<string> DiscardPile) ApplyHandLimit(
@@ -150,9 +170,7 @@ public sealed class DeckService
             return (hand.ToList(), discardPile);
         }
 
-        var orderedHand = hand
-            .OrderBy(BuildInstanceSortKey)
-            .ToList();
+        var orderedHand = hand.ToList();
         while (orderedHand.Count > handLimit)
         {
             discardPile.Add(orderedHand[0]);
@@ -160,39 +178,6 @@ public sealed class DeckService
         }
 
         return (orderedHand, discardPile);
-    }
-
-    private static (int PrefixOrder, long NumericSuffix, string Lexical) BuildInstanceSortKey(string cardInstanceId)
-    {
-        if (TryParseTrailingNumber(cardInstanceId, out var number))
-        {
-            return (0, number, cardInstanceId);
-        }
-
-        return (1, 0L, cardInstanceId);
-    }
-
-    private static bool TryParseTrailingNumber(string input, out long value)
-    {
-        value = 0L;
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return false;
-        }
-
-        var end = input.Length - 1;
-        while (end >= 0 && char.IsDigit(input[end]))
-        {
-            end--;
-        }
-
-        var start = end + 1;
-        if (start >= input.Length)
-        {
-            return false;
-        }
-
-        return long.TryParse(input[start..], out value);
     }
 }
 

@@ -56,7 +56,7 @@ combat.feedback.refusal_reason.invalid_target,invalid target
 combat.feedback.refusal_reason.missing_card_definition,missing card definition
 combat.feedback.refusal_reason.invalid_status_reference,invalid status reference
 combat.feedback.refusal_reason.no_card_selected,Select a card first.
-combat.action.hint,Select a card, then click Play Selected Card. Click End Turn when you are done.
+combat.action.hint,Drag or select a card to play it. Right-click or Esc cancels. Click End Turn when you are done.
 combat.action.play_selected,Play Selected Card
 combat.hand.title,Hand
 combat.enemy.title,Enemy
@@ -137,6 +137,7 @@ ui.reward.feedback.selected,Selected reward {0}
 ui.reward.feedback.select_first,Select a reward first.
 ui.reward.feedback.confirmed,Reward confirmed.
 ui.reward.feedback.skipped,Reward skipped.
+ui.reward.skip_all,Skip Remaining Rewards
 ui.rest.title,Rest
 ui.rest.description,Recover and plan your next move.
 ui.rest.option.heal,Heal

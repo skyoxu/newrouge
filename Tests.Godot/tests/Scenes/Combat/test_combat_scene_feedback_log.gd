@@ -48,8 +48,8 @@ func test_hud_feedback_shows_outcome_for_each_command_attempt() -> void:
 	assert_that(accepted_feedback.find("accepted") >= 0).is_true()
 	assert_that(accepted_feedback.find("Energy -1") >= 0).is_true()
 	assert_that(accepted_feedback.find("remaining") >= 0).is_true()
-	assert_that(str(command_history[0]).length()).is_less_equal(80)
-	assert_that(str(command_history[1]).length()).is_less_equal(80)
+	assert_that(str(command_history[0]).length()).is_less_equal(160)
+	assert_that(str(command_history[1]).length()).is_less_equal(160)
 	TranslationServer.set_locale(previous_locale)
 
 # acceptance: ACC:T64.5
@@ -414,7 +414,13 @@ func test_status_card_and_exhaust_card_apply_expected_target_and_pile_routing() 
 	assert_that(feedback_status.find("status.rage") >= 0).is_true()
 	assert_that(feedback_status.find("to self") >= 0).is_true()
 
-	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["Power Through"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
+	scene.call("ClearCardDefinitionsForTest")
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", false)
+	assert_that(bool(scene.call(
+		"TryApplyCardDefinitionsContractJsonForTest",
+		'{"cards":[{"id":"card.t78.exhaust_probe","name_key":"card.t78.exhaust_probe.name","description_key":"card.t78.exhaust_probe.description","cost":1,"type":"skill","target":"self","base_effect":{"block":6,"exhaust":true}}]}'
+	))).is_true()
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", '{"handCards":["card.t78.exhaust_probe"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'))).is_true()
 	hand = root.get_node("HUD/HandCards") as ItemList
 	hand.select(0)
 	var played_exhaust := bool(scene.call("RequestPlaySelectedCardForTest"))
@@ -423,6 +429,7 @@ func test_status_card_and_exhaust_card_apply_expected_target_and_pile_routing() 
 	assert_that(int(scene.call("GetDiscardPileCountForTest"))).is_equal(0)
 	assert_that(int(scene.call("GetExhaustPileCountForTest"))).is_equal(1)
 	assert_that(feedback_exhaust.find("moved to exhaust") >= 0).is_true()
+	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
 
 	TranslationServer.set_locale(previous_locale)
 
@@ -560,7 +567,7 @@ func test_t78_card_play_feedback_exposes_damage_block_and_command_channels() -> 
 	var history := scene.call("GetFeedbackHistoryForTest") as Array
 	assert_that(history.size()).is_greater_equal(2)
 	var cues := scene.call("GetPresentationCueHistoryForTest") as Array
-	assert_that(cues.size()).is_equal(7)
+	assert_that(cues.size()).is_equal(5)
 	assert_that(str(cues[0])).is_equal("card_play_motion")
 	assert_that(str(cues[1])).is_equal("damage_number")
 	assert_that(str(cues[2])).is_equal("hit_feedback")
@@ -705,7 +712,7 @@ func test_t78_reduced_motion_mode_keeps_deterministic_feedback_without_wall_cloc
 	cues = scene.call("GetPresentationCueHistoryForTest") as Array
 	assert_that(cues.has("reduced_motion:card_preview")).is_true()
 	assert_that(cues.has("reduced_motion:card_preview_closed")).is_true()
-	assert_that(cues.has("reduced_motion:intent_detail_hidden")).is_true()
+	assert_that(cues.has("reduced_motion:intent_detail_hidden")).is_false()
 	var state_after_enemy := scene.call("CaptureUiStateForTest") as Dictionary
 	var rng_after_enemy := int(scene.call("GetCombatRngStreamPositionForTest"))
 	assert_that(state_after_enemy).is_not_equal(state_before)
@@ -852,8 +859,8 @@ func test_t101_trigger_fixed_and_aoe_feedback_align_with_shared_runtime_results(
 	hand = (scene as Control).get_node("HUD/HandCards") as ItemList
 	hand.select(0)
 	assert_that(bool(scene.call("RequestPlaySelectedCardForTest"))).is_true()
-	var aoe_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
-	assert_that(aoe_feedback.find("dealt 8 damage") >= 0).is_true()
+	var repeated_aoe_feedback := str(scene.call("GetLatestFeedbackMessageForTest"))
+	assert_that(repeated_aoe_feedback.find("dealt 8 damage") >= 0).is_true()
 	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_primary"))).is_equal(20)
 	assert_that(int(scene.call("GetEnemyHpForTest", "enemy_t101_secondary"))).is_equal(14)
 

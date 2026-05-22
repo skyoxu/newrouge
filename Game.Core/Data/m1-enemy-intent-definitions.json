@@ -5,7 +5,17 @@
   ],
   "enemies": [
     {
-      "enemyId": "enemy_m1_slime",
+      "enemyId": "act1-slime-scout",
+      "intents": [
+        {
+          "intentId": "intent.attack",
+          "iconId": "icon_sword",
+          "textKey": "combat.intent.attack_6"
+        }
+      ]
+    },
+    {
+      "enemyId": "act1-moss-rat",
       "intents": [
         {
           "intentId": "intent.attack",

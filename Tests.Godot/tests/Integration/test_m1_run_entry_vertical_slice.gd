@@ -5,6 +5,7 @@ const EVENT_BUS_SCRIPT := preload("res://Game.Godot/Adapters/EventBusAdapter.cs"
 const DIFFICULTY_SELECT_SCENE := "res://Game.Godot/Scenes/UI/DifficultySelect.tscn"
 const CHARACTER_SELECT_SCENE := "res://Game.Godot/Scenes/UI/CharacterSelect.tscn"
 const MAP_SCENE := "res://Game.Godot/Scenes/Map/Map.tscn"
+const COMBAT_SCENE := "res://Game.Godot/Scenes/Combat.tscn"
 const START_SCREEN_SCENE := "res://Game.Godot/Scenes/Screens/StartScreen.tscn"
 const DEMO_SCENE := "res://Game.Godot/Examples/Screens/DemoScreen.tscn"
 const MAIN_SCENE_PATH := "res://Game.Godot/Scenes/Main.tscn"
@@ -56,7 +57,7 @@ func _current_scene_path(main: Control) -> String:
 
 
 func _press_new_run(main: Control) -> void:
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     menu.call("SetAutosaveAvailableForTest", false)
     var button := menu.get_node("VBox/BtnNewRun") as Button
     button.emit_signal("pressed")
@@ -90,6 +91,19 @@ func test_new_run_from_main_menu_opens_difficulty_first_and_skips_demo_screens()
     assert_str(history[0]).is_equal(DIFFICULTY_SELECT_SCENE)
     assert_bool(history.has(START_SCREEN_SCENE)).is_false()
     assert_bool(history.has(DEMO_SCENE)).is_false()
+
+
+func test_startup_scene_override_can_boot_directly_into_combat_for_manual_ui_verification() -> void:
+    var main := await _load_main()
+
+    assert_bool(bool(main.call("ApplyStartupSceneOverrideForTest", "combat"))).is_true()
+    await get_tree().process_frame
+
+    var current := _current_scene_path(main)
+    var history := _route_history(main)
+    assert_str(current).is_equal(COMBAT_SCENE)
+    assert_array(history).is_equal([COMBAT_SCENE])
+    assert_bool(bool(main.call("IsMainMenuVisibleForTest"))).is_false()
 
 
 # acceptance: ACC:T59.3
@@ -195,7 +209,7 @@ func test_m1_run_entry_smoke_flow_main_menu_to_difficulty_to_character_to_map() 
 # acceptance: ACC:T59.4
 func test_without_autosave_continue_stays_disabled_and_new_run_does_not_open_overwrite_dialog() -> void:
     var main := await _load_main()
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     menu.call("SetAutosaveAvailableForTest", false)
     await get_tree().process_frame
 
@@ -213,7 +227,7 @@ func test_without_autosave_continue_stays_disabled_and_new_run_does_not_open_ove
 # acceptance: ACC:T59.4
 func test_with_autosave_cancel_keeps_current_scene_on_main() -> void:
     var main := await _load_main()
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     menu.call("SetAutosaveAvailableForTest", true)
     await get_tree().process_frame
 
@@ -235,7 +249,7 @@ func test_with_autosave_cancel_keeps_current_scene_on_main() -> void:
 # acceptance: ACC:T59.4
 func test_with_autosave_confirm_routes_to_difficulty_select_not_demo_targets() -> void:
     var main := await _load_main()
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     menu.call("SetAutosaveAvailableForTest", true)
     await get_tree().process_frame
 

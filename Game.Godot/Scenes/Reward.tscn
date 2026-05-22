@@ -3,49 +3,212 @@
 [ext_resource type="Script" path="res://Game.Godot/Scripts/RewardScene.gd" id="1_reward_script"]
 
 [node name="RewardScene" type="Control"]
-script = ExtResource("1_reward_script")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_reward_script")
 
 [node name="VBox" type="VBoxContainer" parent="."]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+visible = false
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 732.0
+offset_bottom = 1032.0
+theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="VBox"]
 layout_mode = 2
-text = "ui.reward.title"
+text = "Reward"
 
 [node name="CardList" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
-[node name="Card1" type="Label" parent="VBox/CardList"]
+[node name="CardSlot1" type="PanelContainer" parent="VBox/CardList"]
 layout_mode = 2
-text = "ui.reward.card.1.name"
 
-[node name="Card2" type="Label" parent="VBox/CardList"]
+[node name="Body" type="VBoxContainer" parent="VBox/CardList/CardSlot1"]
 layout_mode = 2
-text = "ui.reward.card.2.name"
+theme_override_constants/separation = 8
 
-[node name="Card3" type="Label" parent="VBox/CardList"]
+[node name="ArtButton" type="TextureButton" parent="VBox/CardList/CardSlot1/Body"]
+custom_minimum_size = Vector2(220, 300)
 layout_mode = 2
-text = "ui.reward.card.3.name"
+stretch_mode = 5
+
+[node name="Name" type="Label" parent="VBox/CardList/CardSlot1/Body"]
+layout_mode = 2
+text = "Reward Card 1"
+
+[node name="Description" type="Label" parent="VBox/CardList/CardSlot1/Body"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="CardSlot2" type="PanelContainer" parent="VBox/CardList"]
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="VBox/CardList/CardSlot2"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ArtButton" type="TextureButton" parent="VBox/CardList/CardSlot2/Body"]
+custom_minimum_size = Vector2(220, 300)
+layout_mode = 2
+stretch_mode = 5
+
+[node name="Name" type="Label" parent="VBox/CardList/CardSlot2/Body"]
+layout_mode = 2
+text = "Reward Card 2"
+
+[node name="Description" type="Label" parent="VBox/CardList/CardSlot2/Body"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="CardSlot3" type="PanelContainer" parent="VBox/CardList"]
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="VBox/CardList/CardSlot3"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ArtButton" type="TextureButton" parent="VBox/CardList/CardSlot3/Body"]
+custom_minimum_size = Vector2(220, 300)
+layout_mode = 2
+stretch_mode = 5
+
+[node name="Name" type="Label" parent="VBox/CardList/CardSlot3/Body"]
+layout_mode = 2
+text = "Reward Card 3"
+
+[node name="Description" type="Label" parent="VBox/CardList/CardSlot3/Body"]
+layout_mode = 2
+autowrap_mode = 3
 
 [node name="Actions" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
 [node name="ConfirmButton" type="Button" parent="VBox/Actions"]
 layout_mode = 2
-text = "ui.reward.confirm"
+text = "Confirm"
 
 [node name="SkipButton" type="Button" parent="VBox/Actions"]
 layout_mode = 2
-text = "ui.reward.skip"
+text = "Skip"
 
 [node name="Feedback" type="Label" parent="VBox"]
 layout_mode = 2
-text = "ui.reward.feedback.select_default"
+text = "Select a reward."
+
+[node name="RootMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 36
+
+[node name="VBox" type="VBoxContainer" parent="RootMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="RootMargin/VBox"]
+layout_mode = 2
+text = "Reward"
+
+[node name="RewardListScroll" type="ScrollContainer" parent="RootMargin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RewardList" type="VBoxContainer" parent="RootMargin/VBox/RewardListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Feedback" type="Label" parent="RootMargin/VBox"]
+layout_mode = 2
+text = ""
+
+[node name="RewardActions" type="HBoxContainer" parent="RootMargin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SkipAllButton" type="Button" parent="RootMargin/VBox/RewardActions"]
+layout_mode = 2
+text = "Skip Remaining Rewards"
+
+[node name="CardChoiceOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Dim" type="ColorRect" parent="CardChoiceOverlay"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.05, 0.76)
+mouse_filter = 2
+
+[node name="Shell" type="MarginContainer" parent="CardChoiceOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 72.0
+offset_top = 48.0
+offset_right = -72.0
+offset_bottom = -48.0
+
+[node name="ChoiceVBox" type="VBoxContainer" parent="CardChoiceOverlay/Shell"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="ChoiceTitle" type="Label" parent="CardChoiceOverlay/Shell/ChoiceVBox"]
+layout_mode = 2
+text = "Choose a Card"
+
+[node name="ChoiceScroll" type="ScrollContainer" parent="CardChoiceOverlay/Shell/ChoiceVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ChoiceGrid" type="GridContainer" parent="CardChoiceOverlay/Shell/ChoiceVBox/ChoiceScroll"]
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 24
+
+[node name="ChoiceActions" type="HBoxContainer" parent="CardChoiceOverlay/Shell/ChoiceVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BackButton" type="Button" parent="CardChoiceOverlay/Shell/ChoiceVBox/ChoiceActions"]
+layout_mode = 2
+text = "Back"
+
+[node name="SkipButton" type="Button" parent="CardChoiceOverlay/Shell/ChoiceVBox/ChoiceActions"]
+layout_mode = 2
+text = "Pass Reward"

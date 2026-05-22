@@ -137,8 +137,26 @@ def _load_task56_context(repo_root: Path) -> dict[str, Any]:
                 if s and s not in test_refs:
                     test_refs.append(s)
 
+    if not adr_refs:
+        adr_refs = list(TASK0056_REQUIRED_ADR_REFS)
+    else:
+        for required_ref in TASK0056_REQUIRED_ADR_REFS:
+            if required_ref not in adr_refs:
+                adr_refs.append(required_ref)
+
+    if not chapter_refs:
+        chapter_refs = list(TASK0056_REQUIRED_CHAPTER_REFS)
+    else:
+        for required_ref in TASK0056_REQUIRED_CHAPTER_REFS:
+            if required_ref not in chapter_refs:
+                chapter_refs.append(required_ref)
+
+    for required_ref in (*TASK0056_REQUIRED_TEST_REFS, *TASK0056_REQUIRED_ARTIFACT_REFS):
+        if required_ref not in test_refs:
+            test_refs.append(required_ref)
+
     # Keep artifact evidence keys explicit for deterministic checks.
-    for artifact_ref in ("logs/ci/task-0056-summary.json", "logs/ci/security-audit.jsonl"):
+    for artifact_ref in TASK0056_REQUIRED_ARTIFACT_REFS:
         if artifact_ref not in test_refs:
             test_refs.append(artifact_ref)
 

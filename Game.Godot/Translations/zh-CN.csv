@@ -31,7 +31,7 @@ combat.feedback.refusal_reason.invalid_target,无效目标
 combat.feedback.refusal_reason.missing_card_definition,缺少卡牌定义
 combat.feedback.refusal_reason.invalid_status_reference,无效状态引用
 combat.feedback.refusal_reason.no_card_selected,请先选择一张手牌。
-combat.action.hint,选择一张手牌，然后点击“打出选中卡牌”；没有合适操作时点击“结束回合”。
+combat.action.hint,拖拽或选择一张手牌来使用；右键或 Esc 取消当前选牌；没有合适操作时点击“结束回合”。
 combat.action.play_selected,打出选中卡牌
 combat.hand.title,手牌
 combat.enemy.title,敌人
@@ -115,6 +115,7 @@ ui.reward.feedback.selected,已选择奖励 {0}
 ui.reward.feedback.select_first,请先选择一个奖励。
 ui.reward.feedback.confirmed,奖励已确认。
 ui.reward.feedback.skipped,奖励已跳过。
+ui.reward.skip_all,跳过剩余奖励
 ui.rest.title,休息
 ui.rest.description,恢复并规划你的下一步。
 ui.rest.option.heal,治疗

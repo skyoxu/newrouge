@@ -424,6 +424,14 @@ offset_right = 1360.0
 offset_bottom = 58.0
 text = "Deck 0"
 
+[node name="MapButton" type="Button" parent="HUD"]
+layout_mode = 2
+offset_left = 1376.0
+offset_top = 22.0
+offset_right = 1528.0
+offset_bottom = 58.0
+text = "Map"
+
 [node name="ActionHintLabel" type="Label" parent="HUD"]
 layout_mode = 2
 offset_left = 24.0
@@ -682,11 +690,16 @@ color = Color(0.04, 0.05, 0.05, 0.76)
 mouse_filter = 2
 
 [node name="PileViewerShell" type="HBoxContainer" parent="HUD/PileViewerOverlay"]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 offset_left = 56.0
 offset_top = 52.0
-offset_right = 1544.0
-offset_bottom = 620.0
+offset_right = -56.0
+offset_bottom = -52.0
 theme_override_constants/separation = 32
 
 [node name="BackColumn" type="CenterContainer" parent="HUD/PileViewerOverlay/PileViewerShell"]
@@ -703,6 +716,7 @@ text = "Back"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(1180, 0)
 theme_override_constants/separation = 18
 
 [node name="PileViewerTitle" type="Label" parent="HUD/PileViewerOverlay/PileViewerShell/ContentColumn"]
@@ -713,6 +727,7 @@ text = "Pile Viewer"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(1180, 0)
 
 [node name="PileViewerGrid" type="GridContainer" parent="HUD/PileViewerOverlay/PileViewerShell/ContentColumn/PileViewerScroll"]
 layout_mode = 2
@@ -721,3 +736,67 @@ size_flags_vertical = 3
 columns = 5
 theme_override_constants/h_separation = 30
 theme_override_constants/v_separation = 28
+
+[node name="MapOverlay" type="Control" parent="HUD"]
+visible = false
+layout_mode = 3
+z_index = 1001
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MapOverlayDim" type="ColorRect" parent="HUD/MapOverlay"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.05, 0.76)
+mouse_filter = 2
+
+[node name="MapOverlayShell" type="HBoxContainer" parent="HUD/MapOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 56.0
+offset_top = 52.0
+offset_right = -56.0
+offset_bottom = -52.0
+theme_override_constants/separation = 32
+
+[node name="BackColumn" type="CenterContainer" parent="HUD/MapOverlay/MapOverlayShell"]
+custom_minimum_size = Vector2(372, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BackButton" type="Button" parent="HUD/MapOverlay/MapOverlayShell/BackColumn"]
+custom_minimum_size = Vector2(220, 84)
+layout_mode = 2
+text = "Back"
+
+[node name="ContentColumn" type="VBoxContainer" parent="HUD/MapOverlay/MapOverlayShell"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(1180, 0)
+theme_override_constants/separation = 18
+
+[node name="MapOverlayTitle" type="Label" parent="HUD/MapOverlay/MapOverlayShell/ContentColumn"]
+layout_mode = 2
+text = "Map"
+
+[node name="MapOverlayScroll" type="ScrollContainer" parent="HUD/MapOverlay/MapOverlayShell/ContentColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MapOverlayContent" type="Control" parent="HUD/MapOverlay/MapOverlayShell/ContentColumn/MapOverlayScroll"]
+custom_minimum_size = Vector2(1180, 780)
+layout_mode = 2
