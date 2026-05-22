@@ -66,6 +66,17 @@ def _best_effort_cleanup_testhosts(cwd: str) -> None:
         pass
 
 
+def _is_retryable_coverlet_file_lock_abort(output: str) -> bool:
+    text = str(output or "")
+    lowered = text.lower()
+    return (
+        "test run aborted" in lowered
+        and "xplat code coverage" in lowered
+        and "failed to get coverage result" in lowered
+        and "because it is being used by another process" in lowered
+    )
+
+
 def _script_repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -305,10 +316,15 @@ def main(argv=None):
         if args.filter:
             test_cmd.extend(['--filter', args.filter])
         rc, out = run_cmd(test_cmd, cwd=root, timeout=test_timeout_ms)
-        attempts_log.append({'attempt': test_attempt, 'rc': rc})
+        retryable_coverlet_file_lock = rc == 0 and _is_retryable_coverlet_file_lock_abort(out)
+        attempts_log.append({
+            'attempt': test_attempt,
+            'rc': rc,
+            'retryable_coverlet_file_lock': retryable_coverlet_file_lock,
+        })
         with io.open(os.path.join(out_dir, f'dotnet-test-output-attempt-{test_attempt}.txt'), 'w', encoding='utf-8') as f:
             f.write(out)
-        if rc == 0:
+        if rc == 0 and not retryable_coverlet_file_lock:
             break
 
     with io.open(os.path.join(out_dir, 'dotnet-test-output.txt'), 'w', encoding='utf-8') as f:
