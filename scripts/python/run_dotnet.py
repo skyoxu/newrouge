@@ -77,6 +77,23 @@ def _is_retryable_coverlet_file_lock_abort(output: str) -> bool:
     )
 
 
+def _clean_retry_test_outputs(root: str, configuration: str) -> None:
+    paths = [
+        os.path.join(root, "Game.Core.Tests", "TestResults"),
+        os.path.join(root, "Game.Core.Tests", "bin", configuration),
+        os.path.join(root, "Game.Core.Tests", "obj", configuration),
+        os.path.join(root, "Game.Core", "bin", configuration),
+        os.path.join(root, "Game.Core", "obj", configuration),
+    ]
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        try:
+            shutil.rmtree(path, ignore_errors=False)
+        except Exception:
+            shutil.rmtree(path, ignore_errors=True)
+
+
 def _script_repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -309,8 +326,12 @@ def main(argv=None):
     while test_attempt <= retry_on_fail:
         test_attempt += 1
         _best_effort_cleanup_testhosts(root)
+        if test_attempt > 1:
+            _clean_retry_test_outputs(root, args.configuration)
+        attempt_results_dir = os.path.join(root, "Game.Core.Tests", "TestResults", f"attempt-{test_attempt}")
         test_cmd = ['dotnet', 'test', resolved_solution,
                     f'-c', args.configuration,
+                    '--results-directory', attempt_results_dir,
                     '--collect:XPlat Code Coverage',
                     '--logger', 'trx;LogFileName=tests.trx']
         if args.filter:
