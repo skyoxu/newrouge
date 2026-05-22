@@ -11,6 +11,7 @@ using Xunit;
 
 namespace NewRouge.Core.Tests.Tasks;
 
+[Collection("GameCoreCsprojMutationSerial")]
 public sealed class Task2RootBuildGateTests
 {
     // ACC:T2.1

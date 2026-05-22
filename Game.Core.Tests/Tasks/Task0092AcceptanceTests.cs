@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Game.Core.Tests.Tasks;
 
+[Collection("GameCoreCsprojMutationSerial")]
 public sealed class Task0092AcceptanceTests
 {
     private const string CheckArchitectureBoundaryScript = "scripts/python/check_architecture_boundary.py";
