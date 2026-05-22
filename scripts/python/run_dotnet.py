@@ -81,9 +81,7 @@ def _clean_retry_test_outputs(root: str, configuration: str) -> None:
     paths = [
         os.path.join(root, "Game.Core.Tests", "TestResults"),
         os.path.join(root, "Game.Core.Tests", "bin", configuration),
-        os.path.join(root, "Game.Core.Tests", "obj", configuration),
         os.path.join(root, "Game.Core", "bin", configuration),
-        os.path.join(root, "Game.Core", "obj", configuration),
     ]
     for path in paths:
         if not os.path.exists(path):
