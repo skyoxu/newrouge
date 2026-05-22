@@ -31,6 +31,29 @@ run_dotnet = _load_module("run_dotnet_test_module", "scripts/python/run_dotnet.p
 
 
 class RunDotnetSolutionResolutionTests(unittest.TestCase):
+    def test_clean_retry_test_outputs_should_preserve_obj_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "newrouge"
+            obj_dir = root / "Game.Core.Tests" / "obj" / "Debug" / "net8.0" / "refint"
+            core_obj_dir = root / "Game.Core" / "obj" / "Debug" / "net8.0"
+            bin_dir = root / "Game.Core.Tests" / "bin" / "Debug" / "net8.0"
+            test_results_dir = root / "Game.Core.Tests" / "TestResults"
+            obj_dir.mkdir(parents=True, exist_ok=True)
+            core_obj_dir.mkdir(parents=True, exist_ok=True)
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            test_results_dir.mkdir(parents=True, exist_ok=True)
+            (obj_dir / "Game.Core.Tests.dll").write_text("obj", encoding="utf-8")
+            (core_obj_dir / "cache.txt").write_text("obj", encoding="utf-8")
+            (bin_dir / "Game.Core.Tests.dll").write_text("bin", encoding="utf-8")
+            (test_results_dir / "tests.trx").write_text("trx", encoding="utf-8")
+
+            run_dotnet._clean_retry_test_outputs(str(root), "Debug")
+
+            self.assertTrue(obj_dir.exists())
+            self.assertTrue(core_obj_dir.exists())
+            self.assertFalse(bin_dir.exists())
+            self.assertFalse(test_results_dir.exists())
+
     def test_main_should_resolve_test_solution_when_auto(self) -> None:
         commands: list[list[str]] = []
 
