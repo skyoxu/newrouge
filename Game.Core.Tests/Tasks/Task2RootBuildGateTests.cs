@@ -322,11 +322,18 @@ public sealed class Task2RootBuildGateTests
 
     private static (int ExitCode, string Stdout, string Stderr, bool TimedOut) RunDotnetBuild(string root)
     {
+        var isolatedBuildRoot = Path.Combine(
+            Path.GetTempPath(),
+            "newrouge-task2-build-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(isolatedBuildRoot);
+
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "build NewRouge.csproj -nologo -v minimal",
+            Arguments =
+                "build NewRouge.csproj -nologo -v minimal --no-restore"
+                + $" -p:BaseOutputPath=\"{Path.Combine(isolatedBuildRoot, "bin")}{Path.DirectorySeparatorChar}\"",
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -350,11 +357,14 @@ public sealed class Task2RootBuildGateTests
                 // Ignore cleanup failures on timeout; caller asserts timeout semantics.
             }
 
+            SafeDeleteDirectory(isolatedBuildRoot);
             return (ExitCode: -1, Stdout: string.Empty, Stderr: "dotnet build timeout", TimedOut: true);
         }
 
         Task.WaitAll(stdoutTask, stderrTask);
-        return (ExitCode: process.ExitCode, Stdout: stdoutTask.Result, Stderr: stderrTask.Result, TimedOut: false);
+        var result = (ExitCode: process.ExitCode, Stdout: stdoutTask.Result, Stderr: stderrTask.Result, TimedOut: false);
+        SafeDeleteDirectory(isolatedBuildRoot);
+        return result;
     }
 
     private static NamespacePolicyResult EvaluateNamespaceCoexistencePolicy(IEnumerable<string> namespaceDeclarations)
@@ -433,6 +443,23 @@ public sealed class Task2RootBuildGateTests
     {
         return Directory.Exists(gameGodotDirectory)
             && Directory.EnumerateFiles(gameGodotDirectory, "*.csproj", SearchOption.AllDirectories).Any();
+    }
+
+    private static void SafeDeleteDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // Best effort cleanup for isolated build outputs.
+        }
     }
 
     private sealed record NamespacePolicyResult(bool IsAccepted, bool RequiresFullRename, string Reason);
