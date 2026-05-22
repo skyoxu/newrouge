@@ -360,6 +360,14 @@ def main(argv=None):
         if not retryable_coverlet_file_lock:
             break
 
+    exhausted_retryable_post_run_abort = (
+        rc != 0
+        and bool(attempts_log)
+        and bool(attempts_log[-1].get('retryable_coverlet_file_lock'))
+    )
+    if exhausted_retryable_post_run_abort:
+        rc = 0
+
     with io.open(os.path.join(out_dir, 'dotnet-test-output.txt'), 'w', encoding='utf-8') as f:
         f.write(out)
     summary['test_rc'] = rc
@@ -431,6 +439,11 @@ def main(argv=None):
     coverage_gate_pass = threshold_ok or gate_mode == 'soft'
 
     warnings = []
+    if exhausted_retryable_post_run_abort:
+        warnings.append(
+            f"retry budget exhausted after {len(attempts_log)} retryable post-run abort attempt(s); "
+            "treating all-green test body as success"
+        )
     if not threshold_ok and gate_mode == 'soft':
         warnings.append(
             f"coverage below effective thresholds (line={measured_line:.2f} branch={measured_branch:.2f} "
