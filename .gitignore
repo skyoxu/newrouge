@@ -139,5 +139,7 @@ _bmad/
 !.agents/skills/workflow-chapter5-semantics-stabilization/**
 !.agents/skills/workflow-chapter6-single-task-daily-loop/
 !.agents/skills/workflow-chapter6-single-task-daily-loop/**
+!.agents/skills/pr-ci-artifact-repair/
+!.agents/skills/pr-ci-artifact-repair/**
 !.agents/skills/workflow-chapter7-ui-wiring-closure/
 !.agents/skills/workflow-chapter7-ui-wiring-closure/**
