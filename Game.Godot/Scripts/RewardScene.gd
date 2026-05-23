@@ -386,6 +386,14 @@ func GetOfferedCardIdsForTest() -> Array[String]:
 		ids.append(str((card_variant as Dictionary).get("id", "")).strip_edges())
 	return ids
 
+func GetVisibleRewardEntriesForTest() -> Array[Dictionary]:
+	var visible: Array[Dictionary] = []
+	for entry_variant in _entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		visible.append((entry_variant as Dictionary).duplicate(true))
+	return visible
+
 func GetCardCountForTest() -> int:
 	return GetOfferedCardIdsForTest().size()
 
