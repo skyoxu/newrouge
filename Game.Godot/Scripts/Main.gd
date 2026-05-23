@@ -52,6 +52,7 @@ const REWARD_CARD_ART_CANDIDATE_PATHS := [
     "res://Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
     "res://../Game.Godot/Assets/Textures/Cards/card_spore_slash.png"
 ]
+const REWARD_MODIFIER_PIPELINE_BRIDGE_SCRIPT := "res://Game.Godot/Scripts/Reward/RewardEntryModifierPipelineBridge.cs"
 
 var _map_route_completed_nodes: int = 0
 var _map_route_completed_node_ids: Array[String] = []
@@ -68,7 +69,7 @@ var _reward_offer_active_context_id: String = ""
 var _reward_offer_seed_counter: int = 0
 var _reward_selection_state_by_context: Dictionary = {}
 var _reward_runtime_modifiers_by_context: Dictionary = {}
-var _reward_modifier_pipeline = RewardEntryModifierPipelineBridge.new()
+var _reward_modifier_pipeline = null
 var _latest_reward_modifier_failure: Dictionary = {}
 var _map_route_last_selected_node_type: String = ""
 var _map_route_last_selected_node_floor: int = 1
@@ -963,6 +964,20 @@ func _clear_reward_runtime_modifier_state() -> void:
     _reward_runtime_modifiers_by_context.clear()
     _latest_reward_modifier_failure.clear()
 
+func _ensure_reward_modifier_pipeline():
+    if _reward_modifier_pipeline != null:
+        return _reward_modifier_pipeline
+    var bridge_script = load(REWARD_MODIFIER_PIPELINE_BRIDGE_SCRIPT)
+    if bridge_script == null:
+        push_error("Reward modifier pipeline bridge script could not be loaded.")
+        return null
+    _reward_modifier_pipeline = bridge_script.new()
+    if _reward_modifier_pipeline == null or not _reward_modifier_pipeline.has_method("Apply"):
+        push_error("Reward modifier pipeline bridge instance is unavailable.")
+        _reward_modifier_pipeline = null
+        return null
+    return _reward_modifier_pipeline
+
 func _apply_reward_entry_modifiers(context_id: String, _reward_pool_id: String, entries: Array) -> Array:
     var normalized_context := context_id.strip_edges()
     _latest_reward_modifier_failure.clear()
@@ -982,7 +997,22 @@ func _apply_reward_entry_modifiers(context_id: String, _reward_pool_id: String, 
             continue
         typed_modifiers.append((modifier_variant as Dictionary).duplicate(true))
 
-    var result := _reward_modifier_pipeline.Apply(typed_entries, typed_modifiers)
+    var pipeline = _ensure_reward_modifier_pipeline()
+    if pipeline == null:
+        _latest_reward_modifier_failure = {
+            "context_id": normalized_context,
+            "rejection_reason": "bridge_unavailable",
+            "modifier_count": typed_modifiers.size()
+        }
+        return entries
+    var result = pipeline.call("Apply", typed_entries, typed_modifiers)
+    if typeof(result) != TYPE_DICTIONARY:
+        _latest_reward_modifier_failure = {
+            "context_id": normalized_context,
+            "rejection_reason": "bridge_invalid_result",
+            "modifier_count": typed_modifiers.size()
+        }
+        return entries
     if bool(result.get("rejected", false)):
         _latest_reward_modifier_failure = {
             "context_id": normalized_context,
