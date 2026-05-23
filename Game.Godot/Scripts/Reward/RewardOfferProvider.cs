@@ -32,7 +32,7 @@ public partial class RewardOfferProvider : Node
         int actId,
         string encounterType,
         int deterministicSeed,
-        int streamPosition = 0,
+        long streamPosition = 0,
         int pickCount = 3,
         string contextId = "",
         string rewardPoolId = "")

@@ -132,8 +132,6 @@ def _is_retryable_post_run_abort_with_trx(output: str, trx_path: str | None) -> 
     if "results file:" in lowered:
         return False
     return False
-
-
 def _clean_retry_test_outputs(root: str, configuration: str) -> None:
     paths = [
         os.path.join(root, "Game.Core.Tests", "TestResults"),

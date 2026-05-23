@@ -411,7 +411,6 @@ Test Run Aborted.
             self.assertEqual("ok", summary["status"])
             self.assertEqual(2, len(summary["test_attempts"]))
             self.assertTrue(summary["test_attempts"][0]["retryable_coverlet_file_lock"])
-
     def test_main_should_allow_two_retries_for_repeated_post_run_abort_before_success(self) -> None:
         commands: list[list[str]] = []
         retryable_abort_output = r"""
