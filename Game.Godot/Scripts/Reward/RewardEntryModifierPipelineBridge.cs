@@ -39,9 +39,7 @@ public partial class RewardEntryModifierPipelineBridge : RefCounted
     {
         var entryId = Convert.ToString(source["entry_id"]) ?? string.Empty;
         var rewardType = Convert.ToString(source["reward_type"]) ?? string.Empty;
-        var config = source.ContainsKey("config") && source["config"] is global::Godot.Collections.Dictionary dict
-            ? dict.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value, StringComparer.Ordinal)
-            : new Dictionary<string, object?>(StringComparer.Ordinal);
+        var config = TryReadConfigDictionary(source, "config");
         return new RewardEntrySnapshot(entryId, rewardType, new ReadOnlyDictionary<string, object?>(config));
     }
 
@@ -50,10 +48,25 @@ public partial class RewardEntryModifierPipelineBridge : RefCounted
         var action = source.ContainsKey("action") ? Convert.ToString(source["action"]) ?? string.Empty : string.Empty;
         var targetEntryId = source.ContainsKey("target_entry_id") ? Convert.ToString(source["target_entry_id"]) ?? string.Empty : string.Empty;
         var rewardType = source.ContainsKey("reward_type") ? Convert.ToString(source["reward_type"]) ?? string.Empty : string.Empty;
-        var config = source.ContainsKey("config") && source["config"] is global::Godot.Collections.Dictionary dict
-            ? dict.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value, StringComparer.Ordinal)
-            : new Dictionary<string, object?>(StringComparer.Ordinal);
+        var config = TryReadConfigDictionary(source, "config");
         return new RewardEntryModifier(action, targetEntryId, rewardType, new ReadOnlyDictionary<string, object?>(config));
+    }
+
+    private static Dictionary<string, object?> TryReadConfigDictionary(global::Godot.Collections.Dictionary source, string key)
+    {
+        if (!source.ContainsKey(key))
+        {
+            return new Dictionary<string, object?>(StringComparer.Ordinal);
+        }
+
+        var configVariant = source[key];
+        if (configVariant.VariantType != Variant.Type.Dictionary)
+        {
+            return new Dictionary<string, object?>(StringComparer.Ordinal);
+        }
+
+        var config = configVariant.AsGodotDictionary();
+        return config.ToDictionary(pair => pair.Key.ToString(), pair => (object?)pair.Value, StringComparer.Ordinal);
     }
 
     private static global::Godot.Collections.Dictionary ConvertToGodotEntry(RewardEntrySnapshot entry)
