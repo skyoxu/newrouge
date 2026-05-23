@@ -144,11 +144,19 @@ func test_reward_display_confirm_skip_and_reenter_locking_contract() -> void:
 	var after_skip := flow_skip.enter_reward_scene()
 	assert_that(after_skip).is_equal(skip_offer)
 
+# acceptance: ACC:T133.4
 func test_reward_reenter_uses_same_shared_offer_snapshot_in_route_owned_flow() -> void:
 	var main := await _load_main_on_map()
 	var enter_result := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
 	assert_bool(bool(enter_result.get("ok", false))).is_true()
 	assert_str(str(enter_result.get("scene_path", ""))).is_equal(COMBAT_SCENE)
+	var pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_bool(pending_context_id.is_empty()).is_false()
+	assert_bool(bool(main.call("RegisterRewardEntryModifierForTest", "", {
+		"action": "mutate",
+		"target_entry_id": "gold",
+		"config": {"amount": 91}
+	}))).is_true()
 
 	var first_complete := main.call("CompleteMapNodeFlowForTest") as Dictionary
 	assert_bool(bool(first_complete.get("ok", false))).is_true()
@@ -156,11 +164,23 @@ func test_reward_reenter_uses_same_shared_offer_snapshot_in_route_owned_flow() -
 	await get_tree().process_frame
 
 	var first_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_str(str(first_snapshot.get("context_id", "")).strip_edges()).is_equal(pending_context_id)
 	var first_ids := _extract_offer_ids(first_snapshot)
 	assert_int(first_ids.size()).is_equal(3)
 	assert_str(str(first_snapshot.get("source", ""))).is_equal("shared-card-pool")
 	var first_context_id := str(first_snapshot.get("context_id", "")).strip_edges()
 	assert_bool(first_context_id.is_empty()).is_false()
+	var mutated_gold_count := 0
+	for entry_variant in (first_snapshot.get("entries", []) as Array):
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		if str(entry.get("reward_type", "")).strip_edges() != "gold":
+			continue
+		var config := entry.get("config", {}) as Dictionary
+		if int(config.get("amount", 0)) == 91:
+			mutated_gold_count += 1
+	assert_int(mutated_gold_count).is_equal(1)
 
 	var reward = _current_scene_instance(main)
 	assert_object(reward).is_not_null()
@@ -183,3 +203,4 @@ func test_reward_reenter_uses_same_shared_offer_snapshot_in_route_owned_flow() -
 	var second_context_id := str(second_snapshot.get("context_id", "")).strip_edges()
 	assert_str(second_context_id).is_equal(first_context_id)
 	assert_array(second_ids).is_equal(first_ids)
+	assert_that(second_snapshot).is_equal(first_snapshot)

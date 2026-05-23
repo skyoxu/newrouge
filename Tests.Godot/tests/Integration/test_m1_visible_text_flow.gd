@@ -1080,3 +1080,268 @@ func test_m1_windows_gate_evidence_contains_execution_path_metadata() -> void:
 	assert(str(summary.get("run_id", "")).strip_edges().length() > 0, "pipeline summary must include run_id.")
 	assert(str(summary.get("reason", "")).strip_edges().to_lower() == "pipeline_clean", "pipeline summary reason must be pipeline_clean.")
 	assert(summary_path.replace("\\", "/").find("logs/ci/") >= 0, "summary_path must point to logs/ci evidence.")
+
+# acceptance: ACC:T133.1
+# acceptance: ACC:T133.2
+# acceptance: ACC:T133.3
+# acceptance: ACC:T133.4
+# acceptance: ACC:T133.5
+# acceptance: ACC:T133.6
+func test_reward_runtime_modifiers_apply_once_before_lock_and_do_not_mutate_locked_snapshot() -> void:
+	var main := await _load_main_on_map()
+	var first_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(first_route.get("ok", false))).is_true()
+	var first_pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_that(first_pending_context_id.is_empty()).is_false()
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", "", {
+		"action": "mutate",
+		"target_entry_id": "gold",
+		"config": {"amount": 77}
+	}))).is_true()
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", "", {
+		"action": "add",
+		"reward_type": "relic",
+		"config": {"relic_id": "relic.twilight_coin"}
+	}))).is_true()
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", "", {
+		"action": "remove",
+		"target_entry_id": "consumable"
+	}))).is_true()
+	var first_reward := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(first_reward.get("ok", false))).is_true()
+	assert_that(str(first_reward.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+	await get_tree().process_frame
+
+	var reward_scene = _current_scene_instance(main)
+	assert_that(reward_scene).is_not_null()
+	assert_that(bool(reward_scene.has_method("GetOfferSourceForTest"))).is_true()
+	assert_that(str(reward_scene.call("GetOfferSourceForTest"))).is_equal("shared-card-pool")
+	assert_that(bool(reward_scene.has_method("GetVisibleRewardEntriesForTest"))).is_true()
+	var first_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var first_context_id := str(first_snapshot.get("context_id", "")).strip_edges()
+	assert_that(first_context_id).is_equal(first_pending_context_id)
+	assert_that(first_context_id.is_empty()).is_false()
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_context_id))).is_equal(3)
+	var first_entries := first_snapshot.get("entries", []) as Array
+	var first_has_mutated_gold := false
+	var first_has_added_relic := false
+	var first_has_consumable := false
+	for entry_variant in first_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		var reward_type := str(entry.get("reward_type", "")).strip_edges()
+		var config := entry.get("config", {}) as Dictionary
+		if reward_type == "gold" and int(config.get("amount", 0)) == 77:
+			first_has_mutated_gold = true
+		if reward_type == "relic" and str(config.get("relic_id", "")).strip_edges() == "relic.twilight_coin":
+			first_has_added_relic = true
+		if reward_type == "consumable":
+			first_has_consumable = true
+	assert_that(first_has_mutated_gold).is_true()
+	assert_that(first_has_added_relic).is_true()
+	assert_that(first_has_consumable).is_false()
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_context_id))).is_equal(0)
+	var visible_entries := reward_scene.call("GetVisibleRewardEntriesForTest") as Array
+	assert_that(visible_entries.size()).is_equal(first_entries.size())
+	var visible_has_mutated_gold := false
+	var visible_has_added_relic := false
+	var visible_has_consumable := false
+	for entry_variant in visible_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		var reward_type := str(entry.get("reward_type", "")).strip_edges()
+		var config := entry.get("config", {}) as Dictionary
+		if reward_type == "gold" and int(config.get("amount", 0)) == 77:
+			visible_has_mutated_gold = true
+		if reward_type == "relic" and str(config.get("relic_id", "")).strip_edges() == "relic.twilight_coin":
+			visible_has_added_relic = true
+		if reward_type == "consumable":
+			visible_has_consumable = true
+	assert_that(visible_has_mutated_gold).is_true()
+	assert_that(visible_has_added_relic).is_true()
+	assert_that(visible_has_consumable).is_false()
+
+	var visible_card_ids := reward_scene.call("GetOfferedCardIdsForTest") as Array[String]
+	assert_that(visible_card_ids.size()).is_greater_equal(3)
+
+	assert_that(bool(reward_scene.call("SkipForTest"))).is_true()
+	await get_tree().process_frame
+
+	var replay_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(replay_route.get("ok", false))).is_true()
+	var replay_reward := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(replay_reward.get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var replay_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_that(str(replay_snapshot.get("context_id", "")).strip_edges()).is_equal(first_context_id)
+	assert_that(replay_snapshot).is_equal(first_snapshot)
+
+	var second_route := main.call("StartMapNodeRouteForTest", "combat-02", "combat", true, "") as Dictionary
+	assert_that(bool(second_route.get("ok", false))).is_true()
+	var second_pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_that(second_pending_context_id.is_empty()).is_false()
+	assert_that(second_pending_context_id).is_not_equal(first_context_id)
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", second_pending_context_id, {
+		"action": "add",
+		"reward_type": "unknown",
+		"config": {}
+	}))).is_false()
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", second_pending_context_id, {
+		"action": "remove",
+		"target_entry_id": "gold"
+	}))).is_true()
+	var second_reward := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(second_reward.get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var second_scene = _current_scene_instance(main)
+	assert_that(second_scene).is_not_null()
+	var second_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var second_entries := second_snapshot.get("entries", []) as Array
+	var has_gold_entry := false
+	var has_twilight_coin_relic := false
+	for entry_variant in second_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		var reward_type := str(entry.get("reward_type", "")).strip_edges()
+		if reward_type == "gold":
+			has_gold_entry = true
+			var config := entry.get("config", {}) as Dictionary
+			assert_that(int(config.get("amount", 0))).is_not_equal(-5)
+			assert_that(int(config.get("amount", 0))).is_not_equal(77)
+		if reward_type == "relic":
+			var config := entry.get("config", {}) as Dictionary
+			if str(config.get("relic_id", "")).strip_edges() == "relic.twilight_coin":
+				has_twilight_coin_relic = true
+	assert_that(has_gold_entry).is_false()
+	assert_that(has_twilight_coin_relic).is_false()
+
+	var locked_second_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", second_pending_context_id, {
+		"action": "mutate",
+		"target_entry_id": "gold",
+		"config": {"amount": -9}
+	}))).is_true()
+	var reread_locked_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_that(reread_locked_snapshot).is_equal(locked_second_snapshot)
+
+# acceptance: ACC:T133.5
+func test_reward_runtime_modifiers_do_not_survive_reset_for_same_context() -> void:
+	var main := await _load_main_on_map()
+	var first_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(first_route.get("ok", false))).is_true()
+	var first_pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_that(first_pending_context_id.is_empty()).is_false()
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", first_pending_context_id, {
+		"action": "mutate",
+		"target_entry_id": "gold",
+		"config": {"amount": 77}
+	}))).is_true()
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_pending_context_id))).is_equal(1)
+	var first_reward := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(first_reward.get("ok", false))).is_true()
+	await get_tree().process_frame
+	var first_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var first_entries := first_snapshot.get("entries", []) as Array
+	var first_has_mutated_gold := false
+	for entry_variant in first_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		if str(entry.get("reward_type", "")).strip_edges() != "gold":
+			continue
+		var config := entry.get("config", {}) as Dictionary
+		if int(config.get("amount", 0)) == 77:
+			first_has_mutated_gold = true
+	assert_that(first_has_mutated_gold).is_true()
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_pending_context_id))).is_equal(0)
+
+	main.call("ResetMapRouteProgressForTest")
+	var second_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
+	assert_that(bool(second_route.get("ok", false))).is_true()
+	var second_pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_that(second_pending_context_id).is_equal(first_pending_context_id)
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", second_pending_context_id))).is_equal(0)
+	var second_reward := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(second_reward.get("ok", false))).is_true()
+	await get_tree().process_frame
+	var second_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var second_entries := second_snapshot.get("entries", []) as Array
+	for entry_variant in second_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		if str(entry.get("reward_type", "")).strip_edges() != "gold":
+			continue
+		var config := entry.get("config", {}) as Dictionary
+		assert_that(int(config.get("amount", 0))).is_not_equal(77)
+
+# acceptance: ACC:T133.6
+func test_reward_runtime_modifier_invalid_mutate_does_not_partially_mutate_snapshot() -> void:
+	var main := await _load_main_on_map()
+	var route := main.call("StartMapNodeRouteForTest", "combat-03", "combat", true, "") as Dictionary
+	assert_that(bool(route.get("ok", false))).is_true()
+
+	var pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
+	assert_that(pending_context_id.is_empty()).is_false()
+
+	var baseline_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	var baseline_context_id := str(baseline_snapshot.get("context_id", "")).strip_edges()
+	assert_that(baseline_context_id).is_equal(pending_context_id)
+	var baseline_entries := baseline_snapshot.get("entries", []) as Array
+	assert_that(baseline_entries.is_empty()).is_false()
+
+	var baseline_gold_entry := {}
+	for entry_variant in baseline_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		if str(entry.get("reward_type", "")).strip_edges() == "gold":
+			baseline_gold_entry = entry.duplicate(true)
+			break
+	assert_that(baseline_gold_entry.is_empty()).is_false()
+
+	assert_that(bool(main.call("RegisterRewardEntryModifierForTest", pending_context_id, {
+		"action": "mutate",
+		"target_entry_id": "gold",
+		"config": {"amount": -5}
+	}))).is_true()
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", pending_context_id))).is_equal(1)
+
+	var replay_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_that(replay_snapshot).is_equal(baseline_snapshot)
+
+	var reward_transition := main.call("CompleteMapNodeFlowForTest") as Dictionary
+	assert_that(bool(reward_transition.get("ok", false))).is_true()
+	assert_that(str(reward_transition.get("scene_path", ""))).is_equal("res://Game.Godot/Scenes/Reward.tscn")
+	await get_tree().process_frame
+
+	var materialized_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
+	assert_that(materialized_snapshot).is_equal(baseline_snapshot)
+	var failure := main.call("GetLatestRewardModifierFailureForTest") as Dictionary
+	assert_that(str(failure.get("rejection_reason", "")).strip_edges()).is_equal("invalid-mutate:gold")
+
+	var materialized_entries := materialized_snapshot.get("entries", []) as Array
+	assert_that(materialized_entries.size()).is_equal(baseline_entries.size())
+
+	var materialized_gold_entry := {}
+	for entry_variant in materialized_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		if str(entry.get("reward_type", "")).strip_edges() == "gold":
+			materialized_gold_entry = entry.duplicate(true)
+			break
+	assert_that(materialized_gold_entry).is_equal(baseline_gold_entry)
+
+	for entry_variant in materialized_entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		var config := entry.get("config", {}) as Dictionary
+		if config.has("amount"):
+			assert_that(int(config.get("amount", 0))).is_not_equal(-5)

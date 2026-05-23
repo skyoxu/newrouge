@@ -67,6 +67,9 @@ var _reward_offer_by_context: Dictionary = {}
 var _reward_offer_active_context_id: String = ""
 var _reward_offer_seed_counter: int = 0
 var _reward_selection_state_by_context: Dictionary = {}
+var _reward_runtime_modifiers_by_context: Dictionary = {}
+var _reward_modifier_pipeline = RewardEntryModifierPipelineBridge.new()
+var _latest_reward_modifier_failure: Dictionary = {}
 var _map_route_last_selected_node_type: String = ""
 var _map_route_last_selected_node_floor: int = 1
 var _startup_scene_override_for_test: String = ""
@@ -204,6 +207,7 @@ func _on_domain_event(type: String, _source: String, _data_json: String, _id: St
         _reset_run_deck_for_test()
         _run_relic_ids.clear()
         _run_consumable_ids.clear()
+        _clear_reward_runtime_modifier_state()
         _clear_hud_run_summary()
         _sync_hud_run_resources()
         var demo = get_node_or_null("/root/Main/EngineDemo")
@@ -501,16 +505,20 @@ func _append_reward_entry(entries: Array, reward_type: String, config_variant) -
     if typeof(config_variant) != TYPE_DICTIONARY:
         return
     var config = (config_variant as Dictionary).duplicate(true)
+    entries.append(_build_reward_entry_data(reward_type, config))
+
+func _build_reward_entry_data(reward_type: String, config: Dictionary) -> Dictionary:
     var entry = {
+        "entry_id": reward_type,
         "reward_type": reward_type,
         "title": _resolve_reward_entry_title(reward_type, config),
         "tooltip": _resolve_reward_entry_tooltip(reward_type, config),
         "icon_path": _resolve_reward_entry_icon_path(reward_type, config),
-        "config": config
+        "config": config.duplicate(true)
     }
     if reward_type.ends_with("_card_choice"):
         entry["cards"] = _build_reward_card_choices(str(config.get("pool_id", "")).strip_edges(), int(config.get("pick", 3)))
-    entries.append(entry)
+    return entry
 
 func _build_reward_card_choices(pool_id: String, pick_count: int) -> Array:
     var cards: Array = []
@@ -872,6 +880,7 @@ func _ensure_reward_offer_for_active_context() -> Dictionary:
     var reward_pool_id := _resolve_reward_pool_id_for_active_context()
     var offers := _build_first_entry_reward_offer(context_id, encounter_type, _map_route_last_selected_node_floor)
     var entries := _build_reward_entries_for_pool(reward_pool_id)
+    entries = _apply_reward_entry_modifiers(context_id, reward_pool_id, entries)
     var payload := {
         "context_id": context_id,
         "act_id": 1,
@@ -889,6 +898,127 @@ func _ensure_reward_offer_for_active_context() -> Dictionary:
             "skipped_reward_types": []
         }
     return payload
+
+func _resolve_reward_modifier_context_key(context_id: String) -> String:
+    var normalized_context := context_id.strip_edges()
+    if not normalized_context.is_empty():
+        return normalized_context
+    if not _reward_offer_active_context_id.strip_edges().is_empty():
+        return _reward_offer_active_context_id.strip_edges()
+    if _map_route_last_selected_node_id.strip_edges().is_empty():
+        return ""
+    return _build_reward_context_id(
+        _map_route_last_selected_node_id,
+        _map_route_last_selected_node_type,
+        _map_route_last_selected_node_floor
+    )
+
+func RegisterRewardEntryModifierForTest(context_id: String, modifier: Dictionary) -> bool:
+    var normalized_context := _resolve_reward_modifier_context_key(context_id)
+    if normalized_context.is_empty() or typeof(modifier) != TYPE_DICTIONARY:
+        return false
+    var action := str(modifier.get("action", "")).strip_edges().to_lower()
+    if action != "add" and action != "remove" and action != "mutate":
+        return false
+    if action == "add":
+        var reward_type := str(modifier.get("reward_type", "")).strip_edges()
+        var config_variant = modifier.get("config", {})
+        if reward_type.is_empty() or typeof(config_variant) != TYPE_DICTIONARY:
+            return false
+        var config := config_variant as Dictionary
+        if not _is_supported_reward_entry_type(reward_type):
+            return false
+        if not _is_valid_reward_entry_config(reward_type, config):
+            return false
+    else:
+        var target_entry_id := str(modifier.get("target_entry_id", "")).strip_edges()
+        if target_entry_id.is_empty():
+            return false
+        if action == "mutate" and typeof(modifier.get("config", {})) != TYPE_DICTIONARY:
+            return false
+    if not _reward_runtime_modifiers_by_context.has(normalized_context):
+        _reward_runtime_modifiers_by_context[normalized_context] = []
+    var modifiers: Array = _reward_runtime_modifiers_by_context[normalized_context]
+    modifiers.append(modifier.duplicate(true))
+    _reward_runtime_modifiers_by_context[normalized_context] = modifiers
+    return true
+
+func ClearRewardEntryModifiersForTest() -> void:
+    _reward_runtime_modifiers_by_context.clear()
+
+func GetPendingRewardEntryModifierCountForTest(context_id: String) -> int:
+    var normalized_context := _resolve_reward_modifier_context_key(context_id)
+    if normalized_context.is_empty() or not _reward_runtime_modifiers_by_context.has(normalized_context):
+        return 0
+    var modifiers = _reward_runtime_modifiers_by_context[normalized_context]
+    return (modifiers as Array).size() if typeof(modifiers) == TYPE_ARRAY else 0
+
+func GetPendingRewardContextIdForTest() -> String:
+    return _resolve_reward_modifier_context_key("")
+
+func GetLatestRewardModifierFailureForTest() -> Dictionary:
+    return _latest_reward_modifier_failure.duplicate(true)
+
+func _clear_reward_runtime_modifier_state() -> void:
+    _reward_runtime_modifiers_by_context.clear()
+    _latest_reward_modifier_failure.clear()
+
+func _apply_reward_entry_modifiers(context_id: String, _reward_pool_id: String, entries: Array) -> Array:
+    var normalized_context := context_id.strip_edges()
+    _latest_reward_modifier_failure.clear()
+    if normalized_context.is_empty() or not _reward_runtime_modifiers_by_context.has(normalized_context):
+        return entries
+    var modifiers_variant = _reward_runtime_modifiers_by_context.get(normalized_context, [])
+    if typeof(modifiers_variant) != TYPE_ARRAY:
+        return entries
+    var typed_entries: Array[Dictionary] = []
+    for entry_variant in entries:
+        if typeof(entry_variant) != TYPE_DICTIONARY:
+            continue
+        typed_entries.append((entry_variant as Dictionary).duplicate(true))
+    var typed_modifiers: Array[Dictionary] = []
+    for modifier_variant in (modifiers_variant as Array):
+        if typeof(modifier_variant) != TYPE_DICTIONARY:
+            continue
+        typed_modifiers.append((modifier_variant as Dictionary).duplicate(true))
+
+    var result := _reward_modifier_pipeline.Apply(typed_entries, typed_modifiers)
+    if bool(result.get("rejected", false)):
+        _latest_reward_modifier_failure = {
+            "context_id": normalized_context,
+            "rejection_reason": str(result.get("rejection_reason", "")).strip_edges(),
+            "modifier_count": typed_modifiers.size()
+        }
+        push_error("Invalid reward modifier payload for %s" % normalized_context)
+        return entries
+
+    var rebuilt: Array = []
+    var result_entries = result.get("entries", [])
+    if typeof(result_entries) != TYPE_ARRAY:
+        return entries
+    for entry_variant in (result_entries as Array):
+        if typeof(entry_variant) != TYPE_DICTIONARY:
+            continue
+        var entry = entry_variant as Dictionary
+        var reward_type := str(entry.get("reward_type", "")).strip_edges()
+        var config := entry.get("config", {}) as Dictionary
+        rebuilt.append(_build_reward_entry_data(reward_type, config))
+    _reward_runtime_modifiers_by_context.erase(normalized_context)
+    return rebuilt
+
+func _is_supported_reward_entry_type(reward_type: String) -> bool:
+    return reward_type in ["gold", "consumable", "relic", "common_card_choice", "rare_card_choice", "epic_card_choice"]
+
+func _is_valid_reward_entry_config(reward_type: String, config: Dictionary) -> bool:
+    if reward_type == "gold":
+        return int(config.get("amount", -1)) >= 0
+    if reward_type == "consumable":
+        return not str(config.get("item_id", "")).strip_edges().is_empty()
+    if reward_type == "relic":
+        return not str(config.get("relic_id", "")).strip_edges().is_empty()
+    if reward_type.ends_with("_card_choice"):
+        return not str(config.get("pool_id", "")).strip_edges().is_empty() and int(config.get("pick", 0)) > 0
+    return false
 
 func GetRewardOfferSnapshotForScene() -> Dictionary:
     return _ensure_reward_offer_for_active_context()
@@ -1070,6 +1200,7 @@ func ResetMapRouteProgressForTest() -> void:
     _reward_offer_by_context.clear()
     _reward_offer_active_context_id = ""
     _reward_offer_seed_counter = 0
+    _clear_reward_runtime_modifier_state()
     _reset_run_deck_for_test()
 
 func GetMapRouteStartInvocationCountForTest() -> int:

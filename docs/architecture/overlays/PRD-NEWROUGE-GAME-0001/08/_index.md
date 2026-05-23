@@ -53,25 +53,25 @@ Test-Refs:
 <!-- TASK_BASELINE_START -->
 ```json
 {
-  "generated_at": "2026-05-23T05:20:10.341438+00:00",
+  "generated_at": "2026-05-23T12:57:36.112201+00:00",
   "files": [
     {
       "path": ".taskmaster/tasks/tasks.json",
       "exists": true,
-      "sha256": "a86eadb41e0d0c106f0ed76542ee6d501b2eded942e77a5e706c9464353e1d95",
-      "bytes": 264279
+      "sha256": "70afc4c146c5081edf911a95fd3a7602c2cf95084dea93349e664ba3cefd28f9",
+      "bytes": 264742
     },
     {
       "path": ".taskmaster/tasks/tasks_back.json",
       "exists": true,
-      "sha256": "7cd1ccb5b98d4195b3ccf56d421daec6181f647261071f14f1e02ee153a350d0",
-      "bytes": 439644
+      "sha256": "a50784313731de59c1de956a7857a9de65ce070feb8341cc808df65bdfb0e554",
+      "bytes": 439438
     },
     {
       "path": ".taskmaster/tasks/tasks_gameplay.json",
       "exists": true,
-      "sha256": "0e0336ad3e8226a9da8e32855581ce6c4142471da312d16b2aee1bc291993fb6",
-      "bytes": 554704
+      "sha256": "88e754e77f1f89107488f68df57058c4016083f10603d74b048e7dbc9794008f",
+      "bytes": 554498
     }
   ]
 }
