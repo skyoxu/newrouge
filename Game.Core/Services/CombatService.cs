@@ -116,7 +116,7 @@ public class CombatService
         var totalDamage = 0;
         if (string.Equals(target, "all_enemies", StringComparison.OrdinalIgnoreCase))
         {
-            perTargetDamage = resolvedDamage / targetCount;
+            perTargetDamage = resolvedDamage;
             totalDamage = perTargetDamage * targetCount;
         }
         else if (string.Equals(target, "enemy", StringComparison.OrdinalIgnoreCase))

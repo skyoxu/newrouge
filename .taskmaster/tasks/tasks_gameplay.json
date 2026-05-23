@@ -7278,7 +7278,7 @@
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "title": "Bind combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies",
     "description": "Build on data-backed enemy runtime so visible enemy surfaces stay synchronized and invalid definitions fail safe with player-visible feedback.",
-    "status": "pending",
+    "status": "review",
     "priority": "P2",
     "layer": "adapter",
     "depends_on": [
@@ -8598,5 +8598,205 @@
       "Run GdUnit suites for Run Summary / Settlement / Resume Evidence surfaces and capture pass/fail (or explicit N/A rationale) in Chapter 7 evidence artifacts.",
       "Verify missing-data and no-stored-data states are explicitly visible on governed summary surfaces, and map acceptance evidence back to overlay refs and test refs for Task 130 closure."
     ]
+  },
+  {
+    "id": "GM-0231",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews",
+    "description": "Build on T76 and T105 so a displayed enemy intent can execute multiple structured effects across current-turn and next-turn timing without falling back to description-only parsing.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [
+      "GM-0176",
+      "GM-0202"
+    ],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0021",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "combat",
+      "enemy-intent",
+      "resolution",
+      "multi-effect"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs"
+    ],
+    "acceptance": [
+      "On one accepted end_turn path, the displayed enemy intent resolves more than one structured effect for the same enemy, including at least attack+block and attack+status combinations, and runtime does not open or require a second enemy-turn execution lane. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs",
+      "When the displayed enemy intent includes a next-turn block effect, current-turn damage resolves on the accepted end_turn, and the scheduled block is applied at the next governed enemy-turn timing boundary instead of being applied immediately or skipped. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs",
+      "The displayed T76 intent instance is the execution source of truth: the runtime executes the same structured effect bundle shown in the current preview payload, with no re-roll, substitution, or description-only fallback before resolution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs",
+      "Multi-effect enemy intent execution is deterministic and one-shot: identical inputs produce the same ordered effect outcomes, and one accepted end_turn command cannot cause the same displayed effect bundle to resolve twice. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs",
+      "In combat.tscn, enemy HP, block, status, intent rows, and combat feedback update in sync with the multi-effect runtime state so immediate effects appear on the accepted end_turn and delayed effects appear at the correct later timing boundary. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs",
+      "If a multi-effect enemy intent payload is invalid, incomplete, or cannot be scheduled deterministically, the shared runtime refuses execution or surfaces an explicit fallback, and combat state is left without partial mutation from that payload. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs"
+    ],
+    "test_strategy": [
+      "Add xUnit and GdUnit coverage for structured enemy intent effects, delayed next-turn scheduling, preview-to-resolution identity, and invalid-payload refusal on the shared runtime path."
+    ],
+    "taskmaster_id": 131,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.combat.enemy.intent.previewed",
+      "core.combat.enemy.action.resolved",
+      "core.combat.damage.resolved",
+      "core.combat.status.applied"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0131.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0232",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog",
+    "description": "Build on the closed relic wiring path so relics that can actually appear in M1 runs execute real configured gameplay effects instead of remaining placeholder-only identities.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "relic",
+      "effect-catalog",
+      "live-content"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "acceptance": [
+      "Each relic that can be obtained in a live M1 run from the starting relic set or reward pools resolves to a real configured gameplay effect with defined timing, parameters, and execution boundary; if any still-obtainable relic only exposes placeholder identity text and no executable effect, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "Combat-time relic effects that are implemented resolve only through the existing shared T99 combat trigger path, and implemented non-combat relic effects resolve only through the existing shared T110 run trigger boundaries; any scene-local trigger authority or duplicate trigger path fails acceptance. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Live M1 reward pools and starting relic sources do not silently expose partially implemented relics: every relic without a real governed effect is either removed from obtainable pools or surfaced through a deterministic unavailable-for-selection fallback. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "The live relic effect catalog is configuration-driven rather than scene-hardcoded: effect timing, target domain, and numeric parameters come from governed definitions that can be validated without relying on CombatScene or Main scene glue. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "When a live relic effect resolves at a combat or run boundary, the player-visible text and outcome attribution match the configured effect that actually executed; stale placeholder text or mismatched effect messaging fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "Promoting live relic rewards to real effects preserves the T88, T99, and T110 guarantees for uniqueness, ownership, and deterministic replay: duplicate ownership, duplicate trigger execution, or nondeterministic reward-path mutations fail acceptance. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "Acceptance includes xUnit coverage for catalog-backed relic effect definitions, live reward-pool eligibility, shared combat and run boundary execution, and player-visible outcome evidence for implemented relics; if any listed xUnit coverage area is missing, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs",
+      "Acceptance includes GdUnit coverage for live reward-pool eligibility, shared combat and run boundary execution, and player-visible outcome evidence for implemented relics; if any listed GdUnit coverage area is missing, acceptance fails. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd"
+    ],
+    "test_strategy": [
+      "Add xUnit and GdUnit coverage for catalog-backed relic effect definitions, live reward-pool eligibility, shared combat/run boundary execution, and player-visible outcome evidence for implemented relics."
+    ],
+    "taskmaster_id": 132,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.relic.granted",
+      "core.relic.equipped",
+      "core.combat.relic.triggered"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0132.json"
+    ],
+    "semantic_review_tier": "full"
+  },
+  {
+    "id": "GM-0233",
+    "story_id": "PRD-NEWROUGE-GAME-0001",
+    "title": "Add a pre-snapshot runtime modifier pipeline for reward entries",
+    "description": "Build a governed hook between reward-pool selection and reward-snapshot locking so relics, events, and other run-state systems can add, remove, or mutate reward entries for the next reward context without editing pool files.",
+    "status": "pending",
+    "priority": "P1",
+    "layer": "adapter",
+    "depends_on": [],
+    "adr_refs": [
+      "ADR-0010",
+      "ADR-0025",
+      "ADR-0032"
+    ],
+    "chapter_refs": [
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH10"
+    ],
+    "overlay_refs": [
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    ],
+    "labels": [
+      "newrouge",
+      "reward",
+      "runtime-modifier",
+      "snapshot"
+    ],
+    "owner": "gameplay",
+    "test_refs": [
+      "Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs",
+      "Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd"
+    ],
+    "acceptance": [
+      "A shared runtime producer such as a relic or event can register deterministic add, remove, or mutate reward-entry modifications for the next reward context before snapshot generation, and when that next context is first materialized those registered modifications are applied without editing the underlying reward pool file. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs",
+      "After reward_pool_id resolution and before reward snapshot lock, the pipeline applies the registered add, remove, and mutate operations to the entry list that becomes the next context snapshot, and the first reward-scene entry shows that modified result. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd",
+      "If a reward context is already locked in the shared reward owner path, later runtime modifiers leave that existing snapshot unchanged; a later still-unlocked context using the same reward pool id can still receive newly registered modifiers when it is first materialized. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "The runtime modifier pipeline preserves deterministic replay and reward lock semantics: identical shared run inputs produce the same modified reward snapshot, and re-entering the same reward context returns the unchanged locked modified snapshot. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd",
+      "The modifier pipeline uses the existing reward owner as the only reward snapshot path and does not create a parallel reward snapshot store, a scene-local patch path, or a direct UI-only mutation route. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs",
+      "Runtime modifiers are limited to governed add, remove, and mutate changes within the existing reward entry schema, and attempts to submit unsupported reward types or partially invalid entry payloads fail explicitly or are surfaced explicitly without partially mutating the target reward snapshot. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs",
+      "Acceptance requires xUnit coverage that verifies pre-snapshot modifier registration, deterministic next-context application, already-locked context immutability, and deterministic replay of modified reward snapshots; if any listed xUnit coverage area is missing, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs",
+      "Acceptance requires GdUnit coverage that verifies visible reward-scene results after modifier application, including first-entry display and locked re-entry display consistency; if any listed GdUnit coverage area is missing, acceptance fails. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd"
+    ],
+    "test_strategy": [
+      "Add xUnit and GdUnit coverage for pre-snapshot modifier registration, deterministic next-context application, already-locked context immutability, and visible reward-scene results after modifier application."
+    ],
+    "taskmaster_id": 133,
+    "taskmaster_exported": true,
+    "contractRefs": [
+      "core.reward.offer.presented",
+      "core.reward.offer.locked"
+    ],
+    "evidence_refs": [
+      "docs/gdd/ui-gdd-flow.md",
+      "logs/ci/<date>/task-0133.json"
+    ],
+    "semantic_review_tier": "full"
   }
 ]

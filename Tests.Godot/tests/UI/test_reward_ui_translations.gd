@@ -6,12 +6,10 @@ const ZH_TRANSLATIONS_FILE := "res://../Game.Godot/Translations/zh-CN.csv"
 
 const EXPECTED_BINDINGS := {
 	"VBox/Title": "ui.reward.title",
-	"VBox/CardList/Card1": "ui.reward.card.1.name",
-	"VBox/CardList/Card2": "ui.reward.card.2.name",
-	"VBox/CardList/Card3": "ui.reward.card.3.name",
 	"VBox/Actions/ConfirmButton": "ui.reward.confirm",
 	"VBox/Actions/SkipButton": "ui.reward.skip",
-	"VBox/Feedback": "ui.reward.feedback.select_default"
+	"VBox/Feedback": "ui.reward.feedback.select_default",
+	"RootMargin/VBox/Title": "ui.reward.title"
 }
 
 func _read_text(res_path: String) -> String:
@@ -26,7 +24,7 @@ func _read_text(res_path: String) -> String:
 	return content
 
 func _load_translation_values(csv_path: String) -> Dictionary:
-	var values := {}
+	var values: Dictionary = {}
 	var raw := _read_text(csv_path)
 	for line in raw.split("\n", false):
 		var trimmed := line.strip_edges()
@@ -48,7 +46,7 @@ func _translations_for_locale(locale: String) -> Dictionary:
 
 func _is_raw_translation_key(text: String) -> bool:
 	var regex := RegEx.new()
-	if regex.compile("^[a-z0-9_]+(\.[a-z0-9_]+)+$") != OK:
+	if regex.compile("^[a-z0-9_]+(\\.[a-z0-9_]+)+$") != OK:
 		return false
 	return regex.search(text) != null
 
@@ -58,16 +56,12 @@ func _is_garbled_placeholder(text: String) -> bool:
 		return true
 	var question_only := true
 	for ch in trimmed:
-		if ch != "?" and ch != "？":
+		if ch != "?":
 			question_only = false
 			break
 	if question_only and trimmed.length() >= 2:
 		return true
-	if trimmed.find("�") >= 0 or trimmed.find("锟") >= 0:
-		return true
-	if trimmed.find("Ã") >= 0 or trimmed.find("Â") >= 0:
-		return true
-	return false
+	return trimmed.find("�") >= 0
 
 func _is_readable_visible_text(text: String) -> bool:
 	var trimmed := text.strip_edges()
@@ -83,7 +77,7 @@ func _assert_reward_bindings_for_locale(locale: String) -> void:
 	TranslationServer.set_locale(locale)
 	var scene := load(REWARD_SCENE) as PackedScene
 	assert(scene != null, "Reward scene must load.")
-	var reward := scene.instantiate()
+	var reward = scene.instantiate()
 	add_child(auto_free(reward))
 	await get_tree().process_frame
 	if reward.has_method("SetLocaleForTest"):

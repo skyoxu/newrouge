@@ -77,6 +77,23 @@ Prerequisites:
 Why this is stable:
 - it is the recommended local serving entrypoint for `project-health`
 
+### `py -3 scripts/python/dev_cli.py generate-image --prompt-file <file> --out <png>`
+
+Use when:
+- a repo-local skill or workflow needs one stable OpenAI-compatible image generation bridge
+- you need `generate2dmap` or `generate2dsprite` to call the repository instead of a repo-specific wrapper
+- you want a deterministic `--dry-run` manifest before spending image-generation cost
+
+Prerequisites:
+- `py -3`
+- the OpenAI Python SDK available in the active Python environment for real image generation
+- `AIARTMIRROR_API_KEY` set for real requests, with optional `AIARTMIRROR_BASE_URL`, `AIARTMIRROR_IMAGE_MODEL`, and `AIARTMIRROR_IMAGE_GROUP`
+
+Why this is stable:
+- it is the repo-level image-generation bridge used by installed asset skills
+- it defaults to `gpt-image-2` and writes an explicit manifest contract for prompt, model, and output settings
+- `--dry-run` validates skill-to-repo wiring without calling the remote image endpoint
+
 ### `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
 
 Quick read variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`

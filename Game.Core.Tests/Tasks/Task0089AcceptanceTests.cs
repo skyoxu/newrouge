@@ -64,6 +64,22 @@ public sealed class Task0089AcceptanceTests
         source.Should().NotContain("VisibleEnemyStatFallbackPresenter", "visible stat fallback ownership is out of T89 scope.");
     }
 
+    // ACC:T89.7
+    [Fact]
+    public void ShouldUseEncounterRosterDataForLiveCombatInstantiation_WhenActConfigDefinesEncounterGroups()
+    {
+        var actConfigJson = ReadRepositoryText("Game.Core/Data/act1-config.json");
+
+        using var document = JsonDocument.Parse(actConfigJson);
+        document.RootElement.TryGetProperty("encounters", out var encountersNode).Should().BeTrue();
+        encountersNode.ValueKind.Should().Be(JsonValueKind.Object);
+        encountersNode.TryGetProperty("encounter_rosters", out var rostersNode).Should().BeTrue();
+        rostersNode.ValueKind.Should().Be(JsonValueKind.Object);
+        rostersNode.TryGetProperty("act1-slime-scout", out var startRosterNode).Should().BeTrue();
+        startRosterNode.ValueKind.Should().Be(JsonValueKind.Array);
+        startRosterNode.GetArrayLength().Should().BeGreaterThan(1, "encounter roster should be able to instantiate multiple runtime enemies.");
+    }
+
     // ACC:T89.6
     [Theory]
     [InlineData(TasksBackPath)]

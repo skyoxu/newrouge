@@ -112,8 +112,8 @@ public sealed class Task0090AcceptanceTests
         singleTarget.PerTargetDamage.Should().Be(9);
         singleTarget.StatusDetail.Should().Be("applied status.weak +2 to enemy_m1_slime");
         singleTarget.StatusDetail.Should().NotContain("all_enemies", "broader full-surface feedback reconciliation is out of T90 scope.");
-        aoe.TotalDamage.Should().Be(9);
-        aoe.PerTargetDamage.Should().Be(3);
+        aoe.TotalDamage.Should().Be(27);
+        aoe.PerTargetDamage.Should().Be(9);
         aoe.StatusDetail.Should().Be("applied status.weak +2 to all_enemies");
         aoe.StatusDetail.Should().NotContain("enemy_m1_slime", "AOE feedback should not collapse into a single-target ownership path.");
     }
@@ -147,8 +147,8 @@ public sealed class Task0090AcceptanceTests
         singleTarget.TotalDamage.Should().Be(12);
         singleTarget.StatusDetail.Should().Contain("enemy_m1_slime");
         singleTarget.StatusDetail.Should().NotContain("all_enemies", "single-target runtime must not fan out to AOE branch metadata.");
-        aoe.PerTargetDamage.Should().Be(4);
-        aoe.TotalDamage.Should().Be(12);
+        aoe.PerTargetDamage.Should().Be(12);
+        aoe.TotalDamage.Should().Be(36);
         aoe.StatusDetail.Should().Contain("all_enemies");
         aoe.StatusDetail.Should().NotContain("enemy_m1_slime", "AOE branch metadata must not leak single-target ownership.");
         singleTarget.Should().NotBeEquivalentTo(aoe, "T90 scope should not implicitly switch single-target runtime path into AOE ordering behavior.");

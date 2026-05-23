@@ -9,6 +9,7 @@ namespace Game.Godot.Scripts.Reward;
 /// <summary>
 /// Bridges Reward first-entry offer generation into the shared CardPool path.
 /// </summary>
+[GlobalClass]
 public partial class RewardOfferProvider : Node
 {
     private sealed record CardTextMetadata(string NameKey, string DescriptionKey, string Form);
@@ -27,7 +28,7 @@ public partial class RewardOfferProvider : Node
 
     private readonly OfferPreviewService _offerPreviewService = new();
 
-    public global::Godot.Collections.Array<global::Godot.Collections.Dictionary> BuildFirstEntryOfferForContext(
+    public global::Godot.Collections.Array BuildFirstEntryOfferForContext(
         int actId,
         string encounterType,
         int deterministicSeed,
@@ -36,7 +37,7 @@ public partial class RewardOfferProvider : Node
         string contextId = "",
         string rewardPoolId = "")
     {
-        var offers = new global::Godot.Collections.Array<global::Godot.Collections.Dictionary>();
+        var offers = new global::Godot.Collections.Array();
         if (pickCount <= 0)
         {
             return offers;

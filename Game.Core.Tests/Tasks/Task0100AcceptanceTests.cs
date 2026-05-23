@@ -288,7 +288,8 @@ public sealed class Task0100AcceptanceTests
             StatusStacks: 0,
             TargetEnemyId: string.Empty));
 
-        runtimeResult.TotalDamage.Should().Be(runtimeResult.PerTargetDamage * orderedTargets.Length);
+        runtimeResult.PerTargetDamage.Should().Be(24);
+        runtimeResult.TotalDamage.Should().Be(24 * orderedTargets.Length);
         return orderedTargets
             .Select(combatantId => (combatantId, runtimeResult.PerTargetDamage))
             .ToArray();

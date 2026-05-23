@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "reward_pools": [
+    {
+      "id": "reward.act1.normal_1",
+      "entries": {
+        "gold": { "amount": 30 },
+        "consumable": 0,
+        "relic": 0,
+        "common_card_choice": { "pool_id": "reward.act1.normal.common", "pick": 3 },
+        "rare_card_choice": 0,
+        "epic_card_choice": 0
+      }
+    },
+    {
+      "id": "reward.act1.event_1",
+      "entries": {
+        "gold": { "amount": 20 },
+        "consumable": { "item_id": "consumable.smoke_bomb", "name": "Smoke Bomb", "description": "Leave the next combat safely." },
+        "relic": 0,
+        "common_card_choice": { "pool_id": "reward.act1.event.common", "pick": 3 },
+        "rare_card_choice": 0,
+        "epic_card_choice": 0
+      }
+    },
+    {
+      "id": "reward.act1.normal_2",
+      "entries": {
+        "gold": { "amount": 35 },
+        "consumable": { "item_id": "consumable.iron_tonic", "name": "Iron Tonic", "description": "Gain block at the start of next combat." },
+        "relic": 0,
+        "common_card_choice": { "pool_id": "reward.act1.normal.common", "pick": 3 },
+        "rare_card_choice": { "pool_id": "reward.act1.normal.rare", "pick": 3 },
+        "epic_card_choice": 0
+      }
+    },
+    {
+      "id": "reward.act1.normal_3",
+      "entries": {
+        "gold": { "amount": 40 },
+        "consumable": 0,
+        "relic": { "relic_id": "relic.twilight_coin" },
+        "common_card_choice": { "pool_id": "reward.act1.normal.common", "pick": 3 },
+        "rare_card_choice": { "pool_id": "reward.act1.normal.rare", "pick": 3 },
+        "epic_card_choice": 0
+      }
+    },
+    {
+      "id": "reward.act1.boss_1",
+      "entries": {
+        "gold": { "amount": 100 },
+        "consumable": 0,
+        "relic": { "relic_id": "relic.raven_feather" },
+        "common_card_choice": 0,
+        "rare_card_choice": { "pool_id": "reward.act1.boss.rare", "pick": 3 },
+        "epic_card_choice": 0
+      }
+    }
+  ],
+  "card_choice_pools": [
+    {
+      "id": "reward.act1.normal.common",
+      "cards": [
+        "card.warrior.heavy_strike",
+        "card.warrior.iron_wave",
+        "card.warrior.cleave"
+      ]
+    },
+    {
+      "id": "reward.act1.event.common",
+      "cards": [
+        "card.warrior.iron_wave",
+        "card.warrior.cleave",
+        "card.warrior.heavy_strike"
+      ]
+    },
+    {
+      "id": "reward.act1.normal.rare",
+      "cards": [
+        "card.warrior.power_through"
+      ]
+    },
+    {
+      "id": "reward.act1.boss.rare",
+      "cards": [
+        "card.warrior.power_through"
+      ]
+    },
+    {
+      "id": "reward.act1.epic.placeholder",
+      "cards": []
+    }
+  ]
+}

@@ -1663,57 +1663,27 @@
         "id": 56,
         "title": "Audit JSONL validation + gate integration",
         "description": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
-        "details": "Story: PH14-BACKLOG-B4A\\nADR Refs: ADR-0019, ADR-0003, ADR-0005\\nChapters: CH02, CH03, CH07\\nTest Refs: logs/ci/<date>/task-0056.json, logs/ci/<date>/security-audit.jsonl, logs/ci/<date>/audit-validate/report.json, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs, Game.Core.Tests/Tasks/Task56AuditLogValidationTests.cs, Game.Core.Tests/Tasks/Task56QualityGateAuditIntegrationTests.cs\\nAcceptance: Provide scripts/python/validate_audit_logs.py to validate JSONL structure and required fields; invalid line fails with non-zero and actionable line-level reason. quality_gates.py optionally calls the validator and records executed/pass-fail result in task summary JSON; when enabled and validation fails, the gate exits non-zero.\\nTest Strategy: Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.\\nLabels: ci, security, audit, jsonl\\nOwner: architecture\\nLayer: ci\\n\n",
-        "testStrategy": "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.\\n\n",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
-          "54"
+          54
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0019",
-          "ADR-0003",
-          "ADR-0005"
-        ],
-        "archRefs": [
-          "CH02",
-          "CH03",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on Audit JSONL validation + gate integration.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1\nADR Refs: ADR-0019; ADR-0003; ADR-0005\nChapters: CH02; CH03; CH07\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs; Tests/CI/AuditLogs/ValidateAuditLogsTests.cs\nAcceptance: Provide scripts/python/validate_audit_logs.py that validates security-audit JSONL line by line for JSON structure and required fields; any invalid line must cause a non-zero exit and the validation result must not be reported as passed. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs; When validation fails, the output must include the exact failing line number and an actionable fix reason so the broken row can be repaired directly. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs; When audit validation is enabled, quality_gates.py must invoke the audit validator and persist the actual executed/pass_fail result into the task-0056 summary JSON. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs; If audit validation is enabled and validate_audit_logs.py fails, quality_gates.py must persist task-0056 summary with audit_validation.executed=true and pass_fail=\"fail\" before exiting non-zero to block downstream release flow. Refs: Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs, Tests/CI/AuditLogs/ValidateAuditLogsTests.cs; Provide valid and invalid JSONL fixtures and reproduce one passing run and one failing run on Windows. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs; When audit validation is disabled, quality_gates.py must not invoke validate_audit_logs.py and must write executed=false and pass_fail=\"skipped\" into task-0056 summary. Refs: Tests/CI/AuditLogs/ValidateAuditLogsTests.cs\nTest Strategy: Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.\nLabels: backlog; guardrails; newrouge; m1; ci\nOwner: architecture\nLayer: ci",
+        "testStrategy": "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 57,
         "title": "Traceability gate for ADR/Chapter/Overlay links",
         "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
-        "details": "Story: PH14-BACKLOG-B4B\\nADR Refs: ADR-0019, ADR-0003, ADR-0005\\nChapters: CH02, CH03, CH07\\nTest Refs: logs/ci/<date>/task-0057-traceability.json, Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md, docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\\nAcceptance: Build a dedicated traceability check that validates ADR refs, chapter refs, and overlay Test-Refs consistency; any mismatch must fail gate with machine-readable diffs.\\nTest Strategy: Run traceability check on Windows with one pass sample and one fail sample.\\nLabels: ci, traceability, audit\\nOwner: architecture\\nLayer: ci\\n",
-        "testStrategy": "Run traceability check on Windows with one pass sample and one fail sample.\\n",
+        "status": "pending",
         "priority": "medium",
         "dependencies": [
-          "56"
+          56
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0019",
-          "ADR-0003",
-          "ADR-0005"
-        ],
-        "archRefs": [
-          "CH02",
-          "CH03",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on traceability gate for ADR/Chapter/Overlay links.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1\nADR Refs: ADR-0019; ADR-0003; ADR-0005\nChapters: CH02; CH03; CH07\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs\nAcceptance: task-0057-traceability.json must record pass/fail results for ADR-0019, ADR-0003, and ADR-0005 trace checks. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; task-0057-traceability.json must record pass/fail results for chapter trace checks CH02, CH03, and CH07. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Overlay files _index.md, 08-Feature-Slice-M1-Warrior.md, and ACCEPTANCE_CHECKLIST.md must all contain searchable T56/T57 Test-Refs entries. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Any ADR/chapter/overlay trace mismatch must fail the traceability gate with non-zero exit and block downstream release steps. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Traceability output must include machine-readable missing/mismatch diff items with concrete file/key locations. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Traceability check must run on Windows and output platform=windows in task-0057-traceability.json. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; On Windows, the traceability check test strategy must run one pass sample and one fail sample: the pass sample exits 0 with no mismatch diff entries, and the fail sample exits non-zero with mismatch diff entries. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Task57TraceabilityGateTests.cs must cover ADR/chapter/overlay checks and assertions must match task-0057-traceability.json pass/fail and diff output. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Traceability gate must run as a dedicated CI job or dedicated command; if this gate is skipped, unrecognized, or not executed, pipeline must fail before release stages. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Gate must explicitly validate consistency across tasks.json ADR/chapter refs and overlay Test-Refs anchors (bidirectional): missing or mismatched links in either direction must fail with non-zero exit. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Traceability gate must validate full linkage consistency among task adr_refs/chapter_refs/overlay_refs and overlay 08 Test-Refs anchors (_index.md, 08-Feature-Slice-M1-Warrior.md, ACCEPTANCE_CHECKLIST.md); any missing, stale, or mismatched link must fail with non-zero exit and emit machine-readable diffs. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Validator must parse and compare these exact fields for Task 57: tasks.json master.adrRefs/chapterRefs/overlay, tasks_back.json and tasks_gameplay.json adr_refs/chapter_refs/overlay_refs, and overlay 08 Test-Refs entries; the consistency scope must include ADR refs, chapter refs, overlay refs, and Test-Refs path anchors. Any mismatch or missing item in this scope must fail gate with non-zero exit and JSON diff evidence. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; 必须校验 ADR / 章节 / Overlay Test-Refs 一致性：对比 tasks.json 与 tasks_back.json/tasks_gameplay.json 以及 overlay 文档中的 Test-Refs，任一缺失、错链、过期链接都必须判定失败并输出 diff。 Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; The dedicated validator must compare all required link domains declared by the task metadata against overlay documents, emit JSON diff entries for every missing/stale/mismatched link, and return non-zero when any diff exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs; Dedicated checker must validate ADR refs, chapter refs, and overlay Test-Refs links across task metadata and overlay documents, emit machine-readable diffs for every missing/stale/mismatched link, and return non-zero when any mismatch exists. Refs: Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs\nTest Strategy: Run traceability check on Windows with one pass sample and one fail sample.\nLabels: backlog; guardrails; newrouge; m1; ci; traceability\nOwner: architecture\nLayer: ci",
+        "testStrategy": "Run traceability check on Windows with one pass sample and one fail sample.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 58,
@@ -1745,55 +1715,25 @@
         "id": 59,
         "title": "Rewire M1 run entry from main menu to difficulty, character, and map",
         "description": "Replace the current demo-oriented new run route with the M1 player flow MainMenu -> DifficultySelect -> CharacterSelect -> Map.",
-        "details": "Story: UI-WIRING-M1-A1\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
-        "testStrategy": "Add one GdUnit integration smoke for the full run-entry path and one focused acceptance test asserting the real route target.\\n",
+        "status": "pending",
         "priority": "high",
         "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on rewiring the real M1 run entry flow from MainMenu to DifficultySelect, CharacterSelect, and Map.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd; Tests.Godot/tests/Tasks/test_task0014_acceptance.gd; Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs\nAcceptance: Activating New Run on MainMenu must route into the M1-only entry chain, opening DifficultySelect first; no demo-oriented entry target (including StartScreen/demo-only screens) may be reachable from this New Run action. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.1); Confirming a difficulty on DifficultySelect must navigate next to CharacterSelect, must not jump directly to Map or any demo-route target, and selecting a difficulty without confirmation must keep the current route on DifficultySelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.2); Confirming the available M1 character on CharacterSelect must navigate next to Map, must not pass through placeholder screens/StartScreen/demo-only screens, and changing character selection without confirmation must keep the current route on CharacterSelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.3); With autosave-present preconditions that trigger New Run overwrite confirmation, cancel must keep the current scene on MainMenu, confirm must enter the M1 entry chain at DifficultySelect (not StartScreen/demo-only targets), and Continue availability behavior must remain unchanged for the same preconditions. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd (anchor: ACC:T59.4) Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.4); A GdUnit integration test must assert route-history order MainMenu -> DifficultySelect -> CharacterSelect -> Map and final current scene = Map under the New Run flow. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.5)\nTest Strategy: Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that validates Task 59 acceptance semantics and route invariants.\nLabels: newrouge; m1; ui; flow; routing\nOwner: gameplay\nLayer: adapter",
+        "testStrategy": "Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that validates Task 59 acceptance semantics and route invariants.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 60,
         "title": "Implement map-to-node route ownership for the M1 playable loop",
         "description": "Wire the real map flow so selectable nodes route into Combat, Event, Shop, and Rest, and completed nodes return to Map.",
-        "details": "Story: UI-WIRING-M1-A2\\nADR Refs: ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07",
-        "testStrategy": "Add one route smoke that enters each node type from Map and asserts return-to-map behavior or explicit block reasons.\\n",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "59"
+          59
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on implementing real Map-owned node routing for the M1 loop.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd; Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; Tests.Godot/tests/Tasks/test_task0042_acceptance.gd; Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd\nAcceptance: From Map, currently selectable nodes must be actionable route entries so the player can choose a real node and start its owned flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; Selecting a reachable node from Map must enter the corresponding Combat, Event, Shop, or Rest flow, and completing that node flow must return the run to Map. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; Selecting an illegal or unreachable node must refuse the transition, keep the player on Map, show visible feedback, and leave run progression unchanged. Refs: Tests.Godot/tests/Tasks/test_task0042_acceptance.gd Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd; Route destination must be resolved from the selected map node's actual node type so Combat, Event, Shop, and Rest use the real map flow rather than placeholder or demo-only routing. Refs: Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; Map-owned route transitions must follow node-boundary transition rules so a completed node returns to Map, and any refused transition exposes an explicit block reason instead of silently changing state. Refs: Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; One Map route smoke must enter Combat, Event, Shop, and Rest node types from Map and verify each route reaches its owned node flow. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs; Every Map-started node route must either return to Map after the node flow completes or refuse entry with an explicit visible block reason while leaving run progression unchanged. Refs: Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs\nTest Strategy: Run a Windows Map route smoke covering Combat, Event, Shop, and Rest node transitions plus blocked unreachable choices.\nLabels: newrouge; m1; ui; map; routing\nOwner: gameplay\nLayer: adapter",
+        "testStrategy": "Run a Windows Map route smoke covering Combat, Event, Shop, and Rest node transitions plus blocked unreachable choices.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 61,
@@ -1885,30 +1825,14 @@
         "id": 64,
         "title": "Implement combat HUD explainability and command feedback",
         "description": "Complete the combat HUD so key player-facing results, invalid actions, and decision-critical state are visible without relying on engineering logs.",
-        "details": "Story: UI-WIRING-M1-A6\\nADR Refs: ADR-0010, ADR-0025, ADR-0032\\nChapters: CH05, CH06, CH07, CH10",
-        "testStrategy": "Add one combat feedback smoke and one no-state-mutation invalid-action smoke on Windows.\\n",
-        "priority": "medium",
+        "status": "pending",
+        "priority": "high",
         "dependencies": [
-          "60"
+          60
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 4,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on combat HUD explainability, invalid action feedback, and command-boundary-safe UI behavior.",
-        "updatedAt": null
+        "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd\nAcceptance: The combat HUD displays the current decision-critical combat state during play, including difficulty, player HP, energy, draw pile count, discard pile count, turn state, and enemy intent, and scene-binding tests assert rendered values (not only node existence). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; After each player command attempt, the combat HUD shows a short player-visible feedback message: for accepted commands it explains a concrete combat/resource result that matters to the player, and for rejected commands it explains the refusal reason, without requiring engineering logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; An invalid action leaves deterministic combat state unchanged, including HP, energy, pile counts, turn state, enemy intent, and selected command state, and still produces a short player-visible refusal message in the combat HUD. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; TurnControls command attempts propagate to the same combat HUD feedback channel, and tests assert concrete visible feedback text/state output instead of flow-only checks. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; On Windows, one accepted and one rejected command both produce visible HUD feedback entries in order as a smoke check. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; Hover preview and target inspection do not replace the latest visible command feedback in Combat HUD scene flow. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs; After an accepted command, at least one decision-critical HUD field changes consistently with the command outcome (for example energy), and the updated value is player-visible in combat scene bindings. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; For at least one accepted combat command, the combat HUD presents a result summary that is more specific than an accepted status alone and remains understandable without engineering logs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0064AcceptanceTests.cs\nTest Strategy: Run a Windows combat feedback smoke and an invalid-action no-mutation regression test.\nLabels: newrouge; m1; ui; combat; hud; explainability\nOwner: gameplay\nLayer: adapter",
+        "testStrategy": "Run a Windows combat feedback smoke and an invalid-action no-mutation regression test.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 65,
@@ -2093,89 +2017,41 @@
       {
         "id": 71,
         "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
-        "description": "Use this task strictly as the umbrella milestone over T80-T82 so combat deck lifecycle work is coordinated through existing deck/runtime capabilities without creating another parallel implementation track.",
-        "details": "Story: UI-WIRING-COMBAT-A1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: define and audit the integrated target state for draw pile, hand, discard pile, exhaust pile, turn-end discard, reshuffle, deterministic ordering, and HUD synchronization. Execution should land through T80, T81, and T82 plus the existing DeckService/CardState capabilities. This task is a milestone and integration checkpoint, not an additional implementation slice. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Verify that T80-T82 together satisfy the deck lifecycle milestone by reusing existing deck lifecycle and Combat scene suites for deterministic draw/discard/exhaust/reshuffle behavior and HUD synchronization on Windows.",
+        "description": "Track the combat deck-lifecycle umbrella milestone over T80-T82 so backlog and quality gates treat this work as an integration checkpoint over existing deck/runtime capabilities, not as a separate build track.",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "64"
+          92
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on real combat deck lifecycle and pile state transitions.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Tasks/test_task0033_acceptance.gd; Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Services/DeckServiceTests.cs; Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs\nAcceptance: T80 is accepted only when evidence from the shared DeckService/CardState runtime path shows deterministic combat deck-lifecycle outcomes for draw-pile-to-hand draw, turn-end discard into discard pile, exhaust-pile placement, and discard-to-draw reshuffle ordering. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; T81 is accepted only when Combat scene/HUD wiring remains synchronized with runtime transitions for draw, hand, discard, and exhaust states, and scene code is limited to binding/orchestration without taking scene-local deck-lifecycle ownership or duplicating lifecycle logic. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; T82 can close this umbrella milestone only when Windows-run evidence from existing deck-lifecycle and Combat scene suites aggregates T80 and T81 results; introducing a fourth parallel implementation path or standalone duplicate track fails acceptance. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; The aggregated T80-T82 milestone evidence must explicitly verify hand state, exhaust pile, turn-end discard behavior, deterministic ordering, and Windows-backed execution, in addition to draw/discard/reshuffle behavior and HUD synchronization. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; T71 remains milestone-only: validation must run through existing DeckService and Combat scene suites, and acceptance fails if a replacement verification lane or a fourth implementation path is used. Refs: Game.Core.Tests/Services/DeckServiceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; No implementation evidence under this task is valid unless workflow selection of T71 is recorded first, and the review evidence set must include that selection record before implementation evidence. Refs: Game.Core.Tests/Tasks/Task0071WorkflowSelectionEvidenceTests.cs\nTest Strategy: Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71.\nLabels: backlog; guardrails; newrouge; m1-plus; combat; deck; state\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 72,
         "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
-        "description": "Replace hard-coded Strike and Defend UI effects by wiring CombatScene to the existing card contracts, definitions, translations, costs, targeting rules, and effect resolution instead of introducing a second card model.",
-        "details": "Story: UI-WIRING-COMBAT-A2\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: consume existing card definition loading, localized card name/body, cost, card type, targeting rule, damage/block/status/exhaust effects, and visible effect summaries; do not fork a new card-definition path outside current contracts and data files. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Extend Combat scene binding and feedback suites to cover reuse of existing data-driven card definitions, localized text, effect summaries, and refusal paths.\n",
+        "description": "Track CombatScene binding to existing card definitions, translations, and effect contracts so data-driven card behavior does not fork into a second card model.",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "71"
+          71
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on data-driven combat card effects and card text binding.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd; Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd\nAcceptance: When CombatScene renders playable cards, each card button shows localized card name, cost, card type, and player-visible effect summary sourced from the existing card-definition and translation contracts, with no hard-coded scene text and no parallel card text/model source. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; Playing any damage, block, status, or mixed-effect card resolves strictly from its existing card definition (including cost payment, targeting rule, and exhaust/discard routing); for each effect component, only definition-allowed targets are mutated and non-target entities remain unchanged, and resulting HP, block, energy, and pile states match that definition. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; Each successful card play emits visible player-facing feedback that matches the resolved outcomes, including damage dealt, block gained, statuses applied, and whether the card was exhausted or discarded. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; If play is rejected due to insufficient energy, missing card definition, or invalid targeting rule, the UI presents refusal feedback and leaves HP, block, energy, and pile states unchanged. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; On the M1 combat surface, both en and zh-CN must render localized card name and localized card body/effect description for playable cards (including Strike and Defend) from the existing translation + card-definition contracts, with visible cost/type data from the same existing definition path; raw localization keys or placeholder text are not allowed. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; CombatScene reads card type from existing card definitions and uses that type for combat presentation and interaction behavior, without hard-coded fallback typing or any parallel card-description path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; When a status card is played, the defined status is applied to the correct target, and when an exhaust-effect card is played, that card is moved to exhaust (not discard) per the existing definition path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; CombatScene card loading uses only existing contracts and current card data files, and does not introduce any new card-definition path or new card-data file family. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; Legacy hard-coded Strike/Defend UI/effect wiring is removed from CombatScene runtime behavior: rendering, cost display, targeting, and resolution for Strike/Defend must come from the same existing card definition + localization + effect contracts path as all other cards, without card-specific hard-coded branches. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; Before workflow selection evidence marks Task 72 as selected, CombatScene implementation changes for this task must not be executable/claimed as delivered; once selected, implementation evidence must trace to the same existing card-definition + localization + effect-contract path (no parallel model path). Refs: Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs; For target-rule edge cases (self-only, enemy-only, and invalid selected target), CombatScene must apply or refuse strictly per existing card targeting contracts, with refusal feedback and unchanged state on invalid selection. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd Game.Core.Tests/Tasks/Task0072AcceptanceTests.cs\nTest Strategy: Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths.\nLabels: backlog; guardrails; newrouge; combat; cards; data; i18n\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 73,
         "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
-        "description": "Extend the current targeting and victory-routing skeleton so cards resolve against legal enemies, dead enemies leave the target set, and combat completion stays route-owned under multi-enemy runtime state.",
-        "details": "Story: UI-WIRING-COMBAT-A3\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on the current enemy list, selected target, HP/block/status, legal target validation, death checks, and victory routing; expand them to multi-enemy runtime state instead of replacing current route-owned completion flow. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Extend existing Combat and targeting flow suites to cover upgraded legal target resolution, invalid target refusal, enemy death handling, and route-owned combat completion.\n",
+        "description": "Track the upgrade from the current single-target or partial targeting skeleton to route-owned multi-enemy combat state, without replacing existing victory-route ownership.",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "72"
+          72
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on combat targeting, multi-enemy lifecycle, and victory routing.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd; Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd\nAcceptance: In multi-enemy runtime state, Combat must expose every living legal runtime enemy as a selectable and inspectable target entry, and each exposed enemy must surface name, HP, block, status, and intent. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Card play must enforce legal targeting: single-target cards resolve only when a living legal enemy is selected, and on success the effect applies to the selected enemy only; non-selected enemies must remain unchanged unless the card explicitly declares all-enemy/global behavior, while self-target and all-enemy cards resolve without selecting an enemy. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; If the selected target is invalid, dead, locked, or disconnected, card play must be rejected with visible feedback, and HP, energy, and pile state must stay unchanged. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd; When an enemy dies, it must be removed from the legal target set, and the remaining enemies must keep deterministic combat state with intent still visible. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; After all enemies are defeated, combat completion must remain route-owned and must transition to Reward or Map based on current node rules. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; Combat victory routing must not trigger while any legal living enemy remains; route-owned completion may execute only after the legal living enemy set becomes empty. Refs: Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; If the currently selected enemy becomes dead, disconnected, or otherwise illegal before card resolution, Combat must clear or deterministically retarget selection and must never resolve card effects against an illegal target. Refs: Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd\nTest Strategy: Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing.\nLabels: backlog; guardrails; newrouge; combat; targeting; enemy; routing\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 74,
@@ -2187,7 +2063,7 @@
         "dependencies": [
           "73"
         ],
-        "status": "done",
+        "status": "pending",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2209,62 +2085,30 @@
       {
         "id": 75,
         "title": "Wire existing status contracts and rules into visible combat status effects",
-        "description": "Expose the existing status and modifier foundations as visible player and enemy combat statuses such as strength, weak, vulnerable, block, poison, and temporary modifiers with deterministic turn updates, rather than creating a parallel status system.",
-        "details": "Story: UI-WIRING-COMBAT-A5\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: reuse status definitions, stacking/decay rules, damage/block modifiers, player/enemy status UI, status tooltips, and turn-boundary updates from existing contracts/services; avoid duplicating status semantics in UI-only code. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay through the existing status rule path.\n",
+        "description": "Track combat status visibility as wiring of existing status contracts and rule semantics into the player-facing combat runtime, rather than a duplicate status implementation.",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "72",
-          "73"
+          72,
+          73
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 5,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on combat status effects and buff/debuff visibility.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd; Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs\nAcceptance: When player or enemy statuses are active in combat (including strength, weak, vulnerable, block, poison, and temporary modifiers), each active status is shown on the combat surface with a readable label, visible stack/value, and decision-useful tooltip/detail text, and no active status is omitted. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Given the same initial combat state and action sequence, damage and mitigation results are identical across repeated runs, and contributions from strength, weak, vulnerable, block-like effects, poison ticks, and temporary modifiers come from the existing status/modifier rule path. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; At turn boundaries, status apply/stack/decay/expire changes are reflected in HUD/feedback within the same turn flow, so the current status state is fully readable from UI feedback without log inspection. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd; If combat encounters an invalid or expired status reference, the invalid effect is rejected, visible failure feedback is emitted, and combat state remains non-corrupted and playable. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd; On M1 combat surfaces, status-related UI text renders correctly in en and zh-CN and never exposes raw localization keys. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Status rendering, damage/mitigation resolution, and turn-boundary decay all execute through the shared existing status contracts/services path, with no UI-local rule path used for those outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd; UI-only modules do not define parallel status semantics for stacking, decay, or modifier computation; presence of a parallel UI status-rule path fails this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Implementation evidence for T75 is valid only if workflow-selection evidence explicitly selecting T75 appears first; if selection evidence is missing or appears after implementation evidence, acceptance fails. Refs: Game.Core.Tests/Tasks/Task0075WorkflowSelectionEvidenceTests.cs\nTest Strategy: Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay.\nLabels: backlog; guardrails; newrouge; combat; status-effects; buffs; debuffs\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 76,
         "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
         "description": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
-        "details": "Story: UI-WIRING-COMBAT-A6-PHASE1\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: reuse the current intent surface and bind it to enemy AI definitions, named RNG stream behavior selection, and visible intent preview. Do not widen this task to enemy action resolution or no-repeat guardrails; those move to a follow-up task so Chapter 6 can validate deterministic intent generation separately from enemy turn execution. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path.\n",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "73",
-          "75"
+          73,
+          75
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on enemy intent generation and preview binding while deferring enemy action resolution and no-repeat guardrails.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs\nAcceptance: Before any player action, the existing intent surface renders enemy intent generated from enemy AI behavior definitions as the single source (no fixed/hardcoded fallback preview), and the rendered intent can express attack, block, buff, debuff, and mixed intent outputs. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Enemy behavior selection for intent preview uses the named combat RNG stream, while UI-only interactions (hover, drag preview, localization refresh) leave that stream state unchanged; this task covers intent generation/preview only and does not execute enemy action resolution or no-repeat guardrail enforcement. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; With the same deterministic inputs, the upgraded intent path produces repeatable enemy intent output, and this determinism is verifiable without invoking enemy turn execution or action-resolution paths. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; T76 scope is limited to enemy intent generation and preview binding; enemy action resolution and no-repeat guardrail enforcement are explicitly out of scope for T76 acceptance paths. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; The upgrade reuses the existing intent surface nodes and binding points; no parallel replacement intent surface is introduced in this task. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Under deterministic seed/inputs, enemy intent preview generated from AI behavior definitions remains repeatable and visible on existing intent surfaces, and UI-only operations do not advance the named combat RNG stream. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd\nTest Strategy: Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path.\nLabels: backlog; guardrails; newrouge; combat; enemy-ai; intent; rng\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 77,
@@ -2724,35 +2568,15 @@
       {
         "id": 92,
         "title": "Promote architecture boundary tests into the main task line for Core-versus-Godot protection",
-        "description": "Add executable architecture boundary tests that fail whenever Game.Core depends on Godot APIs so the upcoming runtime expansion work cannot erode the Core versus adapter boundary.",
-        "details": "Story: M1-GUARDRAIL-ARCH-BOUNDARY\nADR Refs: ADR-0005, ADR-0007, ADR-0018, ADR-0024\nChapters: CH01, CH05, CH06, CH07\nScope: promote the existing architecture-boundary backlog item into an executable mainline task, using deterministic tests and scripts to prove that Game.Core stays free of Godot dependencies while adapters remain the allowed integration boundary. Keep this as a guardrail task that protects upcoming runtime and gameplay expansion. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Run the architecture boundary check and xUnit coverage for one pass case, and verify an intentional violation would fail on a temp branch or fixture.\n",
-        "priority": "high",
+        "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
+        "status": "pending",
+        "priority": "medium",
         "dependencies": [
-          "57",
-          "96",
-          "99",
-          "101"
+          57
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0005",
-          "ADR-0007",
-          "ADR-0018",
-          "ADR-0024"
-        ],
-        "archRefs": [
-          "CH01",
-          "CH05",
-          "CH06",
-          "CH07"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on executable architecture boundary tests that keep Game.Core free of Godot dependencies.",
-        "updatedAt": null
+        "details": "Story: BACKLOG-M1\nADR Refs: ADR-0007; ADR-0005; ADR-0024; ADR-0018\nChapters: CH01; CH05; CH06; CH07\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs; Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs; Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs\nAcceptance: T92 is promoted from backlog documentation into the executable main task line as a runnable guardrail that the active repository workflow can execute. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs; The repository exposes an executable architecture boundary check that deterministically fails when Game.Core introduces any dependency on Godot APIs or Godot assemblies. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs; The guardrail enforces that Game.Core stays free of Godot dependencies while adapter-layer integration points remain the only allowed boundary for Godot interaction. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs; A passing verification scenario runs the architecture boundary check together with the required xUnit coverage in one pass and records the passing result as deterministic evidence for this task. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs; An isolated temp branch or fixture with an intentional Game.Core-to-Godot dependency causes the guardrail verification to fail deterministically, proving the violating case is blocked. Refs: Game.Core.Tests/Tasks/Task0092AcceptanceTests.cs Game.Core.Tests/Tasks/Task0067AcceptanceTests.cs; If T92 has not been selected by the workflow, implementation entry refuses to run, leaves implementation and code state unchanged, and records workflow-selection evidence before any implementation evidence. Refs: Game.Core.Tests/Tasks/Task0092WorkflowSelectionEvidenceTests.cs\nTest Strategy: Introduce a small intentional violation in a temp branch to verify the test catches it.\nLabels: backlog; guardrails; newrouge; m1; ci\nOwner: architecture\nLayer: ci",
+        "testStrategy": "Introduce a small intentional violation in a temp branch to verify the test catches it.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 93,
@@ -3118,48 +2942,14 @@
         "id": 105,
         "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
         "description": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
-        "details": "Story: UI-WIRING-COMBAT-A6-PHASE2\nADR Refs: ADR-0010, ADR-0025, ADR-0032\nChapters: CH05, CH06, CH07, CH10\nScope: build on T76 and route enemy turn action resolution, status-aware choices, and no-repeat guardrails through the displayed intent path. Keep the current intent surface and avoid a second enemy-turn execution path. Do not execute implementation until this task is selected by workflow.",
-        "testStrategy": "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path.\n",
+        "status": "pending",
         "priority": "high",
         "dependencies": [
-          "76"
+          76
         ],
-        "status": "done",
-        "subtasks": [],
-        "adrRefs": [
-          "ADR-0010",
-          "ADR-0025",
-          "ADR-0032"
-        ],
-        "archRefs": [
-          "CH05",
-          "CH06",
-          "CH07",
-          "CH10"
-        ],
-        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-        "complexity": 3,
-        "recommendedSubtasks": 0,
-        "expansionPrompt": "Break down this task with a focus on enemy action resolution and no-repeat guardrails on top of the displayed intent path.",
-        "updatedAt": null,
-        "test_refs": [
-          "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs"
-        ],
-        "acceptance": [
-          "When the player ends the turn, the enemy action shown by the current intent preview resolves exactly once through the shared runtime path, and the next-turn intent is generated deterministically afterward. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "Enemy turn resolution is one-shot per accepted end_turn command: after one accepted end_turn, enemy intent effects do not replay unless a new end_turn command is explicitly issued. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "Only the shared runtime enemy-turn path may mutate combat state; any scene-local enemy-turn path invocation must be a no-op for combat state mutation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "Displayed intent resolution uses the shared runtime path and preserves intent-to-resolution identity (no pre-resolution intent substitution). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "At end_turn acceptance time, the runtime executes the exact enemy intent instance currently displayed to the player (same intent payload), and does not re-roll or swap to a different intent before applying effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
-          "If T105 has not been selected by workflow, no T105 implementation changes are applied and task-related state remains unchanged. Refs: Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs",
-          "Status-aware choice semantics are observable: changing relevant status inputs changes enemy intent resolution outcome according to runtime rules, while identical inputs keep deterministic outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd"
-        ],
-        "evidence_refs": [
-          "docs/gdd/t1-t69-m1-wiring-audit.md",
-          "logs/ci/<date>/task-0105.json",
-          "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
-        ]
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs\nAcceptance: When the player ends the turn, the enemy action shown by the current intent preview resolves exactly once through the shared runtime path, and the next-turn intent is generated deterministically afterward. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Enemy turn resolution is one-shot per accepted end_turn command: after one accepted end_turn, enemy intent effects do not replay unless a new end_turn command is explicitly issued. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Only the shared runtime enemy-turn path may mutate combat state; any scene-local enemy-turn path invocation must be a no-op for combat state mutation. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Displayed intent resolution uses the shared runtime path and preserves intent-to-resolution identity (no pre-resolution intent substitution). Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; At end_turn acceptance time, the runtime executes the exact enemy intent instance currently displayed to the player (same intent payload), and does not re-roll or swap to a different intent before applying effects. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; If T105 has not been selected by workflow, no T105 implementation changes are applied and task-related state remains unchanged. Refs: Game.Core.Tests/Tasks/Task0105WorkflowSelectionEvidenceTests.cs; Status-aware choice semantics are observable: changing relevant status inputs changes enemy intent resolution outcome according to runtime rules, while identical inputs keep deterministic outcomes. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd\nTest Strategy: Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path.\nLabels: backlog; guardrails; newrouge; combat; enemy-intent; resolution\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       },
       {
         "id": 106,
@@ -3768,7 +3558,7 @@
           98,
           103
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3796,7 +3586,7 @@
           74,
           83
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3827,7 +3617,7 @@
           95,
           96
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3858,7 +3648,7 @@
           108,
           116
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3891,7 +3681,7 @@
           101,
           104
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3920,7 +3710,7 @@
           114,
           115
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3951,7 +3741,7 @@
           111,
           112
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3980,7 +3770,7 @@
           109,
           113
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
         "adrRefs": [
@@ -3995,19 +3785,55 @@
           "CH07",
           "CH10"
         ]
+      },
+      {
+        "id": 131,
+        "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews",
+        "description": "Build on T76 and T105 so a displayed enemy intent can execute multiple structured effects across current-turn and next-turn timing without falling back to description-only parsing.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [
+          76,
+          105
+        ],
+        "details": "Story: BACKLOG-M1-COMBAT\nADR Refs: ADR-0010; ADR-0021; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs\nAcceptance: A displayed enemy intent can resolve more than one structured runtime effect for the same enemy on a single accepted end_turn path, including at minimum attack+block and attack+status combinations, without creating a second enemy-turn execution lane. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs; Delayed next-turn timing is supported for enemy intent effects: when the displayed intent includes a next-turn block effect, current-turn damage resolves on the accepted end_turn and the scheduled block is applied on the next governed enemy-turn timing boundary rather than immediately or never. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs; The exact displayed T76 intent instance remains the resolution source of truth: the structured effect bundle executed by runtime must match the currently displayed preview payload, with no re-roll, substitution, or description-only fallback before execution. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs; Multi-effect enemy intent execution is deterministic and one-shot: identical inputs produce identical ordered effect outcomes, and the same displayed effect bundle cannot replay twice from one accepted end_turn command. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs; combat.tscn surfaces remain synchronized with multi-effect runtime state: enemy HP, block, status, intent rows, and combat feedback all reflect immediate and delayed enemy intent effects at the correct timing boundary. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs; If an enemy intent multi-effect payload is invalid, partial, or cannot be scheduled deterministically, the shared runtime must refuse or surface explicit fallback without partially mutating combat state. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Game.Core.Tests/Tasks/Task0131AcceptanceTests.cs\nTest Strategy: Add xUnit and GdUnit coverage for structured enemy intent effects, delayed next-turn scheduling, preview-to-resolution identity, and invalid-payload refusal on the shared runtime path.\nLabels: backlog; guardrails; newrouge; combat; enemy-intent; resolution; multi-effect\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Add xUnit and GdUnit coverage for structured enemy intent effects, delayed next-turn scheduling, preview-to-resolution identity, and invalid-payload refusal on the shared runtime path.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      },
+      {
+        "id": 132,
+        "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog",
+        "description": "Build on the closed relic wiring path so relics that can actually appear in M1 runs execute real configured gameplay effects instead of remaining placeholder-only identities.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [],
+        "details": "Story: BACKLOG-M1-RELIC\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs; Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd; Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd\nAcceptance: Every relic that can be obtained through live M1 starting state or reward pools is governed by an explicit effect definition with stable timing, parameters, and execution boundary; a relic remaining obtainable with placeholder-only identity text and no real effect fails acceptance. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs; Implemented combat-time relic effects execute through the existing T99 shared combat trigger path, and implemented non-combat relic effects execute through the existing T110 shared run trigger boundaries; introducing a per-scene or duplicate trigger authority fails acceptance. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; Live reward pools and starting relic sources do not expose partially implemented relics silently: any relic without a real governed effect is either removed from live obtainable pools or surfaced through an explicit deterministic fallback that marks it unavailable for reward selection. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; The relic effect catalog is configuration-driven rather than hardcoded per scene: effect timing, target domain, and numeric parameters are loaded from governed definitions that can be validated independently of CombatScene or Main scene glue. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs; Player-visible feedback remains aligned with the implemented relic effect definitions: when a live relic effect resolves on a combat or run boundary, the observable surface text and outcome attribution correspond to the configured effect rather than stale placeholder description text. Refs: Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs; Relic uniqueness, ownership, and deterministic replay guarantees established by T88, T99, and T110 remain intact after live effect promotion; enabling real relic effects must not introduce duplicate ownership, duplicate triggers, or nondeterministic reward-path mutations. Refs: Game.Core.Tests/Tasks/Task0132AcceptanceTests.cs\nTest Strategy: Add xUnit and GdUnit coverage for catalog-backed relic effect definitions, live reward-pool eligibility, shared combat/run boundary execution, and player-visible outcome evidence for implemented relics.\nLabels: backlog; taskmaster; taskmaster-view; relic; effect-catalog; live-content\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Add xUnit and GdUnit coverage for catalog-backed relic effect definitions, live reward-pool eligibility, shared combat/run boundary execution, and player-visible outcome evidence for implemented relics.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      },
+      {
+        "id": 133,
+        "title": "Add a pre-snapshot runtime modifier pipeline for reward entries",
+        "description": "Build a governed hook between reward-pool selection and reward-snapshot locking so relics, events, and other run-state systems can add, remove, or mutate reward entries for the next reward context without editing pool files.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [],
+        "details": "Story: BACKLOG-M1-REWARD\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs; Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd\nAcceptance: A shared runtime producer such as a relic or event can register deterministic reward-entry modifications for the next reward context before snapshot generation, and those modifications are applied when that next context is first materialized without editing the underlying reward pool file. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs; The modifier pipeline operates before reward snapshot lock and after reward_pool_id resolution: add, remove, and mutate operations are applied to the entry list used to build the context snapshot, and reward scenes display the modified result on first entry. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_m1_visible_text_flow.gd; Already-locked reward contexts remain immutable: once a context snapshot exists in the shared reward owner path, later runtime modifiers do not retroactively change that context, while a later untouched context using the same reward pool id may still receive newly registered modifiers. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd; The runtime modifier pipeline preserves deterministic replay and reward lock semantics: identical shared run inputs produce identical modified reward snapshots, and re-entering the same reward context keeps the locked modified snapshot unchanged. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs Tests.Godot/tests/Integration/test_reward_offer_lock_persist_reenter.gd; The pipeline reuses the existing reward owner and does not create a parallel reward snapshot store, scene-local patch path, or direct UI-only mutation route. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs; Out of scope changes are refused or surfaced explicitly: runtime modifiers may only add, remove, or mutate governed reward entries within the existing reward entry schema, and attempts to introduce unsupported reward types or partially invalid entry payloads fail without partially mutating the target reward snapshot. Refs: Game.Core.Tests/Tasks/Task0133AcceptanceTests.cs\nTest Strategy: Add xUnit and GdUnit coverage for pre-snapshot modifier registration, deterministic next-context application, already-locked context immutability, and visible reward-scene results after modifier application.\nLabels: backlog; taskmaster; taskmaster-view; reward; runtime-modifier; snapshot\nOwner: architecture\nLayer: adapter",
+        "testStrategy": "Add xUnit and GdUnit coverage for pre-snapshot modifier registration, deterministic next-context application, already-locked context immutability, and visible reward-scene results after modifier application.",
+        "overlay": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
       }
     ],
     "metadata": {
       "created": "2026-01-29T14:10:45.399Z",
-      "updated": "2026-04-20T04:55:17.627522+00:00",
+      "updated": "2026-05-18T00:00:00+08:00",
       "description": "Tasks for master context",
       "version": "",
       "tags": [
         "master"
       ],
-      "taskCount": 81,
+      "taskCount": 84,
       "completedCount": 58,
-      "lastModified": "2026-04-20T04:55:17.627522+00:00"
+      "lastModified": "2026-05-18T00:00:00+08:00"
     }
   }
 }

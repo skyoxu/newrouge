@@ -65,7 +65,7 @@ public sealed class DeckServiceHandLimitTests
 
     // ACC:T33.9
     [Fact]
-    public void ShouldDiscardLowestInstanceIds_WhenDrawCausesHandOverflow()
+    public void ShouldSendOnlyNewlyDrawnOverflowCardsToDiscard_WhenHandIsAlreadyAtLimit()
     {
         var sut = CreateSut();
         var initialSnapshot = DeckSnapshot.Create(
@@ -76,8 +76,8 @@ public sealed class DeckServiceHandLimitTests
 
         var finalSnapshot = sut.Draw(initialSnapshot, 2);
 
-        finalSnapshot.Hand.Should().Equal("h-003", "h-004", "h-005", "h-006", "h-007", "h-008", "h-009", "h-010", "h-011", "h-012");
-        finalSnapshot.DiscardPile.Should().Equal("h-001", "h-002");
+        finalSnapshot.Hand.Should().Equal("h-001", "h-002", "h-003", "h-004", "h-005", "h-006", "h-007", "h-008", "h-009", "h-010");
+        finalSnapshot.DiscardPile.Should().Equal("h-011", "h-012");
         finalSnapshot.DrawPile.Should().BeEmpty();
     }
 

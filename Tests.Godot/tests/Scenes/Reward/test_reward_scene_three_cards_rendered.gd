@@ -85,10 +85,10 @@ func _extract_offer_ids(snapshot: Dictionary) -> Array[String]:
 			ids.append(card_id.strip_edges())
 	return ids
 
-func _resolve_reward_context_id(main: Control, node_id: String, node_type: String, floor: int) -> String:
+func _resolve_reward_context_id(main: Control, node_id: String, node_type: String, floor_index: int) -> String:
 	if main == null or not main.has_method("_build_reward_context_id"):
 		return ""
-	var context_variant = main.call("_build_reward_context_id", node_id, node_type, floor)
+	var context_variant = main.call("_build_reward_context_id", node_id, node_type, floor_index)
 	return str(context_variant).strip_edges()
 
 func _inject_invalid_shared_pool_offer(main: Control, context_id: String) -> void:
@@ -157,9 +157,23 @@ func test_reward_scene_uses_shared_pool_offer_on_first_entry_route() -> void:
 	var card_list := reward.get_node_or_null("VBox/CardList")
 	assert_object(card_list).is_not_null()
 	assert_int(card_list.get_child_count()).is_greater(2)
-	var card1_text := str(card_list.get_child(0).text)
+	var card1_button := reward.get_node_or_null("VBox/CardList/CardSlot1/Body/ArtButton")
+	var card1_name := reward.get_node_or_null("VBox/CardList/CardSlot1/Body/Name")
+	var card1_description := reward.get_node_or_null("VBox/CardList/CardSlot1/Body/Description")
+	var card1_art := reward.get_node_or_null("VBox/CardList/CardSlot1/Body/ArtButton")
+	assert_object(card1_button).is_not_null()
+	assert_object(card1_name).is_not_null()
+	assert_object(card1_description).is_not_null()
+	assert_object(card1_art).is_not_null()
+	var card1_text := str(card1_name.text)
 	assert_str(card1_text).is_not_equal("Reward Card 1")
 	assert_bool(card1_text.begins_with("ui.reward.card")).is_false()
+	assert_bool(str(card1_description.text).begins_with("card.")).is_false()
+	assert_object(card1_art.texture_normal).is_not_null()
+	card1_button.emit_signal("pressed")
+	assert_int(int(reward.call("GetSelectedIndexForTest"))).is_equal(0)
+	assert_bool(bool(reward.call("CanConfirmSelectedForTest", 0))).is_true()
+	assert_bool(bool(reward.call("IsLockedForTest"))).is_false()
 
 # acceptance: ACC:T128.4
 func test_reward_scene_shows_fallback_for_invalid_shared_pool_snapshot() -> void:
