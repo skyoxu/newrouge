@@ -23,7 +23,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.1
     [Fact]
     [Trait("acceptance", "ACC:T133.1")]
-    public void ShouldAllowPreSnapshotModifierRegistrationWithinGovernedSchema()
+    public void ShouldAllowPreSnapshotModifierRegistration_WhenModifierSchemaIsGoverned()
     {
         AssertAcceptanceRefsContain(0, ThisTestRef);
         var pipeline = new RewardEntryModifierPipeline();
@@ -48,7 +48,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.2
     [Fact]
     [Trait("acceptance", "ACC:T133.2")]
-    public void ShouldApplyRegisteredModifiersToNextContextSnapshotBeforeLock()
+    public void ShouldApplyRegisteredModifiersToNextContextSnapshot_WhenSnapshotIsUnlocked()
     {
         AssertAcceptanceRefsContain(1, ThisTestRef, VisibleTextFlowRef);
         var result = new RewardEntryModifierPipeline().Apply(CreateBaselineEntries(), new[]
@@ -67,7 +67,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.3
     [Fact]
     [Trait("acceptance", "ACC:T133.3")]
-    public void ShouldKeepLockedSnapshotImmutableAndRequireLaterContextToStartFromFreshBaseline()
+    public void ShouldKeepLockedSnapshotImmutable_WhenLaterModifiersTargetFreshContexts()
     {
         AssertAcceptanceRefsContain(2, ThisTestRef, RewardLockRef);
         var pipeline = new RewardEntryModifierPipeline();
@@ -96,7 +96,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.4
     [Fact]
     [Trait("acceptance", "ACC:T133.4")]
-    public void ShouldReplayDeterministicallyForIdenticalInputs()
+    public void ShouldReplayDeterministically_WhenInputsAreIdentical()
     {
         AssertAcceptanceRefsContain(3, ThisTestRef, RewardLockRef);
         var modifiers = new[]
@@ -115,7 +115,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.5
     [Fact]
     [Trait("acceptance", "ACC:T133.5")]
-    public void ShouldConfineModifierEffectsToTheirTargetedNextContextOnly()
+    public void ShouldConfineModifierEffectsToTheirTargetedNextContextOnly_WhenLaterContextsHaveNoRegistration()
     {
         AssertAcceptanceRefsContain(4, ThisTestRef);
         var baseline = CreateBaselineEntries();
@@ -136,7 +136,7 @@ public sealed class Task0133AcceptanceTests
     // acceptance anchor: ACC:T133.6
     [Fact]
     [Trait("acceptance", "ACC:T133.6")]
-    public void ShouldRejectUnsupportedOrPartiallyInvalidModifiersWithoutPartialMutation()
+    public void ShouldRejectUnsupportedOrPartiallyInvalidModifiersWithoutPartialMutation_WhenPayloadIsInvalid()
     {
         AssertAcceptanceRefsContain(5, ThisTestRef);
         var baseline = CreateBaselineEntries();
