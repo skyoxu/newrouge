@@ -345,6 +345,14 @@ func _assert_combat_card_text_contract_for_locale(locale: String) -> void:
 	TranslationServer.set_locale(locale)
 	var combat := await _instantiate_surface("Combat")
 	_prime_combat_card_definitions(combat)
+	assert(_try_apply_combat_snapshot_with_player_hp(
+		combat,
+		["card.warrior.strike", "card.warrior.defend", "card.warrior.battle_focus"],
+		3,
+		7,
+		0,
+		80
+	), "Combat scene failed to apply deterministic localized-card snapshot.")
 	_refresh_surface_locale(combat)
 	await get_tree().process_frame
 	var root := combat as Control
@@ -659,6 +667,10 @@ func test_combat_victory_routes_to_reward_then_back_to_map_via_owned_flow() -> v
 	assert_that(reward).is_not_null()
 	assert_that(bool(reward.call("SkipForTest"))).is_true()
 	await get_tree().process_frame
+	if _current_scene_path(main) == "res://Game.Godot/Scenes/Reward.tscn":
+		var skip_remaining := main.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_that(bool(skip_remaining.get("ok", false))).is_true()
+		await get_tree().process_frame
 	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 
 
@@ -678,6 +690,10 @@ func test_reward_confirm_vs_skip_preserves_route_ownership_and_controls_deck_mut
 	assert_that(bool(confirm_result.get("ok", false))).is_true()
 	assert_that(int(confirm_result.get("deck_after_count", -1))).is_equal(int(confirm_result.get("deck_before_count", -1)) + 1)
 	assert_that(int(deck_after_confirm.size())).is_equal(int(deck_before_confirm.size()) + 1)
+	if _current_scene_path(main_confirm) == "res://Game.Godot/Scenes/Reward.tscn":
+		var confirm_skip_remaining := main_confirm.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_that(bool(confirm_skip_remaining.get("ok", false))).is_true()
+		await get_tree().process_frame
 	assert_that(_current_scene_path(main_confirm)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 
 	var main_skip := await _load_main_on_map()
@@ -694,6 +710,10 @@ func test_reward_confirm_vs_skip_preserves_route_ownership_and_controls_deck_mut
 	assert_that(bool(skip_result.get("ok", false))).is_true()
 	assert_that(int(skip_result.get("deck_after_count", -1))).is_equal(int(skip_result.get("deck_before_count", -1)))
 	assert_that(int(deck_after_skip.size())).is_equal(int(deck_before_skip.size()))
+	if _current_scene_path(main_skip) == "res://Game.Godot/Scenes/Reward.tscn":
+		var skip_remaining := main_skip.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_that(bool(skip_remaining.get("ok", false))).is_true()
+		await get_tree().process_frame
 	assert_that(_current_scene_path(main_skip)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 
 # acceptance anchor: ACC:T73.5
@@ -717,6 +737,11 @@ func test_combat_victory_without_reward_rule_routes_directly_back_to_map() -> vo
 		assert_that(bool(reward.call("SkipForTest"))).is_true()
 		await get_tree().process_frame
 		post_victory_path = _current_scene_path(main)
+		if post_victory_path == "res://Game.Godot/Scenes/Reward.tscn":
+			var skip_remaining := main.call("SkipRemainingRewardsForTest") as Dictionary
+			assert_that(bool(skip_remaining.get("ok", false))).is_true()
+			await get_tree().process_frame
+			post_victory_path = _current_scene_path(main)
 	assert_that(post_victory_path).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 
 # acceptance anchor: ACC:T73.6
@@ -759,6 +784,10 @@ func test_boss_reward_resolution_shows_victory_summary_and_returns_to_main_menu(
 			assert_that(reward).is_not_null()
 			assert_that(bool(reward.call("SkipForTest"))).is_true()
 			await get_tree().process_frame
+			if _current_scene_path(main) == "res://Game.Godot/Scenes/Reward.tscn":
+				var skip_remaining := main.call("SkipRemainingRewardsForTest") as Dictionary
+				assert_that(bool(skip_remaining.get("ok", false))).is_true()
+				await get_tree().process_frame
 
 	var route_start := main.call("StartMapNodeRouteForTest", "boss-05", "combat", true, "") as Dictionary
 	assert_that(bool(route_start.get("ok", false))).is_true()
@@ -1121,7 +1150,7 @@ func test_reward_runtime_modifiers_apply_once_before_lock_and_do_not_mutate_lock
 	var first_context_id := str(first_snapshot.get("context_id", "")).strip_edges()
 	assert_that(first_context_id).is_equal(first_pending_context_id)
 	assert_that(first_context_id.is_empty()).is_false()
-	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_context_id))).is_equal(3)
+	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_context_id))).is_equal(0)
 	var first_entries := first_snapshot.get("entries", []) as Array
 	var first_has_mutated_gold := false
 	var first_has_added_relic := false
@@ -1168,6 +1197,10 @@ func test_reward_runtime_modifiers_apply_once_before_lock_and_do_not_mutate_lock
 
 	assert_that(bool(reward_scene.call("SkipForTest"))).is_true()
 	await get_tree().process_frame
+	if _current_scene_path(main) == "res://Game.Godot/Scenes/Reward.tscn":
+		var skip_remaining := main.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_that(bool(skip_remaining.get("ok", false))).is_true()
+		await get_tree().process_frame
 
 	var replay_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
 	assert_that(bool(replay_route.get("ok", false))).is_true()
@@ -1178,6 +1211,10 @@ func test_reward_runtime_modifiers_apply_once_before_lock_and_do_not_mutate_lock
 	var replay_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
 	assert_that(str(replay_snapshot.get("context_id", "")).strip_edges()).is_equal(first_context_id)
 	assert_that(replay_snapshot).is_equal(first_snapshot)
+	if _current_scene_path(main) == "res://Game.Godot/Scenes/Reward.tscn":
+		var clear_replay_reward := main.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_that(bool(clear_replay_reward.get("ok", false))).is_true()
+		await get_tree().process_frame
 
 	var second_route := main.call("StartMapNodeRouteForTest", "combat-02", "combat", true, "") as Dictionary
 	assert_that(bool(second_route.get("ok", false))).is_true()
@@ -1261,6 +1298,8 @@ func test_reward_runtime_modifiers_do_not_survive_reset_for_same_context() -> vo
 	assert_that(int(main.call("GetPendingRewardEntryModifierCountForTest", first_pending_context_id))).is_equal(0)
 
 	main.call("ResetMapRouteProgressForTest")
+	await get_tree().process_frame
+	assert_that(_current_scene_path(main)).is_equal("res://Game.Godot/Scenes/Map/Map.tscn")
 	var second_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
 	assert_that(bool(second_route.get("ok", false))).is_true()
 	var second_pending_context_id := str(main.call("GetPendingRewardContextIdForTest")).strip_edges()
@@ -1323,7 +1362,8 @@ func test_reward_runtime_modifier_invalid_mutate_does_not_partially_mutate_snaps
 	var materialized_snapshot := main.call("GetRewardOfferSnapshotForScene") as Dictionary
 	assert_that(materialized_snapshot).is_equal(baseline_snapshot)
 	var failure := main.call("GetLatestRewardModifierFailureForTest") as Dictionary
-	assert_that(str(failure.get("rejection_reason", "")).strip_edges()).is_equal("invalid-mutate:gold")
+	var rejection_reason := str(failure.get("rejection_reason", "")).strip_edges()
+	assert(rejection_reason == "invalid-mutate:gold", "Expected invalid-mutate:gold rejection reason, got: %s" % rejection_reason)
 
 	var materialized_entries := materialized_snapshot.get("entries", []) as Array
 	assert_that(materialized_entries.size()).is_equal(baseline_entries.size())

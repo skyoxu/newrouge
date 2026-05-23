@@ -66,7 +66,10 @@ public partial class RewardEntryModifierPipelineBridge : RefCounted
         }
 
         var config = configVariant.AsGodotDictionary();
-        return config.ToDictionary(pair => pair.Key.ToString(), pair => (object?)pair.Value, StringComparer.Ordinal);
+        return config.ToDictionary(
+            pair => pair.Key.ToString(),
+            pair => ConvertVariantBackedValue(pair.Value),
+            StringComparer.Ordinal);
     }
 
     private static global::Godot.Collections.Dictionary ConvertToGodotEntry(RewardEntrySnapshot entry)
@@ -74,7 +77,7 @@ public partial class RewardEntryModifierPipelineBridge : RefCounted
         var config = new global::Godot.Collections.Dictionary();
         foreach (var pair in entry.Config)
         {
-            config[pair.Key] = Variant.From(pair.Value);
+            config[pair.Key] = ConvertObjectToVariant(pair.Value);
         }
 
         return new global::Godot.Collections.Dictionary
@@ -82,6 +85,39 @@ public partial class RewardEntryModifierPipelineBridge : RefCounted
             { "entry_id", entry.EntryId },
             { "reward_type", entry.RewardType },
             { "config", config },
+        };
+    }
+
+    private static Variant ConvertObjectToVariant(object? value)
+    {
+        return value switch
+        {
+            null => default,
+            string text => Variant.CreateFrom(text),
+            bool flag => Variant.CreateFrom(flag),
+            int number => Variant.CreateFrom(number),
+            long number => Variant.CreateFrom(number),
+            float number => Variant.CreateFrom(number),
+            double number => Variant.CreateFrom(number),
+            _ => Variant.CreateFrom(value.ToString() ?? string.Empty),
+        };
+    }
+
+    private static object? ConvertVariantBackedValue(object? value)
+    {
+        if (value is not Variant variant)
+        {
+            return value;
+        }
+
+        return variant.VariantType switch
+        {
+            Variant.Type.Nil => null,
+            Variant.Type.Bool => variant.AsBool(),
+            Variant.Type.Int => variant.AsInt64(),
+            Variant.Type.Float => variant.AsDouble(),
+            Variant.Type.String => variant.AsString(),
+            _ => variant.ToString(),
         };
     }
 }

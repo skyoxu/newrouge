@@ -900,6 +900,39 @@ func _ensure_reward_offer_for_active_context() -> Dictionary:
         }
     return payload
 
+func _build_reward_offer_preview_for_active_context() -> Dictionary:
+    var context_id := _reward_offer_active_context_id.strip_edges()
+    if context_id.is_empty():
+        context_id = _build_reward_context_id(
+            _map_route_last_selected_node_id,
+            _map_route_last_selected_node_type,
+            _map_route_last_selected_node_floor
+        )
+
+    var encounter_type := _map_route_last_selected_node_type.strip_edges().to_lower()
+    if encounter_type.is_empty():
+        encounter_type = "combat"
+    if encounter_type == "event":
+        encounter_type = "normal"
+    elif encounter_type != "combat" and encounter_type != "normal" and encounter_type != "elite" and encounter_type != "boss":
+        encounter_type = "normal"
+    if encounter_type == "combat":
+        encounter_type = "normal"
+
+    var reward_pool_id := _resolve_reward_pool_id_for_active_context()
+    var offers := _build_first_entry_reward_offer(context_id, encounter_type, _map_route_last_selected_node_floor)
+    var entries := _build_reward_entries_for_pool(reward_pool_id)
+    return {
+        "context_id": context_id,
+        "act_id": 1,
+        "encounter_type": encounter_type,
+        "floor": _map_route_last_selected_node_floor,
+        "reward_pool_id": reward_pool_id,
+        "entries": entries,
+        "offers": offers,
+        "source": "shared-card-pool"
+    }
+
 func _resolve_reward_modifier_context_key(context_id: String) -> String:
     var normalized_context := context_id.strip_edges()
     if not normalized_context.is_empty():
@@ -1051,6 +1084,13 @@ func _is_valid_reward_entry_config(reward_type: String, config: Dictionary) -> b
     return false
 
 func GetRewardOfferSnapshotForScene() -> Dictionary:
+    if not _reward_route_pending:
+        var nav = _resolve_navigator()
+        var current_scene := ""
+        if nav != null and nav.has_method("GetCurrentScenePathForTest"):
+            current_scene = str(nav.call("GetCurrentScenePathForTest"))
+        if current_scene != REWARD_SCENE:
+            return _build_reward_offer_preview_for_active_context()
     return _ensure_reward_offer_for_active_context()
 
 func _resolve_reward_pool_id_for_active_context() -> String:
@@ -1215,6 +1255,7 @@ func GetMapRouteLastFeedbackForTest() -> String:
     return _map_route_last_feedback
 
 func ResetMapRouteProgressForTest() -> void:
+    var nav = _resolve_navigator()
     _map_route_completed_nodes = 0
     _map_route_completed_node_ids.clear()
     _map_route_last_feedback = ""
@@ -1228,10 +1269,13 @@ func ResetMapRouteProgressForTest() -> void:
     _map_route_last_selected_node_type = ""
     _map_route_last_selected_node_floor = 1
     _reward_offer_by_context.clear()
+    _reward_selection_state_by_context.clear()
     _reward_offer_active_context_id = ""
     _reward_offer_seed_counter = 0
     _clear_reward_runtime_modifier_state()
     _reset_run_deck_for_test()
+    if nav != null:
+        _switch_to(nav, MAP_SCENE)
 
 func GetMapRouteStartInvocationCountForTest() -> int:
     return _map_route_start_invocation_count
@@ -1303,6 +1347,7 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
     var deck_after = _run_deck_card_ids.size()
     var is_boss_completion = _map_route_last_selected_node_id.strip_edges().to_lower().begins_with("boss")
     if is_boss_completion:
+        _reward_offer_active_context_id = ""
         _show_settlement_scene("Victory", _map_route_completed_nodes, "Boss defeated.")
         return {
             "ok": true,
@@ -1315,6 +1360,7 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
             "selected_card_id": selected_card_id
         }
 
+    _reward_offer_active_context_id = ""
     _switch_to(nav, MAP_SCENE)
     return {
         "ok": true,
@@ -1363,6 +1409,7 @@ func SkipRemainingRewardsForTest() -> Dictionary:
     _map_route_completed_nodes += 1
     if not _map_route_last_selected_node_id.strip_edges().is_empty():
         _map_route_completed_node_ids.append(_map_route_last_selected_node_id)
+    _reward_offer_active_context_id = ""
     _switch_to(nav, MAP_SCENE)
     return {
         "ok": true,

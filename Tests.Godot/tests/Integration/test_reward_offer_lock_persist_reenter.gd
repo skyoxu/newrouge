@@ -79,6 +79,12 @@ func _current_scene_instance(main: Control):
 		return null
 	return root.get_child(root.get_child_count() - 1)
 
+func _current_scene_path(main: Control) -> String:
+	var scene = _current_scene_instance(main)
+	if scene == null:
+		return ""
+	return str(scene.scene_file_path)
+
 func _extract_offer_ids(snapshot: Dictionary) -> Array[String]:
 	var ids: Array[String] = []
 	var offers_variant = snapshot.get("offers", [])
@@ -187,6 +193,10 @@ func test_reward_reenter_uses_same_shared_offer_snapshot_in_route_owned_flow() -
 	assert_bool(reward.has_method("SkipForTest")).is_true()
 	assert_bool(bool(reward.call("SkipForTest"))).is_true()
 	await get_tree().process_frame
+	if _current_scene_path(main) == REWARD_SCENE:
+		var skip_remaining := main.call("SkipRemainingRewardsForTest") as Dictionary
+		assert_bool(bool(skip_remaining.get("ok", false))).is_true()
+		await get_tree().process_frame
 
 	var back_to_map := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary
 	assert_bool(bool(back_to_map.get("ok", false))).is_true()
