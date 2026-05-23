@@ -387,12 +387,12 @@ func GetOfferedCardIdsForTest() -> Array[String]:
 	return ids
 
 func GetVisibleRewardEntriesForTest() -> Array[Dictionary]:
-	var visible: Array[Dictionary] = []
+	var visible_entries: Array[Dictionary] = []
 	for entry_variant in _entries:
 		if typeof(entry_variant) != TYPE_DICTIONARY:
 			continue
-		visible.append((entry_variant as Dictionary).duplicate(true))
-	return visible
+		visible_entries.append((entry_variant as Dictionary).duplicate(true))
+	return visible_entries
 
 func GetCardCountForTest() -> int:
 	return GetOfferedCardIdsForTest().size()
@@ -415,6 +415,12 @@ func IsLockedForTest() -> bool:
 
 func GetFeedbackForTest() -> String:
 	return _feedback_text
+
+func ShowLockedFeedbackForTest() -> void:
+	_is_locked = true
+	_feedback_text = _text("reward.locked", "Reward is locked.")
+	_refresh_feedback_labels()
+	_refresh_legacy_action_state()
 
 func SelectChoiceForTest(index: int) -> bool:
 	if _is_locked:

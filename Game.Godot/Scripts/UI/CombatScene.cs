@@ -491,7 +491,7 @@ public partial class CombatScene : Control
         var hand = new global::Godot.Collections.Array<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            hand.Add(_handCards.GetItemText(index));
+            hand.Add(GetHandCardIdAt(index));
         }
 
         return new global::Godot.Collections.Dictionary
@@ -577,7 +577,7 @@ public partial class CombatScene : Control
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            handCards.Add(_handCards.GetItemText(index));
+            handCards.Add(GetHandCardIdAt(index));
         }
 
         RebuildCardButtons(handCards);
@@ -612,7 +612,7 @@ public partial class CombatScene : Control
             _lastHoverPreviewText = string.Empty;
             return;
         }
-        var cardName = _handCards.GetItemText(selectedIndex);
+        var cardName = GetHandCardIdAt(selectedIndex);
         if (!TryResolveCardDefinition(cardName, out var definition))
         {
             _lastHoverPreviewText = string.Empty;
@@ -1489,7 +1489,7 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var selectedCardName = _handCards.GetItemText(selectedIndex);
+        var selectedCardName = GetHandCardIdAt(selectedIndex);
         var accepted = TryPlayCard(selectedCardName, selectedIndex);
         if (accepted)
         {
@@ -1505,7 +1505,7 @@ public partial class CombatScene : Control
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            handCards.Add(_handCards.GetItemText(index));
+            handCards.Add(GetHandCardIdAt(index));
         }
 
         if (selectedIndex < 0 || selectedIndex >= handCards.Count)
@@ -2063,7 +2063,7 @@ public partial class CombatScene : Control
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            handCards.Add(_handCards.GetItemText(index));
+            handCards.Add(GetHandCardIdAt(index));
         }
 
         RebuildCardButtons(handCards);
@@ -2228,7 +2228,7 @@ public partial class CombatScene : Control
         _handCards.Clear();
         foreach (var card in snapshot.HandCards)
         {
-            _handCards.AddItem(card);
+            AddHandCardItem(card);
         }
 
         _difficultyValue.Text = snapshot.Difficulty.ToString();
@@ -2252,7 +2252,7 @@ public partial class CombatScene : Control
         var handCards = new List<string>();
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            handCards.Add(_handCards.GetItemText(index));
+            handCards.Add(GetHandCardIdAt(index));
         }
 
         if (!TryParseIntLabel(_difficultyValue, out var difficulty)
@@ -5017,7 +5017,7 @@ public partial class CombatScene : Control
     {
         if (!TryResolveCardDefinition(cardName, out var definition))
         {
-            return cardName;
+            return ResolveHandCardListDisplayText(cardName);
         }
 
         var displayName = ResolveCardDisplayName(definition);
@@ -5030,7 +5030,7 @@ public partial class CombatScene : Control
     {
         if (!TryResolveCardDefinition(cardName, out var definition))
         {
-            return cardName;
+            return ResolveHandCardListDisplayText(cardName);
         }
 
         return ResolveCardDisplayName(definition);
@@ -5102,7 +5102,7 @@ public partial class CombatScene : Control
     {
         return TryResolveCardDefinition(cardName, out var definition)
             ? ResolveCardDisplayName(definition)
-            : cardName;
+            : ResolveHandCardListDisplayText(cardName);
     }
 
     private string ResolveHandFanCardCost(string cardName)
@@ -5367,7 +5367,7 @@ public partial class CombatScene : Control
         if (!string.IsNullOrWhiteSpace(_draggedTargetEnemyId) && _hasPendingInvalidTargetSelection)
         {
             var cardName = _draggedHandIndex >= 0 && _draggedHandIndex < _handCards.ItemCount
-                ? _handCards.GetItemText(_draggedHandIndex)
+                ? GetHandCardIdAt(_draggedHandIndex)
                 : "play_card";
             AppendCommandFeedback(cardName, accepted: false, refusalReasonKey: "combat.feedback.refusal_reason.invalid_target");
         }
@@ -5462,13 +5462,13 @@ public partial class CombatScene : Control
         var cards = new List<string>(_handCards.ItemCount);
         for (var index = 0; index < _handCards.ItemCount; index++)
         {
-            cards.Add(_handCards.GetItemText(index));
+            cards.Add(GetHandCardIdAt(index));
         }
 
         _handCards.Clear();
         foreach (var cardName in cards)
         {
-            _handCards.AddItem(cardName);
+            AddHandCardItem(cardName);
         }
 
         _handCards.DeselectAll();
@@ -5728,7 +5728,7 @@ public partial class CombatScene : Control
             return;
         }
 
-        var cardName = _handCards.GetItemText(handIndex);
+        var cardName = GetHandCardIdAt(handIndex);
         _dragCardGhostFace.Texture = ResolveCardFaceTextureForCardId(cardName);
         if (TryResolveCardDefinition(cardName, out var definition))
         {
@@ -6024,7 +6024,7 @@ public partial class CombatScene : Control
             return string.Empty;
         }
 
-        var cardName = _handCards.GetItemText(handIndex);
+        var cardName = GetHandCardIdAt(handIndex);
         if (TryResolveCardDefinition(cardName, out var definition))
         {
             return definition.Target.Trim().ToLowerInvariant();
@@ -6092,6 +6092,59 @@ public partial class CombatScene : Control
 
         var separator = instanceId.IndexOf('#', StringComparison.Ordinal);
         return separator > 0 ? instanceId[..separator] : instanceId;
+    }
+
+    private void AddHandCardItem(string cardId)
+    {
+        var normalizedCardId = string.IsNullOrWhiteSpace(cardId) ? string.Empty : cardId.Trim();
+        var displayText = ResolveHandCardListDisplayText(normalizedCardId);
+        _handCards.AddItem(displayText);
+        _handCards.SetItemMetadata(_handCards.ItemCount - 1, normalizedCardId);
+    }
+
+    private string GetHandCardIdAt(int index)
+    {
+        if (index < 0 || index >= _handCards.ItemCount)
+        {
+            return string.Empty;
+        }
+
+        var metadata = _handCards.GetItemMetadata(index);
+        if (metadata.VariantType == Variant.Type.String)
+        {
+            var canonical = metadata.AsString().Trim();
+            if (!string.IsNullOrWhiteSpace(canonical))
+            {
+                return canonical;
+            }
+        }
+
+        return _handCards.GetItemText(index);
+    }
+
+    private string ResolveHandCardListDisplayText(string cardId)
+    {
+        if (string.IsNullOrWhiteSpace(cardId))
+        {
+            return string.Empty;
+        }
+
+        if (TryResolveCardDefinition(cardId, out var definition))
+        {
+            return ResolveCardDisplayName(definition);
+        }
+
+        var fallbackKey = $"{cardId.Trim()}.name";
+        var localized = ResolveFeedbackTemplate(fallbackKey);
+        if (!string.Equals(localized, fallbackKey, StringComparison.Ordinal))
+        {
+            return localized;
+        }
+
+        var lastDot = cardId.LastIndexOf('.');
+        return lastDot >= 0 && lastDot < cardId.Length - 1
+            ? cardId[(lastDot + 1)..]
+            : cardId.Trim();
     }
 
     private string CreateRuntimeCardInstanceId(string cardName)
@@ -6221,8 +6274,9 @@ public partial class CombatScene : Control
             return false;
         }
 
-        if (definitions.TryGetValue(runtimeOrDefinitionId, out definition))
+        if (definitions.TryGetValue(runtimeOrDefinitionId, out var directDefinition) && directDefinition is not null)
         {
+            definition = directDefinition;
             return true;
         }
 
@@ -6238,7 +6292,13 @@ public partial class CombatScene : Control
                         continue;
                     }
 
-                    return definitions.TryGetValue(entry.EnemyId, out definition);
+                    if (definitions.TryGetValue(entry.EnemyId, out var mappedDefinition) && mappedDefinition is not null)
+                    {
+                        definition = mappedDefinition;
+                        return true;
+                    }
+
+                    return false;
                 }
             }
         }
