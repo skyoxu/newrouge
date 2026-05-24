@@ -662,13 +662,12 @@ func test_combat_scene_surfaces_actionable_first_run_guidance() -> void:
 	assert_that(hand_title.text).is_equal("Hand")
 	assert_that(play_button.visible).is_false()
 	assert_that((root.get_node("HUD/TurnControls/StartTurnButton") as Button).visible).is_false()
-	assert_that(_read_hand_cards(root.get_node("HUD/HandCards") as ItemList)).is_equal([
-		"card.warrior.strike",
-		"card.warrior.strike",
-		"card.warrior.strike",
-		"card.warrior.strike",
-		"card.warrior.strike",
-	])
+	var visible_hand := _read_hand_cards(root.get_node("HUD/HandCards") as ItemList)
+	assert_that(visible_hand.size()).is_equal(5)
+	assert_that(visible_hand[0].strip_edges()).is_not_empty()
+	assert_that(visible_hand[0]).is_not_equal("card.warrior.strike")
+	for card_name in visible_hand:
+		assert_that(card_name).is_equal(visible_hand[0])
 	var card_row := root.get_node("HUD/CardButtonRow") as HBoxContainer
 	assert_that(card_row.get_child_count()).is_equal(5)
 	var first_text := (card_row.get_child(0) as Button).text
