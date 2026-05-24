@@ -712,6 +712,28 @@ def _parse_json_stdout(stdout: str) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _is_missing_latest_run_step(step: dict[str, Any]) -> bool:
+    stderr_tail = str(step.get("stderr_tail") or "").strip().lower()
+    stdout_tail = str(step.get("stdout_tail") or "").strip().lower()
+    marker = "no latest run index found"
+    return marker in stderr_tail or marker in stdout_tail
+
+
+def _fresh_start_route_payload() -> dict[str, Any]:
+    return {
+        "preferred_lane": "inspect-first",
+        "run_id": "n/a",
+        "latest_reason": "n/a",
+        "blocked_by": "n/a",
+        "latest_run_type": "n/a",
+        "latest_artifact_integrity": "n/a",
+        "chapter6_next_action": "n/a",
+        "chapter6_can_skip_6_7": "n/a",
+        "chapter6_can_go_to_6_8": "n/a",
+        "forbidden_commands": [],
+    }
+
+
 def _run_json_step(out_dir: Path, *, name: str, cmd: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
     rc, stdout, stderr = _run_cmd(cmd, cwd=_repo_root())
     log_path = _write_step_log(out_dir, name=name, cmd=cmd, stdout=stdout, stderr=stderr, rc=rc)
@@ -810,11 +832,15 @@ def main() -> int:
     summary["steps"].append(resume_step)
     summary["resume"] = resume_payload
     if int(resume_step["rc"]) != 0:
-        summary["status"] = "fail"
-        summary["stop_reason"] = "resume-task"
-        _write_json(out_dir / "summary.json", summary)
-        print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=resume-task")
-        return 1
+        if _is_missing_latest_run_step(resume_step):
+            resume_payload = {}
+            summary["resume"] = resume_payload
+        else:
+            summary["status"] = "fail"
+            summary["stop_reason"] = "resume-task"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=resume-task")
+            return 1
 
     record_residual = str(profile_policy["record_residual"]).strip().lower() == "true"
     initial_route_step, initial_route = _run_json_step(
@@ -825,11 +851,15 @@ def main() -> int:
     summary["steps"].append(initial_route_step)
     summary["initial_route"] = initial_route
     if int(initial_route_step["rc"]) != 0:
-        summary["status"] = "fail"
-        summary["stop_reason"] = "chapter6-route-initial"
-        _write_json(out_dir / "summary.json", summary)
-        print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=chapter6-route-initial")
-        return 1
+        if _is_missing_latest_run_step(initial_route_step):
+            initial_route = _fresh_start_route_payload()
+            summary["initial_route"] = initial_route
+        else:
+            summary["status"] = "fail"
+            summary["stop_reason"] = "chapter6-route-initial"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=chapter6-route-initial")
+            return 1
 
     plan = build_execution_plan(
         task_id=task_id,

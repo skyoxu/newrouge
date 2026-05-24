@@ -33,7 +33,16 @@ public static class StartingRelicService
             new StartingRelicDefinition("relic.warden_mark", "relic.name.warden_mark", "effect.hp_floor_guard", new[] { "m1", "survival" }),
         });
 
+    private static readonly IReadOnlyList<StartingRelicDefinition> LiveM1Definitions = new ReadOnlyCollection<StartingRelicDefinition>(
+        new[]
+        {
+            new StartingRelicDefinition("relic.ashen_hourglass", "relic.name.ashen_hourglass", "effect.turn_start_plus_energy", new[] { "m1", "economy", "live" }),
+            new StartingRelicDefinition("relic.twilight_coin", "relic.name.twilight_coin", "effect.shop_discount_small", new[] { "m1", "economy", "live" }),
+        });
+
     public static IReadOnlyList<StartingRelicDefinition> Definitions => M1Definitions;
+
+    public static IReadOnlyList<StartingRelicDefinition> LiveDefinitions => LiveM1Definitions;
 
     public static StartingRelicCatalogValidationResult ValidateUniqueRelicIds(IEnumerable<StartingRelicDefinition> definitions)
     {

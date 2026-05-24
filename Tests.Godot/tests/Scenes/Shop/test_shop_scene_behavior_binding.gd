@@ -370,3 +370,75 @@ func test_shop_runtime_excludes_upgrade_and_rest_semantics_with_visible_rejectio
     assert_str(str(upgrade_like_result.get("reason", ""))).is_equal("invalid-offer")
     assert_array(visible_after).is_equal(visible_before)
     _assert_readable_feedback(feedback)
+
+
+# acceptance: ACC:T132.8
+func test_t132_catalog_backed_shop_discount_applies_live_run_relic_prices_without_route_reentry_noise() -> void:
+    var main := await _load_main_on_map()
+    var shop: Node = await _enter_shop_scene(main)
+
+    assert_bool(shop.has_method("SetShopStateForTest")).is_true()
+    assert_bool(shop.has_method("GetVisibleOffersForTest")).is_true()
+
+    shop.call("SetShopStateForTest", {
+        "gold": 500,
+        "offers": [
+            {"id": "shop_offer_a", "price": 60, "taken": false},
+            {"id": "shop_offer_b", "price": 90, "taken": false},
+            {"id": "shop_offer_c", "price": 240, "taken": false}
+        ],
+        "owned_offer_ids": [],
+        "removable_cards": [],
+        "reforge_targets": [],
+        "removed_outcome": "",
+        "active_relic_ids": ["relic.twilight_coin"]
+    })
+
+    var visible_offers_variant = shop.call("GetVisibleOffersForTest")
+    var visible_prices: Array[int] = []
+    if typeof(visible_offers_variant) == TYPE_ARRAY:
+        for offer_variant in visible_offers_variant:
+            if typeof(offer_variant) != TYPE_DICTIONARY:
+                continue
+            var offer := offer_variant as Dictionary
+            visible_prices.append(int(offer.get("price", -1)))
+
+    assert_that(visible_prices).is_equal([54, 81, 216])
+    assert_bool(shop.has_method("GetLastRelicOutcomeTextForTest")).is_true()
+    var relic_outcome := str(shop.call("GetLastRelicOutcomeTextForTest")).strip_edges()
+    assert_that(relic_outcome.find("Twilight Coin") >= 0).is_true()
+    assert_that(relic_outcome.find("Reduce shop prices slightly.") >= 0).is_true()
+
+# acceptance: ACC:T132.8
+func test_t132_shop_discount_does_not_double_apply_when_same_state_is_loaded_twice() -> void:
+    var main := await _load_main_on_map()
+    var shop: Node = await _enter_shop_scene(main)
+
+    var state := {
+        "gold": 500,
+        "offers": [
+            {"id": "shop_offer_a", "price": 60, "taken": false},
+            {"id": "shop_offer_b", "price": 90, "taken": false},
+            {"id": "shop_offer_c", "price": 240, "taken": false}
+        ],
+        "owned_offer_ids": [],
+        "removable_cards": [],
+        "reforge_targets": [],
+        "removed_outcome": "",
+        "active_relic_ids": ["relic.twilight_coin"]
+    }
+
+    shop.call("SetShopStateForTest", state)
+    var persisted_state := main.call("GetActiveShopStateForScene") as Dictionary
+    shop.call("SetShopStateForTest", persisted_state)
+
+    var visible_offers_variant = shop.call("GetVisibleOffersForTest")
+    var visible_prices: Array[int] = []
+    if typeof(visible_offers_variant) == TYPE_ARRAY:
+        for offer_variant in visible_offers_variant:
+            if typeof(offer_variant) != TYPE_DICTIONARY:
+                continue
+            var offer := offer_variant as Dictionary
+            visible_prices.append(int(offer.get("price", -1)))
+
+    assert_that(visible_prices).is_equal([54, 81, 216])

@@ -183,11 +183,26 @@ enemy.act1.slime_scout.name,Slime Scout
 enemy.act1.moss_rat.name,Moss Rat
 enemy.act1.bandit_enforcer.name,Bandit Enforcer
 enemy.act1.ruin_warden.name,Ruin Warden
-relic.description.ashen_hourglass,Gain extra energy at the start of combat in this placeholder M1 build.
-relic.description.rusted_compass,Preview one more map route in this placeholder M1 build.
-relic.description.twilight_coin,Shop prices are slightly lower in this placeholder M1 build.
-relic.description.oaken_talisman,Gain a small amount of max HP.
-relic.description.raven_feather,Curse removal costs less.
+relic.description.ashen_hourglass,Start each combat with 1 extra energy.
+relic.description.obsidian_mirror,Copy the first attack you play each combat.
+relic.description.blood_oath,Gain +3 attack while your HP is 25 or lower.
+relic.description.rusted_compass,Preview 1 extra route whenever the map reveals choices.
+relic.description.twilight_coin,Reduce shop prices by 10 percent.
+relic.description.embershard,Apply 2 Burn when your attack hits.
+relic.description.frostbite_ring,Apply 1 Slow whenever you play a skill.
+relic.description.gale_charm,Draw 1 extra card at the start of combat.
+relic.description.iron_vow,Gain 4 block after taking damage.
+relic.description.moonlit_compass,Reveal 1 extra line of event choice info.
+relic.description.nightwatch_lantern,Reduce the next dark card cost by 1 once per run.
+relic.description.oaken_talisman,Gain 8 max HP when equipped.
+relic.description.phantom_quill,Gain 1 reward reroll each run.
+relic.description.quicksilver_seal,Gain 1 energy when you reach a 3-card combo.
+relic.description.raven_feather,Reduce curse removal costs by 20 gold.
+relic.description.sunken_idol,Increase rare reward chance by 15 percent.
+relic.description.thorn_crown,Deal 2 thorn damage when enemies hit you.
+relic.description.umbral_shard,Convert the next dark card cost by 1 once per run.
+relic.description.vigilant_emblem,Gain 6 block at the start of the first turn.
+relic.description.warden_mark,Your HP cannot drop below 1 once the guard is active.
 event.forgotten_cache.title,Forgotten Cache
 event.forgotten_cache.description,A cracked chest sits beside the road.
 event.option.take_gold,Take the gold
@@ -202,10 +217,25 @@ shop.feedback.insufficient_gold,Not enough gold.
 shop.feedback.offer_taken,That offer is already taken.
 shop.feedback.invalid_offer,That shop offer is unavailable.
 effect.turn_start_plus_energy,Start combat with extra energy.
+effect.first_card_copy,Copy the first attack you play this combat.
+effect.low_hp_attack_up,Gain bonus attack while you are below the HP threshold.
 effect.map_preview_plus_one,Preview one more map route.
 effect.shop_discount_small,Reduce shop prices slightly.
+effect.burn_on_hit,Apply Burn when your attack lands.
+effect.slow_enemy_on_skill,Apply Slow when you play a skill.
+effect.first_draw_plus_one,Draw 1 extra card at combat start.
+effect.block_when_damaged,Gain block after taking damage.
+effect.event_choice_extra_info,Reveal extra information for event choices.
+effect.dark_cost_reduce_once,Reduce a dark card cost once per run.
 effect.max_hp_plus_small,Gain a small amount of max HP.
+effect.reward_reroll_once,Gain 1 reward reroll this run.
+effect.energy_on_combo,Gain energy when you reach the combo threshold.
 effect.curse_remove_discount,Reduce curse removal costs.
+effect.rare_reward_chance_up,Increase rare reward odds.
+effect.thorns_small,Deal thorn damage back to attackers.
+effect.dark_cost_convert_once,Convert the next dark card cost once per run.
+effect.first_turn_block_plus,Gain block at the start of your first turn.
+effect.hp_floor_guard,Prevent your HP from dropping below the guarded floor.
 ui.map.feedback.ready,Select a visible route to continue.
 ui.map.feedback.locked_node,Route {0} is locked.
 ui.map.feedback.invalid_branch,Route {0} is not available from here.

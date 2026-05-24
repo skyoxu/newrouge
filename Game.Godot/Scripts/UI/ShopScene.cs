@@ -1,11 +1,20 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Game.Core.Services;
 
 namespace Game.Godot.Scripts.UI;
 
 public partial class ShopScene : Control
 {
+    private static readonly string[] LiveRelicDefinitionCandidatePaths =
+    {
+        "res://Game.Core/Data/m1-relic-definitions.json",
+        "res://../Game.Core/Data/m1-relic-definitions.json",
+    };
+
+    private static IReadOnlyDictionary<string, RelicEffectDefinition>? _liveRelicCatalogCache;
+
     private sealed class ShopOffer
     {
         public ShopOffer(string id, int price, bool taken)
@@ -41,6 +50,7 @@ public partial class ShopScene : Control
     private Node? _mainController;
     private string _lastRemovedCardId = string.Empty;
     private string _lastReforgedOfferId = string.Empty;
+    private string _lastRelicOutcomeText = string.Empty;
     private int _selectedVisibleOfferIndex = -1;
     private bool _leftShop;
     private int _playerGold;
@@ -108,6 +118,7 @@ public partial class ShopScene : Control
         _failureReasons.Clear();
         _lastRemovedCardId = string.Empty;
         _lastReforgedOfferId = string.Empty;
+        _lastRelicOutcomeText = string.Empty;
         _selectedVisibleOfferIndex = -1;
         _leftShop = false;
 
@@ -167,6 +178,11 @@ public partial class ShopScene : Control
         if (!string.IsNullOrWhiteSpace(removedOutcome))
         {
             _lastRemovedCardId = removedOutcome;
+        }
+
+        if (!ReadBool(state, "relic_effects_applied", false))
+        {
+            ApplyCatalogBackedRunRelicEffects(ReadArray(state, "active_relic_ids"));
         }
 
         PersistRouteOwnedState();
@@ -237,6 +253,11 @@ public partial class ShopScene : Control
     public string GetVisibleFailureReasonForTest()
     {
         return _failureReasonLabel.Text ?? string.Empty;
+    }
+
+    public string GetLastRelicOutcomeTextForTest()
+    {
+        return _lastRelicOutcomeText;
     }
 
     public void RefreshLocaleForTest()
@@ -439,7 +460,9 @@ public partial class ShopScene : Control
         _goldValueLabel.Text = _playerGold.ToString();
         _ownedOutcomeLabel.Text = _ownedOfferIds.Count > 0
             ? FormatText(ResolveUiText("shop.feedback.purchase_result"), string.Join(", ", _ownedOfferIds))
-            : ResolveUiText("shop.feedback.no_purchase");
+            : (!string.IsNullOrWhiteSpace(_lastRelicOutcomeText)
+                ? _lastRelicOutcomeText
+                : ResolveUiText("shop.feedback.no_purchase"));
         _removedOutcomeLabel.Text = string.IsNullOrWhiteSpace(_lastRemovedCardId)
             ? ResolveUiText("shop.feedback.no_removal")
             : GetLastRemovedOutcomeTextForTest();
@@ -650,6 +673,7 @@ public partial class ShopScene : Control
             { "removable_cards", removable },
             { "reforge_targets", reforgeTargets },
             { "removed_outcome", _lastRemovedCardId },
+            { "relic_effects_applied", true },
         };
     }
 
@@ -756,5 +780,96 @@ public partial class ShopScene : Control
             Variant.Type.String when bool.TryParse(value.AsString(), out var parsed) => parsed,
             _ => fallback,
         };
+    }
+
+    private void ApplyCatalogBackedRunRelicEffects(global::Godot.Collections.Array activeRelicIds)
+    {
+        if (activeRelicIds.Count <= 0)
+        {
+            return;
+        }
+
+        var catalog = LoadLiveRelicCatalog();
+        if (catalog.Count <= 0)
+        {
+            return;
+        }
+
+        var relicIds = new List<string>();
+        foreach (var relicId in activeRelicIds)
+        {
+            var normalized = relicId.AsString().Trim();
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                relicIds.Add(normalized);
+            }
+        }
+
+        if (relicIds.Count <= 0)
+        {
+            return;
+        }
+
+        foreach (var offer in _offers)
+        {
+            var resolution = RelicEffectRuntimeService.ResolveShopOpenEffects(offer.Price, relicIds, catalog);
+            offer.Price = resolution.AdjustedPrice;
+            if (string.IsNullOrWhiteSpace(_lastRelicOutcomeText) && resolution.Effects.Count > 0)
+            {
+                var effect = resolution.Effects[0];
+                if (catalog.TryGetValue(effect.RelicId, out var definition))
+                {
+                    var attribution = ResolveUiText(definition.AttributionKey);
+                    var outcome = ResolveUiText(definition.OutcomeTextKey);
+                    _lastRelicOutcomeText = $"{attribution}: {outcome}";
+                }
+            }
+        }
+    }
+
+    private static IReadOnlyDictionary<string, RelicEffectDefinition> LoadLiveRelicCatalog()
+    {
+        if (_liveRelicCatalogCache is not null)
+        {
+            return _liveRelicCatalogCache;
+        }
+
+        foreach (var path in LiveRelicDefinitionCandidatePaths)
+        {
+            var absolutePath = ProjectSettings.GlobalizePath(path);
+            if (!global::System.IO.File.Exists(absolutePath))
+            {
+                continue;
+            }
+
+            var payload = global::System.IO.File.ReadAllText(absolutePath);
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                continue;
+            }
+
+            _liveRelicCatalogCache = RelicEffectCatalogService.Parse(payload);
+            return _liveRelicCatalogCache;
+        }
+
+        var repoRoot = global::System.IO.Path.GetFullPath(
+            global::System.IO.Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
+        var repoRelativeCatalogPath = global::System.IO.Path.Combine(
+            repoRoot,
+            "Game.Core",
+            "Data",
+            "m1-relic-definitions.json");
+        if (global::System.IO.File.Exists(repoRelativeCatalogPath))
+        {
+            var payload = global::System.IO.File.ReadAllText(repoRelativeCatalogPath);
+            if (!string.IsNullOrWhiteSpace(payload))
+            {
+                _liveRelicCatalogCache = RelicEffectCatalogService.Parse(payload);
+                return _liveRelicCatalogCache;
+            }
+        }
+
+        _liveRelicCatalogCache = new Dictionary<string, RelicEffectDefinition>(StringComparer.Ordinal);
+        return _liveRelicCatalogCache;
     }
 }

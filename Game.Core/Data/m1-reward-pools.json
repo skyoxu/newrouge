@@ -50,7 +50,12 @@
       "entries": {
         "gold": { "amount": 100 },
         "consumable": 0,
-        "relic": { "relic_id": "relic.raven_feather" },
+        "relic": {
+          "relic_id": "relic.raven_feather",
+          "availability": "unavailable",
+          "selection_state": "unavailable",
+          "fallback_reason_key": "reward.relic.unavailable"
+        },
         "common_card_choice": 0,
         "rare_card_choice": { "pool_id": "reward.act1.boss.rare", "pick": 3 },
         "epic_card_choice": 0

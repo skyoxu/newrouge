@@ -955,6 +955,23 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                     ),
                     (
                         {
+                            "name": "chapter6-route-post-review",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "route-post-review.log",
+                        },
+                        {
+                            "preferred_lane": "inspect-first",
+                            "run_id": "run-132",
+                            "latest_reason": "pipeline_clean",
+                            "blocked_by": "",
+                            "chapter6_next_action": "continue",
+                        },
+                    ),
+                    (
+                        {
                             "name": "inspect-local-hard-checks",
                             "cmd": [],
                             "rc": 0,
@@ -1250,6 +1267,112 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual("complete", payload["status"])
             self.assertEqual("continue", payload["stop_reason"])
+
+    def test_main_should_treat_missing_latest_run_as_fresh_task_start(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out_dir = root / "logs" / "ci" / "chapter6-fresh-task"
+            argv = [
+                "run_single_task_chapter6_lane.py",
+                "--task-id",
+                "132",
+                "--godot-bin",
+                "C:/Godot/Godot.exe",
+                "--delivery-profile",
+                "fast-ship",
+                "--out-dir",
+                str(out_dir),
+            ]
+            executed_steps: list[str] = []
+            def fake_run_json_step(*_args, name, **_kwargs):
+                payloads = {
+                    "resume-task": (
+                        {
+                            "name": "resume-task",
+                            "cmd": [],
+                            "rc": 2,
+                            "stdout_tail": "",
+                            "stderr_tail": "ERROR: failed to build task resume summary: No latest run index found. Pass --latest or provide enough filters.",
+                            "log": "resume.log",
+                        },
+                        {},
+                    ),
+                    "chapter6-route-initial": (
+                        {
+                            "name": "chapter6-route-initial",
+                            "cmd": [],
+                            "rc": 2,
+                            "stdout_tail": "",
+                            "stderr_tail": "ERROR: failed to route chapter6 recovery: No latest run index found. Pass --latest or provide enough filters.",
+                            "log": "route-initial.log",
+                        },
+                        {},
+                    ),
+                    "chapter6-route-post-review": (
+                        {
+                            "name": "chapter6-route-post-review",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "route-post-review.log",
+                        },
+                        {
+                            "preferred_lane": "inspect-first",
+                            "run_id": "run-132",
+                            "latest_reason": "pipeline_clean",
+                            "blocked_by": "",
+                            "chapter6_next_action": "continue",
+                        },
+                    ),
+                    "inspect-local-hard-checks": (
+                        {
+                            "name": "inspect-local-hard-checks",
+                            "cmd": [],
+                            "rc": 0,
+                            "stdout_tail": "",
+                            "stderr_tail": "",
+                            "log": "inspect-local-hard-checks.log",
+                        },
+                        {"status": "ok"},
+                    ),
+                }
+                return payloads[name]
+
+            def fake_run_plain_step(*_args, name, cmd, **_kwargs):
+                executed_steps.append(str(name))
+                return {
+                    "name": name,
+                    "cmd": list(cmd),
+                    "rc": 0,
+                    "stdout_tail": "",
+                    "stderr_tail": "",
+                    "log": f"{name}.log",
+                }
+
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(lane, "_repo_root", return_value=root),
+                mock.patch.object(lane, "_run_json_step", side_effect=fake_run_json_step),
+                mock.patch.object(lane, "_run_plain_step", side_effect=fake_run_plain_step),
+            ):
+                rc = lane.main()
+
+            self.assertEqual(0, rc)
+            self.assertEqual(
+                [
+                    "check-tdd-plan",
+                    "red-first",
+                    "green",
+                    "refactor",
+                    "review-pipeline",
+                    "local-hard-checks-preflight",
+                    "local-hard-checks",
+                ],
+                executed_steps,
+            )
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("ok", payload["status"])
 
     def test_parse_json_stdout_should_extract_payload_from_mixed_output(self) -> None:
         stdout = 'INFO preparing route\n{\n  "preferred_lane": "run-6.8",\n  "blocked_by": "rerun_guard"\n}\nDone\n'

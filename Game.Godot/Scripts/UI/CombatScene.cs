@@ -14,6 +14,14 @@ namespace Game.Godot.Scripts.UI;
 
 public partial class CombatScene : Control
 {
+    private static readonly string[] LiveRelicDefinitionCandidatePaths =
+    {
+        "res://Game.Core/Data/m1-relic-definitions.json",
+        "res://../Game.Core/Data/m1-relic-definitions.json",
+    };
+
+    private static IReadOnlyDictionary<string, RelicEffectDefinition>? _liveRelicCatalogCache;
+
     [Signal]
     public delegate void TurnActionRequestedEventHandler(string actionName);
 
@@ -170,6 +178,7 @@ public partial class CombatScene : Control
     private bool _potionRuntimeClosureExecutedForTest;
     private readonly List<string> _lastPowerRelicTriggerOrder = new();
     private readonly List<string> _lastPowerRelicOutcomeMessages = new();
+    private readonly HashSet<string> _appliedCombatStartRelicIds = new(StringComparer.Ordinal);
     private bool _sceneLocalEffectStackUsedForTest;
     private static readonly Dictionary<string, Dictionary<string, string>> FeedbackTextMapsByLocale = new(StringComparer.OrdinalIgnoreCase);
     private bool _cardDefinitionAutoLoadEnabledForTest = true;
@@ -463,10 +472,13 @@ public partial class CombatScene : Control
             payload.Difficulty,
             payload.PlayerHp,
             payload.TurnState ?? string.Empty));
-        if (payload.Powers is not null || payload.Relics is not null || payload.Potions is not null)
+        var configuredRelics = BuildConfiguredLiveRelicParticipants(payload.RelicIds);
+        var mergedRelics = MergeRelicParticipants(payload.Relics, configuredRelics);
+        if (payload.Powers is not null || mergedRelics is not null || payload.Potions is not null)
         {
-            ApplyPowerRelicParticipants(payload.Powers, payload.Relics, payload.Potions);
+            ApplyPowerRelicParticipants(payload.Powers, mergedRelics, payload.Potions);
         }
+        ApplyConfiguredCombatStartRelicEffects(payload.RelicIds);
         return true;
     }
 
@@ -1119,6 +1131,29 @@ public partial class CombatScene : Control
         return _powerInspectById.Count > 0 || _relicInspectById.Count > 0 || _potionInspectById.Count > 0;
     }
 
+    public bool ApplyConfiguredCombatRelicsForTest(global::Godot.Collections.Array relicIds)
+    {
+        var normalizedRelicIds = new List<string>();
+        foreach (var relicId in relicIds)
+        {
+            var normalized = relicId.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                normalizedRelicIds.Add(normalized);
+            }
+        }
+
+        var configuredRelics = BuildConfiguredLiveRelicParticipants(normalizedRelicIds);
+        if (configuredRelics is null || configuredRelics.Count <= 0)
+        {
+            return false;
+        }
+
+        ApplyPowerRelicParticipants(null, configuredRelics, null);
+        ApplyConfiguredCombatStartRelicEffects(normalizedRelicIds);
+        return true;
+    }
+
     public global::Godot.Collections.Array<string> GetVisiblePowerIdsForTest()
     {
         var ids = new global::Godot.Collections.Array<string>();
@@ -1745,6 +1780,178 @@ public partial class CombatScene : Control
         }
 
         return string.Empty;
+    }
+
+    private void ApplyConfiguredCombatStartRelicEffects(IReadOnlyList<string>? relicIds)
+    {
+        if (relicIds is null || relicIds.Count <= 0)
+        {
+            return;
+        }
+
+        var pendingRelicIds = relicIds
+            .Where(relicId => !_appliedCombatStartRelicIds.Contains(relicId))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (pendingRelicIds.Length <= 0)
+        {
+            return;
+        }
+
+        var catalog = LoadLiveRelicCatalog();
+        if (catalog.Count <= 0 || !TryParseIntLabel(_energyValue, out var currentEnergy))
+        {
+            return;
+        }
+
+        var resolution = RelicEffectRuntimeService.ResolveCombatStartEffects(currentEnergy, pendingRelicIds, catalog);
+        if (resolution.AdjustedEnergy == currentEnergy)
+        {
+            return;
+        }
+
+        _energyValue.Text = resolution.AdjustedEnergy.ToString(CultureInfo.InvariantCulture);
+
+        foreach (var effect in resolution.Effects)
+        {
+            if (!_appliedCombatStartRelicIds.Add(effect.RelicId))
+            {
+                continue;
+            }
+
+            if (!catalog.TryGetValue(effect.RelicId, out var definition))
+            {
+                continue;
+            }
+
+            var participantId = ToParticipantId(definition.RelicId);
+            var attribution = ResolveFeedbackTemplate(definition.AttributionKey);
+            var outcome = ResolveFeedbackTemplate(definition.OutcomeTextKey);
+            PublishPowerRelicOutcomeMessage($"Relic.{participantId}: {attribution} - {outcome}");
+        }
+    }
+
+    private List<ParticipantItemPayload>? BuildConfiguredLiveRelicParticipants(IReadOnlyList<string>? relicIds)
+    {
+        if (relicIds is null || relicIds.Count <= 0)
+        {
+            return null;
+        }
+
+        var catalog = LoadLiveRelicCatalog();
+        if (catalog.Count <= 0)
+        {
+            return null;
+        }
+
+        var participants = new List<ParticipantItemPayload>();
+        foreach (var relicId in relicIds)
+        {
+            if (!catalog.TryGetValue(relicId, out var definition)
+                || !string.Equals(definition.ExecutionBoundary, "t99.shared.combat", StringComparison.Ordinal)
+                || !string.Equals(definition.TriggerPath, "core.combat.relic.triggered", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var attribution = ResolveFeedbackTemplate(definition.AttributionKey);
+            var outcome = ResolveFeedbackTemplate(definition.OutcomeTextKey);
+            participants.Add(new ParticipantItemPayload(
+                ToParticipantId(definition.RelicId),
+                $"{attribution}: {outcome}",
+                Priority: 10,
+                RegistrationOrder: 10,
+                OutcomeMessage: outcome,
+                VisibleOnSurface: true));
+        }
+
+        return participants.Count > 0 ? participants : null;
+    }
+
+    private static List<ParticipantItemPayload>? MergeRelicParticipants(
+        IReadOnlyList<ParticipantItemPayload>? explicitRelics,
+        IReadOnlyList<ParticipantItemPayload>? configuredRelics)
+    {
+        if (explicitRelics is null || explicitRelics.Count <= 0)
+        {
+            return configuredRelics is null ? null : new List<ParticipantItemPayload>(configuredRelics);
+        }
+
+        if (configuredRelics is null || configuredRelics.Count <= 0)
+        {
+            return new List<ParticipantItemPayload>(explicitRelics);
+        }
+
+        var merged = new List<ParticipantItemPayload>(explicitRelics);
+        var seenIds = new HashSet<string>(
+            explicitRelics
+                .Select(item => item.Id?.Trim())
+                .Where(item => !string.IsNullOrWhiteSpace(item))!,
+            StringComparer.Ordinal);
+
+        foreach (var item in configuredRelics)
+        {
+            var normalizedId = item.Id?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedId) || seenIds.Add(normalizedId))
+            {
+                merged.Add(item);
+            }
+        }
+
+        return merged;
+    }
+
+    private static string ToParticipantId(string relicId)
+    {
+        return relicId.StartsWith("relic.", StringComparison.Ordinal)
+            ? relicId["relic.".Length..]
+            : relicId;
+    }
+
+    private static IReadOnlyDictionary<string, RelicEffectDefinition> LoadLiveRelicCatalog()
+    {
+        if (_liveRelicCatalogCache is not null)
+        {
+            return _liveRelicCatalogCache;
+        }
+
+        foreach (var path in LiveRelicDefinitionCandidatePaths)
+        {
+            var absolutePath = ProjectSettings.GlobalizePath(path);
+            if (!global::System.IO.File.Exists(absolutePath))
+            {
+                continue;
+            }
+
+            var payload = global::System.IO.File.ReadAllText(absolutePath);
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                continue;
+            }
+
+            _liveRelicCatalogCache = RelicEffectCatalogService.Parse(payload);
+            return _liveRelicCatalogCache;
+        }
+
+        var repoRoot = global::System.IO.Path.GetFullPath(
+            global::System.IO.Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
+        var repoRelativeCatalogPath = global::System.IO.Path.Combine(
+            repoRoot,
+            "Game.Core",
+            "Data",
+            "m1-relic-definitions.json");
+        if (global::System.IO.File.Exists(repoRelativeCatalogPath))
+        {
+            var payload = global::System.IO.File.ReadAllText(repoRelativeCatalogPath);
+            if (!string.IsNullOrWhiteSpace(payload))
+            {
+                _liveRelicCatalogCache = RelicEffectCatalogService.Parse(payload);
+                return _liveRelicCatalogCache;
+            }
+        }
+
+        _liveRelicCatalogCache = new Dictionary<string, RelicEffectDefinition>(StringComparer.Ordinal);
+        return _liveRelicCatalogCache;
     }
 
     private bool TryInspectParticipant(string targetId)
@@ -6668,6 +6875,7 @@ public partial class CombatScene : Control
         int Difficulty,
         int PlayerHp,
         string? TurnState,
+        List<string>? RelicIds = null,
         List<ParticipantItemPayload>? Powers = null,
         List<ParticipantItemPayload>? Relics = null,
         List<ParticipantItemPayload>? Potions = null
