@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Reflection;
 using Godot;
+using Game.Core.Contracts;
 using Game.Core.Contracts.Config;
 using Game.Core.Contracts.Combat;
 using Game.Core.Contracts.Status;
@@ -1849,7 +1850,7 @@ public partial class CombatScene : Control
         {
             if (!catalog.TryGetValue(relicId, out var definition)
                 || !string.Equals(definition.ExecutionBoundary, "t99.shared.combat", StringComparison.Ordinal)
-                || !string.Equals(definition.TriggerPath, "core.combat.relic.triggered", StringComparison.Ordinal))
+                || !string.Equals(definition.TriggerPath, EventTypes.CombatRelicTriggered, StringComparison.Ordinal))
             {
                 continue;
             }

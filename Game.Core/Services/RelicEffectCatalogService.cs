@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using Game.Core.Contracts;
 
 namespace Game.Core.Services;
 
@@ -124,7 +125,7 @@ public static class RelicEffectRuntimeService
         foreach (var definition in ResolveActiveDefinitions(activeRelicIds, catalog))
         {
             if (!string.Equals(definition.ExecutionBoundary, "t99.shared.combat", StringComparison.Ordinal)
-                || !string.Equals(definition.TriggerPath, "core.combat.relic.triggered", StringComparison.Ordinal)
+                || !string.Equals(definition.TriggerPath, EventTypes.CombatRelicTriggered, StringComparison.Ordinal)
                 || !string.Equals(definition.Timing, "on_combat_start", StringComparison.Ordinal)
                 || !string.Equals(definition.EffectKey, "effect.turn_start_plus_energy", StringComparison.Ordinal))
             {
@@ -150,7 +151,7 @@ public static class RelicEffectRuntimeService
         foreach (var definition in ResolveActiveDefinitions(activeRelicIds, catalog))
         {
             if (!string.Equals(definition.ExecutionBoundary, "t110.shared.run", StringComparison.Ordinal)
-                || !string.Equals(definition.TriggerPath, "core.relic.equipped", StringComparison.Ordinal)
+                || !string.Equals(definition.TriggerPath, EventTypes.RelicEquipped, StringComparison.Ordinal)
                 || !string.Equals(definition.Timing, "on_shop_offer_open", StringComparison.Ordinal)
                 || !string.Equals(definition.EffectKey, "effect.shop_discount_small", StringComparison.Ordinal))
             {
