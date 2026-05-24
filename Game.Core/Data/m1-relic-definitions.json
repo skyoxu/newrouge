@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "relics": [
     {
       "id": "relic.ashen_hourglass",
@@ -7,21 +7,14 @@
       "description_key": "relic.description.ashen_hourglass",
       "rarity": "starter",
       "effect_key": "effect.turn_start_plus_energy",
-      "tags": [
-        "m1",
-        "energy"
-      ]
-    },
-    {
-      "id": "relic.rusted_compass",
-      "name_key": "relic.name.rusted_compass",
-      "description_key": "relic.description.rusted_compass",
-      "rarity": "common",
-      "effect_key": "effect.map_preview_plus_one",
-      "tags": [
-        "m1",
-        "map"
-      ]
+      "execution_boundary": "t99.shared.combat",
+      "trigger_path": "core.combat.relic.triggered",
+      "timing": "on_combat_start",
+      "target_domain": "player",
+      "parameters": { "energy_bonus": 1 },
+      "outcome_text_key": "effect.turn_start_plus_energy",
+      "attribution_key": "relic.name.ashen_hourglass",
+      "tags": ["m1", "energy", "combat"]
     },
     {
       "id": "relic.twilight_coin",
@@ -29,32 +22,14 @@
       "description_key": "relic.description.twilight_coin",
       "rarity": "common",
       "effect_key": "effect.shop_discount_small",
-      "tags": [
-        "m1",
-        "shop"
-      ]
-    },
-    {
-      "id": "relic.oaken_talisman",
-      "name_key": "relic.name.oaken_talisman",
-      "description_key": "relic.description.oaken_talisman",
-      "rarity": "common",
-      "effect_key": "effect.max_hp_plus_small",
-      "tags": [
-        "m1",
-        "survival"
-      ]
-    },
-    {
-      "id": "relic.raven_feather",
-      "name_key": "relic.name.raven_feather",
-      "description_key": "relic.description.raven_feather",
-      "rarity": "uncommon",
-      "effect_key": "effect.curse_remove_discount",
-      "tags": [
-        "m1",
-        "curse"
-      ]
+      "execution_boundary": "t110.shared.run",
+      "trigger_path": "core.relic.equipped",
+      "timing": "on_shop_offer_open",
+      "target_domain": "shop",
+      "parameters": { "discount_percent": 10 },
+      "outcome_text_key": "effect.shop_discount_small",
+      "attribution_key": "relic.name.twilight_coin",
+      "tags": ["m1", "economy", "run"]
     }
   ]
 }

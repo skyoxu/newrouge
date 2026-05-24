@@ -1116,6 +1116,75 @@ func test_m1_windows_gate_evidence_contains_execution_path_metadata() -> void:
 # acceptance: ACC:T133.4
 # acceptance: ACC:T133.5
 # acceptance: ACC:T133.6
+# acceptance: ACC:T132.8
+func test_live_run_relic_shop_discount_uses_catalog_pricing_and_reenters_deterministically() -> void:
+	var main := await _load_main_on_map()
+	assert_that(bool(main.has_method("SetRunRelicIdsForTest"))).is_true()
+	main.call("SetRunRelicIdsForTest", ["relic.twilight_coin"])
+
+	var first_enter := main.call("StartMapNodeRouteForTest", "shop-01", "shop", true, "") as Dictionary
+	assert_that(bool(first_enter.get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var first_shop = _current_scene_instance(main)
+	assert_that(first_shop).is_not_null()
+	assert_that(bool(first_shop.has_method("GetVisibleOffersForTest"))).is_true()
+	var first_visible_offers := first_shop.call("GetVisibleOffersForTest") as Array
+	assert_that(first_visible_offers.size()).is_greater_equal(3)
+
+	var first_prices: Array[int] = []
+	for offer_variant in first_visible_offers:
+		if typeof(offer_variant) != TYPE_DICTIONARY:
+			continue
+		var offer := offer_variant as Dictionary
+		first_prices.append(int(offer.get("price", -1)))
+	assert_that(first_prices).is_equal([54, 81, 216])
+
+	assert_that(bool(first_shop.call("LeaveShopForTest").get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var second_enter := main.call("StartMapNodeRouteForTest", "shop-01", "shop", true, "") as Dictionary
+	assert_that(bool(second_enter.get("ok", false))).is_true()
+	await get_tree().process_frame
+
+	var second_shop = _current_scene_instance(main)
+	assert_that(second_shop).is_not_null()
+	var second_visible_offers := second_shop.call("GetVisibleOffersForTest") as Array
+	var second_prices: Array[int] = []
+	for offer_variant in second_visible_offers:
+		if typeof(offer_variant) != TYPE_DICTIONARY:
+			continue
+		var offer := offer_variant as Dictionary
+		second_prices.append(int(offer.get("price", -1)))
+	assert_that(second_prices).is_equal(first_prices)
+
+# acceptance: ACC:T132.8
+func test_unavailable_reward_pool_relic_is_not_exposed_as_live_reward_entry() -> void:
+	var main := await _load_main_on_map()
+	assert_that(bool(main.has_method("GetRewardEntriesForPoolForTest"))).is_true()
+
+	var entries := main.call("GetRewardEntriesForPoolForTest", "reward.act1.boss_1") as Array
+	var has_raven_feather := false
+	var has_gold := false
+	var has_rare_cards := false
+	for entry_variant in entries:
+		if typeof(entry_variant) != TYPE_DICTIONARY:
+			continue
+		var entry := entry_variant as Dictionary
+		var reward_type := str(entry.get("reward_type", "")).strip_edges()
+		var config := entry.get("config", {}) as Dictionary
+		if reward_type == "relic" and str(config.get("relic_id", "")).strip_edges() == "relic.raven_feather":
+			has_raven_feather = true
+		if reward_type == "gold":
+			has_gold = true
+		if reward_type == "rare_card_choice":
+			has_rare_cards = true
+
+	assert_that(has_raven_feather).is_false()
+	assert_that(has_gold).is_true()
+	assert_that(has_rare_cards).is_true()
+
+# acceptance: ACC:T132.8
 func test_reward_runtime_modifiers_apply_once_before_lock_and_do_not_mutate_locked_snapshot() -> void:
 	var main := await _load_main_on_map()
 	var first_route := main.call("StartMapNodeRouteForTest", "combat-01", "combat", true, "") as Dictionary

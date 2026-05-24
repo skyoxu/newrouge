@@ -159,11 +159,26 @@ enemy.act1.slime_scout.name,黏液斥候
 enemy.act1.moss_rat.name,苔鼠
 enemy.act1.bandit_enforcer.name,强盗打手
 enemy.act1.ruin_warden.name,废墟守卫
-relic.description.ashen_hourglass,在当前 M1 占位版本中，战斗开始时获得额外能量。
-relic.description.rusted_compass,在当前 M1 占位版本中，额外预览一条地图路线。
-relic.description.twilight_coin,在当前 M1 占位版本中，商店价格略微降低。
-relic.description.oaken_talisman,获得少量最大生命值。
-relic.description.raven_feather,移除诅咒的费用降低。
+relic.description.ashen_hourglass,每场战斗开始时获得 1 点额外能量。
+relic.description.obsidian_mirror,每场战斗中复制你打出的第一张攻击牌。
+relic.description.blood_oath,当生命值不高于 25 时获得 +3 攻击。
+relic.description.rusted_compass,地图揭示路线时额外预览 1 条路线。
+relic.description.twilight_coin,商店价格降低 10%。
+relic.description.embershard,你的攻击命中时施加 2 层灼烧。
+relic.description.frostbite_ring,每当你打出技能牌时施加 1 层迟缓。
+relic.description.gale_charm,战斗开始时额外抽 1 张牌。
+relic.description.iron_vow,受到伤害后获得 4 点格挡。
+relic.description.moonlit_compass,事件选项额外揭示 1 行信息。
+relic.description.nightwatch_lantern,本局中下一张暗属性牌费用减少 1，仅触发一次。
+relic.description.oaken_talisman,装备时获得 8 点最大生命值。
+relic.description.phantom_quill,本局获得 1 次奖励重掷。
+relic.description.quicksilver_seal,达到 3 连击时获得 1 点能量。
+relic.description.raven_feather,移除诅咒的费用降低 20 金币。
+relic.description.sunken_idol,稀有奖励出现概率提高 15%。
+relic.description.thorn_crown,敌人攻击你时反弹 2 点荆棘伤害。
+relic.description.umbral_shard,本局中下一张暗属性牌费用转换减少 1，仅触发一次。
+relic.description.vigilant_emblem,第一回合开始时获得 6 点格挡。
+relic.description.warden_mark,护持生效后你的生命值不会低于 1。
 event.forgotten_cache.title,被遗忘的储藏箱
 event.forgotten_cache.description,路边放着一个裂开的箱子。
 event.option.take_gold,拿走金币
@@ -179,10 +194,25 @@ shop.feedback.offer_taken,该商品已经被拿走。
 shop.feedback.invalid_offer,该商店商品不可用。
 ui.run.summary.title,本局总结
 effect.turn_start_plus_energy,战斗开始时获得额外能量。
+effect.first_card_copy,复制你本场战斗中打出的第一张攻击牌。
+effect.low_hp_attack_up,当生命值低于阈值时获得额外攻击。
 effect.map_preview_plus_one,额外预览一条地图路线。
 effect.shop_discount_small,略微降低商店价格。
+effect.burn_on_hit,攻击命中时施加灼烧。
+effect.slow_enemy_on_skill,打出技能牌时施加迟缓。
+effect.first_draw_plus_one,战斗开始时额外抽 1 张牌。
+effect.block_when_damaged,受到伤害后获得格挡。
+effect.event_choice_extra_info,为事件选项揭示额外信息。
+effect.dark_cost_reduce_once,本局中一次性降低暗属性牌费用。
 effect.max_hp_plus_small,获得少量最大生命值。
+effect.reward_reroll_once,本局获得 1 次奖励重掷。
+effect.energy_on_combo,达到连击阈值时获得能量。
 effect.curse_remove_discount,降低移除诅咒的费用。
+effect.rare_reward_chance_up,提高稀有奖励出现概率。
+effect.thorns_small,向攻击者反弹少量荆棘伤害。
+effect.dark_cost_convert_once,本局中一次性转换暗属性牌费用。
+effect.first_turn_block_plus,第一回合开始时获得格挡。
+effect.hp_floor_guard,防止生命值跌破护持下限。
 ui.difficulty.label,难度
 ui.difficulty.1,难度 1
 ui.difficulty.2,难度 2

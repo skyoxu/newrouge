@@ -2375,6 +2375,7 @@ func test_feedback_localization_zh_cn_keeps_human_readable_text() -> void:
 # ACC:T106.1
 # ACC:T106.2
 # ACC:T106.4
+# ACC:T132.8
 func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_scene_local_stack() -> void:
 	var scene := _new_scene()
 	await get_tree().process_frame
@@ -2420,6 +2421,61 @@ func test_t106_power_and_relic_participants_are_visible_and_inspectable_without_
 	assert_that(bool(scene.call("WasPotionRuntimeClosureExecutedForTest"))).is_false()
 	assert_that(bool(scene.call("IsSceneLocalEffectStackUsedForTest"))).is_false()
 	scene.call("SetCardDefinitionAutoLoadEnabledForTest", true)
+
+
+# ACC:T132.8
+func test_t132_catalog_backed_combat_relics_apply_real_start_of_combat_effects_and_visible_outcomes() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+	assert_that(bool(scene.call("ApplyConfiguredCombatRelicsForTest", ["relic.ashen_hourglass"]))).is_true()
+
+	var relic_ids := scene.call("GetVisibleRelicIdsForTest") as Array
+	var root := scene as Control
+	var energy_value := root.get_node("HUD/EnergyValue") as Label
+	assert_that(relic_ids.has("ashen_hourglass")).is_true()
+	assert_that(energy_value.text.begins_with("4")).is_true()
+
+	var expected_name := str(scene.call("ResolveLocalizedTextForTest", "relic.name.ashen_hourglass")).strip_edges()
+	var expected_outcome := str(scene.call("ResolveLocalizedTextForTest", "effect.turn_start_plus_energy")).strip_edges()
+	var surface_text := str(scene.call("GetRelicParticipantSurfaceTextForTest", "ashen_hourglass"))
+	assert_that(surface_text.find(expected_name) >= 0).is_true()
+	assert_that(surface_text.find(expected_outcome) >= 0).is_true()
+
+	scene.call("ApplyTargetInspectionForTest", "ashen_hourglass")
+	var inspect_text := str(scene.call("GetParticipantInspectTextForTest", "ashen_hourglass"))
+	assert_that(inspect_text.find(expected_name) >= 0).is_true()
+	assert_that(inspect_text.find(expected_outcome) >= 0).is_true()
+
+	var feedback_history := scene.call("GetFeedbackHistoryForTest") as Array
+	var joined := "\n".join(feedback_history)
+	assert_that(joined.find("Relic.ashen_hourglass") >= 0).is_true()
+	assert_that(joined.find(expected_outcome) >= 0).is_true()
+
+# ACC:T132.8
+func test_t132_combat_start_relic_effect_is_idempotent_within_same_scene_state() -> void:
+	var scene := _new_scene()
+	await get_tree().process_frame
+	TranslationServer.set_locale("en")
+
+	var runtime_snapshot := '{"handCards":["Strike"],"difficulty":1,"playerHp":80,"energy":3,"drawPileCount":7,"discardPileCount":0,"turnState":"PlayerTurn"}'
+	assert_that(bool(scene.call("TryApplyCoreSnapshotContractJson", runtime_snapshot))).is_true()
+	assert_that(bool(scene.call("ApplyConfiguredCombatRelicsForTest", ["relic.ashen_hourglass"]))).is_true()
+	scene.call("ApplyConfiguredCombatRelicsForTest", ["relic.ashen_hourglass"])
+
+	var root := scene as Control
+	var energy_value := root.get_node("HUD/EnergyValue") as Label
+	assert_that(energy_value.text.begins_with("4")).is_true()
+
+	var feedback_history := scene.call("GetFeedbackHistoryForTest") as Array
+	var matches := 0
+	for item in feedback_history:
+		if str(item).find("Relic.ashen_hourglass") >= 0:
+			matches += 1
+	assert_that(matches).is_equal(1)
 
 
 # --- T111 anchors start ---

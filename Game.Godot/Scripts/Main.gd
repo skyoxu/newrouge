@@ -506,7 +506,23 @@ func _append_reward_entry(entries: Array, reward_type: String, config_variant) -
     if typeof(config_variant) != TYPE_DICTIONARY:
         return
     var config = (config_variant as Dictionary).duplicate(true)
+    if not _is_reward_entry_available(reward_type, config):
+        return
     entries.append(_build_reward_entry_data(reward_type, config))
+
+func _is_reward_entry_available(reward_type: String, config: Dictionary) -> bool:
+    if reward_type != "relic":
+        return true
+    var availability := str(config.get("availability", "")).strip_edges().to_lower()
+    var selection_state := str(config.get("selection_state", "")).strip_edges().to_lower()
+    var fallback_reason := str(config.get("fallback_reason_key", "")).strip_edges()
+    if availability == "unavailable":
+        return false
+    if selection_state == "unavailable":
+        return false
+    if not fallback_reason.is_empty():
+        return false
+    return true
 
 func _build_reward_entry_data(reward_type: String, config: Dictionary) -> Dictionary:
     var entry = {
@@ -1161,6 +1177,7 @@ func _build_default_shop_state(node_id: String) -> Dictionary:
             {"id": offer_b, "price": 90, "taken": false},
             {"id": offer_c, "price": 240, "taken": false}
         ],
+        "active_relic_ids": _run_relic_ids.duplicate(),
         "owned_offer_ids": [],
         "removable_cards": ["curse_doubt"],
         "reforge_targets": [offer_b],
@@ -1292,6 +1309,9 @@ func GetActiveShopStateForScene() -> Dictionary:
     if typeof(state) != TYPE_DICTIONARY:
         return {}
     return (state as Dictionary).duplicate(true)
+
+func GetRewardEntriesForPoolForTest(reward_pool_id: String) -> Array:
+    return _build_reward_entries_for_pool(reward_pool_id).duplicate(true)
 
 func ApplyShopStateForScene(state: Dictionary) -> bool:
     if _active_shop_node_id.is_empty():
@@ -1516,6 +1536,14 @@ func GetRunStateForTest() -> Dictionary:
         "relic_ids": _run_relic_ids.duplicate(),
         "consumable_ids": _run_consumable_ids.duplicate()
     }
+
+func SetRunRelicIdsForTest(relic_ids: Array) -> void:
+    _run_relic_ids.clear()
+    for relic_variant in relic_ids:
+        var relic_id := str(relic_variant).strip_edges()
+        if relic_id.is_empty() or _run_relic_ids.has(relic_id):
+            continue
+        _run_relic_ids.append(relic_id)
 
 func _parse_reward_action_payload(action_payload) -> Dictionary:
     var parsed: Dictionary = {
