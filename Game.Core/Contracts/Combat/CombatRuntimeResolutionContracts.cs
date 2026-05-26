@@ -24,6 +24,38 @@ public sealed record CardResolutionResult(
     bool MoveToExhaust);
 
 /// <summary>
+/// Structured effect carried by a displayed enemy intent preview.
+/// </summary>
+public sealed record EnemyIntentEffectInput(
+    string Kind,
+    int Magnitude = 0,
+    string Timing = "",
+    string StatusId = "",
+    string Target = "self");
+
+/// <summary>
+/// Structured preview bundle that runtime must resolve without re-rolling.
+/// </summary>
+public sealed record EnemyIntentBundleInput(
+    string EnemyId,
+    string IntentId,
+    string ExecutionFingerprint,
+    IReadOnlyList<EnemyIntentEffectInput>? Effects);
+
+/// <summary>
+/// Shared runtime result for one accepted enemy-intent resolution pass.
+/// </summary>
+public sealed record EnemyIntentResolutionResult(
+    int ImmediateDamage,
+    IReadOnlyList<EnemyIntentEffectInput> ImmediateEffects,
+    IReadOnlyList<EnemyIntentEffectInput> DelayedEffects,
+    string FailureCode,
+    string ExecutionFingerprint);
+
+/// <summary>
 /// Input contract for resolving incoming end-turn damage from enemy intent.
 /// </summary>
-public sealed record EndTurnEnemyIntentInput(int IntentDamage, int FallbackDamage);
+public sealed record EndTurnEnemyIntentInput(
+    int IntentDamage,
+    int FallbackDamage,
+    IReadOnlyList<EnemyIntentBundleInput>? PreviewBundles = null);
