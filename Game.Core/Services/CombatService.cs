@@ -154,12 +154,87 @@ public class CombatService
     public int ResolveEndTurnIncomingDamage(EndTurnEnemyIntentInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
+        var bundleResolution = ResolveEnemyIntentBundleOnce(input);
+        if (!string.IsNullOrWhiteSpace(bundleResolution.FailureCode))
+        {
+            return 0;
+        }
+
+        if (bundleResolution.ImmediateDamage > 0)
+        {
+            return bundleResolution.ImmediateDamage;
+        }
+
         if (input.IntentDamage > 0)
         {
             return input.IntentDamage;
         }
 
         return Math.Max(0, input.FallbackDamage);
+    }
+
+    public EnemyIntentResolutionResult ResolveEnemyIntentBundleOnce(EndTurnEnemyIntentInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        var bundles = input.PreviewBundles ?? Array.Empty<EnemyIntentBundleInput>();
+        if (bundles.Count <= 0)
+        {
+            return new EnemyIntentResolutionResult(
+                ImmediateDamage: input.IntentDamage > 0 ? input.IntentDamage : Math.Max(0, input.FallbackDamage),
+                ImmediateEffects: Array.Empty<EnemyIntentEffectInput>(),
+                DelayedEffects: Array.Empty<EnemyIntentEffectInput>(),
+                FailureCode: string.Empty,
+                ExecutionFingerprint: "fallback:none");
+        }
+
+        var immediateEffects = new List<EnemyIntentEffectInput>();
+        var delayedEffects = new List<EnemyIntentEffectInput>();
+        var fingerprintParts = new List<string>();
+
+        foreach (var bundle in bundles)
+        {
+            if (bundle is null || string.IsNullOrWhiteSpace(bundle.ExecutionFingerprint))
+            {
+                return InvalidEnemyIntentPayload();
+            }
+
+            var effects = bundle.Effects ?? Array.Empty<EnemyIntentEffectInput>();
+            if (effects.Count <= 0)
+            {
+                return InvalidEnemyIntentPayload();
+            }
+
+            fingerprintParts.Add(bundle.ExecutionFingerprint.Trim());
+            foreach (var effect in effects)
+            {
+                if (!TryValidateEffect(effect, out var normalized))
+                {
+                    return InvalidEnemyIntentPayload();
+                }
+
+                if (IsDelayedEnemyTurnEffect(normalized))
+                {
+                    delayedEffects.Add(normalized);
+                }
+                else
+                {
+                    immediateEffects.Add(normalized);
+                }
+            }
+        }
+
+        var immediateDamage = immediateEffects
+            .Where(static effect => string.Equals(effect.Kind, "attack", StringComparison.OrdinalIgnoreCase))
+            .Sum(static effect => Math.Max(0, effect.Magnitude));
+
+        var ExecutionFingerprint = string.Join("|", fingerprintParts);
+        return new EnemyIntentResolutionResult(
+            ImmediateDamage: immediateDamage > 0 ? immediateDamage : Math.Max(0, input.IntentDamage),
+            ImmediateEffects: immediateEffects,
+            DelayedEffects: delayedEffects,
+            FailureCode: string.Empty,
+            ExecutionFingerprint: ExecutionFingerprint);
     }
 
     public static int CalculateDamageWithStatusMultipliers(
@@ -341,6 +416,74 @@ public class CombatService
         var escapedType = type.Replace("\\", "\\\\").Replace("\"", "\\\"");
         var criticalLiteral = critical ? "true" : "false";
         return $"{{\"amount\":{amount},\"type\":\"{escapedType}\",\"critical\":{criticalLiteral}}}";
+    }
+
+    private static bool TryValidateEffect(EnemyIntentEffectInput effect, out EnemyIntentEffectInput normalized)
+    {
+        normalized = effect;
+        if (effect is null)
+        {
+            return false;
+        }
+
+        var kind = (effect.Kind ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(kind))
+        {
+            return false;
+        }
+
+        var timing = (effect.Timing ?? string.Empty).Trim();
+        var statusId = (effect.StatusId ?? string.Empty).Trim();
+        var target = string.IsNullOrWhiteSpace(effect.Target) ? "self" : effect.Target.Trim();
+        var magnitude = Math.Max(0, effect.Magnitude);
+
+        switch (kind.ToLowerInvariant())
+        {
+            case "attack":
+            case "block":
+                if (magnitude <= 0)
+                {
+                    return false;
+                }
+
+                break;
+            case "status":
+                if (magnitude <= 0 || string.IsNullOrWhiteSpace(statusId))
+                {
+                    return false;
+                }
+
+                break;
+            default:
+                return false;
+        }
+
+        normalized = effect with
+        {
+            Kind = kind,
+            Magnitude = magnitude,
+            Timing = timing,
+            StatusId = statusId,
+            Target = target,
+        };
+        return true;
+    }
+
+    private static bool IsDelayedEnemyTurnEffect(EnemyIntentEffectInput effect)
+    {
+        return string.Equals(effect.Timing, "next_enemy_turn", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(effect.Timing, "next_turn", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(effect.Timing, "enemy_turn_start", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static EnemyIntentResolutionResult InvalidEnemyIntentPayload()
+    {
+        return new EnemyIntentResolutionResult(
+            ImmediateDamage: 0,
+            ImmediateEffects: Array.Empty<EnemyIntentEffectInput>(),
+            DelayedEffects: Array.Empty<EnemyIntentEffectInput>(),
+            FailureCode: "InvalidEnemyIntentPayload",
+            ExecutionFingerprint: "invalid");
     }
 }
 

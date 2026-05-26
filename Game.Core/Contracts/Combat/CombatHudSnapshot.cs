@@ -12,5 +12,10 @@ public sealed record CombatHudSnapshot(
     int DiscardPileCount,
     int Difficulty = 0,
     int PlayerHp = 0,
-    string TurnState = ""
+    string TurnState = "",
+    int EnemyHp = 0,
+    int EnemyBlock = 0,
+    IReadOnlyList<string>? EnemyStatuses = null,
+    IReadOnlyList<string>? IntentRows = null,
+    IReadOnlyList<string>? CombatFeedback = null
 );

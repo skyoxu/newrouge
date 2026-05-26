@@ -164,6 +164,7 @@ public partial class CombatScene : Control
     private string _selectedEnemyTargetId = string.Empty;
     private bool _hasPendingInvalidTargetSelection;
     private readonly Dictionary<string, EnemyIntentState> _enemyIntentByEnemy = new(StringComparer.Ordinal);
+    private readonly List<ScheduledEnemyIntentEffectState> _scheduledEnemyIntentEffects = new();
     private bool _enemyIntentPreviewManuallyAppliedForTest;
     private readonly Dictionary<string, Texture2D> _enemyIntentTextureCache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _powerInspectById = new(StringComparer.Ordinal);
@@ -2447,6 +2448,21 @@ public partial class CombatScene : Control
         _turnStateValue.Text = string.IsNullOrWhiteSpace(snapshot.TurnState)
             ? _turnTitleLabel.Text
             : snapshot.TurnState;
+        if (!string.IsNullOrWhiteSpace(_selectedEnemyTargetId)
+            && snapshot.EnemyHp > 0
+            && _enemyCombatById.TryGetValue(_selectedEnemyTargetId, out var selectedEnemyState))
+        {
+            _enemyCombatById[_selectedEnemyTargetId] = selectedEnemyState with
+            {
+                CurrentHp = snapshot.EnemyHp,
+                Block = Math.Max(0, snapshot.EnemyBlock),
+                Status = snapshot.EnemyStatuses is { Count: > 0 }
+                    ? string.Join(", ", snapshot.EnemyStatuses.Where(static item => !string.IsNullOrWhiteSpace(item)))
+                    : selectedEnemyState.Status,
+            };
+            RefreshPrimaryEnemyPanel();
+        }
+
         SyncRuntimeDeckState(snapshot.HandCards, snapshot.DrawPileCount, snapshot.DiscardPileCount);
         RefreshMasterDeckButton();
         _coreStateMutationCount += 1;
@@ -2472,12 +2488,28 @@ public partial class CombatScene : Control
             return false;
         }
 
-        var intentDamage = TryResolveIncomingEnemyDamageFromIntent();
+        var fallbackDamage = _combatService.CalculateDamage(
+            new Game.Core.Domain.ValueObjects.Damage(6, Game.Core.Domain.ValueObjects.DamageType.Physical, false));
+        var previewBundles = BuildEnemyIntentBundlesForAliveEnemies();
+        var bundleResolution = _combatService.ResolveEnemyIntentBundleOnce(
+            new EndTurnEnemyIntentInput(
+                IntentDamage: 0,
+                FallbackDamage: fallbackDamage,
+                PreviewBundles: previewBundles));
+        if (!string.IsNullOrWhiteSpace(bundleResolution.FailureCode))
+        {
+            AppendCommandFeedback("end_turn", accepted: false, detail: bundleResolution.FailureCode, refusalReasonKey: "combat.invalid_action");
+            return false;
+        }
+
+        ApplyScheduledEnemyIntentEffectsForCurrentBoundary();
+        ApplyImmediateEnemyIntentEffects();
+        QueueDelayedEnemyIntentEffects();
         var incomingDamage = _combatService.ResolveEndTurnIncomingDamage(
             new EndTurnEnemyIntentInput(
-                IntentDamage: intentDamage,
-                FallbackDamage: _combatService.CalculateDamage(
-                    new Game.Core.Domain.ValueObjects.Damage(6, Game.Core.Domain.ValueObjects.DamageType.Physical, false))));
+                IntentDamage: 0,
+                FallbackDamage: fallbackDamage,
+                PreviewBundles: previewBundles));
         var nextDeckState = ResolveNextDeckStateAfterEndTurn(handCards);
         var nextHandCards = nextDeckState.Hand
             .Select(ResolveRuntimeCardLabel)
@@ -2512,6 +2544,12 @@ public partial class CombatScene : Control
         PublishPresentationCue("enemy_action_feedback");
         PublishSfxHook("enemy_action");
         var detailParts = new List<string> { $"Enemy dealt {progression.DamageTaken} damage. Turn {_turnIndex} started." };
+        var resolvedEnemyIntentDetail = BuildEnemyIntentResolutionDetail();
+        if (!string.IsNullOrWhiteSpace(resolvedEnemyIntentDetail))
+        {
+            detailParts.Add(resolvedEnemyIntentDetail);
+        }
+
         if (!string.IsNullOrWhiteSpace(statusTransitionDetail))
         {
             detailParts.Add(statusTransitionDetail);
@@ -2531,37 +2569,159 @@ public partial class CombatScene : Control
                 continue;
             }
 
-            totalDamage += TryParseDamageFromIntentDescription(intentState.Description);
+            totalDamage += intentState.Effects
+                .Where(static effect => string.Equals(effect.Kind, "attack", StringComparison.OrdinalIgnoreCase))
+                .Where(static effect => !IsDelayedEnemyTurnEffect(effect))
+                .Sum(static effect => Math.Max(0, effect.Amount));
         }
 
         return Math.Max(0, totalDamage);
     }
 
-    private static int TryParseDamageFromIntentDescription(string? description)
+    private List<EnemyIntentBundleInput> BuildEnemyIntentBundlesForAliveEnemies()
     {
-        var digits = new List<char>();
-        foreach (var ch in description ?? string.Empty)
+        var bundles = new List<EnemyIntentBundleInput>();
+        foreach (var enemyId in GetAliveEnemyIds())
         {
-            if (char.IsDigit(ch))
+            if (!_enemyIntentByEnemy.TryGetValue(enemyId, out var intentState))
             {
-                digits.Add(ch);
                 continue;
             }
 
-            if (digits.Count > 0)
+            var effects = intentState.Effects
+                .Select(effect => new EnemyIntentEffectInput(
+                    Kind: effect.Kind,
+                    Magnitude: Math.Max(0, effect.Amount),
+                    Timing: effect.Timing ?? string.Empty,
+                    StatusId: effect.StatusId ?? string.Empty,
+                    Target: effect.Target ?? "self"))
+                .ToArray();
+            bundles.Add(new EnemyIntentBundleInput(
+                EnemyId: enemyId,
+                IntentId: intentState.IntentId,
+                ExecutionFingerprint: intentState.ExecutionFingerprint,
+                Effects: effects));
+        }
+
+        return bundles;
+    }
+
+    private void ApplyImmediateEnemyIntentEffects()
+    {
+        foreach (var enemyId in GetAliveEnemyIds())
+        {
+            if (!_enemyIntentByEnemy.TryGetValue(enemyId, out var intentState))
             {
+                continue;
+            }
+
+            foreach (var effect in intentState.Effects)
+            {
+                if (IsDelayedEnemyTurnEffect(effect))
+                {
+                    continue;
+                }
+
+                ApplyEnemyIntentEffect(enemyId, effect);
+            }
+        }
+    }
+
+    private void QueueDelayedEnemyIntentEffects()
+    {
+        foreach (var enemyId in GetAliveEnemyIds())
+        {
+            if (!_enemyIntentByEnemy.TryGetValue(enemyId, out var intentState))
+            {
+                continue;
+            }
+
+            foreach (var effect in intentState.Effects)
+            {
+                if (!IsDelayedEnemyTurnEffect(effect))
+                {
+                    continue;
+                }
+
+                _scheduledEnemyIntentEffects.Add(new ScheduledEnemyIntentEffectState(enemyId, effect));
+            }
+        }
+    }
+
+    private void ApplyScheduledEnemyIntentEffectsForCurrentBoundary()
+    {
+        if (_scheduledEnemyIntentEffects.Count <= 0)
+        {
+            return;
+        }
+
+        var pending = _scheduledEnemyIntentEffects.ToArray();
+        _scheduledEnemyIntentEffects.Clear();
+        foreach (var scheduled in pending)
+        {
+            ApplyEnemyIntentEffect(scheduled.EnemyId, scheduled.Effect);
+        }
+    }
+
+    private void ApplyEnemyIntentEffect(string enemyId, EnemyIntentEffectPayload effect)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            return;
+        }
+
+        switch ((effect.Kind ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            case "block":
+                ApplyBlockToEnemy(enemyId, Math.Max(0, effect.Amount));
                 break;
+            case "status":
+                ApplyStatusToEnemy(enemyId, effect.StatusId ?? string.Empty, Math.Max(0, effect.Amount));
+                break;
+        }
+    }
+
+    private string BuildEnemyIntentResolutionDetail()
+    {
+        var parts = new List<string>();
+        foreach (var enemyId in GetAliveEnemyIds())
+        {
+            if (!_enemyIntentByEnemy.TryGetValue(enemyId, out var intentState))
+            {
+                continue;
+            }
+
+            foreach (var effect in intentState.Effects)
+            {
+                var lowerKind = (effect.Kind ?? string.Empty).Trim().ToLowerInvariant();
+                if (lowerKind == "attack")
+                {
+                    continue;
+                }
+
+                if (lowerKind == "block")
+                {
+                    var timingLabel = IsDelayedEnemyTurnEffect(effect) ? "scheduled" : "resolved";
+                    parts.Add($"{timingLabel} {enemyId} block +{Math.Max(0, effect.Amount)}");
+                    continue;
+                }
+
+                if (lowerKind == "status" && !string.IsNullOrWhiteSpace(effect.StatusId))
+                {
+                    var timingLabel = IsDelayedEnemyTurnEffect(effect) ? "scheduled" : "applied";
+                    parts.Add($"{timingLabel} {effect.StatusId} +{Math.Max(0, effect.Amount)} to {enemyId}");
+                }
             }
         }
 
-        if (digits.Count <= 0)
-        {
-            return 0;
-        }
+        return string.Join("; ", parts);
+    }
 
-        return int.TryParse(new string(digits.ToArray()), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
-            ? Math.Max(0, value)
-            : 0;
+    private static bool IsDelayedEnemyTurnEffect(EnemyIntentEffectPayload effect)
+    {
+        return string.Equals(effect.Timing, "next_enemy_turn", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(effect.Timing, "next_turn", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(effect.Timing, "enemy_turn_start", StringComparison.OrdinalIgnoreCase);
     }
 
     private void AppendCommandFeedback(string commandName, bool accepted, string? detail = null, string? refusalReasonKey = null)
@@ -3315,6 +3475,17 @@ public partial class CombatScene : Control
         RefreshPrimaryEnemyPanel();
     }
 
+    private void ApplyBlockToEnemy(string enemyId, int amount)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId) || amount <= 0 || !_enemyCombatById.TryGetValue(enemyId, out var enemyState))
+        {
+            return;
+        }
+
+        _enemyCombatById[enemyId] = enemyState with { Block = Math.Max(0, enemyState.Block + amount) };
+        RefreshPrimaryEnemyPanel();
+    }
+
     private void ApplyStatusToPlayer(string statusId, int stacks)
     {
         var normalizedStatusId = (statusId ?? string.Empty).Trim();
@@ -3559,6 +3730,7 @@ public partial class CombatScene : Control
     {
         _enemyIntentByEnemy.Remove(enemyId);
         _enemyStatusStacksByEnemy.Remove(enemyId);
+        _scheduledEnemyIntentEffects.RemoveAll(item => string.Equals(item.EnemyId, enemyId, StringComparison.Ordinal));
         if (string.Equals(_selectedEnemyTargetId, enemyId, StringComparison.Ordinal))
         {
             _selectedEnemyTargetId = string.Empty;
@@ -4042,16 +4214,78 @@ public partial class CombatScene : Control
             }
 
             var textKey = preview.TextKey ?? string.Empty;
+            var resolvedIntentId = string.IsNullOrWhiteSpace(preview.IntentId)
+                ? $"{preview.EnemyId}:{textKey}"
+                : preview.IntentId;
+            var effects = NormalizeEnemyIntentEffects(preview.Effects, textKey);
             var state = new EnemyIntentState(
                 EnemyId: preview.EnemyId,
+                IntentId: resolvedIntentId,
                 IconId: preview.IconId ?? string.Empty,
                 TextKey: textKey,
                 Description: ResolveIntentDescription(textKey),
-                Turn: _enemyIntentTurnIndex);
+                Turn: _enemyIntentTurnIndex,
+                Effects: effects,
+                ExecutionFingerprint: BuildEnemyIntentExecutionFingerprint(preview.EnemyId, resolvedIntentId, effects));
             _enemyIntentByEnemy[preview.EnemyId] = state;
         }
 
         RefreshEnemyIntentRows();
+    }
+
+    private static IReadOnlyList<EnemyIntentEffectPayload> NormalizeEnemyIntentEffects(
+        IReadOnlyList<EnemyIntentEffectPayload>? effects,
+        string textKey)
+    {
+        if (effects is { Count: > 0 })
+        {
+            return effects
+                .Where(static effect => effect is not null && !string.IsNullOrWhiteSpace(effect.Kind))
+                .Select(static effect => effect with
+                {
+                    Kind = effect.Kind.Trim(),
+                    Amount = Math.Max(0, effect.Amount),
+                    Timing = effect.Timing ?? string.Empty,
+                    StatusId = effect.StatusId ?? string.Empty,
+                    Target = string.IsNullOrWhiteSpace(effect.Target) ? "self" : effect.Target.Trim(),
+                })
+                .ToArray();
+        }
+
+        return BuildLegacyPreviewEffects(textKey);
+    }
+
+    private static IReadOnlyList<EnemyIntentEffectPayload> BuildLegacyPreviewEffects(string textKey)
+    {
+        return textKey switch
+        {
+            "combat.intent.attack_1" => new[] { new EnemyIntentEffectPayload("attack", 1, "current_turn", string.Empty, "player") },
+            "combat.intent.synthetic_damage_2" => new[] { new EnemyIntentEffectPayload("attack", 2, "current_turn", string.Empty, "player") },
+            "combat.intent.synthetic_damage_7" => new[] { new EnemyIntentEffectPayload("attack", 7, "current_turn", string.Empty, "player") },
+            "combat.intent.attack_6" => new[] { new EnemyIntentEffectPayload("attack", 6, "current_turn", string.Empty, "player") },
+            "combat.intent.block_4" => new[] { new EnemyIntentEffectPayload("block", 4, "current_turn", string.Empty, "self") },
+            "combat.intent.buff_2" => new[] { new EnemyIntentEffectPayload("status", 2, "current_turn", "status.strength", "self") },
+            "combat.intent.debuff_weak" => new[] { new EnemyIntentEffectPayload("status", 1, "current_turn", "status.weak", "self") },
+            "combat.intent.mixed_attack_block" => new[]
+            {
+                new EnemyIntentEffectPayload("attack", 6, "current_turn", string.Empty, "player"),
+                new EnemyIntentEffectPayload("block", 4, "current_turn", string.Empty, "self"),
+            },
+            "intent.block.preview" => new[] { new EnemyIntentEffectPayload("block", 4, "current_turn", string.Empty, "self") },
+            "intent.status.preview" => new[] { new EnemyIntentEffectPayload("status", 1, "current_turn", "status.weak", "self") },
+            _ => Array.Empty<EnemyIntentEffectPayload>(),
+        };
+    }
+
+    private static string BuildEnemyIntentExecutionFingerprint(
+        string enemyId,
+        string intentId,
+        IReadOnlyList<EnemyIntentEffectPayload> effects)
+    {
+        var effectFingerprint = string.Join(
+            "|",
+            effects.Select(static effect => $"{effect.Kind}:{effect.Amount}:{effect.Timing}:{effect.StatusId}:{effect.Target}"));
+        return $"{enemyId.Trim()}|{intentId.Trim()}|{effectFingerprint}";
     }
 
     private void ApplyDefaultM1CombatSnapshotIfEmpty()
@@ -4638,10 +4872,16 @@ public partial class CombatScene : Control
 
         _enemyIntentByEnemy[normalizedEnemyId] = new EnemyIntentState(
             EnemyId: normalizedEnemyId,
+            IntentId: $"fallback:{normalizedEnemyId}",
             IconId: "icon_sword",
             TextKey: "combat.intent.attack_6",
             Description: ResolveUiText("combat.intent.attack_6"),
-            Turn: _enemyIntentTurnIndex);
+            Turn: _enemyIntentTurnIndex,
+            Effects: BuildLegacyPreviewEffects("combat.intent.attack_6"),
+            ExecutionFingerprint: BuildEnemyIntentExecutionFingerprint(
+                normalizedEnemyId,
+                $"fallback:{normalizedEnemyId}",
+                BuildLegacyPreviewEffects("combat.intent.attack_6")));
         RefreshEnemyIntentRows();
     }
 
@@ -4662,10 +4902,16 @@ public partial class CombatScene : Control
 
             _enemyIntentByEnemy[enemyId] = new EnemyIntentState(
                 EnemyId: enemyId,
+                IntentId: $"fallback:{enemyId}",
                 IconId: "icon_sword",
                 TextKey: "combat.intent.attack_6",
                 Description: ResolveUiText("combat.intent.attack_6"),
-                Turn: _enemyIntentTurnIndex);
+                Turn: _enemyIntentTurnIndex,
+                Effects: BuildLegacyPreviewEffects("combat.intent.attack_6"),
+                ExecutionFingerprint: BuildEnemyIntentExecutionFingerprint(
+                    enemyId,
+                    $"fallback:{enemyId}",
+                    BuildLegacyPreviewEffects("combat.intent.attack_6")));
             changed = true;
         }
 
@@ -4784,8 +5030,10 @@ public partial class CombatScene : Control
             {
                 previews.Add(new EnemyIntentPreviewItemPayload(
                     runtimeEnemyId,
+                    selectedIntent.IntentId ?? string.Empty,
                     selectedIntent.IconId ?? string.Empty,
-                    selectedIntent.TextKey ?? string.Empty));
+                    selectedIntent.TextKey ?? string.Empty,
+                    selectedIntent.Effects));
             }
         }
 
@@ -7048,21 +7296,40 @@ public partial class CombatScene : Control
     private sealed record EnemyIntentFromAiBehaviorPayload(
         string IntentId,
         string IconId,
-        string TextKey
+        string TextKey,
+        List<EnemyIntentEffectPayload>? Effects
     );
 
     private sealed record EnemyIntentPreviewItemPayload(
         string EnemyId,
+        string? IntentId,
         string IconId,
-        string TextKey
+        string TextKey,
+        List<EnemyIntentEffectPayload>? Effects
     );
 
     private sealed record EnemyIntentState(
         string EnemyId,
+        string IntentId,
         string IconId,
         string TextKey,
         string Description,
-        int Turn
+        int Turn,
+        IReadOnlyList<EnemyIntentEffectPayload> Effects,
+        string ExecutionFingerprint
+    );
+
+    private sealed record EnemyIntentEffectPayload(
+        string Kind,
+        int Amount = 0,
+        string Timing = "",
+        string StatusId = "",
+        string Target = "self"
+    );
+
+    private sealed record ScheduledEnemyIntentEffectState(
+        string EnemyId,
+        EnemyIntentEffectPayload Effect
     );
 
     private sealed record EnemyCombatState(

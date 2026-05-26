@@ -8,9 +8,56 @@
       "enemyId": "act1-slime-scout",
       "intents": [
         {
+          "intentId": "intent.attack_block",
+          "iconId": "icon_sword",
+          "textKey": "combat.intent.mixed_attack_block",
+          "effects": [
+            {
+              "kind": "attack",
+              "amount": 6,
+              "timing": "current_turn",
+              "target": "player"
+            },
+            {
+              "kind": "block",
+              "amount": 4,
+              "timing": "next_enemy_turn",
+              "target": "self"
+            }
+          ]
+        },
+        {
+          "intentId": "intent.attack_status",
+          "iconId": "icon_mix",
+          "textKey": "combat.intent.debuff_weak",
+          "effects": [
+            {
+              "kind": "attack",
+              "amount": 6,
+              "timing": "current_turn",
+              "target": "player"
+            },
+            {
+              "kind": "status",
+              "amount": 1,
+              "statusId": "status.strength",
+              "timing": "current_turn",
+              "target": "self"
+            }
+          ]
+        },
+        {
           "intentId": "intent.attack",
           "iconId": "icon_sword",
-          "textKey": "combat.intent.attack_6"
+          "textKey": "combat.intent.attack_6",
+          "effects": [
+            {
+              "kind": "attack",
+              "amount": 6,
+              "timing": "current_turn",
+              "target": "player"
+            }
+          ]
         }
       ]
     },
@@ -20,7 +67,35 @@
         {
           "intentId": "intent.attack",
           "iconId": "icon_sword",
-          "textKey": "combat.intent.attack_6"
+          "textKey": "combat.intent.attack_6",
+          "effects": [
+            {
+              "kind": "attack",
+              "amount": 6,
+              "timing": "current_turn",
+              "target": "player"
+            }
+          ]
+        },
+        {
+          "intentId": "intent.attack_status",
+          "iconId": "icon_skull",
+          "textKey": "combat.intent.debuff_weak",
+          "effects": [
+            {
+              "kind": "attack",
+              "amount": 5,
+              "timing": "current_turn",
+              "target": "player"
+            },
+            {
+              "kind": "status",
+              "amount": 1,
+              "statusId": "status.poison",
+              "timing": "current_turn",
+              "target": "self"
+            }
+          ]
         }
       ]
     }

@@ -55,14 +55,20 @@ public sealed class EnemyIntentSelectionService
             return matched;
         }
 
-        var opening = intentPoolsByState.FirstOrDefault(
-            pair => string.Equals(pair.Key, "Opening", StringComparison.OrdinalIgnoreCase)).Value;
-        if (opening is { Count: > 0 })
+        var fallbackPool = ResolveFallbackIntentPool(intentPoolsByState);
+        if (fallbackPool is { Count: > 0 })
         {
-            return opening;
+            return fallbackPool;
         }
 
         return intentPoolsByState.Values.FirstOrDefault(Array.Empty<string>());
+    }
+
+    private static IReadOnlyList<string> ResolveFallbackIntentPool(
+        IReadOnlyDictionary<string, IReadOnlyList<string>> intentPoolsByState)
+    {
+        return intentPoolsByState.FirstOrDefault(
+            pair => string.Equals(pair.Key, "Opening", StringComparison.OrdinalIgnoreCase)).Value;
     }
 
     private static int ComputeRngFingerprint(IReadOnlyList<int> rngStream)
