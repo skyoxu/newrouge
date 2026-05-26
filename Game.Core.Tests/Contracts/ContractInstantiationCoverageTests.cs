@@ -264,7 +264,9 @@ public class ContractInstantiationCoverageTests
 
     private static bool TryCreateValue(Type type, out object? value, int depth)
     {
-        if (depth > 4)
+        // Allow nested contract collections used by runtime input records while still
+        // keeping a firm recursion cap against accidental cycles.
+        if (depth > 8)
         {
             value = null;
             return false;
