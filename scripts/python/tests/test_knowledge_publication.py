@@ -83,9 +83,23 @@ class KnowledgePublicationTests(unittest.TestCase):
         self.assertEqual(current, lkg)
         generation = self.repo / "knowledge/indexes/generations" / current["generation_id"]
         self.assertTrue((generation / "manifest.json").is_file())
+        self.assertTrue((generation / "query_suite.json").is_file())
         self.assertTrue((generation / "evaluation.json").is_file())
         check = self.run_publish("--check")
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_check_blocks_when_bound_control_plane_artifact_drifts(self) -> None:
+        first = self.run_publish("--publish")
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        exclusions_path = self.repo / "knowledge/policies/source-exclusions.v1.json"
+        exclusions = json.loads(exclusions_path.read_text(encoding="utf-8"))
+        exclusions["rules"][0]["reason"] = "Changed after publication."
+        exclusions_path.write_text(json.dumps(exclusions, indent=2) + "\n", encoding="utf-8")
+        check = self.run_publish("--check")
+        self.assertNotEqual(check.returncode, 0)
+        payload = json.loads(check.stdout)
+        self.assertEqual(payload["status"], "blocked")
+        self.assertIn("current_exclusions_mismatch", payload["reason"])
 
     def test_failed_candidate_does_not_advance_current_or_lkg(self) -> None:
         first = self.run_publish("--publish")
