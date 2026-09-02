@@ -13,13 +13,14 @@
     "artifacts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["snapshot", "catalog", "projections", "policies", "exclusions", "evaluation"],
+      "required": ["snapshot", "catalog", "projections", "policies", "exclusions", "query_suite", "evaluation"],
       "properties": {
         "snapshot": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "catalog": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "projections": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "policies": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "exclusions": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "query_suite": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "evaluation": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     }
