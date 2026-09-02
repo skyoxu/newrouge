@@ -44,6 +44,18 @@ def _run(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _check_record(name: str, completed: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    record: dict[str, Any] = {"name": name, "returncode": completed.returncode}
+    if completed.returncode:
+        stdout = completed.stdout.strip()
+        stderr = completed.stderr.strip()
+        if stdout:
+            record["stdout_tail"] = stdout[-4000:]
+        if stderr:
+            record["stderr_tail"] = stderr[-4000:]
+    return record
+
+
 def _static_checks(root: Path) -> list[str]:
     issues: list[str] = []
     required_files = [
@@ -144,21 +156,21 @@ def main() -> int:
         ("unit-publication", "scripts/python/tests/test_knowledge_publication.py"),
     ):
         unit = _run([sys.executable, script], root)
-        checks.append({"name": name, "returncode": unit.returncode})
+        checks.append(_check_record(name, unit))
         if unit.returncode:
             issues.append(f"{name}-tests-failed")
 
     if args.require_generated:
         publication = _run([sys.executable, "scripts/python/publish_knowledge_catalog.py", "--check"], root)
-        checks.append({"name": "current-publication", "returncode": publication.returncode})
+        checks.append(_check_record("current-publication", publication))
         if publication.returncode:
             issues.append("current-publication-invalid")
         build = _run([sys.executable, "scripts/python/build_knowledge_catalog.py", "--check"], root)
-        checks.append({"name": "generated-layers", "returncode": build.returncode})
+        checks.append(_check_record("generated-layers", build))
         if build.returncode:
             issues.append("generated-layers-stale")
         evaluation = _run([sys.executable, "scripts/python/evaluate_knowledge_queries.py"], root)
-        checks.append({"name": "repository-query-evaluation", "returncode": evaluation.returncode})
+        checks.append(_check_record("repository-query-evaluation", evaluation))
         if evaluation.returncode:
             issues.append("repository-query-evaluation-failed")
 
