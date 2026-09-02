@@ -39,6 +39,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             "scripts/python/_knowledge_locator_core.py",
             "scripts/python/knowledge_locator.py",
             "scripts/python/evaluate_knowledge_queries.py",
+            "scripts/python/prepare_knowledge_context.py",
             "knowledge/evaluation/queries.v1.json",
         ]:
             target = self.repo / relative
@@ -158,6 +159,52 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         report = json.loads(completed.stdout)
         self.assertEqual(report["status"], "passed")
         self.assertEqual(report["passed"], report["total"])
+
+    def test_shadow_context_falls_back_without_generated_layers_and_never_freezes(self) -> None:
+        completed = run(
+            sys.executable,
+            "scripts/python/prepare_knowledge_context.py",
+            "--consumer",
+            "chapter6",
+            "--query",
+            "task 7 implementation authority",
+            cwd=self.repo,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        bundle = json.loads(completed.stdout)
+        self.assertEqual(bundle["status"], "fallback_required")
+        self.assertEqual(bundle["freeze_state"], "unfrozen")
+        self.assertTrue(bundle["semantic_decision_required"])
+        enforced = run(
+            sys.executable,
+            "scripts/python/prepare_knowledge_context.py",
+            "--consumer",
+            "chapter6",
+            "--query",
+            "task 7 implementation authority",
+            "--enforce",
+            cwd=self.repo,
+        )
+        self.assertEqual(enforced.returncode, 2)
+
+    def test_shadow_context_is_candidate_only_after_build(self) -> None:
+        self.build()
+        completed = run(
+            sys.executable,
+            "scripts/python/prepare_knowledge_context.py",
+            "--consumer",
+            "chapter6",
+            "--query",
+            "taskmaster overlay refs acceptance linkage",
+            cwd=self.repo,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        bundle = json.loads(completed.stdout)
+        self.assertEqual(bundle["status"], "shadow_ready")
+        self.assertEqual(bundle["freeze_state"], "unfrozen")
+        self.assertTrue(bundle["semantic_decision_required"])
+        self.assertTrue(bundle["candidates"])
+        self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
 
     def test_locator_blocks_when_authority_ref_moves(self) -> None:
         self.build()
