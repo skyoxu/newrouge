@@ -52,7 +52,11 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/prepare_knowledge_context.py",
         "knowledge/evaluation/queries.v1.json",
         "knowledge/contracts/knowledge-context-candidates.v1.schema.json",
+        "knowledge/contracts/knowledge-consumption-decision-set.v1.schema.json",
+        "knowledge/contracts/knowledge-frozen-context.v1.schema.json",
+        "scripts/python/freeze_knowledge_context.py",
         "docs/workflows/knowledge-context-shadow.md",
+        "docs/workflows/knowledge-context-freeze.md",
         ".agents/skills/maintain-knowledge-base/SKILL.md",
     ]
     for relative in required_files:
@@ -120,9 +124,13 @@ def main() -> int:
     checks: list[dict[str, Any]] = []
 
     unit = _run([sys.executable, "scripts/python/tests/test_knowledge_control_plane.py"], root)
-    checks.append({"name": "unit", "returncode": unit.returncode})
+    checks.append({"name": "unit-kernel", "returncode": unit.returncode})
     if unit.returncode:
-        issues.append("unit-tests-failed")
+        issues.append("unit-kernel-tests-failed")
+    freeze_unit = _run([sys.executable, "scripts/python/tests/test_knowledge_freeze.py"], root)
+    checks.append({"name": "unit-freeze", "returncode": freeze_unit.returncode})
+    if freeze_unit.returncode:
+        issues.append("unit-freeze-tests-failed")
 
     if args.require_generated:
         build = _run([sys.executable, "scripts/python/build_knowledge_catalog.py", "--check"], root)
