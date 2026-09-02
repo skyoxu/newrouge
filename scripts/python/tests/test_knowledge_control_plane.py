@@ -176,6 +176,22 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             )
         )
 
+    def test_canonical_workflow_entrypoint_survives_repetitive_delivery_history(self) -> None:
+        for index in range(30):
+            path = self.repo / f"decision-logs/2026-04-{index + 1:02d}-task-{index + 10}-chapter6-daily-loop.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f"# Task {index + 10} Chapter 6 Single Task Daily Loop\n\nWorkflow Chapter 6 single task daily loop residual followup.\n",
+                encoding="utf-8",
+            )
+        subprocess.check_call(["git", "add", "decision-logs"], cwd=self.repo)
+        subprocess.check_call(["git", "commit", "-m", "add repetitive delivery history"], cwd=self.repo, stdout=subprocess.DEVNULL)
+        self.publish()
+        result = self.request("workflow Chapter 6 single task daily loop")
+        workflow = next(candidate for candidate in result["candidates"] if candidate["path"] == "workflow.md")
+        self.assertTrue(workflow["rank_evidence"]["policy_exact_path"])
+        self.assertEqual(workflow["rank_evidence"]["policy_exact_path_bonus"], 96)
+
     def test_repository_query_evaluation_passes_on_published_source_set(self) -> None:
         self.publish()
         completed = run(sys.executable, "scripts/python/evaluate_knowledge_queries.py", cwd=self.repo)
