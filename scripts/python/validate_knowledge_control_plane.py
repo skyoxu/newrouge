@@ -10,7 +10,17 @@ from typing import Any
 
 EXPECTED_CONSUMERS = {"repository-session", "chapter4", "chapter5", "chapter6", "review"}
 EXPECTED_DOMAINS = {"toolchain", "game-design", "game-runtime", "delivery"}
-REQUIRED_EXCLUSION_IDS = {"logs", "backup", "migration", "godot-cache", "bin", "obj"}
+REQUIRED_EXCLUSION_IDS = {
+    "logs",
+    "backup",
+    "migration",
+    "godot-cache",
+    "bin",
+    "obj",
+    "skill-business-evidence",
+    "workflow-examples",
+    "workflow-templates",
+}
 FORBIDDEN_RUNTIME_TOKENS = (
     "PhaseA.Platform",
     "HostedContextGate",
