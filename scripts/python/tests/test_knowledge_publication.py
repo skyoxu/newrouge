@@ -101,7 +101,7 @@ class KnowledgePublicationTests(unittest.TestCase):
         self.assertEqual(payload["status"], "blocked")
         self.assertIn("current_exclusions_mismatch", payload["reason"])
 
-    def test_failed_candidate_does_not_advance_current_or_lkg(self) -> None:
+    def test_failed_candidate_does_not_advance_current_or_lkg_and_reports_case(self) -> None:
         first = self.run_publish("--publish")
         self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
         current_before = (self.repo / "knowledge/indexes/current.json").read_text(encoding="utf-8")
@@ -114,6 +114,13 @@ class KnowledgePublicationTests(unittest.TestCase):
         subprocess.check_call(["git", "commit", "-m", "break evaluation"], cwd=self.repo, stdout=subprocess.DEVNULL)
         failed = self.run_publish("--publish")
         self.assertNotEqual(failed.returncode, 0)
+        payload = json.loads(failed.stdout)
+        self.assertEqual(payload["reason"], "repository_query_evaluation_failed")
+        evaluation = payload["details"]["evaluation"]
+        self.assertEqual(evaluation["status"], "failed")
+        self.assertEqual(evaluation["failures"][0]["id"], "repository-rules")
+        self.assertEqual(evaluation["failures"][0]["query"], "Repository Guide startup rules")
+        self.assertTrue(evaluation["failures"][0]["missing_expectations"])
         self.assertEqual((self.repo / "knowledge/indexes/current.json").read_text(encoding="utf-8"), current_before)
         self.assertEqual((self.repo / "knowledge/indexes/last-known-good.json").read_text(encoding="utf-8"), lkg_before)
 
