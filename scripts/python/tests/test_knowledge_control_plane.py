@@ -166,8 +166,18 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
 
     def test_locator_can_retrieve_workflow_and_adr_index_authority(self) -> None:
         self.publish()
-        workflow = self.request("workflow Chapter 6 single task daily loop")
-        self.assertTrue(any(candidate["path"] == "workflow.md" for candidate in workflow["candidates"]))
+        workflow_result = self.request("workflow Chapter 6 single task daily loop")
+        workflow = next(candidate for candidate in workflow_result["candidates"] if candidate["path"] == "workflow.md")
+        self.assertTrue(workflow["rank_evidence"]["policy_exact_path"])
+        self.assertGreater(workflow["rank_evidence"]["entrypoint_token_matches"], 0)
+        self.assertEqual(workflow["rank_evidence"]["policy_exact_path_bonus"], 128)
+
+        implicit_result = self.request("single task daily loop")
+        implicit_workflow = next(candidate for candidate in implicit_result["candidates"] if candidate["path"] == "workflow.md")
+        self.assertTrue(implicit_workflow["rank_evidence"]["policy_exact_path"])
+        self.assertEqual(implicit_workflow["rank_evidence"]["entrypoint_token_matches"], 0)
+        self.assertEqual(implicit_workflow["rank_evidence"]["policy_exact_path_bonus"], 0)
+
         adr_index = self.request("ADR Index Godot Accepted Proposed Superseded", consumer="chapter4")
         self.assertTrue(
             any(
@@ -190,7 +200,8 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         result = self.request("workflow Chapter 6 single task daily loop")
         workflow = next(candidate for candidate in result["candidates"] if candidate["path"] == "workflow.md")
         self.assertTrue(workflow["rank_evidence"]["policy_exact_path"])
-        self.assertEqual(workflow["rank_evidence"]["policy_exact_path_bonus"], 96)
+        self.assertGreater(workflow["rank_evidence"]["entrypoint_token_matches"], 0)
+        self.assertEqual(workflow["rank_evidence"]["policy_exact_path_bonus"], 128)
 
     def test_repository_query_evaluation_passes_on_published_source_set(self) -> None:
         self.publish()
