@@ -5,16 +5,19 @@
 - Branch: `feat/knowledge-control-plane-migration`
 - Git Head: branch created from `17e70086ae2ce5111a0ada56e421680b8ccc5b84`; all migration writes remain branch-only
 - Goal: migrate the portable Ji Mu Yun repository knowledge control plane into `newrouge` without migrating SaaS Hosted Context E2 functionality
-- Scope: `knowledge/**`, `scripts/python/*knowledge*`, `.agents/skills/maintain-knowledge-base/**`, repository knowledge routing, Chapter 4/5/6 shadow adapters, later bounded freeze/publication hardening
-- Current step: deterministic E1 kernel and Chapter 4/5/6 shadow preflight are landed; define explicit consumer accept/reject and bounded frozen-context contracts before any stronger workflow enforcement
-- Last completed step: added trusted-ref snapshot/catalog/Locator, source exclusions, real-query evaluation, terminal validation, `workflow.md`/ADR-index authority coverage, direct-source fallback routing, and non-blocking Chapter 4/5/6 shadow context preparation
-- Stop-loss: never modify `skyoxu/ji-mu-yun`; never write to `newrouge/main`; do not enable `prepare_knowledge_context.py --enforce` until real generated-state validation passes; do not mutate the existing review-pipeline sidecar schemas during shadow rollout; do not claim frozen context is E2 isolation
-- Next action: implement explicit accepted/rejected consumption decisions with source re-read/hash verification, required-context completeness, and an explicit frozen-context revision contract; then evaluate publication/current/LKG hardening
+- Scope: `knowledge/**`, `scripts/python/*knowledge*`, `.agents/skills/maintain-knowledge-base/**`, repository knowledge routing, Chapter 4/5/6 shadow adapters, bounded freeze contracts, immutable publication/current/LKG hardening
+- Current step: deterministic E1 kernel, repository-real evaluation, Chapter 4/5/6 shadow preflight, explicit consumer decisions/freeze, and immutable publication/current/LKG are implemented; remaining work is real generated-state execution on a Windows checkout plus a decision on whether/when shadow consumers graduate to controlled enforcement
+- Last completed step: added atomic publication generations binding snapshot/catalog/projections/policies/exclusions/query-suite/evaluation, canonical Locator current-generation verification, LKG restore, publication failure-safety tests, and root README/documentation-index routing
+- Stop-loss: never modify `skyoxu/ji-mu-yun`; never write to `newrouge/main`; do not enable `prepare_knowledge_context.py --enforce` in Chapter 4/5/6/review defaults until real generated-state validation passes; do not mutate the existing review-pipeline sidecar schemas during shadow rollout; do not claim frozen context is E2 isolation
+- Next action: on a real Windows checkout of this branch, run publication + full terminal validation; repair any repository-real query/schema/path failures; only then decide whether Chapter 4/5/6/review should move from optional shadow use to controlled freeze-bound enforcement
 - Recovery command: `py -3 scripts/python/validate_knowledge_control_plane.py`
+- Publication command: `py -3 scripts/python/publish_knowledge_catalog.py --publish`
+- Publication check: `py -3 scripts/python/publish_knowledge_catalog.py --check`
+- LKG restore: `py -3 scripts/python/publish_knowledge_catalog.py --restore-lkg`
 - Generated-state check: `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
 - Shadow preflight: `py -3 scripts/python/prepare_knowledge_context.py --consumer <chapter4|chapter5|chapter6|review> --query "<bounded intent>"`
-- Open questions: generated-layer schema hardening, frozen-context artifact shape, publication/current/LKG generation envelope, and the later point at which review consumes a frozen context rather than an optional shadow bundle
-- Exit criteria: deterministic snapshot/catalog/Locator + maintenance skill + real newrouge query evaluation + Chapter 4/5/6/review shadow integration + explicit consumer decision/freeze contract + terminal validation + publication/recovery decision
+- Open questions: whether generated layers should be committed or remain maintainer-generated derived state; whether review should consume a frozen context before pipeline start; the evidence threshold for turning any shadow consumer into an enforced consumer
+- Exit criteria: deterministic snapshot/catalog/Locator + maintenance skill + real newrouge query evaluation + Chapter 4/5/6/review shadow integration + explicit consumer decision/freeze contract + immutable publication/current/LKG + terminal validation passing against real generated state + explicit rollout disposition
 - Related ADRs: `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
 - Related decision logs: n/a
 - Related task id(s): n/a (repository toolchain migration)
