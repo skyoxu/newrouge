@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,8 @@ from typing import Any
 
 CONSUMERS = ("repository-session", "chapter4", "chapter5", "chapter6", "review")
 POLICY_REVISION = "newrouge-knowledge-consumer-policies.v1"
+STRUCTURED_SCOPE = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
+TASK_SCOPE = re.compile(r"\btask\s+(?:id\s*)?\d+\b", re.IGNORECASE)
 
 
 def _atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -83,6 +86,92 @@ def _run_locator(root: Path, request: dict[str, Any]) -> tuple[int, dict[str, An
         return 1, None, "knowledge_locator_invalid_json"
 
 
+def _consumer_policy(root: Path, consumer: str) -> dict[str, Any] | None:
+    try:
+        registry = json.loads(
+            (root / "knowledge/policies/consumer-policies.v1.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return None
+    if registry.get("policy_revision") != POLICY_REVISION:
+        return None
+    return next(
+        (
+            item
+            for item in registry.get("policies", [])
+            if isinstance(item, dict) and item.get("consumer") == consumer
+        ),
+        None,
+    )
+
+
+def _scope_terms(query: str) -> list[str]:
+    values: list[str] = []
+    for pattern in (STRUCTURED_SCOPE, TASK_SCOPE):
+        for match in pattern.finditer(query):
+            value = match.group(0).strip()
+            folded = value.casefold()
+            if value and all(existing.casefold() != folded for existing in values):
+                values.append(value)
+    return values
+
+
+def _context_query_plan(policy: dict[str, Any], query: str) -> list[tuple[str | None, str, int | None]]:
+    plan: list[tuple[str | None, str, int | None]] = [(None, query, None)]
+    mapping = policy.get("context_query_terms")
+    if not isinstance(mapping, dict):
+        return plan
+    try:
+        per_class_limit = max(1, int(policy.get("context_query_max_candidates", 4)))
+    except (TypeError, ValueError):
+        per_class_limit = 4
+    scope = _scope_terms(query)
+    seen_queries = {query.casefold().strip()}
+    for context_class in policy.get("required_context_classes", []):
+        terms = mapping.get(context_class)
+        if not isinstance(context_class, str) or not isinstance(terms, list):
+            continue
+        normalized_terms = [str(value).strip() for value in terms if isinstance(value, str) and value.strip()]
+        if not normalized_terms:
+            continue
+        class_query = " ".join([*scope, *normalized_terms]).strip()
+        folded = class_query.casefold()
+        if not class_query or folded in seen_queries:
+            continue
+        seen_queries.add(folded)
+        plan.append((context_class, class_query, per_class_limit))
+    return plan
+
+
+def _merge_candidates(
+    merged: dict[tuple[str, str], dict[str, Any]],
+    order: list[tuple[str, str]],
+    candidates: list[Any],
+    *,
+    context_class: str | None,
+    limit: int | None,
+) -> None:
+    bounded = candidates if limit is None else candidates[:limit]
+    for raw in bounded:
+        if not isinstance(raw, dict):
+            continue
+        module_id = raw.get("module_id")
+        path = raw.get("path")
+        if not isinstance(module_id, str) or not isinstance(path, str):
+            continue
+        key = (module_id, path)
+        if key not in merged:
+            candidate = dict(raw)
+            candidate["retrieval_context_classes"] = []
+            merged[key] = candidate
+            order.append(key)
+        if context_class is not None:
+            classes = merged[key].setdefault("retrieval_context_classes", [])
+            if context_class not in classes:
+                classes.append(context_class)
+                classes.sort()
+
+
 def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = None) -> dict[str, Any]:
     snapshot_path = root / "knowledge/snapshots/repository-source-snapshot.v1.json"
     required_generated = [
@@ -123,43 +212,67 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
             snapshot=snapshot if isinstance(snapshot, dict) else None,
         )
 
-    request = {
-        "schema_version": "newrouge.knowledge-locator-request.v1",
-        "request_id": rid,
-        "consumer": consumer,
-        "query": query,
-        "snapshot": {"ref": ref, "commit": commit},
-        "policy_revision": POLICY_REVISION,
-    }
-    returncode, result, error = _run_locator(root, request)
-    if returncode or result is None:
+    policy = _consumer_policy(root, consumer)
+    if policy is None:
         return _fallback(
             consumer=consumer,
             query=query,
             request_id=rid,
-            reason=error or "knowledge_locator_failed",
-            snapshot=request["snapshot"],
-        )
-    if result.get("status") == "blocked":
-        return _fallback(
-            consumer=consumer,
-            query=query,
-            request_id=rid,
-            reason="knowledge_locator_blocked",
-            snapshot=request["snapshot"],
+            reason="consumer_policy_invalid",
+            snapshot={"ref": ref, "commit": commit},
         )
 
-    locator_status = str(result.get("status") or "insufficient_match")
-    candidates = result.get("candidates")
-    if not isinstance(candidates, list):
-        return _fallback(
-            consumer=consumer,
-            query=query,
-            request_id=rid,
-            reason="knowledge_locator_result_invalid",
-            snapshot=request["snapshot"],
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    order: list[tuple[str, str]] = []
+    statuses: list[str] = []
+    for context_class, locator_query, limit in _context_query_plan(policy, query):
+        suffix = context_class or "base"
+        request = {
+            "schema_version": "newrouge.knowledge-locator-request.v1",
+            "request_id": f"{rid}:{suffix}",
+            "consumer": consumer,
+            "query": locator_query,
+            "snapshot": {"ref": ref, "commit": commit},
+            "policy_revision": POLICY_REVISION,
+        }
+        returncode, result, error = _run_locator(root, request)
+        if returncode or result is None:
+            return _fallback(
+                consumer=consumer,
+                query=query,
+                request_id=rid,
+                reason=error or "knowledge_locator_failed",
+                snapshot=request["snapshot"],
+            )
+        if result.get("status") == "blocked":
+            return _fallback(
+                consumer=consumer,
+                query=query,
+                request_id=rid,
+                reason="knowledge_locator_blocked",
+                snapshot=request["snapshot"],
+            )
+        locator_status = str(result.get("status") or "insufficient_match")
+        statuses.append(locator_status)
+        candidates = result.get("candidates")
+        if not isinstance(candidates, list):
+            return _fallback(
+                consumer=consumer,
+                query=query,
+                request_id=rid,
+                reason="knowledge_locator_result_invalid",
+                snapshot=request["snapshot"],
+            )
+        _merge_candidates(
+            merged,
+            order,
+            candidates,
+            context_class=context_class,
+            limit=limit,
         )
 
+    locator_status = "matched" if "matched" in statuses else "insufficient_match"
+    candidates = [merged[key] for key in order]
     return {
         "schema_version": "newrouge.knowledge-context-candidates.v1",
         "mode": "shadow",
@@ -168,7 +281,7 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
         "query": query,
         "status": "shadow_ready",
         "locator_status": locator_status,
-        "snapshot": request["snapshot"],
+        "snapshot": {"ref": ref, "commit": commit},
         "policy_revision": POLICY_REVISION,
         "semantic_decision_required": True,
         "freeze_state": "unfrozen",
