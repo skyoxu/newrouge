@@ -59,7 +59,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             "docs/adr/ADR-0034-test.md": "# ADR-0034: Test\n\n- Status: Accepted\n\nContracts live in Game.Core/Contracts.\n",
             "docs/adr/ADR-0033-old.md": "# ADR-0033: Old\n\n- Status: Superseded\n",
             "docs/prd/game.md": "# Game PRD\nCard combat and roguelike progression.\n",
-            "docs/prd/PRD-TEST-GAME-0001.md": "# PRD-TEST-GAME-0001\n\nProduct intent for deterministic card combat.\n",
+            "docs/prd/PRD-TEST-GAME-0001.md": "# PRD-TEST-GAME-0001\n\n## 产品定位\n确定性卡牌战斗。\n\n## v1 目标\n提供可完成的单局闭环。\n",
             "docs/architecture/overlays/PRD-TEST-GAME-0001/08/08-Contracts.md": "# Overlay Contracts\n\nPRD-TEST-GAME-0001 architecture overlay contracts ADR authority.\n",
             ".taskmaster/tasks/tasks.json": "{\"master\":{\"tasks\":[{\"id\":7,\"title\":\"overlay refs acceptance linkage\"}]}}\n",
             "execution-plans/2026-01-01-old.md": "# Old Plan\n\n- Status: done\n",
@@ -279,6 +279,12 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             if candidate["path"] == "docs/prd/PRD-TEST-GAME-0001.md"
         )
         self.assertIn("product-intent", prd["retrieval_context_classes"])
+        overlay = next(
+            candidate
+            for candidate in bundle["candidates"]
+            if candidate["path"] == "docs/architecture/overlays/PRD-TEST-GAME-0001/08/08-Contracts.md"
+        )
+        self.assertNotIn("product-intent", overlay["retrieval_context_classes"])
         self.assertTrue(
             any(
                 "architecture-authority" in candidate.get("retrieval_context_classes", [])
