@@ -28,6 +28,11 @@
       "exact_paths": ["AGENTS.md", "workflow.md", ".taskmaster/docs/prd.txt"],
       "required_context_classes": ["product-intent", "architecture-authority"],
       "optional_context_classes": ["existing-overlay", "contract-authority"],
+      "context_query_terms": {
+        "product-intent": ["prd", "gdd", "product intent"],
+        "architecture-authority": ["architecture", "adr", "base"]
+      },
+      "context_query_max_candidates": 4,
       "max_candidates": 24,
       "minimum_confidence": "medium",
       "freeze_point": "before-overlay-write"
