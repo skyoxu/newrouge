@@ -29,7 +29,7 @@
       "required_context_classes": ["product-intent", "architecture-authority"],
       "optional_context_classes": ["existing-overlay", "contract-authority"],
       "context_query_terms": {
-        "product-intent": ["prd", "gdd", "product intent"],
+        "product-intent": ["prd", "产品", "目标"],
         "architecture-authority": ["architecture", "adr", "base"]
       },
       "context_query_max_candidates": 4,
