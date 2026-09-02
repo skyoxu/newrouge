@@ -57,20 +57,24 @@ def _publication_valid(root: Path, catalog: dict[str, Any], policies: dict[str, 
             or pointer.get("main_commit") != manifest.get("main_commit")
         ):
             return False
+        snapshot = catalog.get("source_snapshot", {})
+        exclusions = json.loads((root / "knowledge/policies/source-exclusions.v1.json").read_text(encoding="utf-8"))
+        query_suite = json.loads((root / "knowledge/evaluation/queries.v1.json").read_text(encoding="utf-8"))
         expected = {
+            "snapshot": snapshot,
             "catalog": catalog,
             "policies": policies,
             "projections": projections,
+            "exclusions": exclusions,
+            "query_suite": query_suite,
         }
         for name, value in expected.items():
             if manifest.get("artifacts", {}).get(name) != _canonical_hash(value):
                 return False
             if json.loads((generation / f"{name}.json").read_text(encoding="utf-8")) != value:
                 return False
-        snapshot = catalog.get("source_snapshot", {})
-        if manifest.get("artifacts", {}).get("snapshot") != _canonical_hash(snapshot):
-            return False
-        if json.loads((generation / "snapshot.json").read_text(encoding="utf-8")) != snapshot:
+        evaluation = json.loads((generation / "evaluation.json").read_text(encoding="utf-8"))
+        if manifest.get("artifacts", {}).get("evaluation") != _canonical_hash(evaluation) or evaluation.get("status") != "passed":
             return False
     except (OSError, json.JSONDecodeError):
         return False
