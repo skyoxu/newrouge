@@ -32,10 +32,31 @@ class KnowledgeFreezeTests(unittest.TestCase):
             "scripts/python/knowledge_locator.py",
             "scripts/python/prepare_knowledge_context.py",
             "scripts/python/freeze_knowledge_context.py",
+            "scripts/python/publish_knowledge_catalog.py",
         ]:
             target = self.repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / relative, target)
+        suite = {
+            "schema_version": "newrouge.knowledge-evaluation-suite.v1",
+            "cases": [
+                {
+                    "id": "task-context",
+                    "consumer": "chapter6",
+                    "query": "taskmaster overlay refs acceptance linkage",
+                    "must_include": [
+                        {
+                            "any_path_prefixes": [".taskmaster/tasks/"],
+                            "domains": ["delivery"],
+                        }
+                    ],
+                    "forbidden_path_prefixes": ["logs/"],
+                }
+            ],
+        }
+        suite_path = self.repo / "knowledge/evaluation/queries.v1.json"
+        suite_path.parent.mkdir(parents=True, exist_ok=True)
+        suite_path.write_text(json.dumps(suite, indent=2) + "\n", encoding="utf-8")
         files = {
             "AGENTS.md": "# Repository Guide\nRules.\n",
             "README.md": "# Game\nWindows Godot game.\n",
@@ -54,8 +75,8 @@ class KnowledgeFreezeTests(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
         subprocess.check_call(["git", "add", "."], cwd=self.repo)
         subprocess.check_call(["git", "commit", "-m", "seed"], cwd=self.repo, stdout=subprocess.DEVNULL)
-        built = run(sys.executable, "scripts/python/build_knowledge_catalog.py", "--write", cwd=self.repo)
-        self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+        published = run(sys.executable, "scripts/python/publish_knowledge_catalog.py", "--publish", cwd=self.repo)
+        self.assertEqual(published.returncode, 0, published.stdout + published.stderr)
 
     def tearDown(self) -> None:
         self.temp.cleanup()
