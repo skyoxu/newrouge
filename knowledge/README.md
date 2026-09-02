@@ -19,11 +19,17 @@ The Knowledge Control Plane only answers: **where should a trusted consumer read
 4. `knowledge/policies/**`
    - Source exclusions and consumer retrieval boundaries.
 5. `knowledge/contracts/**`
-   - Stable request/result/consumption decision contracts.
+   - Stable request/result/decision/freeze/publication contracts.
 6. `knowledge/evaluation/queries.v1.json`
    - Repository-real deterministic query suite.
+7. `knowledge/indexes/generations/<generation-id>/**`
+   - Immutable validated publication envelopes.
+8. `knowledge/indexes/current.json`
+   - Logical current generation pointer.
+9. `knowledge/indexes/last-known-good.json`
+   - Last validated recoverable generation pointer.
 
-Snapshot, catalog and projection files are generated artifacts and MUST NOT become a second SSoT.
+Snapshot, catalog, projection, generation and pointer files are derived artifacts and MUST NOT become a second SSoT.
 
 ## Initial domains
 
@@ -49,21 +55,56 @@ The initial catalog intentionally focuses on authority-bearing knowledge, includ
 
 It is not a replacement for code search across `Game.Core/**`, `Game.Godot/**`, `Scenes/**`, or assets.
 
-## Build
+## Read-only Build Inspection
 
-From a clean repository with a local `refs/heads/main`:
+From a repository with a local `refs/heads/main`:
 
 ```powershell
 py -3 scripts/python/build_knowledge_catalog.py
-py -3 scripts/python/build_knowledge_catalog.py --write
-py -3 scripts/python/build_knowledge_catalog.py --check
 ```
 
-`--write` creates only derived files under `knowledge/snapshots`, `knowledge/catalogs` and `knowledge/projections`.
+This computes the expected trusted-ref snapshot/catalog/projections without publishing them.
 
-`--check` rebuilds the expected layers in memory and fails if the persisted generated layers are missing, invalid, or stale.
+`build_knowledge_catalog.py --write` exists only as a low-level migration/debug primitive. Canonical consumers do not trust manually written layers unless a valid `current.json` publication binds them.
 
-The trusted source default is `refs/heads/main`. `--authority-ref` exists for validation and controlled migration work; it must not be used to silently promote arbitrary dirty worktree state.
+## Publish
+
+Normal maintenance publication is:
+
+```powershell
+py -3 scripts/python/publish_knowledge_catalog.py --publish
+```
+
+A publication performs these steps:
+
+1. read source bytes from the trusted Git ref (`refs/heads/main` by default);
+2. build snapshot/catalog/projections in memory;
+3. run the repository-real deterministic query suite before promotion;
+4. create an immutable generation containing snapshot, catalog, projections, policies, exclusions and evaluation report;
+5. verify generation artifact hashes;
+6. atomically replace canonical snapshot/catalog/projections;
+7. update `knowledge/indexes/current.json`;
+8. advance `knowledge/indexes/last-known-good.json` only after the validated generation exists.
+
+A failed candidate publication must not advance current or LKG.
+
+Knowledge policy/evaluation/control-plane files must be clean before publication. Unrelated game worktree dirt is not promoted because repository facts are always read from the trusted ref.
+
+## Publication Check and Recovery
+
+Check the current publication:
+
+```powershell
+py -3 scripts/python/publish_knowledge_catalog.py --check
+```
+
+Restore canonical generated layers from LKG:
+
+```powershell
+py -3 scripts/python/publish_knowledge_catalog.py --restore-lkg
+```
+
+LKG recovery does not move Git source authority. If `refs/heads/main` advanced after the LKG generation, freshness can still fail and consumers must fall back to direct authoritative source reading until a new publication succeeds.
 
 ## Locate
 
@@ -90,17 +131,30 @@ Run:
 Get-Content request.json | py -3 scripts/python/knowledge_locator.py
 ```
 
-The Locator fails closed with `status=blocked` when snapshot/policy/projection bindings or source hashes are stale.
+For canonical inputs, the Locator requires a valid `current.json` publication and fails closed with `status=blocked` when publication, snapshot, policy, projection, trusted-ref, or source-hash bindings are stale.
+
+## Shadow Consumer Context
+
+Chapter 4/5/6 and review integration is currently observe-only. See:
+
+- `docs/workflows/knowledge-context-shadow.md`
+- `docs/workflows/knowledge-context-freeze.md`
+
+Shadow candidate bundles do not satisfy requirements by themselves. A trusted consumer must re-read candidates, verify hashes, record accepted/rejected semantic decisions, and only then may create a bounded frozen context.
+
+Chapter 6 must not silently issue a new semantic query during RED/GREEN/REFACTOR after its context is frozen.
 
 ## Evaluation
 
-Run repository-real queries only after generated layers exist and pass `--check`:
+After a valid publication:
 
 ```powershell
 py -3 scripts/python/evaluate_knowledge_queries.py
 ```
 
 The evaluation suite covers repository rules, workflow authority, ADR navigation, contract authority, delivery/task context and review routing while asserting that transient log/migration/backup paths do not satisfy global knowledge queries.
+
+Publication runs the same repository-real suite in memory before promotion, so a failing candidate query suite cannot replace current/LKG.
 
 ## Terminal Validation
 
@@ -118,8 +172,9 @@ py -3 scripts/python/validate_knowledge_control_plane.py --require-generated
 
 The full form requires:
 
+- a valid current publication;
 - generated layers matching current trusted `refs/heads/main`;
-- deterministic unit tests;
+- deterministic kernel, freeze and publication unit tests;
 - repository-real query evaluation.
 
 ## Exclusions
@@ -137,9 +192,7 @@ Run/recovery evidence remains available through its existing explicit workflow c
 
 ## Rollout
 
-The initial migration is E1 retrieval-scoped only.
-
-Current rollout order:
+The migration remains E1 retrieval-scoped. The current implementation order is:
 
 ```text
 direct-source baseline
@@ -148,9 +201,10 @@ direct-source baseline
   -> human routing integration
   -> Chapter/review shadow consumers
   -> bounded freeze contract
-  -> publication/current/LKG hardening
+  -> immutable publication/current/LKG
+  -> controlled consumer enforcement only after evidence
 ```
 
-Frozen task/session context may be added by consumer adapters, but it must not be described as tenant-safe/runtime E2 isolation.
+A frozen task/session context is a workflow freeze contract, not tenant-safe/runtime E2 isolation.
 
 PhaseA/Hosted Context Gate, HMAC manifests, nonce enforcement, account/project isolation and Ji Mu Yun runtime-specific machinery are intentionally out of scope.
