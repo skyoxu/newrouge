@@ -3,19 +3,21 @@
 - Title: knowledge-control-plane-migration
 - Status: in-progress
 - Branch: `feat/knowledge-control-plane-migration`
-- Git Head: branch created from `17e70086ae2ce5111a0ada56e421680b8ccc5b84`
+- Git Head: branch created from `17e70086ae2ce5111a0ada56e421680b8ccc5b84`; all migration writes remain branch-only
 - Goal: migrate the portable Ji Mu Yun repository knowledge control plane into `newrouge` without migrating SaaS Hosted Context E2 functionality
-- Scope: `knowledge/**`, `scripts/python/*knowledge*`, `.agents/skills/maintain-knowledge-base/**`, knowledge routing docs, later Chapter 4/5/6 and review adapters
-- Current step: implement and validate the deterministic E1 knowledge kernel before workflow integration
-- Last completed step: branch isolation and source/target migration boundary analysis
-- Stop-loss: do not modify `skyoxu/ji-mu-yun`; do not write to `newrouge/main`; do not wire Chapter consumers until snapshot/catalog/Locator freshness semantics are validated
-- Next action: land KMG-S0 through KMG-S4, run deterministic core tests, then add shadow consumer adapters
-- Recovery command: `py -3 scripts/python/build_knowledge_catalog.py`
-- Open questions: publication/current/LKG hardening and consumer freeze artifact shape remain downstream of the initial kernel
-- Exit criteria: deterministic snapshot/catalog/Locator + maintenance skill + real newrouge query evaluation + Chapter 4/5/6/review shadow integration + terminal validation
+- Scope: `knowledge/**`, `scripts/python/*knowledge*`, `.agents/skills/maintain-knowledge-base/**`, repository knowledge routing, Chapter 4/5/6 shadow adapters, later bounded freeze/publication hardening
+- Current step: deterministic E1 kernel and Chapter 4/5/6 shadow preflight are landed; define explicit consumer accept/reject and bounded frozen-context contracts before any stronger workflow enforcement
+- Last completed step: added trusted-ref snapshot/catalog/Locator, source exclusions, real-query evaluation, terminal validation, `workflow.md`/ADR-index authority coverage, direct-source fallback routing, and non-blocking Chapter 4/5/6 shadow context preparation
+- Stop-loss: never modify `skyoxu/ji-mu-yun`; never write to `newrouge/main`; do not enable `prepare_knowledge_context.py --enforce` until real generated-state validation passes; do not mutate the existing review-pipeline sidecar schemas during shadow rollout; do not claim frozen context is E2 isolation
+- Next action: implement explicit accepted/rejected consumption decisions with source re-read/hash verification, required-context completeness, and an explicit frozen-context revision contract; then evaluate publication/current/LKG hardening
+- Recovery command: `py -3 scripts/python/validate_knowledge_control_plane.py`
+- Generated-state check: `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
+- Shadow preflight: `py -3 scripts/python/prepare_knowledge_context.py --consumer <chapter4|chapter5|chapter6|review> --query "<bounded intent>"`
+- Open questions: generated-layer schema hardening, frozen-context artifact shape, publication/current/LKG generation envelope, and the later point at which review consumes a frozen context rather than an optional shadow bundle
+- Exit criteria: deterministic snapshot/catalog/Locator + maintenance skill + real newrouge query evaluation + Chapter 4/5/6/review shadow integration + explicit consumer decision/freeze contract + terminal validation + publication/recovery decision
 - Related ADRs: `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
 - Related decision logs: n/a
 - Related task id(s): n/a (repository toolchain migration)
 - Related run id: n/a
 - Related latest.json: n/a
-- Related pipeline artifacts: `logs/**` are explicitly not global knowledge authority
+- Related pipeline artifacts: `logs/**` are explicitly not global knowledge authority; `logs/ci/knowledge-context/**` is optional derived shadow evidence outside the existing review sidecar protocol
