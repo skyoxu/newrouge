@@ -30,6 +30,15 @@ CONTROL_PLANE_PATHS = (
     "scripts/python/_knowledge_locator_core.py",
     "scripts/python/publish_knowledge_catalog.py",
 )
+GENERATION_ARTIFACTS = (
+    "snapshot",
+    "catalog",
+    "projections",
+    "policies",
+    "exclusions",
+    "query_suite",
+    "evaluation",
+)
 
 
 class PublicationBlocked(ValueError):
@@ -181,9 +190,8 @@ def _validate_generation(root: Path, pointer: dict[str, Any], *, require_current
     manifest = _load(generation / "manifest.json")
     if manifest.get("generation_id") != generation_id or pointer.get("generation_sha256") != _prefixed_sha(manifest):
         raise PublicationBlocked("generation_manifest_binding_invalid")
-    artifact_names = ("snapshot", "catalog", "projections", "policies", "exclusions", "evaluation")
     artifacts: dict[str, dict[str, Any]] = {}
-    for name in artifact_names:
+    for name in GENERATION_ARTIFACTS:
         artifact = _load(generation / f"{name}.json")
         if manifest.get("artifacts", {}).get(name) != _prefixed_sha(artifact):
             raise PublicationBlocked(f"generation_artifact_hash_invalid:{name}")
@@ -211,6 +219,7 @@ def publish(root: Path, authority_ref: str) -> dict[str, Any]:
         "projections": projections,
         "policies": policies,
         "exclusions": exclusions,
+        "query_suite": suite,
         "evaluation": evaluation,
     }
     manifest = _manifest(artifacts, authority_ref, snapshot["commit"])
@@ -239,6 +248,12 @@ def check_current(root: Path) -> dict[str, Any]:
         canonical = _load(root / CANONICAL_PATHS[name])
         if canonical != artifacts[name]:
             raise PublicationBlocked(f"canonical_artifact_mismatch:{name}")
+    if _load(root / POLICY_PATH) != artifacts["policies"]:
+        raise PublicationBlocked("current_policy_mismatch")
+    if _load(root / EXCLUSIONS_PATH) != artifacts["exclusions"]:
+        raise PublicationBlocked("current_exclusions_mismatch")
+    if _load(root / SUITE_PATH) != artifacts["query_suite"]:
+        raise PublicationBlocked("current_query_suite_mismatch")
     if artifacts["evaluation"].get("status") != "passed":
         raise PublicationBlocked("published_evaluation_not_passed")
     return {"status": "current", "pointer": pointer, "manifest": manifest}
