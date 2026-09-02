@@ -40,6 +40,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             "scripts/python/knowledge_locator.py",
             "scripts/python/evaluate_knowledge_queries.py",
             "scripts/python/prepare_knowledge_context.py",
+            "scripts/python/publish_knowledge_catalog.py",
             "knowledge/evaluation/queries.v1.json",
         ]:
             target = self.repo / relative
@@ -76,6 +77,11 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
     def build(self) -> dict:
         completed = run(sys.executable, "scripts/python/build_knowledge_catalog.py", "--write", cwd=self.repo)
         self.assertEqual(completed.returncode, 0, completed.stderr)
+        return json.loads(completed.stdout)
+
+    def publish(self) -> dict:
+        completed = run(sys.executable, "scripts/python/publish_knowledge_catalog.py", "--publish", cwd=self.repo)
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         return json.loads(completed.stdout)
 
     def request(self, query: str, consumer: str = "repository-session") -> dict:
@@ -129,8 +135,14 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertEqual(current.returncode, 0, current.stdout + current.stderr)
         self.assertEqual(json.loads(current.stdout)["status"], "ok")
 
-    def test_locator_is_location_only_and_hides_historical_without_exact_name(self) -> None:
+    def test_build_only_does_not_authorize_canonical_locator(self) -> None:
         self.build()
+        result = self.request("card combat roguelike")
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["candidates"], [])
+
+    def test_locator_is_location_only_and_hides_historical_without_exact_name(self) -> None:
+        self.publish()
         result = self.request("card combat roguelike")
         self.assertEqual(result["status"], "matched")
         self.assertTrue(result["candidates"])
@@ -141,7 +153,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         )
 
     def test_locator_can_retrieve_workflow_and_adr_index_authority(self) -> None:
-        self.build()
+        self.publish()
         workflow = self.request("workflow Chapter 6 single task daily loop")
         self.assertTrue(any(candidate["path"] == "workflow.md" for candidate in workflow["candidates"]))
         adr_index = self.request("ADR Index Godot Accepted Proposed Superseded", consumer="chapter4")
@@ -152,8 +164,8 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             )
         )
 
-    def test_repository_query_evaluation_passes_on_bound_source_set(self) -> None:
-        self.build()
+    def test_repository_query_evaluation_passes_on_published_source_set(self) -> None:
+        self.publish()
         completed = run(sys.executable, "scripts/python/evaluate_knowledge_queries.py", cwd=self.repo)
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         report = json.loads(completed.stdout)
@@ -187,8 +199,8 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         )
         self.assertEqual(enforced.returncode, 2)
 
-    def test_shadow_context_is_candidate_only_after_build(self) -> None:
-        self.build()
+    def test_shadow_context_is_candidate_only_after_publication(self) -> None:
+        self.publish()
         completed = run(
             sys.executable,
             "scripts/python/prepare_knowledge_context.py",
@@ -207,7 +219,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
 
     def test_locator_blocks_when_authority_ref_moves(self) -> None:
-        self.build()
+        self.publish()
         (self.repo / "docs/prd/game.md").write_text("# Game PRD\nChanged.\n", encoding="utf-8")
         subprocess.check_call(["git", "add", "docs/prd/game.md"], cwd=self.repo)
         subprocess.check_call(["git", "commit", "-m", "change source"], cwd=self.repo, stdout=subprocess.DEVNULL)
@@ -216,7 +228,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertEqual(result["candidates"], [])
 
     def test_superseded_adr_is_historical_but_exact_query_can_find_it(self) -> None:
-        self.build()
+        self.publish()
         general = self.request("old architecture")
         self.assertTrue(
             all(candidate["path"] != "docs/adr/ADR-0033-old.md" for candidate in general["candidates"])
