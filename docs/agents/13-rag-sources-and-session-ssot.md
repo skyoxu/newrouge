@@ -25,7 +25,7 @@ Repository facts remain owned by their source files. Important authority include
 - `.taskmaster/**` when real task data exists
 - `execution-plans/**` and `decision-logs/**` for durable intent/decisions
 
-Generated knowledge files under `knowledge/snapshots`, `knowledge/catalogs`, `knowledge/projections`, and later `knowledge/indexes` are derived state only.
+Generated knowledge files under `knowledge/snapshots`, `knowledge/catalogs`, `knowledge/projections`, and `knowledge/indexes` are derived state only.
 
 ## Knowledge Control Plane
 
@@ -35,12 +35,25 @@ Use the Knowledge Control Plane when the question is primarily:
 
 The Locator is location-only. It returns source paths, anchors/lines, SHA-256 bindings, provenance, and rank evidence. It does not answer repository questions on behalf of the source files.
 
-Build/check commands:
+Read-only inspection:
 
 ```powershell
 py -3 scripts/python/build_knowledge_catalog.py
-py -3 scripts/python/build_knowledge_catalog.py --write
-py -3 scripts/python/build_knowledge_catalog.py --check
+```
+
+Normal maintainer publication:
+
+```powershell
+py -3 scripts/python/publish_knowledge_catalog.py --publish
+py -3 scripts/python/publish_knowledge_catalog.py --check
+```
+
+`build_knowledge_catalog.py --write` is a low-level migration/debug primitive only. A canonical Locator does not trust manually written generated layers unless `knowledge/indexes/current.json` binds them to a validated immutable publication generation.
+
+LKG recovery:
+
+```powershell
+py -3 scripts/python/publish_knowledge_catalog.py --restore-lkg
 ```
 
 Locator entrypoint:
@@ -56,14 +69,30 @@ py -3 scripts/python/validate_knowledge_control_plane.py
 py -3 scripts/python/validate_knowledge_control_plane.py --require-generated
 ```
 
-If generated knowledge is missing, stale, blocked, or cannot be hash-verified, fall back to the direct authoritative source files listed in this document. Do not guess from stale generated output.
+If published knowledge is missing, stale, blocked, has a moved trusted ref, or cannot be hash-verified, fall back to the direct authoritative source files listed in this document. Do not guess from stale generated output.
+
+## Publication Boundary
+
+A valid current publication binds:
+
+- trusted source snapshot;
+- catalog;
+- consumer projections;
+- consumer policies;
+- source exclusions;
+- the repository-real query suite;
+- the passed evaluation report.
+
+A failed candidate publication must not advance `current.json` or `last-known-good.json`.
+
+Ordinary consumers must never publish or rebuild global knowledge as a recovery side effect.
 
 ## Consumer Rules
 
 - `repository-session`: may query broad repository authority for recovery and context selection.
 - `chapter4`: may query product/design/architecture authority before overlay or contract writes.
 - `chapter5`: may query bounded semantic/acceptance authority before stabilization.
-- `chapter6`: may query bounded task/implementation authority before RED; later freeze integration must not silently widen context during RED/GREEN/REFACTOR.
+- `chapter6`: may query bounded task/implementation authority before RED; a frozen context must not silently widen during RED/GREEN/REFACTOR.
 - `review`: may query review-scope authority; `logs/**` remain explicit evidence, not global semantic truth.
 
 Consumer semantic fit is owned by the consumer. A ranked Locator candidate does not by itself satisfy a requirement or context class.
@@ -72,7 +101,7 @@ Consumer semantic fit is owned by the consumer. A ranked Locator candidate does 
 
 - Old `architecture_base.index`
   - Current direct-source equivalent: `docs/PROJECT_DOCUMENTATION_INDEX.md` + `docs/architecture/base/00-README.md`
-  - Deterministic locator equivalent: repository Knowledge Control Plane when generated layers are current.
+  - Deterministic locator equivalent: repository Knowledge Control Plane when a valid publication is current.
 - Old `prd_chunks.index` and `shards/flattened-*.xml`
   - Current direct-source equivalent: `docs/prd/**/*.md` and `docs/gdd/**`
   - Do not rebuild flattened files ad hoc.
@@ -85,7 +114,7 @@ Consumer semantic fit is owned by the consumer. A ranked Locator candidate does 
 2. Read `docs/agents/00-index.md` and `docs/agents/01-session-recovery.md`.
 3. Read this document to choose the right source set.
 4. Read `README.md` for project-facing startup context.
-5. Use the Knowledge Locator when a bounded authority lookup is useful and generated layers are current.
+5. Use the Knowledge Locator when a bounded authority lookup is useful and a valid publication is current.
 6. Re-read returned source files directly and verify/consume their content; do not treat Locator output as the fact itself.
 7. Read `docs/architecture/base/00-README.md` and `docs/architecture/ADR_INDEX_GODOT.md` before changing architecture, overlays, or contracts.
 8. Read `docs/testing-framework.md` before changing tests or gates.
@@ -121,7 +150,7 @@ For task recovery, review, or Chapter 6 routing, read the explicit task/run arti
 ## Typical Workflow
 
 - Parse or refresh task data only after the target project has real Taskmaster inputs.
-- Refresh knowledge only through `maintain-knowledge-base` / registered deterministic scripts; ordinary consumers do not publish knowledge as a recovery side effect.
+- Refresh/publish knowledge only through `maintain-knowledge-base` / registered deterministic publication scripts; ordinary consumers do not publish knowledge as a recovery side effect.
 - Validate link integrity with `py -3 scripts/python/task_links_validate.py`.
 - Validate test, acceptance, and CI behavior through `docs/testing-framework.md` and `scripts/sc/README.md`.
 - When knowledge infrastructure is unavailable, use direct authoritative source reading rather than creating an unregistered index.
