@@ -49,7 +49,10 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/build_knowledge_catalog.py",
         "scripts/python/knowledge_locator.py",
         "scripts/python/evaluate_knowledge_queries.py",
+        "scripts/python/prepare_knowledge_context.py",
         "knowledge/evaluation/queries.v1.json",
+        "knowledge/contracts/knowledge-context-candidates.v1.schema.json",
+        "docs/workflows/knowledge-context-shadow.md",
         ".agents/skills/maintain-knowledge-base/SKILL.md",
     ]
     for relative in required_files:
@@ -81,6 +84,16 @@ def _static_checks(root: Path) -> list[str]:
     for marker in ("Knowledge Control Plane", "knowledge_locator.py", "direct authoritative source"):
         if marker not in routing:
             issues.append(f"routing-doc-missing:{marker}")
+
+    for relative in (
+        ".agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md",
+        ".agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md",
+        ".agents/skills/workflow-chapter6-single-task-daily-loop/SKILL.md",
+    ):
+        if (root / relative).is_file():
+            skill_text = (root / relative).read_text(encoding="utf-8")
+            if "knowledge-context-shadow.md" not in skill_text:
+                issues.append(f"shadow-routing-missing:{relative}")
 
     for relative in (
         "scripts/python/_knowledge_catalog_builder.py",
