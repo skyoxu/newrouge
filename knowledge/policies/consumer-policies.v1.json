@@ -28,6 +28,9 @@
       "exact_paths": ["AGENTS.md", "workflow.md", ".taskmaster/docs/prd.txt"],
       "required_context_classes": ["product-intent", "architecture-authority"],
       "optional_context_classes": ["existing-overlay", "contract-authority"],
+      "context_query_exact_path_templates": {
+        "product-intent": ["docs/prd/{scope}.md"]
+      },
       "context_query_terms": {
         "product-intent": ["产品", "目标"],
         "architecture-authority": ["architecture", "adr", "base"]
