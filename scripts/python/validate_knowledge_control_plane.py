@@ -42,6 +42,11 @@ def _static_checks(root: Path) -> list[str]:
         "knowledge/contracts/knowledge-locator-request.v1.schema.json",
         "knowledge/contracts/knowledge-locator-result.v1.schema.json",
         "knowledge/contracts/knowledge-consumption-decision.v1.schema.json",
+        "knowledge/contracts/knowledge-consumption-decision-set.v1.schema.json",
+        "knowledge/contracts/knowledge-context-candidates.v1.schema.json",
+        "knowledge/contracts/knowledge-frozen-context.v1.schema.json",
+        "knowledge/contracts/knowledge-publication-generation.v1.schema.json",
+        "knowledge/contracts/knowledge-index-pointer.v1.schema.json",
         "knowledge/policies/consumer-policies.v1.json",
         "knowledge/policies/source-exclusions.v1.json",
         "scripts/python/_knowledge_catalog_builder.py",
@@ -50,11 +55,9 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/knowledge_locator.py",
         "scripts/python/evaluate_knowledge_queries.py",
         "scripts/python/prepare_knowledge_context.py",
-        "knowledge/evaluation/queries.v1.json",
-        "knowledge/contracts/knowledge-context-candidates.v1.schema.json",
-        "knowledge/contracts/knowledge-consumption-decision-set.v1.schema.json",
-        "knowledge/contracts/knowledge-frozen-context.v1.schema.json",
         "scripts/python/freeze_knowledge_context.py",
+        "scripts/python/publish_knowledge_catalog.py",
+        "knowledge/evaluation/queries.v1.json",
         "docs/workflows/knowledge-context-shadow.md",
         "docs/workflows/knowledge-context-freeze.md",
         ".agents/skills/maintain-knowledge-base/SKILL.md",
@@ -104,6 +107,7 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/_knowledge_locator_core.py",
         "scripts/python/build_knowledge_catalog.py",
         "scripts/python/knowledge_locator.py",
+        "scripts/python/publish_knowledge_catalog.py",
     ):
         text = (root / relative).read_text(encoding="utf-8")
         for token in FORBIDDEN_RUNTIME_TOKENS:
@@ -123,16 +127,20 @@ def main() -> int:
     issues = _static_checks(root)
     checks: list[dict[str, Any]] = []
 
-    unit = _run([sys.executable, "scripts/python/tests/test_knowledge_control_plane.py"], root)
-    checks.append({"name": "unit-kernel", "returncode": unit.returncode})
-    if unit.returncode:
-        issues.append("unit-kernel-tests-failed")
-    freeze_unit = _run([sys.executable, "scripts/python/tests/test_knowledge_freeze.py"], root)
-    checks.append({"name": "unit-freeze", "returncode": freeze_unit.returncode})
-    if freeze_unit.returncode:
-        issues.append("unit-freeze-tests-failed")
+    for name, script in (
+        ("unit-kernel", "scripts/python/tests/test_knowledge_control_plane.py"),
+        ("unit-freeze", "scripts/python/tests/test_knowledge_freeze.py"),
+    ):
+        unit = _run([sys.executable, script], root)
+        checks.append({"name": name, "returncode": unit.returncode})
+        if unit.returncode:
+            issues.append(f"{name}-tests-failed")
 
     if args.require_generated:
+        publication = _run([sys.executable, "scripts/python/publish_knowledge_catalog.py", "--check"], root)
+        checks.append({"name": "current-publication", "returncode": publication.returncode})
+        if publication.returncode:
+            issues.append("current-publication-invalid")
         build = _run([sys.executable, "scripts/python/build_knowledge_catalog.py", "--check"], root)
         checks.append({"name": "generated-layers", "returncode": build.returncode})
         if build.returncode:
