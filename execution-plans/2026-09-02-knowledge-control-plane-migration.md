@@ -1,0 +1,21 @@
+# Knowledge Control Plane Migration
+
+- Title: knowledge-control-plane-migration
+- Status: in-progress
+- Branch: `feat/knowledge-control-plane-migration`
+- Git Head: branch created from `17e70086ae2ce5111a0ada56e421680b8ccc5b84`
+- Goal: migrate the portable Ji Mu Yun repository knowledge control plane into `newrouge` without migrating SaaS Hosted Context E2 functionality
+- Scope: `knowledge/**`, `scripts/python/*knowledge*`, `.agents/skills/maintain-knowledge-base/**`, knowledge routing docs, later Chapter 4/5/6 and review adapters
+- Current step: implement and validate the deterministic E1 knowledge kernel before workflow integration
+- Last completed step: branch isolation and source/target migration boundary analysis
+- Stop-loss: do not modify `skyoxu/ji-mu-yun`; do not write to `newrouge/main`; do not wire Chapter consumers until snapshot/catalog/Locator freshness semantics are validated
+- Next action: land KMG-S0 through KMG-S4, run deterministic core tests, then add shadow consumer adapters
+- Recovery command: `py -3 scripts/python/build_knowledge_catalog.py`
+- Open questions: publication/current/LKG hardening and consumer freeze artifact shape remain downstream of the initial kernel
+- Exit criteria: deterministic snapshot/catalog/Locator + maintenance skill + real newrouge query evaluation + Chapter 4/5/6/review shadow integration + terminal validation
+- Related ADRs: `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
+- Related decision logs: n/a
+- Related task id(s): n/a (repository toolchain migration)
+- Related run id: n/a
+- Related latest.json: n/a
+- Related pipeline artifacts: `logs/**` are explicitly not global knowledge authority
