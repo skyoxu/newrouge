@@ -1,0 +1,417 @@
+{
+  "candidates": [
+    {
+      "anchor": "08章契约规范（M1）",
+      "line_end": 404,
+      "line_start": 404,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.contracts.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 82,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [
+        "architecture-authority"
+      ],
+      "source_sha256": "684db98b33a250c3f2cc3daa1e55115490062f4855a6e1854465e7b7eea5ba1f",
+      "status": "active"
+    },
+    {
+      "anchor": "08 功能纵切（M1: Warrior 最小可玩闭环）",
+      "line_end": 289,
+      "line_start": 289,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.feature.slice.m1.warrior.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [
+        "architecture-authority"
+      ],
+      "source_sha256": "4649cdc6a56ee3a8954a58fcbae1add4d4498321133884ac08116f1b92794323",
+      "status": "active"
+    },
+    {
+      "anchor": "08 可观测性与审计（M1）",
+      "line_end": 48,
+      "line_start": 48,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.observability.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [
+        "architecture-authority"
+      ],
+      "source_sha256": "985eb7115bc40dc567413e2b2d6ca2649f3afc2486e92a76ce0f66a5da862ed8",
+      "status": "active"
+    },
+    {
+      "anchor": "08 测试策略（M1）",
+      "line_end": 80,
+      "line_start": 80,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8",
+      "status": "active"
+    },
+    {
+      "anchor": "08章功能纵切索引（M1: Warrior）",
+      "line_end": 33,
+      "line_start": 33,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.index.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "dd886cabd09812abaf038acad7775776b3c05799405b66a1742071838ce98caf",
+      "status": "active"
+    },
+    {
+      "anchor": "08章验收清单（M1: Warrior）",
+      "line_end": 51,
+      "line_start": 51,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 8,
+      "line_start": 8,
+      "module_id": "source.game.core.contracts.config.actconfigloadresult.cs",
+      "path": "Game.Core/Contracts/Config/ActConfigLoadResult.cs",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 3,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 74,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "dabc5611f47f0ab4db5a8b8059e7964b8ed6ce3662cca5df492cb212db381971",
+      "status": "active"
+    },
+    {
+      "anchor": "ADR-0022: Godot Signal System and Contracts",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "adr.ADR-0022",
+      "path": "docs/adr/ADR-0022-godot-signal-system-and-contracts.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 72,
+        "strategy": "hybrid-token",
+        "token_matches": 4
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "e7ac30110e69b5be0a8b1a89a29238ce666894eab0372f10c062c51fbf89c707",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 2,
+      "line_start": 2,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.overlay.manifest.json",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/overlay-manifest.json",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 72,
+        "strategy": "hybrid-token",
+        "token_matches": 4
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "8a4d9ae4cdcf22b9e48b8e2f52ce86132ea51aa621b6e3fd84375df849689485",
+      "status": "active"
+    },
+    {
+      "anchor": "ADR-0021: C# Domain Layer Architecture",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "adr.ADR-0021",
+      "path": "docs/adr/ADR-0021-csharp-domain-layer-architecture.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 62,
+        "strategy": "hybrid-token",
+        "token_matches": 3
+      },
+      "retrieval_context_classes": [
+        "architecture-authority"
+      ],
+      "source_sha256": "483b79d46e29ca50c6ceb6d656f7e7a916ed7311579d981ce76eaa49291d9b5b",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 8,
+      "line_start": 8,
+      "module_id": "source.game.core.contracts.cards.cardform.cs",
+      "path": "Game.Core/Contracts/Cards/CardForm.cs",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 58,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "cb2534daa45d301fa0428bbb167517ae85e3895cc93ee224f224987d91ff5177",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 8,
+      "line_start": 8,
+      "module_id": "source.game.core.contracts.cards.upgraderoute.cs",
+      "path": "Game.Core/Contracts/Cards/UpgradeRoute.cs",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 58,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "41dd4530e61a79dbdc2e254a3b7086449cb03953793cbd38c9ec3bc61a8a1fa1",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 16,
+      "line_start": 16,
+      "module_id": "source.taskmaster.docs.prd.txt",
+      "path": ".taskmaster/docs/prd.txt",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 2,
+        "policy_exact_path": true,
+        "policy_exact_path_bonus": 128,
+        "score": 199,
+        "strategy": "hybrid-token",
+        "token_matches": 3
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "612ee3f9b091e2acae67459aed3344895b4adfd063f05a98cfeb7036a01b4823",
+      "status": "active"
+    },
+    {
+      "anchor": "PRD-NEWROUGE-GAME-0001",
+      "line_end": 41,
+      "line_start": 41,
+      "module_id": "source.docs.prd.prd.newrouge.game.0001.md",
+      "path": "docs/prd/PRD-NEWROUGE-GAME-0001.md",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 4,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 187,
+        "strategy": "hybrid-token",
+        "token_matches": 3
+      },
+      "retrieval_context_classes": [
+        "product-intent"
+      ],
+      "source_sha256": "a913933dcecb4cfc5e1141e802f0759f2c079c350df945930000b7682d965ae5",
+      "status": "active"
+    },
+    {
+      "anchor": "NewRouge v1 平衡与内容回归基线（最小必跑包）",
+      "line_end": 9,
+      "line_start": 9,
+      "module_id": "source.docs.prd.balance.regression.baseline.newrouge.v1.md",
+      "path": "docs/prd/BALANCE-REGRESSION-BASELINE-NEWROUGE-V1.md",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 2,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 71,
+        "strategy": "hybrid-token",
+        "token_matches": 3
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "0560edcc35a984bc2d032e4d418888edc8eb70844f654c3ee058d36c3fe29dc6",
+      "status": "active"
+    },
+    {
+      "anchor": "NewRouge v1 Card ID Catalog（卡牌内容身份证目录）",
+      "line_end": 9,
+      "line_start": 9,
+      "module_id": "source.docs.prd.card.id.catalog.newrouge.v1.md",
+      "path": "docs/prd/CARD-ID-CATALOG-NEWROUGE-V1.md",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 2,
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 71,
+        "strategy": "hybrid-token",
+        "token_matches": 3
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "169a09125027edae4e254a9a1f1bb895d06d98b191ef155d02386c2402154684",
+      "status": "active"
+    }
+  ],
+  "consumer": "chapter4",
+  "fallback": {
+    "authority_route": "docs/agents/13-rag-sources-and-session-ssot.md",
+    "reason": null,
+    "required": false
+  },
+  "freeze_state": "unfrozen",
+  "locator_status": "matched",
+  "mode": "shadow",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "query": "PRD-NEWROUGE-GAME-0001 overlay contracts ADR architecture",
+  "request_id": "shadow-e1cea767dc1d8ae6",
+  "schema_version": "newrouge.knowledge-context-candidates.v1",
+  "semantic_decision_required": true,
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "status": "shadow_ready"
+}
