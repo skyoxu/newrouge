@@ -57,6 +57,7 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/prepare_knowledge_context.py",
         "scripts/python/freeze_knowledge_context.py",
         "scripts/python/publish_knowledge_catalog.py",
+        "scripts/python/tests/test_knowledge_publication.py",
         "knowledge/evaluation/queries.v1.json",
         "docs/workflows/knowledge-context-shadow.md",
         "docs/workflows/knowledge-context-freeze.md",
@@ -130,6 +131,7 @@ def main() -> int:
     for name, script in (
         ("unit-kernel", "scripts/python/tests/test_knowledge_control_plane.py"),
         ("unit-freeze", "scripts/python/tests/test_knowledge_freeze.py"),
+        ("unit-publication", "scripts/python/tests/test_knowledge_publication.py"),
     ):
         unit = _run([sys.executable, script], root)
         checks.append({"name": name, "returncode": unit.returncode})
