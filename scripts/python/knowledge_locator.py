@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -38,6 +39,44 @@ def _fresh(root: Path, catalog: dict[str, Any]) -> bool:
     return True
 
 
+def _publication_valid(root: Path, catalog: dict[str, Any], policies: dict[str, Any], projections: dict[str, Any]) -> bool:
+    pointer_path = root / "knowledge/indexes/current.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        generation_id = pointer.get("generation_id")
+        if pointer.get("schema_version") != "newrouge.knowledge-index-pointer.v1" or not isinstance(generation_id, str) or not re.fullmatch(r"[0-9a-f]{64}", generation_id):
+            return False
+        generation = root / "knowledge/indexes/generations" / generation_id
+        manifest = json.loads((generation / "manifest.json").read_text(encoding="utf-8"))
+        if (
+            manifest.get("schema_version") != "newrouge.knowledge-publication-generation.v1"
+            or manifest.get("generation_id") != generation_id
+            or pointer.get("generation_sha256") != _canonical_hash(manifest)
+            or pointer.get("source_snapshot_id") != manifest.get("source_snapshot_id")
+            or pointer.get("authority_ref") != manifest.get("authority_ref")
+            or pointer.get("main_commit") != manifest.get("main_commit")
+        ):
+            return False
+        expected = {
+            "catalog": catalog,
+            "policies": policies,
+            "projections": projections,
+        }
+        for name, value in expected.items():
+            if manifest.get("artifacts", {}).get(name) != _canonical_hash(value):
+                return False
+            if json.loads((generation / f"{name}.json").read_text(encoding="utf-8")) != value:
+                return False
+        snapshot = catalog.get("source_snapshot", {})
+        if manifest.get("artifacts", {}).get("snapshot") != _canonical_hash(snapshot):
+            return False
+        if json.loads((generation / "snapshot.json").read_text(encoding="utf-8")) != snapshot:
+            return False
+    except (OSError, json.JSONDecodeError):
+        return False
+    return True
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -47,13 +86,17 @@ def main() -> int:
     parser.add_argument("--policies", type=Path, default=Path("knowledge/policies/consumer-policies.v1.json"))
     parser.add_argument("--projections", type=Path, default=Path("knowledge/projections/consumer-projections.v1.json"))
     parser.add_argument("--max-candidates", type=int, default=12)
+    parser.add_argument("--allow-unpublished-inputs", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     root = args.repository_root.resolve()
     rooted = lambda path: path if path.is_absolute() else root / path
     request = json.load(sys.stdin)
-    catalog = json.loads(rooted(args.catalog).read_text(encoding="utf-8"))
-    policies = json.loads(rooted(args.policies).read_text(encoding="utf-8"))
-    projections = json.loads(rooted(args.projections).read_text(encoding="utf-8"))
+    catalog_path = rooted(args.catalog)
+    policy_path = rooted(args.policies)
+    projection_path = rooted(args.projections)
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    policies = json.loads(policy_path.read_text(encoding="utf-8"))
+    projections = json.loads(projection_path.read_text(encoding="utf-8"))
     snapshot = catalog.get("source_snapshot", {})
     policy = next((item for item in policies.get("policies", []) if item.get("consumer") == request.get("consumer")), None)
     projection = next((item for item in projections.get("projections", []) if item.get("consumer") == request.get("consumer")), None)
@@ -64,7 +107,13 @@ def main() -> int:
         and projections.get("policy_sha256") == _canonical_hash(policies)
         and request.get("snapshot") == {"ref": snapshot.get("ref"), "commit": snapshot.get("commit")}
     )
-    if policy is None or projection is None or not bindings_ok or not _fresh(root, catalog):
+    canonical_paths = (
+        catalog_path == root / "knowledge/catalogs/repository-knowledge-catalog.v1.json"
+        and policy_path == root / "knowledge/policies/consumer-policies.v1.json"
+        and projection_path == root / "knowledge/projections/consumer-projections.v1.json"
+    )
+    publication_ok = args.allow_unpublished_inputs or not canonical_paths or _publication_valid(root, catalog, policies, projections)
+    if policy is None or projection is None or not bindings_ok or not publication_ok or not _fresh(root, catalog):
         status, candidates = "blocked", []
     else:
         maximum = min(args.max_candidates, int(policy.get("max_candidates", args.max_candidates)))
