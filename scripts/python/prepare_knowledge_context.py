@@ -117,23 +117,26 @@ def _scope_terms(query: str) -> list[str]:
 
 
 def _append_query_plan(
-    plan: list[tuple[str | None, str, int | None]],
+    plan: list[tuple[str | None, str, int | None, str | None]],
     seen_queries: set[str],
     *,
     context_class: str,
     query: str,
     limit: int,
+    attribution_path: str | None = None,
 ) -> None:
     normalized = query.strip()
     folded = normalized.casefold()
     if not normalized or folded in seen_queries:
         return
     seen_queries.add(folded)
-    plan.append((context_class, normalized, limit))
+    plan.append((context_class, normalized, limit, attribution_path))
 
 
-def _context_query_plan(policy: dict[str, Any], query: str) -> list[tuple[str | None, str, int | None]]:
-    plan: list[tuple[str | None, str, int | None]] = [(None, query, None)]
+def _context_query_plan(
+    policy: dict[str, Any], query: str
+) -> list[tuple[str | None, str, int | None, str | None]]:
+    plan: list[tuple[str | None, str, int | None, str | None]] = [(None, query, None, None)]
     term_mapping = policy.get("context_query_terms")
     exact_path_mapping = policy.get("context_query_exact_path_templates")
     if not isinstance(term_mapping, dict) and not isinstance(exact_path_mapping, dict):
@@ -154,12 +157,14 @@ def _context_query_plan(policy: dict[str, Any], query: str) -> list[tuple[str | 
             for template in templates:
                 if not isinstance(template, str) or not template.strip() or "{scope}" not in template:
                     continue
+                rendered_path = template.replace("{scope}", structured_scope).strip()
                 _append_query_plan(
                     plan,
                     seen_queries,
                     context_class=context_class,
-                    query=template.replace("{scope}", structured_scope),
+                    query=rendered_path,
                     limit=per_class_limit,
+                    attribution_path=rendered_path,
                 )
 
         terms = term_mapping.get(context_class) if isinstance(term_mapping, dict) else None
@@ -185,6 +190,7 @@ def _merge_candidates(
     *,
     context_class: str | None,
     limit: int | None,
+    attribution_path: str | None,
 ) -> None:
     bounded = candidates if limit is None else candidates[:limit]
     for raw in bounded:
@@ -200,7 +206,10 @@ def _merge_candidates(
             candidate["retrieval_context_classes"] = []
             merged[key] = candidate
             order.append(key)
-        if context_class is not None:
+        should_attribute = context_class is not None and (
+            attribution_path is None or path == attribution_path
+        )
+        if should_attribute:
             classes = merged[key].setdefault("retrieval_context_classes", [])
             if context_class not in classes:
                 classes.append(context_class)
@@ -260,7 +269,9 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     order: list[tuple[str, str]] = []
     statuses: list[str] = []
-    for plan_index, (context_class, locator_query, limit) in enumerate(_context_query_plan(policy, query)):
+    for plan_index, (context_class, locator_query, limit, attribution_path) in enumerate(
+        _context_query_plan(policy, query)
+    ):
         suffix = context_class or "base"
         request = {
             "schema_version": "newrouge.knowledge-locator-request.v1",
@@ -304,6 +315,7 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
             candidates,
             context_class=context_class,
             limit=limit,
+            attribution_path=attribution_path,
         )
 
     locator_status = "matched" if "matched" in statuses else "insufficient_match"
