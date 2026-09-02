@@ -62,6 +62,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             ".taskmaster/tasks/tasks.json": "{\"master\":{\"tasks\":[{\"id\":7,\"title\":\"overlay refs acceptance linkage\"}]}}\n",
             "execution-plans/2026-01-01-old.md": "# Old Plan\n\n- Status: done\n",
             "logs/ci/latest.md": "# Very relevant ADR card combat text that must stay excluded\n",
+            ".agents/skills/workflow-chapter4-test/references/business-repos/newrouge.md": "# Empirical Business Repo Evidence\ncard combat ADR overlay refs acceptance linkage\n",
         }
         for relative, text in files.items():
             path = self.repo / relative
@@ -105,7 +106,7 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         return json.loads(completed.stdout)
 
-    def test_build_excludes_logs_and_classifies_domains(self) -> None:
+    def test_build_excludes_transient_and_empirical_evidence_and_classifies_domains(self) -> None:
         summary = self.build()
         self.assertGreater(summary["modules"], 6)
         catalog = json.loads(
@@ -113,6 +114,10 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         )
         paths = {module["source_path"] for module in catalog["modules"]}
         self.assertNotIn("logs/ci/latest.md", paths)
+        self.assertNotIn(
+            ".agents/skills/workflow-chapter4-test/references/business-repos/newrouge.md",
+            paths,
+        )
         self.assertIn("workflow.md", paths)
         self.assertIn("docs/architecture/ADR_INDEX_GODOT.md", paths)
         prd = next(module for module in catalog["modules"] if module["source_path"] == "docs/prd/game.md")
@@ -150,6 +155,13 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertTrue(all(candidate["path"] != "logs/ci/latest.md" for candidate in result["candidates"]))
         self.assertTrue(
             all(candidate["path"] != "execution-plans/2026-01-01-old.md" for candidate in result["candidates"])
+        )
+        self.assertTrue(
+            all(
+                candidate["path"]
+                != ".agents/skills/workflow-chapter4-test/references/business-repos/newrouge.md"
+                for candidate in result["candidates"]
+            )
         )
 
     def test_locator_can_retrieve_workflow_and_adr_index_authority(self) -> None:
