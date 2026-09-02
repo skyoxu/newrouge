@@ -59,6 +59,8 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
             "docs/adr/ADR-0034-test.md": "# ADR-0034: Test\n\n- Status: Accepted\n\nContracts live in Game.Core/Contracts.\n",
             "docs/adr/ADR-0033-old.md": "# ADR-0033: Old\n\n- Status: Superseded\n",
             "docs/prd/game.md": "# Game PRD\nCard combat and roguelike progression.\n",
+            "docs/prd/PRD-TEST-GAME-0001.md": "# PRD-TEST-GAME-0001\n\nProduct intent for deterministic card combat.\n",
+            "docs/architecture/overlays/PRD-TEST-GAME-0001/08/08-Contracts.md": "# Overlay Contracts\n\nPRD-TEST-GAME-0001 architecture overlay contracts ADR authority.\n",
             ".taskmaster/tasks/tasks.json": "{\"master\":{\"tasks\":[{\"id\":7,\"title\":\"overlay refs acceptance linkage\"}]}}\n",
             "execution-plans/2026-01-01-old.md": "# Old Plan\n\n- Status: done\n",
             "logs/ci/latest.md": "# Very relevant ADR card combat text that must stay excluded\n",
@@ -255,6 +257,34 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertEqual(bundle["freeze_state"], "unfrozen")
         self.assertTrue(bundle["semantic_decision_required"])
         self.assertTrue(bundle["candidates"])
+        self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
+
+    def test_chapter4_shadow_backfills_required_context_class_candidates(self) -> None:
+        self.publish()
+        completed = run(
+            sys.executable,
+            "scripts/python/prepare_knowledge_context.py",
+            "--consumer",
+            "chapter4",
+            "--query",
+            "PRD-TEST-GAME-0001 overlay contracts ADR architecture",
+            cwd=self.repo,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        bundle = json.loads(completed.stdout)
+        self.assertEqual(bundle["status"], "shadow_ready")
+        prd = next(
+            candidate
+            for candidate in bundle["candidates"]
+            if candidate["path"] == "docs/prd/PRD-TEST-GAME-0001.md"
+        )
+        self.assertIn("product-intent", prd["retrieval_context_classes"])
+        self.assertTrue(
+            any(
+                "architecture-authority" in candidate.get("retrieval_context_classes", [])
+                for candidate in bundle["candidates"]
+            )
+        )
         self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
 
     def test_locator_blocks_when_authority_ref_moves(self) -> None:
