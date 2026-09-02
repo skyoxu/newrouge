@@ -5,7 +5,7 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
-POLICY_EXACT_PATH_BONUS = 96
+POLICY_EXACT_PATH_BONUS = 128
 
 
 def tokens(query: str) -> list[str]:
@@ -76,22 +76,29 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
         if module_id not in eligible_ids or not _policy_allows(module, query, policy):
             continue
         source_path = str(module.get("source_path", ""))
-        searchable = " ".join((source_path, str(module_id), str(module.get("title", "")), str(module.get("content", "")))).casefold()
+        title = str(module.get("title", ""))
+        searchable = " ".join((source_path, str(module_id), title, str(module.get("content", "")))).casefold()
         matches = sum(token in searchable for token in qtokens)
         coverage = matches / max(1, len(qtokens))
         phrase = query.casefold().strip() in searchable
         exact = _explicit(query, module)
         if not exact and not phrase and coverage < 0.5:
             continue
+        path_folded = source_path.casefold()
+        title_folded = title.casefold()
+        path_token_matches = sum(token in path_folded for token in qtokens)
+        title_token_matches = sum(token in title_folded for token in qtokens)
         score = matches * 10
-        score += sum(token in source_path.casefold() for token in qtokens) * 8
-        score += sum(token in str(module.get("title", "")).casefold() for token in qtokens) * 8
+        score += path_token_matches * 8
+        score += title_token_matches * 8
         if phrase:
             score += 25
         if exact:
             score += 100
         policy_exact_path = source_path in exact_policy_paths
-        if policy_exact_path:
+        entrypoint_token_matches = path_token_matches + title_token_matches
+        policy_entrypoint_boosted = policy_exact_path and entrypoint_token_matches > 0
+        if policy_entrypoint_boosted:
             score += POLICY_EXACT_PATH_BONUS
         anchor, line_start, line_end = _best_location(module, qtokens)
         ranked[str(module_id)] = (score, source_path.casefold(), {
@@ -110,7 +117,8 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
                 "token_matches": matches,
                 "confidence": "high" if exact or (phrase and coverage == 1) else "medium",
                 "policy_exact_path": policy_exact_path,
-                "policy_exact_path_bonus": POLICY_EXACT_PATH_BONUS if policy_exact_path else 0,
+                "entrypoint_token_matches": entrypoint_token_matches,
+                "policy_exact_path_bonus": POLICY_EXACT_PATH_BONUS if policy_entrypoint_boosted else 0,
             },
         })
         base.append((score, module))
