@@ -42,7 +42,10 @@ GENERATION_ARTIFACTS = (
 
 
 class PublicationBlocked(ValueError):
-    pass
+    def __init__(self, reason: str, *, details: dict[str, Any] | None = None) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.details = details
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -111,7 +114,14 @@ def _evaluate(catalog: dict[str, Any], projections: dict[str, Any], policies: di
         policy = by_consumer.get(consumer)
         projection = projection_by_consumer.get(consumer)
         if policy is None or projection is None:
-            failures.append({"id": case.get("id"), "reason": "consumer_policy_or_projection_missing"})
+            failures.append({
+                "id": case.get("id"),
+                "consumer": consumer,
+                "query": case.get("query"),
+                "reason": "consumer_policy_or_projection_missing",
+                "expected": case.get("must_include", []),
+                "candidate_paths": [],
+            })
             continue
         request = {
             "schema_version": "newrouge.knowledge-locator-request.v1",
@@ -125,17 +135,27 @@ def _evaluate(catalog: dict[str, Any], projections: dict[str, Any], policies: di
         result = locate(request, catalog, policy, set(projection.get("eligible_module_ids", [])), maximum)
         candidates = list(result.get("candidates", []))
         ok = result.get("status") == case.get("expected_status", "matched")
+        forbidden_hits: list[str] = []
         for prefix in case.get("forbidden_path_prefixes", []):
-            if any(str(candidate.get("path", "")).startswith(prefix) for candidate in candidates):
+            hits = [str(candidate.get("path", "")) for candidate in candidates if str(candidate.get("path", "")).startswith(prefix)]
+            forbidden_hits.extend(hits)
+            if hits:
                 ok = False
+        missing_expectations: list[dict[str, Any]] = []
         for expectation in case.get("must_include", []):
             if not any(_matches(candidate, expectation) for candidate in candidates):
+                missing_expectations.append(expectation)
                 ok = False
         if not ok:
             failures.append({
                 "id": case.get("id"),
+                "consumer": consumer,
+                "query": case.get("query"),
                 "reason": "query_expectation_failed",
                 "status": result.get("status"),
+                "expected_status": case.get("expected_status", "matched"),
+                "missing_expectations": missing_expectations,
+                "forbidden_hits": sorted(set(forbidden_hits)),
                 "candidate_paths": [candidate.get("path") for candidate in candidates],
             })
     return {
@@ -212,7 +232,7 @@ def publish(root: Path, authority_ref: str) -> dict[str, Any]:
     snapshot, catalog, projections = build_layers(GitSnapshot(root, authority_ref), exclusions, policies)
     evaluation = _evaluate(catalog, projections, policies, suite)
     if evaluation.get("status") != "passed":
-        raise PublicationBlocked("repository_query_evaluation_failed")
+        raise PublicationBlocked("repository_query_evaluation_failed", details={"evaluation": evaluation})
     artifacts = {
         "snapshot": snapshot,
         "catalog": catalog,
@@ -288,7 +308,17 @@ def main() -> int:
             result = check_current(root)
         else:
             result = restore_lkg(root)
-    except (OSError, json.JSONDecodeError, PublicationBlocked, subprocess.SubprocessError) as exc:
+    except PublicationBlocked as exc:
+        payload: dict[str, Any] = {
+            "schema_version": "newrouge.knowledge-publication-result.v1",
+            "status": "blocked",
+            "reason": exc.reason,
+        }
+        if exc.details:
+            payload["details"] = exc.details
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        return 2
+    except (OSError, json.JSONDecodeError, subprocess.SubprocessError) as exc:
         print(json.dumps({"schema_version": "newrouge.knowledge-publication-result.v1", "status": "blocked", "reason": str(exc)}, ensure_ascii=False, sort_keys=True))
         return 2
     print(json.dumps({"schema_version": "newrouge.knowledge-publication-result.v1", **result}, ensure_ascii=False, indent=2, sort_keys=True))
