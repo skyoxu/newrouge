@@ -116,30 +116,65 @@ def _scope_terms(query: str) -> list[str]:
     return values
 
 
+def _append_query_plan(
+    plan: list[tuple[str | None, str, int | None]],
+    seen_queries: set[str],
+    *,
+    context_class: str,
+    query: str,
+    limit: int,
+) -> None:
+    normalized = query.strip()
+    folded = normalized.casefold()
+    if not normalized or folded in seen_queries:
+        return
+    seen_queries.add(folded)
+    plan.append((context_class, normalized, limit))
+
+
 def _context_query_plan(policy: dict[str, Any], query: str) -> list[tuple[str | None, str, int | None]]:
     plan: list[tuple[str | None, str, int | None]] = [(None, query, None)]
-    mapping = policy.get("context_query_terms")
-    if not isinstance(mapping, dict):
+    term_mapping = policy.get("context_query_terms")
+    exact_path_mapping = policy.get("context_query_exact_path_templates")
+    if not isinstance(term_mapping, dict) and not isinstance(exact_path_mapping, dict):
         return plan
     try:
         per_class_limit = max(1, int(policy.get("context_query_max_candidates", 4)))
     except (TypeError, ValueError):
         per_class_limit = 4
     scope = _scope_terms(query)
+    structured_scope = next((value for value in scope if STRUCTURED_SCOPE.fullmatch(value)), None)
     seen_queries = {query.casefold().strip()}
     for context_class in policy.get("required_context_classes", []):
-        terms = mapping.get(context_class)
-        if not isinstance(context_class, str) or not isinstance(terms, list):
+        if not isinstance(context_class, str):
+            continue
+
+        templates = exact_path_mapping.get(context_class) if isinstance(exact_path_mapping, dict) else None
+        if structured_scope and isinstance(templates, list):
+            for template in templates:
+                if not isinstance(template, str) or not template.strip() or "{scope}" not in template:
+                    continue
+                _append_query_plan(
+                    plan,
+                    seen_queries,
+                    context_class=context_class,
+                    query=template.replace("{scope}", structured_scope),
+                    limit=per_class_limit,
+                )
+
+        terms = term_mapping.get(context_class) if isinstance(term_mapping, dict) else None
+        if not isinstance(terms, list):
             continue
         normalized_terms = [str(value).strip() for value in terms if isinstance(value, str) and value.strip()]
         if not normalized_terms:
             continue
-        class_query = " ".join([*scope, *normalized_terms]).strip()
-        folded = class_query.casefold()
-        if not class_query or folded in seen_queries:
-            continue
-        seen_queries.add(folded)
-        plan.append((context_class, class_query, per_class_limit))
+        _append_query_plan(
+            plan,
+            seen_queries,
+            context_class=context_class,
+            query=" ".join([*scope, *normalized_terms]),
+            limit=per_class_limit,
+        )
     return plan
 
 
@@ -225,11 +260,11 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     order: list[tuple[str, str]] = []
     statuses: list[str] = []
-    for context_class, locator_query, limit in _context_query_plan(policy, query):
+    for plan_index, (context_class, locator_query, limit) in enumerate(_context_query_plan(policy, query)):
         suffix = context_class or "base"
         request = {
             "schema_version": "newrouge.knowledge-locator-request.v1",
-            "request_id": f"{rid}:{suffix}",
+            "request_id": f"{rid}:{suffix}:{plan_index}",
             "consumer": consumer,
             "query": locator_query,
             "snapshot": {"ref": ref, "commit": commit},
