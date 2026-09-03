@@ -116,6 +116,15 @@ class Chapter5KnowledgeRoutingTests(unittest.TestCase):
             "logs/ci/latest.md": "# Very relevant ADR card combat text that must stay excluded\n",
             ".agents/skills/workflow-chapter4-test/references/business-repos/newrouge.md": "# Evidence\ncard combat\n",
         }
+        for index in range(8):
+            files[
+                f"execution-plans/2026-02-{index + 1:02d}-gm-0128-task-28-acceptance-test-refs-noise.md"
+            ] = (
+                f"# GM-0128 task 28 acceptance test refs routing noise {index}\n\n"
+                "- Status: in-progress\n"
+                "GM-0128 task 28 acceptance test refs ActConfig loader schema validation overlay.\n"
+                "This plan mentions the task but is not the task or its acceptance overlay authority.\n"
+            )
         for relative, text in files.items():
             path = self.repo / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -174,6 +183,16 @@ class Chapter5KnowledgeRoutingTests(unittest.TestCase):
         )
         self.assertIn("acceptance-scope", overlay_candidate["retrieval_context_classes"])
         self.assertNotIn("semantic-authority", overlay_candidate["retrieval_context_classes"])
+
+        noise = [
+            candidate
+            for candidate in bundle["candidates"]
+            if candidate["path"].startswith("execution-plans/2026-02-")
+        ]
+        self.assertTrue(noise)
+        self.assertTrue(
+            all("acceptance-scope" not in candidate["retrieval_context_classes"] for candidate in noise)
+        )
         self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
 
 
