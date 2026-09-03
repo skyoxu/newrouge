@@ -113,6 +113,29 @@
       "exact_paths": ["AGENTS.md", "README.md", "workflow.md", "DELIVERY_PROFILE.md"],
       "required_context_classes": ["review-scope"],
       "optional_context_classes": ["architecture-context", "delivery-context"],
+      "context_query_supplement_classes": ["review-scope", "architecture-context", "delivery-context"],
+      "context_query_scope_types": {
+        "review-scope": ["task"],
+        "architecture-context": ["adr"],
+        "delivery-context": ["task"]
+      },
+      "context_query_scope_preference": {
+        "review-scope": "task-view-first"
+      },
+      "context_query_exact_path_templates": {
+        "delivery-context": ["workflow.md", "DELIVERY_PROFILE.md"]
+      },
+      "context_query_attribution_prefixes": {
+        "review-scope": [".taskmaster/tasks/"],
+        "architecture-context": ["docs/adr/", "docs/architecture/base/", "Game.Core/Contracts/"],
+        "delivery-context": ["workflow.md", "DELIVERY_PROFILE.md", "docs/workflows/", "execution-plans/", "decision-logs/"]
+      },
+      "context_query_terms": {
+        "review-scope": [],
+        "architecture-context": [],
+        "delivery-context": ["review", "6.7", "pipeline", "failure", "CardPoolSelection"]
+      },
+      "context_query_max_candidates": 6,
       "max_candidates": 32,
       "minimum_confidence": "medium",
       "freeze_point": "review-run-input"
