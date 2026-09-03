@@ -72,11 +72,15 @@ class ReviewKnowledgeRoutingTests(unittest.TestCase):
         )
 
         files = {
-            "AGENTS.md": "# Repository Guide\nReview repository authority before expensive work.\n",
+            "AGENTS.md": (
+                "# Repository Guide\n"
+                "Context Reset startup order: review repository authority before expensive work.\n"
+            ),
             "README.md": "# Game\nWindows Godot game.\n",
             "workflow.md": (
                 "# Workflow\n"
-                "Chapter 6 section 6.7 runs the review pipeline before final closure.\n"
+                "Chapter 6 single task daily loop.\n"
+                "Section 6.7 runs the review pipeline before final closure.\n"
                 "Use run_review_pipeline.py and bounded reviewers.\n"
             ),
             "DELIVERY_PROFILE.md": (
@@ -90,7 +94,8 @@ class ReviewKnowledgeRoutingTests(unittest.TestCase):
             "docs/adr/ADR-0032-save-resume-determinism.md": (
                 "# ADR-0032: Save/Resume Policy and Deterministic Outcomes\n\n"
                 "- Status: Accepted\n"
-                "- Decision: reward preview must be deterministic and must not advance RNG state.\n"
+                "- Decision: Game.Core/Contracts is the SSoT for deterministic reward contracts; "
+                "reward preview must not advance RNG state.\n"
             ),
             "docs/adr/ADR-0033-card-identity-and-forms.md": (
                 "# ADR-0033: Card Identity and Forms\n\n"
