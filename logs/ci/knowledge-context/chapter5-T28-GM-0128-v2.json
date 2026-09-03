@@ -1,0 +1,529 @@
+{
+  "candidates": [
+    {
+      "anchor": "document",
+      "line_end": 3,
+      "line_start": 3,
+      "module_id": "source.taskmaster.docs.prd.txt",
+      "path": ".taskmaster/docs/prd.txt",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": true,
+        "policy_exact_path_bonus": 128,
+        "score": 196,
+        "strategy": "hybrid-token",
+        "token_matches": 6
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "612ee3f9b091e2acae67459aed3344895b4adfd063f05a98cfeb7036a01b4823",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 1932,
+      "line_start": 1932,
+      "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+      "path": ".taskmaster/tasks/tasks_gameplay.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "task-identity",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 126,
+        "strategy": "hybrid-token",
+        "token_matches": 11
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d",
+      "status": "active"
+    },
+    {
+      "anchor": "08 功能纵切（M1: Warrior 最小可玩闭环）",
+      "line_end": 214,
+      "line_start": 214,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.feature.slice.m1.warrior.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 118,
+        "strategy": "hybrid-token",
+        "token_matches": 11
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "4649cdc6a56ee3a8954a58fcbae1add4d4498321133884ac08116f1b92794323",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 904,
+      "line_start": 904,
+      "module_id": "source.taskmaster.tasks.tasks.json",
+      "path": ".taskmaster/tasks/tasks.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "task-identity",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 116,
+        "strategy": "hybrid-token",
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 6271,
+      "line_start": 6271,
+      "module_id": "source.taskmaster.tasks.tasks.back.json",
+      "path": ".taskmaster/tasks/tasks_back.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 116,
+        "strategy": "hybrid-token",
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "a32b7e86cdd00728d92fa15daa394d3cb6688e086d8dc6e073cdaa5469fe2df9",
+      "status": "active"
+    },
+    {
+      "anchor": "08章验收清单（M1: Warrior）",
+      "line_end": 118,
+      "line_start": 118,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 116,
+        "strategy": "hybrid-token",
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548",
+      "status": "active"
+    },
+    {
+      "anchor": "08 测试策略（M1）",
+      "line_end": 73,
+      "line_start": 73,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 108,
+        "strategy": "hybrid-token",
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8",
+      "status": "active"
+    },
+    {
+      "anchor": "T1-T69 最小功能审计与 M1 接线快照",
+      "line_end": 118,
+      "line_start": 118,
+      "module_id": "source.docs.gdd.t1.t69.m1.wiring.audit.md",
+      "path": "docs/gdd/t1-t69-m1-wiring-audit.md",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 0,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 100,
+        "strategy": "hybrid-token",
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "45a3c1c878c2c5be2223c6657a73dec846453157a33400efc4f325cc3bf948b0",
+      "status": "active"
+    },
+    {
+      "anchor": "08章契约规范（M1）",
+      "line_end": 453,
+      "line_start": 453,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.contracts.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 96,
+        "strategy": "hybrid-token",
+        "token_matches": 8
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "684db98b33a250c3f2cc3daa1e55115490062f4855a6e1854465e7b7eea5ba1f",
+      "status": "active"
+    },
+    {
+      "anchor": "08章功能纵切索引（M1: Warrior）",
+      "line_end": 152,
+      "line_start": 152,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.index.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 88,
+        "strategy": "hybrid-token",
+        "token_matches": 8
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "dd886cabd09812abaf038acad7775776b3c05799405b66a1742071838ce98caf",
+      "status": "active"
+    },
+    {
+      "anchor": "NewRouge M1 Playable Setup And First-Run Requirements",
+      "line_end": 91,
+      "line_start": 91,
+      "module_id": "source.docs.gdd.m1.playable.setup.md",
+      "path": "docs/gdd/m1-playable-setup.md",
+      "primary_domain": "game-design",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 0,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 80,
+        "strategy": "hybrid-token",
+        "token_matches": 8
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "9df994072d134694a5b4bc67898de0501ad66a8d7320161550757be0e5fd56df",
+      "status": "active"
+    },
+    {
+      "anchor": "08 可观测性与审计（M1）",
+      "line_end": 76,
+      "line_start": 76,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.observability.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 68,
+        "strategy": "hybrid-token",
+        "token_matches": 6
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "985eb7115bc40dc567413e2b2d6ca2649f3afc2486e92a76ce0f66a5da862ed8",
+      "status": "active"
+    },
+    {
+      "anchor": "安全审计 JSONL 格式校验（模板中为可选门禁）",
+      "line_end": 598,
+      "line_start": 598,
+      "module_id": "source.docs.testing.framework.md",
+      "path": "docs/testing-framework.md",
+      "primary_domain": "toolchain",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": true,
+        "policy_exact_path_bonus": 128,
+        "score": 176,
+        "strategy": "hybrid-token",
+        "token_matches": 4
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "a2c0a8fb57323f4e946c15b6a5243639591f445390cbc2526cb7ebc09087c066",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 128 Wire UI: Reward Offer And Confirm Surfaces acceptance-test generation plan",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "source.execution.plans.2026.05.10.task.128.wire.ui.reward.offer.and.confirm.surfaces.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-05-10-task-128-wire-ui-reward-offer-and-confirm-surfaces-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 8,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 114,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "f28190a1dc90410a1d47b771e4d73d1d33ebcb76734bb593fb30d4353ff68c98",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 114 Stabilize Reward offer lock re-entry and invalid-pool fallback acceptance-test generation plan",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "source.execution.plans.2026.04.28.task.114.stabilize.reward.offer.lock.re.entry.and.invalid.pool.fallback.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-04-28-task-114-stabilize-reward-offer-lock-re-entry-and-invalid-pool-fallback-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 7,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "a116ef2862cd1e3c815f259b4cad339fd1e6b6e399354dee2a956ddc7e63c47a",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 115 Resolve Reward confirm writeback and skip through the route-owned return path acceptance-test generation plan",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "source.execution.plans.2026.04.28.task.115.resolve.reward.confirm.writeback.and.skip.through.the.route.owned.return.path.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-04-28-task-115-resolve-reward-confirm-writeback-and-skip-through-the-route-owned-return-path-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 7,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "69ba2ea76c37d9836cffc5dec29598cb6f7dd1095ba3e8977ad31027c00fcf0a",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 75 Wire existing status contracts and rules into visible combat status effects acceptance-test generation plan",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "source.execution.plans.2026.04.28.task.75.wire.existing.status.contracts.and.rules.into.visible.combat.status.effects.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-04-28-task-75-wire-existing-status-contracts-and-rules-into-visible-combat-status-effects-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 7,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "token_matches": 5
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "9392f5ebbac311bf19eafe81a945778a1d5c381dafa45a37d557cb2db45bb65e",
+      "status": "active"
+    },
+    {
+      "anchor": "ADR-0021: C# Domain Layer Architecture",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "adr.ADR-0021",
+      "path": "docs/adr/ADR-0021-csharp-domain-layer-architecture.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 151,
+        "strategy": "hybrid-token",
+        "token_matches": 1
+      },
+      "retrieval_context_classes": [
+        "semantic-authority"
+      ],
+      "source_sha256": "483b79d46e29ca50c6ceb6d656f7e7a916ed7311579d981ce76eaa49291d9b5b",
+      "status": "active"
+    },
+    {
+      "anchor": "ADR-0027: 所有权唯一写入口（Ownership Write Entry）",
+      "line_end": 14,
+      "line_start": 14,
+      "module_id": "adr.ADR-0027",
+      "path": "docs/adr/ADR-0027-ownership-write-entry.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 0,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 35,
+        "strategy": "hybrid-token",
+        "token_matches": 1
+      },
+      "retrieval_context_classes": [
+        "semantic-authority"
+      ],
+      "source_sha256": "e8c1c6fd440af2251e3b300e6649440bc11336db218d743b24e9fca6e78577fa",
+      "status": "active"
+    },
+    {
+      "anchor": "ADR-0030: Core 线程模型（Single-Thread Core + 明确跨线程边界）",
+      "line_end": 42,
+      "line_start": 42,
+      "module_id": "adr.ADR-0030",
+      "path": "docs/adr/ADR-0030-core-threading-model.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "high",
+        "entrypoint_token_matches": 0,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 35,
+        "strategy": "hybrid-token",
+        "token_matches": 1
+      },
+      "retrieval_context_classes": [
+        "semantic-authority"
+      ],
+      "source_sha256": "07810be470cf2f5e4b76170f87743cf246a3a51ac8abf60414850dbac7b894c8",
+      "status": "active"
+    }
+  ],
+  "consumer": "chapter5",
+  "fallback": {
+    "authority_route": "docs/agents/13-rag-sources-and-session-ssot.md",
+    "reason": null,
+    "required": false
+  },
+  "freeze_state": "unfrozen",
+  "locator_status": "matched",
+  "mode": "shadow",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "query": "task 28 GM-0128 ActConfig loader acceptance schema validation contract ADR-0021 overlay",
+  "request_id": "shadow-960b64a58868c83c",
+  "schema_version": "newrouge.knowledge-context-candidates.v1",
+  "semantic_decision_required": true,
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "status": "shadow_ready"
+}
