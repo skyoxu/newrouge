@@ -39,7 +39,7 @@ The migrated Knowledge Control Plane explains why a change is made and which aut
 
 - **CAP-5**
   - **intent:** Classify change risk and emit a machine-readable impact report for coding and review consumers.
-  - **success:** `scripts/python/analyze_impact.py` produces `logs/ci/impact-analysis/impact-report.v1.json` with `high`, `medium`, `low`, or `unknown` risk, reasons, status, and failure details.
+  - **success:** `scripts/python/analyze_impact.py` produces `logs/ci/<YYYY-MM-DD>/impact-analysis/<run-id>/impact-report.v1.json` with `high`, `medium`, `low`, or `unknown` risk, reasons, status, failure details, and revision/index/KCP lineage bindings.
 
 - **CAP-6**
   - **intent:** Insert impact evidence after knowledge freeze and before coding, and alongside review context before review, using an observe-only rollout.
@@ -77,4 +77,3 @@ Before changing a target such as `RewardOfferPresentedEvent`, an AI consumer can
 - Is `impact-report.v1.schema.json` a Phase 1 deliverable or initially script-validated only?
 - Which canonical Runtime relation fixture is required for Phase 3 acceptance?
 - Should Review sidecar integration be a separate contract and requirement after shadow validation?
-
