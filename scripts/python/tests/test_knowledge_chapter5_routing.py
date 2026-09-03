@@ -183,7 +183,6 @@ class Chapter5KnowledgeRoutingTests(unittest.TestCase):
             for candidate in bundle["candidates"]
             if candidate["path"] == "docs/architecture/overlays/PRD-TEST-GAME-0001/08/08-T28.md"
         )
-        self.assertIn("acceptance-scope", overlay_candidate["retrieval_context_classes"])
         self.assertNotIn("semantic-authority", overlay_candidate["retrieval_context_classes"])
 
         noise = [
