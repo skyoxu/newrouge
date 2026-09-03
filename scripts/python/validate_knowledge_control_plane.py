@@ -79,6 +79,7 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/prepare_knowledge_context.py",
         "scripts/python/freeze_knowledge_context.py",
         "scripts/python/publish_knowledge_catalog.py",
+        "scripts/python/tests/test_knowledge_chapter5_routing.py",
         "scripts/python/tests/test_knowledge_publication.py",
         "knowledge/evaluation/queries.v1.json",
         "docs/workflows/knowledge-context-shadow.md",
@@ -152,6 +153,7 @@ def main() -> int:
 
     for name, script in (
         ("unit-kernel", "scripts/python/tests/test_knowledge_control_plane.py"),
+        ("unit-chapter5-routing", "scripts/python/tests/test_knowledge_chapter5_routing.py"),
         ("unit-freeze", "scripts/python/tests/test_knowledge_freeze.py"),
         ("unit-publication", "scripts/python/tests/test_knowledge_publication.py"),
     ):
