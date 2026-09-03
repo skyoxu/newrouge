@@ -116,7 +116,7 @@ class Chapter5KnowledgeRoutingTests(unittest.TestCase):
             "logs/ci/latest.md": "# Very relevant ADR card combat text that must stay excluded\n",
             ".agents/skills/workflow-chapter4-test/references/business-repos/newrouge.md": "# Evidence\ncard combat\n",
         }
-        for index in range(8):
+        for index in range(40):
             files[
                 f"execution-plans/2026-02-{index + 1:02d}-gm-0128-task-28-acceptance-test-refs-noise.md"
             ] = (
@@ -160,6 +160,8 @@ class Chapter5KnowledgeRoutingTests(unittest.TestCase):
         )
         self.assertEqual(task_candidate["line_start"], self.task_identity_line)
         self.assertEqual(task_candidate["rank_evidence"]["location_strategy"], "task-identity")
+        self.assertTrue(task_candidate["rank_evidence"]["task_identity_match"])
+        self.assertEqual(task_candidate["rank_evidence"]["task_identity_bonus"], 256)
         self.assertIn("acceptance-scope", task_candidate["retrieval_context_classes"])
 
         adr_candidate = next(
