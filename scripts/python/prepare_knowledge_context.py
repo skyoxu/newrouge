@@ -140,6 +140,18 @@ def _scope_for_context_class(policy: dict[str, Any], context_class: str, values:
     return [value for value in values if _scope_type(value) in allowed_types]
 
 
+def _attribution_prefixes(policy: dict[str, Any], context_class: str | None) -> list[str] | None:
+    if context_class is None:
+        return None
+    mapping = policy.get("context_query_attribution_prefixes")
+    if not isinstance(mapping, dict) or context_class not in mapping:
+        return None
+    raw = mapping.get(context_class)
+    if not isinstance(raw, list):
+        return None
+    return [str(value) for value in raw if isinstance(value, str) and value]
+
+
 def _append_query_plan(
     plan: list[tuple[str | None, str, int | None, str | None]],
     seen_queries: set[str],
@@ -219,6 +231,7 @@ def _merge_candidates(
     context_class: str | None,
     limit: int | None,
     attribution_path: str | None,
+    attribution_prefixes: list[str] | None,
 ) -> None:
     bounded = candidates if limit is None else candidates[:limit]
     for raw in bounded:
@@ -234,7 +247,10 @@ def _merge_candidates(
             candidate["retrieval_context_classes"] = []
             merged[key] = candidate
             order.append(key)
-        should_attribute = context_class is not None and (
+        path_allowed = attribution_prefixes is None or any(
+            path.startswith(prefix) for prefix in attribution_prefixes
+        )
+        should_attribute = context_class is not None and path_allowed and (
             attribution_path is None or path == attribution_path
         )
         if should_attribute:
@@ -344,6 +360,7 @@ def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = N
             context_class=context_class,
             limit=limit,
             attribution_path=attribution_path,
+            attribution_prefixes=_attribution_prefixes(policy, context_class),
         )
 
     locator_status = "matched" if "matched" in statuses else "insufficient_match"
