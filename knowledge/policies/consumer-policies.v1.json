@@ -82,6 +82,22 @@
       "exact_paths": ["AGENTS.md", "workflow.md", "docs/testing-framework.md", ".taskmaster/docs/prd.txt"],
       "required_context_classes": ["task-context", "implementation-authority"],
       "optional_context_classes": ["test-context", "decision-context"],
+      "context_query_scope_types": {
+        "task-context": ["task"],
+        "implementation-authority": ["adr"]
+      },
+      "context_query_scope_preference": {
+        "task-context": "task-view-first"
+      },
+      "context_query_attribution_prefixes": {
+        "task-context": [".taskmaster/tasks/"],
+        "implementation-authority": ["docs/adr/", "docs/architecture/base/", "Game.Core/Contracts/"]
+      },
+      "context_query_terms": {
+        "task-context": [],
+        "implementation-authority": []
+      },
+      "context_query_max_candidates": 6,
       "max_candidates": 32,
       "minimum_confidence": "medium",
       "freeze_point": "before-red"
