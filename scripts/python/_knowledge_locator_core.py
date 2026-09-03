@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 POLICY_EXACT_PATH_BONUS = 128
+TASK_IDENTITY_BONUS = 256
 TASK_SOURCE_PREFIX = ".taskmaster/tasks/"
 TASK_VIEW_ID = re.compile(r"\b(?:GM|NG)-\d+\b", re.IGNORECASE)
 TASK_NUMBER = re.compile(r"\btask\s+(?:id\s*)?(\d+)\b", re.IGNORECASE)
@@ -142,6 +143,9 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
         if policy_entrypoint_boosted:
             score += POLICY_EXACT_PATH_BONUS
         anchor, line_start, line_end, location_strategy = _best_location(module, query, qtokens)
+        task_identity_match = location_strategy == "task-identity"
+        if task_identity_match:
+            score += TASK_IDENTITY_BONUS
         ranked[str(module_id)] = (score, source_path.casefold(), {
             "module_id": module_id,
             "path": source_path,
@@ -160,6 +164,8 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
                 "policy_exact_path": policy_exact_path,
                 "entrypoint_token_matches": entrypoint_token_matches,
                 "policy_exact_path_bonus": POLICY_EXACT_PATH_BONUS if policy_entrypoint_boosted else 0,
+                "task_identity_match": task_identity_match,
+                "task_identity_bonus": TASK_IDENTITY_BONUS if task_identity_match else 0,
                 "location_strategy": location_strategy,
             },
         })
@@ -178,7 +184,7 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
                 "line_start": line_start, "line_end": line_end, "source_sha256": related["source_sha256"],
                 "primary_domain": related["primary_domain"], "status": related["status"],
                 "provenance": ["catalog-v1", catalog["source_snapshot"]["ref"]],
-                "rank_evidence": {"strategy": "relation-expansion", "score": relation_score, "token_matches": 0, "confidence": "medium", "location_strategy": location_strategy},
+                "rank_evidence": {"strategy": "relation-expansion", "score": relation_score, "token_matches": 0, "confidence": "medium", "task_identity_match": location_strategy == "task-identity", "task_identity_bonus": 0, "location_strategy": location_strategy},
             })
     ordered = sorted(ranked.values(), key=lambda item: (-item[0], item[1]))
     return {"status": "matched" if ordered else "insufficient_match", "candidates": [item[2] for item in ordered[:max_candidates]]}
