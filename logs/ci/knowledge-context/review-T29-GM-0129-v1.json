@@ -1,0 +1,347 @@
+{
+  "candidates": [
+    {
+      "anchor": "document",
+      "line_end": 744,
+      "line_start": 744,
+      "module_id": "source.taskmaster.tasks.tasks.back.json",
+      "path": ".taskmaster/tasks/tasks_back.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "task-identity",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 392,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 256,
+        "task_identity_match": true,
+        "token_matches": 12
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "a32b7e86cdd00728d92fa15daa394d3cb6688e086d8dc6e073cdaa5469fe2df9",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 1997,
+      "line_start": 1997,
+      "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+      "path": ".taskmaster/tasks/tasks_gameplay.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "task-identity",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 392,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 256,
+        "task_identity_match": true,
+        "token_matches": 12
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d",
+      "status": "active"
+    },
+    {
+      "anchor": "document",
+      "line_end": 933,
+      "line_start": 933,
+      "module_id": "source.taskmaster.tasks.tasks.json",
+      "path": ".taskmaster/tasks/tasks.json",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "task-identity",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 372,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 256,
+        "task_identity_match": true,
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62",
+      "status": "active"
+    },
+    {
+      "anchor": "DELIVERY_PROFILE",
+      "line_end": 232,
+      "line_start": 232,
+      "module_id": "source.delivery.profile.md",
+      "path": "DELIVERY_PROFILE.md",
+      "primary_domain": "toolchain",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "location_strategy": "token-line",
+        "policy_exact_path": true,
+        "policy_exact_path_bonus": 128,
+        "score": 250,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 9
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "5729ffb40f616ba96d13d4b58bd77d63a66f2567fb94642ab16b8179f5d228e9",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 84 Generate Reward offers from existing card drop pools on first entry acceptance-test generation plan",
+      "line_end": 1,
+      "line_start": 1,
+      "module_id": "source.execution.plans.2026.04.27.task.84.generate.reward.offers.from.existing.card.drop.pools.on.first.entry.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-04-27-task-84-generate-reward-offers-from-existing-card-drop-pools-on-first-entry-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 8,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 144,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 8
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "abcd6bd6610aff7c94d0a853ad1de792dd9e35cf6ca424fafc40a4475402ab57",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 108 Enemy Intent Review Split Governance Evidence",
+      "line_end": 13,
+      "line_start": 13,
+      "module_id": "source.execution.plans.2026.05.06.task.108.enemy.intent.review.split.governance.evidence.md",
+      "path": "execution-plans/2026-05-06-task-108-enemy-intent-review-split-governance-evidence.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 122,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 9
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "a1779324bd7e32e968b58eb67bd21e32127e073e7804d81df459571ab8308530",
+      "status": "active"
+    },
+    {
+      "anchor": "Task78-Chapter6-Residual-Followup",
+      "line_end": 7,
+      "line_start": 7,
+      "module_id": "source.execution.plans.2026.05.04.task.78.chapter6.residual.followup.md",
+      "path": "execution-plans/2026-05-04-task-78-chapter6-residual-followup.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 116,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "c66fa7be5c42b97f09f6a7608d16244dda1eb7697632e7216718248c888c727b",
+      "status": "active"
+    },
+    {
+      "anchor": "Task 130 Wire UI: Settlement And Run Summary Surfaces acceptance-test generation plan",
+      "line_end": 11,
+      "line_start": 11,
+      "module_id": "source.execution.plans.2026.05.12.task.130.wire.ui.settlement.and.run.summary.surfaces.acceptance.test.generation.plan.md",
+      "path": "execution-plans/2026-05-12-task-130-wire-ui-settlement-and-run-summary-surfaces-acceptance-test-generation-plan.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 4,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 112,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 8
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "64870f6cdba084c9f3e116dd6b8083f3b2b93606c726ac963eaed4e323b39409",
+      "status": "active"
+    },
+    {
+      "anchor": "08章验收清单（M1: Warrior）",
+      "line_end": 180,
+      "line_start": 180,
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "primary_domain": "game-runtime",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 1,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 108,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 10
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548",
+      "status": "active"
+    },
+    {
+      "anchor": "task-27-chapter6-residual-followup",
+      "line_end": 12,
+      "line_start": 12,
+      "module_id": "source.execution.plans.2026.04.15.task.27.chapter6.residual.followup.md",
+      "path": "execution-plans/2026-04-15-task-27-chapter6-residual-followup.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 9
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "c25512281543a00b4f34e965bfbd3d623512226d784e1b43573570e037002a66",
+      "status": "active"
+    },
+    {
+      "anchor": "task-32-chapter6-residual-followup",
+      "line_end": 12,
+      "line_start": 12,
+      "module_id": "source.execution.plans.2026.04.15.task.32.chapter6.residual.followup.md",
+      "path": "execution-plans/2026-04-15-task-32-chapter6-residual-followup.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 9
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "e6921b681d08f5f188f3d429c905f016cc5a8b9a86c3e22f21e87a109f14c8a4",
+      "status": "active"
+    },
+    {
+      "anchor": "task-37-chapter6-residual-followup",
+      "line_end": 12,
+      "line_start": 12,
+      "module_id": "source.execution.plans.2026.04.17.task.37.chapter6.residual.followup.2.md",
+      "path": "execution-plans/2026-04-17-task-37-chapter6-residual-followup-2.md",
+      "primary_domain": "delivery",
+      "provenance": [
+        "catalog-v1",
+        "refs/heads/main"
+      ],
+      "rank_evidence": {
+        "confidence": "medium",
+        "entrypoint_token_matches": 2,
+        "location_strategy": "token-line",
+        "policy_exact_path": false,
+        "policy_exact_path_bonus": 0,
+        "score": 106,
+        "strategy": "hybrid-token",
+        "task_identity_bonus": 0,
+        "task_identity_match": false,
+        "token_matches": 9
+      },
+      "retrieval_context_classes": [],
+      "source_sha256": "9f7c8b72ea644aab4001fcc901dd73fdbfaa264a0a35efd1b2fe76e3353e558c",
+      "status": "active"
+    }
+  ],
+  "consumer": "review",
+  "fallback": {
+    "authority_route": "docs/agents/13-rag-sources-and-session-ssot.md",
+    "reason": null,
+    "required": false
+  },
+  "freeze_state": "unfrozen",
+  "locator_status": "matched",
+  "mode": "shadow",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "query": "task 29 GM-0129 review scope deterministic card pools acceptance ADR-0032 ADR-0033 6.7 run_review_pipeline delivery profile",
+  "request_id": "shadow-5e1c7e8225a88a3e",
+  "schema_version": "newrouge.knowledge-context-candidates.v1",
+  "semantic_decision_required": true,
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "status": "shadow_ready"
+}
