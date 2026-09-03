@@ -32,6 +32,7 @@
 - ADR-0032: Save/Resume Policy and Deterministic Outcomes — `docs/adr/ADR-0032-save-resume-determinism.md`
 - ADR-0033: Card Identity and Forms（同一 card_id 的四形态） — `docs/adr/ADR-0033-card-identity-and-forms.md`
 - ADR-0034: Security Profile Baseline for Host-Safe Delivery — `docs/adr/ADR-0034-security-profile-host-safe.md`
+- ADR-0035: Repository Knowledge Control Plane — `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
 
 ---
 

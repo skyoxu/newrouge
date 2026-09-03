@@ -1,0 +1,144 @@
+{
+  "accepted_sources": [
+    {
+      "module_id": "source.game.core.contracts.cards.cardform.cs",
+      "path": "Game.Core/Contracts/Cards/CardForm.cs",
+      "reason": "Real code-level contract defining the four card forms required by the PRD and ADR-0033.",
+      "satisfies": [
+        "contract-authority"
+      ],
+      "source_sha256": "cb2534daa45d301fa0428bbb167517ae85e3895cc93ee224f224987d91ff5177"
+    },
+    {
+      "module_id": "source.game.core.contracts.cards.upgraderoute.cs",
+      "path": "Game.Core/Contracts/Cards/UpgradeRoute.cs",
+      "reason": "Real code-level contract defining the U1 A/B upgrade route required by the PRD and ADR-0033.",
+      "satisfies": [
+        "contract-authority"
+      ],
+      "source_sha256": "41dd4530e61a79dbdc2e254a3b7086449cb03953793cbd38c9ec3bc61a8a1fa1"
+    },
+    {
+      "module_id": "source.game.core.contracts.config.actconfigloadresult.cs",
+      "path": "Game.Core/Contracts/Config/ActConfigLoadResult.cs",
+      "reason": "Real code-level Game.Core contract referenced by the PRD overlay; accepted as contract SSoT context.",
+      "satisfies": [
+        "contract-authority"
+      ],
+      "source_sha256": "dabc5611f47f0ab4db5a8b8059e7964b8ed6ce3662cca5df492cb212db381971"
+    },
+    {
+      "module_id": "adr.ADR-0021",
+      "path": "docs/adr/ADR-0021-csharp-domain-layer-architecture.md",
+      "reason": "Accepted ADR defining the engine-agnostic C# domain boundary, ports/adapters split, and Game.Core/Contracts SSoT.",
+      "satisfies": [
+        "architecture-authority"
+      ],
+      "source_sha256": "483b79d46e29ca50c6ceb6d656f7e7a916ed7311579d981ce76eaa49291d9b5b"
+    },
+    {
+      "module_id": "adr.ADR-0022",
+      "path": "docs/adr/ADR-0022-godot-signal-system-and-contracts.md",
+      "reason": "Accepted ADR directly governing Chapter 4 system context, event flows, signal usage, and contract centralization.",
+      "satisfies": [
+        "architecture-authority"
+      ],
+      "source_sha256": "e7ac30110e69b5be0a8b1a89a29238ce666894eab0372f10c062c51fbf89c707"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.contracts.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
+      "reason": "Current PRD-scoped Draft overlay contract specification; accepted only as existing overlay context, not as higher architecture or code-contract authority.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "684db98b33a250c3f2cc3daa1e55115490062f4855a6e1854465e7b7eea5ba1f"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.feature.slice.m1.warrior.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
+      "reason": "Current PRD-scoped M1 feature slice describing the existing runtime and gameplay overlay.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "4649cdc6a56ee3a8954a58fcbae1add4d4498321133884ac08116f1b92794323"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.observability.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
+      "reason": "Current PRD-scoped observability overlay; retained as existing overlay context while its referenced ADRs remain higher authority.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "985eb7115bc40dc567413e2b2d6ca2649f3afc2486e92a76ce0f66a5da862ed8"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "reason": "Current PRD-scoped testing overlay; retained to preserve the existing Chapter 4 overlay context and test back-links.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "reason": "Current PRD Overlay 08 acceptance checklist; retained as existing overlay context rather than architecture authority.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.index.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
+      "reason": "Canonical index for the current PRD Overlay 08 set and its usage boundaries.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "dd886cabd09812abaf038acad7775776b3c05799405b66a1742071838ce98caf"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.overlay.manifest.json",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/overlay-manifest.json",
+      "reason": "Structural manifest identifying the current PRD Overlay 08 document set.",
+      "satisfies": [
+        "existing-overlay"
+      ],
+      "source_sha256": "8a4d9ae4cdcf22b9e48b8e2f52ce86132ea51aa621b6e3fd84375df849689485"
+    },
+    {
+      "module_id": "source.docs.prd.prd.newrouge.game.0001.md",
+      "path": "docs/prd/PRD-NEWROUGE-GAME-0001.md",
+      "reason": "Canonical scoped PRD defining product goals, gameplay rules, acceptance boundaries, and delivery scope.",
+      "satisfies": [
+        "product-intent"
+      ],
+      "source_sha256": "a913933dcecb4cfc5e1141e802f0759f2c079c350df945930000b7682d965ae5"
+    }
+  ],
+  "consumer": "chapter4",
+  "context_id": "sha256:bfbd6f6bcec1047d34d5b1923969f844b0f35805cb72f3da9c3fef5bb0559cdb",
+  "decision_set_sha256": "sha256:8e36592fff31d6bc3582728795b7ec6c67383a3a933f307425c5cc20d0f21977",
+  "freeze_point": "before-overlay-write",
+  "freeze_state": "frozen",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "request_id": "shadow-e1cea767dc1d8ae6",
+  "required_context_classes": [
+    "architecture-authority",
+    "product-intent"
+  ],
+  "satisfied_context_classes": [
+    "architecture-authority",
+    "contract-authority",
+    "existing-overlay",
+    "product-intent"
+  ],
+  "schema_version": "newrouge.knowledge-frozen-context.v1",
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "source_bundle_sha256": "sha256:23756918d5773d981be72762fad3e712baee1575790ef032cf18a8d52242c6e1"
+}

@@ -14,6 +14,8 @@
 - Agents index: `docs/agents/00-index.md`
 - Session recovery: `docs/agents/01-session-recovery.md`
 - Project docs index: `docs/PROJECT_DOCUMENTATION_INDEX.md`
+- Repository knowledge routing: `docs/agents/13-rag-sources-and-session-ssot.md`
+- Knowledge Control Plane: `knowledge/README.md`
 - Project health dashboard: `docs/workflows/project-health-dashboard.md`
 - Stable public entrypoints: `docs/workflows/stable-public-entrypoints.md`
 - Script entrypoints index: `docs/workflows/script-entrypoints-index.md`
@@ -63,7 +65,7 @@ Recovery stop-loss rules:
 - `llm_retry_stop_loss`: prefer narrow LLM-only closure, not another full rerun
 - `sc_test_retry_stop_loss`: same-run unit retry already proved wasteful; fix unit root cause first
 - `waste_signals`: engine-lane cost was already wasted after a known unit/root-cause failure
-- `recommended_action = needs-fix-fast`: deterministic evidence is already good enough for targeted closure; do not reopen a full rerun first
+- `recommended_action = needs-fix-fast`: deterministic evidence is already good enough and you should close targeted anchors instead of paying for another full rerun.
 
 ## Core Repositories and Files
 
@@ -79,12 +81,22 @@ Recovery stop-loss rules:
   - `docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/**`
 - ADR index:
   - `docs/architecture/ADR_INDEX_GODOT.md`
+- Repository knowledge control plane:
+  - `knowledge/README.md`
+  - `docs/agents/13-rag-sources-and-session-ssot.md`
+  - `.agents/skills/maintain-knowledge-base/SKILL.md`
 
 ## Commands
 
 - Local hard checks:
   - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "<godot-bin>"`
   - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
+- Knowledge Control Plane:
+  - `py -3 scripts/python/build_knowledge_catalog.py`
+  - `py -3 scripts/python/publish_knowledge_catalog.py --publish`
+  - `py -3 scripts/python/publish_knowledge_catalog.py --check`
+  - `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
+  - Shadow/freeze behavior: `docs/workflows/knowledge-context-shadow.md`, `docs/workflows/knowledge-context-freeze.md`
 - Task recovery (canonical):
   - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
   - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>`
@@ -122,3 +134,4 @@ Recovery stop-loss rules:
 - Domain logic in `Game.Core/**`; engine integration in `Game.Godot/**`.
 - Logs and evidence go to `logs/**`.
 - Keep docs and tasks aligned through ADR + Base + Overlay + Task refs.
+- Repository Knowledge Control Plane is derived routing infrastructure; source documents remain authoritative.

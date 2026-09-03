@@ -29,6 +29,24 @@ This file is the top-level navigation for project docs.
 - Testing rules: `docs/testing-framework.md`
 - Delivery/run protocol: `DELIVERY_PROFILE.md`, `docs/workflows/run-protocol.md`, `docs/workflows/local-hard-checks.md`
 
+Generated files under `knowledge/**` are not authoritative replacements for these sources. They are deterministic location, policy, freeze, publication, and recovery infrastructure.
+
+## Repository Knowledge Control Plane
+
+- Human/agent authority routing: `docs/agents/13-rag-sources-and-session-ssot.md`
+- Control-plane overview and commands: `knowledge/README.md`
+- Accepted architecture decision: `docs/adr/ADR-0035-repository-knowledge-control-plane.md`
+- Maintenance skill: `.agents/skills/maintain-knowledge-base/SKILL.md`
+- Shadow consumer workflow: `docs/workflows/knowledge-context-shadow.md`
+- Freeze contract workflow: `docs/workflows/knowledge-context-freeze.md`
+- Read-only source/catalog inspection: `py -3 scripts/python/build_knowledge_catalog.py`
+- Publish validated generation: `py -3 scripts/python/publish_knowledge_catalog.py --publish`
+- Validate current generation: `py -3 scripts/python/publish_knowledge_catalog.py --check`
+- Restore last-known-good generation: `py -3 scripts/python/publish_knowledge_catalog.py --restore-lkg`
+- Terminal validation: `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
+
+The canonical Locator is location-only and fail-closed. When the publication is missing/stale/invalid, use direct authoritative source reading rather than inventing or trusting an ad-hoc index.
+
 ## Workflow Docs
 
 - Daily workflow (authoritative execution order): `workflow.md`

@@ -1,0 +1,79 @@
+{
+  "accepted_sources": [
+    {
+      "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+      "path": ".taskmaster/tasks/tasks_gameplay.json",
+      "reason": "The defining GM-0129 task view establishes the review subject, acceptance scope, ADR references, and semantic review tier.",
+      "satisfies": [
+        "review-scope"
+      ],
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d"
+    },
+    {
+      "module_id": "source.delivery.profile.md",
+      "path": "DELIVERY_PROFILE.md",
+      "reason": "Authoritative reviewer profile, tier, and review constraint policy.",
+      "satisfies": [
+        "delivery-context"
+      ],
+      "source_sha256": "5729ffb40f616ba96d13d4b58bd77d63a66f2567fb94642ab16b8179f5d228e9"
+    },
+    {
+      "module_id": "source.decision.logs.2026.05.22.run.26267417919.failure.analysis.md",
+      "path": "decision-logs/2026-05-22-run-26267417919-failure-analysis.md",
+      "reason": "Accepted run-specific failure analysis recording the CardPoolCatalog regression, root cause, corrective boundary, and validation evidence.",
+      "satisfies": [
+        "delivery-context"
+      ],
+      "source_sha256": "82fd2cdcbb110538c875f79495ca27c1d536dae20042ccccec402a3e399a4fb3"
+    },
+    {
+      "module_id": "adr.ADR-0032",
+      "path": "docs/adr/ADR-0032-save-resume-determinism.md",
+      "reason": "Accepted ADR defining deterministic reward selection, RNG boundaries, reproducibility, and preview non-advancement constraints.",
+      "satisfies": [
+        "architecture-context"
+      ],
+      "source_sha256": "ea9e22053cc68d9f12c5d627b4fec8958efd216ada25066bce610ee94121efa4"
+    },
+    {
+      "module_id": "adr.ADR-0033",
+      "path": "docs/adr/ADR-0033-card-identity-and-forms.md",
+      "reason": "Accepted ADR defining card identity, form, route, and deterministic candidate behavior required for domain-correct review.",
+      "satisfies": [
+        "architecture-context"
+      ],
+      "source_sha256": "36beb5d605a81725f45f97b9174472287d583906beb2bb7d6dbfe9eb46feac9b"
+    },
+    {
+      "module_id": "source.workflow.md",
+      "path": "workflow.md",
+      "reason": "Authoritative Review pipeline entrypoint and delivery-process authority.",
+      "satisfies": [
+        "delivery-context"
+      ],
+      "source_sha256": "1728c8f8cb8acd61bee1ea976a6ab9c202ede320eca6d8224bc00e01baa57d1c"
+    }
+  ],
+  "consumer": "review",
+  "context_id": "sha256:698b1fafc5b8b1cb81f61d6d4c8b3cc9048d440c03bd1706dce03f306c355c7e",
+  "decision_set_sha256": "sha256:2f03628a6b9a48005eef6d53d2f6b444b80d3ea6da8a5fae7a4f546dfa5e411b",
+  "freeze_point": "review-run-input",
+  "freeze_state": "frozen",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "request_id": "shadow-5e1c7e8225a88a3e",
+  "required_context_classes": [
+    "review-scope"
+  ],
+  "satisfied_context_classes": [
+    "architecture-context",
+    "delivery-context",
+    "review-scope"
+  ],
+  "schema_version": "newrouge.knowledge-frozen-context.v1",
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "source_bundle_sha256": "sha256:39caec4f89746593204f5b640eb4d083bfb3cbb4d606304fff0f53c2a0c8ee2c"
+}
