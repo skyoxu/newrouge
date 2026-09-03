@@ -1,0 +1,79 @@
+{
+  "accepted_sources": [
+    {
+      "module_id": "source.taskmaster.tasks.tasks.json",
+      "path": ".taskmaster/tasks/tasks.json",
+      "reason": "Canonical Taskmaster T28 definition establishing task identity, scope, test strategy, dependencies, and architecture references.",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62"
+    },
+    {
+      "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+      "path": ".taskmaster/tasks/tasks_gameplay.json",
+      "reason": "Defining GM-0128 task view with full acceptance statements, test refs, ADR/overlay refs, and full semantic review tier.",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d"
+    },
+    {
+      "module_id": "adr.ADR-0004",
+      "path": "docs/adr/ADR-0004-event-bus-and-contracts.md",
+      "reason": "Accepted ADR governing event-contract SSoT, event structure, and naming; directly relevant to T28 contract ref core.act.config.loaded and ActConfigLoadedEvent.",
+      "satisfies": [
+        "semantic-authority"
+      ],
+      "source_sha256": "15ea9d92271178373e1e15ddce60d75bc06652aac4643918d13deb98ad4c5322"
+    },
+    {
+      "module_id": "adr.ADR-0021",
+      "path": "docs/adr/ADR-0021-csharp-domain-layer-architecture.md",
+      "reason": "Accepted ADR governing the pure-C# Game.Core boundary, ports/adapters separation, and Game.Core/Contracts SSoT used by T28.",
+      "satisfies": [
+        "semantic-authority"
+      ],
+      "source_sha256": "483b79d46e29ca50c6ceb6d656f7e7a916ed7311579d981ce76eaa49291d9b5b"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
+      "reason": "Direct T28 testing baseline identifying the acceptance and loader/schema tests plus the concrete gate focus.",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8"
+    },
+    {
+      "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+      "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
+      "reason": "Direct T28 acceptance checklist with ADR refs, contract refs, test refs, evidence route, and deterministic schema-validation expectations.",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548"
+    }
+  ],
+  "consumer": "chapter5",
+  "context_id": "sha256:4afa3bfb30521c29926d225b50cbd09bba7974727d14984f9938e0aa8e0d7690",
+  "decision_set_sha256": "sha256:5884d9cc0e7d46c3e649d03a7e334d58d698d08e2558c28e0de7b6e0f605fe40",
+  "freeze_point": "before-semantic-stabilization",
+  "freeze_state": "frozen",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "request_id": "shadow-960b64a58868c83c",
+  "required_context_classes": [
+    "acceptance-scope",
+    "semantic-authority"
+  ],
+  "satisfied_context_classes": [
+    "acceptance-scope",
+    "semantic-authority"
+  ],
+  "schema_version": "newrouge.knowledge-frozen-context.v1",
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "source_bundle_sha256": "sha256:ac3fb46eddc48d5a441c1eb4f07ef612ea0a03d9e30ee7c9b2244238b5cdf7a4"
+}

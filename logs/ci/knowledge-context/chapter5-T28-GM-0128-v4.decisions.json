@@ -1,0 +1,241 @@
+{
+  "consumer": "chapter5",
+  "decisions": [
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+        "path": ".taskmaster/tasks/tasks_gameplay.json"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Defining GM-0128 task view with full acceptance statements, test refs, ADR/overlay refs, and full semantic review tier.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.json",
+        "path": ".taskmaster/tasks/tasks.json"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Canonical Taskmaster T28 definition establishing task identity, scope, test strategy, dependencies, and architecture references.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.docs.prd.txt",
+        "path": ".taskmaster/docs/prd.txt"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Generated Taskmaster derived input manifest; it is not an authoritative source for the Chapter 5 task semantics.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "612ee3f9b091e2acae67459aed3344895b4adfd063f05a98cfeb7036a01b4823"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.feature.slice.m1.warrior.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Draft feature overlay provides useful T28 contract backlinks and field baseline, but the accepted task and testing/checklist sources already define the required acceptance scope.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "4649cdc6a56ee3a8954a58fcbae1add4d4498321133884ac08116f1b92794323"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.back.json",
+        "path": ".taskmaster/tasks/tasks_back.json"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Returned location belongs to a Chapter 7 aggregate UI task that merely includes T28 in its scope; it is not the defining T28 task object.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "a32b7e86cdd00728d92fa15daa394d3cb6688e086d8dc6e073cdaa5469fe2df9"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Direct T28 acceptance checklist with ADR refs, contract refs, test refs, evidence route, and deterministic schema-validation expectations.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Direct T28 testing baseline identifying the acceptance and loader/schema tests plus the concrete gate focus.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "acceptance-scope"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.gdd.t1.t69.m1.wiring.audit.md",
+        "path": "docs/gdd/t1-t69-m1-wiring-audit.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "M1 wiring-status audit records that T28 is not yet wired into the playable path; this is implementation-state evidence rather than Chapter 5 acceptance or semantic authority.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "45a3c1c878c2c5be2223c6657a73dec846453157a33400efc4f325cc3bf948b0"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.contracts.m1.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Draft contract overlay explicitly delegates contract truth to Game.Core/Contracts and therefore must not substitute for direct semantic authority.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "684db98b33a250c3f2cc3daa1e55115490062f4855a6e1854465e7b7eea5ba1f"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.index.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Draft Overlay 08 routing/index document; useful navigation context but not required Chapter 5 acceptance or semantic authority.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "dd886cabd09812abaf038acad7775776b3c05799405b66a1742071838ce98caf"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.gdd.m1.playable.setup.md",
+        "path": "docs/gdd/m1-playable-setup.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Broader M1 content/setup guidance references ActConfig but does not define the scoped T28 acceptance contract or architecture authority.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "9df994072d134694a5b4bc67898de0501ad66a8d7320161550757be0e5fd56df"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.observability.m1.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Draft M1 observability baseline is not directly needed to stabilize the T28 ActConfig loader semantics.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "985eb7115bc40dc567413e2b2d6ca2649f3afc2486e92a76ce0f66a5da862ed8"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0003",
+        "path": "docs/adr/ADR-0003-observability-release-health.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Accepted observability and release-health ADR reached by relation expansion but does not govern the scoped ActConfig loader semantics.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "7daaeff4894e6b1656ca53353eca83b723c8bfa74753d1323e3a1caab929f9d1"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0004",
+        "path": "docs/adr/ADR-0004-event-bus-and-contracts.md"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Accepted ADR governing event-contract SSoT, event structure, and naming; directly relevant to T28 contract ref core.act.config.loaded and ActConfigLoadedEvent.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "semantic-authority"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "15ea9d92271178373e1e15ddce60d75bc06652aac4643918d13deb98ad4c5322"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0021",
+        "path": "docs/adr/ADR-0021-csharp-domain-layer-architecture.md"
+      },
+      "consumer": "chapter5",
+      "decision": "accepted",
+      "reason": "Accepted ADR governing the pure-C# Game.Core boundary, ports/adapters separation, and Game.Core/Contracts SSoT used by T28.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [
+        "semantic-authority"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "483b79d46e29ca50c6ceb6d656f7e7a916ed7311579d981ce76eaa49291d9b5b"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0027",
+        "path": "docs/adr/ADR-0027-ownership-write-entry.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Accepted ownership-state ADR is unrelated to ActConfig loading semantics despite being retrieved through shared architecture references.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "e8c1c6fd440af2251e3b300e6649440bc11336db218d743b24e9fca6e78577fa"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0030",
+        "path": "docs/adr/ADR-0030-core-threading-model.md"
+      },
+      "consumer": "chapter5",
+      "decision": "rejected",
+      "reason": "Accepted core-threading ADR is general architecture context but does not define the scoped T28 configuration schema or loading outcome semantics.",
+      "request_id": "shadow-960b64a58868c83c",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "07810be470cf2f5e4b76170f87743cf246a3a51ac8abf60414850dbac7b894c8"
+    }
+  ],
+  "request_id": "shadow-960b64a58868c83c",
+  "schema_version": "newrouge.knowledge-consumption-decision-set.v1",
+  "source_bundle_sha256": "sha256:ac3fb46eddc48d5a441c1eb4f07ef612ea0a03d9e30ee7c9b2244238b5cdf7a4"
+}
