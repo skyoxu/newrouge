@@ -16,6 +16,9 @@ CONSUMERS = ("repository-session", "chapter4", "chapter5", "chapter6", "review")
 POLICY_REVISION = "newrouge-knowledge-consumer-policies.v1"
 STRUCTURED_SCOPE = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
 TASK_SCOPE = re.compile(r"\btask\s+(?:id\s*)?\d+\b", re.IGNORECASE)
+TASK_VIEW_SCOPE = re.compile(r"^(?:GM|NG)-\d+$", re.IGNORECASE)
+ADR_SCOPE = re.compile(r"^ADR-\d+$", re.IGNORECASE)
+PRD_SCOPE = re.compile(r"^PRD-.+$", re.IGNORECASE)
 
 
 def _atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -116,6 +119,27 @@ def _scope_terms(query: str) -> list[str]:
     return values
 
 
+def _scope_type(value: str) -> str:
+    if TASK_SCOPE.fullmatch(value) or TASK_VIEW_SCOPE.fullmatch(value):
+        return "task"
+    if ADR_SCOPE.fullmatch(value):
+        return "adr"
+    if PRD_SCOPE.fullmatch(value):
+        return "prd"
+    return "structured"
+
+
+def _scope_for_context_class(policy: dict[str, Any], context_class: str, values: list[str]) -> list[str]:
+    mapping = policy.get("context_query_scope_types")
+    if not isinstance(mapping, dict) or context_class not in mapping:
+        return values
+    allowed = mapping.get(context_class)
+    if not isinstance(allowed, list):
+        return values
+    allowed_types = {str(item).strip() for item in allowed if isinstance(item, str) and item.strip()}
+    return [value for value in values if _scope_type(value) in allowed_types]
+
+
 def _append_query_plan(
     plan: list[tuple[str | None, str, int | None, str | None]],
     seen_queries: set[str],
@@ -145,12 +169,13 @@ def _context_query_plan(
         per_class_limit = max(1, int(policy.get("context_query_max_candidates", 4)))
     except (TypeError, ValueError):
         per_class_limit = 4
-    scope = _scope_terms(query)
-    structured_scope = next((value for value in scope if STRUCTURED_SCOPE.fullmatch(value)), None)
+    all_scope = _scope_terms(query)
     seen_queries = {query.casefold().strip()}
     for context_class in policy.get("required_context_classes", []):
         if not isinstance(context_class, str):
             continue
+        scope = _scope_for_context_class(policy, context_class, all_scope)
+        structured_scope = next((value for value in scope if STRUCTURED_SCOPE.fullmatch(value)), None)
 
         templates = exact_path_mapping.get(context_class) if isinstance(exact_path_mapping, dict) else None
         if structured_scope and isinstance(templates, list):
@@ -167,17 +192,20 @@ def _context_query_plan(
                     attribution_path=rendered_path,
                 )
 
-        terms = term_mapping.get(context_class) if isinstance(term_mapping, dict) else None
+        if not isinstance(term_mapping, dict) or context_class not in term_mapping:
+            continue
+        terms = term_mapping.get(context_class)
         if not isinstance(terms, list):
             continue
         normalized_terms = [str(value).strip() for value in terms if isinstance(value, str) and value.strip()]
-        if not normalized_terms:
+        class_query = " ".join([*scope, *normalized_terms]).strip()
+        if not class_query:
             continue
         _append_query_plan(
             plan,
             seen_queries,
             context_class=context_class,
-            query=" ".join([*scope, *normalized_terms]),
+            query=class_query,
             limit=per_class_limit,
         )
     return plan
