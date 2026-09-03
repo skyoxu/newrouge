@@ -259,6 +259,26 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertTrue(bundle["candidates"])
         self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
 
+    def test_repository_session_shadow_maps_fixed_authority_entrypoints(self) -> None:
+        self.publish()
+        completed = run(
+            sys.executable,
+            "scripts/python/prepare_knowledge_context.py",
+            "--consumer",
+            "repository-session",
+            "--query",
+            "repository context",
+            cwd=self.repo,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        bundle = json.loads(completed.stdout)
+        self.assertEqual(bundle["status"], "shadow_ready")
+        agents = next(candidate for candidate in bundle["candidates"] if candidate["path"] == "AGENTS.md")
+        workflow = next(candidate for candidate in bundle["candidates"] if candidate["path"] == "workflow.md")
+        self.assertIn("repository-rules", agents["retrieval_context_classes"])
+        self.assertIn("workflow-context", workflow["retrieval_context_classes"])
+        self.assertTrue(all("accepted" not in candidate for candidate in bundle["candidates"]))
+
     def test_chapter4_shadow_backfills_required_context_class_candidates(self) -> None:
         self.publish()
         completed = run(
@@ -288,6 +308,13 @@ class KnowledgeControlPlaneTests(unittest.TestCase):
         self.assertTrue(
             any(
                 "architecture-authority" in candidate.get("retrieval_context_classes", [])
+                for candidate in bundle["candidates"]
+            )
+        )
+        self.assertTrue(
+            any(
+                "contract-authority" in candidate.get("retrieval_context_classes", [])
+                and candidate["path"].startswith(("docs/adr/", "Game.Core/Contracts/"))
                 for candidate in bundle["candidates"]
             )
         )

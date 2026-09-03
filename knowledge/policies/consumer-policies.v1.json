@@ -13,6 +13,16 @@
       "exact_paths": ["AGENTS.md", "README.md", "workflow.md", "DELIVERY_PROFILE.md", "docs/PROJECT_DOCUMENTATION_INDEX.md", "docs/testing-framework.md"],
       "required_context_classes": ["repository-rules"],
       "optional_context_classes": ["task-context", "architecture-context", "workflow-context"],
+      "context_query_supplement_classes": ["repository-rules", "workflow-context"],
+      "context_query_exact_path_templates": {
+        "repository-rules": ["AGENTS.md"],
+        "workflow-context": ["workflow.md"]
+      },
+      "context_query_attribution_prefixes": {
+        "repository-rules": ["AGENTS.md"],
+        "workflow-context": ["workflow.md"]
+      },
+      "context_query_max_candidates": 4,
       "max_candidates": 24,
       "minimum_confidence": "medium",
       "freeze_point": "session-context-ready"
@@ -28,12 +38,17 @@
       "exact_paths": ["AGENTS.md", "workflow.md", ".taskmaster/docs/prd.txt"],
       "required_context_classes": ["product-intent", "architecture-authority"],
       "optional_context_classes": ["existing-overlay", "contract-authority"],
+      "context_query_supplement_classes": ["product-intent", "architecture-authority", "contract-authority"],
       "context_query_exact_path_templates": {
         "product-intent": ["docs/prd/{scope}.md"]
       },
+      "context_query_attribution_prefixes": {
+        "contract-authority": ["docs/adr/", "Game.Core/Contracts/"]
+      },
       "context_query_terms": {
         "product-intent": ["产品", "目标"],
-        "architecture-authority": ["architecture", "adr", "base"]
+        "architecture-authority": ["architecture", "adr", "base"],
+        "contract-authority": ["SSoT", "contract", "ADR"]
       },
       "context_query_max_candidates": 4,
       "max_candidates": 24,
