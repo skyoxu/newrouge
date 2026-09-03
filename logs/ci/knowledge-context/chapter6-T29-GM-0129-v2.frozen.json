@@ -1,0 +1,73 @@
+{
+  "accepted_sources": [
+    {
+      "module_id": "source.taskmaster.tasks.tasks.json",
+      "path": ".taskmaster/tasks/tasks.json",
+      "reason": "Canonical Taskmaster T29 definition establishing deterministic card-pool implementation scope, dependencies, ADR refs, and test strategy.",
+      "satisfies": [
+        "task-context"
+      ],
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62"
+    },
+    {
+      "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+      "path": ".taskmaster/tasks/tasks_gameplay.json",
+      "reason": "Defining GM-0129 task view with full acceptance statements, four test refs, ADR refs, contract ref, and full semantic review tier.",
+      "satisfies": [
+        "task-context",
+        "test-context"
+      ],
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d"
+    },
+    {
+      "module_id": "source.decision.logs.2026.05.22.run.26267417919.failure.analysis.md",
+      "path": "decision-logs/2026-05-22-run-26267417919-failure-analysis.md",
+      "reason": "Accepted Task29-related failure analysis establishing canonical-selection-pool separation after a real exactly-one CardPoolSelection regression.",
+      "satisfies": [
+        "decision-context"
+      ],
+      "source_sha256": "82fd2cdcbb110538c875f79495ca27c1d536dae20042ccccec402a3e399a4fb3"
+    },
+    {
+      "module_id": "adr.ADR-0032",
+      "path": "docs/adr/ADR-0032-save-resume-determinism.md",
+      "reason": "Accepted ADR directly governing deterministic outcomes, locked reward candidates, RNG behavior, and reproducibility required by T29.",
+      "satisfies": [
+        "implementation-authority"
+      ],
+      "source_sha256": "ea9e22053cc68d9f12c5d627b4fec8958efd216ada25066bce610ee94121efa4"
+    },
+    {
+      "module_id": "adr.ADR-0033",
+      "path": "docs/adr/ADR-0033-card-identity-and-forms.md",
+      "reason": "Accepted ADR directly governing card identity/form/route semantics and deterministic reward candidate behavior required by T29.",
+      "satisfies": [
+        "implementation-authority"
+      ],
+      "source_sha256": "36beb5d605a81725f45f97b9174472287d583906beb2bb7d6dbfe9eb46feac9b"
+    }
+  ],
+  "consumer": "chapter6",
+  "context_id": "sha256:a9e29e8fbc191c2fb3c4f016728f6c114898d3bc458970f0cec2c7d20e89019d",
+  "decision_set_sha256": "sha256:027eef0227f8901c966731f2881d3dfe9181f22a02f35b4d0baeb87eda416f6f",
+  "freeze_point": "before-red",
+  "freeze_state": "frozen",
+  "policy_revision": "newrouge-knowledge-consumer-policies.v1",
+  "request_id": "shadow-4b3b5b4af181f16b",
+  "required_context_classes": [
+    "implementation-authority",
+    "task-context"
+  ],
+  "satisfied_context_classes": [
+    "decision-context",
+    "implementation-authority",
+    "task-context",
+    "test-context"
+  ],
+  "schema_version": "newrouge.knowledge-frozen-context.v1",
+  "snapshot": {
+    "commit": "17e70086ae2ce5111a0ada56e421680b8ccc5b84",
+    "ref": "refs/heads/main"
+  },
+  "source_bundle_sha256": "sha256:0f48bc9526b3cc2125ae9aa1e3daee322b76193a31616b37eb2250bfe0210fe0"
+}

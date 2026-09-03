@@ -1,0 +1,253 @@
+{
+  "consumer": "chapter6",
+  "decisions": [
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.gameplay.json",
+        "path": ".taskmaster/tasks/tasks_gameplay.json"
+      },
+      "consumer": "chapter6",
+      "decision": "accepted",
+      "reason": "Defining GM-0129 task view with full acceptance statements, four test refs, ADR refs, contract ref, and full semantic review tier.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [
+        "task-context",
+        "test-context"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "98ca29b4956936e5c7e8e43a0494da0e8c6f61cab12cd0be52aa6afe4b89273d"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.back.json",
+        "path": ".taskmaster/tasks/tasks_back.json"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Backlog mirror NG-0010 represents the same taskmaster id but remains pending while the current gameplay/master task is done; accepting it would introduce conflicting task state into the pre-RED freeze.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "a32b7e86cdd00728d92fa15daa394d3cb6688e086d8dc6e073cdaa5469fe2df9"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.tasks.tasks.json",
+        "path": ".taskmaster/tasks/tasks.json"
+      },
+      "consumer": "chapter6",
+      "decision": "accepted",
+      "reason": "Canonical Taskmaster T29 definition establishing deterministic card-pool implementation scope, dependencies, ADR refs, and test strategy.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [
+        "task-context"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "ad65b38cc3a809d79da9cd58679525554be1a39d0e4c8eceb8431c3eeeb6af62"
+    },
+    {
+      "candidate": {
+        "module_id": "source.taskmaster.docs.prd.txt",
+        "path": ".taskmaster/docs/prd.txt"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Generated Taskmaster derived PRD input is not authoritative implementation context for T29.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "612ee3f9b091e2acae67459aed3344895b4adfd063f05a98cfeb7036a01b4823"
+    },
+    {
+      "candidate": {
+        "module_id": "source.execution.plans.2026.04.27.task.84.generate.reward.offers.from.existing.card.drop.pools.on.first.entry.acceptance.test.generation.plan.md",
+        "path": "execution-plans/2026-04-27-task-84-generate-reward-offers-from-existing-card-drop-pools-on-first-entry-acceptance-test-generation-plan.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Downstream Task84 execution plan consumes existing card-drop pools but does not define T29 implementation authority.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "abcd6bd6610aff7c94d0a853ad1de792dd9e35cf6ca424fafc40a4475402ab57"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.testing.m1.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "The retrieved location is the T28 ActConfig testing section rather than a scoped T29 testing baseline; T29 test context is already explicit in the defining task source.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "43e4914e215e933ea28785e930179d90a3f4668638d756cff8ccd4bad71a31b8"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.acceptance.checklist.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "The retrieved location is the Task28 acceptance section rather than scoped T29 acceptance evidence.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "462b9a0b00e637150bd174832d1ad1c8e1f007544acac6d2669afc48d67ec548"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.gdd.t1.t69.m1.wiring.audit.md",
+        "path": "docs/gdd/t1-t69-m1-wiring-audit.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Player-facing M1 wiring audit records T29 integration status but does not define the scoped Core implementation contract for the pre-RED task.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "45a3c1c878c2c5be2223c6657a73dec846453157a33400efc4f325cc3bf948b0"
+    },
+    {
+      "candidate": {
+        "module_id": "source.decision.logs.2026.05.22.run.26267417919.failure.analysis.md",
+        "path": "decision-logs/2026-05-22-run-26267417919-failure-analysis.md"
+      },
+      "consumer": "chapter6",
+      "decision": "accepted",
+      "reason": "Accepted Task29-related failure analysis establishing canonical-selection-pool separation after a real exactly-one CardPoolSelection regression.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [
+        "decision-context"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "82fd2cdcbb110538c875f79495ca27c1d536dae20042ccccec402a3e399a4fb3"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.feature.slice.m1.warrior.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Draft feature overlay is supporting context and does not replace the defining task or Accepted ADR implementation authority.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "4649cdc6a56ee3a8954a58fcbae1add4d4498321133884ac08116f1b92794323"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.gdd.m1.playable.setup.md",
+        "path": "docs/gdd/m1-playable-setup.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Broader M1 gameplay/content setup is outside the scoped T29 Core implementation authority.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "9df994072d134694a5b4bc67898de0501ad66a8d7320161550757be0e5fd56df"
+    },
+    {
+      "candidate": {
+        "module_id": "source.docs.architecture.overlays.prd.newrouge.game.0001.08.08.contracts.m1.md",
+        "path": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Draft contracts overlay is supporting navigation and does not replace direct task or Accepted ADR authority.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "684db98b33a250c3f2cc3daa1e55115490062f4855a6e1854465e7b7eea5ba1f"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0003",
+        "path": "docs/adr/ADR-0003-observability-release-health.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Relation-expanded observability ADR does not define T29 card-pool selection semantics.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "7daaeff4894e6b1656ca53353eca83b723c8bfa74753d1323e3a1caab929f9d1"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0004",
+        "path": "docs/adr/ADR-0004-event-bus-and-contracts.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Event-bus contract ADR is related to downstream reward-event plumbing but does not govern the scoped T29 pool-selection implementation.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "15ea9d92271178373e1e15ddce60d75bc06652aac4643918d13deb98ad4c5322"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0005",
+        "path": "docs/adr/ADR-0005-quality-gates.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "General quality-gate authority is not the scoped implementation authority for T29.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "a5a250cd40993a593a62e3a25fabf12bf3fa38911c803b22226acc836d27f733"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0006",
+        "path": "docs/adr/ADR-0006-data-storage.md"
+      },
+      "consumer": "chapter6",
+      "decision": "rejected",
+      "reason": "Data-storage ADR is unrelated to T29 deterministic card-pool selection.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "5e1808b1c8e84fb5e10d0a756846cdd53bcebf1044bfc0e1285d90eeb7ae9458"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0032",
+        "path": "docs/adr/ADR-0032-save-resume-determinism.md"
+      },
+      "consumer": "chapter6",
+      "decision": "accepted",
+      "reason": "Accepted ADR directly governing deterministic outcomes, locked reward candidates, RNG behavior, and reproducibility required by T29.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [
+        "implementation-authority"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "ea9e22053cc68d9f12c5d627b4fec8958efd216ada25066bce610ee94121efa4"
+    },
+    {
+      "candidate": {
+        "module_id": "adr.ADR-0033",
+        "path": "docs/adr/ADR-0033-card-identity-and-forms.md"
+      },
+      "consumer": "chapter6",
+      "decision": "accepted",
+      "reason": "Accepted ADR directly governing card identity/form/route semantics and deterministic reward candidate behavior required by T29.",
+      "request_id": "shadow-4b3b5b4af181f16b",
+      "satisfies": [
+        "implementation-authority"
+      ],
+      "schema_version": "newrouge.knowledge-consumption-decision.v1",
+      "source_sha256": "36beb5d605a81725f45f97b9174472287d583906beb2bb7d6dbfe9eb46feac9b"
+    }
+  ],
+  "request_id": "shadow-4b3b5b4af181f16b",
+  "schema_version": "newrouge.knowledge-consumption-decision-set.v1",
+  "source_bundle_sha256": "sha256:0f48bc9526b3cc2125ae9aa1e3daee322b76193a31616b37eb2250bfe0210fe0"
+}
