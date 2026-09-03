@@ -140,6 +140,24 @@ def _scope_for_context_class(policy: dict[str, Any], context_class: str, values:
     return [value for value in values if _scope_type(value) in allowed_types]
 
 
+def _prefer_scope_for_context_class(
+    policy: dict[str, Any], context_class: str, values: list[str]
+) -> list[str]:
+    mapping = policy.get("context_query_scope_preference")
+    if not isinstance(mapping, dict):
+        return values
+    preference = mapping.get(context_class)
+    if preference != "task-view-first":
+        return values
+    task_views = [value for value in values if TASK_VIEW_SCOPE.fullmatch(value)]
+    if task_views:
+        return [task_views[0]]
+    task_numbers = [value for value in values if TASK_SCOPE.fullmatch(value)]
+    if task_numbers:
+        return [task_numbers[0]]
+    return values
+
+
 def _attribution_prefixes(policy: dict[str, Any], context_class: str | None) -> list[str] | None:
     if context_class is None:
         return None
@@ -187,6 +205,7 @@ def _context_query_plan(
         if not isinstance(context_class, str):
             continue
         scope = _scope_for_context_class(policy, context_class, all_scope)
+        scope = _prefer_scope_for_context_class(policy, context_class, scope)
         structured_scope = next((value for value in scope if STRUCTURED_SCOPE.fullmatch(value)), None)
 
         templates = exact_path_mapping.get(context_class) if isinstance(exact_path_mapping, dict) else None
