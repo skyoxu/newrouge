@@ -55,6 +55,10 @@
         "acceptance-scope": ["task"],
         "semantic-authority": ["adr"]
       },
+      "context_query_attribution_prefixes": {
+        "acceptance-scope": [".taskmaster/tasks/", "docs/architecture/overlays/"],
+        "semantic-authority": ["docs/adr/", "docs/architecture/base/", "Game.Core/Contracts/"]
+      },
       "context_query_terms": {
         "acceptance-scope": ["acceptance", "test", "refs"],
         "semantic-authority": []
