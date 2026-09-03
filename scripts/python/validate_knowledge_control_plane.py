@@ -81,6 +81,7 @@ def _static_checks(root: Path) -> list[str]:
         "scripts/python/publish_knowledge_catalog.py",
         "scripts/python/tests/test_knowledge_chapter5_routing.py",
         "scripts/python/tests/test_knowledge_chapter6_routing.py",
+        "scripts/python/tests/test_knowledge_review_routing.py",
         "scripts/python/tests/test_knowledge_publication.py",
         "knowledge/evaluation/queries.v1.json",
         "docs/workflows/knowledge-context-shadow.md",
@@ -100,6 +101,16 @@ def _static_checks(root: Path) -> list[str]:
             issues.append(f"invalid-domain:{policy.get('consumer')}")
         if not policy.get("required_context_classes"):
             issues.append(f"missing-required-context-class:{policy.get('consumer')}")
+        supplement_classes = policy.get("context_query_supplement_classes", [])
+        if isinstance(supplement_classes, list):
+            declared = set(policy.get("required_context_classes", [])) | set(
+                policy.get("optional_context_classes", [])
+            )
+            invalid = [value for value in supplement_classes if value not in declared]
+            if invalid:
+                issues.append(
+                    f"invalid-context-supplement-class:{policy.get('consumer')}:{','.join(map(str, invalid))}"
+                )
 
     exclusions = _load(root / "knowledge/policies/source-exclusions.v1.json")
     exclusion_ids = {rule.get("id") for rule in exclusions.get("rules", []) if isinstance(rule, dict)}
@@ -156,6 +167,7 @@ def main() -> int:
         ("unit-kernel", "scripts/python/tests/test_knowledge_control_plane.py"),
         ("unit-chapter5-routing", "scripts/python/tests/test_knowledge_chapter5_routing.py"),
         ("unit-chapter6-routing", "scripts/python/tests/test_knowledge_chapter6_routing.py"),
+        ("unit-review-routing", "scripts/python/tests/test_knowledge_review_routing.py"),
         ("unit-freeze", "scripts/python/tests/test_knowledge_freeze.py"),
         ("unit-publication", "scripts/python/tests/test_knowledge_publication.py"),
     ):
