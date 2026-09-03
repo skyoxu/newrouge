@@ -133,7 +133,7 @@
       "context_query_terms": {
         "review-scope": [],
         "architecture-context": [],
-        "delivery-context": ["review", "6.7", "pipeline", "failure", "CardPoolSelection"]
+        "delivery-context": ["CardPoolSelection", "failure", "analysis"]
       },
       "context_query_max_candidates": 6,
       "max_candidates": 32,
