@@ -170,6 +170,29 @@ def _attribution_prefixes(policy: dict[str, Any], context_class: str | None) -> 
     return [str(value) for value in raw if isinstance(value, str) and value]
 
 
+def _supplement_context_classes(policy: dict[str, Any]) -> list[str]:
+    required = [
+        value
+        for value in policy.get("required_context_classes", [])
+        if isinstance(value, str) and value
+    ]
+    optional = [
+        value
+        for value in policy.get("optional_context_classes", [])
+        if isinstance(value, str) and value
+    ]
+    allowed = set(required + optional)
+    configured = policy.get("context_query_supplement_classes")
+    if not isinstance(configured, list):
+        return required
+    values: list[str] = []
+    for raw in configured:
+        if not isinstance(raw, str) or raw not in allowed or raw in values:
+            continue
+        values.append(raw)
+    return values
+
+
 def _append_query_plan(
     plan: list[tuple[str | None, str, int | None, str | None]],
     seen_queries: set[str],
@@ -201,19 +224,22 @@ def _context_query_plan(
         per_class_limit = 4
     all_scope = _scope_terms(query)
     seen_queries = {query.casefold().strip()}
-    for context_class in policy.get("required_context_classes", []):
-        if not isinstance(context_class, str):
-            continue
+    for context_class in _supplement_context_classes(policy):
         scope = _scope_for_context_class(policy, context_class, all_scope)
         scope = _prefer_scope_for_context_class(policy, context_class, scope)
         structured_scope = next((value for value in scope if STRUCTURED_SCOPE.fullmatch(value)), None)
 
         templates = exact_path_mapping.get(context_class) if isinstance(exact_path_mapping, dict) else None
-        if structured_scope and isinstance(templates, list):
+        if isinstance(templates, list):
             for template in templates:
-                if not isinstance(template, str) or not template.strip() or "{scope}" not in template:
+                if not isinstance(template, str) or not template.strip():
                     continue
-                rendered_path = template.replace("{scope}", structured_scope).strip()
+                if "{scope}" in template:
+                    if not structured_scope:
+                        continue
+                    rendered_path = template.replace("{scope}", structured_scope).strip()
+                else:
+                    rendered_path = template.strip()
                 _append_query_plan(
                     plan,
                     seen_queries,
