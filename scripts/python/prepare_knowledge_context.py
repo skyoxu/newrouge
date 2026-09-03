@@ -223,6 +223,25 @@ def _context_query_plan(
     return plan
 
 
+def _candidate_attributable(
+    raw: Any,
+    *,
+    context_class: str | None,
+    attribution_path: str | None,
+    attribution_prefixes: list[str] | None,
+) -> bool:
+    if context_class is None or not isinstance(raw, dict):
+        return False
+    path = raw.get("path")
+    if not isinstance(path, str):
+        return False
+    if attribution_prefixes is not None and not any(
+        path.startswith(prefix) for prefix in attribution_prefixes
+    ):
+        return False
+    return attribution_path is None or path == attribution_path
+
+
 def _merge_candidates(
     merged: dict[tuple[str, str], dict[str, Any]],
     order: list[tuple[str, str]],
@@ -233,27 +252,44 @@ def _merge_candidates(
     attribution_path: str | None,
     attribution_prefixes: list[str] | None,
 ) -> None:
-    bounded = candidates if limit is None else candidates[:limit]
-    for raw in bounded:
-        if not isinstance(raw, dict):
-            continue
-        module_id = raw.get("module_id")
-        path = raw.get("path")
-        if not isinstance(module_id, str) or not isinstance(path, str):
-            continue
+    valid = [
+        raw
+        for raw in candidates
+        if isinstance(raw, dict)
+        and isinstance(raw.get("module_id"), str)
+        and isinstance(raw.get("path"), str)
+    ]
+    if limit is None:
+        selected = valid
+    else:
+        attributable = [
+            raw
+            for raw in valid
+            if _candidate_attributable(
+                raw,
+                context_class=context_class,
+                attribution_path=attribution_path,
+                attribution_prefixes=attribution_prefixes,
+            )
+        ]
+        related = [raw for raw in valid if raw not in attributable]
+        selected = [*attributable, *related][:limit]
+
+    for raw in selected:
+        module_id = raw["module_id"]
+        path = raw["path"]
         key = (module_id, path)
         if key not in merged:
             candidate = dict(raw)
             candidate["retrieval_context_classes"] = []
             merged[key] = candidate
             order.append(key)
-        path_allowed = attribution_prefixes is None or any(
-            path.startswith(prefix) for prefix in attribution_prefixes
-        )
-        should_attribute = context_class is not None and path_allowed and (
-            attribution_path is None or path == attribution_path
-        )
-        if should_attribute:
+        if _candidate_attributable(
+            raw,
+            context_class=context_class,
+            attribution_path=attribution_path,
+            attribution_prefixes=attribution_prefixes,
+        ):
             classes = merged[key].setdefault("retrieval_context_classes", [])
             if context_class not in classes:
                 classes.append(context_class)
