@@ -6,6 +6,9 @@ from pathlib import PurePosixPath
 from typing import Any
 
 POLICY_EXACT_PATH_BONUS = 128
+TASK_SOURCE_PREFIX = ".taskmaster/tasks/"
+TASK_VIEW_ID = re.compile(r"\b(?:GM|NG)-\d+\b", re.IGNORECASE)
+TASK_NUMBER = re.compile(r"\btask\s+(?:id\s*)?(\d+)\b", re.IGNORECASE)
 
 
 def tokens(query: str) -> list[str]:
@@ -47,9 +50,47 @@ def _policy_allows(module: dict[str, Any], query: str, policy: dict[str, Any]) -
     return any(visibility.get(domain) in allowed for domain in policy.get("domains", []))
 
 
-def _best_location(module: dict[str, Any], query_tokens: list[str]) -> tuple[str, int, int]:
+def _task_identity_line(module: dict[str, Any], query: str, lines: list[str]) -> int | None:
+    path = str(module.get("source_path", ""))
+    if not path.startswith(TASK_SOURCE_PREFIX):
+        return None
+
+    view_ids: list[str] = []
+    for match in TASK_VIEW_ID.finditer(query):
+        value = match.group(0)
+        if value.casefold() not in {item.casefold() for item in view_ids}:
+            view_ids.append(value)
+    for view_id in view_ids:
+        pattern = re.compile(
+            rf'^\s*"(?:id|task_id)"\s*:\s*"{re.escape(view_id)}"\s*,?\s*$',
+            re.IGNORECASE,
+        )
+        for index, line in enumerate(lines, 1):
+            if pattern.match(line):
+                return index
+
+    task_numbers = []
+    for match in TASK_NUMBER.finditer(query):
+        value = match.group(1)
+        if value not in task_numbers:
+            task_numbers.append(value)
+    for task_number in task_numbers:
+        pattern = re.compile(
+            rf'^\s*"(?:id|taskmaster_id)"\s*:\s*{re.escape(task_number)}\s*,?\s*$'
+        )
+        for index, line in enumerate(lines, 1):
+            if pattern.match(line):
+                return index
+    return None
+
+
+def _best_location(module: dict[str, Any], query: str, query_tokens: list[str]) -> tuple[str, int, int, str]:
     content = str(module.get("content", ""))
     lines = content.splitlines()
+    identity_line = _task_identity_line(module, query, lines)
+    if identity_line is not None:
+        return "document", identity_line, identity_line, "task-identity"
+
     best_line, best_score = 1, -1
     for index, line in enumerate(lines, 1):
         folded = line.casefold()
@@ -58,8 +99,8 @@ def _best_location(module: dict[str, Any], query_tokens: list[str]) -> tuple[str
             best_line, best_score = index, score
     for anchor in module.get("anchors", []):
         if isinstance(anchor, dict) and anchor.get("line_start", 0) <= best_line <= anchor.get("line_end", 0):
-            return str(anchor.get("anchor", "document")), best_line, best_line
-    return str(module.get("anchor", "document")), best_line, best_line
+            return str(anchor.get("anchor", "document")), best_line, best_line, "token-line"
+    return str(module.get("anchor", "document")), best_line, best_line, "token-line"
 
 
 def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, Any], eligible_ids: set[str], max_candidates: int) -> dict[str, Any]:
@@ -100,7 +141,7 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
         policy_entrypoint_boosted = policy_exact_path and entrypoint_token_matches > 0
         if policy_entrypoint_boosted:
             score += POLICY_EXACT_PATH_BONUS
-        anchor, line_start, line_end = _best_location(module, qtokens)
+        anchor, line_start, line_end, location_strategy = _best_location(module, query, qtokens)
         ranked[str(module_id)] = (score, source_path.casefold(), {
             "module_id": module_id,
             "path": source_path,
@@ -119,6 +160,7 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
                 "policy_exact_path": policy_exact_path,
                 "entrypoint_token_matches": entrypoint_token_matches,
                 "policy_exact_path_bonus": POLICY_EXACT_PATH_BONUS if policy_entrypoint_boosted else 0,
+                "location_strategy": location_strategy,
             },
         })
         base.append((score, module))
@@ -129,14 +171,14 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
                 continue
             if not _policy_allows(related, query, policy):
                 continue
-            anchor, line_start, line_end = _best_location(related, qtokens)
+            anchor, line_start, line_end, location_strategy = _best_location(related, query, qtokens)
             relation_score = max(1, min(9, score // 20))
             ranked[related["module_id"]] = (relation_score, related["source_path"].casefold(), {
                 "module_id": related["module_id"], "path": related["source_path"], "anchor": anchor,
                 "line_start": line_start, "line_end": line_end, "source_sha256": related["source_sha256"],
                 "primary_domain": related["primary_domain"], "status": related["status"],
                 "provenance": ["catalog-v1", catalog["source_snapshot"]["ref"]],
-                "rank_evidence": {"strategy": "relation-expansion", "score": relation_score, "token_matches": 0, "confidence": "medium"},
+                "rank_evidence": {"strategy": "relation-expansion", "score": relation_score, "token_matches": 0, "confidence": "medium", "location_strategy": location_strategy},
             })
     ordered = sorted(ranked.values(), key=lambda item: (-item[0], item[1]))
     return {"status": "matched" if ordered else "insufficient_match", "candidates": [item[2] for item in ordered[:max_candidates]]}
