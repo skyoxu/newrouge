@@ -17,7 +17,7 @@ EXIT_CODES = {
     "source_read_failure": 8, "unsupported_relation": 9,
     "index_identity_collision": 10, "invalid_kcp_binding": 11,
     "internal_error": 12, "dirty_state": 13, "unsupported_target": 14,
-    "invalid_manifest": 15, "lock_unavailable": 16,
+    "invalid_manifest": 15, "lock_unavailable": 16, "underqualified_target": 17,
 }
 
 
