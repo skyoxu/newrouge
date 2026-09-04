@@ -378,11 +378,18 @@ class GitTreeSnapshot:
     def verify_worktree(self, entries: Iterable[dict[str, Any]]) -> None:
         tree_by_path = {entry.path: entry for entry in self.entries}
         included_paths: list[str] = []
+        normalized_paths: set[str] = set()
         for manifest_entry in entries:
             if manifest_entry.get("included") is not True:
                 continue
             path = str(manifest_entry["path"])
             candidate = resolve_repository_path(self.root, path)
+            try:
+                _ensure_no_reparse_ancestors(candidate, self.root)
+            except ImpactIndexError as exc:
+                if exc.code == "path_outside_repository":
+                    raise fail("source_read_failure", exc.reason) from exc
+                raise
             if candidate.is_symlink():
                 raise fail("source_read_failure", f"symlink-ambiguous source: {path}")
             if not candidate.is_file():
@@ -395,6 +402,43 @@ class GitTreeSnapshot:
             tree_entry = tree_by_path.get(path)
             if tree_entry is None:
                 raise fail("source_read_failure", f"tracked source is absent from trusted tree: {path}")
+            try:
+                current_bytes = candidate.read_bytes()
+            except OSError as exc:
+                raise fail("source_read_failure", f"unable to reread source {path}: {exc}") from exc
+            if path in tree_by_path and path in {
+                "scripts/python/impact_analysis_config.v1.json",
+                "scripts/python/impact_target_aliases.v1.json",
+            } and current_bytes.startswith(b"\xef\xbb\xbf"):
+                raise fail("invalid_manifest", f"UTF-8 BOM is forbidden in identity source: {path}")
+            if sha256_bytes(current_bytes) == manifest_entry.get("sha256"):
+                included_paths.append(path)
+                continue
+            # Policy files are tracked with LF normalization.  A Windows
+            # checkout may materialize CRLF even when the trusted blob is LF;
+            # accept that representation only when it is byte-equivalent
+            # after the declared text normalization.
+            if path in {
+                "scripts/python/impact_analysis_config.v1.json",
+                "scripts/python/impact_target_aliases.v1.json",
+            }:
+                trusted_bytes = self.read_blob(tree_entry)
+                normalized_policy = re.sub(rb"\r+\n", b"\n", current_bytes).replace(b"\r", b"\n")
+                if normalized_policy == trusted_bytes:
+                    included_paths.append(path)
+                    normalized_paths.add(path)
+                    continue
+            clean_hash = _git(
+                self.root,
+                f"hash-object",
+                f"--path={path}",
+                "--stdin",
+                text=False,
+                input_data=current_bytes,
+            )
+            clean_hash_text = bytes(clean_hash.stdout or b"").decode("ascii", errors="ignore").strip().lower()
+            if clean_hash.returncode or clean_hash_text != tree_entry.object_id:
+                raise fail("dirty_state", f"included source differs from trusted Git tree: {path}")
             included_paths.append(path)
         if included_paths:
             current = _git(self.root, "diff", "--name-only", "-z", self.revision, text=False)
@@ -405,7 +449,7 @@ class GitTreeSnapshot:
                 for item in bytes(current.stdout).split(b"\0")
                 if item
             }
-            if changed.intersection(included_paths):
+            if changed.intersection(set(included_paths) - normalized_paths):
                 raise fail("dirty_state", "included source differs from trusted Git tree")
 
     def verify_revision(self) -> None:
@@ -461,6 +505,11 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         normalize_repository_path(item)
         for item in _validate_string_list(config.get("identity_files"), "identity_files")
     ]
+    for field in ("scan_roots", "identity_files"):
+        values = config[field]
+        folded = [item.casefold() for item in values]
+        if len(folded) != len(set(folded)):
+            raise fail("invalid_manifest", f"{field} contains duplicate paths")
     rules = config.get("source_rules")
     if not isinstance(rules, list) or not rules:
         raise fail("invalid_manifest", "source_rules must be a non-empty ordered array")
@@ -469,7 +518,10 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
             raise fail("invalid_manifest", "source rule must be an object")
         if set(rule) != {"suffixes", "path_prefixes", "source_kind", "parser_family", "parser_version", "binary"}:
             raise fail("invalid_manifest", "source rule fields are incomplete or unsupported")
-        _validate_string_list(rule.get("suffixes"), "source_rules.suffixes")
+        suffixes = _validate_string_list(rule.get("suffixes"), "source_rules.suffixes")
+        folded_suffixes = [item.casefold() for item in suffixes]
+        if len(folded_suffixes) != len(set(folded_suffixes)):
+            raise fail("invalid_manifest", "source_rules.suffixes contains duplicate suffixes")
         prefixes = rule.get("path_prefixes", [])
         rule["path_prefixes"] = [
             normalize_repository_path(item).rstrip("/")
@@ -527,6 +579,9 @@ def validate_aliases(aliases: dict[str, Any]) -> dict[str, Any]:
     for kind, mappings in table.items():
         if not isinstance(kind, str) or not kind or not isinstance(mappings, dict):
             raise fail("invalid_manifest", "alias kinds and mapping tables must be objects")
+        aliases_folded = [alias.casefold() for alias in mappings]
+        if len(aliases_folded) != len(set(aliases_folded)):
+            raise fail("invalid_manifest", "alias mappings contain case-insensitive collisions")
         if any(
             not isinstance(alias, str)
             or not isinstance(target, str)
@@ -568,6 +623,38 @@ def _source_rule(path: str, rules: list[dict[str, Any]]) -> dict[str, Any] | Non
         if prefix_matches and any(lowered.endswith(suffix.casefold()) for suffix in rule["suffixes"]):
             return rule
     return None
+
+
+def _trusted_blob_for_path(snapshot: GitTreeSnapshot, path: str) -> bytes:
+    normalized = normalize_repository_path(path)
+    for entry in snapshot.entries:
+        if entry.path == normalized:
+            if entry.object_type != "blob" or entry.mode not in {"100644", "100755"}:
+                raise fail("invalid_manifest", f"identity source is not a regular blob: {normalized}")
+            return snapshot.read_blob(entry)
+    raise fail("invalid_manifest", f"identity source missing from trusted Git tree: {normalized}")
+
+
+def _validate_identity_worktree_file(root: Path, relative: str, validator, label: str) -> None:
+    """Validate mutable identity inputs before source verification.
+
+    Syntax/encoding defects in policy files are manifest defects, while valid
+    content that differs from the trusted blob remains a dirty worktree.
+    """
+    path = resolve_repository_path(root, relative)
+    try:
+        _ensure_no_reparse_ancestors(path, root)
+        data = path.read_bytes()
+    except ImpactIndexError as exc:
+        if exc.code == "path_outside_repository":
+            raise fail("invalid_manifest", f"identity path is not repository-local: {relative}") from exc
+        raise
+    except OSError as exc:
+        raise fail("invalid_manifest", f"unable to read identity source {relative}: {exc}") from exc
+    if data.startswith(b"\xef\xbb\xbf"):
+        raise fail("invalid_manifest", f"UTF-8 BOM is forbidden in identity source: {relative}")
+    value = _strict_json_object(data, code="invalid_manifest", label=label)
+    validator(value)
 
 
 def build_source_manifest(
@@ -680,7 +767,7 @@ def validate_index_document(value: dict[str, Any]) -> None:
         size_bytes = entry.get("size_bytes")
         if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes < 0:
             raise fail("invalid_manifest", "source manifest size_bytes must be a non-negative integer")
-        if not isinstance(entry.get("git_mode"), str) or not re.fullmatch(r"[0-7]{6}", entry["git_mode"]):
+        if entry.get("git_mode") not in {"100644", "100755"}:
             raise fail("invalid_manifest", "source manifest git_mode is invalid")
         for field in ("source_kind", "parser_family", "parser_version"):
             if not isinstance(entry.get(field), str) or not entry[field]:
@@ -945,19 +1032,37 @@ class IndexLock:
         }
 
     def _create(self) -> bool:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise fail("lock_unavailable", f"lock directory is unavailable: {exc}") from exc
         data = artifact_json_bytes(self._payload())
         try:
             descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         except FileExistsError:
             return False
+        except OSError as exc:
+            raise fail("lock_unavailable", f"lock path is unavailable: {exc}") from exc
+        handle = None
         try:
-            with os.fdopen(descriptor, "wb") as handle:
+            handle = os.fdopen(descriptor, "wb")
+            with handle:
                 handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
-        except BaseException:
-            self.path.unlink(missing_ok=True)
+        except BaseException as exc:
+            if handle is None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+            try:
+                if self.path.read_bytes() == data:
+                    self.path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            if isinstance(exc, OSError):
+                raise fail("lock_unavailable", f"lock write failed: {exc}") from exc
             raise
         self.held = True
         self.owned_bytes = data
@@ -1178,13 +1283,17 @@ def build_and_publish_index(
     except ValueError as exc:
         raise fail("path_outside_repository", "impact index output must remain under logs/ci") from exc
     output_root = resolved_output
+    snapshot = GitTreeSnapshot(root, revision, trusted_ref)
     config_path = resolve_repository_path(root, config_relative)
     aliases_path = resolve_repository_path(root, aliases_relative)
-    config_bytes, config = load_json_bytes(config_path)
-    aliases_bytes, aliases = load_json_bytes(aliases_path)
+    _validate_identity_worktree_file(root, config_relative, validate_config, config_relative)
+    _validate_identity_worktree_file(root, aliases_relative, validate_aliases, aliases_relative)
+    config_bytes = _trusted_blob_for_path(snapshot, config_relative)
+    aliases_bytes = _trusted_blob_for_path(snapshot, aliases_relative)
+    config = _strict_json_object(config_bytes, code="invalid_manifest", label=config_relative)
+    aliases = _strict_json_object(aliases_bytes, code="invalid_manifest", label=aliases_relative)
     config = validate_config(config)
     validate_aliases(aliases)
-    snapshot = GitTreeSnapshot(root, revision, trusted_ref)
     source_manifest, source_manifest_sha = build_source_manifest(
         snapshot,
         config,

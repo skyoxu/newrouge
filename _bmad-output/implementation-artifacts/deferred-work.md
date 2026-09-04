@@ -16,3 +16,9 @@
 - source_spec: none
   summary: Complete adapter hardening, producer-to-consumer workflow integration, and final CAP-1 through CAP-6 acceptance.
   evidence: End-to-end integration and acceptance depend on the Index, Analyzer, Runtime, and Knowledge Binding slices being complete.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-index-core.md`
+  summary: Add a successful analyze_impact CLI integration test covering index discovery, frozen context binding, report output, and run manifest hashes.
+  evidence: Review found only analyzer unit tests; the production CLI success path is not exercised by the current verification suite.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-index-core.md`
+  summary: Register the Impact Analyzer unittest module in the default obligations hard gate.
+  evidence: The analyzer tests exist and pass, but run_gate_bundle.py currently invokes only the Index and repository smoke modules.

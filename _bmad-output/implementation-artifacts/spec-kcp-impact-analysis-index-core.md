@@ -2,7 +2,7 @@
 title: 'KCP Impact Analysis Index Core'
 type: 'feature'
 created: '2026-09-04'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '985f095e4975e7cf1c4477993447c2cfd4f2ed5c'
 context:
@@ -79,3 +79,38 @@ context:
 - `py -3 -m unittest scripts/python/tests/test_impact_analysis_index.py` -- expected: all focused index tests pass.
 - `py -3 scripts/python/build_impact_index.py --help` -- expected: CLI exposes explicit revision/config/output controls and stable failure description.
 - `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated` -- expected: existing KCP generated state remains unchanged and passes.
+
+## Suggested Review Order
+
+**构建入口与信任边界**
+
+- 显式 revision 驱动不可变构建
+  [`build_impact_index.py:25`](../../scripts/python/build_impact_index.py#L25)
+
+- Git tree/blob 与工作树复核
+  [`impact_analysis_index.py:302`](../../scripts/python/impact_analysis_index.py#L302)
+
+- 发布前复用与最终校验
+  [`impact_analysis_index.py:1262`](../../scripts/python/impact_analysis_index.py#L1262)
+
+**策略与工件校验**
+
+- 配置规范化及重复项拒绝
+  [`impact_analysis_index.py:473`](../../scripts/python/impact_analysis_index.py#L473)
+
+- 别名表结构与冲突校验
+  [`impact_analysis_index.py:567`](../../scripts/python/impact_analysis_index.py#L567)
+
+- 原子写入与工件哈希绑定
+  [`impact_analysis_index.py:896`](../../scripts/python/impact_analysis_index.py#L896)
+
+**并发与回归证据**
+
+- 锁竞争和所有权安全
+  [`impact_analysis_index.py:996`](../../scripts/python/impact_analysis_index.py#L996)
+
+- Index Core 全量边界测试
+  [`test_impact_analysis_index.py:337`](../../scripts/python/tests/test_impact_analysis_index.py#L337)
+
+- 真实 source universe 构建复用
+  [`test_impact_analysis_index_repository_smoke.py:38`](../../scripts/python/tests/test_impact_analysis_index_repository_smoke.py#L38)

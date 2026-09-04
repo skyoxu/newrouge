@@ -9,7 +9,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -624,6 +626,88 @@ class ManifestAndPublicationTests(RepositoryFixture):
         self.assertFalse(any(args and args[0] == "hash-object" for args in calls))
         self.assertLessEqual(sum(args and args[0] == "status" for args in calls), 2)
 
+    def test_worktree_verification_hashes_bytes_not_only_diff_and_rejects_reparse_ancestor(self) -> None:
+        snapshot = self.index.GitTreeSnapshot(self.repo, self.revision, "refs/heads/main")
+        tree_entry = next(entry for entry in snapshot.entries if entry.path == "Game.Core/Domain.cs")
+        manifest_entry = {
+            "path": tree_entry.path,
+            "sha256": self.index.sha256_bytes(snapshot.read_blob(tree_entry)),
+            "included": True,
+        }
+        (self.repo / "Game.Core/Domain.cs").write_text("mutated\n", encoding="utf-8")
+        real_git = self.index._git
+
+        def hide_diff(root, *args, **kwargs):
+            if args[:2] == ("diff", "--name-only"):
+                return subprocess.CompletedProcess(["git"], 0, stdout=b"", stderr=b"")
+            return real_git(root, *args, **kwargs)
+
+        with mock.patch.object(self.index, "_git", side_effect=hide_diff):
+            with self.assertRaises(self.index.ImpactIndexError) as raised:
+                snapshot.verify_worktree([manifest_entry])
+        self.assertEqual(raised.exception.code, "dirty_state")
+
+        with mock.patch.object(
+            self.index,
+            "_is_reparse_point",
+            side_effect=lambda path: Path(path).name == "Game.Core",
+        ):
+            with self.assertRaises(self.index.ImpactIndexError) as raised:
+                snapshot.verify_worktree([manifest_entry])
+        self.assertEqual(raised.exception.code, "source_read_failure")
+
+    def test_config_and_alias_identity_hashes_use_trusted_git_blobs_after_crlf_checkout(self) -> None:
+        subprocess.check_call(["git", "config", "core.autocrlf", "true"], cwd=self.repo)
+        for relative in (
+            "scripts/python/impact_analysis_config.v1.json",
+            "scripts/python/impact_target_aliases.v1.json",
+        ):
+            path = self.repo / relative
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        completed = self.build()
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        payload = self.payload(completed)
+        index_doc = json.loads((self.repo / payload["index_path"]).read_text(encoding="utf-8"))
+        for field, relative in (
+            ("analysis_config_sha256", "scripts/python/impact_analysis_config.v1.json"),
+            ("alias_table_sha256", "scripts/python/impact_target_aliases.v1.json"),
+        ):
+            blob = run("git", "show", f"{self.revision}:{relative}", cwd=self.repo)
+            self.assertEqual(blob.returncode, 0, blob.stderr)
+            self.assertEqual(index_doc[field], self.index.sha256_bytes(blob.stdout.encode("utf-8")))
+
+    def test_index_validator_rejects_non_regular_git_modes(self) -> None:
+        completed = self.build()
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        payload = self.payload(completed)
+        index_doc = json.loads((self.repo / payload["index_path"]).read_text(encoding="utf-8"))
+        index_doc["source_manifest"][0]["git_mode"] = "100664"
+        with self.assertRaises(self.index.ImpactIndexError) as raised:
+            self.index.validate_index_document(index_doc)
+        self.assertEqual(raised.exception.code, "invalid_manifest")
+
+    def test_config_rejects_case_insensitive_duplicate_roots_identity_files_and_suffixes(self) -> None:
+        source = json.loads((ROOT / "scripts/python/impact_analysis_config.v1.json").read_text(encoding="utf-8"))
+        mutations = {
+            "scan roots": lambda value: value["scan_roots"].append(value["scan_roots"][0].upper()),
+            "identity files": lambda value: value["identity_files"].append(value["identity_files"][0].upper()),
+            "suffixes": lambda value: value["source_rules"][0]["suffixes"].append(".CS"),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                candidate = json.loads(json.dumps(source))
+                mutate(candidate)
+                with self.assertRaises(self.index.ImpactIndexError) as raised:
+                    self.index.validate_config(candidate)
+                self.assertEqual(raised.exception.code, "invalid_manifest")
+
+    def test_aliases_reject_case_insensitive_alias_collisions(self) -> None:
+        source = json.loads((ROOT / "scripts/python/impact_target_aliases.v1.json").read_text(encoding="utf-8"))
+        source["aliases"]["event"] = {"RewardOffer": "RewardOfferPresentedEvent", "rewardoffer": "Other"}
+        with self.assertRaises(self.index.ImpactIndexError) as raised:
+            self.index.validate_aliases(source)
+        self.assertEqual(raised.exception.code, "invalid_manifest")
+
     def test_reuse_rejects_self_consistent_tampered_non_identity_lineage(self) -> None:
         first = self.build()
         self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
@@ -1167,6 +1251,34 @@ class LockAndAtomicityTests(ImpactIndexTestCase):
         self.assertEqual(raised.exception.code, "lock_unavailable")
         self.assertEqual(self.lock_path.read_bytes(), replacement)
 
+    def test_lock_create_oserror_is_lock_unavailable_and_failed_cleanup_is_owner_safe(self) -> None:
+        lock = self.index.IndexLock(
+            self.lock_path,
+            "idx-test",
+            host="local-host",
+            pid=os.getpid(),
+            process_start="current",
+            sleep=lambda _: None,
+        )
+        with mock.patch.object(self.index.os, "open", side_effect=PermissionError("denied")):
+            with self.assertRaises(self.index.ImpactIndexError) as raised:
+                lock._create()
+        self.assertEqual(raised.exception.code, "lock_unavailable")
+
+        replacement = self.index.artifact_json_bytes(self.valid_lock_payload())
+        real_fdopen = self.index.os.fdopen
+
+        def fail_after_replacement(descriptor, *args, **kwargs):
+            self.lock_path.write_bytes(replacement)
+            raise OSError("write denied")
+
+        with mock.patch.object(self.index.os, "fdopen", side_effect=fail_after_replacement):
+            with self.assertRaises(self.index.ImpactIndexError) as raised:
+                lock._create()
+        self.assertEqual(raised.exception.code, "lock_unavailable")
+        self.assertEqual(self.lock_path.read_bytes(), replacement)
+        self.assertIsNotNone(real_fdopen)
+
     def test_stale_reclaim_rename_race_never_deletes_replacement_owner(self) -> None:
         stale = self.write_lock(host="local-host", pid=1, process_start="old", age_minutes=6)
         replacement_payload = self.valid_lock_payload()
@@ -1401,8 +1513,25 @@ class HardGateRegistrationTests(unittest.TestCase):
             ("dirty_state", 13),
             ("invalid_manifest", 15),
             ("lock_unavailable", 16),
+            ("underqualified_target", 17),
         ):
             self.assertIn(f"{code}={exit_code}", completed.stdout)
+
+    def test_cli_broad_exception_uses_shared_internal_error_exit_code(self) -> None:
+        module_path = ROOT / "scripts/python/build_impact_index.py"
+        spec = importlib.util.spec_from_file_location("build_impact_index_broad_exception", module_path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        output = StringIO()
+        with mock.patch.object(module, "build_and_publish_index", side_effect=RuntimeError("boom")):
+            with mock.patch.object(sys, "argv", [str(module_path), "--revision", "0" * 40]):
+                with redirect_stdout(output):
+                    result = module.main()
+        self.assertEqual(result, 12)
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["exit_code"], 12)
+        self.assertEqual(payload["code"], "internal_error")
 
 
 class ProductionReadinessEvidenceTests(unittest.TestCase):
