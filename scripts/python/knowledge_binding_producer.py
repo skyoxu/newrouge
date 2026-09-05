@@ -18,6 +18,8 @@ def produce_binding(root: Path, bundle: dict[str, Any], decisions: dict[str, Any
     if decisions.get("request_id") != bundle.get("request_id"):
         raise ValueError("decision_set_binding_mismatch")
     accepted = decisions.get("accepted", [])
+    if not accepted and isinstance(decisions.get("decisions"), list):
+        accepted = [item.get("candidate", {}) for item in decisions["decisions"] if isinstance(item, dict) and item.get("decision") == "accepted"]
     if not isinstance(accepted, list): raise ValueError("decision_set_invalid")
     candidate_paths = {str(c.get("path")) for c in bundle.get("candidates", []) if isinstance(c, dict) and c.get("path")}
     evidence = []
