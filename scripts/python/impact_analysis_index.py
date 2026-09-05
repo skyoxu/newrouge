@@ -194,7 +194,7 @@ def resolve_repository_path(root: Path, value: str, *, must_exist: bool = False)
     candidate = repository_root.joinpath(*PurePosixPath(normalized).parts)
     try:
         resolved = candidate.resolve(strict=must_exist)
-        resolved.relative_to(repository_root)
+        _relative_to_repository(resolved, repository_root)
     except (OSError, ValueError) as exc:
         raise fail("path_outside_repository", f"path escapes repository: {normalized}") from exc
     return candidate
@@ -212,16 +212,58 @@ def _is_reparse_point(path: Path) -> bool:
     return False
 
 
+def _canonical_windows_path(path: Path) -> Path:
+    """Normalize long/short Windows aliases before containment checks."""
+    absolute = os.path.realpath(os.path.abspath(str(path)))
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            get_long = ctypes.windll.kernel32.GetLongPathNameW
+            get_long.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32]
+            get_long.restype = ctypes.c_uint32
+            size = 260
+            while size <= 32768:
+                buffer = ctypes.create_unicode_buffer(size)
+                result = get_long(absolute, buffer, size)
+                if result == 0:
+                    break
+                if result < size:
+                    absolute = buffer.value
+                    break
+                size = result + 1
+        except (AttributeError, OSError):
+            pass
+    return Path(os.path.normcase(absolute))
+
+
+def _relative_to_repository(path: Path, root: Path) -> Path:
+    canonical_path = _canonical_windows_path(path)
+    canonical_root = _canonical_windows_path(root)
+    try:
+        return canonical_path.relative_to(canonical_root)
+    except ValueError as exc:
+        raise fail("path_outside_repository", f"path escapes repository: {path}") from exc
+
+
 def _ensure_no_reparse_ancestors(path: Path, root: Path) -> None:
     """Reject symlink/junction/reparse ancestors without resolving through them."""
     root_abs = Path(os.path.abspath(root)); path_abs = Path(os.path.abspath(path))
     try:
-        relative = path_abs.relative_to(root_abs)
-    except ValueError as exc:
-        raise fail("path_outside_repository", f"path escapes repository: {path}") from exc
+        # Preserve lexical path segments so reparse-point ancestors are still
+        # inspected instead of being hidden by realpath canonicalization.
+        relative = Path(os.path.normcase(str(path_abs))).relative_to(
+            Path(os.path.normcase(str(root_abs)))
+        )
+    except ValueError:
+        # Windows 8.3 aliases can make otherwise-local paths compare unequal;
+        # use the long-path canonical form only as a containment fallback.
+        relative = _relative_to_repository(path_abs, root_abs)
     current = root_abs
     if _is_reparse_point(current):
         raise fail("path_outside_repository", f"reparse-point repository root: {current}")
+    # Walk lexical ancestors from the repository root so a mocked or native
+    # junction marker is observed before any content/hash checks run.
     for part in relative.parts:
         current = current / part
         if _is_reparse_point(current):
@@ -383,6 +425,13 @@ class GitTreeSnapshot:
             if manifest_entry.get("included") is not True:
                 continue
             path = str(manifest_entry["path"])
+            lexical_candidate = self.root.joinpath(*PurePosixPath(normalize_repository_path(path)).parts)
+            try:
+                _ensure_no_reparse_ancestors(lexical_candidate, self.root)
+            except ImpactIndexError as exc:
+                if exc.code == "path_outside_repository":
+                    raise fail("source_read_failure", exc.reason) from exc
+                raise
             candidate = resolve_repository_path(self.root, path)
             try:
                 _ensure_no_reparse_ancestors(candidate, self.root)
