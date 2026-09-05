@@ -7,16 +7,18 @@ import json
 import os
 import re
 import subprocess
-try:
+if __package__:
+    from .impact_runtime import parse_runtime_bindings
+else:
     from impact_runtime import parse_runtime_bindings
-except ModuleNotFoundError:  # pragma: no cover
-    from scripts.python.impact_runtime import parse_runtime_bindings
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 try:
+    if __package__:
+        raise ModuleNotFoundError
     from impact_analysis_handoff import EXIT_CODES
     from impact_analysis_index import (
         FULL_SHA,
