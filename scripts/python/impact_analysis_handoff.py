@@ -132,6 +132,19 @@ def validate_handoff(
             return _fail("invalid_kcp_binding", f"knowledge binding field missing: {key}")
     if str(report.get("schema_version") or "") != "newrouge.impact-analysis.v1":
         return _fail("invalid_kcp_binding", "unsupported impact report schema")
+    manifest_path = report_path.with_name("run-manifest.v1.json")
+    if binding_evidence and manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            expected_path = str(manifest.get("binding_evidence_path") or "")
+            expected_sha = str(manifest.get("binding_evidence_sha256") or "")
+            sidecar = _resolve_repo_path(str(binding_evidence), root)
+            actual_path = sidecar.relative_to(root).as_posix() if sidecar else ""
+            actual_sha = hashlib.sha256(sidecar.read_bytes()).hexdigest() if sidecar and sidecar.exists() else ""
+            if expected_path != actual_path or expected_sha != actual_sha:
+                return _fail("invalid_kcp_binding", "binding evidence manifest mismatch")
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+            return _fail("invalid_kcp_binding", "binding evidence manifest is invalid")
     if not isinstance(report.get("target"), dict):
         return _fail("invalid_kcp_binding", "impact report target is missing")
     if binding_evidence:
