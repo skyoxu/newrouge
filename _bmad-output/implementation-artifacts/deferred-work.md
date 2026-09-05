@@ -17,9 +17,6 @@
   summary: Complete adapter hardening, producer-to-consumer workflow integration, and final CAP-1 through CAP-6 acceptance.
   evidence: End-to-end integration and acceptance depend on the Index, Analyzer, Runtime, and Knowledge Binding slices being complete.
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-index-core.md`
-  summary: Add a successful analyze_impact CLI integration test covering index discovery, frozen context binding, report output, and run manifest hashes.
-  evidence: Review found only analyzer unit tests; the production CLI success path is not exercised by the current verification suite.
-- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-index-core.md`
   summary: Register the Impact Analyzer unittest module in the default obligations hard gate.
   evidence: The analyzer tests exist and pass, but run_gate_bundle.py currently invokes only the Index and repository smoke modules.
 - source_spec: none
@@ -34,3 +31,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analyzer-production-readiness.md`
   summary: Complete the Analyzer CLI production harness with validated index discovery, immutable report/run-manifest publication, real success/failure E2E tests, and default hard-gate registration.
   evidence: CLI publication and gate integration are independently shippable operational concerns; splitting them keeps the current semantic correctness specification within the safe implementation context size.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analyzer-cli-production-harness.md`
+  summary: Harden concurrent CLI publication against report/run-manifest TOCTOU races and guarantee internal-error run-manifest lineage.
+  evidence: The current harness verifies single-process collision preservation; atomic create-if-absent and broad-exception manifest publication require a separate concurrency-focused slice.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analyzer-cli-production-harness.md`
+  summary: Reconcile real freeze artifact binding fields and extend CLI E2E to handoff validator and all consumer modes.
+  evidence: Real freeze schema lineage is intentionally outside this synthetic-binding slice; cross-consumer and downstream handoff coverage remain pending KCP integration.

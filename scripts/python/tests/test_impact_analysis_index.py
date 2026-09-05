@@ -1485,6 +1485,8 @@ class HardGateRegistrationTests(unittest.TestCase):
         gate = next(item for item in module._hard_gate_commands([]) if item["name"] == "obligations_unittest")
         self.assertIn("scripts.python.tests.test_impact_analysis_index", gate["cmd"])
         self.assertIn("scripts.python.tests.test_impact_analysis_index_repository_smoke", gate["cmd"])
+        self.assertIn("scripts.python.tests.test_analyze_impact_cli", gate["cmd"])
+        self.assertIn("scripts.python.tests.test_impact_analyzer", gate["cmd"])
 
     def test_repository_smoke_declares_real_filters_and_finite_subprocess_timeout(self) -> None:
         module_path = ROOT / "scripts/python/tests/test_impact_analysis_index_repository_smoke.py"

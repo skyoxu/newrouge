@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import json
-import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,17 +94,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 target_input = json.loads(args.target)
             except json.JSONDecodeError:
-                # PowerShell may strip embedded double quotes; accept the equivalent
-                # Python-literal form while retaining strict object validation downstream.
-                try:
-                    target_input = ast.literal_eval(args.target)
-                except (SyntaxError, ValueError):
-                    try:
-                        candidate = re.sub(r"([{,])\s*([A-Za-z_]\w*)\s*:", r"\1'\2':", args.target)
-                        candidate = re.sub(r":\s*([A-Za-z_]\w*)\s*([,}])", r":'\1'\2", candidate)
-                        target_input = ast.literal_eval(candidate)
-                    except (SyntaxError, ValueError) as exc:
-                        raise ImpactIndexError("unsupported_target", "invalid target JSON") from exc
+                raise ImpactIndexError("unsupported_target", "invalid target JSON")
         else:
             target_input = args.target
         if args.output:
@@ -147,11 +135,13 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 if not output_path.exists():
                     atomic_write_json(output_path, report)
-                atomic_write_json(output_path.parent / "run-manifest.v1.json", {
-                    "schema_version": "newrouge.impact-analysis-run-manifest.v1", "run_id": run_id,
-                    "report_path": output_path.relative_to(root).as_posix(), "status": exc.code,
-                    "failure_reason": {"code": exc.code, "reason": exc.reason}, "generated_at": report["generated_at"],
-                })
+                manifest_path = output_path.parent / "run-manifest.v1.json"
+                if not manifest_path.exists():
+                    atomic_write_json(manifest_path, {
+                        "schema_version": "newrouge.impact-analysis-run-manifest.v1", "run_id": run_id,
+                        "report_path": output_path.relative_to(root).as_posix(), "status": exc.code,
+                        "failure_reason": {"code": exc.code, "reason": exc.reason}, "generated_at": report["generated_at"],
+                    })
             except Exception:
                 pass
         print(json.dumps({"status": "failed", "code": exc.code, "exit_code": exc.exit_code, "reason": exc.reason, "run_id": run_id}, ensure_ascii=False, sort_keys=True))

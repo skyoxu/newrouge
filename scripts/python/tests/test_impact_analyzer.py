@@ -408,6 +408,18 @@ public sealed class CommentOnly
     def test_edge_rejects_path_outside_indexed_source_universe(self):
         self.assert_error('source_read_failure', lambda: _edge('file', 'A.cs', 'symbol', 'Demo.Target', 'references', 'Missing.cs', 'line:1-1', SHA, indexed_hashes={'A.cs': SHA}))
 
+    def test_non_csharp_sources_do_not_create_symbols(self):
+        sources = {
+            'Game.Core/Real.cs': 'namespace Demo; public class Real {}',
+            'Game.Godot/Fake.tscn': 'namespace Demo; public class Fake {}',
+            'docs/fake.md': 'namespace Demo; public class FakeToo {}',
+        }
+        symbols = SymbolIndex(sources, hashes_for(sources)).symbols
+        identities = {symbol.identity for symbol in symbols}
+        self.assertIn('Demo.Real', identities)
+        self.assertNotIn('Demo.Fake', identities)
+        self.assertNotIn('Demo.FakeToo', identities)
+
 
 if __name__ == "__main__":
     unittest.main()

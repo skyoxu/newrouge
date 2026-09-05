@@ -149,6 +149,8 @@ class SymbolIndex:
         self._type_spans: dict[str, list[tuple[int, int, Symbol]]] = {}
         self._method_spans: dict[str, list[tuple[int, int, Symbol]]] = {}
         for path, text in sorted(self.sanitized.items()):
+            if not path.lower().endswith(".cs"):
+                continue
             self.usings[path] = [
                 (match.group(1), text.count("\n", 0, match.start()) + 1)
                 for match in self.USING_RE.finditer(text)
@@ -159,6 +161,8 @@ class SymbolIndex:
             ]
             self._parse_types(path, text)
         for path, text in sorted(self.sanitized.items()):
+            if not path.lower().endswith(".cs"):
+                continue
             self._parse_members(path, text)
 
     @staticmethod
