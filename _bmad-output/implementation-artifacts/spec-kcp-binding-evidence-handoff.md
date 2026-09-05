@@ -2,8 +2,8 @@
 title: 'KCP Binding Evidence Handoff Integration'
 type: 'feature'
 created: '2026-09-05'
-status: 'in-progress'
-review_loop_iteration: 0
+status: 'in-review'
+review_loop_iteration: 1
 baseline_commit: '7f624f5'
 context:
   - '_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-adapter-handoff.md'
@@ -48,4 +48,5 @@ Given 未提供 sidecar，when 旧 manifest 校验，then 保持现有兼容行�
 - `py -3 -m unittest scripts.python.tests.test_knowledge_binding_producer scripts.python.tests.test_impact_analysis_handoff scripts.python.tests.test_analyze_impact_cli -v`
 - `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
 - `git diff --check`
+
 
