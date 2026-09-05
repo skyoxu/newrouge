@@ -539,7 +539,8 @@ class ManifestAndPublicationTests(RepositoryFixture):
     def test_exact_reuse_ignores_current_python_patch_version(self) -> None:
         first = self.build()
         self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-        with mock.patch.object(self.index.platform, "python_version", return_value="3.13.99"):
+        current_major_minor = ".".join(platform.python_version().split(".")[:2])
+        with mock.patch.object(self.index.platform, "python_version", return_value=f"{current_major_minor}.99"):
             second = self.index.build_and_publish_index(
                 self.repo,
                 revision=self.revision,
