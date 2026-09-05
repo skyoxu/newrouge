@@ -61,6 +61,7 @@ def validate_handoff(
     repo_root: str | os.PathLike[str] | None = None,
     consumer: str | None = None,
     task_id: str | None = None,
+    binding_evidence: str | os.PathLike[str] | None = None,
 ) -> HandoffValidationResult:
     values = (frozen_context, impact_report, revision)
     if not any(str(v or "").strip() for v in values):
@@ -133,6 +134,20 @@ def validate_handoff(
         return _fail("invalid_kcp_binding", "unsupported impact report schema")
     if not isinstance(report.get("target"), dict):
         return _fail("invalid_kcp_binding", "impact report target is missing")
+    if binding_evidence:
+        evidence_path = _resolve_repo_path(str(binding_evidence), root)
+        if evidence_path is None or not evidence_path.exists():
+            return _fail("invalid_kcp_binding", "binding evidence is missing")
+        try:
+            from .knowledge_binding_producer import validate_binding_evidence
+        except ImportError:
+            from knowledge_binding_producer import validate_binding_evidence
+        try:
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            if evidence.get("schema_version") != "newrouge.knowledge-binding-evidence.v1" or evidence.get("repository_revision") != requested_revision:
+                raise ValueError("binding_evidence_lineage_mismatch")
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return _fail("invalid_kcp_binding", str(exc))
     if str(report.get("risk_level") or "").strip().lower() not in {"high", "medium", "low", "unknown"}:
         return _fail("invalid_kcp_binding", "impact report risk_level is invalid")
     if str(report.get("status") or "").strip().lower() != "ok":
@@ -165,8 +180,9 @@ def main() -> int:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--consumer", default=None)
     parser.add_argument("--task-id", default=None)
+    parser.add_argument("--binding-evidence", default=None)
     args = parser.parse_args()
-    result = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=args.repo_root, consumer=args.consumer, task_id=args.task_id)
+    result = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=args.repo_root, consumer=args.consumer, task_id=args.task_id, binding_evidence=args.binding_evidence)
     print(json.dumps({"status": "ok" if result.ok else "fail", "code": result.code, "reason": result.reason, "identity": result.identity}, sort_keys=True))
     return result.exit_code
 
