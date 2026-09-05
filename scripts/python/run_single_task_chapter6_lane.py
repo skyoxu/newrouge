@@ -783,6 +783,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--frozen-context", default="")
     parser.add_argument("--impact-report", default="")
     parser.add_argument("--revision", default="")
+    parser.add_argument("--binding-evidence", default="")
     return parser
 
 
@@ -797,7 +798,7 @@ def main() -> int:
         fix_through=str(args.fix_through),
     )
 
-    handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id)
+    handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id, binding_evidence=args.binding_evidence)
     if not handoff.ok:
         payload = {"cmd": "run-single-task-chapter6", "task_id": task_id, "status": "fail", "stop_reason": handoff.code, "handoff": {"code": handoff.code, "reason": handoff.reason}, "steps": [], "out_dir": str(out_dir).replace("\\", "/")}
         _write_json(out_dir / "summary.json", payload)
