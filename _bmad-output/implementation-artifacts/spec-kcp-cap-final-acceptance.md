@@ -2,7 +2,7 @@
 title: 'KCP CAP-1 through CAP-6 Final Acceptance'
 type: 'feature'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: 'c4853a2'
 context:
@@ -53,4 +53,5 @@ Given 任一 CAP 缺少真实闭环证据，when final audit runs, then it remai
 - `git diff --check`
 
 </analysis>
+
 
