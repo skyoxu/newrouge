@@ -69,6 +69,10 @@ class ImpactAnalysisHandoffTests(unittest.TestCase):
             self.assertEqual(revision, result.identity["revision"])
             self.assertEqual("idx-test", result.identity["index_id"])
 
+    def test_binding_evidence_revision_mismatch_fails_closed(self):
+        result = validate_handoff("missing.json", "missing-report.json", "a" * 40, repo_root=Path.cwd(), binding_evidence="sidecar.json")
+        self.assertFalse(result.ok)
+
 
 if __name__ == "__main__":
     unittest.main()
