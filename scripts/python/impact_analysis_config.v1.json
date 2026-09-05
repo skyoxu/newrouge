@@ -163,7 +163,7 @@
       ]
     },
     {
-      "binary": false,
+      "binary": true,
       "parser_family": "gdscript-opaque",
       "parser_version": "v1",
       "path_prefixes": [],
