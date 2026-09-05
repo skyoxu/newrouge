@@ -2,7 +2,7 @@
 title: 'KCP Consumer Rollout and Adapter Hardening'
 type: 'feature'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '39fddfa'
 context:
@@ -24,10 +24,10 @@ context:
 
 ## Tasks & Acceptance
 
-- [ ] Chapter 4/5/6/Review 入口统一传递并校验 sidecar。
-- [ ] handoff 测试覆盖 resume/fork identity、TOCTOU 替换、manifest/report mismatch。
-- [ ] 真实仓库 bundle 执行四类 consumer rollout，记录 logs/ci 证据。
-- [ ] 更新 deferred-work 与执行计划，明确剩余 CAP 验收入口。
+- [x] Chapter 4/5/6/Review 入口统一传递并校验 sidecar.
+- [x] handoff 测试覆盖 resume/fork identity、TOCTOU 替换、manifest/report mismatch.
+- [x] 真实仓库 bundle 执行四类 consumer rollout，记录 logs/ci 证据.
+- [x] 更新 deferred-work 与执行计划，明确剩余 CAP 验收入口.
 
 Given sidecar 被替换或 manifest SHA 不匹配，when consumer preflight runs, then it fails before downstream execution.
 Given valid frozen context/report/sidecar/revision, when each consumer preflight runs, then it passes for chapter4, chapter5, chapter6, and review.
@@ -49,4 +49,5 @@ Given legacy invocation without sidecar, when compatibility mode is explicitly s
 - `py -3 -m unittest scripts.python.tests.test_impact_analysis_handoff scripts.python.tests.test_run_single_task_chapter6_lane -v`
 - 四类真实 consumer preflight 证据
 - `git diff --check`
+
 
