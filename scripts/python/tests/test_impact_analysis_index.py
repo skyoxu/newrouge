@@ -1468,11 +1468,40 @@ class LockAndAtomicityTests(ImpactIndexTestCase):
                     b"{}\n",
                     validator=lambda _: (_ for _ in ()).throw(RuntimeError("validation failed")),
                 )
-        markers = list(self.root.rglob("publication-cleanup-failure.v1.json"))
+        markers = list(self.root.rglob("publication-cleanup-failure.*.v1.json"))
         self.assertEqual(len(markers), 1)
         marker = json.loads(markers[0].read_text(encoding="utf-8"))
         self.assertEqual(marker["status"], "failed")
         self.assertTrue(any(item.name.endswith(".tmp") for item in markers[0].parent.iterdir()))
+
+    def test_review_cleanup_diagnostic_never_overwrites_existing_marker(self):
+        destination = self.root / "artifact.json"
+        existing = self.root / "publication-cleanup-failure.v1.json"
+        existing.write_bytes(b"original diagnostic")
+        unlink = Path.unlink
+        def deny_transient_cleanup(path, *args, **kwargs):
+            if path.name.endswith(".tmp"):
+                raise PermissionError("transient cleanup denied")
+            return unlink(path, *args, **kwargs)
+        with mock.patch.object(Path, "unlink", new=deny_transient_cleanup):
+            with self.assertRaisesRegex(RuntimeError, "original validation failure"):
+                self.index.atomic_publish_bytes(destination, b"{}\n", validator=lambda _: (_ for _ in ()).throw(RuntimeError("original validation failure")))
+        self.assertEqual(existing.read_bytes(), b"original diagnostic")
+        markers = [p for p in self.root.rglob("publication-cleanup-failure*.json") if p != existing]
+        self.assertEqual(len(markers), 1)
+        self.assertEqual(json.loads(markers[0].read_bytes())["status"], "failed")
+
+    def test_review_identity_acquisition_failure_prevents_publication(self):
+        destination = self.root / "artifact.json"
+        stat = Path.stat
+        def deny_temporary_stat(path, *args, **kwargs):
+            if path.name.endswith(".tmp"):
+                raise PermissionError("prepublication identity denied")
+            return stat(path, *args, **kwargs)
+        with mock.patch.object(Path, "stat", new=deny_temporary_stat):
+            with self.assertRaisesRegex(PermissionError, "prepublication identity denied"):
+                self.index.atomic_publish_bytes(destination, b"{}\n", validator=lambda data: json.loads(data))
+        self.assertFalse(destination.exists())
 
 
 class HardGateRegistrationTests(unittest.TestCase):
@@ -1524,7 +1553,8 @@ class HardGateRegistrationTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("build_impact_index_broad_exception", module_path)
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        with mock.patch.object(sys, "path", [str(ROOT / "scripts/python"), *sys.path]):
+            spec.loader.exec_module(module)
         output = StringIO()
         with mock.patch.object(module, "build_and_publish_index", side_effect=RuntimeError("boom")):
             with mock.patch.object(sys, "argv", [str(module_path), "--revision", "0" * 40]):

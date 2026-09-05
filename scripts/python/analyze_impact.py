@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,21 +13,21 @@ from typing import Any
 
 try:
     from impact_analysis_handoff import EXIT_CODES
-    from impact_analysis_index import ImpactIndexError, validate_index_bytes
+    from impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes
     from impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
-        atomic_write_json,
+        validate_report_document,
         failure_report,
         load_frozen_binding,
     )
 except ModuleNotFoundError:  # pragma: no cover
     from scripts.python.impact_analysis_handoff import EXIT_CODES
-    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes
+    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes
     from scripts.python.impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
-        atomic_write_json,
+        validate_report_document,
         failure_report,
         load_frozen_binding,
     )
@@ -68,6 +70,147 @@ def _discover_index(root: Path, revision: str) -> Path:
     return sorted((p for p, _, _ in candidates), key=lambda p: p.as_posix())[0]
 
 
+def _validated_output(root: Path, value: str) -> Path:
+    # Check Windows aliases before resolve() can normalize them away.
+    for part in Path(value).parts:
+        if part == Path(value).anchor:
+            continue
+        if (part.rstrip(" .") != part or re.search(r'[<>:"|?*\x00-\x1f]', part)
+                or re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?", part)):
+            raise ImpactIndexError("index_identity_collision", "reserved output path component")
+    path = _resolve_inside(root, value)
+    try:
+        # The policy boundary is the literal repository logs/ci root, not its redirect target.
+        relative = path.relative_to(root / "logs" / "ci")
+        if not relative.parts:
+            raise ValueError("output must name a file beneath logs/ci")
+    except ValueError as exc:
+        raise ImpactIndexError("path_outside_repository", "output must remain under logs/ci") from exc
+    if path.name.casefold() in {"run-manifest.v1.json", ".impact-report-publish.lock", "publication-cleanup-failure.v1.json"}:
+        raise ImpactIndexError("index_identity_collision", "reserved output filename")
+    return path
+
+
+def _publish_pair(root: Path, output: Path, report: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    output = _validated_output(root, str(output))
+    report_data = artifact_json_bytes(report)
+    report_sha = hashlib.sha256(report_data).hexdigest()
+    manifest_data = artifact_json_bytes(manifest)
+
+    def validate_report(data: bytes) -> None:
+        value = json.loads(data)
+        if value["status"] == "ok":
+            validate_report_document(value)
+        elif value.get("failure_reason", {}).get("code") != value["status"]:
+            raise ImpactIndexError("invalid_manifest", "failure report status mismatch")
+        if data != report_data:
+            raise ImpactIndexError("internal_error", "report bytes mismatch")
+
+    def validate_manifest(data: bytes) -> None:
+        value = json.loads(data)
+        if (data != manifest_data or value["status"] != report["status"]
+                or value["report_path"] != output.relative_to(root).as_posix()
+                or value["report_sha256"] != report_sha):
+            raise ImpactIndexError("invalid_manifest", "run manifest does not bind this report")
+
+    validate_report(report_data)
+    validate_manifest(manifest_data)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _validated_output(root, str(output))
+    lock = output.parent / ".impact-report-publish.lock"
+    try:
+        lock.mkdir()
+    except FileExistsError as exc:
+        raise ImpactIndexError("index_identity_collision", "another writer owns the output directory") from exc
+    owned_identity = None
+    cleanup_warning = None
+    publication_error = None
+    diagnostics: list[str] = []
+    manifest_path = output.with_name("run-manifest.v1.json")
+    try:
+        if output.exists() or manifest_path.exists():
+            raise ImpactIndexError("index_identity_collision", "output report or run manifest already exists")
+        owned_identity = atomic_publish_bytes(output, report_data, validator=validate_report)
+        atomic_publish_bytes(manifest_path, manifest_data, validator=validate_manifest)
+    except Exception as exc:
+        publication_error = exc
+        if owned_identity is not None:
+            try:
+                diagnostics.extend(_rollback_report(output, owned_identity, report_data))
+            except Exception as rollback_error:
+                diagnostics.append(f"rollback could not complete; possible residual report: {output}; reason: {rollback_error}")
+    finally:
+        try:
+            lock.rmdir()
+        except Exception as exc:
+            cleanup_warning = f"writer lock cleanup failed; residual lock: {lock}; reason: {exc}"
+    if publication_error is not None:
+        if cleanup_warning:
+            diagnostics.append(cleanup_warning)
+        code = publication_error.code if isinstance(publication_error, ImpactIndexError) else "internal_error"
+        reason = str(publication_error)
+        if diagnostics:
+            reason += "; " + "; ".join(diagnostics)
+        raise ImpactIndexError(code, reason) from publication_error
+    return {"cleanup_warning": cleanup_warning} if cleanup_warning else {}
+
+
+def _rollback_report(output: Path, owned_identity: Any, report_data: bytes) -> list[str]:
+    """Compensate only a verified owned report; never hide the publication error."""
+    try:
+        current = output.stat()
+    except FileNotFoundError:
+        return []
+    except Exception as exc:
+        return [f"rollback identity unavailable; possible residual report: {output}; reason: {exc}"]
+    identity_fields = ("st_dev", "st_ino", "st_ctime_ns", "st_mtime_ns")
+    if any(getattr(current, field) != getattr(owned_identity, field) for field in identity_fields):
+        return [f"rollback ownership changed; residual report retained at: {output}"]
+    try:
+        unchanged = output.read_bytes() == report_data
+    except Exception as exc:
+        return [f"rollback content unavailable; possible residual report: {output}; reason: {exc}"]
+    if not unchanged:
+        return [f"rollback content changed; residual report retained at: {output}"]
+    try:
+        output.unlink()
+        return []
+    except Exception as cleanup_error:
+        quarantine = output.with_name(f".unpublished-{uuid.uuid4()}.tmp")
+        try:
+            output.rename(quarantine)
+        except Exception as quarantine_error:
+            return [f"publication rollback failed; residual report: {output}; delete: {cleanup_error}; quarantine: {quarantine_error}"]
+        return [f"unpublished report quarantined at {quarantine}; delete: {cleanup_error}"]
+
+
+def _failure_evidence(root: Path, output: Path | None, run_id: str, target: Any,
+                      revision: str | None, reason: ImpactIndexError) -> dict[str, Any]:
+    isolated = root / "logs" / "ci" / _utc_date() / "impact-analysis" / ("failed-" + run_id) / "impact-report.v1.json"
+    candidates = [output, isolated] if output is not None and output != isolated else [isolated]
+    errors = []
+    for candidate in candidates:
+        try:
+            candidate = _validated_output(root, str(candidate))
+            diagnostic_reason = reason
+            if errors:
+                diagnostic_reason = ImpactIndexError(reason.code, reason.reason + "; prior evidence publication failed: " + "; ".join(errors))
+            report = failure_report(target, revision, diagnostic_reason)
+            manifest = {
+                "schema_version": "newrouge.impact-analysis-run-manifest.v1", "run_id": run_id,
+                "report_path": candidate.relative_to(root).as_posix(), "status": reason.code,
+                "report_sha256": hashlib.sha256(artifact_json_bytes(report)).hexdigest(),
+                "failure_reason": report["failure_reason"], "generated_at": report["generated_at"],
+            }
+            cleanup = _publish_pair(root, candidate, report, manifest)
+            if errors:
+                cleanup["evidence_warning"] = "; ".join(errors)
+            return {"evidence_saved": True, "report_path": manifest["report_path"], "report_sha256": manifest["report_sha256"], **cleanup}
+        except Exception as exc:
+            errors.append(str(exc))
+    return {"evidence_saved": False, "evidence_error": "; ".join(errors)}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Analyze a target against an immutable Impact Index. Stable failure codes: "
@@ -86,39 +229,38 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.repository_root).resolve()
     run_id = str(uuid.uuid4())
     output_path: Path | None = None
+    target_input: Any = {}
+    revision: str | None = None
+    publication_started = False
     try:
+        requested_output = args.output or str(root / "logs" / "ci" / _utc_date() / "impact-analysis" / run_id / "impact-report.v1.json")
+        output_path = _validated_output(root, requested_output)
         if len(args.revision.strip()) != 40 or any(c not in "0123456789abcdefABCDEF" for c in args.revision.strip()):
             raise ImpactIndexError("revision_mismatch", "revision must be a full 40-character Git SHA")
         revision = args.revision.strip().lower()
         if isinstance(args.target, str):
             try:
-                target_input = json.loads(args.target)
-            except json.JSONDecodeError:
-                raise ImpactIndexError("unsupported_target", "invalid target JSON")
+                parsed_target = json.loads(args.target)
+                artifact_json_bytes(parsed_target)
+                target_input = parsed_target
+            except (ValueError, UnicodeError):
+                raise ImpactIndexError("unsupported_target", f"invalid target JSON: {ascii(args.target)}")
         else:
             target_input = args.target
-        if args.output:
-            output_path = _resolve_inside(root, args.output)
-            try:
-                output_path.relative_to((root / "logs" / "ci").resolve())
-            except ValueError as exc:
-                raise ImpactIndexError("path_outside_repository", "successful output must remain under logs/ci") from exc
-        else:
-            output_path = root / "logs" / "ci" / _utc_date() / "impact-analysis" / run_id / "impact-report.v1.json"
         index_path = _resolve_inside(root, args.index) if args.index else _discover_index(root, revision)
         try:
             index_path.relative_to((root / "logs" / "ci").resolve())
         except ValueError as exc:
             raise ImpactIndexError("path_outside_repository", "index must remain under logs/ci immutable roots") from exc
-        if output_path.exists():
-            raise ImpactIndexError("index_identity_collision", "output report already exists")
+        if output_path.exists() or output_path.with_name("run-manifest.v1.json").exists():
+            raise ImpactIndexError("index_identity_collision", "output report or run manifest already exists")
         if index_path.is_dir(): index_path = index_path / "impact-index.v1.json"
         analyzer = ImpactAnalyzer(root, index_path, revision, args.trusted_ref)
         if not args.frozen_context:
             raise ImpactIndexError("invalid_kcp_binding", "--frozen-context is required for successful reports")
         binding = load_frozen_binding(root, args.frozen_context, revision, args.consumer, args.task_id)
         report = analyzer.analyze(target_input, binding)
-        report_sha = atomic_write_json(output_path, report)
+        report_sha = hashlib.sha256(artifact_json_bytes(report)).hexdigest()
         manifest = {
             "schema_version": "newrouge.impact-analysis-run-manifest.v1", "run_id": run_id,
             "report_path": output_path.relative_to(root).as_posix(), "report_sha256": report_sha,
@@ -126,35 +268,17 @@ def main(argv: list[str] | None = None) -> int:
             "repository_revision": revision, "knowledge_binding_sha256": binding["frozen_context_sha256"],
             "status": "ok", "generated_at": report["generated_at"],
         }
-        atomic_write_json(output_path.parent / "run-manifest.v1.json", manifest)
-        print(json.dumps({"status": "ok", "run_id": run_id, "report_path": manifest["report_path"], "report_sha256": report_sha}, ensure_ascii=False, sort_keys=True))
+        publication_started = True
+        cleanup = _publish_pair(root, output_path, report, manifest)
+        print(json.dumps({"status": "ok", "run_id": run_id, "report_path": manifest["report_path"], "report_sha256": report_sha, **cleanup}, ensure_ascii=False, sort_keys=True))
         return 0
-    except ImpactIndexError as exc:
-        report = failure_report(locals().get("target_input", {}), locals().get("revision"), exc)
-        if output_path is not None:
-            try:
-                if not output_path.exists():
-                    atomic_write_json(output_path, report)
-                manifest_path = output_path.parent / "run-manifest.v1.json"
-                if not manifest_path.exists():
-                    atomic_write_json(manifest_path, {
-                        "schema_version": "newrouge.impact-analysis-run-manifest.v1", "run_id": run_id,
-                        "report_path": output_path.relative_to(root).as_posix(), "status": exc.code,
-                        "failure_reason": {"code": exc.code, "reason": exc.reason}, "generated_at": report["generated_at"],
-                    })
-            except Exception:
-                pass
-        print(json.dumps({"status": "failed", "code": exc.code, "exit_code": exc.exit_code, "reason": exc.reason, "run_id": run_id}, ensure_ascii=False, sort_keys=True))
-        return exc.exit_code
-    except Exception as exc:  # pragma: no cover
-        reason = ImpactIndexError("internal_error", str(exc))
-        if output_path is not None:
-            try:
-                atomic_write_json(output_path, failure_report(locals().get("target_input", {}), locals().get("revision"), reason))
-            except Exception:
-                pass
-        print(json.dumps({"status": "failed", "code": "internal_error", "exit_code": EXIT_CODES["internal_error"], "reason": str(exc), "run_id": run_id}, ensure_ascii=False, sort_keys=True))
-        return EXIT_CODES["internal_error"]
+    except Exception as exc:
+        reason = exc if isinstance(exc, ImpactIndexError) else ImpactIndexError("internal_error", str(exc))
+        evidence = _failure_evidence(root, None if publication_started else output_path,
+                                     run_id, target_input, revision, reason)
+        print(json.dumps({"status": "failed", "code": reason.code, "exit_code": reason.exit_code,
+                          "reason": reason.reason, "run_id": run_id, **evidence}, ensure_ascii=False, sort_keys=True))
+        return reason.exit_code
 
 
 if __name__ == "__main__":

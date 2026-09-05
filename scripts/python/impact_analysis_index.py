@@ -899,7 +899,8 @@ def atomic_publish_bytes(
     *,
     validator: Callable[[bytes], Any],
     sleep: Callable[[float], None] = time.sleep,
-) -> None:
+) -> os.stat_result:
+    """Publish without overwrite and return identity captured before publication."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         raise fail("index_identity_collision", f"destination already exists: {destination}")
@@ -913,6 +914,9 @@ def atomic_publish_bytes(
         if reread != data:
             raise fail("internal_error", f"temporary artifact reread mismatch: {temporary}")
         validator(reread)
+        identity = temporary.stat()
+        if identity.st_size != len(data):
+            raise fail("internal_error", f"temporary artifact size changed: {temporary}")
         for attempt in range(len(SHARING_RETRY_DELAYS) + 1):
             try:
                 os.rename(temporary, destination)
@@ -923,14 +927,18 @@ def atomic_publish_bytes(
                 if not _sharing_violation(exc) or attempt >= len(SHARING_RETRY_DELAYS):
                     raise fail("internal_error", f"atomic replace failed for {destination}: {exc}") from exc
                 sleep(SHARING_RETRY_DELAYS[attempt])
+        return identity
     finally:
         for transient in (temporary,):
             try:
                 transient.unlink(missing_ok=True)
             except OSError as exc:
-                marker = transient.parent / "publication-cleanup-failure.v1.json"
+                marker = transient.parent / f"publication-cleanup-failure.{uuid.uuid4()}.v1.json"
                 try:
-                    marker.write_bytes(artifact_json_bytes({"schema_version":"newrouge.impact-index-publication-cleanup-failure.v1","status":"failed","path":str(transient),"reason":str(exc)}))
+                    with marker.open("xb") as handle:
+                        handle.write(artifact_json_bytes({"schema_version":"newrouge.impact-index-publication-cleanup-failure.v1","status":"failed","path":str(transient),"reason":str(exc)}))
+                        handle.flush()
+                        os.fsync(handle.fileno())
                 except OSError:
                     pass
 

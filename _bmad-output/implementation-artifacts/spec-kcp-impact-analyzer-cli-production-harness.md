@@ -2,7 +2,7 @@
 title: 'KCP Impact Analyzer CLI Production Harness'
 type: 'feature'
 created: '2026-09-05'
-status: 'done'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: '9a6afe1e88d6f1a6a85e2c1bb9045ba4678b8b82'
 context:
@@ -45,6 +45,10 @@ context:
 **Acceptance Criteria:**
 - Given 涓存椂鐪熷疄 Git repository 涓庡敮涓€鍖归厤鐨?immutable index锛寃hen 杩愯 CLI 鎴愬姛璺緞锛宼hen exit code 涓?0锛宺eport 鍜?run-manifest 鍧囧瓨鍦ㄤ簬 `logs/ci/**`锛屼笖鍏?revision銆乮ndex identity銆乥inding 涓?SHA-256 鍙浉浜掗獙璇併€?- Given 鏈樉寮忎紶鍏?index锛寃hen 浠呭瓨鍦ㄤ竴涓尮閰?revision/index identity锛宼hen CLI 鑷姩 discovery 骞朵骇鐢熶笌鏄惧紡 index 绛変环鐨勭粨鏋溿€?- Given frozen context 缂哄け銆乻chema 閿欒銆乺evision/task/consumer/hash 涓嶅尮閰嶏紝when 杩愯 CLI锛宼hen 鍦ㄥ垎鏋愬墠 fail-closed锛岃繑鍥炵ǔ瀹氶潪闆?code锛屼笖涓嶄骇鐢熸垚鍔?report銆?- Given output path 宸插瓨鍦紝when 鍐嶆杩愯 CLI锛宼hen 涓嶈鐩栧師鏂囦欢骞惰繑鍥炵ǔ瀹?collision code銆?- Given 榛樿 obligations hard gate锛寃hen 鎵ц闂ㄧ锛宼hen CLI harness 娴嬭瘯妯″潡琚疄闄呭彂鐜板苟閫氳繃銆?
 ## Spec Change Log
+
+- 2026-09-05: 工件完整性修复勘误：CLI 统一预验证并发布 report/manifest，目录写者锁与 Windows 不覆盖 rename 保护协作进程；早期失败及输出冲突均尝试保留独立失败二件套。原 malformed target 的无工件断言已纠正。此处“原子发布”仅适用于单文件，两文件不是原子事务。真实 Git fixture 使用正式 builder，但 binding 仍为 loader-compatible synthetic fixture，不能证明真实 freeze lineage。完整矩阵和最终退出码见 `logs/ci/2026-09-05/impact-cli-artifact-integrity/`；当前保持 in-review，不作 CAP 总验收声明。
+
+- 2026-09-05: 完成度勘误：重开为 in-review。malformed target 测试断言无工件，与 INVALID_TARGET 要求冲突；并发及部分发布仍未闭环。原冻结块存在真实编码损坏，保留历史字节；修复规格为 spec-kcp-impact-cli-artifact-integrity.md。测试使用 loader-compatible synthetic binding，不符合真实 KCP frozen schema；先前 schema-compatible 措辞撤回。总缺陷见 execution-plans/2026-09-05-kcp-impact-analysis-completion.md。
 
 - 2026-09-05: 复审补齐非 C# source 过滤回归、malformed JSON fail-closed、multi-index discovery collision、run-manifest collision preservation，并将并发 TOCTOU、内部错误 manifest lineage 与真实 freeze schema 衔接登记为后续切片。
 

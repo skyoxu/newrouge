@@ -37,3 +37,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analyzer-cli-production-harness.md`
   summary: Reconcile real freeze artifact binding fields and extend CLI E2E to handoff validator and all consumer modes.
   evidence: Real freeze schema lineage is intentionally outside this synthetic-binding slice; cross-consumer and downstream handoff coverage remain pending KCP integration.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-cli-artifact-integrity.md`
+  summary: 补齐 Analyzer 失败报告中已知 index/binding 来源与被拒绝 revision 请求值的追溯。
+  evidence: 旧 CLI failure_report 调用未传已读 index，invalid revision 也在赋值前抛错；本轮审查确认这是既有缺口。
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-cli-artifact-integrity.md`
+  summary: 在 adapter 崩溃一致性验收中明确残留发布目录锁的人工恢复规程。
+  evidence: 本轮冻结规格排除进程强杀保证；不得将强杀后残留锁视为自动清理授权。

@@ -7,7 +7,6 @@ import json
 import os
 import re
 import subprocess
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1023,17 +1022,6 @@ def validate_report_document(report: dict[str, Any]) -> None:
         raise
     except (KeyError, TypeError, ValueError, AttributeError) as exc:
         raise ImpactIndexError("invalid_manifest", f"impact report validation failed: {exc}") from exc
-
-
-def atomic_write_json(path: Path, document: dict[str, Any]) -> str:
-    path.parent.mkdir(parents=True, exist_ok=True); data = artifact_json_bytes(document); digest = _sha(data)
-    temp = path.parent / f".{path.name}.{uuid.uuid4()}.tmp"
-    try:
-        with temp.open("xb") as handle: handle.write(data); handle.flush(); os.fsync(handle.fileno())
-        os.replace(temp, path)
-    finally:
-        temp.unlink(missing_ok=True)
-    return digest
 
 
 def failure_report(target_input: Any, revision: str | None, reason: ImpactIndexError, index: dict[str, Any] | None = None, index_sha256: str | None = None) -> dict[str, Any]:
