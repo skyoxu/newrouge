@@ -1856,6 +1856,7 @@ def main() -> int:
         args.revision,
         repo_root=repo_root(),
         consumer="review",
+        binding_evidence=args.binding_evidence,
     )
     if not handoff.ok:
         print(f"[sc-review-pipeline] ERROR: {handoff.code}: {handoff.reason}")

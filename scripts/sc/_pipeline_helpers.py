@@ -84,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--frozen-context", default=None, help="Frozen KCP context path for impact handoff.")
     parser.add_argument("--impact-report", default=None, help="Impact analysis report path for handoff.")
     parser.add_argument("--revision", default=None, help="Full Git revision bound to the handoff.")
+    parser.add_argument("--binding-evidence", default=None, help="Binding evidence sidecar for impact handoff.")
     return parser
 
 
