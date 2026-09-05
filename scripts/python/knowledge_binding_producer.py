@@ -37,6 +37,18 @@ def produce_binding(root: Path, bundle: dict[str, Any], decisions: dict[str, Any
     evidence.sort(key=lambda x: x["path"].encode("utf-8"))
     return {"schema_version":"newrouge.knowledge-binding-evidence.v1", "repository_revision":revision, "request_id":bundle["request_id"], "source_bundle_sha256":"sha256:" + _sha(json.dumps(bundle, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()), "evidence":evidence}
 
+def validate_binding_evidence(root: Path, bundle: dict[str, Any], evidence: dict[str, Any]) -> None:
+    if evidence.get("schema_version") != "newrouge.knowledge-binding-evidence.v1": raise ValueError("binding_schema_invalid")
+    if evidence.get("request_id") != bundle.get("request_id"): raise ValueError("binding_request_mismatch")
+    revision = evidence.get("repository_revision")
+    if not isinstance(revision, str) or subprocess.run(["git", "-C", str(root), "cat-file", "-e", revision], capture_output=True).returncode != 0: raise ValueError("binding_revision_invalid")
+    for item in evidence.get("evidence", []):
+        path, expected = item.get("path"), item.get("sha256")
+        if not isinstance(path, str) or not isinstance(expected, str): raise ValueError("binding_entry_invalid")
+        try: raw = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{path}"], capture_output=True, check=True, timeout=30).stdout
+        except Exception as exc: raise ValueError("source_reread_failed") from exc
+        if _sha(raw) != expected: raise ValueError("binding_source_hash_mismatch")
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)

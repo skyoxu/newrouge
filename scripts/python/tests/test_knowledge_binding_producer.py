@@ -1,6 +1,6 @@
 import tempfile, subprocess, unittest
 from pathlib import Path
-from scripts.python.knowledge_binding_producer import produce_binding
+from scripts.python.knowledge_binding_producer import produce_binding, validate_binding_evidence
 
 class KnowledgeBindingProducerTests(unittest.TestCase):
     def test_rereads_accepted_source_at_revision(self):
@@ -22,3 +22,4 @@ class KnowledgeBindingProducerTests(unittest.TestCase):
             b={'status':'shadow_ready','freeze_state':'unfrozen','request_id':'r','snapshot':{'commit':rev},'candidates':[{'path':'docs/a.md'}]}
             out=produce_binding(root,b,{'request_id':'r','decisions':[{'decision':'accepted','candidate':{'path':'docs/a.md'}}]})
             self.assertEqual(len(out['evidence']),1)
+            validate_binding_evidence(root,b,out)
