@@ -7,6 +7,10 @@ import json
 import os
 import re
 import subprocess
+try:
+    from impact_runtime import parse_runtime_bindings
+except ModuleNotFoundError:  # pragma: no cover
+    from scripts.python.impact_runtime import parse_runtime_bindings
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -835,9 +839,20 @@ class ImpactAnalyzer:
                             rel = "implements" if target.kind in {"interface", "contract"} else "inherits"
                             source_kind = "class" if sym.kind == "contract" else sym.kind
                             edges.append(_edge(source_kind, sym.identity, target.kind, target.identity, rel, path, f"line:{sym.line}-{sym.line}", self.hashes[path], indexed_hashes=self.hashes))
-        # Runtime mapping and Knowledge Binding producer are intentionally out of scope
-        # for this semantic correctness slice. Runtime/knowledge arrays stay empty;
-        # supplied KCP binding is copied and validated by the report envelope only.
+        runtime_edges: list[dict[str, Any]] = []
+        bound_scripts = {e["to"] for e in edges if e["relation"] in {"references", "consumes"} and e["to_kind"] in {"symbol", "event", "contract"}}
+        for path, text in sorted(self.sources.items()):
+            if not path.lower().endswith((".tscn", ".tres")):
+                continue
+            try:
+                parsed = parse_runtime_bindings(path, text, self.hashes, allowed_script_paths=set(self.sources))
+            except ValueError as exc:
+                raise ImpactIndexError("source_read_failure", f"runtime source parse failed: {path}") from exc
+            for item in parsed:
+                if item["to_kind"] == "script" and item["to"] not in bound_scripts and target.canonical_path != item["to"]:
+                    continue
+                runtime_edges.append(item)
+        edges.extend(runtime_edges)
         edges = _sort_edges(edges)
         risk, rules, reasons = classify_risk(target, edges)
         affected_files = sorted({target.canonical_path, *(e["evidence_path"] for e in edges)}, key=lambda x: x.encode("utf-8"))
@@ -1005,8 +1020,11 @@ def validate_report_document(report: dict[str, Any]) -> None:
         for item in report["runtime_refs"] + report["knowledge_refs"]:
             if not isinstance(item, dict) or set(item) != edge_keys:
                 raise ValueError("derived evidence shape is invalid")
-        if report["runtime_refs"] or report["knowledge_refs"]:
-            raise ValueError("runtime and knowledge producer evidence is out of scope")
+        expected_runtime = [e for e in report["impact_edges"] if e["relation"] == "binds"]
+        if report["runtime_refs"] != expected_runtime:
+            raise ValueError("runtime_refs projection is inconsistent")
+        if report["knowledge_refs"]:
+            raise ValueError("knowledge producer evidence is out of scope")
         if report["matched_risk_rules"] != sorted(set(report["matched_risk_rules"]), key=RISK_RULE_ORDER.index):
             raise ValueError("risk rules are not canonically ordered")
         if len(report["matched_risk_rules"]) != len(report["risk_reasons"]):

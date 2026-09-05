@@ -2,8 +2,8 @@
 title: 'KCP Impact Runtime Mapping'
 type: 'feature'
 created: '2026-09-05'
-status: 'draft'
-review_loop_iteration: 0
+status: 'in-progress'
+review_loop_iteration: 1
 baseline_commit: 'faa04e7ebcedde15d28951820a09b8061bc56d71'
 context:
   - '_bmad-output/architectures/architecture-kcp-impact-analysis/architecture-details.md'

@@ -42,7 +42,8 @@
     "scripts/python/impact_analysis_index.py",
     "scripts/python/build_impact_index.py",
     "scripts/python/impact_analysis_config.v1.json",
-    "scripts/python/impact_target_aliases.v1.json"
+    "scripts/python/impact_target_aliases.v1.json",
+    "scripts/python/impact_runtime.py"
   ],
   "index_schema": "newrouge.impact-index.v1",
   "maximum_file_size_bytes": 4194304,
@@ -159,6 +160,16 @@
       "source_kind": "scene",
       "suffixes": [
         ".tscn"
+      ]
+    },
+    {
+      "binary": false,
+      "parser_family": "gdscript-opaque",
+      "parser_version": "v1",
+      "path_prefixes": [],
+      "source_kind": "script",
+      "suffixes": [
+        ".gd"
       ]
     },
     {

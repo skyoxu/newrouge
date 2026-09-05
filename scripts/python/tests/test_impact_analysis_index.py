@@ -200,6 +200,7 @@ class CanonicalIdentityTests(ImpactIndexTestCase):
             "scripts/python/build_impact_index.py",
             "scripts/python/impact_analysis_config.v1.json",
             "scripts/python/impact_target_aliases.v1.json",
+            "scripts/python/impact_runtime.py",
         ):
             with self.subTest(required=required):
                 candidate = json.loads(json.dumps(source))
@@ -261,6 +262,7 @@ class RepositoryFixture(ImpactIndexTestCase):
             "scripts/python/build_impact_index.py",
             "scripts/python/impact_analysis_config.v1.json",
             "scripts/python/impact_target_aliases.v1.json",
+            "scripts/python/impact_runtime.py",
         ):
             source = ROOT / relative
             if not source.is_file():
@@ -362,7 +364,6 @@ class ManifestAndPublicationTests(RepositoryFixture):
             "adr",
         )
         for path in (
-            "Game.Godot/Scripts/Unsupported.gd",
             "Game.Godot/Tests/unsupported.feature",
             "Game.Godot/Translations/unsupported.csv",
         ):

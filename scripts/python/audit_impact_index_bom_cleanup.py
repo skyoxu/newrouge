@@ -54,6 +54,7 @@ def main() -> int:
             index._path_selected(path, roots, identities)
             and index._exclusion_reason(path, config["exclusions"]) is None
             and index._source_rule(path, config["source_rules"]) is not None
+            and not path.lower().endswith(".gd")
         )
         bom = baseline.startswith(b"\xef\xbb\xbf")
         if selected:

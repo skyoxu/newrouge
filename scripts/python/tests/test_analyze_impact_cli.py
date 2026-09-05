@@ -33,6 +33,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
             "scripts/python/build_impact_index.py",
             "scripts/python/impact_analysis_config.v1.json",
             "scripts/python/impact_target_aliases.v1.json",
+            "scripts/python/impact_runtime.py",
         ):
             destination = self.repo / relative
             destination.parent.mkdir(parents=True, exist_ok=True)

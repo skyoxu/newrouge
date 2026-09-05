@@ -558,6 +558,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "scripts/python/build_impact_index.py",
         "scripts/python/impact_analysis_config.v1.json",
         "scripts/python/impact_target_aliases.v1.json",
+        "scripts/python/impact_runtime.py",
     }
     if not config.get("allow_identity_only") and not required_identities.issubset(set(config["identity_files"])):
         raise fail("invalid_manifest", "config identity_files must include all Index Core identity files")
