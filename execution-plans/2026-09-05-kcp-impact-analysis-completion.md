@@ -3,13 +3,13 @@
 - Title: KCP Impact Analysis 完成计划
 - Status: active
 - Branch: feat/kcp-impact-analysis-prd
-- Git Head: 8e751d1a0303ed343691aabb67f9b0d394914f59
+- Git Head: faa04e7ebcedde15d28951820a09b8061bc56d71
 - Goal: 按 docs/121.txt、SPEC 和 Architecture 逐项补齐功能及验收证据。
 - Scope: Impact CLI、Runtime mapper、Knowledge producer、真实 freeze lineage、consumer adapters、CAP 验收；遵守既有 authority 边界。
-- Current step: CLI 工件完整性子规格完成，三层 review 的本轮修复项通过定向回归；整体功能继续保持 active。
+- Current step: Runtime Mapping 调查完成，已形成 draft 实施规格；整体功能继续保持 active。
 - Last completed step: 审查修复后的 CLI 与 LockAndAtomicity 共 41 项通过；此前核心 100 项通过、受归档污染的 smoke 静止重跑通过；独立 4 项导入、gate consistency 通过。
 - Stop-loss: 不修改或提交 docs/121.txt，不写 current/LKG/publication/freeze/generated state；不把 synthetic fixture、测试数量或局部 done 当作整体完成。
-- Next action: 继续 Runtime 主体实施；CLI-05/06 与真实 Knowledge/freeze 集成前收口，最后完成 adapter 和 CAP 总验收。
+- Next action: 确认 Runtime 实施规格后先补 RED，再接入 parser/resolver/report/CLI；CLI-05/06 在真实 Knowledge/freeze 集成前收口，最后完成 adapter 和 CAP 总验收。
 - Recovery command: git status --short
 - Open questions: 后续真实 freeze lineage 从哪些既有只读权威工件解析；本轮不扩 KCP schema。
 - Exit criteria: 每项 CAP 有明确实现路径、正负测试、实际运行证据；所有 Needs Fix 已关闭或明确阻止整体完成声明。
@@ -72,3 +72,9 @@
 三层审查结果与逐项分流见 `review-triage.md`。本轮 patch 均已执行：发布前身份、补偿查询异常与残留诊断、唯一清理 marker、失败锁诊断、根 junction、受控竞争窗口。`review-red.log` 为 8 tests / exit 1；`review-fallback-red.log` 为 1 test / exit 1；最终 `review-green.log` 为 41 tests / 69.150s / exit 0。该次覆盖 CLI 和受影响的 LockAndAtomicity；此前已通过的无关完整核心与 smoke 未重复运行。
 
 CLI-01/02/03 与 TEST-01 关闭。CLI-04 在协作写者及可执行补偿范围内关闭；不可验证身份或系统拒绝撤销时明确报告残留，消费端必须在 ADAPTER-01 完成 manifest/crash 一致性后才可主张完整保证。DOC-01 已追加可读勘误并撤回旧 done，历史冻结块的原始乱码未猜测重写。
+
+## Runtime Mapping 当前入口
+
+规格：`_bmad-output/implementation-artifacts/spec-kcp-impact-runtime-mapping.md`。调查发现 producer 和 validator 都必须启用既有 binds；scene/resource resolver 当前只验证路径存在，需补 source_kind；索引虽已有 .tscn/.tres/.res，但 .gd 及 Analyzer 代码身份尚未纳入配置。选择将 .gd 作为 opaque 哈希脚本，不扩大到 GDScript 语义分析。
+
+本轮只绑定显式静态事实：局部 Node、实际 ExtResource/SubResource 使用、connection 和已有 C# 影响路径对应的直接 owner。不递归展开实例，不根据同名 signal/event 猜业务调用。使用真实 PrimaryButton/Theme 源码的隔离 Git fixture 取证，不发布当前工作区 KCP state。当前仅完成计划，CORE-01 尚未关闭。

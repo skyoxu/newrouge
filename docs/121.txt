@@ -1,0 +1,591 @@
+这次 bmad-build 完成的是 “KCP Impact Analysis Adapter Handoff” 子切片，不是 KCP Impact Analysis 主体。
+
+而且这不是我的推断：bmad-build 自己生成的实施规格明确写了：
+
+Never: 不实现完整 index/resolver/analyzer。
+
+因此它对自己的子规格可以说 status: done，但对你的原始需求、PRD、SPEC、Architecture 来说，只完成了很小一部分。
+
+一、最核心的 P0：主体 Analyzer 根本不存在
+
+Architecture 明确把 Phase 1 的 structural seed 定义成：
+
+scripts/python/
+  build_impact_index.py
+  analyze_impact.py
+  impact_analysis_config.v1.json
+  impact_target_aliases.v1.json
+  _impact_*.py
+
+而且 Capability Map 明确规定：
+
+CAP-1 → TargetResolver / analyze_impact.py
+CAP-3 → index builder + analyzer
+CAP-5 → report emitter + risk classifier
+CAP-6 → coding/review adapters
+
+也就是说，adapter 只是 CAP-6 的最后一段。
+
+我刚才直接检查当前分支：
+
+scripts/python/build_impact_index.py
+scripts/python/analyze_impact.py
+
+两者当前均返回 404 / 不存在。
+
+同时，当前 implementation-artifacts 目录只有：
+
+deferred-work.md
+spec-kcp-impact-analysis-adapter-handoff.md
+
+不存在另一份“Impact Analysis Core”实施规格。
+
+所以这不是“少几个测试”。
+
+而是：
+
+设计好的核心生产能力
+        ↓
+基本尚未实施
+二、原始 code.txt 对账
+
+原始需求要解决的是：
+
+Change Target
+      ↓
+Affected Surface
+      ├── Code
+      ├── Tests
+      ├── Runtime
+      └── Knowledge
+
+并且明确要求 AI 能回答：
+
+谁消费 Event？
+哪些测试依赖？
+哪些 Scene 使用？
+哪些 Runtime flow 会变化？
+
+后半部分又明确规定：
+
+FR-004 Godot Runtime Mapping
+FR-005 Knowledge Binding
+FR-006 Risk
+Before Coding / Before Review integration
+impact-report.v1.json
+Phase 1 Symbol Index
+Phase 2 Dependency Scanner
+Phase 3 Runtime Mapping
+Phase 4 Knowledge Binding
+AC-001 consumers + tests + ADR refs
+AC-002 Contract → high risk
+AC-003 Review 可读但不改变 authority
+AC-004 不改变 freeze/publication/locator。
+
+当前实现覆盖情况：
+
+原始需求	当前状态	判断
+Target Resolution	❌	没有 TargetResolver
+Symbol Index	❌	没有 index builder
+Direct References	❌	没有 dependency scanner
+Contract dependency	❌	同上
+Test mapping	❌	当前只有 handoff 自身测试，不是 impact test mapping
+.tscn / Node / Signal / Resource	❌	Runtime mapper 未实现
+Knowledge Binding 生成	⚠️	能验证已有 binding，不能发现和生成
+Risk Classification	❌	validator 只检查 risk_level 枚举是否合法，不负责分类
+Impact Report 生成	❌	只能消费已有 report
+Before Coding integration	⚠️	consumer guard 已接入，但没有 producer
+Before Review integration	✅/⚠️	handoff 已接入，但同样依赖外部已有 report
+Impact ≠ Authority	✅	保持得很好
+
+因此从 code.txt 看，不能算完成。
+
+三、PRD 对账
+
+PRD 对主体要求比 code.txt 更严格。
+
+它要求：
+
+FR-001
+
+解析：
+
+file
+class
+interface
+method
+event
+contract
+scene
+resource
+
+且歧义不能猜。
+
+当前：❌
+
+FR-002
+
+发现：
+
+direct references
+using
+inheritance
+interface implementation
+contract dependency
+
+当前：❌
+
+FR-003
+
+Production → tests / test symbols / Task acceptance。
+
+当前：❌
+
+注意：
+
+test_impact_analysis_handoff.py
+
+只是测试 handoff validator。
+
+它不是：
+
+RewardService
+   ↓ impact mapping
+RewardServiceTests
+Task0029AcceptanceTests
+
+两者不是一个概念。
+
+FR-004
+
+Godot runtime mapping。
+
+当前：❌
+
+FR-005
+
+ADR / Task / Contract / Decision binding。
+
+当前实现确实验证：
+
+knowledge_binding
+frozen context hash
+consumer
+task_id
+publication lineage
+
+这一段质量不错。impact_analysis_handoff.py 会校验 frozen context schema/state/revision/hash、consumer/task、报告 schema/risk/status/index identity 等。
+
+但这是：
+
+已有 knowledge_binding
+        ↓
+validate
+
+不是：
+
+target
+ ↓
+寻找 ADR/Task/Contract/Decision
+ ↓
+source reread
+ ↓
+hash bind
+
+所以：
+
+⚠️ FR-005 部分完成。
+
+FR-006 Risk Classification
+
+PRD 要求：
+
+Contract/Event/Core/save -> high
+Service/System           -> medium
+UI-only                  -> low
+insufficient             -> unknown
+
+当前 handoff 只是：
+
+risk_level in {
+    "high",
+    "medium",
+    "low",
+    "unknown"
+}
+
+它没有 RiskClassifier。
+
+所以：
+
+❌ FR-006 未完成。
+
+FR-007 Report Contract
+
+当前能够验证 report 的一部分。
+
+但没有：
+
+analyze_impact.py
+       ↓
+impact-report.v1.json
+
+所以：
+
+⚠️ consumer-side partial，不是完整 FR-007。
+
+FR-008 Deterministic + Fail Closed
+
+handoff 这一层：
+
+✅ 做得不错。
+
+比如：
+
+revision mismatch
+missing index
+invalid KCP binding
+stable exit codes
+
+都有显式行为。
+
+但是主体分析：
+
+same revision
+same target
+same config
+      ↓
+same impact result
+
+无法验证，因为 analyzer 不存在。
+
+因此整体：
+
+⚠️ 部分完成。
+
+FR-009 Workflow Integration
+
+这是本次真正完成的部分。
+
+PRD 要：
+
+Knowledge Freeze
+      ↓
+Impact Analysis
+      ↓
+Coding
+
+以及：
+
+Review Freeze + Impact Report
+      ↓
+Review
+
+985f095 确实完成了：
+
+--frozen-context
+--impact-report
+--revision
+
+原子 handoff、fail-closed、Chapter 6 和 Review forwarding。
+
+所以：
+
+✅ consumer adapter 部分完成。
+
+但因为缺少：
+
+Impact Analysis producer
+
+整个端到端流程仍然没有闭环。
+
+FR-010 Evidence Boundary
+
+这一点：
+
+✅ 符合。
+
+没有把 Impact Report 升级成 authority，也没有修改 freeze/current/LKG/Locator。
+
+四、SPEC 对账结果更直接
+
+SPEC 的 CAP-5 明确规定：
+
+scripts/python/analyze_impact.py produces ... impact-report.v1.json
+
+而这个文件当前不存在。
+
+所以仅这一点就足够判：
+
+❌ SPEC implementation gate 不通过
+
+SPEC 还要求：
+
+CAP-1 Target Resolver
+CAP-2 Typed Impact Edges
+CAP-3 Code/Test/Godot Evidence
+CAP-4 Knowledge Binding
+CAP-5 Risk + Report
+CAP-6 Workflow Integration
+
+当前大致是：
+
+CAP	状态
+CAP-1	❌
+CAP-2	❌
+CAP-3	❌
+CAP-4	⚠️
+CAP-5	❌
+CAP-6	✅/⚠️
+五、Architecture 对账
+
+这里问题尤其明显。
+
+Architecture 的设计顺序是：
+
+Trusted Source
+    ↓
+ImpactIndexBuilder
+    ↓
+Impact Index
+    ↓
+TargetResolver
+    ↓
+ImpactAnalyzer
+    ↓
+KnowledgeBinder
+    ↓
+RiskClassifier
+    ↓
+ReportEmitter
+    ↓
+Coding / Review
+
+而当前实现实际上变成：
+
+                [缺失]
+ImpactIndexBuilder
+                [缺失]
+Impact Index
+                [缺失]
+TargetResolver
+                [缺失]
+ImpactAnalyzer
+                [缺失]
+KnowledgeBinder producer
+                [缺失]
+RiskClassifier
+                [缺失]
+ReportEmitter
+                    |
+                    v
+       impact_analysis_handoff
+                    |
+          +---------+---------+
+          v                   v
+       Chapter 6            Review
+
+也就是：
+
+管道的最后一个 consumer adapter 做出来了，前面负责生产 evidence 的整个管道没有做。
+
+六、这次 bmad-build 到底发生了什么？
+
+这里我认为原因已经可以非常明确地定位。
+
+Architecture 的 Deferred 中有一项：
+
+Implement and test the Chapter 6/review adapters that add --frozen-context, --impact-report, and --revision forwarding...
+
+而 bmad-build 最终生成的 implementation spec 恰好叫：
+
+KCP Impact Analysis Adapter Handoff
+
+并把 intent 定义成：
+
+Chapter 6 和 Review 尚不能接收或验证 frozen context、impact report 与 Git revision。
+
+最关键的是它主动冻结了这个范围：
+
+Never: 不实现完整 index/resolver/analyzer。
+
+所以流程实际上是：
+
+完整 Architecture
+       |
+       | bmad-build 选中了一个 deferred implementation item
+       v
+Adapter Handoff 子规格
+       |
+       v
+实现
+       |
+       v
+status: done
+
+而不是：
+
+完整 Architecture
+       ↓
+完整 KCP Impact Analysis implementation
+所以这次不是主要的“代码写坏了”。
+
+相反：
+
+handoff 这部分代码是基本符合它自己的规格和 Architecture 边界的。
+
+真正的问题是：
+
+bmad-build 的 scope selection / implementation planning 偏了。
+
+它把 Architecture 中一个后续集成项当成了这次要完成的 feature。
+
+5.6 Sol high 看起来基本忠实执行了它得到的 frozen implementation spec；问题发生在实施规格生成阶段的任务选择，而不是后面的代码生成推理能力。
+
+七、当前真实完成度
+
+如果按 adapter handoff 子切片：
+
+大约 85–90%
+
+原因：
+
+atomic trio ✅
+exact hash/revision checks ✅
+Chapter 6 forwarding ✅
+Review forwarding ✅
+resume/fork identity ✅
+fail closed ✅
+legacy opt-out ✅
+还有 TOCTOU / malformed identity / real-main hardening 等 deferred tests。
+
+而且 deferred 还记录了一个 pre-existing marathon warn-mode mismatch，所以我不会把它判 100%。
+
+如果按完整：
+
+KCP-IMPACT-001：大约 25%
+
+我会给：
+
+20–30%
+
+而不是 60–70%。
+
+因为核心价值恰恰是：
+
+target
+  ↓
+discover impact
+  ↓
+report
+
+这一段现在基本没有。
+
+八、Acceptance Criteria 现实状态
+
+按 PRD：
+
+AC	状态
+AC-001 Event → consumer + tests + ADR/Task	❌
+AC-002 Contract/Event → high risk	❌
+AC-003 Scene/Node/signal runtime evidence	❌
+AC-004 Review 不改变 authority/freeze	✅
+AC-005 deterministic analysis + failures	⚠️
+AC-006 derived evidence boundary	✅
+
+PRD 对 AC 的正式定义在这里。
+
+所以现在如果直接跑完整 Acceptance，应该得到：
+
+❌ Feature Acceptance FAIL
+
+不是因为 handoff 有严重 bug，而是因为 core obligations 根本没有 implementation witness。
+
+九、现在不需要重新 PRD / SPEC / Architecture
+
+这一点很重要。
+
+不需要重新：
+bmad-prd
+bmad-spec
+bmad-architecture
+
+这些上游产物目前没有问题。
+
+反而 Architecture 已经把缺失的东西定义得相当清楚。
+
+应该回到：
+
+bmad-build
+
+重新做主体 implementation slices。
+
+正确顺序建议是：
+
+Slice 1
+Impact Index Core
+├── build_impact_index.py
+├── impact_analysis_config.v1.json
+├── source manifest
+├── immutable index
+├── index_id
+└── golden vectors
+
+          ↓
+
+Slice 2
+Impact Analyzer Core
+├── analyze_impact.py
+├── TargetResolver
+├── references
+├── implements
+├── inherits
+├── consumes
+├── tests
+├── risk classifier
+├── report emitter
+└── run manifest
+
+          ↓
+
+Slice 3
+Godot Runtime
+├── .tscn
+├── Node
+├── signal
+├── resource
+└── binds
+
+          ↓
+
+Slice 4
+Knowledge Binding
+├── ADR
+├── Task
+├── Contract
+├── Decision
+├── source reread
+└── SHA binding
+
+          ↓
+
+Slice 5
+Existing Adapter Handoff
+           ✅ 已经基本完成
+
+          ↓
+
+Acceptance
+最终 Gate
+
+当前我给：
+
+❌ 985f095 不符合“完整实施完成”的声明。
+
+✅ 它符合 Architecture 中 Adapter Handoff 子切片的实现方向。
+
+❌ 不满足 docs/code.txt、PRD、SPEC、Architecture 对 KCP Impact Analysis 主功能的整体要求。
+
+不需要返工 PRD/SPEC/Architecture；需要重新进入 bmad-build，并明确锁定 Core Impact Analysis，而不是再选 deferred adapter item。
+
+尤其值得修的是 bmad-build 为什么会把 Deferred: adapters 选成唯一 implementation feature。如果不修这个入口问题，即使你再跑一次，它仍可能继续从 Architecture 的 deferred/hardening 项里挑任务，而不是从 CAP-1～CAP-5 的未实现 obligation 出发。
