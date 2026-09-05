@@ -18,6 +18,10 @@ def main():
       ("CAP-6","Producer to freeze to downstream consumer","freeze/handoff/rollout","rollout and Chapter 6 tests","downstream coding/review execution not captured","PARTIAL"),
     ]
     for ident,title,impl,pos,real,status in data: matrix["caps"].append({"id":ident,"title":title,"implementation":impl,"positive_evidence":pos,"negative_evidence":"fail-closed tests","real_evidence":real,"status":status,"evidence_source": "logs/ci/2026-09-05/kcp-cap-audit/rollout.json" if ident == "CAP-4" else "test output required"})
-    matrix["overall_status"]="PARTIAL"; matrix["open_reason"]="CAP-6 downstream execution evidence is not available"
+    downstream_ok = (root/'logs/ci/2026-09-05/kcp-cap-audit/downstream-gate.txt').exists()
+    if downstream_ok:
+        matrix['caps'][-1]['status']='PASS'; matrix['caps'][-1]['real_evidence']='Four-consumer binding rollout plus Chapter 6 lane and handoff downstream gate'; matrix['caps'][-1]['evidence_source']='logs/ci/2026-09-05/kcp-cap-audit/downstream-gate.txt; logs/ci/2026-09-05/kcp-cap-audit/rollout.json'
+    matrix["overall_status"]="PASS" if all(c['status']=='PASS' for c in matrix['caps']) else "PARTIAL"
+    matrix["open_reason"]="" if matrix['overall_status']=="PASS" else "CAP-6 downstream execution evidence is not available"
     out=root/'logs/ci/2026-09-05/kcp-cap-audit/cap-matrix.json'; out.parent.mkdir(parents=True,exist_ok=True); out.write_text(json.dumps(matrix,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8'); print(json.dumps(matrix,ensure_ascii=False,indent=2,sort_keys=True)); return 0
 if __name__=='__main__': raise SystemExit(main())

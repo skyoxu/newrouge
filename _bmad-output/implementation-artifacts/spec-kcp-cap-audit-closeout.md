@@ -36,6 +36,19 @@ Given 每个 CAP 有充分真实正负证据，when final audit runs, then statu
 
 </frozen-after-approval>
 
+## 审计执行记录
+
+- 矩阵：`logs/ci/2026-09-05/kcp-cap-audit/cap-matrix.json`
+- 四类 rollout：`logs/ci/2026-09-05/kcp-cap-audit/rollout.json`
+- Chapter 6 downstream gate：`logs/ci/2026-09-05/kcp-cap-audit/downstream-gate.txt`
+- 本轮结果：四类 consumer binding rollout 全部通过；Chapter 5、Chapter 6、Review 与 handoff 定向测试通过。
+- CAP-6：PASS，但证据证明的是 producer→freeze→binding downstream gate，不等同于实际游戏代码变更后的完整生产 coding/review 运行。
+- 保留开放项：`CORE-01/02`、`ADAPTER-01`、`ACCEPT-01`，详见 decision log；CLI-05/06 的 CLI discovery/lineage 子项已验证，真实 freeze schema 仍归 ACCEPT-01。
+
+## 当前判定
+
+审计矩阵可判定 CAP-6 PASS；完整 KCP Impact Analysis 仍不宣称全部缺陷关闭。
+
 ## Code Map
 
 - `scripts/python/run_binding_evidence_rollout.py`

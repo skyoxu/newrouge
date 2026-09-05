@@ -75,6 +75,48 @@ CLI-01/02/03 与 TEST-01 关闭。CLI-04 在协作写者及可执行补偿范围
 
 ## Runtime Mapping 当前入口
 
+## CORE-01 本轮验证证据
+
+- 定向 Runtime/Analyzer/CLI 回归：52/52 通过。
+- Index 与 repository smoke：79/79 通过。
+- Gate bundle consistency 与 recovery docs：通过。
+- 真实仓库静态源读取证据：`logs/ci/2026-09-05/impact-runtime-mapping/real-fixture-evidence.json`，包含 `PrimaryButton.tscn`、`default_theme.tres` 的 SHA-256、绑定锚点和 `runtime_refs` 投影。
+- 证据覆盖显式 script、SubResource、稳定 node identity、来源哈希和报告投影；未覆盖动态调用、实例递归或真实 freeze 集成。
+- CORE-01 当前可关闭“静态绑定解析”子项，但不关闭完整 CORE-01/ACCEPT-01。
+
+## CORE-02 本轮验证证据
+
+- `knowledge_binding_producer.py` 对四类真实 consumer bundle 执行 source reread：Chapter 4、Chapter 5、Chapter 6、Review 全部通过。
+- 每类 evidence 均绑定 request_id、bundle SHA、repository revision 与 source SHA；对应产物位于 `logs/ci/knowledge-context/rollout/`。
+- producer、freeze binding integration、knowledge freeze 定向测试：7/7 通过。
+- 该证据关闭 producer/source-reread/hash lineage 子项；完整 ADR/Task/Contract/Decision 自动发现及真实 freeze 生产集成仍不关闭 ACCEPT-01。
+
+## ADAPTER-01 本轮验证证据
+
+- `logs/ci/2026-09-05/adapter-handoff/adapter-01-evidence.json` 登记 handoff、Chapter 6 和 Review preflight 结果。
+- 相关测试覆盖 partial/invalid/revision mismatch、sidecar/hash lineage、resume/fork identity 和下游步骤阻断；本轮相关测试 95/95 通过。
+- ADAPTER-01 的 fail-closed 与 identity 校验子项可关闭；ADAPTER-02 的历史 marathon warn-mode 差异仍开放。
+
+## ADAPTER-02 本轮验证证据
+
+- `fast-ship` 的 delivery profile 明确使用 `agent_review.mode=warn`；fork 建议应生成 pending soft approval request，但不阻断 pipeline。
+- 修正 marathon 回归中将 warn 行为误判为 require 的过期断言，保留对 approval request、latest index、execution context 和 summary 状态的校验。
+- `scripts/sc/tests/test_run_review_pipeline_marathon.py`：17/17 通过。
+- ADAPTER-02 的该历史 warn-mode 差异已关闭；未改变 standard/require 模式的阻断行为。
+
+## CLI-05/06 本轮验证证据
+
+- `logs/ci/2026-09-06/cli-discovery-lineage/cli-05-06-evidence.json` 登记当前 HEAD、`refs/heads/main` 以及 CLI discovery/lineage 验证范围。
+- `test_analyze_impact_cli`：23/23 通过。
+- 覆盖显式 index、自动 discovery、missing index fail-closed、多 provenance collision、invalid KCP binding、sidecar revision mismatch 和 output collision preservation。
+- 测试仍使用 synthetic frozen binding；因此关闭 CLI-05/06 的 CLI discovery/lineage 验证子项，不关闭真实 freeze schema 的 ACCEPT-01。
+
+## ACCEPT-01 真实 main 验收阻塞
+
+- 当前 `main` 为 `40530082e8e4851ee80d6a90a6e72d2b6da3d8f2`，真实 main worktree 不包含 `scripts/python/build_impact_index.py`、`analyze_impact.py` 或 `impact_analysis_handoff.py`。
+- 在临时 main worktree 执行 Impact Index builder 的结果为文件不存在；因此无法在 main 上完成真实 `index → analyzer → handoff → consumer` 链路。
+- 当前功能分支上的 synthetic/feature-branch 测试不能证明 main 生产验收。ACCEPT-01 保持 OPEN，恢复入口是先将 Impact Analysis 实现合入 main，再用当前 main commit 重新 publish/freeze 并重跑真实链路。
+
 规格：`_bmad-output/implementation-artifacts/spec-kcp-impact-runtime-mapping.md`。调查发现 producer 和 validator 都必须启用既有 binds；scene/resource resolver 当前只验证路径存在，需补 source_kind；索引虽已有 .tscn/.tres/.res，但 .gd 及 Analyzer 代码身份尚未纳入配置。选择将 .gd 作为 opaque 哈希脚本，不扩大到 GDScript 语义分析。
 
 本轮只绑定显式静态事实：局部 Node、实际 ExtResource/SubResource 使用、connection 和已有 C# 影响路径对应的直接 owner。不递归展开实例，不根据同名 signal/event 猜业务调用。使用真实 PrimaryButton/Theme 源码的隔离 Git fixture 取证，不发布当前工作区 KCP state。当前仅完成计划，CORE-01 尚未关闭。

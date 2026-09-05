@@ -50,7 +50,43 @@ DOC-01 已追加中文勘误并撤回旧完成度及真实 schema compatible 说
 
 ## 本轮关闭判定
 
+## CORE-01 追加证据
+
+- `logs/ci/2026-09-05/impact-runtime-mapping/real-fixture-evidence.json` 记录真实 `PrimaryButton.tscn` 与 `default_theme.tres` 的源码哈希、绑定边、行号锚点和 runtime_refs 投影。
+- Runtime、Analyzer、CLI 定向回归 52/52；Index 与 repository smoke 79/79；gate consistency 与 recovery docs 通过。
+- 该证据关闭 CORE-01 的静态 Scene/Node/Resource 解析子项；动态调用、实例递归、真实 freeze lineage 和端到端 ACCEPT-01 仍开放，不能将 CORE-01 整体标记为完成。
+
+## CORE-02 追加证据
+
+- 四类 consumer binding rollout 均通过 source reread 与 SHA 校验：Chapter 4、Chapter 5、Chapter 6、Review。
+- producer、freeze binding integration、knowledge freeze 定向测试 7/7 通过。
+- 已关闭 source reread、request/revision/bundle/source hash lineage 子项；ADR/Task/Contract/Decision 的完整自动发现和真实 freeze 生产闭环仍属于开放项。
+
+## ADAPTER-01 追加证据
+
+- `logs/ci/2026-09-05/adapter-handoff/adapter-01-evidence.json` 记录 handoff、Chapter 6、Review preflight 的真实执行范围。
+- 相关 95 项测试通过，覆盖原子参数、fail-closed、sidecar lineage、resume/fork identity 和下游步骤阻断。
+- ADAPTER-01 的已覆盖子项关闭；ADAPTER-02 仍因 marathon warn-mode 期望差异保持 OPEN。
+
+## ADAPTER-02 追加证据
+
+- `fast-ship` 的 `agent_review.mode=warn` 语义为写入 soft approval request 但不阻断 pipeline；`standard` 的 require 语义保持阻断。
+- 修正过期 marathon 断言后，`test_run_review_pipeline_marathon` 17/17 通过。
+- ADAPTER-02 的 warn-mode 期望差异已关闭；ACCEPT-01 仍等待完整端到端验收。
+
+## CLI-05/06 追加证据
+
+- `logs/ci/2026-09-06/cli-discovery-lineage/cli-05-06-evidence.json` 记录 23/23 CLI 回归和真实 HEAD/trusted-ref。
+- discovery、missing index、provenance collision、binding/revision/sidecar lineage 与 output collision 均有覆盖。
+- synthetic frozen binding 边界保持明确；真实 freeze schema 对齐仍属于 ACCEPT-01 开放项。
+
+## ACCEPT-01 真实 main 阻塞证据
+
+- 临时 main worktree（`40530082e8e4851ee80d6a90a6e72d2b6da3d8f2`）执行 builder 失败：`scripts/python/build_impact_index.py` 在 main 不存在。
+- `git ls-tree main scripts/python` 仅能发现 freeze 入口，未发现 Impact Analysis builder/analyzer/handoff 实现。
+- 因此当前 branch 的 CAP/CLI/Runtime/Knowledge 证据不能升级为 main 的生产端到端 PASS；ACCEPT-01 保持 OPEN，需先完成合并或在 main 集成对应实现。
+
 - CLI-01、CLI-02、CLI-03、TEST-01：已关闭，有实现和实际执行的回归证据。
 - CLI-04：协作写者、可补偿 I/O 路径已关闭；物理存储拒绝和非协作写者的消费安全转由仍开放的 ADAPTER-01 验收，不能宣称普遍无残留。
 - DOC-01：可读勘误与错误完成声明已处理；原冻结块与历史 deferred 保留，当前状态由本计划登记。
-- 仍有 Needs Fix：CLI-05/06（包括已知 index/binding 与原始 revision 的失败追溯）、CORE-01/02、ADAPTER-01/02、ACCEPT-01。整体 KCP Impact Analysis 未完成。
+- 仍有 Needs Fix：CLI-05/06（包括已知 index/binding 与原始 revision 的失败追溯）、CORE-01/02、ADAPTER-01、ACCEPT-01。ADAPTER-02 的 warn-mode 差异已关闭；整体 KCP Impact Analysis 未完成。

@@ -4,6 +4,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-adapter-handoff.md`
   summary: Resolve the pre-existing warn-mode fork expectation mismatch in the marathon suite.
   evidence: Full marathon run retains one unrelated failure where expected rc=1 but actual rc=0.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-adapter-handoff.md`
+  summary: Closed the warn-mode fork expectation mismatch after aligning the test with fast-ship soft approval semantics.
+  evidence: `scripts/sc/tests/test_run_review_pipeline_marathon.py` passed 17/17; approval request remains pending while pipeline exits successfully.
 - source_spec: none
   summary: Implement the Impact Analyzer Core with symbol indexing, TargetResolver, dependency and test mapping, risk classification, report emission, and run manifests.
   evidence: This is an independently testable producer slice that depends on a production-ready immutable Impact Index.
