@@ -22,3 +22,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analysis-index-core.md`
   summary: Register the Impact Analyzer unittest module in the default obligations hard gate.
   evidence: The analyzer tests exist and pass, but run_gate_bundle.py currently invokes only the Index and repository smoke modules.
+- source_spec: none
+  summary: Implement bounded Godot Runtime Mapping for Scene, Node, signal, resource, script, connection, and binds evidence.
+  evidence: Runtime Mapping is an independently reviewable producer slice that depends on the corrected Analyzer object model.
+- source_spec: none
+  summary: Implement the read-only Knowledge Binding producer with KCP routing, source reread, and SHA-bound ADR, Task, Contract, and Decision evidence.
+  evidence: Knowledge Binding is independently shippable after Analyzer correctness is established and must preserve KCP authority.
+- source_spec: none
+  summary: Complete end-to-end workflow integration and execute final CAP-1 through CAP-6 acceptance.
+  evidence: Final acceptance depends on Analyzer, Runtime Mapping, Knowledge Binding, and existing adapters all being complete.
+- source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-analyzer-production-readiness.md`
+  summary: Complete the Analyzer CLI production harness with validated index discovery, immutable report/run-manifest publication, real success/failure E2E tests, and default hard-gate registration.
+  evidence: CLI publication and gate integration are independently shippable operational concerns; splitting them keeps the current semantic correctness specification within the safe implementation context size.

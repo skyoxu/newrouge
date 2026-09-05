@@ -72,6 +72,8 @@ context:
 
 ## Spec Change Log
 
+- 2026-09-05: aligned completion claim with semantic correctness evidence in `scripts/python/tests/test_impact_analyzer.py`; hardened parser masking, method identity normalization, exact-before-alias resolution, typed test edges, risk precedence, and fail-closed report validation. Runtime/Knowledge producer remains out of scope.
+
 ## Design Notes
 
 Analyzer Core 只做文本级、可证明的 v1 解析：C# declaration/using/继承/接口/Contract/Event 依赖和测试 `Refs:`。TargetResolver 先 exact path，再 kind-scoped canonical symbol；资源、Scene、signal、node 等 Runtime target 留给后续切片。成功报告的 KCP binding 由调用方提供，Analyzer 只验证和复制，不检索或改变语义决策。
@@ -83,6 +85,10 @@ Analyzer Core 只做文本级、可证明的 v1 解析：C# declaration/using/�
 - `py -3 scripts/python/analyze_impact.py --help` -- expected: CLI documents required revision/index/target and stable failures.
 - `py -3 -m unittest scripts.python.tests.test_impact_analysis_index scripts.python.tests.test_impact_analysis_index_repository_smoke scripts.python.tests.test_impact_analyzer` -- expected: Index and Analyzer suites pass together.
 - `git diff --check` -- expected: no whitespace errors and no generated artifacts outside `logs/ci/**`.
+
+Semantic correctness verification:
+
+- `py -3 -m unittest scripts.python.tests.test_impact_analyzer -v` -- 23 tests pass, covering overload/alias/ambiguity, comment/string suppression, typed dependency/test evidence, risk precedence, malformed reports, deterministic projection, trusted alias blobs, namespace/member scoping, generic bases, and report evidence coherence.
 
 ## Suggested Review Order
 
