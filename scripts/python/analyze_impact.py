@@ -223,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--frozen-context", "--frozen-context-path", dest="frozen_context", required=False)
     parser.add_argument("--consumer", default=None, choices=["chapter4", "chapter5", "chapter6", "review"])
     parser.add_argument("--task-id", default=None)
+    parser.add_argument("--binding-evidence", default=None)
     parser.add_argument("--output", default=None, help="Report path; defaults to an isolated UTC run directory.")
     parser.add_argument("--repository-root", default=".")
     args = parser.parse_args(argv)
@@ -268,6 +269,16 @@ def main(argv: list[str] | None = None) -> int:
             "repository_revision": revision, "knowledge_binding_sha256": binding["frozen_context_sha256"],
             "status": "ok", "generated_at": report["generated_at"],
         }
+        if args.binding_evidence:
+            sidecar = _resolve_inside(root, args.binding_evidence)
+            if not sidecar.exists():
+                raise ImpactIndexError("invalid_kcp_binding", "binding evidence is missing")
+            sidecar_bytes = sidecar.read_bytes()
+            sidecar_doc = json.loads(sidecar_bytes.decode("utf-8"))
+            if sidecar_doc.get("repository_revision") != revision:
+                raise ImpactIndexError("revision_mismatch", "binding evidence revision mismatch")
+            manifest["binding_evidence_path"] = sidecar.relative_to(root).as_posix()
+            manifest["binding_evidence_sha256"] = hashlib.sha256(sidecar_bytes).hexdigest()
         publication_started = True
         cleanup = _publish_pair(root, output_path, report, manifest)
         print(json.dumps({"status": "ok", "run_id": run_id, "report_path": manifest["report_path"], "report_sha256": report_sha, **cleanup}, ensure_ascii=False, sort_keys=True))
