@@ -1,6 +1,7 @@
 """Read-only producer for SHA-bound knowledge consumption evidence."""
 from __future__ import annotations
 import hashlib, json, subprocess
+import argparse
 from pathlib import Path
 from typing import Any
 
@@ -30,3 +31,19 @@ def produce_binding(root: Path, bundle: dict[str, Any], decisions: dict[str, Any
         evidence.append({"path": path, "sha256": _sha(raw), "decision": "accepted"})
     evidence.sort(key=lambda x: x["path"].encode("utf-8"))
     return {"schema_version":"newrouge.knowledge-binding-evidence.v1", "repository_revision":revision, "request_id":bundle["request_id"], "source_bundle_sha256":"sha256:" + _sha(json.dumps(bundle, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()), "evidence":evidence}
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bundle", required=True)
+    ap.add_argument("--decisions", required=True)
+    ap.add_argument("--output", required=True)
+    args = ap.parse_args(); root = Path(__file__).resolve().parents[2]
+    try:
+        result = produce_binding(root, json.loads(Path(args.bundle).read_text(encoding="utf-8")), json.loads(Path(args.decisions).read_text(encoding="utf-8")))
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True); Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)+"\n", encoding="utf-8")
+        return 0
+    except (OSError, ValueError, json.JSONDecodeError):
+        return 2
+
+if __name__ == "__main__":
+    raise SystemExit(main())
