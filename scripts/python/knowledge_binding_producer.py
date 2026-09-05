@@ -19,11 +19,14 @@ def produce_binding(root: Path, bundle: dict[str, Any], decisions: dict[str, Any
         raise ValueError("decision_set_binding_mismatch")
     accepted = decisions.get("accepted", [])
     if not isinstance(accepted, list): raise ValueError("decision_set_invalid")
+    candidate_paths = {str(c.get("path")) for c in bundle.get("candidates", []) if isinstance(c, dict) and c.get("path")}
     evidence = []
     for item in accepted:
         if not isinstance(item, dict) or not isinstance(item.get("path"), str):
             raise ValueError("decision_set_invalid")
         path = item["path"].replace("\\", "/")
+        if candidate_paths and path not in candidate_paths:
+            raise ValueError("decision_not_in_bundle")
         try:
             raw = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{path}"], capture_output=True, check=True, timeout=30).stdout
         except Exception as exc:
