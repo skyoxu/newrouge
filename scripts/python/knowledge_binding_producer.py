@@ -1,0 +1,32 @@
+"""Read-only producer for SHA-bound knowledge consumption evidence."""
+from __future__ import annotations
+import hashlib, json, subprocess
+from pathlib import Path
+from typing import Any
+
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+def produce_binding(root: Path, bundle: dict[str, Any], decisions: dict[str, Any]) -> dict[str, Any]:
+    """Reread accepted candidate sources at the bundle revision; never mutates authority."""
+    if bundle.get("status") != "shadow_ready" or bundle.get("freeze_state") != "unfrozen":
+        raise ValueError("candidate_bundle_not_ready")
+    snap = bundle.get("snapshot") or {}; revision = snap.get("commit")
+    if not isinstance(revision, str) or not revision:
+        raise ValueError("snapshot_invalid")
+    if decisions.get("request_id") != bundle.get("request_id"):
+        raise ValueError("decision_set_binding_mismatch")
+    accepted = decisions.get("accepted", [])
+    if not isinstance(accepted, list): raise ValueError("decision_set_invalid")
+    evidence = []
+    for item in accepted:
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+            raise ValueError("decision_set_invalid")
+        path = item["path"].replace("\\", "/")
+        try:
+            raw = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{path}"], capture_output=True, check=True, timeout=30).stdout
+        except Exception as exc:
+            raise ValueError("source_reread_failed") from exc
+        evidence.append({"path": path, "sha256": _sha(raw), "decision": "accepted"})
+    evidence.sort(key=lambda x: x["path"].encode("utf-8"))
+    return {"schema_version":"newrouge.knowledge-binding-evidence.v1", "repository_revision":revision, "request_id":bundle["request_id"], "source_bundle_sha256":"sha256:" + _sha(json.dumps(bundle, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()), "evidence":evidence}
