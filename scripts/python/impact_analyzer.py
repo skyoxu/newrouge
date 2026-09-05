@@ -899,7 +899,7 @@ def load_frozen_binding(root: Path, path: str, revision: str, consumer: str | No
     binding = {
         "consumer": actual_consumer, "task_id": None if actual_consumer == "review" else task_id,
         "frozen_context_path": frozen_path.relative_to(root).as_posix(), "frozen_context_sha256": _sha(data),
-        "decision_set_sha256": str(frozen.get("decision_set_sha256") or ""), "freeze_point": str(frozen.get("freeze_point") or ""),
+        "decision_set_sha256": str(frozen.get("decision_set_sha256") or "").removeprefix("sha256:"), "freeze_point": str(frozen.get("freeze_point") or ""),
         "publication_generation": str(publication_generation or ""), "publication_sha256": str(publication_sha or ""),
     }
     if not binding["decision_set_sha256"] or not binding["freeze_point"] or not binding["publication_generation"] or not binding["publication_sha256"]:
