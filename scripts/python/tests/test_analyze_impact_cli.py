@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -16,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 def _same_path(left: Path, right: Path) -> bool:
-    return left.absolute().as_posix().casefold() == right.absolute().as_posix().casefold()
+    return os.path.normcase(os.path.realpath(os.fspath(left))) == os.path.normcase(os.path.realpath(os.fspath(right)))
 
 
 def run(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
