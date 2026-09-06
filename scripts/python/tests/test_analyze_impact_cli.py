@@ -15,6 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
+def _same_path(left: Path, right: Path) -> bool:
+    return left.absolute().as_posix().casefold() == right.absolute().as_posix().casefold()
+
 
 def run(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, cwd=cwd, text=True, encoding="utf-8", capture_output=True, check=False, timeout=120)
@@ -185,7 +188,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         publish = cli.atomic_publish_bytes
         output = self.repo / "logs/ci/partial/impact-report.v1.json"
         def fail_manifest(path, *args, **kwargs):
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 raise OSError("injected second publication failure")
             return publish(path, *args, **kwargs)
         stdout = StringIO()
@@ -227,7 +230,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         replacement_identity = None
         def replace_then_fail(path, *args, **kwargs):
             nonlocal replacement_identity
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 replacement = output.with_name("replacement.json")
                 replacement.write_bytes(output.read_bytes())
                 output.unlink()
@@ -265,11 +268,11 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         publish, unlink = cli.atomic_publish_bytes, Path.unlink
         output = self.repo / "logs/ci/delete-failed/impact-report.v1.json"
         def fail_manifest(path, *args, **kwargs):
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 raise OSError("injected second publication failure")
             return publish(path, *args, **kwargs)
         def fail_delete(path, *args, **kwargs):
-            if path == output:
+            if _same_path(path, output):
                 raise PermissionError("injected deletion failure")
             return unlink(path, *args, **kwargs)
         stdout = StringIO()
@@ -305,11 +308,11 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         def publish_then_deny_stat(path, *args, **kwargs):
             nonlocal published
             result = publish(path, *args, **kwargs)
-            if path == output:
+            if _same_path(path, output):
                 published = True
             return result
         def deny_stat(path, *args, **kwargs):
-            if path == output and published:
+            if _same_path(path, output) and published:
                 raise PermissionError("postpublication metadata denied")
             return stat(path, *args, **kwargs)
         stdout = StringIO()
@@ -328,16 +331,16 @@ class AnalyzeImpactCliTests(unittest.TestCase):
                 rollback = False
                 def fail_manifest(path, *args, **kwargs):
                     nonlocal rollback
-                    if path == output.with_name("run-manifest.v1.json"):
+                    if _same_path(path, output.with_name("run-manifest.v1.json")):
                         rollback = True
                         raise OSError("original manifest publication failure")
                     return publish(path, *args, **kwargs)
                 def deny_stat(path, *args, **kwargs):
-                    if path == output and rollback and operation == "stat":
+                    if _same_path(path, output) and rollback and operation == "stat":
                         raise PermissionError("rollback metadata denied")
                     return stat(path, *args, **kwargs)
                 def deny_read(path, *args, **kwargs):
-                    if path == output and rollback and operation == "read":
+                    if _same_path(path, output) and rollback and operation == "read":
                         raise PermissionError("rollback read denied")
                     return read(path, *args, **kwargs)
                 stdout = StringIO()
@@ -357,15 +360,15 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         publish, unlink, rename = cli.atomic_publish_bytes, Path.unlink, Path.rename
         output = self.repo / "logs/ci/rollback-denied/report.json"
         def fail_manifest(path, *args, **kwargs):
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 raise OSError("original manifest publication failure")
             return publish(path, *args, **kwargs)
         def deny_unlink(path, *args, **kwargs):
-            if path == output:
+            if _same_path(path, output):
                 raise PermissionError("delete denied")
             return unlink(path, *args, **kwargs)
         def deny_rename(path, *args, **kwargs):
-            if path == output:
+            if _same_path(path, output):
                 raise PermissionError("quarantine denied")
             return rename(path, *args, **kwargs)
         stdout = StringIO()
@@ -384,11 +387,11 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         output = self.repo / "logs/ci/lock-failed/report.json"
         lock = output.parent / ".impact-report-publish.lock"
         def fail_manifest(path, *args, **kwargs):
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 raise OSError("original manifest publication failure")
             return publish(path, *args, **kwargs)
         def deny_rmdir(path, *args, **kwargs):
-            if path == lock:
+            if _same_path(path, lock):
                 raise PermissionError("lock removal denied")
             return rmdir(path, *args, **kwargs)
         stdout = StringIO()
@@ -429,11 +432,11 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         output = self.repo / "logs/ci/early-lock-failed/report.json"
         lock = output.parent / ".impact-report-publish.lock"
         def fail_manifest(path, *args, **kwargs):
-            if path == output.with_name("run-manifest.v1.json"):
+            if _same_path(path, output.with_name("run-manifest.v1.json")):
                 raise OSError("diagnostic manifest publication denied")
             return publish(path, *args, **kwargs)
         def deny_rmdir(path, *args, **kwargs):
-            if path == lock:
+            if _same_path(path, lock):
                 raise PermissionError("diagnostic lock cleanup denied")
             return rmdir(path, *args, **kwargs)
         stdout = StringIO()
@@ -456,7 +459,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         raced = False
         def pause_for_contender(path, *args, **kwargs):
             nonlocal raced
-            if path == output and not raced:
+            if _same_path(path, output) and not raced:
                 raced = True
                 self.assertFalse(output.exists())
                 self.assertTrue((output.parent / ".impact-report-publish.lock").is_dir())
