@@ -38,8 +38,13 @@ Run:
 py -3 scripts/python/freeze_knowledge_context.py `
   --bundle logs/ci/knowledge-context/chapter6-task-<task-id>.json `
   --decisions logs/ci/knowledge-context/chapter6-task-<task-id>.decisions.json `
-  --output logs/ci/knowledge-context/chapter6-task-<task-id>.frozen.json
+  --output logs/ci/knowledge-context/chapter6-task-<task-id>.frozen.json `
+  --task-id <task-id>
 ```
+
+Chapter 4, Chapter 5, and Chapter 6 freezes are task-scoped and require an
+explicit `--task-id`. Review freezes are not task-scoped and must omit
+`--task-id`; their frozen artifact records `task_id: null`.
 
 The freeze operation fails closed unless all of the following hold:
 
