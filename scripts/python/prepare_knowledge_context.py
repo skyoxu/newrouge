@@ -340,6 +340,14 @@ def _merge_candidates(
                 classes.append(context_class)
                 classes.sort()
 
+        # Product intent is authoritative only for PRD sources.  Overlay
+        # documents may share the same PRD identifier but must never inherit
+        # this semantic class from broad or identifier-based queries.
+        classes = merged[key].setdefault("retrieval_context_classes", [])
+        if context_class == "product-intent" and path.startswith("docs/architecture/overlays/"):
+            if "product-intent" in classes:
+                classes.remove("product-intent")
+
 
 def prepare(root: Path, *, consumer: str, query: str, request_id: str | None = None) -> dict[str, Any]:
     snapshot_path = root / "knowledge/snapshots/repository-source-snapshot.v1.json"
