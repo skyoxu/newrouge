@@ -272,17 +272,24 @@ def _relative_to_repository(path: Path, root: Path) -> Path:
 
 def _ensure_no_reparse_ancestors(path: Path, root: Path) -> None:
     """Reject symlink/junction/reparse ancestors without resolving through them."""
-    # Windows path comparisons are case-insensitive.  Normalize case before
-    # lexical containment checks so concurrent writers cannot spuriously turn
-    # an output collision into path_outside_repository (exit 4).
-    root_abs = Path(os.path.normcase(str(_lexical_absolute_path(root))))
-    path_abs = Path(os.path.normcase(str(_lexical_absolute_path(path))))
+    root_abs = _lexical_absolute_path(root)
+    path_abs = _lexical_absolute_path(path)
     try:
         # Preserve lexical path segments so reparse-point ancestors are still
         # inspected instead of being hidden by realpath canonicalization.
         relative = path_abs.relative_to(root_abs)
     except ValueError as exc:
-        raise fail("path_outside_repository", f"path escapes repository: {path}") from exc
+        # Windows paths are case-insensitive, while Path.relative_to is not.
+        # Compare the lexical components case-insensitively and retain the
+        # original spelling for reparse-point inspection.
+        root_parts = root_abs.parts
+        path_parts = path_abs.parts
+        if len(path_parts) < len(root_parts) or any(
+            left.casefold() != right.casefold()
+            for left, right in zip(path_parts[: len(root_parts)], root_parts)
+        ):
+            raise fail("path_outside_repository", f"path escapes repository: {path}") from exc
+        relative = Path(*path_parts[len(root_parts) :])
     current = root_abs
     if _is_reparse_point(current):
         raise fail("path_outside_repository", f"reparse-point repository root: {current}")
