@@ -41,9 +41,9 @@ def _utc_date() -> str:
 def _resolve_inside(root: Path, value: str) -> Path:
     p = Path(value)
     if p.is_absolute() or (len(value) > 1 and value[1] == ":") or value.startswith("\\\\"):
-        candidate = _lexical_absolute_path(p)
+        candidate = Path(os.path.abspath(str(p)))
     else:
-        candidate = _lexical_absolute_path(root / p)
+        candidate = Path(os.path.abspath(str(root / p)))
     try:
         canonical_candidate = Path(os.path.normcase(os.path.realpath(str(candidate))))
         canonical_root = Path(os.path.normcase(os.path.realpath(str(root))))
@@ -88,7 +88,14 @@ def _validated_output(root: Path, value: str) -> Path:
         raise ImpactIndexError("path_outside_repository", "output must remain under logs/ci") from exc
     try:
         # The policy boundary is the literal repository logs/ci root, not its redirect target.
-        relative = path.relative_to(root / "logs" / "ci")
+        try:
+            relative = path.relative_to(root / "logs" / "ci")
+        except ValueError:
+            canonical_path = _lexical_absolute_path(path)
+            relative = canonical_path.relative_to(
+                _lexical_absolute_path(root / "logs" / "ci")
+            )
+            path = root / "logs" / "ci" / relative
         if not relative.parts:
             raise ValueError("output must name a file beneath logs/ci")
     except ValueError as exc:
