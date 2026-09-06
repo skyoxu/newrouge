@@ -55,4 +55,8 @@ jobs:
           git add knowledge
           git commit -m "chore(knowledge): publish catalog for main $env:GITHUB_SHA"
           git push --set-upstream origin $branch
-          gh pr create --base main --head $branch --title "chore(knowledge): publish catalog for main" --body "Automated publication of derived knowledge state for main commit $env:GITHUB_SHA."
+          try {
+            gh pr create --base main --head $branch --title "chore(knowledge): publish catalog for main" --body "Automated publication of derived knowledge state for main commit $env:GITHUB_SHA."
+          } catch {
+            Write-Warning "GitHub Actions cannot create pull requests in this repository. Generated state branch pushed: $branch"
+          }
