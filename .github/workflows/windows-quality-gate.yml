@@ -100,6 +100,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && github.head_ref == 'feat/knowledge-catalog-main-publish' }}
         shell: pwsh
         run: |
+          git fetch --no-tags --prune origin main:refs/heads/main
           py -3 scripts/python/publish_knowledge_catalog.py --publish
           py -3 scripts/python/publish_knowledge_catalog.py --check
 
