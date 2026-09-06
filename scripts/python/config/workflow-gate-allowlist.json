@@ -12,6 +12,7 @@
     "scripts/python/validate_knowledge_control_plane.py",
     "scripts/python/_knowledge_catalog_builder.py",
     "scripts/python/_knowledge_locator_core.py"
+    ,"scripts/python/prepare_knowledge_context.py"
   ],
   "required_bundle_workflows": [
     ".github/workflows/windows-quality-gate.yml",
