@@ -19,6 +19,10 @@ ROOT = Path(__file__).resolve().parents[3]
 def _same_path(left: Path, right: Path) -> bool:
     return os.path.normcase(os.path.realpath(os.fspath(left))) == os.path.normcase(os.path.realpath(os.fspath(right)))
 
+def _assert_path_mentioned(test: unittest.TestCase, text: str, path: Path) -> None:
+    normalized = os.path.normcase(os.path.realpath(os.fspath(path)))
+    test.assertIn(normalized, os.path.normcase(text))
+
 
 def run(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, cwd=cwd, text=True, encoding="utf-8", capture_output=True, check=False, timeout=120)
@@ -350,7 +354,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
                 self.assertEqual(result, 12)
                 payload = json.loads(stdout.getvalue())
                 self.assertIn("original manifest publication failure", payload["reason"])
-                self.assertIn(str(output), payload["reason"])
+                _assert_path_mentioned(self, payload["reason"], output)
                 self.assertIn("residual", payload["reason"])
                 self.assertTrue(output.is_file())
                 self.assertFalse(output.with_name("run-manifest.v1.json").exists())
@@ -377,8 +381,9 @@ class AnalyzeImpactCliTests(unittest.TestCase):
             result = cli.main(self.command(str(output)))
         self.assertEqual(result, 12)
         payload = json.loads(stdout.getvalue())
-        for text in ("original manifest publication failure", "delete denied", "quarantine denied", str(output), "residual"):
+        for text in ("original manifest publication failure", "delete denied", "quarantine denied", "residual"):
             self.assertIn(text, payload["reason"])
+        _assert_path_mentioned(self, payload["reason"], output)
         self.assertTrue(output.is_file())
         self.assert_failure_pair(payload)
 
@@ -400,8 +405,9 @@ class AnalyzeImpactCliTests(unittest.TestCase):
             result = cli.main(self.command(str(output)))
         self.assertEqual(result, 12)
         payload = json.loads(stdout.getvalue())
-        for text in ("original manifest publication failure", "lock removal denied", str(lock)):
+        for text in ("original manifest publication failure", "lock removal denied"):
             self.assertIn(text, payload["reason"])
+        _assert_path_mentioned(self, payload["reason"], lock)
         report = json.loads((self.repo / payload["report_path"]).read_bytes())
         self.assertEqual(report["failure_reason"]["reason"], payload["reason"])
         self.assertTrue(lock.is_dir())
@@ -445,7 +451,7 @@ class AnalyzeImpactCliTests(unittest.TestCase):
             result = cli.main(self.command(str(output), revision="bad"))
         self.assertEqual(result, 7)
         payload = json.loads(stdout.getvalue())
-        self.assertIn(str(lock), payload["evidence_warning"])
+        _assert_path_mentioned(self, payload["evidence_warning"], lock)
         report = json.loads((self.repo / payload["report_path"]).read_bytes())
         for text in ("revision must be", "diagnostic manifest publication denied", "diagnostic lock cleanup denied", str(lock)):
             self.assertIn(text, report["failure_reason"]["reason"])
