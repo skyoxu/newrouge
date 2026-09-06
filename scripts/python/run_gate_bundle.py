@@ -332,6 +332,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.python.tests.test_impact_analysis_index_repository_smoke",
                 "scripts.python.tests.test_analyze_impact_cli",
                 "scripts.python.tests.test_impact_analyzer",
+                "scripts.python.tests.test_run_single_task_chapter6_lane",
                 "-v",
             ],
         },
