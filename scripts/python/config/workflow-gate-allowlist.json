@@ -7,7 +7,11 @@
     "scripts/python/check_a11y.py",
     "scripts/python/db_schema_dump.py",
     "scripts/python/check_sentry_secrets.py",
-    "scripts/python/run_dotnet.py"
+    "scripts/python/run_dotnet.py",
+    "scripts/python/publish_knowledge_catalog.py",
+    "scripts/python/validate_knowledge_control_plane.py",
+    "scripts/python/_knowledge_catalog_builder.py",
+    "scripts/python/_knowledge_locator_core.py"
   ],
   "required_bundle_workflows": [
     ".github/workflows/windows-quality-gate.yml",
