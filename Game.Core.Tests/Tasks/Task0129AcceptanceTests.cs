@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Game.Core.Contracts.Combat;
 using Game.Core.Domain;
 using Game.Core.Services;

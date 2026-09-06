@@ -131,6 +131,8 @@ class KnowledgeFreezeTests(unittest.TestCase):
             bundle_rel,
             "--decisions",
             decisions_rel,
+            "--task-id",
+            "7",
             cwd=self.repo,
         )
 
@@ -143,6 +145,20 @@ class KnowledgeFreezeTests(unittest.TestCase):
         self.assertTrue(set(frozen["required_context_classes"]).issubset(set(frozen["satisfied_context_classes"])))
         self.assertEqual(len(frozen["accepted_sources"]), 1)
         self.assertTrue(frozen["context_id"].startswith("sha256:"))
+
+    def test_chapter_freeze_requires_explicit_task_id(self) -> None:
+        bundle_rel, decisions_rel = self.inputs(self.bundle())
+        completed = run(
+            sys.executable,
+            "scripts/python/freeze_knowledge_context.py",
+            "--bundle",
+            bundle_rel,
+            "--decisions",
+            decisions_rel,
+            cwd=self.repo,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("task_id_missing", json.loads(completed.stdout)["reason"])
 
     def test_rejected_candidate_cannot_satisfy_context(self) -> None:
         bundle_rel, decisions_rel = self.inputs(self.bundle(), decision="rejected")

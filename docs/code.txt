@@ -1,0 +1,564 @@
+目标不是直接实现 CodeGraph，而是定义：
+
+Knowledge Control Plane Impact Analysis（知识控制面影响分析层）
+
+它应该作为你刚完成迁移的 Knowledge Control Plane 的下一层能力。
+
+定位：
+
+Knowledge Control Plane
+        |
+        |
+        +----------------+
+        |                |
+ Semantic Context     Impact Analysis
+        |                |
+ 为什么这样做？        改这个会影响什么？
+Requirement Document
+
+文件建议：
+
+execution-plans/
+2026-09-xx-knowledge-control-plane-impact-analysis-requirements.md
+Knowledge Control Plane Impact Analysis Requirements
+1. Overview
+Requirement ID
+KCP-IMPACT-001
+Type
+Platform Capability
+Priority
+P1
+2. Background
+
+Newrouge 已完成 Knowledge Control Plane 迁移：
+
+已有能力：
+
+Task
+ |
+Acceptance
+ |
+ADR
+ |
+Contract
+ |
+Decision
+ |
+Freeze
+
+可以回答：
+
+为什么修改？
+
+但是 AI 游戏开发过程中仍存在另一类问题：
+
+修改一个代码对象，会影响什么？
+
+例如：
+
+修改：
+
+Game.Core/Contracts/RewardOfferPresentedEvent.cs
+
+Knowledge Control Plane 可以知道：
+
+ADR-0032
+ADR-0033
+GM-0129
+
+但是无法回答：
+
+哪些系统消费这个 Event？
+
+哪些测试依赖？
+
+哪些 Scene 使用？
+
+哪些 Runtime flow 会变化？
+3. Goal
+
+建立一个轻量级 Impact Analysis Layer。
+
+目标：
+
+让 AI 在编码和 Review 前获得：
+
+Change Target
+       |
+       v
+
+Affected Surface
+
+       |
+       +-- Code
+       |
+       +-- Tests
+       |
+       +-- Runtime
+       |
+       +-- Knowledge
+4. Non Goals
+
+本需求明确不实现：
+
+❌ Full CodeGraph
+
+不实现：
+
+Class graph
+Method graph
+Call graph
+AST database
+
+原因：
+
+成本高，且不是当前瓶颈。
+
+❌ Replace Knowledge Control Plane
+
+Impact Analysis 不决定：
+
+Authority
+Architecture
+Design
+Acceptance
+
+这些仍由：
+
+ADR
+Task
+Freeze
+Decision
+
+负责。
+
+❌ Autonomous Refactoring
+
+不会自动修改代码。
+
+只提供：
+
+Impact Evidence
+5. Core Concept
+
+新增：
+
+Impact Context
+
+类似：
+
+Knowledge Context
+
+但是回答：
+
+What changes if this changes?
+Context Example
+
+输入：
+
+Game.Core/Contracts/RewardOfferPresentedEvent.cs
+
+输出：
+
+{
+ "target":
+ "Game.Core/Contracts/RewardOfferPresentedEvent.cs",
+
+ "impact": {
+
+   "code_consumers":[
+      "RewardService",
+      "RewardUI"
+   ],
+
+   "tests":[
+      "Task0029AcceptanceTests",
+      "CardPoolSelectionTests"
+   ],
+
+   "runtime_flows":[
+      "Reward Offer Flow"
+   ],
+
+   "knowledge_refs":[
+      "ADR-0032",
+      "ADR-0033"
+   ]
+ }
+}
+6. Functional Requirements
+FR-001 Target Resolution
+
+系统必须支持：
+
+输入：
+
+file
+class
+interface
+event
+contract
+scene
+resource
+
+例如：
+
+RewardOfferPresentedEvent
+
+解析为：
+
+Game.Core/Contracts/Events/
+RewardOfferPresentedEvent.cs
+FR-002 Symbol Impact Detection
+
+系统应该发现：
+
+Direct References
+
+例如：
+
+RewardOfferPresentedEvent
+
+被引用:
+
+RewardService
+RewardUI
+Tests
+Contract Dependency
+
+例如：
+
+interface IRewardProvider
+
+影响：
+
+RewardProviderA
+RewardProviderB
+FR-003 Test Impact Mapping
+
+支持：
+
+代码：
+
+RewardService
+
+映射：
+
+Tests:
+
+RewardServiceTests
+
+Task0029AcceptanceTests
+
+CardPoolSelectionTests
+FR-004 Runtime Impact Mapping
+
+针对游戏项目：
+
+支持：
+
+C# code
+        |
+        |
+Godot scene
+        |
+        |
+Node
+        |
+        |
+Signal
+
+例如：
+
+RewardPanel.tscn
+
+connects
+
+RewardOfferPresentedEvent
+FR-005 Knowledge Binding
+
+Impact Analysis 必须关联 Knowledge Control Plane。
+
+输出：
+
+例如：
+
+{
+ "knowledge_refs":[
+
+ {
+   "type":"ADR",
+   "id":"ADR-0032"
+ },
+
+ {
+   "type":"TASK",
+   "id":"GM-0129"
+ }
+
+ ]
+}
+FR-006 Change Risk Classification
+
+输出风险：
+
+{
+ "risk":"high"
+}
+
+规则：
+
+High:
+
+Contract change
+Event change
+Save format change
+Core domain change
+
+Medium:
+
+Service change
+System change
+
+Low:
+
+UI only
+7. Integration With Existing Workflow
+Before Coding
+
+当前：
+
+Task
+ |
+Knowledge Freeze
+ |
+Coding
+
+新增：
+
+Task
+ |
+Knowledge Freeze
+ |
+Impact Analysis
+ |
+Coding
+Before Review
+
+当前：
+
+Review Context Freeze
+ |
+Review
+
+新增：
+
+Review Context Freeze
+
++
+
+Impact Report
+
+↓
+
+Review
+8. Output Artifacts
+
+新增：
+
+目录：
+
+logs/ci/impact-analysis/
+
+文件：
+
+impact-report.v1.json
+
+Schema:
+
+{
+ "schema_version":
+ "newrouge.impact-analysis.v1",
+
+ "target":{},
+
+ "affected_files":[],
+
+ "affected_symbols":[],
+
+ "tests":[],
+
+ "runtime_refs":[],
+
+ "knowledge_refs":[],
+
+ "risk_level":""
+}
+9. Authority Rules
+
+必须遵守：
+
+Impact ≠ Authority
+
+例如：
+
+Graph:
+
+A calls B
+
+不代表：
+
+B is architecture authority
+
+Authority 仍来自：
+
+ADR
+Contract
+Task
+Decision
+10. Implementation Strategy
+Phase 1
+
+Symbol Index
+
+支持：
+
+C#
+class
+interface
+method
+event
+
+产物：
+
+symbol-index.json
+Phase 2
+
+Dependency Scanner
+
+支持：
+
+using
+reference
+inheritance
+interface implementation
+Phase 3
+
+Game Runtime Mapping
+
+支持：
+
+.tscn
+signal
+node
+resource
+Phase 4
+
+Knowledge Binding
+
+连接：
+
+Impact Report
+
+↓
+
+Knowledge Context
+11. Acceptance Criteria
+AC-001
+
+给定：
+
+RewardOfferPresentedEvent
+
+系统能够输出：
+
+consumers
+tests
+ADR refs
+AC-002
+
+修改 Contract 时：
+
+输出：
+
+risk=high
+AC-003
+
+Review consumer 可以读取：
+
+impact-report
+
+但不能改变：
+
+review authority
+AC-004
+
+Impact Analysis 不影响：
+
+freeze
+publication
+locator
+12. Success Metrics
+
+成功标准：
+
+AI 修改前能够回答：
+
+我要改什么？
+
+谁依赖它？
+
+哪些测试受影响？
+
+哪些 ADR 约束它？
+
+风险是什么？
+13. Final Architecture Position
+
+最终：
+
+                 Knowledge Control Plane
+
+                         |
+        -------------------------------------
+
+        Semantic Layer          Impact Layer
+
+        Task                    Symbol
+
+        ADR                     Dependency
+
+        Contract                Runtime
+
+        Decision                Risk
+
+        Freeze                  Change Surface
+给 BMAD 的使用建议
+
+顺序：
+
+bmad-prd
+    ↓
+bmad-spec
+    ↓
+bmad-architecture
+    ↓
+Quick Dev TDD
+    ↓
+Acceptance
+
+不要直接设计代码。
+
+因为这个需求实际上是：
+
+Knowledge Control Plane 的第二阶段能力扩展。
+
+这个需求作为 newrouge 的下一条独立 requirement chain：
+
+Knowledge Control Plane Migration
+        ↓
+KCP Impact Analysis
+        ↓
+AI Development Safety Layer
+
+这份可以直接交给本地 bmad-prd 开始。

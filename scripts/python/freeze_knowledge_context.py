@@ -75,11 +75,23 @@ def _policy(root: Path, consumer: str, policy_revision: str) -> dict[str, Any]:
     return policy
 
 
+def _publication_lineage(root: Path, commit: str) -> tuple[str, str]:
+    pointer = json.loads((root / "knowledge/indexes/current.json").read_text(encoding="utf-8"))
+    if pointer.get("authority_ref") != "refs/heads/main" or pointer.get("main_commit") != commit:
+        raise FreezeBlocked("publication_authority_mismatch")
+    generation = str(pointer.get("generation_id") or "")
+    generation_sha = str(pointer.get("generation_sha256") or "")
+    if not generation or not generation_sha.startswith("sha256:"):
+        raise FreezeBlocked("publication_lineage_missing")
+    return generation, generation_sha
+
+
 def freeze(
     root: Path,
     *,
     bundle: dict[str, Any],
     decision_set: dict[str, Any],
+    task_id: str | None = None,
 ) -> dict[str, Any]:
     if (
         bundle.get("schema_version") != "newrouge.knowledge-context-candidates.v1"
@@ -113,8 +125,11 @@ def freeze(
         raise FreezeBlocked("snapshot_invalid")
     if _git_text(root, "rev-parse", ref) != commit:
         raise FreezeBlocked("authority_ref_moved")
+    publication_generation, publication_sha256 = _publication_lineage(root, commit)
 
     policy = _policy(root, consumer, policy_revision)
+    if consumer != "review" and (not isinstance(task_id, str) or not task_id.strip()):
+        raise FreezeBlocked("task_id_missing")
     required = set(policy.get("required_context_classes", []))
     optional = set(policy.get("optional_context_classes", []))
     allowed_classes = required | optional
@@ -206,6 +221,9 @@ def freeze(
         "policy_revision": policy_revision,
         "source_bundle_sha256": source_bundle_sha,
         "decision_set_sha256": _prefixed_sha(decision_set),
+        "task_id": task_id if consumer != "review" else None,
+        "publication_generation": publication_generation,
+        "publication_sha256": publication_sha256.removeprefix("sha256:"),
         "required_context_classes": sorted(required),
         "satisfied_context_classes": sorted(satisfied),
         "accepted_sources": accepted_sources,
@@ -226,6 +244,7 @@ def main() -> int:
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--decisions", type=Path, required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--task-id")
     args = parser.parse_args()
     root = args.repository_root.resolve()
     bundle_path = args.bundle if args.bundle.is_absolute() else root / args.bundle
@@ -235,6 +254,7 @@ def main() -> int:
             root,
             bundle=json.loads(bundle_path.read_text(encoding="utf-8")),
             decision_set=json.loads(decision_path.read_text(encoding="utf-8")),
+            task_id=args.task_id,
         )
     except (OSError, json.JSONDecodeError, FreezeBlocked) as exc:
         print(

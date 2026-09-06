@@ -614,7 +614,8 @@ class RunReviewPipelineMarathonTests(unittest.TestCase):
                 mock.patch.object(run_review_pipeline_module, "write_agent_review", return_value=(payload, [], [])):
                 rc = run_review_pipeline_module.main()
 
-            self.assertEqual(1, rc)
+            # fast-ship uses agent_review.mode=warn: emit the soft approval request without blocking the pipeline.
+            self.assertEqual(0, rc)
             request = json.loads((out_dir / "approval-request.json").read_text(encoding="utf-8"))
             latest = json.loads(latest_path.read_text(encoding="utf-8"))
             execution_context = json.loads((out_dir / "execution-context.json").read_text(encoding="utf-8"))
@@ -626,7 +627,7 @@ class RunReviewPipelineMarathonTests(unittest.TestCase):
             self.assertEqual(str(out_dir / "approval-request.json"), latest["approval_request_path"])
             self.assertEqual("pending", execution_context["approval"]["status"])
             self.assertEqual("fork", execution_context["approval"]["required_action"])
-            self.assertEqual("fail", summary["status"])
+            self.assertEqual("ok", summary["status"])
 
     def test_existing_approval_response_should_be_indexed_as_soft_signal(self) -> None:
         run_id = uuid.uuid4().hex

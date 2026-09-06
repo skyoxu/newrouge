@@ -1,0 +1,85 @@
+我建议 SPEC 阶段重点补充的内容
+
+不是 PRD 问题，而是 SPEC 应展开。
+
+SPEC-1 增加 Impact Object Model
+
+现在 PRD 有：
+
+affected_files
+affected_symbols
+runtime_refs
+knowledge_refs
+
+SPEC 应定义：
+
+例如：
+
+{
+  "target": {
+    "kind": "event",
+    "identity": "RewardOfferPresentedEvent"
+  },
+
+  "impact_edges": [
+    {
+      "from": "RewardOfferPresentedEvent",
+      "to": "RewardSystem.cs",
+      "relation": "consumer"
+    }
+  ]
+}
+SPEC-2 明确 Relation Types
+
+现在只是描述。
+
+SPEC 应固定：
+
+例如：
+
+relation	meaning
+references	文件引用
+implements	接口实现
+inherits	继承
+consumes	event consumer
+binds	scene/script
+tests	test coverage
+documents	knowledge reference
+SPEC-3 明确 v1 不支持什么
+
+建议 SPEC 增加：
+
+Unsupported:
+- runtime dynamic dispatch
+- reflection discovery
+- generated code inference
+- editor-only Godot state
+- external package dependency graph
+
+避免后续范围膨胀。
+
+SPEC-4 明确执行入口
+
+需要定义：
+
+例如：
+
+scripts/python/analyze_impact.py
+
+input:
+  target
+
+output:
+  logs/ci/impact-analysis/
+      impact-report.v1.json
+7. 当前不需要修改的地方
+
+不要增加：
+
+❌ Neo4j
+❌ SQLite graph database
+❌ Roslyn full compiler integration
+❌ Godot editor plugin
+❌ Visual dependency graph UI
+
+这些都属于未来验证需求。
