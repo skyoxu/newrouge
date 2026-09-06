@@ -252,9 +252,7 @@ def _ensure_no_reparse_ancestors(path: Path, root: Path) -> None:
     try:
         # Preserve lexical path segments so reparse-point ancestors are still
         # inspected instead of being hidden by realpath canonicalization.
-        relative = Path(os.path.normcase(str(path_abs))).relative_to(
-            Path(os.path.normcase(str(root_abs)))
-        )
+        relative = path_abs.relative_to(root_abs)
     except ValueError:
         # Windows 8.3 aliases can make otherwise-local paths compare unequal;
         # use the long-path canonical form only as a containment fallback.

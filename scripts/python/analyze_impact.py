@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import hashlib
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -13,7 +14,7 @@ from typing import Any
 
 try:
     from impact_analysis_handoff import EXIT_CODES
-    from impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes
+    from impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors
     from impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
@@ -23,7 +24,7 @@ try:
     )
 except ModuleNotFoundError:  # pragma: no cover
     from scripts.python.impact_analysis_handoff import EXIT_CODES
-    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes
+    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors
     from scripts.python.impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
@@ -40,11 +41,13 @@ def _utc_date() -> str:
 def _resolve_inside(root: Path, value: str) -> Path:
     p = Path(value)
     if p.is_absolute() or (len(value) > 1 and value[1] == ":") or value.startswith("\\\\"):
-        candidate = p.resolve()
+        candidate = Path(os.path.abspath(str(p)))
     else:
-        candidate = (root / p).resolve()
+        candidate = Path(os.path.abspath(str(root / p)))
     try:
-        candidate.relative_to(root.resolve())
+        canonical_candidate = Path(os.path.normcase(os.path.realpath(str(candidate))))
+        canonical_root = Path(os.path.normcase(os.path.realpath(str(root))))
+        canonical_candidate.relative_to(canonical_root)
     except ValueError as exc:
         raise ImpactIndexError("path_outside_repository", f"path outside repository: {value}") from exc
     return candidate
@@ -79,6 +82,10 @@ def _validated_output(root: Path, value: str) -> Path:
                 or re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?", part)):
             raise ImpactIndexError("index_identity_collision", "reserved output path component")
     path = _resolve_inside(root, value)
+    try:
+        _ensure_no_reparse_ancestors(path, root / "logs" / "ci")
+    except ImpactIndexError as exc:
+        raise ImpactIndexError("path_outside_repository", "output must remain under logs/ci") from exc
     try:
         # The policy boundary is the literal repository logs/ci root, not its redirect target.
         relative = path.relative_to(root / "logs" / "ci")
