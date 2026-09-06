@@ -202,11 +202,15 @@ def resolve_repository_path(root: Path, value: str, *, must_exist: bool = False)
 
 def _is_reparse_point(path: Path) -> bool:
     try:
-        if path.is_symlink():
+        # lstat is deliberately used here: stat/follow_symlinks behaviour
+        # differs across Python/Windows versions and can report a normal
+        # temporary directory as a reparse point.  We only reject an actual
+        # link/reparse attribute on the directory entry being inspected.
+        if path.is_symlink() or os.path.islink(os.fspath(path)):
             return True
         if os.name == "nt":
-            import stat
-            return bool(path.stat(follow_symlinks=False).st_file_attributes & 0x400)
+            attributes = os.lstat(os.fspath(path)).st_file_attributes
+            return bool(attributes & 0x400)
     except OSError:
         return False
     return False
