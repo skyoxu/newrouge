@@ -919,6 +919,19 @@ def main() -> int:
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
             return False
+        if name in {"review-pipeline", "review-pipeline-fork"} and handoff.identity is not None:
+            summary["status"] = "blocked"
+            summary["stop_reason"] = "review_context_required"
+            summary["pending_step"] = name
+            summary["next_action"] = (
+                "Prepare independent consumer=review decisions, frozen context and impact report "
+                "for the revision being reviewed; invoke scripts/sc/run_review_pipeline.py "
+                "with the task id and review handoff. See docs/workflows/knowledge-context-freeze.md."
+            )
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop=review_context_required")
+            print(summary["next_action"])
+            return False
         step = _run_plain_step(out_dir, name=name, cmd=cmd)
         summary["steps"].append(step)
         if int(step["rc"]) != 0:

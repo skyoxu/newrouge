@@ -237,6 +237,12 @@ Why this is stable:
 - by default it records residual `P2/P3` findings instead of repeatedly paying for the same-shape closure loop
 - it keeps `6.9` behind the same orchestrator, so repo-level hard checks are still part of the normal closeout path
 
+When supplying Chapter 6 `--frozen-context`, `--impact-report` and `--revision`,
+the orchestrator pauses before Review (including fork) with
+`review_context_required`. Continue through the Review entrypoint with independently
+prepared Review artifacts, following `docs/workflows/knowledge-context-freeze.md`.
+This split path still requires the normal post-review routing and `6.9` hard checks.
+
 ### `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`
 
 Use when:

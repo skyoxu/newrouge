@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 import tempfile
@@ -31,6 +32,71 @@ lane = _load_module("single_task_chapter6_lane_module", "scripts/python/run_sing
 
 
 class RunSingleTaskChapter6LaneTests(unittest.TestCase):
+    def test_chapter6_handoff_pauses_before_review_and_fork(self) -> None:
+        for fork in (False, True):
+            with self.subTest(fork=fork), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                out_dir = root / "logs/ci/chapter6"
+                revision = "a" * 40
+                frozen = {
+                    "schema_version": "newrouge.knowledge-frozen-context.v1",
+                    "freeze_state": "frozen", "consumer": "chapter6",
+                    "task_id": "15", "snapshot": {"commit": revision},
+                }
+                frozen_path = root / "frozen.json"
+                frozen_path.write_text(json.dumps(frozen), encoding="utf-8")
+                report = {
+                    "schema_version": "newrouge.impact-analysis.v1", "status": "ok",
+                    "repository_revision": revision, "index_id": "idx-test",
+                    "index_sha256": "b" * 64, "target": {"kind": "file", "identity": "x"},
+                    "risk_level": "unknown",
+                    "knowledge_binding": {
+                        "consumer": "chapter6", "task_id": "15",
+                        "frozen_context_path": "frozen.json",
+                        "frozen_context_sha256": hashlib.sha256(frozen_path.read_bytes()).hexdigest(),
+                        "decision_set_sha256": "c" * 64, "freeze_point": "before-red",
+                        "publication_generation": "gen", "publication_sha256": "d" * 64,
+                    },
+                }
+                report_path = root / "report.json"
+                report_path.write_text(json.dumps(report), encoding="utf-8")
+                before = (frozen_path.read_bytes(), report_path.read_bytes())
+                argv = ["chapter6", "--task-id", "15", "--out-dir", str(out_dir),
+                        "--frozen-context", "frozen.json", "--impact-report", "report.json",
+                        "--revision", revision]
+                resume = {"task_id": "15", "recommended_action": "continue"}
+                route = lane._fresh_start_route_payload()
+                if fork:
+                    resume["approval"] = {"required_action": "fork", "status": "approved",
+                                          "allowed_actions": ["fork", "inspect"], "blocked_actions": ["resume"]}
+                    route = {"preferred_lane": "inspect-first", "run_id": "run-15",
+                             "latest_reason": "approval_required:fork", "blocked_by": "approval_approved"}
+                calls = []
+
+                def json_step(*args, name, cmd):
+                    self.assertIn(name, {"resume-task", "chapter6-route-initial"})
+                    return {"name": name, "rc": 0, "cmd": cmd}, resume if name == "resume-task" else route
+
+                def plain_step(*args, name, cmd):
+                    calls.append(name)
+                    self.assertNotIn("scripts/sc/run_review_pipeline.py", cmd)
+                    return {"name": name, "rc": 0, "cmd": cmd}
+
+                with (mock.patch.object(sys, "argv", argv),
+                      mock.patch.object(lane, "_repo_root", return_value=root),
+                      mock.patch.object(lane, "_run_json_step", side_effect=json_step),
+                      mock.patch.object(lane, "_run_plain_step", side_effect=plain_step)):
+                    rc = lane.main()
+                self.assertEqual(rc, 1)
+                self.assertEqual(calls, [] if fork else ["check-tdd-plan", "red-first", "green", "refactor"])
+                summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+                self.assertEqual(summary["status"], "blocked")
+                self.assertEqual(summary["stop_reason"], "review_context_required")
+                self.assertEqual(summary["pending_step"], "review-pipeline-fork" if fork else "review-pipeline")
+                self.assertIn("review", summary["next_action"])
+                self.assertEqual([s["name"] for s in summary["steps"]][2:], calls)
+                self.assertEqual(before, (frozen_path.read_bytes(), report_path.read_bytes()))
+
     def test_handoff_builder_forwards_all_arguments(self) -> None:
         cmd = lane.build_review_pipeline_cmd(
             "15",

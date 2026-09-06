@@ -1,0 +1,21 @@
+# Chapter 6 Review Context Boundary
+
+- Title: Stop Chapter 6 handoff at the Review consumer boundary
+- Date: 2026-09-06
+- Status: accepted
+- Supersedes: n/a - scoped integration correction
+- Superseded by: n/a - active decision
+- Branch: fix/knowledge-freeze-task-id-docs
+- Git Head: f68a7a7
+- Why now: External review found a Needs Fix consumer conflict in normal and fork orchestration.
+- Context: Chapter 6 validates chapter6 artifacts and forwards them to a review-only validator.
+- Decision: Pause before Review with review_context_required when Chapter 6 handoff is enabled. Require independently prepared Review artifacts.
+- Consequences: The caller completes Review separately; no automatic consumer conversion or silent opt-out.
+- Recovery impact: Preserve completed steps and record the pending review step in the Chapter 6 summary. Re-entering Chapter 6 is not the continuation procedure.
+- Validation: PASS - 71 orchestration, handoff and Review preflight tests. Normal and fork paths pause without launching Review or mutating handoff artifacts. Evidence: logs/ci/chapter6-review-boundary/validation.md. No production Review or full KCP acceptance claim.
+- Related ADRs: docs/adr/ADR-0035-repository-knowledge-control-plane.md
+- Related execution plans: execution-plans/2026-09-06-chapter6-review-context-boundary.md
+- Related task id(s): n/a - orchestration infrastructure
+- Related run id: n/a - local regression validation
+- Related latest.json: n/a - no production review execution
+- Related pipeline artifacts: logs/ci/chapter6-review-boundary
