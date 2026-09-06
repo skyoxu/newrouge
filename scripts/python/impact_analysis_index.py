@@ -272,8 +272,11 @@ def _relative_to_repository(path: Path, root: Path) -> Path:
 
 def _ensure_no_reparse_ancestors(path: Path, root: Path) -> None:
     """Reject symlink/junction/reparse ancestors without resolving through them."""
-    root_abs = _lexical_absolute_path(root)
-    path_abs = _lexical_absolute_path(path)
+    # Windows path comparisons are case-insensitive.  Normalize case before
+    # lexical containment checks so concurrent writers cannot spuriously turn
+    # an output collision into path_outside_repository (exit 4).
+    root_abs = Path(os.path.normcase(str(_lexical_absolute_path(root))))
+    path_abs = Path(os.path.normcase(str(_lexical_absolute_path(path))))
     try:
         # Preserve lexical path segments so reparse-point ancestors are still
         # inspected instead of being hidden by realpath canonicalization.
