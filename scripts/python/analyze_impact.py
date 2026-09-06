@@ -50,6 +50,11 @@ def _resolve_inside(root: Path, value: str) -> Path:
         canonical_candidate.relative_to(canonical_root)
     except ValueError as exc:
         raise ImpactIndexError("path_outside_repository", f"path outside repository: {value}") from exc
+    # Return the repository spelling for 8.3 aliases so later relative paths
+    # and manifest bindings remain stable, while preserving ordinary paths.
+    lexical = _lexical_absolute_path(candidate)
+    if lexical != candidate:
+        return lexical
     return candidate
 
 
