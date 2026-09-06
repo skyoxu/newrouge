@@ -453,8 +453,9 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         _assert_path_mentioned(self, payload["evidence_warning"], lock)
         report = json.loads((self.repo / payload["report_path"]).read_bytes())
-        for text in ("revision must be", "diagnostic manifest publication denied", "diagnostic lock cleanup denied", str(lock)):
+        for text in ("revision must be", "diagnostic manifest publication denied", "diagnostic lock cleanup denied"):
             self.assertIn(text, report["failure_reason"]["reason"])
+        _assert_path_mentioned(self, report["failure_reason"]["reason"], lock)
         self.assertTrue(lock.is_dir())
         self.assert_failure_pair(payload)
 
