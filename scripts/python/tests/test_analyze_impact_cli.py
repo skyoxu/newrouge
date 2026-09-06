@@ -20,6 +20,25 @@ def run(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, cwd=cwd, text=True, encoding="utf-8", capture_output=True, check=False, timeout=120)
 
 
+class WindowsOutputAliasTests(unittest.TestCase):
+    def test_short_repository_alias_accepts_missing_output_and_existing_input(self):
+        import ctypes
+        from scripts.python import analyze_impact as cli
+
+        with tempfile.TemporaryDirectory(prefix="impact-long-repository-") as directory:
+            root = Path(directory).resolve()
+            buffer = ctypes.create_unicode_buffer(32768)
+            self.assertTrue(ctypes.windll.kernel32.GetShortPathNameW(str(root), buffer, len(buffer)))
+            short_root = Path(buffer.value)
+            self.assertNotEqual(short_root, root, "Fixture requires Windows 8.3 aliases")
+            (root / "logs/ci").mkdir(parents=True)
+            output = cli._validated_output(root, str(short_root / "logs/ci/new-output/report.json"))
+            self.assertEqual(output, root / "logs/ci/new-output/report.json")
+            source = root / "logs/ci/input.json"
+            source.write_text("{}", encoding="utf-8")
+            self.assertEqual(cli._resolve_inside(root, str(short_root / "logs/ci/input.json")), source)
+
+
 class AnalyzeImpactCliTests(unittest.TestCase):
     # The builder is real; the frozen binding is synthetic, not a freeze integration proof.
     def setUp(self) -> None:

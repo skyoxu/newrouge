@@ -202,10 +202,7 @@ def resolve_repository_path(root: Path, value: str, *, must_exist: bool = False)
 
 def _is_reparse_point(path: Path) -> bool:
     try:
-        # lstat is deliberately used here: stat/follow_symlinks behaviour
-        # differs across Python/Windows versions and can report a normal
-        # temporary directory as a reparse point.  We only reject an actual
-        # link/reparse attribute on the directory entry being inspected.
+        # Inspect the directory entry itself, including junction attributes.
         if path.is_symlink() or os.path.islink(os.fspath(path)):
             return True
         if os.name == "nt":
@@ -214,6 +211,29 @@ def _is_reparse_point(path: Path) -> bool:
     except OSError:
         return False
     return False
+
+
+def _lexical_absolute_path(path: Path) -> Path:
+    """Expand Windows 8.3 aliases without following junctions or symlinks."""
+    absolute = Path(os.path.abspath(path))
+    if os.name != "nt":
+        return absolute
+    import ctypes
+
+    get_long = ctypes.windll.kernel32.GetLongPathNameW
+    get_long.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32]
+    get_long.restype = ctypes.c_uint32
+    suffix: list[str] = []
+    current = absolute
+    while True:
+        buffer = ctypes.create_unicode_buffer(32768)
+        result = get_long(str(current), buffer, len(buffer))
+        if 0 < result < len(buffer):
+            return Path(buffer.value).joinpath(*reversed(suffix))
+        if current == current.parent:
+            return absolute
+        suffix.append(current.name)
+        current = current.parent
 
 
 def _canonical_windows_path(path: Path) -> Path:
@@ -252,15 +272,14 @@ def _relative_to_repository(path: Path, root: Path) -> Path:
 
 def _ensure_no_reparse_ancestors(path: Path, root: Path) -> None:
     """Reject symlink/junction/reparse ancestors without resolving through them."""
-    root_abs = Path(os.path.abspath(root)); path_abs = Path(os.path.abspath(path))
+    root_abs = _lexical_absolute_path(root)
+    path_abs = _lexical_absolute_path(path)
     try:
         # Preserve lexical path segments so reparse-point ancestors are still
         # inspected instead of being hidden by realpath canonicalization.
         relative = path_abs.relative_to(root_abs)
-    except ValueError:
-        # Windows 8.3 aliases can make otherwise-local paths compare unequal;
-        # use the long-path canonical form only as a containment fallback.
-        relative = _relative_to_repository(path_abs, root_abs)
+    except ValueError as exc:
+        raise fail("path_outside_repository", f"path escapes repository: {path}") from exc
     current = root_abs
     if _is_reparse_point(current):
         raise fail("path_outside_repository", f"reparse-point repository root: {current}")

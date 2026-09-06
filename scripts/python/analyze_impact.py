@@ -14,7 +14,7 @@ from typing import Any
 
 try:
     from impact_analysis_handoff import EXIT_CODES
-    from impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors
+    from impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors, _lexical_absolute_path
     from impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
@@ -24,7 +24,7 @@ try:
     )
 except ModuleNotFoundError:  # pragma: no cover
     from scripts.python.impact_analysis_handoff import EXIT_CODES
-    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors
+    from scripts.python.impact_analysis_index import ImpactIndexError, validate_index_bytes, atomic_publish_bytes, artifact_json_bytes, _ensure_no_reparse_ancestors, _lexical_absolute_path
     from scripts.python.impact_analyzer import (
         ANALYZER_IMPLEMENTATION_REVISION,
         ImpactAnalyzer,
@@ -41,9 +41,9 @@ def _utc_date() -> str:
 def _resolve_inside(root: Path, value: str) -> Path:
     p = Path(value)
     if p.is_absolute() or (len(value) > 1 and value[1] == ":") or value.startswith("\\\\"):
-        candidate = Path(os.path.abspath(str(p)))
+        candidate = _lexical_absolute_path(p)
     else:
-        candidate = Path(os.path.abspath(str(root / p)))
+        candidate = _lexical_absolute_path(root / p)
     try:
         canonical_candidate = Path(os.path.normcase(os.path.realpath(str(candidate))))
         canonical_root = Path(os.path.normcase(os.path.realpath(str(root))))
