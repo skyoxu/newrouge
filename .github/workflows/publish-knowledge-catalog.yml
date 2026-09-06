@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/publish-knowledge-catalog.yml"
       - "docs/**"
       - ".taskmaster/**"
       - "knowledge/policies/**"
