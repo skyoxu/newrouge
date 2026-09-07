@@ -44,6 +44,7 @@
 - ADR-0021: C# Domain Layer Architecture — `docs/adr/ADR-0021-csharp-domain-layer-architecture.md`
 - ADR-0022: Godot Signal System and Contracts — `docs/adr/ADR-0022-godot-signal-system-and-contracts.md`
 - ADR-0031: 构建可复现性与版本锁定（Godot 4.5.1 + NuGet Lock） — `docs/adr/ADR-0031-build-reproducibility-and-version-pinning.md`
+- ADR-0036: Local Project Health Investigation Boundary — `docs/adr/ADR-0036-project-health-investigation.md`
 
 ---
 

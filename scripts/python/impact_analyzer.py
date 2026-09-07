@@ -141,7 +141,9 @@ class SymbolIndex:
         "Task": "System.Threading.Tasks.Task",
     }
 
-    def __init__(self, sources: dict[str, str], hashes: dict[str, str]):
+    def __init__(self, sources: dict[str, str], hashes: dict[str, str], *, exploratory: bool = False):
+        self.exploratory = exploratory
+        self.skipped_methods: list[dict[str, Any]] = []
         self.sources = sources
         self.hashes = hashes
         self.symbols: list[Symbol] = []
@@ -360,7 +362,14 @@ class SymbolIndex:
             if owner:
                 generic = m.group(2)
                 arity = len(self._split_top_level(generic)) if generic else 0
-                params = self._normalize_params(m.group(3), owner.identity.rsplit(".", 1)[0])
+                try:
+                    params = self._normalize_params(m.group(3), owner.identity.rsplit(".", 1)[0])
+                except ImpactIndexError as exc:
+                    if not self.exploratory or exc.code != 'unsupported_target':
+                        raise
+                    self.skipped_methods.append({'path': path, 'line': text.count('\n', 0, m.start()) + 1,
+                                                 'reason': exc.reason})
+                    continue
                 identity = f"{owner.identity}::{m.group(1)}" + (f"`{arity}" if arity else "") + f"({','.join(params)})"
                 opening = text.find("{", m.end())
                 expression = text.find("=>", m.end())
@@ -515,7 +524,7 @@ class SymbolIndex:
 
 
 class TargetResolver:
-    def __init__(self, index_document: dict[str, Any], sources: dict[str, str], hashes: dict[str, str], aliases: dict[str, Any] | None = None):
+    def __init__(self, index_document: dict[str, Any], sources: dict[str, str], hashes: dict[str, str], aliases: dict[str, Any] | None = None, *, exploratory: bool = False):
         self.index = index_document
         self.sources = sources
         self.hashes = hashes
@@ -524,7 +533,7 @@ class TargetResolver:
             validate_aliases(self.aliases)
         except Exception as exc:
             raise ImpactIndexError("invalid_manifest", f"invalid target alias table: {exc}") from exc
-        self.symbol_index = SymbolIndex(sources, hashes)
+        self.symbol_index = SymbolIndex(sources, hashes, exploratory=exploratory)
 
     def resolve(self, target: dict[str, Any] | str) -> ResolvedTarget:
         if isinstance(target, str):
@@ -716,7 +725,8 @@ def classify_risk(target: ResolvedTarget, edges: list[dict[str, Any]]) -> tuple[
 
 
 class ImpactAnalyzer:
-    def __init__(self, repository_root: Path, index_path: Path, revision: str, trusted_ref: str | None = None):
+    def __init__(self, repository_root: Path, index_path: Path, revision: str, trusted_ref: str | None = None, *, exploratory: bool = False):
+        self.exploratory = exploratory
         self.root = repository_root.resolve(); self.revision = revision.lower(); self.trusted_ref = trusted_ref
         try:
             self.index_path = index_path.resolve(); index_bytes = self.index_path.read_bytes()
@@ -761,9 +771,42 @@ class ImpactAnalyzer:
                 raise ValueError("alias table revision differs from index")
         except Exception as exc:
             raise ImpactIndexError("invalid_manifest", f"invalid alias table: {exc}") from exc
-        self.resolver = TargetResolver(self.index, self.sources, self.hashes, aliases)
+        self.resolver = TargetResolver(self.index, self.sources, self.hashes, aliases, exploratory=exploratory)
 
     def analyze(self, target_input: dict[str, Any] | str, knowledge_binding: dict[str, Any] | None = None, frozen_context: str | None = None, consumer: str | None = None, task_id: str | None = None) -> dict[str, Any]:
+        if getattr(self, 'exploratory', False):
+            raise ImpactIndexError('unsupported_target', 'Exploratory analyzer cannot produce formal reports')
+        report = self._collect(target_input)
+        validate_knowledge_binding(knowledge_binding, consumer=consumer, task_id=task_id)
+        report["knowledge_binding"] = knowledge_binding
+        validate_report_document(report)
+        return report
+
+    def explore(self, target_input: dict[str, Any] | str) -> dict[str, Any]:
+        """Return investigation evidence that cannot be consumed as a formal handoff."""
+        report = self._collect(target_input)
+        if hasattr(self, 'resolver'):
+            target = self.resolver.resolve(target_input)
+            code_edges = [e for e in report['impact_edges'] if e['relation'] != 'binds']
+            code_paths = {target.canonical_path, *(e['evidence_path'] for e in code_edges)}
+            scenes = {e['evidence_path'] for e in report['runtime_refs']
+                      if e['to_kind'] == 'script' and e['to'] in code_paths}
+            if target.canonical_path.endswith(('.tscn', '.tres')):
+                scenes.add(target.canonical_path)
+            runtime = [e for e in report['runtime_refs'] if e['evidence_path'] in scenes]
+            report['impact_edges'] = _sort_edges([*code_edges, *runtime])
+            report['runtime_refs'] = runtime
+            report['affected_files'] = sorted({target.canonical_path, *(e['evidence_path'] for e in report['impact_edges'])})
+            risk, rules, reasons = classify_risk(target, report['impact_edges'])
+            report.update(risk_level=risk, matched_risk_rules=rules, risk_reasons=reasons)
+        report["schema_version"] = "newrouge.project-health-impact-preview.v1"
+        report["status"] = "exploratory"
+        report["handoff_eligible"] = False
+        if hasattr(self, 'resolver'):
+            report['skipped_methods'] = self.resolver.symbol_index.skipped_methods
+        return report
+
+    def _collect(self, target_input: dict[str, Any] | str) -> dict[str, Any]:
         target = self.resolver.resolve(target_input)
         edges: list[dict[str, Any]] = []
         tests: list[dict[str, Any]] = []
@@ -872,9 +915,6 @@ class ImpactAnalyzer:
             "risk_policy_revision": RISK_POLICY_REVISION, "matched_risk_rules": rules, "risk_reasons": reasons,
             "generated_at": _utc(), "failure_reason": None,
         }
-        validate_knowledge_binding(knowledge_binding, consumer=consumer, task_id=task_id)
-        report["knowledge_binding"] = knowledge_binding
-        validate_report_document(report)
         return report
 
 

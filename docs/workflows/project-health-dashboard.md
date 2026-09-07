@@ -1,5 +1,7 @@
 # Project Health Dashboard
 
+The same local host now includes `/knowledge/`: see [Knowledge + Impact](project-health-knowledge.md) for main-only snapshots, CLI-backed investigation, GDD configuration, paginated SSOT tasks and static Godot attachment evidence. The original latest dashboard remains generated/static; the second-level page uses guarded local APIs.
+
 This workflow exposes three repo-health records and one static dashboard page:
 
 - `detect-project-stage`: tells you whether the repo is still in bootstrap, missing the real task triplet, or ready for the daily task loop.

@@ -150,6 +150,8 @@ py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 
 ### 2.4 可选：启动本地 project-health 页面服务
 
+服务首页的 `Knowledge + Impact` 链接进入 `/knowledge/` 二级页，提供 main-only 快照扫描、知识与 Impact 前置查询、GDD 配置及任务/场景证据。完整使用与边界见 [project-health-knowledge](docs/workflows/project-health-knowledge.md)。页面不改 chapter 技能，也不自动创建正式冻结交接工件。
+
 如果你希望在浏览器里稳定查看本仓的健康页，而不是只打开静态文件，可启动本地服务：
 
 ```powershell
