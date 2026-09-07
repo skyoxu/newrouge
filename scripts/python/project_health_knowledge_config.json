@@ -1,0 +1,17 @@
+{
+  "gdd_paths": ["docs/gdd/ui-gdd-flow.md"],
+  "task_scene_bindings": [
+    {
+      "task_id": 115,
+      "scene": "Game.Godot/Scenes/Reward.tscn",
+      "node": ".",
+      "script": "Game.Godot/Scripts/RewardScene.gd",
+      "witness": "func _claim_reward(reward_type: String, selected_card_id: String, selected_index: int) -> void:"
+    }
+  ],
+  "query_aliases": {
+    "奖励": ["Reward"],
+    "存档": ["Save"],
+    "战斗": ["Combat"]
+  }
+}
