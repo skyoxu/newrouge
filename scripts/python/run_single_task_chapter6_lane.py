@@ -526,6 +526,31 @@ def _build_step(name: str, cmd: list[str]) -> dict[str, Any]:
     return {"name": name, "cmd": list(cmd)}
 
 
+def _review_context_next_action() -> str:
+    return (
+        "Prepare independent consumer=review decisions, frozen context and impact report "
+        "for the revision being reviewed; invoke scripts/sc/run_review_pipeline.py "
+        "with the task id and review handoff. See docs/workflows/knowledge-context-freeze.md."
+    )
+
+
+def _stop_plan_at_review_context_boundary(plan: dict[str, Any]) -> dict[str, Any]:
+    steps = list(plan.get("steps") or [])
+    for index, step in enumerate(steps):
+        name = str(step.get("name") or "")
+        if name not in {"review-pipeline", "review-pipeline-fork"}:
+            continue
+        return {
+            **plan,
+            "status": "blocked",
+            "stop_reason": "review_context_required",
+            "pending_step": name,
+            "next_action": _review_context_next_action(),
+            "steps": steps[: index + 1],
+        }
+    return plan
+
+
 def build_execution_plan(
     *,
     task_id: str,
@@ -535,6 +560,9 @@ def build_execution_plan(
     post_review_route: dict[str, Any],
     final_route: dict[str, Any],
     resume_payload: dict[str, Any] | None = None,
+    frozen_context: str = "",
+    impact_report: str = "",
+    revision: str = "",
 ) -> dict[str, Any]:
     record_residual = str(profile_policy.get("record_residual") or "").strip().lower() == "true"
     decision = build_orchestration_decision(
@@ -565,7 +593,14 @@ def build_execution_plan(
             [
                 _build_step(
                     "review-pipeline-fork",
-                    build_review_pipeline_fork_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin),
+                    build_review_pipeline_fork_cmd(
+                        task_id,
+                        profile_policy=profile_policy,
+                        godot_bin=godot_bin,
+                        frozen_context=frozen_context,
+                        impact_report=impact_report,
+                        revision=revision,
+                    ),
                 ),
                 _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
             ]
@@ -630,7 +665,17 @@ def build_execution_plan(
             _build_step("red-first", build_red_first_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
             _build_step("green", build_build_tdd_cmd(task_id, stage="green", profile_policy=profile_policy)),
             _build_step("refactor", build_build_tdd_cmd(task_id, stage="refactor", profile_policy=profile_policy)),
-            _build_step("review-pipeline", build_review_pipeline_cmd(task_id, profile_policy=profile_policy, godot_bin=godot_bin)),
+            _build_step(
+                "review-pipeline",
+                build_review_pipeline_cmd(
+                    task_id,
+                    profile_policy=profile_policy,
+                    godot_bin=godot_bin,
+                    frozen_context=frozen_context,
+                    impact_report=impact_report,
+                    revision=revision,
+                ),
+            ),
             _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
         ]
     )
@@ -820,16 +865,25 @@ def main() -> int:
             post_review_route={"preferred_lane": "inspect-first"},
             final_route={"preferred_lane": "inspect-first"},
             resume_payload={},
+            frozen_context=args.frozen_context,
+            impact_report=args.impact_report,
+            revision=args.revision,
         )
+        if handoff.identity is not None:
+            plan = _stop_plan_at_review_context_boundary(plan)
         payload = {
             "cmd": "run-single-task-chapter6",
             "task_id": task_id,
             "status": "ok",
             "profile_policy": profile_policy,
             "plan_status": plan["status"],
+            "stop_reason": str(plan.get("stop_reason") or ""),
             "steps": plan["steps"],
             "out_dir": str(out_dir).replace("\\", "/"),
         }
+        for key in ("pending_step", "next_action"):
+            if key in plan:
+                payload[key] = plan[key]
         _write_json(out_dir / "summary.json", payload)
         print(
             "SINGLE_TASK_CHAPTER6_SELF_CHECK "
@@ -918,6 +972,15 @@ def main() -> int:
             summary["stop_reason"] = f"forbidden-command:{name}"
             _write_json(out_dir / "summary.json", summary)
             print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={summary['stop_reason']}")
+            return False
+        if name in {"review-pipeline", "review-pipeline-fork"} and handoff.identity is not None:
+            summary["status"] = "blocked"
+            summary["stop_reason"] = "review_context_required"
+            summary["pending_step"] = name
+            summary["next_action"] = _review_context_next_action()
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop=review_context_required")
+            print(summary["next_action"])
             return False
         step = _run_plain_step(out_dir, name=name, cmd=cmd)
         summary["steps"].append(step)
