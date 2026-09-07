@@ -1,5 +1,25 @@
 # Project Health Impact Limits
 
+- Title: Project Health Impact Limits and Recovery Metadata Repair
+- Date: 2026-09-07
+- Status: accepted
+- Supersedes: n/a - initial scoped decision
+- Superseded by: n/a - active decision
+- Branch: feat/project-health-knowledge-impact
+- Git Head: 814a1e010579c24a543d26115f3cb2d337bcd355
+- Why now: PR 166 CI exposed missing recovery metadata while formal Impact limitations remain open.
+- Context: Focused feature tests did not include the repository recovery documentation gate.
+- Decision: Follow both recovery templates, preserve existing validator requirements and keep exploration separate from formal handoff.
+- Consequences: Both recovery documents gain explicit provenance and continuation fields; no runtime or authority policy is relaxed.
+- Recovery impact: Validate execution plans and decision logs before publishing further changes.
+- Validation: Run py -3 scripts/python/validate_recovery_docs.py --dir all; remote CI remains the Windows verification authority.
+- Related ADRs: docs/adr/ADR-0036-project-health-investigation.md
+- Related execution plans: execution-plans/2026-09-07-project-health-knowledge.md
+- Related task id(s): n/a - repository tooling, not a gameplay Taskmaster task
+- Related run id: 34104776509
+- Related latest.json: logs/ci/project-health-knowledge/latest.json
+- Related pipeline artifacts: logs/ci/2026-09-07/gate-bundle/runs/gh-34104776509-a1/hard/summary.json
+
 ## Decision
 
 The local investigation page must not create authoritative chapter handoffs. Preserve strict formal Impact behavior; provide separately typed exploratory results and list skipped unsupported C# method signatures.

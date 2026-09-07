@@ -17,6 +17,17 @@ from impact_analyzer import ImpactAnalyzer, SymbolIndex
 
 
 class TasksTests(unittest.TestCase):
+    def test_feature_recovery_documents_follow_repository_contract(self):
+        import validate_recovery_docs as recovery
+        root = Path(__file__).resolve().parents[3]
+        documents = [
+            ('execution-plans/2026-09-07-project-health-knowledge.md', recovery.EXECUTION_PLAN_FIELDS),
+            ('decision-logs/2026-09-07-project-health-impact-limits.md', recovery.DECISION_LOG_FIELDS),
+        ]
+        for relative, fields in documents:
+            with self.subTest(path=relative):
+                self.assertEqual(recovery.validate_doc(root / relative, fields), [])
+
     def test_ssot_wins_and_views_remain_distinct(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
