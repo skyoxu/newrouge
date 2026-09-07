@@ -179,8 +179,15 @@ def scan(root: Path) -> dict:
 
 
 def status(state: dict) -> dict:
-    return {key: state.get(key) for key in ('schema_version', 'revision', 'scanned_at', 'branch',
-                                            'summary', 'gdd_files', 'publication', 'config')}
+    result = {key: state.get(key) for key in ('schema_version', 'revision', 'scanned_at', 'branch',
+                                              'summary', 'gdd_files', 'publication', 'config')}
+    runtime_path = base_dir(Path.cwd()) / 'runtime' / 'latest.json'
+    if runtime_path.exists():
+        runtime = read_json(runtime_path)
+        result['runtime'] = runtime.get('summary', {})
+    else:
+        result['runtime'] = {'total': 0, 'runtime_verified': 0, 'runtime_failed': 0}
+    return result
 
 
 def query(root: Path, state: dict, request: dict) -> dict:

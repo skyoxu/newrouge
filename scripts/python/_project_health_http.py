@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import secrets
 import subprocess
 import sys
@@ -44,8 +45,10 @@ def handler_factory(root: Path):
                 self.send({'reason': 'Another operation is running'}, 409)
                 return
             try:
-                cmd = [sys.executable, str(Path(__file__).with_name('project_health_knowledge.py')),
-                       action, '--repo-root', str(root), *args]
+                script = 'project_health_runtime.py' if action == 'runtime' else 'project_health_knowledge.py'
+                cmd = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(root), *args]
+                if action != 'runtime':
+                    cmd.insert(2, action)
                 proc = subprocess.run(cmd, input=json.dumps(request) if request is not None else None,
                                       capture_output=True, text=True, encoding='utf-8', timeout=240)
                 try:
@@ -115,6 +118,11 @@ def handler_factory(root: Path):
                 path = urlsplit(self.path).path
                 if path == '/api/knowledge/scan':
                     self.cli('scan')
+                elif path == '/api/knowledge/runtime':
+                    godot_bin = os.environ.get('GODOT_BIN')
+                    if not godot_bin:
+                        raise ValueError('GODOT_BIN is required for runtime verification')
+                    self.cli('runtime', ['--godot-bin', godot_bin])
                 elif path == '/api/knowledge/query':
                     self.cli('query', request=request)
                 elif path == '/api/knowledge/config':

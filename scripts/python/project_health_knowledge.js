@@ -72,6 +72,7 @@ async function search(target) {
 }
 el('close-detail').onclick=()=>el('detail').close();
 el('scan').onclick=()=>run(async()=>{const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
+el('runtime').onclick=()=>run(async()=>{await api('runtime',{});await loadStatus();});
 el('save-config').onclick=()=>run(async()=>{await api('config',JSON.parse(el('config').value));el('publication').textContent='Configuration saved. Scan main to apply it; displayed results still use the previous configuration.';});
 el('query-form').onsubmit=e=>{e.preventDefault();run(()=>search());};
 run(async()=>{token=(await api('session')).token;await loadStatus();});
