@@ -242,6 +242,12 @@ the orchestrator pauses before Review (including fork) with
 `review_context_required`. Continue through the Review entrypoint with independently
 prepared Review artifacts, following `docs/workflows/knowledge-context-freeze.md`.
 This split path still requires the normal post-review routing and `6.9` hard checks.
+For `--self-check` with a valid Chapter 6 handoff, `status = ok` means the
+preview completed successfully; `plan_status = blocked`, `stop_reason =
+review_context_required`, `pending_step` and `next_action` describe the expected
+runtime pause. The preview stops at the pending Review step and includes the
+validated handoff arguments in that command; it does not plan post-Review or
+`6.9` steps as part of the same invocation.
 
 ### `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`
 

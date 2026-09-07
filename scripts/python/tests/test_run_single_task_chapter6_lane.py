@@ -899,6 +899,82 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             self.assertEqual("P1", payload["profile_policy"]["fix_through"])
             self.assertEqual("check-tdd-plan", payload["steps"][2]["name"])
 
+    def test_main_self_check_with_handoff_should_preview_review_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            out_dir = root / "logs" / "ci" / "chapter6-self-check-handoff"
+            revision = "a" * 40
+            frozen_path = root / "frozen.json"
+            frozen_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "newrouge.knowledge-frozen-context.v1",
+                        "freeze_state": "frozen",
+                        "consumer": "chapter6",
+                        "task_id": "15",
+                        "snapshot": {"commit": revision},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            report_path = root / "report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "newrouge.impact-analysis.v1",
+                        "status": "ok",
+                        "repository_revision": revision,
+                        "index_id": "idx-test",
+                        "index_sha256": "b" * 64,
+                        "target": {"kind": "file", "identity": "x"},
+                        "risk_level": "unknown",
+                        "knowledge_binding": {
+                            "consumer": "chapter6",
+                            "task_id": "15",
+                            "frozen_context_path": "frozen.json",
+                            "frozen_context_sha256": hashlib.sha256(frozen_path.read_bytes()).hexdigest(),
+                            "decision_set_sha256": "c" * 64,
+                            "freeze_point": "before-red",
+                            "publication_generation": "gen",
+                            "publication_sha256": "d" * 64,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            argv = [
+                "run_single_task_chapter6_lane.py",
+                "--task-id", "15",
+                "--godot-bin", "C:/Godot/Godot.exe",
+                "--delivery-profile", "fast-ship",
+                "--self-check",
+                "--out-dir", str(out_dir),
+                "--frozen-context", "frozen.json",
+                "--impact-report", "report.json",
+                "--revision", revision,
+            ]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(lane, "_repo_root", return_value=root),
+            ):
+                rc = lane.main()
+
+            self.assertEqual(0, rc)
+            payload = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("ok", payload["status"])
+            self.assertEqual("blocked", payload["plan_status"])
+            self.assertEqual("review_context_required", payload["stop_reason"])
+            self.assertEqual("review-pipeline", payload["pending_step"])
+            self.assertIn("consumer=review", payload["next_action"])
+            self.assertEqual(
+                ["resume-task", "chapter6-route-initial", "check-tdd-plan", "red-first", "green", "refactor", "review-pipeline"],
+                [step["name"] for step in payload["steps"]],
+            )
+            review_cmd = payload["steps"][-1]["cmd"]
+            self.assertEqual("frozen.json", review_cmd[review_cmd.index("--frozen-context") + 1])
+            self.assertEqual("report.json", review_cmd[review_cmd.index("--impact-report") + 1])
+            self.assertEqual(revision, review_cmd[review_cmd.index("--revision") + 1])
+
     def test_main_should_stop_before_running_forbidden_review_pipeline_command(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
