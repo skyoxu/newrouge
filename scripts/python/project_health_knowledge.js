@@ -53,9 +53,9 @@ async function loadTasks(page=1) {
   pager('pager-top',result); pager('pager-bottom',result);
 }
 async function loadStatus() {
-  const state = await api('status'); el('revision').textContent = `main @ ${state.revision} · fetched ${state.scanned_at}`;
+  const state = await api('status'); el('revision').textContent = state.revision ? `${state.branch} @ ${state.revision} | scanned ${state.scanned_at}` : 'No successful local scan yet.';
   el('publication').textContent = `Published KCP pointer matches scan: ${state.publication.matches_scan}. ${state.publication.note}`;
-  el('config').value = pretty(state.config); el('summary').replaceChildren();
+  if (!el('config').value.trim()) el('config').value = pretty(await api('config')); el('summary').replaceChildren();
   for(const [key,value] of Object.entries({total:state.summary.total,...state.summary.statuses,...state.summary.godot})) {const d=document.createElement('div');d.className='metric';d.textContent=key+': '+value;el('summary').append(d);}
   el('gdds').replaceChildren();
   for(const file of state.gdd_files) {const p=document.createElement('p'); if(file.available) p.append(sourceLink(file.path)); else p.textContent=file.path+' — missing or unsupported at main';el('gdds').append(p);}
@@ -71,7 +71,7 @@ async function search(target) {
   el('preview').textContent=pretty(result);
 }
 el('close-detail').onclick=()=>el('detail').close();
-el('scan').onclick=()=>run(async()=>{await api('scan',{});currentPage=1;await loadStatus();});
+el('scan').onclick=()=>run(async()=>{const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
 el('save-config').onclick=()=>run(async()=>{await api('config',JSON.parse(el('config').value));el('publication').textContent='Configuration saved. Scan main to apply it; displayed results still use the previous configuration.';});
 el('query-form').onsubmit=e=>{e.preventDefault();run(()=>search());};
 run(async()=>{token=(await api('session')).token;await loadStatus();});

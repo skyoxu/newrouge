@@ -8,9 +8,9 @@
 py -3 scripts/python/dev_cli.py serve-project-health
 ```
 
-打开输出 URL，在首页点击 `Knowledge + Impact`。首次点击 `Fetch latest main + scan`。旧版纯静态服务不会被误复用；新服务选择另一个空闲端口，不强行结束旧进程。
+打开输出 URL，在首页点击 `Knowledge + Impact`。首次点击 `Scan local main`。旧版纯静态服务不会被误复用；新服务选择另一个空闲端口，不强行结束旧进程。
 
-扫描只执行 origin 的 `refs/heads/main` fetch，并建立独立 detached worktree。不会扫描当前功能分支、checkout 开发分支、更新 tasks 状态或自动提交配置。页面显示完整 main SHA 与抓取时间；不是持续实时监控。网络失败显示错误，保留上一次成功快照及其时间，不声称它仍为最新。
+扫描只读取本地 `refs/heads/main` tree，不 fetch、checkout 或建立 worktree。无 Git 时读取配置指定的目录范围并使用内容摘要身份。不会读取当前功能分支或修改任务。页面显示完整来源身份与扫描时间；失败保留上一次成功结果。
 
 1. 在顶部输入中文需求、英文符号或文件路径，选择知识 consumer，点击查询。
 2. 查看知识候选位置、GDD 补充来源及实际执行的 query。候选可点击打开该 main 快照原文。
@@ -20,7 +20,9 @@ py -3 scripts/python/dev_cli.py serve-project-health
 
 ## 配置与来源
 
-页面配置编辑器明确保存到 `scripts/python/project_health_knowledge_config.json`；保存不会自动扫描。重新扫描后生效。该文件可正常经 Git 审查提交，配置本身是本地操作输入，页面中游戏源数据仍只来自 main。
+页面配置编辑器使用内置默认值；独立加载不依赖扫描结果。点击扫描先校验并保存编辑器当前配置，再扫描；配置为空、损坏、越界或必要来源缺失时退出并保留旧结果。配置文件为 `scripts/python/project_health_knowledge_config.json`。
+
+- `source_paths`: 明确的文件或目录范围；默认包含任务三联、架构、契约、运行时和测试。禁止根目录、logs、Git 元数据和越界路径。扫描与探索查询共享同一内容集。
 
 - `gdd_paths`: 多个仓库相对路径，支持 UTF-8 `.md` / `.txt` / `.json`。路径必须存在于扫描的 main；不支持任意本地绝对路径、PDF/DOCX、软链接或浏览器任意文件读取。缺失项会显示为不可用。
 - `query_aliases`: 中文术语到短查询数组。每个别名作为独立 query 执行，原始输入保留。默认提供奖励/Reward、存档/Save、战斗/Combat；不是自动翻译或跨语言向量检索。
@@ -46,7 +48,7 @@ GDD 配置真正参与补充检索，但不会悄悄改变 KCP consumer policy�
 
 ## 查询与正式交接的边界
 
-前置查询复用知识 builder/locator、Impact immutable index、target resolver 与分析规则。页面结果采用单独 preview schema，`handoff_eligible=false`。不会自动 accept/freeze、publish、restore 或调用 codex exec。需要 LLM 时可把生成的证据 JSON 交给已有 CLI 工作流，不向网页开放任意 shell。
+前置查询复用知识 builder/locator、Impact target resolver 与分析规则，从同一选定内容集构造探索视图，不创建正式 immutable index。页面结果采用单独 preview schema，`handoff_eligible=false`。不会自动 accept/freeze、publish、restore 或调用 codex exec。
 
 轻量 C# 解析器无法识别部分方法参数。探索模式跳过这些方法并输出路径/行号/原因，仍保留其他证据；正式 analyzer 继续严格失败，而且探索实例不能生成正式报告。页面的 published pointer matches 只比较提交号，不等于对 publication envelope 的完整验证。
 

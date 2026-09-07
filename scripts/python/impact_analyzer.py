@@ -725,6 +725,27 @@ def classify_risk(target: ResolvedTarget, edges: list[dict[str, Any]]) -> tuple[
 
 
 class ImpactAnalyzer:
+    @classmethod
+    def from_exploratory_sources(cls, sources: dict[str, str], revision: str):
+        """Reuse analysis parsers for an isolated, non-handoff source bundle."""
+        instance = cls.__new__(cls)
+        instance.exploratory = True
+        instance.revision = revision
+        instance.trusted_ref = 'project-health-local-source'
+        instance.manifest = {}
+        instance.sources = dict(sources)
+        instance.hashes = {path: _sha(text.encode('utf-8')) for path, text in sources.items()}
+        identity = _sha(artifact_json_bytes(instance.hashes))
+        instance.index = {'index_id': 'exploratory:' + identity,
+                          'analysis_config_revision': 'project-health-local-source.v1'}
+        instance.index_sha256 = identity
+        instance.resolver = TargetResolver(instance.index, instance.sources, instance.hashes,
+                                           {'schema_version': 'newrouge.impact-target-aliases.v1',
+                                            'alias_table_revision': 'exploratory-empty.v1',
+                                            'aliases': {'event': {}, 'contract': {}}},
+                                           exploratory=True)
+        return instance
+
     def __init__(self, repository_root: Path, index_path: Path, revision: str, trusted_ref: str | None = None, *, exploratory: bool = False):
         self.exploratory = exploratory
         self.root = repository_root.resolve(); self.revision = revision.lower(); self.trusted_ref = trusted_ref

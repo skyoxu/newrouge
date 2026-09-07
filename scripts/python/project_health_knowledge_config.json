@@ -1,5 +1,24 @@
 {
-  "gdd_paths": ["docs/gdd/ui-gdd-flow.md"],
+  "source_paths": [
+    ".taskmaster/tasks",
+    "docs/prd",
+    "docs/adr",
+    "docs/architecture",
+    "docs/agents",
+    "docs/workflows",
+    "Game.Core",
+    "Game.Godot",
+    "Game.Core.Tests",
+    "Tests.Godot",
+    "README.md",
+    "AGENTS.md",
+    "DELIVERY_PROFILE.md",
+    "workflow.md",
+    "docs/testing-framework.md"
+  ],
+  "gdd_paths": [
+    "docs/gdd/ui-gdd-flow.md"
+  ],
   "task_scene_bindings": [
     {
       "task_id": 115,
@@ -10,8 +29,14 @@
     }
   ],
   "query_aliases": {
-    "奖励": ["Reward"],
-    "存档": ["Save"],
-    "战斗": ["Combat"]
+    "奖励": [
+      "Reward"
+    ],
+    "存档": [
+      "Save"
+    ],
+    "战斗": [
+      "Combat"
+    ]
   }
 }

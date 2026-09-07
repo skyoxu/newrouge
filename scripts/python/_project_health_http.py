@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from project_health_knowledge import CONFIG, safe_file, write_json, validate_config
+from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config
 
 
 def handler_factory(root: Path):
@@ -67,6 +67,8 @@ def handler_factory(root: Path):
                     self.send({'token': token, 'service': 'project-health-knowledge-v1'})
                 elif parsed.path == '/api/knowledge/status':
                     self.cli('status')
+                elif parsed.path == '/api/knowledge/config':
+                    self.send(load_config(root))
                 elif parsed.path == '/api/knowledge/tasks':
                     self.cli('tasks', ['--page', params.get('page', ['1'])[0]])
                 elif parsed.path == '/api/knowledge/task':

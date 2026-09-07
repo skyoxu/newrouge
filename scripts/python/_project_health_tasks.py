@@ -7,10 +7,14 @@ from collections import Counter
 from pathlib import Path
 
 
-def task_details(root: Path) -> list[dict]:
-    base = root / '.taskmaster/tasks'
-    tasks = json.loads((base / 'tasks.json').read_text(encoding='utf-8-sig'))['master']['tasks']
-    views = {name: json.loads((base / f'{name}.json').read_text(encoding='utf-8-sig'))
+def task_details(root) -> list[dict]:
+    """Read the task triplet from a source adapter or a filesystem root."""
+    def read(relative: str):
+        if not isinstance(root, Path):
+            return json.loads(root.read_text(relative))
+        return json.loads((root / Path(relative)).read_text(encoding='utf-8-sig'))
+    tasks = read('.taskmaster/tasks/tasks.json')['master']['tasks']
+    views = {name: read(f'.taskmaster/tasks/{name}.json')
              for name in ('tasks_back', 'tasks_gameplay')}
     result = []
     seen = set()

@@ -14,9 +14,59 @@ from _project_health_tasks import task_details, task_page, attach_task_scenes, s
 from _project_health_http import handler_factory
 from project_health_knowledge import safe_file, load_config, write_json
 from impact_analyzer import ImpactAnalyzer, SymbolIndex
+from project_health_knowledge import DEFAULT_CONFIG, scan, base_dir, validate_config
+from _knowledge_catalog_builder import DirectorySnapshot
 
 
 class TasksTests(unittest.TestCase):
+    def test_source_scope_rejects_root_and_disguised_logs(self):
+        from project_health_knowledge import DEFAULT_CONFIG, validate_config
+        with tempfile.TemporaryDirectory() as tmp:
+            for path in ('.', './logs', 'docs/../logs', 'docs//prd', './docs'):
+                with self.subTest(path=path):
+                    config = {**DEFAULT_CONFIG, 'source_paths': [path]}
+                    with self.assertRaises(ValueError):
+                        validate_config(Path(tmp), config)
+
+    def test_exploratory_source_bundle_runs_and_cannot_handoff(self):
+        analyzer = ImpactAnalyzer.from_exploratory_sources(
+            {'Game.Core/A.cs': 'namespace Demo; public class A {}'}, 'directory:abc')
+        result = analyzer.explore({'type': 'file', 'id': 'Game.Core/A.cs'})
+        self.assertEqual(result['status'], 'exploratory')
+        self.assertFalse(result['handoff_eligible'])
+        with self.assertRaises(Exception):
+            analyzer.analyze({'type': 'file', 'id': 'Game.Core/A.cs'})
+
+    def test_directory_digest_tracks_content_and_scope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_json(root / 'docs/a.json', {'a': 1})
+            write_json(root / 'logs/noise.json', {'a': 1})
+            first = DirectorySnapshot(root, ['docs'])
+            write_json(root / 'docs/a.json', {'a': 2})
+            second = DirectorySnapshot(root, ['docs'])
+            self.assertNotEqual(first.commit, second.commit)
+            self.assertEqual(first.paths, ('docs/a.json',))
+            self.assertTrue(first.commit.startswith('directory:'))
+
+    def test_invalid_configuration_retains_previous_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_json(base_dir(root) / 'latest.json', {'sentinel': 1})
+            write_json(root / 'scripts/python/project_health_knowledge_config.json', {})
+            with self.assertRaises(ValueError):
+                scan(root)
+            self.assertEqual(json.loads((base_dir(root) / 'latest.json').read_text()), {'sentinel': 1})
+            self.assertFalse((base_dir(root) / 'scan.lock').exists())
+
+    def test_defaults_and_forbidden_source_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(load_config(root), DEFAULT_CONFIG)
+            for path in ('logs', '../secret', 'C:/secret'):
+                with self.assertRaises(ValueError):
+                    validate_config(root, {**DEFAULT_CONFIG, 'source_paths': [path]})
+
     def test_feature_recovery_documents_follow_repository_contract(self):
         import validate_recovery_docs as recovery
         root = Path(__file__).resolve().parents[3]
@@ -133,7 +183,7 @@ class HttpTests(unittest.TestCase):
         _, session = self.request('GET', '/api/knowledge/session')
         headers = {'Origin': f'http://127.0.0.1:{self.server.server_port}', 'Content-Type': 'application/json',
                    'X-Project-Health-Token': json.loads(session)['token']}
-        config = {'gdd_paths': ['docs/gdd/设计.md'], 'task_scene_bindings': [], 'query_aliases': {}}
+        config = {'source_paths': ['.taskmaster/tasks'], 'gdd_paths': ['docs/gdd/设计.md'], 'task_scene_bindings': [], 'query_aliases': {}}
         self.assertEqual(self.request('POST', '/api/knowledge/config', json.dumps(config), headers)[0], 200)
         self.assertEqual(load_config(self.root), config)
         config['gdd_paths'] = ['../secret.md']
