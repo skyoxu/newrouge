@@ -38,8 +38,14 @@ Run:
 py -3 scripts/python/freeze_knowledge_context.py `
   --bundle logs/ci/knowledge-context/chapter6-task-<task-id>.json `
   --decisions logs/ci/knowledge-context/chapter6-task-<task-id>.decisions.json `
-  --output logs/ci/knowledge-context/chapter6-task-<task-id>.frozen.json
+  --output logs/ci/knowledge-context/chapter6-task-<task-id>.frozen.json `
+  --task-id <task-id>
 ```
+
+Chapter 4, Chapter 5, and Chapter 6 freezes are task-scoped and require an
+explicit `--task-id`. Omit `--task-id` when freezing a Review context; the
+freeze implementation always records `task_id: null` for that consumer.
+The Review pipeline itself still takes the business task identifier.
 
 The freeze operation fails closed unless all of the following hold:
 
@@ -58,6 +64,35 @@ The resulting `newrouge.knowledge-frozen-context.v1` binds the exact accepted so
 A Chapter 6 frozen context is created before RED.
 
 Once a RED/GREEN/REFACTOR sequence starts, do not issue a new semantic Locator query or silently append sources to the frozen context. If task scope changes materially, stop the sequence and create a new explicit candidate/decision/freeze revision.
+
+## Chapter 6 To Review Handoff
+
+When the Chapter 6 orchestrator receives a validated Chapter 6 frozen context,
+impact report and revision, it stops before launching Review with exit code 1,
+`status = blocked` and `stop_reason = review_context_required`. This applies
+to both the normal Review step and the approved fork path. Its `summary.json`
+retains completed steps and identifies `pending_step` and `next_action`.
+This is an explicit handoff pause, not a failed Review verdict.
+
+Continue separately:
+
+1. Select the revision to review after coding. Prepare a new `consumer=review`
+   candidate bundle using the applicable current publication, re-read sources,
+   and record explicit Review semantic decisions.
+2. Freeze that Review bundle without `--task-id` and generate an Impact Report
+   bound to its exact frozen hash and revision. Rebuild the Impact Index when
+   its revision or identity inputs have changed.
+3. Invoke `scripts/sc/run_review_pipeline.py` directly with the business
+   `--task-id`, the Review `--frozen-context`, `--impact-report` and matching
+   `--revision`. Supply `--binding-evidence` when using the corresponding
+   Review sidecar. Existing review prerequisites still apply.
+
+Do not restart the Chapter 6 orchestrator with Review artifacts: its entry
+validator requires `consumer=chapter6`. Do not edit the consumer field of old
+artifacts or omit the handoff to bypass the pause. Review resume/fork requires
+matching Review handoff identity; a changed identity requires a new Review run.
+An orchestrator fork pause does not authorize reuse of Chapter 6 artifacts in
+an existing Review run.
 
 ## Evidence Boundary
 

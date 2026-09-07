@@ -1,0 +1,21 @@
+# Chapter 6 Review Context Boundary Repair
+
+- Title: Correct Chapter 6 to Review handoff
+- Status: completed
+- Branch: fix/knowledge-freeze-task-id-docs
+- Git Head: f68a7a7
+- Goal: Resolve the consumer conflict without bypassing Review validation.
+- Scope: Chapter 6 normal and fork execution, regression tests, recovery documentation.
+- Current step: Scoped repair complete; production Review remains a separate caller operation.
+- Last completed step: Verified 71 orchestration, handoff and Review preflight tests after the normal/fork pause fix.
+- Stop-loss: Never start Review by stripping handoff arguments or changing frozen consumer fields.
+- Next action: For a real task, prepare independent Review artifacts and invoke Review directly, then complete post-review routing and 6.9 hard checks.
+- Recovery command: py -3 -m unittest scripts.python.tests.test_run_single_task_chapter6_lane
+- Open questions: n/a - explicit split execution approved
+- Exit criteria: Both paths stop before Review with completed steps retained; handoff and recovery checks pass.
+- Related ADRs: docs/adr/ADR-0035-repository-knowledge-control-plane.md
+- Related decision logs: decision-logs/2026-09-06-chapter6-review-context-boundary.md
+- Related task id(s): n/a - orchestration infrastructure
+- Related run id: n/a - local regression validation
+- Related latest.json: n/a - no production review execution
+- Related pipeline artifacts: logs/ci/chapter6-review-boundary
