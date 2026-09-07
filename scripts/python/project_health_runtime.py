@@ -25,7 +25,7 @@ def _run_task(root: Path, task: dict, godot_bin: str, timeout: int) -> dict:
     refs = [ref for ref in refs if ref.startswith("Tests.Godot/")]
     started = datetime.now(timezone.utc).isoformat()
     command = [sys.executable, str(root / "scripts/python/run_gdunit.py"), "--godot-bin", godot_bin,
-               "--project", "Tests.Godot", "--timeout-sec", str(timeout)]
+               "--project", "Tests.Godot", "--prewarm", "--timeout-sec", str(timeout)]
     for ref in refs:
         command.extend(["--add", ref.removeprefix("Tests.Godot/")])
     try:
@@ -52,8 +52,10 @@ def _main_revision(root: Path) -> str | None:
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
-def verify(root: Path, godot_bin: str, timeout: int) -> dict:
+def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None) -> dict:
     tasks = _gameplay_tasks(root)
+    if task_id is not None:
+        tasks = [task for task in tasks if str(task.get("taskmaster_id")) == str(task_id)]
     results = [_run_task(root, task, godot_bin, timeout) for task in tasks]
     revision = _main_revision(root)
     for result in results:
@@ -71,9 +73,10 @@ def main(argv=None) -> int:
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--godot-bin", required=True)
     parser.add_argument("--timeout-sec", type=int, default=600)
+    parser.add_argument("--task-id")
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec), ensure_ascii=True))
+        print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec, args.task_id), ensure_ascii=True))
         return 0
     except Exception as exc:
         print(json.dumps({"status": "failed", "reason": str(exc)}, ensure_ascii=True))
