@@ -559,11 +559,11 @@ func _resolve_reward_entry_title(reward_type: String, config: Dictionary) -> Str
         "relic":
             return _resolve_relic_display_name(str(config.get("relic_id", "")).strip_edges())
         "common_card_choice":
-            return "Common Cards 3-Choice"
+            return "Common Cards %s-Choice" % int(config.get("pick", 3))
         "rare_card_choice":
-            return "Rare Cards 3-Choice"
+            return "Rare Cards %s-Choice" % int(config.get("pick", 3))
         "epic_card_choice":
-            return "Epic Cards 3-Choice"
+            return "Epic Cards %s-Choice" % int(config.get("pick", 3))
         _:
             return reward_type
 
