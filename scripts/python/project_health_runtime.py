@@ -5,45 +5,107 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 from project_health_knowledge import base_dir, read_json, write_json
 
+GODOT_REF = "Tests.Godot/"
+CLEANUP_MARGIN_SECONDS = 30
+REQUIRED_EVIDENCE_FIELDS = {
+    "task_id", "source_revision", "test_refs", "scenes", "status",
+    "started_at", "finished_at", "evidence_path",
+}
 
-def _gameplay_tasks(root: Path) -> list[dict]:
-    path = root / ".taskmaster/tasks/tasks_gameplay.json"
-    rows = json.loads(path.read_text(encoding="utf-8-sig"))
-    return [row for row in rows if any(str(ref).replace("\\", "/").startswith("Tests.Godot/") for ref in row.get("test_refs", []))]
+
+def _references(value, sources: dict[str, str]) -> list[str]:
+    text = json.dumps(value, ensure_ascii=False)
+    refs = re.findall(r"Tests\.Godot/[A-Za-z0-9_./-]+", text.replace("\\\\", "/"))
+    refs = [ref.rstrip(".,;/") for ref in refs]
+    refs = [ref for ref in refs if '..' not in Path(ref).parts and
+            (ref in sources or any(path.startswith(ref.rstrip('/') + '/') for path in sources))]
+    return list(dict.fromkeys(refs))
 
 
-def _run_task(root: Path, task: dict, godot_bin: str, timeout: int) -> dict:
-    refs = [str(ref).replace("\\", "/") for ref in task.get("test_refs", [])]
-    refs = [ref for ref in refs if ref.startswith("Tests.Godot/")]
+def _task_id(value) -> str:
+    text = str(value)
+    if not re.fullmatch(r"[1-9][0-9]*", text):
+        raise ValueError("taskmaster_id must be a canonical positive numeric id")
+    return text
+
+
+def _gameplay_tasks(root: Path, state: dict | None = None) -> list[dict]:
+    if state is None:
+        latest = base_dir(root) / "latest.json"
+        if not latest.exists():
+            raise ValueError("A successful local source scan is required before runtime verification")
+        state = read_json(latest)
+    source = state.get("sources", {}).get(".taskmaster/tasks/tasks_gameplay.json")
+    if not isinstance(source, str):
+        raise ValueError("The selected scan does not contain tasks_gameplay.json")
+    rows = json.loads(source)
+    static_by_id = {_task_id(item["task"]["id"]): item.get("godot", {}) for item in state.get("tasks", [])}
+    result, seen = [], set()
+    for row in rows:
+        task_id = _task_id(row.get("taskmaster_id", ""))
+        if task_id not in static_by_id:
+            continue
+        if task_id in seen:
+            continue
+        seen.add(task_id)
+        refs = _references({"test_refs": row.get("test_refs", []),
+                            "acceptance_criteria": row.get("acceptance_criteria", []),
+                            "test_strategy": row.get("testStrategy", row.get("test_strategy", []))},
+                           state.get("sources", {}))
+        static = static_by_id.get(task_id, {})
+        explicit_runtime = "gdunit" in json.dumps(row, ensure_ascii=False).casefold()
+        reviewed_mapping = bool(static.get("scenes"))
+        if refs or explicit_runtime or reviewed_mapping:
+            result.append({**row, "taskmaster_id": task_id,
+                           "runtime_test_refs": refs, "static_godot": static})
+    return result
+
+
+def _write_evidence(root: Path, task: dict, revision: str, status: str, reason: str | None,
+                    command: list[str], started: str, exit_code: int | None) -> dict:
+    task_id = _task_id(task.get("taskmaster_id"))
+    refs = task.get("runtime_test_refs", [])
+    scenes = [item.get("scene") for item in task.get("static_godot", {}).get("scenes", []) if item.get("scene")]
+    evidence = base_dir(root) / "runtime" / f"task-{task_id}-{uuid.uuid4().hex}.json"
+    payload = {"schema_version": "newrouge.project-health-runtime.v1", "task_id": task_id,
+               "source_revision": revision, "test_refs": refs, "scenes": scenes, "command": command,
+               "status": status, "reason": reason, "started_at": started,
+               "finished_at": datetime.now(timezone.utc).isoformat(), "exit_code": exit_code,
+               "evidence_path": evidence.relative_to(root).as_posix(), "runtime_verified": False}
+    write_json(evidence, payload)
+    return payload
+
+
+def _run_task(root: Path, task: dict, godot_bin: str, timeout: int, revision: str) -> dict:
+    refs = task.get("runtime_test_refs", [])
     started = datetime.now(timezone.utc).isoformat()
+    if not refs:
+        return _write_evidence(root, task, revision, "runtime_unverified",
+                               "No task-scoped Godot/GdUnit assertion path was found", [], started, None)
     command = [sys.executable, str(root / "scripts/python/run_gdunit.py"), "--godot-bin", godot_bin,
                "--project", "Tests.Godot", "--prewarm", "--timeout-sec", str(timeout)]
     for ref in refs:
         command.extend(["--add", ref.removeprefix("Tests.Godot/")])
     try:
         proc = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=timeout + 30)
+                              errors="replace", timeout=timeout + CLEANUP_MARGIN_SECONDS)
         status = "passed" if proc.returncode == 0 else "failed"
         reason = None if status == "passed" else (proc.stderr or proc.stdout)[-2000:]
     except subprocess.TimeoutExpired as exc:
         status, reason = "failed", "runtime test timed out"
         proc = None
-    evidence = base_dir(root) / "runtime" / f"task-{task.get('taskmaster_id', task.get('id'))}-{uuid.uuid4().hex}.json"
-    payload = {"schema_version": "newrouge.project-health-runtime.v1", "task_id": task.get("taskmaster_id"),
-               "source_revision": _main_revision(root), "test_refs": refs, "command": command,
-               "status": status, "reason": reason, "started_at": started,
-               "finished_at": datetime.now(timezone.utc).isoformat(), "exit_code": proc.returncode if proc else None}
-    write_json(evidence, payload)
-    payload["evidence_path"] = evidence.relative_to(root).as_posix()
-    return payload
+    return _write_evidence(root, task, revision, status, reason, command, started,
+                           proc.returncode if proc else None)
 
 
 def _main_revision(root: Path) -> str | None:
@@ -52,19 +114,93 @@ def _main_revision(root: Path) -> str | None:
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
-def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None) -> dict:
-    tasks = _gameplay_tasks(root)
+def _scan_revision(root: Path) -> str | None:
+    latest = base_dir(root) / "latest.json"
+    return read_json(latest).get("revision") if latest.exists() else None
+
+
+def _complete(result: dict) -> bool:
+    return REQUIRED_EVIDENCE_FIELDS <= result.keys() and bool(result.get("test_refs"))
+
+
+def _unverified_evidence(root: Path, task: dict, revision: str, reason: str) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    return _write_evidence(root, task, revision, "runtime_unverified", reason, [], now, None)
+
+
+def _runtime_inputs_match(root: Path, revision: str) -> tuple[bool, str | None]:
+    if not re.fullmatch(r"[0-9a-f]{40}", revision or ""):
+        return False, "Runtime verification requires a local-main Git revision"
+    main = _main_revision(root)
+    if main != revision:
+        return False, "The scanned revision no longer matches local main"
+    paths = ["project.godot", "addons", "Game.Godot", "Tests.Godot"]
+    diff = subprocess.run(["git", "-C", str(root), "diff", "--quiet", revision, "--", *paths])
+    status = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all", "--", *paths],
+                            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if diff.returncode != 0 or status.returncode != 0 or status.stdout.strip():
+        return False, "Runtime inputs differ from the scanned local-main revision"
+    return True, None
+
+
+def _persist_result(root: Path, result: dict) -> None:
+    path = root / result["evidence_path"]
+    write_json(path, result)
+
+
+def _summary(results: list[dict], timed_out: bool) -> dict:
+    return {"total": len(results), "runtime_verified": sum(bool(x.get("runtime_verified")) for x in results),
+            "runtime_failed": sum(x["status"] == "failed" for x in results),
+            "runtime_unverified": sum(x["status"] == "runtime_unverified" for x in results),
+            "global_timeout_reached": timed_out}
+
+
+def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None,
+           global_timeout: int = 3600) -> dict:
+    scan_path = base_dir(root) / "latest.json"
+    if not scan_path.exists():
+        raise ValueError("A successful local source scan is required before runtime verification")
+    state = read_json(scan_path)
+    scan_revision = state.get("revision")
+    tasks = _gameplay_tasks(root, state)
     if task_id is not None:
-        tasks = [task for task in tasks if str(task.get("taskmaster_id")) == str(task_id)]
-    results = [_run_task(root, task, godot_bin, timeout) for task in tasks]
-    revision = _main_revision(root)
+        task_id = _task_id(task_id)
+        tasks = [task for task in tasks if task.get("taskmaster_id") == task_id]
+        if not tasks:
+            raise ValueError("Runtime-eligible gameplay task not found")
+    deadline = time.monotonic() + global_timeout
+    results = []
+    inputs_match, input_reason = _runtime_inputs_match(root, scan_revision)
+    if not inputs_match:
+        results = [_unverified_evidence(root, task, scan_revision, input_reason) for task in tasks]
+    else:
+        for task in tasks:
+            remaining = int(deadline - time.monotonic())
+            if remaining <= CLEANUP_MARGIN_SECONDS:
+                break
+            inner_timeout = min(timeout, remaining - CLEANUP_MARGIN_SECONDS)
+            results.append(_run_task(root, task, godot_bin, inner_timeout, scan_revision))
+        for task in tasks[len(results):]:
+            results.append(_unverified_evidence(root, task, scan_revision,
+                           "Global runtime verification timeout reached before this task started"))
+    stable = _scan_revision(root) == scan_revision and _main_revision(root) == scan_revision
     for result in results:
-        result["runtime_verified"] = result["status"] == "passed" and result["source_revision"] == revision
+        result["runtime_verified"] = (result["status"] == "passed" and _complete(result)
+                                      and result["source_revision"] == scan_revision and stable)
+        if result["status"] == "passed" and not stable:
+            result["status"] = "runtime_unverified"
+            result["reason"] = "Scan or local-main revision changed during runtime verification"
+        _persist_result(root, result)
+    timed_out = any((result.get("reason") or "").startswith("Global runtime verification timeout")
+                    for result in results)
     output = base_dir(root) / "runtime" / "latest.json"
-    write_json(output, {"schema_version": "newrouge.project-health-runtime-index.v1", "source_revision": revision,
-                        "tasks": results, "summary": {"total": len(results),
-                        "runtime_verified": sum(x["runtime_verified"] for x in results),
-                        "runtime_failed": sum(x["status"] == "failed" for x in results)}})
+    if task_id is not None and output.exists():
+        previous = read_json(output)
+        if previous.get("source_revision") == scan_revision:
+            results = [row for row in previous.get("tasks", []) if str(row.get("task_id")) != task_id] + results
+    write_json(output, {"schema_version": "newrouge.project-health-runtime-index.v1",
+                        "source_revision": scan_revision, "tasks": results,
+                        "summary": _summary(results, timed_out)})
     return read_json(output)
 
 
@@ -73,10 +209,14 @@ def main(argv=None) -> int:
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--godot-bin", required=True)
     parser.add_argument("--timeout-sec", type=int, default=600)
+    parser.add_argument("--global-timeout-sec", type=int, default=3600)
     parser.add_argument("--task-id")
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec, args.task_id), ensure_ascii=True))
+        if args.timeout_sec <= 0 or args.global_timeout_sec <= 0:
+            raise ValueError("Timeout values must be positive")
+        print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec,
+                                args.task_id, args.global_timeout_sec), ensure_ascii=True))
         return 0
     except Exception as exc:
         print(json.dumps({"status": "failed", "reason": str(exc)}, ensure_ascii=True))

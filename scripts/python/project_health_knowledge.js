@@ -44,8 +44,12 @@ async function loadTasks(page=1) {
       if (key === 'id') td.append(button(String(task.id),async () => {
         const detail = await api('task?id=' + encodeURIComponent(task.id)); show('Task ' + task.id, detail);
         for (const item of [...detail.godot.scenes, ...detail.godot.candidates]) { const p=document.createElement('p'); p.append(sourceLink(item.scene)); if(item.script) {p.append(' → ',sourceLink(item.script));} el('detail-links').append(p); }
+        el('detail-links').append(button('Verify this task runtime', async()=>{await api('runtime',{task_id:task.id});await loadStatus();}));
       }));
-      else td.textContent = key === 'godot' ? task.godot.status : (typeof task[key] === 'object' ? pretty(task[key]) : String(task[key] ?? '—'));
+      else if (key === 'godot') {
+        const reason = task.godot.runtime_evidence?.reason;
+        td.textContent = task.godot.status + (task.godot.runtime_status ? ` · ${task.godot.runtime_status}` : '') + (reason ? ` · ${reason}` : '');
+      } else td.textContent = typeof task[key] === 'object' ? pretty(task[key]) : String(task[key] ?? '—');
       row.append(td);
     }
     el('tasks').append(row);

@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -170,7 +171,7 @@ def scan(root: Path) -> dict:
                   'note': 'Exploratory catalogs are not published or frozen KCP authority.'}}
         # Commit only complete successful scans; failures retain the previous dated result.
         write_json(base / 'latest.json', result)
-        return status(result)
+        return status(root, result)
     finally:
         try:
             lock.rmdir()
@@ -178,13 +179,58 @@ def scan(root: Path) -> dict:
             pass
 
 
-def status(state: dict) -> dict:
+def apply_runtime_results(root: Path, state: dict) -> None:
+    path = base_dir(root) / 'runtime' / 'latest.json'
+    if not path.exists():
+        return
+    runtime = read_json(path)
+    if runtime.get('source_revision') != state.get('revision'):
+        return
+    by_id = {str(row.get('task_id')): row for row in runtime.get('tasks', [])}
+    for detail in state.get('tasks', []):
+        evidence = by_id.get(str(detail['task']['id']))
+        if not evidence:
+            detail['godot']['runtime_status'] = 'runtime_unverified'
+            continue
+        required = {'task_id', 'source_revision', 'test_refs', 'scenes', 'status',
+                    'started_at', 'finished_at', 'evidence_path'}
+        evidence_file_matches = False
+        try:
+            evidence_path = safe_file(root, evidence.get('evidence_path', ''))
+            runtime_root = (base_dir(root) / 'runtime').resolve()
+            evidence_path.resolve().relative_to(runtime_root)
+            evidence_file_matches = evidence_path.is_file() and read_json(evidence_path) == evidence
+        except (ValueError, OSError, TypeError, json.JSONDecodeError):
+            pass
+        detail['godot']['runtime_evidence'] = evidence
+        verified = (required <= evidence.keys() and evidence.get('status') == 'passed'
+                    and evidence.get('source_revision') == state.get('revision')
+                    and bool(evidence.get('test_refs'))
+                    and all(re.fullmatch(r'Tests\.Godot/[A-Za-z0-9_./-]+', str(ref))
+                            and '..' not in PurePosixPath(str(ref)).parts for ref in evidence['test_refs'])
+                    and evidence_file_matches)
+        detail['godot']['runtime_verified'] = verified
+        detail['godot']['runtime_status'] = ('runtime_verified' if verified
+                                                else evidence.get('status', 'runtime_unverified'))
+        if verified:
+            detail['godot']['status'] = 'runtime_verified'
+        elif evidence.get('status') == 'failed' and detail['godot']['status'] == 'static_attached':
+            detail['godot']['status'] = 'runtime_failed_static_attached'
+
+
+def status(root: Path, state: dict) -> dict:
+    if state.get('tasks'):
+        state['summary'] = task_summary(state['tasks'])
     result = {key: state.get(key) for key in ('schema_version', 'revision', 'scanned_at', 'branch',
                                               'summary', 'gdd_files', 'publication', 'config')}
-    runtime_path = base_dir(Path.cwd()) / 'runtime' / 'latest.json'
+    runtime_path = base_dir(root) / 'runtime' / 'latest.json'
     if runtime_path.exists():
         runtime = read_json(runtime_path)
-        result['runtime'] = runtime.get('summary', {})
+        if runtime.get('source_revision') == state.get('revision'):
+            result['runtime'] = runtime.get('summary', {})
+        else:
+            result['runtime'] = {'total': 0, 'runtime_verified': 0, 'runtime_failed': 0,
+                                 'stale': True, 'reason': 'Runtime evidence belongs to another scan revision'}
     else:
         result['runtime'] = {'total': 0, 'runtime_verified': 0, 'runtime_failed': 0}
     return result
@@ -270,10 +316,13 @@ def main(argv=None) -> int:
                          'config': config, 'tasks': [], 'sources': {}, 'policies': {},
                          'projections': {}, 'catalog': {}, 'index': {}}
             if args.action == 'status':
-                result = status(state)
+                apply_runtime_results(root, state)
+                result = status(root, state)
             elif args.action == 'tasks':
+                apply_runtime_results(root, state)
                 result = task_page(state['tasks'], args.page)
             elif args.action == 'task':
+                apply_runtime_results(root, state)
                 result = next((x for x in state['tasks'] if str(x['task']['id']) == args.task_id), None)
                 if result is None:
                     raise ValueError('Task not found')

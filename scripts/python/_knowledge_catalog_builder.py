@@ -42,6 +42,7 @@ SOURCE_PREFIXES = (
 )
 
 TEXT_SUFFIXES = {".md", ".json", ".txt", ".cs"}
+MAX_SOURCE_BYTES = 4 * 1024 * 1024
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -132,6 +133,8 @@ class DirectorySnapshot(GitSnapshot):
                 if path.is_symlink() or getattr(path, 'is_junction', lambda: False)():
                     raise ValueError('Symlink source is not supported')
                 if not path.is_file():
+                    continue
+                if path.stat().st_size > MAX_SOURCE_BYTES:
                     continue
                 path.resolve().relative_to(self.root)
                 name = path.relative_to(self.root).as_posix()

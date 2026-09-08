@@ -15,6 +15,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config
 
+RUNTIME_HOST_TIMEOUT_SECONDS = 3690
+
 
 def handler_factory(root: Path):
     token = secrets.token_urlsafe(32)
@@ -49,8 +51,9 @@ def handler_factory(root: Path):
                 cmd = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(root), *args]
                 if action != 'runtime':
                     cmd.insert(2, action)
+                host_timeout = RUNTIME_HOST_TIMEOUT_SECONDS if action == 'runtime' else 240
                 proc = subprocess.run(cmd, input=json.dumps(request) if request is not None else None,
-                                      capture_output=True, text=True, encoding='utf-8', timeout=240)
+                                      capture_output=True, text=True, encoding='utf-8', timeout=host_timeout)
                 try:
                     payload = json.loads(proc.stdout)
                 except ValueError:
@@ -122,7 +125,10 @@ def handler_factory(root: Path):
                     godot_bin = os.environ.get('GODOT_BIN')
                     if not godot_bin:
                         raise ValueError('GODOT_BIN is required for runtime verification')
-                    self.cli('runtime', ['--godot-bin', godot_bin])
+                    args = ['--godot-bin', godot_bin]
+                    if request.get('task_id') is not None:
+                        args.extend(['--task-id', str(request['task_id'])])
+                    self.cli('runtime', args)
                 elif path == '/api/knowledge/query':
                     self.cli('query', request=request)
                 elif path == '/api/knowledge/config':

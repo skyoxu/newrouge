@@ -18,6 +18,14 @@ py -3 scripts/python/dev_cli.py serve-project-health
 4. 查看任务列表；每页固定 20 条，顶部与底部都有首/前/后/末页、页码输入跳转。点击 id 展开完整任务及映射附加字段。
 5. 根据证据形成修改范围与回归测试建议，再用 prompt 串回现有 chapter 流程。
 
+## Gameplay 运行时验证
+
+`Verify gameplay runtime` 是独立操作，不会在普通 main 扫描中自动启动 Godot。运行前必须设置 `GODOT_BIN`，批量任务默认串行执行，并同时受单任务超时和全局超时约束。只有扫描任务中存在且能定位到扫描源的 `Tests.Godot/**` 测试文件或目录才会启动；仅有 Godot/GdUnit 策略线索或人工场景映射的任务记录为 `runtime_unverified`。
+
+每项证据写入 `logs/ci/project-health-knowledge/runtime/`，包含 task id、扫描 main revision、测试路径、场景、状态、起止时间及失败原因。页面状态按 `runtime_verified > static_attached > candidate > unmapped` 合并；运行失败且静态接入成立时显示 `runtime_failed_static_attached`。`runtime_verified` 还要求运行输入与扫描的 local main 内容一致、证据字段完整且执行期间 scan revision 未变化。无 Git 目录摘要不能产生 `runtime_verified`。
+
+任务详情中的 `Verify this task runtime` 可定向验证一个任务。同一扫描 revision 下，定向结果只替换该 task id 的旧证据并保留其他任务证据；批量验证会替换该 revision 的运行时索引。
+
 ## 配置与来源
 
 页面配置编辑器使用内置默认值；独立加载不依赖扫描结果。点击扫描先校验并保存编辑器当前配置，再扫描；配置为空、损坏、越界或必要来源缺失时退出并保留旧结果。配置文件为 `scripts/python/project_health_knowledge_config.json`。
