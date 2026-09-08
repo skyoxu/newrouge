@@ -26,7 +26,9 @@ py -3 scripts/python/dev_cli.py serve-project-health
 
 任务详情中的 `Verify this task runtime` 可定向验证一个任务。同一扫描 revision 下，定向结果只替换该 task id 的旧证据并保留其他任务证据；批量验证会替换该 revision 的运行时索引。
 
-任务表支持跨分页多选。`Select page` 选择当前页，`Clear selection` 清空全部选择，`Verify selected` 只验证已选且具备运行资格的任务。顶部 `Verify all eligible gameplay tasks` 才是完整遍历入口。任务运行、扫描或查询期间，服务公开只读 operation 状态，页面据此锁定全部交互；其他已打开页面也会通过轮询进入锁定状态。
+任务表支持跨分页多选。`Select page` 选择当前页，`Clear selection` 清空全部选择，`Verify selected` 只验证已选且具备运行资格的任务。顶部 `Verify eligible runtime tasks` 遍历已有任务级 Godot 证据线索的任务；`Audit all gameplay tasks` 遍历 `tasks_gameplay.json` 中所有能映射到主任务的任务。有任务级 GdUnit 引用时执行测试，否则写入 `runtime_unverified` 证据并保留静态或 candidate 状态。任务运行、扫描或查询期间，服务公开只读 operation 状态，页面据此锁定全部交互；其他已打开页面也会通过轮询进入锁定状态。
+
+全量脚本入口：`py -3 scripts/python/project_health_runtime.py --repo-root . --godot-bin "$env:GODOT_BIN" --all-gameplay`。
 
 ## 配置与来源
 

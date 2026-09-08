@@ -145,7 +145,11 @@ def handler_factory(root: Path):
                         raise ValueError('GODOT_BIN is required for runtime verification')
                     args = ['--godot-bin', godot_bin]
                     task_ids = request.get('task_ids')
-                    if task_ids is not None:
+                    if request.get('all_gameplay') is True:
+                        if task_ids is not None or request.get('task_id') is not None:
+                            raise ValueError('all_gameplay cannot be combined with task selection')
+                        args.append('--all-gameplay')
+                    elif task_ids is not None:
                         if (not isinstance(task_ids, list) or not task_ids or len(task_ids) > 200
                                 or any(not isinstance(value, (str, int)) for value in task_ids)):
                             raise ValueError('task_ids must be a non-empty list with at most 200 ids')

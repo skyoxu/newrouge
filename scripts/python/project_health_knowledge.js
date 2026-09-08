@@ -108,6 +108,7 @@ async function search(target) {
 el('close-detail').onclick=()=>el('detail').close();
 el('scan').onclick=()=>run(async()=>{const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
 el('runtime').onclick=()=>run(async()=>{await api('runtime',{});await loadStatus();});
+el('runtime-all').onclick=()=>run(async()=>{await api('runtime',{all_gameplay:true});await loadStatus();});
 el('runtime-selected').onclick=()=>run(async()=>{await api('runtime',{task_ids:[...selectedTasks]});await loadStatus();});
 el('select-page').onclick=()=>{visibleTaskIds.forEach(id=>selectedTasks.add(id));loadTasks(currentPage);};
 el('clear-selection').onclick=()=>{selectedTasks.clear();loadTasks(currentPage);};

@@ -99,6 +99,9 @@ class TasksTests(unittest.TestCase):
             self.assertEqual([str(row['taskmaster_id']) for row in candidates], ['2', '3'])
             self.assertEqual(candidates[0]['runtime_test_refs'], ['Tests.Godot/tests/test_a.gd'])
             self.assertEqual(candidates[1]['runtime_test_refs'], [])
+            all_gameplay = _gameplay_tasks(root, include_all=True)
+            self.assertEqual([str(row['taskmaster_id']) for row in all_gameplay], ['1', '2', '3', '4'])
+            self.assertEqual(all_gameplay[-1]['runtime_test_refs'], [])
 
     def test_runtime_selection_only_enables_tasks_with_scanned_godot_assertions(self):
         state = {
@@ -509,6 +512,15 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         command = run.call_args.args[0]
         self.assertEqual(command[command.index('--task-ids') + 1], '17,23')
+
+    @mock.patch('_project_health_http.subprocess.run')
+    def test_runtime_route_forwards_all_gameplay_mode(self, run):
+        run.return_value = subprocess.CompletedProcess([], 0, json.dumps({'status': 'ok'}), '')
+        with mock.patch.dict('os.environ', {'GODOT_BIN': 'C:/Godot/godot.exe'}):
+            status, _ = self.request('POST', '/api/knowledge/runtime',
+                                     json.dumps({'all_gameplay': True}), self.session_headers())
+        self.assertEqual(status, 200)
+        self.assertIn('--all-gameplay', run.call_args.args[0])
 
     @mock.patch('_project_health_http.subprocess.run')
     def test_operation_endpoint_reports_active_runtime_and_scope(self, run):

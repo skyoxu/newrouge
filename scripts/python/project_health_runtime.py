@@ -39,7 +39,7 @@ def _task_id(value) -> str:
     return text
 
 
-def _gameplay_tasks(root: Path, state: dict | None = None) -> list[dict]:
+def _gameplay_tasks(root: Path, state: dict | None = None, include_all: bool = False) -> list[dict]:
     if state is None:
         latest = base_dir(root) / "latest.json"
         if not latest.exists():
@@ -65,7 +65,7 @@ def _gameplay_tasks(root: Path, state: dict | None = None) -> list[dict]:
         static = static_by_id.get(task_id, {})
         explicit_runtime = "gdunit" in json.dumps(row, ensure_ascii=False).casefold()
         reviewed_mapping = bool(static.get("scenes"))
-        if refs or explicit_runtime or reviewed_mapping:
+        if include_all or refs or explicit_runtime or reviewed_mapping:
             result.append({**row, "taskmaster_id": task_id,
                            "runtime_test_refs": refs, "static_godot": static})
     return result
@@ -156,13 +156,16 @@ def _summary(results: list[dict], timed_out: bool) -> dict:
 
 
 def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None,
-           global_timeout: int = 3600, task_ids: list[str] | None = None) -> dict:
+           global_timeout: int = 3600, task_ids: list[str] | None = None,
+           all_gameplay: bool = False) -> dict:
     scan_path = base_dir(root) / "latest.json"
     if not scan_path.exists():
         raise ValueError("A successful local source scan is required before runtime verification")
     state = read_json(scan_path)
     scan_revision = state.get("revision")
-    tasks = _gameplay_tasks(root, state)
+    tasks = _gameplay_tasks(root, state, include_all=all_gameplay)
+    if all_gameplay and (task_id is not None or task_ids is not None):
+        raise ValueError("--all-gameplay cannot be combined with task selection")
     selected_ids = None
     if task_ids is not None:
         selected_ids = {_task_id(value) for value in task_ids}
@@ -224,15 +227,18 @@ def main(argv=None) -> int:
     parser.add_argument("--global-timeout-sec", type=int, default=3600)
     parser.add_argument("--task-id")
     parser.add_argument("--task-ids", help="Comma-separated gameplay task ids")
+    parser.add_argument("--all-gameplay", action="store_true",
+                        help="Audit every master-mapped tasks_gameplay row")
     args = parser.parse_args(argv)
     try:
         if args.timeout_sec <= 0 or args.global_timeout_sec <= 0:
             raise ValueError("Timeout values must be positive")
-        if args.task_id and args.task_ids:
-            raise ValueError("Use either --task-id or --task-ids")
+        if sum(bool(value) for value in (args.task_id, args.task_ids, args.all_gameplay)) > 1:
+            raise ValueError("Use only one task selection mode")
         task_ids = args.task_ids.split(",") if args.task_ids is not None else None
         print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec,
-                                args.task_id, args.global_timeout_sec, task_ids), ensure_ascii=True))
+                                args.task_id, args.global_timeout_sec, task_ids,
+                                args.all_gameplay), ensure_ascii=True))
         return 0
     except Exception as exc:
         print(json.dumps({"status": "failed", "reason": str(exc)}, ensure_ascii=True))
