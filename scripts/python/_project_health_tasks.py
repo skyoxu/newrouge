@@ -95,11 +95,20 @@ def task_summary(details: list[dict]) -> dict:
             'godot': dict(Counter(item['godot']['status'] for item in details))}
 
 
-def task_page(details: list[dict], page: int) -> dict:
+def task_page(details: list[dict], page: int, filter_kind: str | None = None,
+              filter_value: str | None = None) -> dict:
+    if filter_kind is not None:
+        if filter_kind not in ('task_status', 'godot_status') or not filter_value:
+            raise ValueError('Invalid task filter')
+        if filter_kind == 'task_status':
+            details = [item for item in details if str(item['task'].get('status', 'unknown')) == filter_value]
+        else:
+            details = [item for item in details if str(item['godot'].get('status', 'unmapped')) == filter_value]
     pages = max(1, (len(details) + 19) // 20)
     if page < 1 or page > pages:
         raise ValueError(f'Page must be between 1 and {pages}')
     keys = ('id', 'title', 'status', 'dependencies', 'recommendedSubtasks')
     return {'page': page, 'pages': pages, 'page_size': 20, 'total': len(details),
+            'filter': {'kind': filter_kind, 'value': filter_value} if filter_kind else None,
             'items': [{**{key: row['task'].get(key) for key in keys}, 'godot': row['godot']}
                       for row in details[(page - 1) * 20:page * 20]]}

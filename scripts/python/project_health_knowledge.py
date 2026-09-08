@@ -316,6 +316,8 @@ def main(argv=None) -> int:
     parser.add_argument('--page', type=int, default=1)
     parser.add_argument('--task-id')
     parser.add_argument('--path')
+    parser.add_argument('--filter-kind', choices=('task_status', 'godot_status'))
+    parser.add_argument('--filter-value')
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
     try:
@@ -339,7 +341,7 @@ def main(argv=None) -> int:
                 result = status(root, state)
             elif args.action == 'tasks':
                 apply_runtime_results(root, state)
-                result = task_page(state['tasks'], args.page)
+                result = task_page(state['tasks'], args.page, args.filter_kind, args.filter_value)
             elif args.action == 'task':
                 apply_runtime_results(root, state)
                 result = next((x for x in state['tasks'] if str(x['task']['id']) == args.task_id), None)

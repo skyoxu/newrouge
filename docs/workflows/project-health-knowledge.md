@@ -34,6 +34,8 @@ py -3 scripts/python/dev_cli.py serve-project-health
 
 页面配置编辑器使用内置默认值；独立加载不依赖扫描结果。点击扫描先校验并保存编辑器当前配置，再扫描；配置为空、损坏、越界或必要来源缺失时退出并保留旧结果。配置文件为 `scripts/python/project_health_knowledge_config.json`。
 
+配置编辑器直接显示在页面中，不需要展开折叠面板。`Save local configuration` 只保存配置，`Scan local main` 才会用新配置重建扫描结果。状态统计项可点击并在服务端分页前筛选任务列表；再次点击当前统计项或使用 `Clear filter` 恢复全部任务。
+
 - `source_paths`: 明确的文件或目录范围；默认包含任务三联、架构、契约、运行时和测试。禁止根目录、logs、Git 元数据和越界路径。扫描与探索查询共享同一内容集。
 
 - `gdd_paths`: 多个仓库相对路径，支持 UTF-8 `.md` / `.txt` / `.json`。路径必须存在于扫描的 main；不支持任意本地绝对路径、PDF/DOCX、软链接或浏览器任意文件读取。缺失项会显示为不可用。

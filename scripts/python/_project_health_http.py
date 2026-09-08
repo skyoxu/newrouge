@@ -94,7 +94,11 @@ def handler_factory(root: Path):
                 elif parsed.path == '/api/knowledge/config':
                     self.send(load_config(root))
                 elif parsed.path == '/api/knowledge/tasks':
-                    self.cli('tasks', ['--page', params.get('page', ['1'])[0]])
+                    args = ['--page', params.get('page', ['1'])[0]]
+                    if params.get('filter_kind', [''])[0]:
+                        args.extend(['--filter-kind', params['filter_kind'][0],
+                                     '--filter-value', params.get('filter_value', [''])[0]])
+                    self.cli('tasks', args)
                 elif parsed.path == '/api/knowledge/task':
                     self.cli('task', ['--task-id', params.get('id', [''])[0]])
                 elif parsed.path == '/api/knowledge/source':

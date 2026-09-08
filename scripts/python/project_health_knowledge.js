@@ -4,6 +4,7 @@ const pretty = value => JSON.stringify(value, null, 2);
 let token = '', currentPage = 1, operationPoll = null;
 const selectedTasks = new Set();
 let visibleTaskIds = [];
+let activeFilter = null;
 async function api(path, body) {
   const response = await fetch('/api/knowledge/' + path, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': token}, body: JSON.stringify(body)
@@ -37,6 +38,13 @@ function updateSelection() {
   el('runtime-selected').textContent = `Verify selected (${selectedTasks.size})`;
   el('runtime-selected').disabled = selectedTasks.size === 0;
 }
+function setFilter(kind, value) {
+  activeFilter = !kind || (activeFilter?.kind === kind && activeFilter?.value === value) ? null : {kind, value};
+  currentPage = 1;
+  el('active-filter').textContent = activeFilter ? `Filter: ${activeFilter.kind} = ${activeFilter.value}` : 'Showing all tasks';
+  el('clear-filter').disabled = !activeFilter;
+  return loadStatus();
+}
 function button(text, action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.onclick = () => run(action); return b; }
 function sourceLink(path) {
   const a = document.createElement('a'); a.href = '/api/knowledge/source?path=' + encodeURIComponent(path); a.textContent = path;
@@ -56,7 +64,8 @@ function pager(id, page) {
   input.onkeydown = e => {if(e.key === 'Enter') run(jump);}; box.append(input,button('Go',jump));
 }
 async function loadTasks(page=1) {
-  const result = await api('tasks?page=' + page); currentPage = result.page; el('tasks').replaceChildren();
+  const filter = activeFilter ? `&filter_kind=${encodeURIComponent(activeFilter.kind)}&filter_value=${encodeURIComponent(activeFilter.value)}` : '';
+  const result = await api('tasks?page=' + page + filter); currentPage = result.page; el('tasks').replaceChildren();
   visibleTaskIds = result.items.filter(task => task.godot.runtime_eligible).map(task => String(task.id));
   for (const task of result.items) {
     const row = document.createElement('tr');
@@ -87,11 +96,19 @@ async function loadStatus() {
   const state = await api('status'); el('revision').textContent = state.revision ? `${state.branch} @ ${state.revision} | scanned ${state.scanned_at}` : 'No successful local scan yet.';
   el('publication').textContent = `Published KCP pointer matches scan: ${state.publication.matches_scan}. ${state.publication.note}`;
   if (!el('config').value.trim()) el('config').value = pretty(await api('config')); el('summary').replaceChildren();
+  const addMetric = (key,value,kind=null) => {
+    const d=document.createElement(kind ? 'button' : 'div');d.className=kind ? 'metric metric-button' : 'metric';
+    d.textContent=key+': '+value;
+    if(kind){d.type='button';d.setAttribute('aria-pressed',String(activeFilter?.kind===kind&&activeFilter?.value===key));d.onclick=()=>run(()=>setFilter(kind,key));}
+    el('summary').append(d);
+  };
+  addMetric('total',state.summary.total);
+  for(const [key,value] of Object.entries(state.summary.statuses)) addMetric(key,value,'task_status');
+  for(const [key,value] of Object.entries(state.summary.godot)) addMetric(key,value,'godot_status');
   const runtime = state.runtime || {};
-  const metrics = {total:state.summary.total,...state.summary.statuses,...state.summary.godot,
-    runtime_batch_total:runtime.total || 0,runtime_verified:runtime.runtime_verified || 0,
-    runtime_failed:runtime.runtime_failed || 0,runtime_unverified:runtime.runtime_unverified || 0};
-  for(const [key,value] of Object.entries(metrics)) {const d=document.createElement('div');d.className='metric';d.textContent=key+': '+value;el('summary').append(d);}
+  for(const [key,value] of Object.entries({runtime_batch_total:runtime.total || 0,
+    runtime_verified:runtime.runtime_verified || 0,runtime_failed:runtime.runtime_failed || 0,
+    runtime_unverified:runtime.runtime_unverified || 0})) addMetric(key,value);
   el('gdds').replaceChildren();
   for(const file of state.gdd_files) {const p=document.createElement('p'); if(file.available) p.append(sourceLink(file.path)); else p.textContent=file.path+' — missing or unsupported at main';el('gdds').append(p);}
   await loadTasks(currentPage);
@@ -112,6 +129,7 @@ el('runtime-all').onclick=()=>run(async()=>{await api('runtime',{all_gameplay:tr
 el('runtime-selected').onclick=()=>run(async()=>{await api('runtime',{task_ids:[...selectedTasks]});await loadStatus();});
 el('select-page').onclick=()=>{visibleTaskIds.forEach(id=>selectedTasks.add(id));loadTasks(currentPage);};
 el('clear-selection').onclick=()=>{selectedTasks.clear();loadTasks(currentPage);};
+el('clear-filter').onclick=()=>run(()=>setFilter(null,null));
 el('save-config').onclick=()=>run(async()=>{await api('config',JSON.parse(el('config').value));el('publication').textContent='Configuration saved. Scan main to apply it; displayed results still use the previous configuration.';});
 el('query-form').onsubmit=e=>{e.preventDefault();run(()=>search());};
 run(async()=>{token=(await api('session')).token;await refreshOperation();await loadStatus();operationPoll=setInterval(refreshOperation,1000);});

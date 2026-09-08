@@ -409,10 +409,19 @@ class TasksTests(unittest.TestCase):
             self.assertNotIn('title', detail['mappings']['tasks_gameplay'][0])
 
     def test_pagination_exact_size_and_range(self):
-        tasks = [{'task': {'id': i}, 'godot': {}} for i in range(41)]
+        tasks = [{'task': {'id': i, 'status': 'done' if i % 2 else 'pending'},
+                  'godot': {'status': 'candidate' if i % 3 else 'unmapped'}} for i in range(41)]
         self.assertEqual(len(task_page(tasks, 1)['items']), 20)
         self.assertEqual(len(task_page(tasks, 3)['items']), 1)
+        done = task_page(tasks, 1, 'task_status', 'done')
+        self.assertEqual(done['total'], 20)
+        self.assertTrue(all(item['status'] == 'done' for item in done['items']))
+        unmapped = task_page(tasks, 1, 'godot_status', 'unmapped')
+        self.assertEqual(unmapped['total'], 14)
+        self.assertTrue(all(item['godot']['status'] == 'unmapped' for item in unmapped['items']))
         self.assertEqual(task_page([], 1)['pages'], 1)
+        with self.assertRaises(ValueError):
+            task_page(tasks, 1, 'unknown', 'done')
         for page in (0, 4, -1):
             with self.assertRaises(ValueError): task_page(tasks, page)
 
