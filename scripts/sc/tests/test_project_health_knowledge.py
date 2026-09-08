@@ -16,7 +16,7 @@ from _project_health_http import handler_factory
 from project_health_knowledge import safe_file, load_config, read_json, write_json
 from impact_analyzer import ImpactAnalyzer, SymbolIndex
 from project_health_knowledge import DEFAULT_CONFIG, scan, base_dir, validate_config
-from project_health_knowledge import apply_runtime_results
+from project_health_knowledge import apply_runtime_eligibility, apply_runtime_results
 from project_health_knowledge import status as knowledge_status
 from _knowledge_catalog_builder import DirectorySnapshot
 from project_health_runtime import _complete, _gameplay_tasks, _run_task, _runtime_inputs_match, verify
@@ -99,6 +99,24 @@ class TasksTests(unittest.TestCase):
             self.assertEqual([str(row['taskmaster_id']) for row in candidates], ['2', '3'])
             self.assertEqual(candidates[0]['runtime_test_refs'], ['Tests.Godot/tests/test_a.gd'])
             self.assertEqual(candidates[1]['runtime_test_refs'], [])
+
+    def test_runtime_selection_only_enables_tasks_with_scanned_godot_assertions(self):
+        state = {
+            'sources': {
+                '.taskmaster/tasks/tasks_gameplay.json': json.dumps([
+                    {'taskmaster_id': 1, 'test_refs': ['Tests.Godot/tests/test_one.gd']},
+                    {'taskmaster_id': 2, 'test_refs': ['Game.Core.Tests/Two.cs']},
+                ]),
+                'Tests.Godot/tests/test_one.gd': 'func test_one(): pass',
+            },
+            'tasks': [
+                {'task': {'id': 1}, 'godot': {}},
+                {'task': {'id': 2}, 'godot': {}},
+            ],
+        }
+        apply_runtime_eligibility(state)
+        self.assertTrue(state['tasks'][0]['godot']['runtime_eligible'])
+        self.assertFalse(state['tasks'][1]['godot']['runtime_eligible'])
 
     def test_runtime_candidates_reject_unsafe_or_non_master_task_ids(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -238,6 +256,30 @@ class TasksTests(unittest.TestCase):
                                      'evidence_path': 'logs/ci/project-health-knowledge/runtime/new.json'}
             result = verify(root, 'godot.exe', 10, task_id='2')
             self.assertEqual({row['task_id'] for row in result['tasks']}, {'1', '2'})
+
+    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime._scan_revision', return_value='a' * 40)
+    @mock.patch('project_health_runtime._run_task')
+    @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
+    def test_multi_task_runtime_runs_only_selection_and_preserves_other_evidence(self, _, run_task, __, ___):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rows = [{'taskmaster_id': i, 'test_refs': [f'Tests.Godot/tests/test_{i}.gd']} for i in (1, 2, 3)]
+            sources = {'.taskmaster/tasks/tasks_gameplay.json': json.dumps(rows),
+                       **{f'Tests.Godot/tests/test_{i}.gd': 'pass' for i in (1, 2, 3)}}
+            write_json(base_dir(root) / 'latest.json', {'revision': 'a' * 40, 'sources': sources,
+                       'tasks': [{'task': {'id': i}, 'godot': {'scenes': []}} for i in (1, 2, 3)]})
+            old = {'task_id': '1', 'source_revision': 'a' * 40, 'test_refs': ['Tests.Godot/tests/test_1.gd'],
+                   'scenes': [], 'status': 'passed', 'reason': None, 'started_at': 's', 'finished_at': 'f',
+                   'evidence_path': 'logs/ci/project-health-knowledge/runtime/old.json', 'runtime_verified': True}
+            write_json(base_dir(root) / 'runtime/latest.json', {'source_revision': 'a' * 40,
+                       'tasks': [old], 'summary': {}})
+            run_task.side_effect = lambda root, task, godot_bin, timeout, revision: {
+                **old, 'task_id': task['taskmaster_id'], 'test_refs': task['runtime_test_refs'],
+                'evidence_path': f"logs/ci/project-health-knowledge/runtime/{task['taskmaster_id']}.json"}
+            result = verify(root, 'godot.exe', 10, task_ids=['2', '3'])
+            self.assertEqual(run_task.call_count, 2)
+            self.assertEqual({row['task_id'] for row in result['tasks']}, {'1', '2', '3'})
 
     @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
     @mock.patch('project_health_runtime._scan_revision', return_value='b' * 40)
@@ -458,6 +500,42 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(command[command.index('--task-id') + 1], '17')
         self.assertEqual(run.call_args.kwargs['timeout'], 3690)
 
+    @mock.patch('_project_health_http.subprocess.run')
+    def test_runtime_route_forwards_selected_task_ids(self, run):
+        run.return_value = subprocess.CompletedProcess([], 0, json.dumps({'status': 'ok'}), '')
+        with mock.patch.dict('os.environ', {'GODOT_BIN': 'C:/Godot/godot.exe'}):
+            status, _ = self.request('POST', '/api/knowledge/runtime',
+                                     json.dumps({'task_ids': [17, '23']}), self.session_headers())
+        self.assertEqual(status, 200)
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index('--task-ids') + 1], '17,23')
+
+    @mock.patch('_project_health_http.subprocess.run')
+    def test_operation_endpoint_reports_active_runtime_and_scope(self, run):
+        entered, release = threading.Event(), threading.Event()
+        def blocked(*args, **kwargs):
+            entered.set(); release.wait(2)
+            return subprocess.CompletedProcess([], 0, json.dumps({'status': 'ok'}), '')
+        run.side_effect = blocked
+        headers = self.session_headers()
+        result = {}
+        def request_runtime():
+            with mock.patch.dict('os.environ', {'GODOT_BIN': 'C:/Godot/godot.exe'}):
+                result['status'], _ = self.request('POST', '/api/knowledge/runtime',
+                                                   json.dumps({'task_ids': [17, 23]}), headers)
+        worker = threading.Thread(target=request_runtime)
+        worker.start(); self.assertTrue(entered.wait(1))
+        status, data = self.request('GET', '/api/knowledge/operation')
+        operation = json.loads(data)
+        self.assertEqual(status, 200)
+        self.assertTrue(operation['active'])
+        self.assertEqual(operation['action'], 'runtime')
+        self.assertEqual(operation['task_ids'], ['17', '23'])
+        release.set(); worker.join(2)
+        self.assertEqual(result['status'], 200)
+        _, data = self.request('GET', '/api/knowledge/operation')
+        self.assertFalse(json.loads(data)['active'])
+
     def test_host_and_csrf_boundaries(self):
         self.assertEqual(self.request('GET', '/api/knowledge/session', headers={'Host': 'evil.example'})[0], 403)
         self.assertEqual(self.request('POST', '/api/knowledge/scan', '{}')[0], 403)
@@ -472,6 +550,8 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b'pager-top', data)
         self.assertIn(b'pager-bottom', data)
+        self.assertIn(b'runtime-selected', data)
+        self.assertIn(b'operation-lock', data)
         self.assertNotEqual(self.request('GET', '/../project-health-knowledge/latest.json')[0], 200)
         self.assertNotEqual(self.request('GET', '/server.json/../../secret')[0], 200)
 

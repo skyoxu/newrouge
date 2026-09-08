@@ -26,6 +26,8 @@ py -3 scripts/python/dev_cli.py serve-project-health
 
 任务详情中的 `Verify this task runtime` 可定向验证一个任务。同一扫描 revision 下，定向结果只替换该 task id 的旧证据并保留其他任务证据；批量验证会替换该 revision 的运行时索引。
 
+任务表支持跨分页多选。`Select page` 选择当前页，`Clear selection` 清空全部选择，`Verify selected` 只验证已选且具备运行资格的任务。顶部 `Verify all eligible gameplay tasks` 才是完整遍历入口。任务运行、扫描或查询期间，服务公开只读 operation 状态，页面据此锁定全部交互；其他已打开页面也会通过轮询进入锁定状态。
+
 ## 配置与来源
 
 页面配置编辑器使用内置默认值；独立加载不依赖扫描结果。点击扫描先校验并保存编辑器当前配置，再扫描；配置为空、损坏、越界或必要来源缺失时退出并保留旧结果。配置文件为 `scripts/python/project_health_knowledge_config.json`。

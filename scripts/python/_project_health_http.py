@@ -9,6 +9,7 @@ import secrets
 import subprocess
 import sys
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -21,6 +22,8 @@ RUNTIME_HOST_TIMEOUT_SECONDS = 3690
 def handler_factory(root: Path):
     token = secrets.token_urlsafe(32)
     operation = threading.Lock()
+    operation_guard = threading.Lock()
+    operation_state = {'active': False, 'action': None, 'task_ids': [], 'started_at': None}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -47,6 +50,16 @@ def handler_factory(root: Path):
                 self.send({'reason': 'Another operation is running'}, 409)
                 return
             try:
+                task_ids = []
+                if action == 'runtime':
+                    for index, value in enumerate(args):
+                        if value == '--task-id' and index + 1 < len(args):
+                            task_ids = [str(args[index + 1])]
+                        elif value == '--task-ids' and index + 1 < len(args):
+                            task_ids = [item for item in str(args[index + 1]).split(',') if item]
+                with operation_guard:
+                    operation_state.update(active=True, action=action, task_ids=task_ids,
+                                           started_at=datetime.now(timezone.utc).isoformat())
                 script = 'project_health_runtime.py' if action == 'runtime' else 'project_health_knowledge.py'
                 cmd = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(root), *args]
                 if action != 'runtime':
@@ -60,6 +73,8 @@ def handler_factory(root: Path):
                     payload = {'status': 'failed', 'reason': proc.stderr[-2000:] or 'Invalid CLI response'}
                 self.send(payload, 200 if proc.returncode == 0 else 422)
             finally:
+                with operation_guard:
+                    operation_state.update(active=False, action=None, task_ids=[], started_at=None)
                 operation.release()
 
         def do_GET(self):
@@ -71,6 +86,9 @@ def handler_factory(root: Path):
             try:
                 if parsed.path == '/api/knowledge/session':
                     self.send({'token': token, 'service': 'project-health-knowledge-v1'})
+                elif parsed.path == '/api/knowledge/operation':
+                    with operation_guard:
+                        self.send(dict(operation_state))
                 elif parsed.path == '/api/knowledge/status':
                     self.cli('status')
                 elif parsed.path == '/api/knowledge/config':
@@ -126,7 +144,13 @@ def handler_factory(root: Path):
                     if not godot_bin:
                         raise ValueError('GODOT_BIN is required for runtime verification')
                     args = ['--godot-bin', godot_bin]
-                    if request.get('task_id') is not None:
+                    task_ids = request.get('task_ids')
+                    if task_ids is not None:
+                        if (not isinstance(task_ids, list) or not task_ids or len(task_ids) > 200
+                                or any(not isinstance(value, (str, int)) for value in task_ids)):
+                            raise ValueError('task_ids must be a non-empty list with at most 200 ids')
+                        args.extend(['--task-ids', ','.join(str(value) for value in task_ids)])
+                    elif request.get('task_id') is not None:
                         args.extend(['--task-id', str(request['task_id'])])
                     self.cli('runtime', args)
                 elif path == '/api/knowledge/query':

@@ -1,7 +1,9 @@
 'use strict';
 const el = id => document.getElementById(id);
 const pretty = value => JSON.stringify(value, null, 2);
-let token = '', currentPage = 1;
+let token = '', currentPage = 1, operationPoll = null;
+const selectedTasks = new Set();
+let visibleTaskIds = [];
 async function api(path, body) {
   const response = await fetch('/api/knowledge/' + path, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': token}, body: JSON.stringify(body)
@@ -11,11 +13,29 @@ async function api(path, body) {
   return result;
 }
 async function run(action) {
-  el('message').textContent = 'Working… main scan may take several minutes.';
-  document.querySelectorAll('button').forEach(x => x.disabled = true);
+  setPageLocked(true, 'Starting operation…');
+  el('message').textContent = 'Working… runtime verification may take several minutes.';
   try { await action(); el('message').textContent = 'Ready. Results are bound to the displayed main snapshot.'; }
   catch(error) { el('message').textContent = error.message; }
-  finally { document.querySelectorAll('button').forEach(x => x.disabled = x.dataset.disabled === 'true'); }
+  finally { await refreshOperation(); }
+}
+function setPageLocked(locked, message='The page is locked until the active operation finishes.') {
+  el('app-main').inert = locked;
+  el('operation-lock').hidden = !locked;
+  el('operation-lock-message').textContent = message;
+}
+async function refreshOperation() {
+  try {
+    const state = await api('operation');
+    const scope = state.task_ids?.length ? ` for task${state.task_ids.length === 1 ? '' : 's'} ${state.task_ids.join(', ')}` : '';
+    setPageLocked(state.active, state.active ? `${state.action} is running${scope}. Started ${state.started_at}.` : undefined);
+    return state;
+  } catch (_) { return null; }
+}
+function updateSelection() {
+  el('selection-count').textContent = `${selectedTasks.size} task${selectedTasks.size === 1 ? '' : 's'} selected`;
+  el('runtime-selected').textContent = `Verify selected (${selectedTasks.size})`;
+  el('runtime-selected').disabled = selectedTasks.size === 0;
 }
 function button(text, action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.onclick = () => run(action); return b; }
 function sourceLink(path) {
@@ -37,14 +57,20 @@ function pager(id, page) {
 }
 async function loadTasks(page=1) {
   const result = await api('tasks?page=' + page); currentPage = result.page; el('tasks').replaceChildren();
+  visibleTaskIds = result.items.filter(task => task.godot.runtime_eligible).map(task => String(task.id));
   for (const task of result.items) {
     const row = document.createElement('tr');
+    const selection = document.createElement('td'); selection.className = 'selection';
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.disabled = !task.godot.runtime_eligible; checkbox.checked = selectedTasks.has(String(task.id));
+    checkbox.setAttribute('aria-label', `Select task ${task.id}`);
+    checkbox.onchange = () => { if (checkbox.checked) selectedTasks.add(String(task.id)); else selectedTasks.delete(String(task.id)); updateSelection(); };
+    selection.append(checkbox); row.append(selection);
     for (const key of ['id','title','status','dependencies','recommendedSubtasks','godot']) {
       const td = document.createElement('td');
       if (key === 'id') td.append(button(String(task.id),async () => {
         const detail = await api('task?id=' + encodeURIComponent(task.id)); show('Task ' + task.id, detail);
         for (const item of [...detail.godot.scenes, ...detail.godot.candidates]) { const p=document.createElement('p'); p.append(sourceLink(item.scene)); if(item.script) {p.append(' → ',sourceLink(item.script));} el('detail-links').append(p); }
-        el('detail-links').append(button('Verify this task runtime', async()=>{await api('runtime',{task_id:task.id});await loadStatus();}));
+        if (task.godot.runtime_eligible) el('detail-links').append(button('Verify this task runtime', async()=>{await api('runtime',{task_id:task.id});await loadStatus();}));
       }));
       else if (key === 'godot') {
         const reason = task.godot.runtime_evidence?.reason;
@@ -54,13 +80,18 @@ async function loadTasks(page=1) {
     }
     el('tasks').append(row);
   }
+  updateSelection();
   pager('pager-top',result); pager('pager-bottom',result);
 }
 async function loadStatus() {
   const state = await api('status'); el('revision').textContent = state.revision ? `${state.branch} @ ${state.revision} | scanned ${state.scanned_at}` : 'No successful local scan yet.';
   el('publication').textContent = `Published KCP pointer matches scan: ${state.publication.matches_scan}. ${state.publication.note}`;
   if (!el('config').value.trim()) el('config').value = pretty(await api('config')); el('summary').replaceChildren();
-  for(const [key,value] of Object.entries({total:state.summary.total,...state.summary.statuses,...state.summary.godot})) {const d=document.createElement('div');d.className='metric';d.textContent=key+': '+value;el('summary').append(d);}
+  const runtime = state.runtime || {};
+  const metrics = {total:state.summary.total,...state.summary.statuses,...state.summary.godot,
+    runtime_batch_total:runtime.total || 0,runtime_verified:runtime.runtime_verified || 0,
+    runtime_failed:runtime.runtime_failed || 0,runtime_unverified:runtime.runtime_unverified || 0};
+  for(const [key,value] of Object.entries(metrics)) {const d=document.createElement('div');d.className='metric';d.textContent=key+': '+value;el('summary').append(d);}
   el('gdds').replaceChildren();
   for(const file of state.gdd_files) {const p=document.createElement('p'); if(file.available) p.append(sourceLink(file.path)); else p.textContent=file.path+' — missing or unsupported at main';el('gdds').append(p);}
   await loadTasks(currentPage);
@@ -77,6 +108,9 @@ async function search(target) {
 el('close-detail').onclick=()=>el('detail').close();
 el('scan').onclick=()=>run(async()=>{const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
 el('runtime').onclick=()=>run(async()=>{await api('runtime',{});await loadStatus();});
+el('runtime-selected').onclick=()=>run(async()=>{await api('runtime',{task_ids:[...selectedTasks]});await loadStatus();});
+el('select-page').onclick=()=>{visibleTaskIds.forEach(id=>selectedTasks.add(id));loadTasks(currentPage);};
+el('clear-selection').onclick=()=>{selectedTasks.clear();loadTasks(currentPage);};
 el('save-config').onclick=()=>run(async()=>{await api('config',JSON.parse(el('config').value));el('publication').textContent='Configuration saved. Scan main to apply it; displayed results still use the previous configuration.';});
 el('query-form').onsubmit=e=>{e.preventDefault();run(()=>search());};
-run(async()=>{token=(await api('session')).token;await loadStatus();});
+run(async()=>{token=(await api('session')).token;await refreshOperation();await loadStatus();operationPoll=setInterval(refreshOperation,1000);});

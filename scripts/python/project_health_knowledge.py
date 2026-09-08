@@ -179,7 +179,26 @@ def scan(root: Path) -> dict:
             pass
 
 
+def apply_runtime_eligibility(state: dict) -> None:
+    source = state.get('sources', {}).get('.taskmaster/tasks/tasks_gameplay.json')
+    rows = json.loads(source) if isinstance(source, str) else []
+    eligible = set()
+    for row in rows:
+        combined = json.dumps({'test_refs': row.get('test_refs', []),
+                               'acceptance': row.get('acceptance', row.get('acceptance_criteria', [])),
+                               'test_strategy': row.get('testStrategy', row.get('test_strategy', []))},
+                              ensure_ascii=False).replace('\\\\', '/')
+        refs = re.findall(r'Tests\.Godot/[A-Za-z0-9_./-]+', combined)
+        if any(ref.rstrip('.,;/') in state.get('sources', {}) or
+               any(path.startswith(ref.rstrip('.,;/') + '/') for path in state.get('sources', {}))
+               for ref in refs):
+            eligible.add(str(row.get('taskmaster_id')))
+    for detail in state.get('tasks', []):
+        detail['godot']['runtime_eligible'] = str(detail['task']['id']) in eligible
+
+
 def apply_runtime_results(root: Path, state: dict) -> None:
+    apply_runtime_eligibility(state)
     path = base_dir(root) / 'runtime' / 'latest.json'
     if not path.exists():
         return

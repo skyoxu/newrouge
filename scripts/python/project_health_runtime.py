@@ -156,14 +156,24 @@ def _summary(results: list[dict], timed_out: bool) -> dict:
 
 
 def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None,
-           global_timeout: int = 3600) -> dict:
+           global_timeout: int = 3600, task_ids: list[str] | None = None) -> dict:
     scan_path = base_dir(root) / "latest.json"
     if not scan_path.exists():
         raise ValueError("A successful local source scan is required before runtime verification")
     state = read_json(scan_path)
     scan_revision = state.get("revision")
     tasks = _gameplay_tasks(root, state)
-    if task_id is not None:
+    selected_ids = None
+    if task_ids is not None:
+        selected_ids = {_task_id(value) for value in task_ids}
+        if not selected_ids:
+            raise ValueError("At least one task id is required")
+        tasks = [task for task in tasks if task.get("taskmaster_id") in selected_ids]
+        found_ids = {task.get("taskmaster_id") for task in tasks}
+        missing = sorted(selected_ids - found_ids, key=int)
+        if missing:
+            raise ValueError(f"Runtime-eligible gameplay tasks not found: {','.join(missing)}")
+    elif task_id is not None:
         task_id = _task_id(task_id)
         tasks = [task for task in tasks if task.get("taskmaster_id") == task_id]
         if not tasks:
@@ -194,10 +204,12 @@ def verify(root: Path, godot_bin: str, timeout: int, task_id: str | None = None,
     timed_out = any((result.get("reason") or "").startswith("Global runtime verification timeout")
                     for result in results)
     output = base_dir(root) / "runtime" / "latest.json"
-    if task_id is not None and output.exists():
+    merge_ids = selected_ids if selected_ids is not None else ({task_id} if task_id is not None else None)
+    if merge_ids is not None and output.exists():
         previous = read_json(output)
         if previous.get("source_revision") == scan_revision:
-            results = [row for row in previous.get("tasks", []) if str(row.get("task_id")) != task_id] + results
+            results = [row for row in previous.get("tasks", [])
+                       if str(row.get("task_id")) not in merge_ids] + results
     write_json(output, {"schema_version": "newrouge.project-health-runtime-index.v1",
                         "source_revision": scan_revision, "tasks": results,
                         "summary": _summary(results, timed_out)})
@@ -211,12 +223,16 @@ def main(argv=None) -> int:
     parser.add_argument("--timeout-sec", type=int, default=600)
     parser.add_argument("--global-timeout-sec", type=int, default=3600)
     parser.add_argument("--task-id")
+    parser.add_argument("--task-ids", help="Comma-separated gameplay task ids")
     args = parser.parse_args(argv)
     try:
         if args.timeout_sec <= 0 or args.global_timeout_sec <= 0:
             raise ValueError("Timeout values must be positive")
+        if args.task_id and args.task_ids:
+            raise ValueError("Use either --task-id or --task-ids")
+        task_ids = args.task_ids.split(",") if args.task_ids is not None else None
         print(json.dumps(verify(args.repo_root.resolve(), args.godot_bin, args.timeout_sec,
-                                args.task_id, args.global_timeout_sec), ensure_ascii=True))
+                                args.task_id, args.global_timeout_sec, task_ids), ensure_ascii=True))
         return 0
     except Exception as exc:
         print(json.dumps({"status": "failed", "reason": str(exc)}, ensure_ascii=True))
