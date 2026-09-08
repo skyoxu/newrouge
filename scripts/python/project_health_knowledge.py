@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 from _knowledge_catalog_builder import DirectorySnapshot, LocalMainSnapshot, build_layers
 from _knowledge_locator_core import locate, tokens
 from _project_health_tasks import attach_task_scenes, task_details, task_page, task_summary
+from _project_health_navigation import ASSET_SUFFIXES, CONFIG_SUFFIXES, build_navigation
 from impact_analysis_index import build_and_publish_index
 from impact_analysis_index import ImpactIndexError
 from impact_analyzer import ImpactAnalyzer
@@ -146,7 +147,7 @@ def scan(root: Path) -> dict:
         selected = {m['source_path'] for m in catalog['modules']}
         selected.update(config['gdd_paths'])
         selected.update(p for p in trusted.paths if p.startswith(('Game.Godot/', 'Game.Core/', 'Game.Core.Tests/', 'Tests.Godot/'))
-                        and Path(p).suffix in {'.tscn', '.tres', '.cs', '.gd'})
+                        and Path(p).suffix.lower() in ({'.tscn', '.cs', '.gd'} | CONFIG_SUFFIXES))
         sources = {}
         for path in sorted(selected & set(trusted.paths)):
             data = trusted.read_bytes(path)
@@ -166,7 +167,11 @@ def scan(root: Path) -> dict:
                   'snapshot': None, 'summary': task_summary(details), 'tasks': details,
                   'gdd_files': gdds, 'config': config, 'index': index,
                   'catalog': catalog, 'policies': policies, 'projections': projections,
-                  'sources': sources, 'publication': {'main_commit': publication.get('main_commit'),
+                  'sources': sources,
+                  'file_manifest': sorted(set(sources) | {p for p in trusted.paths
+                      if p.startswith(('Game.Core/', 'Game.Godot/', 'Tests.Godot/', 'Game.Core.Tests/'))
+                      and Path(p).suffix.lower() in ASSET_SUFFIXES}),
+                  'publication': {'main_commit': publication.get('main_commit'),
                   'matches_scan': publication.get('main_commit') == revision,
                   'note': 'Exploratory catalogs are not published or frozen KCP authority.'}}
         # Commit only complete successful scans; failures retain the previous dated result.
@@ -199,6 +204,13 @@ def apply_runtime_eligibility(state: dict) -> None:
 
 def apply_runtime_results(root: Path, state: dict) -> None:
     apply_runtime_eligibility(state)
+    workspace_index = base_dir(root) / 'runtime/workspace-latest.json'
+    if workspace_index.exists():
+        workspace = read_json(workspace_index)
+        if workspace.get('verification_mode') == 'workspace':
+            by_task = {str(row.get('task_id')): row for row in workspace.get('tasks', [])}
+            for detail in state.get('tasks', []):
+                detail['godot']['workspace_evidence'] = by_task.get(str(detail['task']['id']))
     path = base_dir(root) / 'runtime' / 'latest.json'
     if not path.exists():
         return
@@ -222,7 +234,8 @@ def apply_runtime_results(root: Path, state: dict) -> None:
         except (ValueError, OSError, TypeError, json.JSONDecodeError):
             pass
         detail['godot']['runtime_evidence'] = evidence
-        verified = (required <= evidence.keys() and evidence.get('status') == 'passed'
+        verified = (evidence.get('verification_mode', 'main') == 'main'
+                    and required <= evidence.keys() and evidence.get('status') == 'passed'
                     and evidence.get('source_revision') == state.get('revision')
                     and bool(evidence.get('test_refs'))
                     and all(re.fullmatch(r'Tests\.Godot/[A-Za-z0-9_./-]+', str(ref))
@@ -347,6 +360,11 @@ def main(argv=None) -> int:
                 result = next((x for x in state['tasks'] if str(x['task']['id']) == args.task_id), None)
                 if result is None:
                     raise ValueError('Task not found')
+                result = {**result, 'navigation': build_navigation(result, state)}
+                links_path = root / 'docs/knowledge/generated/task-resource-links.json'
+                if links_path.exists():
+                    links = read_json(links_path).get('generated', [])
+                    result['resource_knowledge'] = [entry for entry in links if str(entry.get('task_id')) == str(args.task_id)]
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')

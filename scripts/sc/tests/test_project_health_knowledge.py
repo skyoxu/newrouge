@@ -151,11 +151,12 @@ class TasksTests(unittest.TestCase):
 
     @mock.patch('project_health_runtime.subprocess.run')
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
-    def test_runtime_inputs_fail_closed_on_workspace_difference(self, _, run):
+    def test_main_snapshot_gate_does_not_inspect_workspace_difference(self, _, run):
         run.side_effect = [subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0, ' M Tests.Godot/a.gd', '')]
         matched, reason = _runtime_inputs_match(Path('C:/repo'), 'a' * 40)
-        self.assertFalse(matched)
-        self.assertIn('differ', reason)
+        self.assertTrue(matched)
+        self.assertIsNone(reason)
+        run.assert_not_called()
 
     def test_runtime_evidence_requires_task_assertions_and_matching_main(self):
         complete = {'task_id': 2, 'source_revision': 'a' * 40,
@@ -215,7 +216,7 @@ class TasksTests(unittest.TestCase):
             self.assertEqual(result['runtime']['total'], 0)
             self.assertTrue(result['runtime']['stale'])
 
-    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime.prepare_snapshot', return_value={'source_revision': 'a' * 40, 'files': {}})
     @mock.patch('project_health_runtime._scan_revision', return_value='a' * 40)
     @mock.patch('project_health_runtime._run_task')
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
@@ -239,7 +240,7 @@ class TasksTests(unittest.TestCase):
             self.assertEqual(run_task.call_count, 1)
             self.assertTrue(result['tasks'][0]['runtime_verified'])
 
-    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime.prepare_snapshot', return_value={'source_revision': 'a' * 40, 'files': {}})
     @mock.patch('project_health_runtime._scan_revision', return_value='a' * 40)
     @mock.patch('project_health_runtime._run_task')
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
@@ -260,7 +261,7 @@ class TasksTests(unittest.TestCase):
             result = verify(root, 'godot.exe', 10, task_id='2')
             self.assertEqual({row['task_id'] for row in result['tasks']}, {'1', '2'})
 
-    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime.prepare_snapshot', return_value={'source_revision': 'a' * 40, 'files': {}})
     @mock.patch('project_health_runtime._scan_revision', return_value='a' * 40)
     @mock.patch('project_health_runtime._run_task')
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
@@ -284,7 +285,7 @@ class TasksTests(unittest.TestCase):
             self.assertEqual(run_task.call_count, 2)
             self.assertEqual({row['task_id'] for row in result['tasks']}, {'1', '2', '3'})
 
-    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime.prepare_snapshot', return_value={'source_revision': 'a' * 40, 'files': {}})
     @mock.patch('project_health_runtime._scan_revision', return_value='b' * 40)
     @mock.patch('project_health_runtime._run_task')
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)
@@ -306,7 +307,7 @@ class TasksTests(unittest.TestCase):
             self.assertEqual(result['tasks'][0]['status'], 'runtime_unverified')
             self.assertIn('changed', result['tasks'][0]['reason'])
 
-    @mock.patch('project_health_runtime._runtime_inputs_match', return_value=(True, None))
+    @mock.patch('project_health_runtime.prepare_snapshot', return_value={'source_revision': 'a' * 40, 'files': {}})
     @mock.patch('project_health_runtime.time.monotonic', side_effect=[0, 32])
     @mock.patch('project_health_runtime._scan_revision', return_value='a' * 40)
     @mock.patch('project_health_runtime._main_revision', return_value='a' * 40)

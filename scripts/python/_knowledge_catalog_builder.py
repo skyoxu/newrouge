@@ -140,7 +140,9 @@ class DirectorySnapshot(GitSnapshot):
                 name = path.relative_to(self.root).as_posix()
                 if any(part in {'.git', 'logs'} for part in Path(name).parts):
                     continue
-                if path.suffix.lower() in {'.md', '.txt', '.json', '.cs', '.gd', '.tscn', '.tres'}:
+                if path.suffix.lower() in {'.md', '.txt', '.json', '.cs', '.gd', '.tscn', '.tres',
+                        '.cfg', '.ini', '.csv', '.yaml', '.yml', '.png', '.jpg', '.jpeg', '.svg',
+                        '.webp', '.ogg', '.wav', '.mp3', '.ttf', '.otf', '.glb'}:
                     self._cache[name] = path.read_bytes()
         self.paths = tuple(sorted(self._cache))
         self.commit = 'directory:' + sha256_bytes(canonical_bytes({p: sha256_bytes(self._cache[p]) for p in self.paths}))

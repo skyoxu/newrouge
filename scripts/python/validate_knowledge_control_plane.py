@@ -58,6 +58,18 @@ def _check_record(name: str, completed: subprocess.CompletedProcess[str]) -> dic
 
 def _static_checks(root: Path) -> list[str]:
     issues: list[str] = []
+    resource_catalog = root / "docs/knowledge/catalog/knowledge-catalog.json"
+    if not resource_catalog.is_file():
+        issues.append("missing:docs/knowledge/catalog/knowledge-catalog.json")
+    else:
+        try:
+            payload = _load(resource_catalog)
+            entries = payload.get("entries", [])
+            ids = [item.get("id") for item in entries]
+            if len(ids) != len(set(ids)):
+                issues.append("resource-catalog-duplicate-id")
+        except (OSError, json.JSONDecodeError):
+            issues.append("invalid:docs/knowledge/catalog/knowledge-catalog.json")
     required_files = [
         "docs/adr/ADR-0035-repository-knowledge-control-plane.md",
         "knowledge/README.md",

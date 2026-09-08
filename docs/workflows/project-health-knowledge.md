@@ -1,5 +1,9 @@
 # Project Health: Knowledge + Impact
 
+素材列表中的 PNG/JPEG/WebP 相对路径支持悬停预览与点击打开图片。图片接口按导航 revision 读取 Git blob，要求路径属于扫描素材清单，单图最大 16 MiB；目录摘要及其他格式暂不提供图片预览。任务 18（战斗场景 UI 与绑定）可在 `More associations → Assets` 查看卡图及敌人图线索。
+
+任务详情默认仅列出明确任务来源、映射场景、附着脚本及直接配置/素材引用。集成测试环境、间接依赖和共享 ID 候选保留在默认折叠的 `More associations`；完整 JSON 与解析限制位于 `Original task and evidence`。配置默认仅列有明确记录 ID 匹配的字段，无法定位记录时保留源码入口。节点属性及引用证据按需展开。运行状态、失败原因和验证按钮保持可见。
+
 这是 workflow 2.4 现有本地服务下的二级页面 `/knowledge/`，不是第二个服务，也不改 chapter 3–7 的技能调用协议。
 
 ## 启动与使用
@@ -18,7 +22,29 @@ py -3 scripts/python/dev_cli.py serve-project-health
 4. 查看任务列表；每页固定 20 条，顶部与底部都有首/前/后/末页、页码输入跳转。点击 id 展开完整任务及映射附加字段。
 5. 根据证据形成修改范围与回归测试建议，再用 prompt 串回现有 chapter 流程。
 
+## 任务修改导航
+
+点击任务 ID 后，在完整原始详情之前显示配置、代码、场景节点、素材和建议验证五个分区。配置 JSON 字段给出精确 JSON Pointer、当前值、值所在行列与原文；可展开同一 main 快照源码，使用 `Back to task navigation` 返回。读取位置仅是静态引用线索，生效时机需要查看 reader，不能推断自动热更新。
+
+导航按请求构造，扫描仅缓存限定文本与素材路径清单。配置限定为 JSON、TRES、CFG、INI、CSV、YAML；非 JSON 不推断字段。素材只展示路径和使用线索，不通过源码接口公开二进制。未扫描的引用明确标注；目录模式仍按内容摘要绑定，Git 模式始终读取同一个 main revision。
+
+节点属性可以追踪 ExtResource/SubResource 和跨 TRES 资源链，并识别场景 instance 引用；循环与深度有界。动态赋值、实例内部覆盖及运行创建节点仍可能无法定位。`static_reference` 为直接文本引用，`static_candidate` 为测试符号或共享卡 ID 关联，所有素材均保留 `runtime_observed=false`，即使任务已有通过的运行测试。
+
+T24 可从声明测试、服务符号和共享卡 ID 找到初始牌组数据候选；T115 可看到 Reward 场景节点、动态纹理脚本线索及素材。测试命令明确标为 `suggested_not_executed`，不会自动运行。JSON 5+4+1 与旧服务十张独立卡不能互换；卡池也存在未统一的范围差异，参见 `decision-logs/2026-09-08-project-health-configuration-audit.md` 和对应 execution plan。
+
+新增回归：`py -3 -m unittest scripts.sc.tests.test_project_health_navigation -v`；本次证据：`logs/ci/2026-09-08/modification-navigation/`。
+
+导航源码链接同时校验响应 revision；若其他页面已重新扫描，拒绝混用不同快照并提示重新打开任务。来源链、反向字面引用与素材使用线索中的已扫描文本路径也可点击，原始行号保留。资源属性支持多行数组/字典；深度、展开数量、资源循环和缺失引用均显示未解析原因。目录模式仍省略超过 4 MiB 的文件，包括大素材；Git 的素材路径清单没有此大小限制。建议测试筛选器由文件名生成，执行前应核对实际测试类型与匹配数量，零测试不能视为验证通过。
+
 ## Gameplay 运行时验证
+
+任务详情提供 `Verify local main` 和 `Verify workspace`。main 模式从扫描 commit 导出独立副本，一批任务共用一个副本串行执行；未提交工作区修改不再阻挡 main 验证。workspace 模式复制当前 Git 跟踪文件及未忽略的新文件，记录 SHA-256 清单，以 `workspace:<digest>` 标识实际运行输入。工作区测试选择仍使用已扫描任务的测试引用，修改任务引用后应先更新任务来源。
+
+两种模式都只在副本中生成导入、编译与测试产物。副本、输入清单和测试报告保留于 `logs/ci/project-health-knowledge/runtime/` 供审阅，不自动删除。默认忽略的本地依赖不会被复制，构建应从源码和锁定依赖恢复。main 结果写 `runtime/latest.json`；工作区结果单独写 `runtime/workspace-latest.json`，不能产生或覆盖 main 的 `runtime_verified`。页面显示最近一次工作区快照的时间、内容身份和结果，并不宣称其适用于后续编辑。
+
+批次锁覆盖 CLI 和页面调用。全局超时包含副本准备；任务超时终止该运行器的进程树。main 通过要求有效任务报告、正数测试计数、零失败错误，以及运行结束时输入未变化、main 与 scan revision 一致。源码路径不会切换、stash、checkout 或要求先提交。
+
+CLI：`py -3 scripts/python/project_health_runtime.py --godot-bin "$env:GODOT_BIN" --task-id 18 --mode main`；将 `main` 改成 `workspace` 可验证工作区快照。
 
 `Verify gameplay runtime` 是独立操作，不会在普通 main 扫描中自动启动 Godot。运行前必须设置 `GODOT_BIN`，批量任务默认串行执行，并同时受单任务超时和全局超时约束。只有扫描任务中存在且能定位到扫描源的 `Tests.Godot/**` 测试文件或目录才会启动；仅有 Godot/GdUnit 策略线索或人工场景映射的任务记录为 `runtime_unverified`。
 
@@ -84,3 +110,21 @@ py -3 scripts/python/project_health_knowledge.py task --task-id 115
 服务只绑定 127.0.0.1；Host 检查、同源 Origin、会话 token 和固定 CLI 参数约束写入口。API 不接受任意命令、分支、快照路径或网页指定输出文件。只允许打开扫描 allowlist 内的源码文本，不提供编辑器 OS 命令或任意文件下载。
 
 测试：`py -3 -m unittest discover -s scripts/sc/tests -p "test_project_health*.py"`；Impact 回归：`py -3 -m unittest discover -s scripts/python/tests -p "test_impact_analyzer.py"`。
+### Chapter 6 resource knowledge
+
+Chapter 6 may generate project-owned resource associations with:
+
+```powershell
+py -3 scripts/python/dev_cli.py init-knowledge-catalog --validate
+py -3 scripts/python/dev_cli.py generate-knowledge-links --task-id 18
+```
+
+正式 Chapter 6 捕获阶段使用：
+
+```powershell
+py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18 --write-task-refs
+```
+
+该阶段依次刷新项目扫描、生成任务资源关联并校验 catalog。失败状态为 `knowledge_capture_failed`，可从该阶段恢复，不会伪装成任务运行时测试失败或通过。
+
+The production catalog lives under `docs/knowledge/**`; `logs/**` remains evidence only. Resource entries are revision-bound and may be `confirmed`, `inferred`, `unverified`, or `removed`. Taskmaster views should keep only lightweight entry references. The existing `knowledge/` control plane remains the publication authority for global indexes; this catalog is its project-resource input, not a replacement.

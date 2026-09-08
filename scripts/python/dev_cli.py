@@ -434,6 +434,26 @@ def cmd_serve_project_health(args: argparse.Namespace) -> int:
     return run(build_serve_project_health_cmd(args))
 
 
+def cmd_init_knowledge_catalog(args: argparse.Namespace) -> int:
+    from init_knowledge_catalog import initialize
+    result = initialize(Path(args.repo_root).resolve(), args.force, args.validate)
+    print(json.dumps(result, ensure_ascii=False))
+    return 0 if result.get("status") == "ok" else 1
+
+
+def cmd_generate_knowledge_links(args: argparse.Namespace) -> int:
+    from generate_knowledge_links import generate
+    print(json.dumps(generate(Path(args.repo_root).resolve(), set(args.task_ids or []), args.write_task_refs), ensure_ascii=False))
+    return 0
+
+
+def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
+    from chapter6_knowledge import run
+    result = run(Path(args.repo_root).resolve(), str(args.task_id), args.write_task_refs)
+    print(json.dumps(result, ensure_ascii=False))
+    return 0 if result.get("status") == "knowledge_captured" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -791,6 +811,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_srv.add_argument("--repo-root", default=".")
     p_srv.add_argument("--port", type=int, default=0)
     p_srv.set_defaults(func=cmd_serve_project_health)
+
+    p_knowledge = sub.add_parser("init-knowledge-catalog", help="初始化 docs/knowledge 项目资源知识目录")
+    p_knowledge.add_argument("--repo-root", default=".")
+    p_knowledge.add_argument("--force", action="store_true")
+    p_knowledge.add_argument("--validate", action="store_true")
+    p_knowledge.set_defaults(func=cmd_init_knowledge_catalog)
+    p_links = sub.add_parser("generate-knowledge-links", help="从最新扫描生成 Chapter 6 资源关联")
+    p_links.add_argument("--repo-root", default=".")
+    p_links.add_argument("--task-id", action="append", dest="task_ids")
+    p_links.add_argument("--write-task-refs", action="store_true")
+    p_links.set_defaults(func=cmd_generate_knowledge_links)
+    p_c6k = sub.add_parser("chapter6-knowledge", help="执行 Chapter 6 资源知识捕获阶段")
+    p_c6k.add_argument("--repo-root", default=".")
+    p_c6k.add_argument("--task-id", required=True)
+    p_c6k.add_argument("--write-task-refs", action="store_true")
+    p_c6k.set_defaults(func=cmd_chapter6_knowledge)
 
     return parser
 

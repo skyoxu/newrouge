@@ -5,6 +5,7 @@ let token = '', currentPage = 1, operationPoll = null;
 const selectedTasks = new Set();
 let visibleTaskIds = [];
 let activeFilter = null;
+let activeTaskDetail = null;
 async function api(path, body) {
   const response = await fetch('/api/knowledge/' + path, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': token}, body: JSON.stringify(body)
@@ -29,13 +30,13 @@ async function refreshOperation() {
   try {
     const state = await api('operation');
     const scope = state.task_ids?.length ? ` for task${state.task_ids.length === 1 ? '' : 's'} ${state.task_ids.join(', ')}` : '';
-    setPageLocked(state.active, state.active ? `${state.action} is running${scope}. Started ${state.started_at}.` : undefined);
+    setPageLocked(state.active, state.active ? `${state.action}${state.verification_mode ? ' ('+state.verification_mode+')' : ''} is running${scope}. Started ${state.started_at}.` : undefined);
     return state;
   } catch (_) { return null; }
 }
 function updateSelection() {
   el('selection-count').textContent = `${selectedTasks.size} task${selectedTasks.size === 1 ? '' : 's'} selected`;
-  el('runtime-selected').textContent = `Verify selected (${selectedTasks.size})`;
+  el('runtime-selected').textContent = `Verify selected on main (${selectedTasks.size})`;
   el('runtime-selected').disabled = selectedTasks.size === 0;
 }
 function setFilter(kind, value) {
@@ -46,12 +47,92 @@ function setFilter(kind, value) {
   return loadStatus();
 }
 function button(text, action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.onclick = () => run(action); return b; }
-function sourceLink(path) {
+function sourceLink(path, taskDetail=null) {
   const a = document.createElement('a'); a.href = '/api/knowledge/source?path=' + encodeURIComponent(path); a.textContent = path;
-  a.onclick = event => {event.preventDefault(); run(async () => {const s = await api('source?path=' + encodeURIComponent(path)); show(path + ' @ ' + s.revision.slice(0,12), s.content);});};
+  a.onclick = event => {event.preventDefault(); run(async () => {
+    if(!taskDetail) activeTaskDetail=null;
+    const s = await api('source?path=' + encodeURIComponent(path));
+    if(taskDetail && s.revision !== taskDetail.navigation.revision) throw new Error('Source snapshot changed. Reopen the task before inspecting its sources.');
+    show(path + ' @ ' + s.revision.slice(0,12), s.content);
+    if(taskDetail) el('detail-links').append(button('Back to task navigation',async()=>renderTaskDetail(taskDetail)));
+  });};
   return a;
 }
-function show(title, body) { el('detail-title').textContent = title; el('detail-body').textContent = typeof body === 'string' ? body : pretty(body); el('detail-links').replaceChildren(); if (!el('detail').open) el('detail').showModal(); }
+function show(title, body) { el('detail-title').textContent = title; el('detail-body').hidden=false; el('detail-body').textContent = typeof body === 'string' ? body : pretty(body); el('detail-links').replaceChildren(); if (!el('detail').open) el('detail').showModal(); }
+function imageLink(path, revision) {
+  const wrapper=document.createElement('span');wrapper.className='image-reference';
+  const link=document.createElement('a');link.textContent=path;
+  link.href='/api/knowledge/image?path='+encodeURIComponent(path)+'&revision='+encodeURIComponent(revision);
+  link.target='_blank';link.rel='noopener';link.title='Preview image';
+  const preview=document.createElement('span');preview.className='image-preview';preview.hidden=true;
+  const img=document.createElement('img');img.alt=path;
+  const error=document.createElement('span');error.textContent='Loading image...';
+  preview.append(img,error);wrapper.append(link,preview);
+  const open=()=>{preview.hidden=false;if(!img.getAttribute('src')) img.src=link.href;};
+  img.onload=()=>{error.hidden=true;};img.onerror=()=>{error.textContent='Preview unavailable. Check the snapshot or image size.';img.hidden=true;};
+  wrapper.onmouseenter=open;wrapper.onmouseleave=()=>{preview.hidden=true;};link.onfocus=open;wrapper.onfocusout=()=>{preview.hidden=true;};
+  return wrapper;
+}
+function renderNavigation(nav, box=el('detail-links'), related=false) {
+  const textSources = new Set(nav.text_sources || []);
+  const paragraph = (parent, value) => {const p=document.createElement('p');p.textContent=value;parent.append(p);};
+  const linkedPath = path => textSources.has(path) ? sourceLink(path, activeTaskDetail) : document.createTextNode(path);
+  const reference = (parent, label, path, line, suffix) => {const p=document.createElement('p');p.append(label,linkedPath(path),line ? ':'+line : '',suffix);parent.append(p);};
+  for (const [key, title] of [['configs','Configuration'],['code','Code'],['scenes','Scenes and nodes'],['assets','Assets'],['tests','Suggested verification']]) {
+    const items=(nav[key] || []).filter(item=>related ? key!=='tests' && item.focus!=='core' : key==='tests' || item.focus==='core');
+    if(!items.length) continue;
+    const section=document.createElement('div');section.className='navigation-group'; const heading=document.createElement('h3');heading.textContent=title+' ('+items.length+')';section.append(heading);box.append(section);
+    for (const item of items) {
+      const entry=document.createElement('details');const summary=document.createElement('summary');
+      if(key==='assets' && /\.(png|jpe?g|webp)$/i.test(item.path)) summary.append(imageLink(item.path,nav.revision),' · '+item.evidence_kind);
+      else summary.textContent=item.path+' · '+item.evidence_kind;
+      entry.append(summary);section.append(entry);
+      if(textSources.has(item.path)) entry.append(sourceLink(item.path, activeTaskDetail));
+      if(item.fields && !item.focused_fields?.length) paragraph(entry,'No task-specific configuration record identified.');
+      for(const field of item.focused_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line}`);
+      if(item.parse_error) paragraph(entry,'Parse error: '+item.parse_error);
+      for(const node of item.nodes || []) {
+        const nodeDetails=document.createElement('details');const nodeTitle=document.createElement('summary');nodeTitle.textContent=`${node.node_path} (${node.type})`;nodeDetails.append(nodeTitle);entry.append(nodeDetails);
+        if(node.instance.length) paragraph(nodeDetails,'Instance: '+pretty(node.instance));
+        for(const property of node.properties) paragraph(nodeDetails,`${property.name} = ${property.value} · line ${property.line}`+(property.resources.length ? ' · '+pretty(property.resources) : ''));
+      }
+      if(item.command) paragraph(entry,item.command_status+': '+item.command);
+      const evidence=document.createElement('details');const evidenceTitle=document.createElement('summary');evidenceTitle.textContent='Reference evidence';evidence.append(evidenceTitle);entry.append(evidence);
+      for(const step of item.chain || []) reference(evidence,step.kind+': ',step.from || step.path,step.line,'');
+      for(const reader of item.readers || []) reference(evidence,'Literal reference ',reader.reader,reader.line,' · '+reader.evidence);
+      for(const user of item.users || []) reference(evidence,'Source clue ',user.source,user.line,' · '+user.evidence);
+    }
+  }
+}
+function renderTaskDetail(detail) {
+  activeTaskDetail = detail;
+  show('Task ' + detail.task.id, detail);
+  el('detail-body').hidden=true;
+  el('detail-body').textContent='';
+  const overview=document.createElement('p');overview.textContent=detail.task.title;el('detail-links').append(overview);
+  const evidence=detail.godot.runtime_evidence;
+  const status=document.createElement('p');
+  status.textContent=`${detail.godot.status} | main ${detail.navigation?.revision || ''}`;
+  if(evidence){const counts=evidence.test_results||{}; if(counts.tests) status.textContent+=` | Tests: ${counts.tests}, passed: ${counts.tests-(counts.failures||0)-(counts.errors||0)}, failed: ${(counts.failures||0)+(counts.errors||0)}`;}
+  el('detail-links').append(status);
+  if(evidence?.reason){const reason=document.createElement('p');reason.className='runtime-reason';reason.textContent=evidence.reason.replace(/GDUNIT_DONE[\s\S]*$/,'').trim();el('detail-links').append(reason);}
+  if(detail.godot.workspace_evidence){const result=detail.godot.workspace_evidence;const p=document.createElement('p');p.textContent=`Last workspace snapshot: ${result.status} | ${result.finished_at} | ${result.source_revision}`+(result.reason ? ' | '+result.reason : '');el('detail-links').append(p);}
+  if(detail.godot.runtime_eligible) {
+    el('detail-links').append(button('Verify local main',async()=>{await api('runtime',{task_id:detail.task.id,mode:'main'});await loadStatus();}));
+    el('detail-links').append(button('Verify workspace',async()=>{const result=await api('runtime',{task_id:detail.task.id,mode:'workspace'});show('Workspace verification - task '+detail.task.id,result);}));
+  }
+  if(detail.navigation) {
+    if(!['configs','code','scenes','assets'].some(k=>(detail.navigation[k] || []).some(i=>i.focus==='core'))){const empty=document.createElement('p');empty.textContent='No confirmed core association. See related candidates below.';el('detail-links').append(empty);}
+    renderNavigation(detail.navigation);
+    const more=document.createElement('details');more.id='more-associations';const label=document.createElement('summary');
+    const count=['configs','code','scenes','assets'].reduce((n,k)=>n+(detail.navigation[k] || []).filter(i=>i.focus!=='core').length,0);
+    label.textContent=`More associations (${count})`;more.append(label);el('detail-links').append(more);
+    more.addEventListener('toggle',()=>{if(more.open && !more.dataset.loaded){more.dataset.loaded='true';renderNavigation(detail.navigation,more,true);}});
+  }
+  if(detail.resource_knowledge?.length){const box=document.createElement('details');box.open=true;const summary=document.createElement('summary');summary.textContent=`Indexed resource knowledge (${detail.resource_knowledge.length})`;box.append(summary);for(const item of detail.resource_knowledge){const p=document.createElement('p');p.textContent=`${item.kind}: ${item.path} | ${item.role} | ${item.confidence}`;box.append(p);}el('detail-links').append(box);}
+  const raw=document.createElement('details');raw.id='raw-evidence';const label=document.createElement('summary');label.textContent='Original task and evidence';raw.append(label);el('detail-links').append(raw);
+  raw.addEventListener('toggle',()=>{if(raw.open && !raw.dataset.loaded){raw.dataset.loaded='true';const pre=document.createElement('pre');pre.textContent=pretty(detail);raw.append(pre);}});
+}
 function pager(id, page) {
   const box = el(id); box.replaceChildren();
   for (const [label, destination] of [['First',1],['Previous',page.page-1],['Next',page.page+1],['Last',page.pages]]) {
@@ -77,13 +158,13 @@ async function loadTasks(page=1) {
     for (const key of ['id','title','status','dependencies','recommendedSubtasks','godot']) {
       const td = document.createElement('td');
       if (key === 'id') td.append(button(String(task.id),async () => {
-        const detail = await api('task?id=' + encodeURIComponent(task.id)); show('Task ' + task.id, detail);
-        for (const item of [...detail.godot.scenes, ...detail.godot.candidates]) { const p=document.createElement('p'); p.append(sourceLink(item.scene)); if(item.script) {p.append(' → ',sourceLink(item.script));} el('detail-links').append(p); }
-        if (task.godot.runtime_eligible) el('detail-links').append(button('Verify this task runtime', async()=>{await api('runtime',{task_id:task.id});await loadStatus();}));
+        renderTaskDetail(await api('task?id=' + encodeURIComponent(task.id)));
       }));
       else if (key === 'godot') {
-        const reason = task.godot.runtime_evidence?.reason;
-        td.textContent = task.godot.status + (task.godot.runtime_status ? ` · ${task.godot.runtime_status}` : '') + (reason ? ` · ${reason}` : '');
+        const evidence = task.godot.runtime_evidence;
+        const counts = evidence?.test_results;
+        const summary = counts?.tests ? ` · ${counts.tests} tests · ${(counts.failures||0)+(counts.errors||0)} failed` : '';
+        td.textContent = task.godot.status + (task.godot.runtime_status ? ` · ${task.godot.runtime_status}` : '') + summary;
       } else td.textContent = typeof task[key] === 'object' ? pretty(task[key]) : String(task[key] ?? '—');
       row.append(td);
     }
@@ -123,8 +204,11 @@ async function search(target) {
   el('preview').textContent=pretty(result);
 }
 el('close-detail').onclick=()=>el('detail').close();
-el('scan').onclick=()=>run(async()=>{const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
-el('runtime').onclick=()=>run(async()=>{await api('runtime',{});await loadStatus();});
+el('detail').onclose=()=>{activeTaskDetail=null;};
+el('scan').onclick=()=>run(async()=>{activeTaskDetail=null;const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
+el('runtime').textContent='Verify eligible tasks on main';
+el('runtime-all').textContent='Audit all gameplay on main';
+el('runtime').onclick=()=>run(async()=>{await api('runtime',{mode:'main'});await loadStatus();});
 el('runtime-all').onclick=()=>run(async()=>{await api('runtime',{all_gameplay:true});await loadStatus();});
 el('runtime-selected').onclick=()=>run(async()=>{await api('runtime',{task_ids:[...selectedTasks]});await loadStatus();});
 el('select-page').onclick=()=>{visibleTaskIds.forEach(id=>selectedTasks.add(id));loadTasks(currentPage);};

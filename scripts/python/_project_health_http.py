@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -14,7 +15,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config
+from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
+
+
+def image_bytes(root, path, revision):
+    safe_file(root, path)
+    types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
+    mime = types.get(Path(path).suffix.lower())
+    state = read_json(base_dir(root) / 'latest.json')
+    if not mime or path not in state.get('file_manifest', []):
+        raise ValueError('Image is not in the scanned manifest')
+    if revision != state.get('revision') or not re.fullmatch(r'[0-9a-f]{40,64}', revision):
+        raise ValueError('Image snapshot changed or is unavailable; scan local main again')
+    object_name = revision + ':' + path
+    size = subprocess.run(['git', '-C', str(root), 'cat-file', '-s', object_name], capture_output=True, timeout=10, check=True)
+    if int(size.stdout) > 16 * 1024 * 1024:
+        raise ValueError('Image exceeds the 16 MiB preview limit')
+    data = subprocess.run(['git', '-C', str(root), 'cat-file', 'blob', object_name], capture_output=True, timeout=15, check=True).stdout
+    return data, mime
 
 RUNTIME_HOST_TIMEOUT_SECONDS = 3690
 
@@ -23,14 +41,14 @@ def handler_factory(root: Path):
     token = secrets.token_urlsafe(32)
     operation = threading.Lock()
     operation_guard = threading.Lock()
-    operation_state = {'active': False, 'action': None, 'task_ids': [], 'started_at': None}
+    operation_state = {'active': False, 'action': None, 'task_ids': [], 'started_at': None, 'verification_mode': None}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
             pass
 
         def send(self, data, code=200, content_type='application/json; charset=utf-8'):
-            body = data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
+            body = data if isinstance(data, bytes) else data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
             self.send_response(code)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
@@ -59,6 +77,7 @@ def handler_factory(root: Path):
                             task_ids = [item for item in str(args[index + 1]).split(',') if item]
                 with operation_guard:
                     operation_state.update(active=True, action=action, task_ids=task_ids,
+                                           verification_mode=args[args.index('--mode') + 1] if '--mode' in args else None,
                                            started_at=datetime.now(timezone.utc).isoformat())
                 script = 'project_health_runtime.py' if action == 'runtime' else 'project_health_knowledge.py'
                 cmd = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(root), *args]
@@ -74,7 +93,7 @@ def handler_factory(root: Path):
                 self.send(payload, 200 if proc.returncode == 0 else 422)
             finally:
                 with operation_guard:
-                    operation_state.update(active=False, action=None, task_ids=[], started_at=None)
+                    operation_state.update(active=False, action=None, task_ids=[], started_at=None, verification_mode=None)
                 operation.release()
 
         def do_GET(self):
@@ -103,6 +122,9 @@ def handler_factory(root: Path):
                     self.cli('task', ['--task-id', params.get('id', [''])[0]])
                 elif parsed.path == '/api/knowledge/source':
                     self.cli('source', ['--path', params.get('path', [''])[0]])
+                elif parsed.path == '/api/knowledge/image':
+                    data, mime = image_bytes(root, params.get('path', [''])[0], params.get('revision', [''])[0])
+                    self.send(data, content_type=mime)
                 elif parsed.path in ('/knowledge', '/knowledge/'):
                     self.send(Path(__file__).with_name('project_health_knowledge.html').read_text(encoding='utf-8'),
                               content_type='text/html; charset=utf-8')
@@ -148,6 +170,10 @@ def handler_factory(root: Path):
                     if not godot_bin:
                         raise ValueError('GODOT_BIN is required for runtime verification')
                     args = ['--godot-bin', godot_bin]
+                    mode = request.get('mode', 'main')
+                    if mode not in ('main', 'workspace'):
+                        raise ValueError('Unknown runtime mode')
+                    args.extend(['--mode', mode])
                     task_ids = request.get('task_ids')
                     if request.get('all_gameplay') is True:
                         if task_ids is not None or request.get('task_id') is not None:
