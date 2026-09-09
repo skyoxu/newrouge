@@ -26,6 +26,7 @@ ROOT_EXACT_SOURCES = {
 }
 
 SOURCE_PREFIXES = (
+    "docs/knowledge/catalog/",
     ".agents/skills/",
     "docs/agents/",
     "docs/prd/",
@@ -228,6 +229,8 @@ def _classification(path: str) -> tuple[str, tuple[str, ...], str, str]:
         "docs/PROJECT_DOCUMENTATION_INDEX.md",
     } or path.startswith((".agents/skills/", "docs/agents/", "docs/workflows/")):
         return "toolchain", ("delivery", "game-runtime"), "toolchain-document", "repository-authority"
+    if path.startswith("docs/knowledge/catalog/"):
+        return "game-runtime", ("game-design", "delivery"), "resource-knowledge", "resource-guide"
     if path == "README.md":
         return "game-design", ("toolchain", "delivery"), "repository-overview", "repository-overview"
     if path.startswith(("docs/prd/", "docs/gdd/", "docs/game-type-guides/")) or path == ".taskmaster/docs/prd.txt":

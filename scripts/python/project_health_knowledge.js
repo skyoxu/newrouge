@@ -79,7 +79,7 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
   const linkedPath = path => textSources.has(path) ? sourceLink(path, activeTaskDetail) : document.createTextNode(path);
   const reference = (parent, label, path, line, suffix) => {const p=document.createElement('p');p.append(label,linkedPath(path),line ? ':'+line : '',suffix);parent.append(p);};
   for (const [key, title] of [['configs','Configuration'],['code','Code'],['scenes','Scenes and nodes'],['assets','Assets'],['tests','Suggested verification']]) {
-    const items=(nav[key] || []).filter(item=>related ? key!=='tests' && item.focus!=='core' : key==='tests' || item.focus==='core');
+    const items=(nav[key] || []).filter(item=>related ? key!=='tests' && key!=='configs' && item.focus!=='core' : key==='tests' || key==='configs' || item.focus==='core');
     if(!items.length) continue;
     const section=document.createElement('div');section.className='navigation-group'; const heading=document.createElement('h3');heading.textContent=title+' ('+items.length+')';section.append(heading);box.append(section);
     for (const item of items) {
@@ -129,7 +129,7 @@ function renderTaskDetail(detail) {
     label.textContent=`More associations (${count})`;more.append(label);el('detail-links').append(more);
     more.addEventListener('toggle',()=>{if(more.open && !more.dataset.loaded){more.dataset.loaded='true';renderNavigation(detail.navigation,more,true);}});
   }
-  if(detail.resource_knowledge?.length){const box=document.createElement('details');box.open=true;const summary=document.createElement('summary');summary.textContent=`Indexed resource knowledge (${detail.resource_knowledge.length})`;box.append(summary);for(const item of detail.resource_knowledge){const p=document.createElement('p');p.textContent=`${item.kind}: ${item.path} | ${item.role} | ${item.confidence}`;box.append(p);}el('detail-links').append(box);}
+  if(detail.resource_knowledge?.length){const box=document.createElement('details');const summary=document.createElement('summary');summary.textContent=`Resource knowledge by type (${detail.resource_knowledge.length})`;box.append(summary);for(const [kind,title] of [['config','Configuration'],['asset','Assets'],['scene','Scenes'],['code','Code'],['test','Tests']]){const items=detail.resource_knowledge.filter(x=>x.kind===kind);if(!items.length)continue;const group=document.createElement('details');const label=document.createElement('summary');label.textContent=`${title} (${items.length})`;group.append(label);for(const item of items){const p=document.createElement('p');p.textContent=`${item.path} — ${item.confidence}`;group.append(p);}box.append(group);}el('detail-links').append(box);}
   const raw=document.createElement('details');raw.id='raw-evidence';const label=document.createElement('summary');label.textContent='Original task and evidence';raw.append(label);el('detail-links').append(raw);
   raw.addEventListener('toggle',()=>{if(raw.open && !raw.dataset.loaded){raw.dataset.loaded='true';const pre=document.createElement('pre');pre.textContent=pretty(detail);raw.append(pre);}});
 }

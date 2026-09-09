@@ -1,0 +1,232 @@
+{
+  "status": "verified",
+  "task_id": "18",
+  "generated_by": "llm-assisted-semantic-analysis",
+  "backend": "codex-cli",
+  "entries": [
+    {
+      "id": "config:18:Game.Core/Data/act1-config.json",
+      "path": "Game.Core/Data/act1-config.json",
+      "explanation": "Defines Act 1 route graph, node sequencing, encounter IDs, reward pools, and referenced data files.",
+      "parameter_guidance": "Keep node IDs and next references consistent; update floor, type, and referenced pool or encounter IDs together.",
+      "modification_impact": "Changes map progression, encounter selection, rewards, and which data files the runtime loads."
+    },
+    {
+      "id": "config:18:Game.Core/Data/act1-enemy-definitions.json",
+      "path": "Game.Core/Data/act1-enemy-definitions.json",
+      "explanation": "Defines Act 1 enemies, categories, combat statistics, and available intent pools.",
+      "parameter_guidance": "Adjust hp, attack, defense, and intent pool IDs per enemy; preserve unique enemy IDs referenced by encounters.",
+      "modification_impact": "Changes enemy strength, classification, and possible combat behaviors."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-card-definitions.json",
+      "path": "Game.Core/Data/m1-card-definitions.json",
+      "explanation": "Defines card identity, localization keys, cost, type, target, rarity, effects, and upgrade routes.",
+      "parameter_guidance": "Keep card IDs and localization keys stable; ensure effect fields match the card type and upgrade route structure.",
+      "modification_impact": "Changes card availability, costs, combat effects, displayed text, and upgrade outcomes."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-card-pools.json",
+      "path": "Game.Core/Data/m1-card-pools.json",
+      "explanation": "Defines card reward pools by encounter type, rarity, offer count, and card IDs.",
+      "parameter_guidance": "Use card IDs present in card definitions and keep pool IDs aligned with reward-pool references.",
+      "modification_impact": "Changes which cards can appear as combat or event rewards and how many choices are offered."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-curse-definitions.json",
+      "path": "Game.Core/Data/m1-curse-definitions.json",
+      "explanation": "Defines curse identity, localization keys, removability, and base effects.",
+      "parameter_guidance": "Keep curse IDs referenced by cards and events; change removability and effect flags deliberately.",
+      "modification_impact": "Changes curse behavior, draw effects, and whether players can remove the curse."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-enemy-intent-definitions.json",
+      "path": "Game.Core/Data/m1-enemy-intent-definitions.json",
+      "explanation": "Defines combat-state enemy intents, icons, text keys, and timed effects.",
+      "parameter_guidance": "Keep enemy IDs aligned with enemy definitions; ensure effect kinds, amounts, timing, and targets form valid combinations.",
+      "modification_impact": "Changes enemy previews and the effects executed on player or enemy turns."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-event-definitions.json",
+      "path": "Game.Core/Data/m1-event-definitions.json",
+      "explanation": "Defines event titles, descriptions, options, previews, feedback keys, effects, and return routes.",
+      "parameter_guidance": "Preserve unique event and option IDs; keep effect-specific fields and localization keys synchronized.",
+      "modification_impact": "Changes event choices, costs or gains, curses, feedback, and post-event navigation."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-relic-definitions.json",
+      "path": "Game.Core/Data/m1-relic-definitions.json",
+      "explanation": "Defines relic metadata, trigger timing, execution boundaries, parameters, and tags.",
+      "parameter_guidance": "Keep relic IDs and trigger paths stable; modify numeric parameters within the expected effect contract.",
+      "modification_impact": "Changes passive combat or shop modifiers and relic-related UI attribution."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-rest-options.json",
+      "path": "Game.Core/Data/m1-rest-options.json",
+      "explanation": "Defines rest-site options, labels, confirmations, feedback, and effects such as healing or upgrades.",
+      "parameter_guidance": "Keep option IDs unique; preserve required-target and irreversible flags when changing effects.",
+      "modification_impact": "Changes healing amounts, card upgrades, curse removal, confirmation flow, and rest-site outcomes."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-reward-pools.json",
+      "path": "Game.Core/Data/m1-reward-pools.json",
+      "explanation": "Defines reward bundles containing gold, consumables, relics, and card-choice pools.",
+      "parameter_guidance": "Reference existing pool, card, relic, and consumable IDs; keep pick counts and availability states coherent.",
+      "modification_impact": "Changes post-encounter rewards, card choices, gold, and fallback behavior."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-shop-pools.json",
+      "path": "Game.Core/Data/m1-shop-pools.json",
+      "explanation": "Defines shop offers, prices, services, allowed targets, and blocked feedback keys.",
+      "parameter_guidance": "Keep offer and service IDs unique; ensure card, relic, and target references resolve to defined resources.",
+      "modification_impact": "Changes shop inventory, prices, purchasability, services, and error feedback."
+    },
+    {
+      "id": "config:18:Game.Core/Data/m1-warrior-starting-deck.json",
+      "path": "Game.Core/Data/m1-warrior-starting-deck.json",
+      "explanation": "Defines the Warrior starting deck, card counts, character identity, and shuffle configuration.",
+      "parameter_guidance": "Use valid card IDs and nonnegative counts; preserve deck and character IDs expected by loaders.",
+      "modification_impact": "Changes the initial draw pool, deck composition, and shuffle randomness source."
+    },
+    {
+      "id": "config:18:Game.Godot/Translations/en.csv",
+      "path": "Game.Godot/Translations/en.csv",
+      "explanation": "Provides English localized strings consumed by combat, map, reward, shop, event, and HUD screens.",
+      "parameter_guidance": "Keep localization keys stable and maintain the CSV schema expected by translation loaders.",
+      "modification_impact": "Changes English UI text, feedback, labels, and accessibility-visible wording."
+    },
+    {
+      "id": "config:18:Game.Godot/Translations/zh-CN.csv",
+      "path": "Game.Godot/Translations/zh-CN.csv",
+      "explanation": "Provides Simplified Chinese localized strings for the same runtime UI flows.",
+      "parameter_guidance": "Keep keys aligned with the English catalog and preserve valid CSV quoting and columns.",
+      "modification_impact": "Changes Simplified Chinese UI text, feedback, labels, and displayed combat information."
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
+      "path": "Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
+      "explanation": "Card texture loaded for runtime presentation in the Godot combat flow.",
+      "parameter_guidance": "Replace the image while preserving the path and a compatible readable format and size.",
+      "modification_impact": "Changes the card artwork shown in runtime UI and related visual checks."
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
+      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
+      "explanation": "Enemy target artwork referenced by combat scene rendering.",
+      "parameter_guidance": "Preserve the path and image compatibility expected by TextureRect or runtime loaders.",
+      "modification_impact": "Changes the displayed enemy target visual without changing combat data."
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
+      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
+      "explanation": "Slime enemy artwork used by combat scene presentation.",
+      "parameter_guidance": "Keep the asset path and compatible texture format so runtime loading continues to succeed.",
+      "modification_impact": "Changes the slime enemy appearance in combat UI."
+    },
+    {
+      "id": "scene:18:Game.Godot/Scenes/Combat.tscn",
+      "path": "Game.Godot/Scenes/Combat.tscn",
+      "explanation": "Defines the combat scene UI hierarchy, HUD controls, overlays, pile viewer, map overlay, and visual layout.",
+      "parameter_guidance": "Preserve node paths consumed by CombatScene.cs and keep control types compatible with script bindings.",
+      "modification_impact": "Changes combat layout, visibility, interaction surfaces, overlays, and scene wiring."
+    },
+    {
+      "id": "scene:18:Game.Godot/Scenes/Map/Map.tscn",
+      "path": "Game.Godot/Scenes/Map/Map.tscn",
+      "explanation": "Defines the map scene route display, node buttons, edge labels, legends, and action controls.",
+      "parameter_guidance": "Keep node names and paths aligned with MapScene.cs; update labels and layout values consistently.",
+      "modification_impact": "Changes map presentation, route navigation controls, and visible progression structure."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Combat/CombatHudSnapshot.cs",
+      "path": "Game.Core/Contracts/Combat/CombatHudSnapshot.cs",
+      "explanation": "Contract resource associated with the combat HUD snapshot exchanged between domain and UI layers.",
+      "parameter_guidance": "Treat fields as a stable BCL-only contract; coordinate any shape changes with consumers and tests.",
+      "modification_impact": "Changes the data available for combat HUD rendering and may require adapter updates."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/EventTypes.cs",
+      "path": "Game.Core/Contracts/EventTypes.cs",
+      "explanation": "Defines event-type contract values used to classify or route combat events.",
+      "parameter_guidance": "Preserve serialized or referenced names unless all consumers are updated together.",
+      "modification_impact": "Changes event classification and routing decisions across combat systems."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs",
+      "path": "Game.Core/Contracts/Events/CombatDamageResolvedEvent.cs",
+      "explanation": "Contract for publishing resolved combat damage information.",
+      "parameter_guidance": "Keep payload fields compatible with event publishers, subscribers, and serialization expectations.",
+      "modification_impact": "Changes how damage resolution is reported to UI and other systems."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/CombatEndedEvent.cs",
+      "path": "Game.Core/Contracts/Events/CombatEndedEvent.cs",
+      "explanation": "Contract signaling that a combat encounter has ended.",
+      "parameter_guidance": "Preserve outcome fields and event identity expected by navigation and reward flows.",
+      "modification_impact": "Changes combat completion handling, reward transitions, and scene navigation triggers."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/CombatStarted.cs",
+      "path": "Game.Core/Contracts/Events/CombatStarted.cs",
+      "explanation": "Contract signaling the beginning of a combat encounter.",
+      "parameter_guidance": "Keep start-context fields aligned with combat initialization consumers.",
+      "modification_impact": "Changes initialization data available when entering combat."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/CombatStartedEvent.cs",
+      "path": "Game.Core/Contracts/Events/CombatStartedEvent.cs",
+      "explanation": "Event contract for dispatching combat-start notifications.",
+      "parameter_guidance": "Coordinate payload changes with event buses, adapters, and Godot listeners.",
+      "modification_impact": "Changes combat-start notification behavior and UI initialization timing."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/CombatTurnStartedEvent.cs",
+      "path": "Game.Core/Contracts/Events/CombatTurnStartedEvent.cs",
+      "explanation": "Event contract signaling the start of a combat turn.",
+      "parameter_guidance": "Preserve turn index, actor, and state fields expected by HUD updates and intent handling.",
+      "modification_impact": "Changes turn-state refreshes, energy or draw updates, and intent presentation timing."
+    },
+    {
+      "id": "cod:18:Game.Core/Contracts/Events/IntentSelectedEvent.cs",
+      "path": "Game.Core/Contracts/Events/IntentSelectedEvent.cs",
+      "explanation": "Event contract for recording or broadcasting a selected enemy intent.",
+      "parameter_guidance": "Keep intent and enemy identifiers resolvable against intent-definition data.",
+      "modification_impact": "Changes intent display, combat planning feedback, and downstream intent processing."
+    },
+    {
+      "id": "cod:18:Game.Core/Services/DeckService.cs",
+      "path": "Game.Core/Services/DeckService.cs",
+      "explanation": "Domain service associated with deck construction, shuffling, and card-pile operations.",
+      "parameter_guidance": "Maintain deterministic RNG and contract invariants when changing deck behavior.",
+      "modification_impact": "Changes draw, discard, exhaust, and deck composition behavior during runs."
+    },
+    {
+      "id": "cod:18:Game.Godot/Scripts/UI/CombatScene.cs",
+      "path": "Game.Godot/Scripts/UI/CombatScene.cs",
+      "explanation": "Godot combat UI controller that loads data, binds HUD nodes, and coordinates combat presentation.",
+      "parameter_guidance": "Keep referenced scene node paths and data file paths synchronized with scene and config resources.",
+      "modification_impact": "Changes combat UI behavior, input handling, data binding, visuals, and navigation."
+    },
+    {
+      "id": "cod:18:Game.Godot/Scripts/UI/HUD.cs",
+      "path": "Game.Godot/Scripts/UI/HUD.cs",
+      "explanation": "Shared HUD controller associated with player status and combat interface updates.",
+      "parameter_guidance": "Preserve exported or looked-up node names used by scene scripts.",
+      "modification_impact": "Changes status display, counters, labels, and shared HUD interactions."
+    },
+    {
+      "id": "cod:18:Game.Godot/Scripts/UI/MapScene.cs",
+      "path": "Game.Godot/Scripts/UI/MapScene.cs",
+      "explanation": "Map UI controller that loads route data and wires map nodes and navigation actions.",
+      "parameter_guidance": "Keep scene node paths and route identifiers aligned with act configuration.",
+      "modification_impact": "Changes map rendering, node selection, route transitions, and map feedback."
+    },
+    {
+      "id": "cod:18:Game.Godot/TestSupport/Task33DeckServiceBridge.cs",
+      "path": "Game.Godot/TestSupport/Task33DeckServiceBridge.cs",
+      "explanation": "Godot test-support bridge exposing deck-service behavior to task-specific integration tests.",
+      "parameter_guidance": "Keep bridge signatures synchronized with DeckService and test expectations.",
+      "modification_impact": "Changes test-time access to deck operations and may affect integration-test setup."
+    }
+  ]
+}

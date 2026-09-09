@@ -449,7 +449,7 @@ def cmd_generate_knowledge_links(args: argparse.Namespace) -> int:
 
 def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
     from chapter6_knowledge import run
-    result = run(Path(args.repo_root).resolve(), str(args.task_id), args.write_task_refs)
+    result = run(Path(args.repo_root).resolve(), str(args.task_id), args.write_task_refs, args.semantic, args.llm_backend)
     print(json.dumps(result, ensure_ascii=False))
     return 0 if result.get("status") == "knowledge_captured" else 1
 
@@ -826,6 +826,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--repo-root", default=".")
     p_c6k.add_argument("--task-id", required=True)
     p_c6k.add_argument("--write-task-refs", action="store_true")
+    p_c6k.add_argument("--semantic", action="store_true")
+    p_c6k.add_argument("--llm-backend", default="codex-cli")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
 
     return parser
