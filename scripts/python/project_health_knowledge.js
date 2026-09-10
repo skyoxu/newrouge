@@ -105,8 +105,9 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
       entry.append(summary);section.append(entry);
       if(textSources.has(item.path)) entry.append(sourceLink(item.path, activeTaskDetail));
       if(item.fields && !item.focused_fields?.length && !item.semantic) paragraph(entry,'未识别到任务专属配置字段。');
-      if(item.semantic){paragraph(entry,'功能说明（模型原文）: '+(item.semantic.explanation||''));paragraph(entry,'调参建议（模型原文）: '+(item.semantic.parameter_guidance||''));paragraph(entry,'修改影响（模型原文）: '+(item.semantic.modification_impact||''));
+      if(item.semantic){paragraph(entry,'功能说明（模型原文）: '+(item.semantic.explanation||''));paragraph(entry,`${key==='configs'?'调参建议':'修改建议'}（模型原文）: `+(item.semantic.modification_guidance||item.semantic.parameter_guidance||''));paragraph(entry,'修改影响（模型原文）: '+(item.semantic.modification_impact||''));
         const params=item.semantic.parameters||[]; if(params.length){paragraph(entry,'语义字段:'); for(const param of params){const pointer=String(param.pointer||param.key||''); const matched=(item.fields||[]).some(field=>String(field.pointer||'')===pointer); paragraph(entry,`${pointer} = ${pretty(param.value)} — ${param.meaning||param.description||''} · ${matched?'字段存在，任务相关性由模型推断':'未匹配字段'}`);}}
+        const bindings=item.semantic.bindings||[]; if(bindings.length){paragraph(entry,key==='assets'?'素材使用位置:':'任务相关节点:');for(const binding of bindings){if(key==='assets')paragraph(entry,`${binding.source}:${binding.line} — ${binding.meaning||''} · 静态绑定已确认`);else paragraph(entry,`${binding.node_path}:${binding.line} (${binding.type||'Node'}) — ${binding.meaning||''} · 静态绑定已确认`);}}
       }
       for(const field of item.focused_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line}`);
       if(item.parse_error) paragraph(entry,'Parse error: '+item.parse_error);

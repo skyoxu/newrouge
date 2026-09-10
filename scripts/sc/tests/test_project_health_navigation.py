@@ -10,6 +10,18 @@ from _knowledge_catalog_builder import DirectorySnapshot
 
 
 class NavigationTests(unittest.TestCase):
+    def test_semantic_entries_attach_to_configs_assets_and_scenes(self):
+        from project_health_knowledge import attach_semantic_navigation
+        navigation = {'configs': [{'path': 'data.json'}], 'assets': [{'path': 'image.png'}],
+                      'scenes': [{'path': 'scene.tscn'}], 'code': [{'path': 'code.gd'}]}
+        attach_semantic_navigation(navigation, {'entries': [
+            {'path': 'data.json', 'kind': 'config'}, {'path': 'image.png', 'kind': 'asset'},
+            {'path': 'scene.tscn', 'kind': 'scene'}, {'path': 'code.gd', 'kind': 'code'}]})
+        self.assertIsNotNone(navigation['configs'][0]['semantic'])
+        self.assertIsNotNone(navigation['assets'][0]['semantic'])
+        self.assertIsNotNone(navigation['scenes'][0]['semantic'])
+        self.assertNotIn('semantic', navigation['code'][0])
+
     def test_core_does_not_expand_test_bootstrap_dependencies(self):
         scene = 'Game.Godot/Scenes/Reward.tscn'
         script = 'Game.Godot/Scripts/Reward.gd'

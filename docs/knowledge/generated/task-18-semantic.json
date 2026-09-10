@@ -7,674 +7,520 @@
     {
       "id": "config:18:Game.Core/Data/act1-config.json",
       "path": "Game.Core/Data/act1-config.json",
-      "explanation": "定义战斗场景可加载的遭遇编组，并将地图中的战斗节点关联到具体 encounter_id。CombatScene 直接读取该文件以确定当前遭遇包含哪些敌人。",
-      "parameter_guidance": "实现绑定时，以节点的 encounter_id 查找 encounter_rosters，再使用 roster 中的 runtime_id 创建界面实例、使用 enemy_id 查询敌人定义。保持这些标识之间的引用一致。",
-      "modification_impact": "修改 encounter_id 或编组成员会改变战斗场景加载的敌人及其实例标识；修改节点标签会影响与当前战斗节点有关的显示文本。",
+      "explanation": "Defines the Act 1 combat nodes, encounter identifiers, enemy rosters, and reward pools used when the combat scene is opened from the map flow.",
+      "modification_guidance": "Keep combat node encounter IDs aligned with keys under encounter_rosters and with enemy definition IDs. Change only the encounter and roster fields needed to populate the combat shell.",
+      "modification_impact": "Changes can alter which enemies and rewards the combat UI must represent for an Act 1 encounter. Broken identifier references can prevent the shell from receiving coherent encounter data.",
       "parameters": [
         {
           "pointer": "/node_graph/nodes/0/encounter_id",
-          "meaning": "首个战斗节点使用的遭遇标识。",
+          "meaning": "Selects the encounter roster for the first combat node.",
           "value": "act1-slime-scout",
           "line": 14,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/node_graph/nodes/2/encounter_id",
-          "meaning": "第二个战斗节点使用的遭遇标识。",
-          "value": "act1-moss-rat",
-          "line": 39,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/node_graph/nodes/4/encounter_id",
-          "meaning": "第三个战斗节点使用的遭遇标识。",
-          "value": "act1-moss-rat",
-          "line": 62,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/node_graph/nodes/6/encounter_id",
-          "meaning": "首领节点使用的遭遇标识。",
-          "value": "act1-ruin-warden",
-          "line": 85,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/encounters/enemy_definitions_file",
-          "meaning": "战斗敌人属性定义文件的位置。",
-          "value": "Game.Core/Data/act1-enemy-definitions.json",
-          "line": 100,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/encounters/encounter_rosters/act1-slime-scout/0/runtime_id",
-          "meaning": "侦察伏击中第一个敌人的战斗运行时实例标识。",
+          "meaning": "Provides the first enemy instance identifier exposed to combat bindings.",
           "value": "act1-slime-scout",
           "line": 104,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/encounters/encounter_rosters/act1-slime-scout/0/enemy_id",
-          "meaning": "侦察伏击中第一个敌人引用的定义标识。",
+          "meaning": "Links the first enemy instance to its enemy definition.",
           "value": "act1-slime-scout",
           "line": 105,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/encounters/encounter_rosters/act1-slime-scout/1/runtime_id",
-          "meaning": "侦察伏击中第二个敌人的战斗运行时实例标识。",
+          "meaning": "Provides the second enemy instance identifier exposed to combat bindings.",
           "value": "act1-slime-scout-b",
           "line": 108,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/encounters/encounter_rosters/act1-slime-scout/1/enemy_id",
-          "meaning": "侦察伏击中第二个敌人引用的定义标识。",
+          "meaning": "Links the second enemy instance to its enemy definition.",
           "value": "act1-moss-rat",
           "line": 109,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/encounters/encounter_rosters/act1-moss-rat/0/runtime_id",
-          "meaning": "苔鼠遭遇中敌人的战斗运行时实例标识。",
-          "value": "act1-moss-rat",
-          "line": 114,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/encounters/encounter_rosters/act1-moss-rat/0/enemy_id",
-          "meaning": "苔鼠遭遇中敌人引用的定义标识。",
-          "value": "act1-moss-rat",
-          "line": 115,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/encounters/encounter_rosters/act1-ruin-warden/0/runtime_id",
-          "meaning": "遗迹守卫遭遇中首领的战斗运行时实例标识。",
-          "value": "act1-ruin-warden",
-          "line": 126,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/encounters/encounter_rosters/act1-ruin-warden/0/enemy_id",
-          "meaning": "遗迹守卫遭遇中首领引用的定义标识。",
-          "value": "act1-ruin-warden",
-          "line": 127,
+          "pointer": "/encounters/enemy_definitions_file",
+          "meaning": "Identifies the enemy definition file used to resolve roster members.",
+          "value": "Game.Core/Data/act1-enemy-definitions.json",
+          "line": 100,
           "evidence_status": "field_exists_semantic_inference"
         }
-      ]
+      ],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Core/Data/act1-enemy-definitions.json",
       "path": "Game.Core/Data/act1-enemy-definitions.json",
-      "explanation": "提供战斗界面中敌人名称、类别和基础属性的数据。enemy_id 与 act1-config.json 中的遭遇编组相连。",
-      "parameter_guidance": "使用 id 进行数据关联，使用 name_key 获取本地化名称，并将 hp、attack、defense 绑定到对应敌人的状态显示。不要把数组位置当作稳定业务标识。",
-      "modification_impact": "修改 id 会破坏遭遇引用；修改 name_key 会改变本地化查找；修改基础属性会改变战斗初始数据以及界面显示的数值。",
+      "explanation": "Defines enemy identity, category, health, attack, defense, and intent pools for combat UI presentation.",
+      "modification_guidance": "Preserve enemy IDs referenced by Act 1 rosters. Coordinate stat or intent-pool changes with health displays, status panels, and intent presentation.",
+      "modification_impact": "Changes affect the enemy values and classifications that combat UI bindings must display. Renaming an ID can break roster resolution.",
       "parameters": [
         {
           "pointer": "/enemy_definitions/0/id",
-          "meaning": "史莱姆侦察兵的稳定敌人标识。",
+          "meaning": "Stable identifier used to resolve the slime scout definition.",
           "value": "act1-slime-scout",
           "line": 5,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/0/name_key",
-          "meaning": "史莱姆侦察兵名称的本地化键。",
+          "meaning": "Localization key for the slime scout name.",
           "value": "enemy.act1.slime_scout.name",
           "line": 6,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/0/stats/hp",
-          "meaning": "史莱姆侦察兵的基础生命值。",
+          "meaning": "Maximum health value presented for the slime scout.",
           "value": 18,
           "line": 9,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/0/stats/attack",
-          "meaning": "史莱姆侦察兵的基础攻击值。",
+          "meaning": "Base attack attribute associated with the slime scout.",
           "value": 5,
           "line": 10,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/0/stats/defense",
-          "meaning": "史莱姆侦察兵的基础防御值。",
+          "meaning": "Base defense attribute associated with the slime scout.",
           "value": 2,
           "line": 11,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
+          "pointer": "/enemy_definitions/0/intentPools/0",
+          "meaning": "First intent pool entry available to the slime scout.",
+          "value": "light_attack",
+          "line": 14,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
           "pointer": "/enemy_definitions/1/id",
-          "meaning": "苔鼠的稳定敌人标识。",
+          "meaning": "Stable identifier used to resolve the moss rat definition.",
           "value": "act1-moss-rat",
           "line": 19,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/1/name_key",
-          "meaning": "苔鼠名称的本地化键。",
+          "meaning": "Localization key for the moss rat name.",
           "value": "enemy.act1.moss_rat.name",
           "line": 20,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemy_definitions/1/stats/hp",
-          "meaning": "苔鼠的基础生命值。",
+          "meaning": "Maximum health value presented for the moss rat.",
           "value": 22,
           "line": 23,
           "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/1/stats/attack",
-          "meaning": "苔鼠的基础攻击值。",
-          "value": 6,
-          "line": 24,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/1/stats/defense",
-          "meaning": "苔鼠的基础防御值。",
-          "value": 1,
-          "line": 25,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/3/id",
-          "meaning": "遗迹守卫的稳定敌人标识。",
-          "value": "act1-ruin-warden",
-          "line": 47,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/3/name_key",
-          "meaning": "遗迹守卫名称的本地化键。",
-          "value": "enemy.act1.ruin_warden.name",
-          "line": 48,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/3/stats/hp",
-          "meaning": "遗迹守卫的基础生命值。",
-          "value": 90,
-          "line": 51,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/3/stats/attack",
-          "meaning": "遗迹守卫的基础攻击值。",
-          "value": 14,
-          "line": 52,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemy_definitions/3/stats/defense",
-          "meaning": "遗迹守卫的基础防御值。",
-          "value": 7,
-          "line": 53,
-          "evidence_status": "field_exists_semantic_inference"
         }
-      ]
+      ],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Core/Data/m1-card-definitions.json",
       "path": "Game.Core/Data/m1-card-definitions.json",
-      "explanation": "定义战斗手牌界面需要展示和绑定的卡牌名称、描述、费用、类型、目标规则及基础效果。CombatScene 直接读取该文件。",
-      "parameter_guidance": "以卡牌 id 关联牌组实例，通过 name_key 和 description_key 解析显示文本。费用用于可用性和费用标签，target 决定交互需要敌人目标、自身目标或全体敌人，base_effect 用于效果摘要。",
-      "modification_impact": "修改 id 会破坏起始牌组和奖励池引用；修改费用、目标或效果会改变卡牌交互与战斗结果；修改文本键会改变界面本地化查找。",
+      "explanation": "Supplies card names, descriptions, costs, targeting rules, types, and effect values for cards rendered in the combat hand.",
+      "modification_guidance": "Keep card IDs synchronized with the starting deck and reward pools. Preserve localization keys or update both translation files when visible card text changes.",
+      "modification_impact": "Changes affect card labels, costs, targeting behavior, and effect summaries consumed by combat card controls.",
       "parameters": [
         {
           "pointer": "/cards/0/id",
-          "meaning": "Strike 卡牌的稳定标识。",
+          "meaning": "Stable identifier for the Strike card.",
           "value": "card.warrior.strike",
           "line": 6,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/name_key",
-          "meaning": "Strike 名称的本地化键。",
+          "meaning": "Localization key used for the Strike card title.",
           "value": "card.warrior.strike.name",
           "line": 7,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/description_key",
-          "meaning": "Strike 描述的本地化键。",
+          "meaning": "Localization key used for the Strike card description.",
           "value": "card.warrior.strike.description",
           "line": 8,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/cost",
-          "meaning": "使用 Strike 所需的能量。",
+          "meaning": "Energy cost displayed for the Strike card.",
           "value": 1,
           "line": 9,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/type",
-          "meaning": "Strike 的卡牌类型。",
+          "meaning": "Card classification used by combat presentation and interaction logic.",
           "value": "attack",
           "line": 10,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/target",
-          "meaning": "Strike 的目标选择规则。",
+          "meaning": "Declares that Strike requires an enemy target.",
           "value": "enemy",
           "line": 11,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/base_effect/damage",
-          "meaning": "Strike 的基础伤害值。",
+          "meaning": "Base damage value represented by the Strike card.",
           "value": 6,
           "line": 14,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/1/id",
-          "meaning": "Defend 卡牌的稳定标识。",
+          "meaning": "Stable identifier for the Defend card.",
           "value": "card.warrior.defend",
           "line": 37,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/cards/1/name_key",
-          "meaning": "Defend 名称的本地化键。",
-          "value": "card.warrior.defend.name",
-          "line": 38,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/1/description_key",
-          "meaning": "Defend 描述的本地化键。",
-          "value": "card.warrior.defend.description",
-          "line": 39,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/cards/1/cost",
-          "meaning": "使用 Defend 所需的能量。",
+          "meaning": "Energy cost displayed for the Defend card.",
           "value": 1,
           "line": 40,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/cards/1/type",
-          "meaning": "Defend 的卡牌类型。",
-          "value": "skill",
-          "line": 41,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/1/target",
-          "meaning": "Defend 的目标选择规则。",
-          "value": "self",
-          "line": 42,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/cards/1/base_effect/block",
-          "meaning": "Defend 提供的基础格挡值。",
+          "meaning": "Block value represented by the Defend card.",
           "value": 5,
           "line": 45,
           "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/id",
-          "meaning": "Battle Focus 卡牌的稳定标识。",
-          "value": "card.warrior.battle_focus",
-          "line": 68,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/name_key",
-          "meaning": "Battle Focus 名称的本地化键。",
-          "value": "card.warrior.battle_focus.name",
-          "line": 69,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/description_key",
-          "meaning": "Battle Focus 描述的本地化键。",
-          "value": "card.warrior.battle_focus.description",
-          "line": 70,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/cost",
-          "meaning": "使用 Battle Focus 所需的能量。",
-          "value": 1,
-          "line": 71,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/target",
-          "meaning": "Battle Focus 的目标选择规则。",
-          "value": "self",
-          "line": 73,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/base_effect/rage",
-          "meaning": "Battle Focus 提供的基础 rage 数值。",
-          "value": 2,
-          "line": 76,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/2/base_effect/draw",
-          "meaning": "Battle Focus 的抽牌数量。",
-          "value": 1,
-          "line": 77,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/cards/5/target",
-          "meaning": "Cleave 的全体敌人目标规则，影响多目标交互表现。",
-          "value": "all_enemies",
-          "line": 111,
-          "evidence_status": "field_exists_semantic_inference"
         }
-      ]
+      ],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Core/Data/m1-enemy-intent-definitions.json",
       "path": "Game.Core/Data/m1-enemy-intent-definitions.json",
-      "explanation": "定义战斗界面展示的敌人意图，包括意图标识、图标、本地化文本以及即将执行的效果。CombatScene 直接读取该文件。",
-      "parameter_guidance": "按 enemyId 匹配战斗敌人，通过 iconId 和 textKey 构建意图提示。效果的 kind、amount、timing 和 target 应共同用于生成准确的预告信息。",
-      "modification_impact": "修改 enemyId 会影响意图与敌人的匹配；修改 iconId 或 textKey 会改变界面提示；修改效果字段会改变预告数值和意图执行语义。",
+      "explanation": "Defines enemy intent identifiers, icons, localized text keys, effects, targets, timing, and numeric amounts for the combat intent UI.",
+      "modification_guidance": "Keep enemy IDs aligned with enemy definitions and use icon IDs supported by the combat presentation code. Update effect text and amounts together so the displayed intent remains internally consistent.",
+      "modification_impact": "Changes affect the intent icon, description, amount, target, and timing information that enemy UI elements expose.",
       "parameters": [
         {
           "pointer": "/enemies/0/enemyId",
-          "meaning": "第一组意图所关联的敌人标识。",
+          "meaning": "Associates the first intent set with the slime scout.",
           "value": "act1-slime-scout",
           "line": 8,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemies/0/intents/0/intentId",
-          "meaning": "攻击并格挡意图的稳定标识。",
+          "meaning": "Stable identifier for the mixed attack-and-block intent.",
           "value": "intent.attack_block",
           "line": 11,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemies/0/intents/0/iconId",
-          "meaning": "攻击并格挡意图使用的图标标识。",
+          "meaning": "Selects the icon identifier presented for this intent.",
           "value": "icon_sword",
           "line": 12,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemies/0/intents/0/textKey",
-          "meaning": "攻击并格挡意图的本地化文本键。",
+          "meaning": "Localization key for the intent description.",
           "value": "combat.intent.mixed_attack_block",
           "line": 13,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/enemies/0/intents/0/effects/0/kind",
-          "meaning": "该意图第一个效果的类型。",
-          "value": "attack",
-          "line": 16,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/enemies/0/intents/0/effects/0/amount",
-          "meaning": "该意图即将造成的攻击数值。",
+          "meaning": "Attack amount represented by the intent.",
           "value": 6,
           "line": 17,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/enemies/0/intents/0/effects/0/timing",
-          "meaning": "攻击效果发生的时机。",
-          "value": "current_turn",
-          "line": 18,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/enemies/0/intents/0/effects/0/target",
-          "meaning": "攻击效果指向的目标。",
+          "meaning": "Declares the player as the attack target.",
           "value": "player",
           "line": 19,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
-          "pointer": "/enemies/0/intents/0/effects/1/kind",
-          "meaning": "该意图第二个效果的类型。",
-          "value": "block",
-          "line": 22,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/enemies/0/intents/0/effects/1/amount",
-          "meaning": "该意图提供的格挡数值。",
+          "meaning": "Block amount represented by the intent.",
           "value": 4,
           "line": 23,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/enemies/0/intents/0/effects/1/timing",
-          "meaning": "格挡效果发生的时机。",
+          "meaning": "Declares when the block effect is applied.",
           "value": "next_enemy_turn",
           "line": 24,
           "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/0/intents/0/effects/1/target",
-          "meaning": "格挡效果指向的目标。",
-          "value": "self",
-          "line": 25,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/1/enemyId",
-          "meaning": "第二组意图所关联的敌人标识。",
-          "value": "act1-moss-rat",
-          "line": 65,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/1/intents/0/intentId",
-          "meaning": "苔鼠基础攻击意图的稳定标识。",
-          "value": "intent.attack",
-          "line": 68,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/1/intents/0/iconId",
-          "meaning": "苔鼠基础攻击意图使用的图标标识。",
-          "value": "icon_sword",
-          "line": 69,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/1/intents/0/textKey",
-          "meaning": "苔鼠基础攻击意图的本地化文本键。",
-          "value": "combat.intent.attack_6",
-          "line": 70,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/enemies/1/intents/0/effects/0/amount",
-          "meaning": "苔鼠基础攻击意图显示的伤害数值。",
-          "value": 6,
-          "line": 74,
-          "evidence_status": "field_exists_semantic_inference"
         }
-      ]
-    },
-    {
-      "id": "config:18:Game.Core/Data/m1-relic-definitions.json",
-      "path": "Game.Core/Data/m1-relic-definitions.json",
-      "explanation": "定义战斗场景可显示和触发的遗物。CombatScene 直接读取该文件，其中战斗相关遗物可为界面提供名称、描述、触发时机和效果归因。",
-      "parameter_guidance": "使用 id 关联玩家持有的遗物，通过 name_key 和 description_key 显示文本。战斗绑定应依据 timing、target_domain 和 effect_key 表达触发条件，并使用 parameters 中的数值呈现结果。",
-      "modification_impact": "修改遗物 id 会破坏持有物引用；修改文本键影响显示；修改触发或效果参数会改变战斗开始时的状态以及对应反馈。",
-      "parameters": [
-        {
-          "pointer": "/relics/0/id",
-          "meaning": "Ashen Hourglass 遗物的稳定标识。",
-          "value": "relic.ashen_hourglass",
-          "line": 5,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/name_key",
-          "meaning": "该遗物名称的本地化键。",
-          "value": "relic.name.ashen_hourglass",
-          "line": 6,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/description_key",
-          "meaning": "该遗物描述的本地化键。",
-          "value": "relic.description.ashen_hourglass",
-          "line": 7,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/effect_key",
-          "meaning": "该遗物战斗效果的标识。",
-          "value": "effect.turn_start_plus_energy",
-          "line": 9,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/timing",
-          "meaning": "该遗物效果的触发时机。",
-          "value": "on_combat_start",
-          "line": 12,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/target_domain",
-          "meaning": "该遗物效果作用的目标域。",
-          "value": "player",
-          "line": 13,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/parameters/energy_bonus",
-          "meaning": "战斗开始时提供的能量增量。",
-          "value": 1,
-          "line": 14,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/outcome_text_key",
-          "meaning": "遗物触发结果的本地化文本键。",
-          "value": "effect.turn_start_plus_energy",
-          "line": 15,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/relics/0/attribution_key",
-          "meaning": "战斗反馈中标识效果来源的本地化键。",
-          "value": "relic.name.ashen_hourglass",
-          "line": 16,
-          "evidence_status": "field_exists_semantic_inference"
-        }
-      ]
+      ],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Core/Data/m1-warrior-starting-deck.json",
       "path": "Game.Core/Data/m1-warrior-starting-deck.json",
-      "explanation": "定义战士进入战斗时的初始牌组组成和洗牌方式。CombatScene 直接读取该文件以创建牌堆及其界面状态。",
-      "parameter_guidance": "通过 card_id 查询卡牌定义，并按 count 创建对应数量的卡牌实例。洗牌绑定应使用配置中的模式和随机流标识。",
-      "modification_impact": "修改 card_id 会改变或破坏卡牌定义关联；修改 count 会改变牌组规模和抽牌分布；修改洗牌字段会影响牌序生成方式。",
+      "explanation": "Defines the card IDs and quantities used to populate the warrior's initial combat deck and hand flow.",
+      "modification_guidance": "Reference only card IDs present in the card definitions file. Treat count changes as changes to the card population that the combat hand, draw, and discard UI must accommodate.",
+      "modification_impact": "Changes alter the mix and quantity of cards available to combat UI bindings.",
       "parameters": [
         {
-          "pointer": "/character_id",
-          "meaning": "该初始牌组所属的角色标识。",
-          "value": "warrior",
-          "line": 3,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/deck_id",
-          "meaning": "初始牌组的稳定标识。",
-          "value": "deck.warrior.m1.starting",
-          "line": 4,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
           "pointer": "/cards/0/card_id",
-          "meaning": "牌组中的 Strike 卡牌引用。",
+          "meaning": "References the Strike card definition.",
           "value": "card.warrior.strike",
           "line": 8,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/0/count",
-          "meaning": "牌组中 Strike 的数量。",
+          "meaning": "Sets the number of Strike cards in the starting deck.",
           "value": 5,
           "line": 9,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/1/card_id",
-          "meaning": "牌组中的 Defend 卡牌引用。",
+          "meaning": "References the Defend card definition.",
           "value": "card.warrior.defend",
           "line": 12,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/1/count",
-          "meaning": "牌组中 Defend 的数量。",
+          "meaning": "Sets the number of Defend cards in the starting deck.",
           "value": 4,
           "line": 13,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/2/card_id",
-          "meaning": "牌组中的 Battle Focus 卡牌引用。",
+          "meaning": "References the Battle Focus card definition.",
           "value": "card.warrior.battle_focus",
           "line": 16,
           "evidence_status": "field_exists_semantic_inference"
         },
         {
           "pointer": "/cards/2/count",
-          "meaning": "牌组中 Battle Focus 的数量。",
+          "meaning": "Sets the number of Battle Focus cards in the starting deck.",
           "value": 1,
           "line": 17,
           "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/shuffle/mode",
-          "meaning": "初始牌组采用的洗牌模式。",
-          "value": "run_seed",
-          "line": 21,
-          "evidence_status": "field_exists_semantic_inference"
-        },
-        {
-          "pointer": "/shuffle/rng_stream",
-          "meaning": "洗牌操作使用的随机数流标识。",
-          "value": "run",
-          "line": 22,
-          "evidence_status": "field_exists_semantic_inference"
         }
-      ]
+      ],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Godot/Translations/en.csv",
       "path": "Game.Godot/Translations/en.csv",
-      "explanation": "提供 CombatScene 所读取的英文界面文本，包括卡牌、敌人、意图、遗物及战斗控件使用的本地化键值。",
-      "parameter_guidance": "实现界面绑定时使用配置中的文本键查询该资源，并确保与中文资源保持相同的键集合。该资源没有提供可选择的 available_parameters。",
-      "modification_impact": "修改现有键的英文值会改变战斗界面的英文文本；删除或改名键会使引用该键的控件无法取得预期文本。",
-      "parameters": []
+      "explanation": "Provides English text resolved from combat, card, enemy, intent, and HUD localization keys.",
+      "modification_guidance": "Add or update entries for every visible key introduced by the combat shell. Keep the key set synchronized with the Chinese translation file.",
+      "modification_impact": "Changes affect English labels and descriptions displayed by combat UI bindings.",
+      "parameters": [],
+      "bindings": [],
+      "kind": "config"
     },
     {
       "id": "config:18:Game.Godot/Translations/zh-CN.csv",
       "path": "Game.Godot/Translations/zh-CN.csv",
-      "explanation": "提供 CombatScene 所读取的简体中文界面文本，包括卡牌、敌人、意图、遗物及战斗控件使用的本地化键值。",
-      "parameter_guidance": "实现界面绑定时根据中文 locale 查询该资源，并确保键名与英文资源及各数据文件中的本地化键一致。该资源没有提供可选择的 available_parameters。",
-      "modification_impact": "修改现有键的中文值会改变战斗界面的中文文本；删除或改名键会使引用该键的控件无法取得预期文本。",
-      "parameters": []
+      "explanation": "Provides Simplified Chinese text resolved from combat, card, enemy, intent, and HUD localization keys.",
+      "modification_guidance": "Add or update entries matching every combat key in the English translation file while preserving the existing CSV structure and UTF-8 encoding.",
+      "modification_impact": "Changes affect Simplified Chinese labels and descriptions displayed by combat UI bindings.",
+      "parameters": [],
+      "bindings": [],
+      "kind": "config"
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
+      "path": "Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
+      "explanation": "Card artwork referenced by the main flow and exposed as a combat-scene card texture candidate.",
+      "modification_guidance": "Replace the file at the same path and retain a Godot-supported PNG format. Match the existing artwork's intended card framing and transparency so card controls can continue using the texture without path changes.",
+      "modification_impact": "Replacement changes the artwork presented wherever these exact resource references are used. Different dimensions, aspect ratio, or transparency can affect cropping, scaling, and visual alignment in card controls.",
+      "parameters": [],
+      "bindings": [
+        {
+          "source": "Game.Godot/Scripts/Main.gd",
+          "line": 52,
+          "evidence": "\"res://Game.Godot/Assets/Textures/Cards/card_spore_slash.png\",",
+          "meaning": "References the card texture through the project-root resource path.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "source": "Game.Godot/Scripts/Main.gd",
+          "line": 53,
+          "evidence": "\"res://../Game.Godot/Assets/Textures/Cards/card_spore_slash.png\"",
+          "meaning": "Provides the alternate relative resource path for the same card texture.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "source": "Game.Godot/Scripts/UI/CombatScene.cs",
+          "line": 7039,
+          "evidence": "yield return \"res://Game.Godot/Assets/Textures/Cards/card_spore_slash.png\";",
+          "meaning": "Includes the texture among card asset paths exposed by the combat scene code.",
+          "evidence_status": "static_binding_semantic_explanation"
+        }
+      ],
+      "kind": "asset"
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
+      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
+      "explanation": "Enemy artwork referenced by combat-scene asset selection for an enemy target presentation.",
+      "modification_guidance": "Replace the file at the same path and retain a Godot-supported PNG format. Preserve suitable transparency, subject bounds, and aspect ratio for placement inside the enemy battle-stage controls.",
+      "modification_impact": "Replacement changes the enemy image selected by these combat-scene references. Different canvas bounds or aspect ratio can alter scaling and alignment within the enemy stage.",
+      "parameters": [],
+      "bindings": [
+        {
+          "source": "Game.Godot/Scripts/UI/CombatScene.cs",
+          "line": 7004,
+          "evidence": "yield return \"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png\";",
+          "meaning": "Exposes the fungal knight target texture as a combat enemy asset path.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "source": "Game.Godot/Scripts/UI/CombatScene.cs",
+          "line": 7015,
+          "evidence": "yield return $\"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png\";",
+          "meaning": "Provides another combat enemy asset selection path for the same texture.",
+          "evidence_status": "static_binding_semantic_explanation"
+        }
+      ],
+      "kind": "asset"
+    },
+    {
+      "id": "asset:18:Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
+      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
+      "explanation": "Alternate slime enemy artwork referenced by combat-scene enemy asset selection.",
+      "modification_guidance": "Replace the file at the same path and retain a Godot-supported PNG format. Keep the subject scale, transparent margins, and aspect ratio compatible with other enemy portraits used in the battle stage.",
+      "modification_impact": "Replacement changes the alternate slime image selected by the listed combat bindings. Canvas or subject-bound changes can produce inconsistent sizing beside other enemies.",
+      "parameters": [],
+      "bindings": [
+        {
+          "source": "Game.Godot/Scripts/UI/CombatScene.cs",
+          "line": 7008,
+          "evidence": "yield return \"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png\";",
+          "meaning": "Exposes the alternate slime texture as a combat enemy asset path.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "source": "Game.Godot/Scripts/UI/CombatScene.cs",
+          "line": 7012,
+          "evidence": "yield return \"res://Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png\";",
+          "meaning": "Provides another enemy asset selection reference to the alternate slime texture.",
+          "evidence_status": "static_binding_semantic_explanation"
+        }
+      ],
+      "kind": "asset"
+    },
+    {
+      "id": "scene:18:Game.Godot/Scenes/Combat.tscn",
+      "path": "Game.Godot/Scenes/Combat.tscn",
+      "explanation": "Defines the combat UI shell, including the full-screen HUD, player stage, enemy stage, enemy roster, status area, and hand presentation containers.",
+      "modification_guidance": "Preserve node paths consumed by the combat script when changing layout or styling. Edit container dimensions and spacing together, and account for the existing hidden legacy hand controls when wiring the visible hand fan. Node renames or type changes require corresponding script binding updates.",
+      "modification_impact": "Layout edits affect sizing, placement, and hierarchy across the combat screen. Removing, renaming, or changing the type of a bound node can invalidate scene-script lookups, while container changes can reposition their descendants.",
+      "parameters": [],
+      "bindings": [
+        {
+          "node_path": ".",
+          "type": "Control",
+          "line": 102,
+          "meaning": "Root Control that owns the combat scene script and full-screen layout.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD",
+          "type": "Control",
+          "line": 111,
+          "meaning": "Full-screen parent for combat presentation and interaction controls.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/PlayerBattleStagePanel",
+          "type": "PanelContainer",
+          "line": 145,
+          "meaning": "Frames the player-side battle presentation.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/PlayerBattleStagePanel/PlayerTargetHighlight",
+          "type": "PanelContainer",
+          "line": 153,
+          "meaning": "Optional overlay used to represent player targeting state.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/PlayerBattleStagePanel/PlayerBattleStageMargin/PlayerBattleStage/PlayerPortraitFrame/PlayerPortrait",
+          "type": "TextureRect",
+          "line": 184,
+          "meaning": "Texture control intended to present the player portrait.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/HandFanLayer",
+          "type": "Control",
+          "line": 192,
+          "meaning": "Control layer that defines the visible hand-card presentation region.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/EnemyRosterPanel",
+          "type": "VBoxContainer",
+          "line": 207,
+          "meaning": "Container for enemy roster information.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/EnemyRosterPanel/EnemyRosterContainer",
+          "type": "HBoxContainer",
+          "line": 219,
+          "meaning": "Horizontal container where enemy roster controls can be added.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/EnemyBattleStagePanel",
+          "type": "PanelContainer",
+          "line": 224,
+          "meaning": "Frames the main enemy-side battle presentation.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/EnemyBattleStagePanel/EnemyBattleStageMargin/EnemyBattleStage",
+          "type": "HBoxContainer",
+          "line": 238,
+          "meaning": "Horizontal container that governs enemy stage alignment and spacing.",
+          "evidence_status": "static_binding_semantic_explanation"
+        },
+        {
+          "node_path": "HUD/EnemyStatusPanel",
+          "type": "VBoxContainer",
+          "line": 199,
+          "meaning": "Container for enemy status and intent-related UI.",
+          "evidence_status": "static_binding_semantic_explanation"
+        }
+      ],
+      "kind": "scene"
     }
   ]
 }

@@ -322,6 +322,14 @@ def query(root: Path, state: dict, request: dict) -> dict:
     return result
 
 
+def attach_semantic_navigation(navigation: dict, semantic: dict) -> None:
+    by_key = {(item.get('kind'), item.get('path')): item for item in semantic.get('entries', [])
+              if isinstance(item, dict)}
+    for group, kind in (('configs', 'config'), ('assets', 'asset'), ('scenes', 'scene')):
+        for item in navigation.get(group, []):
+            item['semantic'] = by_key.get((kind, item.get('path')))
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('scan', 'status', 'tasks', 'task', 'query', 'source'))
@@ -368,9 +376,7 @@ def main(argv=None) -> int:
                 semantic_path = root / 'docs/knowledge/generated' / f'task-{args.task_id}-semantic.json'
                 if semantic_path.exists():
                     semantic = read_json(semantic_path)
-                    by_path = {item.get('path'): item for item in semantic.get('entries', [])}
-                    for item in result.get('navigation', {}).get('configs', []):
-                        item['semantic'] = by_path.get(item.get('path'))
+                    attach_semantic_navigation(result.get('navigation', {}), semantic)
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')
