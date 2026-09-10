@@ -1,0 +1,21 @@
+# Execution Plan Template
+
+- Title: Repair task 18 runtime acceptance evidence
+- Status: active
+- Branch: feat/project-health-local-scan
+- Git Head: 14e2d3297830d6a34382c97a21d962ec3e063440
+- Goal: Restore task 18 acceptance audit evidence without weakening assertions
+- Scope: CombatScene architecture boundary evidence and layered test strategy references
+- Current step: Runtime verification recorded as failed with isolated evidence
+- Last completed step: Main snapshot executed 87 tests (85 passed, 2 failed)
+- Stop-loss: Do not rerun Godot until source/test evidence is repaired
+- Next action: Update task 18 implementation/test references, then rerun isolated main verification
+- Recovery command: `py -3 scripts/python/project_health_runtime.py --godot-bin "$env:GODOT_BIN" --task-id 18 --mode main`
+- Open questions: none
+- Exit criteria: both acceptance audits pass and latest runtime evidence is runtime_verified
+- Related ADRs: ADR-0035
+- Related decision logs: `decision-logs/2026-09-08-project-health-runtime-task18-needs-fix.md`
+- Related task id(s): 18
+- Related run id: d6b09e8e24964d50ae41d8e901f0a355
+- Related latest.json: `logs/ci/project-health-knowledge/runtime/latest.json`
+- Related pipeline artifacts: `logs/ci/project-health-knowledge/runtime/reports/3e4a3b5431524cfcbed1b557d4b0e563/`

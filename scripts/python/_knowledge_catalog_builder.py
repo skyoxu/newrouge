@@ -26,6 +26,7 @@ ROOT_EXACT_SOURCES = {
 }
 
 SOURCE_PREFIXES = (
+    "docs/knowledge/catalog/",
     ".agents/skills/",
     "docs/agents/",
     "docs/prd/",
@@ -42,6 +43,7 @@ SOURCE_PREFIXES = (
 )
 
 TEXT_SUFFIXES = {".md", ".json", ".txt", ".cs"}
+MAX_SOURCE_BYTES = 4 * 1024 * 1024
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -97,6 +99,60 @@ class GitSnapshot:
 
     def digest(self, path: str) -> str:
         return sha256_bytes(self.read_bytes(path))
+
+
+class LocalMainSnapshot(GitSnapshot):
+    """Read-only view of the local main ref without checkout or worktree creation."""
+    def __init__(self, root: Path, authority_ref: str = "refs/heads/main"):
+        self.root = root.resolve()
+        self.authority_ref = authority_ref
+        self.commit = self._git_text("rev-parse", "--verify", authority_ref).strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", self.commit):
+            raise ValueError("invalid_authority_commit")
+        paths = self._git_text("ls-tree", "-r", "-z", "--name-only", self.commit).split('\0')
+        self.paths = tuple(sorted(normalize_path(path) for path in paths if path.strip()))
+        self._cache: dict[str, bytes] = {}
+
+    def read_bytes(self, path: str) -> bytes:
+        path = normalize_path(path)
+        if path not in self._cache:
+            self._cache[path] = subprocess.check_output(
+                ["git", "-C", str(self.root), "show", f"{self.commit}:{path}"]
+            )
+        return self._cache[path]
+
+
+class DirectorySnapshot(GitSnapshot):
+    """Read-only bounded view used when the input directory is not a Git checkout."""
+    def __init__(self, root: Path, selected: list[str]):
+        self.root = root.resolve()
+        self.authority_ref = 'local-directory'
+        self._cache = {}
+        for relative in selected:
+            entry = self.root / normalize_path(relative)
+            for path in ([entry] if entry.is_file() else entry.rglob('*')):
+                if path.is_symlink() or getattr(path, 'is_junction', lambda: False)():
+                    raise ValueError('Symlink source is not supported')
+                if not path.is_file():
+                    continue
+                if path.stat().st_size > MAX_SOURCE_BYTES:
+                    continue
+                path.resolve().relative_to(self.root)
+                name = path.relative_to(self.root).as_posix()
+                if any(part in {'.git', 'logs'} for part in Path(name).parts):
+                    continue
+                if path.suffix.lower() in {'.md', '.txt', '.json', '.cs', '.gd', '.tscn', '.tres',
+                        '.cfg', '.ini', '.csv', '.yaml', '.yml', '.png', '.jpg', '.jpeg', '.svg',
+                        '.webp', '.ogg', '.wav', '.mp3', '.ttf', '.otf', '.glb'}:
+                    self._cache[name] = path.read_bytes()
+        self.paths = tuple(sorted(self._cache))
+        self.commit = 'directory:' + sha256_bytes(canonical_bytes({p: sha256_bytes(self._cache[p]) for p in self.paths}))
+
+    def read_bytes(self, path: str) -> bytes:
+        path = normalize_path(path)
+        if path not in self.paths: raise FileNotFoundError(path)
+        if path not in self._cache: self._cache[path] = (self.root / Path(*path.split('/'))).read_bytes()
+        return self._cache[path]
 
 
 def _excluded(path: str, exclusions: dict[str, Any]) -> bool:
@@ -173,6 +229,8 @@ def _classification(path: str) -> tuple[str, tuple[str, ...], str, str]:
         "docs/PROJECT_DOCUMENTATION_INDEX.md",
     } or path.startswith((".agents/skills/", "docs/agents/", "docs/workflows/")):
         return "toolchain", ("delivery", "game-runtime"), "toolchain-document", "repository-authority"
+    if path.startswith("docs/knowledge/catalog/"):
+        return "game-runtime", ("game-design", "delivery"), "resource-knowledge", "resource-guide"
     if path == "README.md":
         return "game-design", ("toolchain", "delivery"), "repository-overview", "repository-overview"
     if path.startswith(("docs/prd/", "docs/gdd/", "docs/game-type-guides/")) or path == ".taskmaster/docs/prd.txt":

@@ -46,3 +46,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-kcp-impact-cli-artifact-integrity.md`
   summary: 在 adapter 崩溃一致性验收中明确残留发布目录锁的人工恢复规程。
   evidence: 本轮冻结规格排除进程强杀保证；不得将强杀后残留锁视为自动清理授权。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-project-health-modification-navigation.md`
+  summary: 明确奖励 pick 超过卡池可用数量时的标题与数量规则。
+  evidence: 既有列表生成最多取卡池长度，旧标题固定三选一也可与实际数量不符；本轮仅将标题数量绑定已有 pick，完整边界见配置审计与后续计划。

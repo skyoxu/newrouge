@@ -7,10 +7,14 @@ from collections import Counter
 from pathlib import Path
 
 
-def task_details(root: Path) -> list[dict]:
-    base = root / '.taskmaster/tasks'
-    tasks = json.loads((base / 'tasks.json').read_text(encoding='utf-8-sig'))['master']['tasks']
-    views = {name: json.loads((base / f'{name}.json').read_text(encoding='utf-8-sig'))
+def task_details(root) -> list[dict]:
+    """Read the task triplet from a source adapter or a filesystem root."""
+    def read(relative: str):
+        if not isinstance(root, Path):
+            return json.loads(root.read_text(relative))
+        return json.loads((root / Path(relative)).read_text(encoding='utf-8-sig'))
+    tasks = read('.taskmaster/tasks/tasks.json')['master']['tasks']
+    views = {name: read(f'.taskmaster/tasks/{name}.json')
              for name in ('tasks_back', 'tasks_gameplay')}
     result = []
     seen = set()
@@ -91,11 +95,20 @@ def task_summary(details: list[dict]) -> dict:
             'godot': dict(Counter(item['godot']['status'] for item in details))}
 
 
-def task_page(details: list[dict], page: int) -> dict:
+def task_page(details: list[dict], page: int, filter_kind: str | None = None,
+              filter_value: str | None = None) -> dict:
+    if filter_kind is not None:
+        if filter_kind not in ('task_status', 'godot_status') or not filter_value:
+            raise ValueError('Invalid task filter')
+        if filter_kind == 'task_status':
+            details = [item for item in details if str(item['task'].get('status', 'unknown')) == filter_value]
+        else:
+            details = [item for item in details if str(item['godot'].get('status', 'unmapped')) == filter_value]
     pages = max(1, (len(details) + 19) // 20)
     if page < 1 or page > pages:
         raise ValueError(f'Page must be between 1 and {pages}')
     keys = ('id', 'title', 'status', 'dependencies', 'recommendedSubtasks')
     return {'page': page, 'pages': pages, 'page_size': 20, 'total': len(details),
+            'filter': {'kind': filter_kind, 'value': filter_value} if filter_kind else None,
             'items': [{**{key: row['task'].get(key) for key in keys}, 'godot': row['godot']}
                       for row in details[(page - 1) * 20:page * 20]]}

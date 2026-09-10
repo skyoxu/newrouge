@@ -4,27 +4,51 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import secrets
 import subprocess
 import sys
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from project_health_knowledge import CONFIG, safe_file, write_json, validate_config
+from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
+
+
+def image_bytes(root, path, revision):
+    safe_file(root, path)
+    types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
+    mime = types.get(Path(path).suffix.lower())
+    state = read_json(base_dir(root) / 'latest.json')
+    if not mime or path not in state.get('file_manifest', []):
+        raise ValueError('Image is not in the scanned manifest')
+    if revision != state.get('revision') or not re.fullmatch(r'[0-9a-f]{40,64}', revision):
+        raise ValueError('Image snapshot changed or is unavailable; scan local main again')
+    object_name = revision + ':' + path
+    size = subprocess.run(['git', '-C', str(root), 'cat-file', '-s', object_name], capture_output=True, timeout=10, check=True)
+    if int(size.stdout) > 16 * 1024 * 1024:
+        raise ValueError('Image exceeds the 16 MiB preview limit')
+    data = subprocess.run(['git', '-C', str(root), 'cat-file', 'blob', object_name], capture_output=True, timeout=15, check=True).stdout
+    return data, mime
+
+RUNTIME_HOST_TIMEOUT_SECONDS = 3690
 
 
 def handler_factory(root: Path):
     token = secrets.token_urlsafe(32)
     operation = threading.Lock()
+    operation_guard = threading.Lock()
+    operation_state = {'active': False, 'action': None, 'task_ids': [], 'started_at': None, 'verification_mode': None}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
             pass
 
         def send(self, data, code=200, content_type='application/json; charset=utf-8'):
-            body = data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
+            body = data if isinstance(data, bytes) else data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
             self.send_response(code)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
@@ -44,16 +68,32 @@ def handler_factory(root: Path):
                 self.send({'reason': 'Another operation is running'}, 409)
                 return
             try:
-                cmd = [sys.executable, str(Path(__file__).with_name('project_health_knowledge.py')),
-                       action, '--repo-root', str(root), *args]
+                task_ids = []
+                if action == 'runtime':
+                    for index, value in enumerate(args):
+                        if value == '--task-id' and index + 1 < len(args):
+                            task_ids = [str(args[index + 1])]
+                        elif value == '--task-ids' and index + 1 < len(args):
+                            task_ids = [item for item in str(args[index + 1]).split(',') if item]
+                with operation_guard:
+                    operation_state.update(active=True, action=action, task_ids=task_ids,
+                                           verification_mode=args[args.index('--mode') + 1] if '--mode' in args else None,
+                                           started_at=datetime.now(timezone.utc).isoformat())
+                script = 'project_health_runtime.py' if action == 'runtime' else 'project_health_knowledge.py'
+                cmd = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(root), *args]
+                if action != 'runtime':
+                    cmd.insert(2, action)
+                host_timeout = RUNTIME_HOST_TIMEOUT_SECONDS if action == 'runtime' else 240
                 proc = subprocess.run(cmd, input=json.dumps(request) if request is not None else None,
-                                      capture_output=True, text=True, encoding='utf-8', timeout=240)
+                                      capture_output=True, text=True, encoding='utf-8', timeout=host_timeout)
                 try:
                     payload = json.loads(proc.stdout)
                 except ValueError:
                     payload = {'status': 'failed', 'reason': proc.stderr[-2000:] or 'Invalid CLI response'}
                 self.send(payload, 200 if proc.returncode == 0 else 422)
             finally:
+                with operation_guard:
+                    operation_state.update(active=False, action=None, task_ids=[], started_at=None, verification_mode=None)
                 operation.release()
 
         def do_GET(self):
@@ -65,14 +105,26 @@ def handler_factory(root: Path):
             try:
                 if parsed.path == '/api/knowledge/session':
                     self.send({'token': token, 'service': 'project-health-knowledge-v1'})
+                elif parsed.path == '/api/knowledge/operation':
+                    with operation_guard:
+                        self.send(dict(operation_state))
                 elif parsed.path == '/api/knowledge/status':
                     self.cli('status')
+                elif parsed.path == '/api/knowledge/config':
+                    self.send(load_config(root))
                 elif parsed.path == '/api/knowledge/tasks':
-                    self.cli('tasks', ['--page', params.get('page', ['1'])[0]])
+                    args = ['--page', params.get('page', ['1'])[0]]
+                    if params.get('filter_kind', [''])[0]:
+                        args.extend(['--filter-kind', params['filter_kind'][0],
+                                     '--filter-value', params.get('filter_value', [''])[0]])
+                    self.cli('tasks', args)
                 elif parsed.path == '/api/knowledge/task':
                     self.cli('task', ['--task-id', params.get('id', [''])[0]])
                 elif parsed.path == '/api/knowledge/source':
                     self.cli('source', ['--path', params.get('path', [''])[0]])
+                elif parsed.path == '/api/knowledge/image':
+                    data, mime = image_bytes(root, params.get('path', [''])[0], params.get('revision', [''])[0])
+                    self.send(data, content_type=mime)
                 elif parsed.path in ('/knowledge', '/knowledge/'):
                     self.send(Path(__file__).with_name('project_health_knowledge.html').read_text(encoding='utf-8'),
                               content_type='text/html; charset=utf-8')
@@ -113,6 +165,28 @@ def handler_factory(root: Path):
                 path = urlsplit(self.path).path
                 if path == '/api/knowledge/scan':
                     self.cli('scan')
+                elif path == '/api/knowledge/runtime':
+                    godot_bin = os.environ.get('GODOT_BIN')
+                    if not godot_bin:
+                        raise ValueError('GODOT_BIN is required for runtime verification')
+                    args = ['--godot-bin', godot_bin]
+                    mode = request.get('mode', 'main')
+                    if mode not in ('main', 'workspace'):
+                        raise ValueError('Unknown runtime mode')
+                    args.extend(['--mode', mode])
+                    task_ids = request.get('task_ids')
+                    if request.get('all_gameplay') is True:
+                        if task_ids is not None or request.get('task_id') is not None:
+                            raise ValueError('all_gameplay cannot be combined with task selection')
+                        args.append('--all-gameplay')
+                    elif task_ids is not None:
+                        if (not isinstance(task_ids, list) or not task_ids or len(task_ids) > 200
+                                or any(not isinstance(value, (str, int)) for value in task_ids)):
+                            raise ValueError('task_ids must be a non-empty list with at most 200 ids')
+                        args.extend(['--task-ids', ','.join(str(value) for value in task_ids)])
+                    elif request.get('task_id') is not None:
+                        args.extend(['--task-id', str(request['task_id'])])
+                    self.cli('runtime', args)
                 elif path == '/api/knowledge/query':
                     self.cli('query', request=request)
                 elif path == '/api/knowledge/config':
