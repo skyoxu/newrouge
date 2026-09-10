@@ -61,7 +61,7 @@ function sourceLink(path, taskDetail=null) {
 }
 function renderSourceContent(content, config) {
   const lines = String(content).split('\n');
-  const marked = new Set((config.focused_fields || []).map(field=>Number(field.line)).filter(Number.isFinite));
+  const marked = new Set((config.confirmed_fields || config.focused_fields || []).map(field=>Number(field.line)).filter(Number.isFinite));
   const pointers = new Set((config.semantic?.parameters || []).map(p=>p.pointer || p.key).filter(p=>typeof p==='string' && p.startsWith('/')));
   const suggested = new Set((config.fields || []).filter(f=>pointers.has(f.pointer)).map(f=>Number(f.line)).filter(Number.isFinite));
   const semantic = config.semantic;
@@ -89,6 +89,12 @@ function imageLink(path, revision) {
   wrapper.onmouseenter=open;wrapper.onmouseleave=()=>{preview.hidden=true;};link.onfocus=open;wrapper.onfocusout=()=>{preview.hidden=true;};
   return wrapper;
 }
+function configAssociationGroup(item) {
+  if (item.confirmed_fields?.length || item.focused_fields?.length) return 'confirmed';
+  const pointers = new Set((item.fields || []).map(field=>field.pointer));
+  if ((item.semantic?.parameters || []).some(param=>pointers.has(param.pointer || param.key))) return 'suggested';
+  return 'indirect';
+}
 function renderNavigation(nav, box=el('detail-links'), related=false) {
   const textSources = new Set(nav.text_sources || []);
   const paragraph = (parent, value) => {const p=document.createElement('p');p.textContent=value;parent.append(p);};
@@ -98,18 +104,32 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
     const items=(nav[key] || []).filter(item=>related ? key!=='tests' && key!=='configs' && item.focus!=='core' : key==='tests' || key==='configs' || item.focus==='core');
     if(!items.length) continue;
     const section=document.createElement('div');section.className='navigation-group'; const heading=document.createElement('h3');heading.textContent=title+' ('+items.length+')';section.append(heading);box.append(section);
+    const configGroups = {};
+    if(key==='configs') {
+      for(const [id,label,description] of [
+        ['confirmed','已确认字段','存在记录 ID 直连，或同时具备语义重建与配置读取代码键链证据。'],
+        ['suggested','语义建议字段','字段在文件中真实存在，任务相关性由模型推断。'],
+        ['indirect','仅间接关联','已发现资源关联，但尚未确认任务专属字段；不代表已证明无关。有解析错误时请先检查错误。']
+      ]) {
+        const group=document.createElement('details');group.open=id!=='indirect';
+        const labelNode=document.createElement('summary');
+        labelNode.textContent=`${label} (${items.filter(item=>configAssociationGroup(item)===id).length})`;
+        group.append(labelNode);paragraph(group,description);section.append(group);configGroups[id]=group;
+      }
+    }
     for (const item of items) {
       const entry=document.createElement('details');const summary=document.createElement('summary');
       if(key==='assets' && /\.(png|jpe?g|webp)$/i.test(item.path)) summary.append(imageLink(item.path,nav.revision),' · '+item.evidence_kind);
       else summary.textContent=item.path+' · '+item.evidence_kind;
-      entry.append(summary);section.append(entry);
+      entry.append(summary);(key==='configs'?configGroups[configAssociationGroup(item)]:section).append(entry);
       if(textSources.has(item.path)) entry.append(sourceLink(item.path, activeTaskDetail));
-      if(item.fields && !item.focused_fields?.length && !item.semantic) paragraph(entry,'未识别到任务专属配置字段。');
+      if(key==='configs' && configAssociationGroup(item)==='indirect') paragraph(entry,'已发现资源关联，但未确认该文件中与本任务直接相关的可调字段。');
       if(item.semantic){paragraph(entry,'功能说明（模型原文）: '+(item.semantic.explanation||''));paragraph(entry,`${key==='configs'?'调参建议':'修改建议'}（模型原文）: `+(item.semantic.modification_guidance||item.semantic.parameter_guidance||''));paragraph(entry,'修改影响（模型原文）: '+(item.semantic.modification_impact||''));
         const params=item.semantic.parameters||[]; if(params.length){paragraph(entry,'语义字段:'); for(const param of params){const pointer=String(param.pointer||param.key||''); const matched=(item.fields||[]).some(field=>String(field.pointer||'')===pointer); paragraph(entry,`${pointer} = ${pretty(param.value)} — ${param.meaning||param.description||''} · ${matched?'字段存在，任务相关性由模型推断':'未匹配字段'}`);}}
         const bindings=item.semantic.bindings||[]; if(bindings.length){paragraph(entry,key==='assets'?'素材使用位置:':'任务相关节点:');for(const binding of bindings){if(key==='assets')paragraph(entry,`${binding.source}:${binding.line} — ${binding.meaning||''} · 静态绑定已确认`);else paragraph(entry,`${binding.node_path}:${binding.line} (${binding.type||'Node'}) — ${binding.meaning||''} · 静态绑定已确认`);}}
       }
-      for(const field of item.focused_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line}`);
+      for(const field of item.confirmed_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line} · ${field.confirmation==='static_record_identity'?'记录 ID 静态确认':'语义重建 + 读取代码键链确认'}`);
+      if(!item.confirmed_fields) for(const field of item.focused_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line}`);
       if(item.parse_error) paragraph(entry,'Parse error: '+item.parse_error);
       for(const node of item.nodes || []) {
         const nodeDetails=document.createElement('details');const nodeTitle=document.createElement('summary');nodeTitle.textContent=`${node.node_path} (${node.type})`;nodeDetails.append(nodeTitle);entry.append(nodeDetails);

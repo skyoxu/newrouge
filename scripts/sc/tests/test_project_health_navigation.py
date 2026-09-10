@@ -12,15 +12,33 @@ from _knowledge_catalog_builder import DirectorySnapshot
 class NavigationTests(unittest.TestCase):
     def test_semantic_entries_attach_to_configs_assets_and_scenes(self):
         from project_health_knowledge import attach_semantic_navigation
-        navigation = {'configs': [{'path': 'data.json'}], 'assets': [{'path': 'image.png'}],
+        navigation = {'configs': [{'path': 'data.json', 'fields': [
+            {'pointer': '/reward_pools/0/entries/common_card_choice/pick', 'value': 3, 'line': 10}],
+            'focused_fields': [], 'readers': [{'reader': 'main.gd', 'line': 2}]}], 'assets': [{'path': 'image.png'}],
                       'scenes': [{'path': 'scene.tscn'}], 'code': [{'path': 'code.gd'}]}
         attach_semantic_navigation(navigation, {'entries': [
-            {'path': 'data.json', 'kind': 'config'}, {'path': 'image.png', 'kind': 'asset'},
-            {'path': 'scene.tscn', 'kind': 'scene'}, {'path': 'code.gd', 'kind': 'code'}]})
+            {'path': 'data.json', 'kind': 'config', 'reconstruction': 'semantic_reconstruction', 'parameters': [
+                {'pointer': '/reward_pools/0/entries/common_card_choice/pick'}]},
+            {'path': 'image.png', 'kind': 'asset'}, {'path': 'scene.tscn', 'kind': 'scene'},
+            {'path': 'code.gd', 'kind': 'code'}]}, {'main.gd': 'root.get("reward_pools"); entry.get("common_card_choice").get("pick")'})
         self.assertIsNotNone(navigation['configs'][0]['semantic'])
+        self.assertEqual(navigation['configs'][0]['confirmed_fields'][0]['pointer'],
+                         '/reward_pools/0/entries/common_card_choice/pick')
+        self.assertEqual(navigation['configs'][0]['confirmed_fields'][0]['confirmation'],
+                         'semantic_reconstruction+static_reader_key_chain')
         self.assertIsNotNone(navigation['assets'][0]['semantic'])
         self.assertIsNotNone(navigation['scenes'][0]['semantic'])
         self.assertNotIn('semantic', navigation['code'][0])
+
+    def test_semantic_field_is_not_confirmed_when_reader_lacks_key_chain(self):
+        from project_health_knowledge import attach_semantic_navigation
+        navigation = {'configs': [{'path': 'data.json', 'fields': [
+            {'pointer': '/reward_pools/0/entries/common_card_choice/pick'}], 'focused_fields': [],
+            'readers': [{'reader': 'main.gd', 'line': 2}]}], 'assets': [], 'scenes': []}
+        semantic = {'entries': [{'path': 'data.json', 'kind': 'config', 'parameters': [
+            {'pointer': '/reward_pools/0/entries/common_card_choice/pick'}]}]}
+        attach_semantic_navigation(navigation, semantic, {'main.gd': 'load("data.json")'})
+        self.assertEqual(navigation['configs'][0]['confirmed_fields'], [])
 
     def test_core_does_not_expand_test_bootstrap_dependencies(self):
         scene = 'Game.Godot/Scenes/Reward.tscn'

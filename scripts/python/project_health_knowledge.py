@@ -322,12 +322,29 @@ def query(root: Path, state: dict, request: dict) -> dict:
     return result
 
 
-def attach_semantic_navigation(navigation: dict, semantic: dict) -> None:
+def attach_semantic_navigation(navigation: dict, semantic: dict, sources: dict | None = None) -> None:
+    sources = sources or {}
     by_key = {(item.get('kind'), item.get('path')): item for item in semantic.get('entries', [])
               if isinstance(item, dict)}
     for group, kind in (('configs', 'config'), ('assets', 'asset'), ('scenes', 'scene')):
         for item in navigation.get(group, []):
             item['semantic'] = by_key.get((kind, item.get('path')))
+            if kind != 'config':
+                continue
+            confirmed = {field.get('pointer'): {**field, 'confirmation': 'static_record_identity'}
+                         for field in item.get('focused_fields', []) if field.get('pointer')}
+            reader_text = '\n'.join(sources.get(reader.get('reader'), '') for reader in item.get('readers', []))
+            quoted_keys = set(re.findall(r'["\']([A-Za-z_][A-Za-z0-9_]*)["\']', reader_text))
+            fields_by_pointer = {field.get('pointer'): field for field in item.get('fields', [])}
+            for parameter in (item.get('semantic') or {}).get('parameters', []):
+                pointer = parameter.get('pointer') or parameter.get('key')
+                segments = [segment.replace('~1', '/').replace('~0', '~')
+                            for segment in str(pointer or '').split('/') if segment and not segment.isdigit()]
+                if (pointer in fields_by_pointer and segments and segments[-1] in quoted_keys
+                        and any(segment in quoted_keys for segment in segments[:-1])):
+                    confirmed[pointer] = {**fields_by_pointer[pointer],
+                                          'confirmation': 'semantic_reconstruction+static_reader_key_chain'}
+            item['confirmed_fields'] = list(confirmed.values())
 
 
 def main(argv=None) -> int:
@@ -376,7 +393,7 @@ def main(argv=None) -> int:
                 semantic_path = root / 'docs/knowledge/generated' / f'task-{args.task_id}-semantic.json'
                 if semantic_path.exists():
                     semantic = read_json(semantic_path)
-                    attach_semantic_navigation(result.get('navigation', {}), semantic)
+                    attach_semantic_navigation(result.get('navigation', {}), semantic, state.get('sources', {}))
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')
