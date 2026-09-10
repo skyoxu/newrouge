@@ -27,8 +27,15 @@ SOURCE_PATHS = ['.taskmaster/tasks', 'docs/prd', 'docs/adr', 'docs/architecture'
                 'docs/agents', 'docs/workflows', 'Game.Core', 'Game.Godot',
                 'Game.Core.Tests', 'Tests.Godot', 'README.md', 'AGENTS.md',
                 'DELIVERY_PROFILE.md', 'workflow.md', 'docs/testing-framework.md']
+SOURCE_PATH_BINDINGS = dict(zip(
+    ('tasks', 'product_requirements', 'architecture_decisions', 'architecture', 'agent_rules',
+     'workflows', 'domain_code', 'engine_code', 'domain_tests', 'engine_tests', 'project_entry',
+     'repository_rules', 'delivery_profile', 'root_workflow', 'testing_rules'),
+    SOURCE_PATHS,
+))
 DEFAULT_CONFIG = {
     'source_paths': SOURCE_PATHS,
+    'source_path_bindings': SOURCE_PATH_BINDINGS,
     'gdd_paths': ['docs/gdd/ui-gdd-flow.md'],
     'task_scene_bindings': [{
         'task_id': 115, 'scene': 'Game.Godot/Scenes/Reward.tscn', 'node': '.',
@@ -82,8 +89,17 @@ def load_config(root: Path) -> dict:
 
 
 def validate_config(root: Path, config: dict) -> dict:
-    if not isinstance(config, dict) or set(config) != {'source_paths', 'gdd_paths', 'task_scene_bindings', 'query_aliases'}:
+    required = {'source_paths', 'gdd_paths', 'task_scene_bindings', 'query_aliases'}
+    if (not isinstance(config, dict) or not required.issubset(config)
+            or set(config) - required not in (set(), {'source_path_bindings'})):
         raise ValueError('Unexpected configuration keys')
+    bindings = config.get('source_path_bindings')
+    if bindings is not None:
+        if (not isinstance(bindings, dict) or set(bindings) - set(SOURCE_PATH_BINDINGS)
+                or not all(isinstance(value, str) for value in bindings.values())):
+            raise ValueError('source_path_bindings must contain known string-valued categories')
+        if [value for value in bindings.values() if value] != config['source_paths']:
+            raise ValueError('source_paths must match non-empty source_path_bindings values')
     if not isinstance(config['source_paths'], list) or not config['source_paths'] or len(config['source_paths']) > 100:
         raise ValueError('source_paths must contain 1 to 100 repository-relative sources')
     if not isinstance(config['gdd_paths'], list):

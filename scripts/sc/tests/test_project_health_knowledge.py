@@ -589,5 +589,18 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(load_config(self.root)['gdd_paths'], ['docs/gdd/设计.md'])
 
 
+    def test_config_source_bindings_preserve_empty_categories(self):
+        config = {
+            'source_paths': ['custom/tasks'],
+            'source_path_bindings': {'tasks': 'custom/tasks', 'product_requirements': ''},
+            'gdd_paths': [], 'task_scene_bindings': [], 'query_aliases': {}
+        }
+
+        validated = validate_config(self.root, config)
+
+        self.assertEqual(validated['source_path_bindings']['product_requirements'], '')
+        self.assertEqual(validated['source_paths'], ['custom/tasks'])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -6,6 +6,7 @@ const selectedTasks = new Set();
 let visibleTaskIds = [];
 let activeFilter = null;
 let activeTaskDetail = null;
+let configLoaded = false;
 async function api(path, body) {
   const response = await fetch('/api/knowledge/' + path, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': token}, body: JSON.stringify(body)
@@ -20,6 +21,58 @@ async function run(action) {
   try { await action(); el('message').textContent = 'Ready. Results are bound to the displayed main snapshot.'; }
   catch(error) { el('message').textContent = error.message; }
   finally { await refreshOperation(); }
+}
+function configLines(value) {
+  return String(value || '').split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+}
+const sourcePathRequirements = [
+  {key:'tasks',reason:'任务定义与任务视图：用于关联任务编号、验收条件和 Gameplay 范围。',path:'.taskmaster/tasks'},
+  {key:'product_requirements',reason:'产品需求：用于理解功能目标、用户价值和需求边界。',path:'docs/prd'},
+  {key:'architecture_decisions',reason:'架构决策：用于解释关键技术选择、约束及其演进原因。',path:'docs/adr'},
+  {key:'architecture',reason:'架构与功能设计：用于定位基础架构、Overlay 和契约说明。',path:'docs/architecture'},
+  {key:'agent_rules',reason:'代理规则：用于约束自动化实施和仓库操作。',path:'docs/agents'},
+  {key:'workflows',reason:'工作流：用于定位章节流程、执行协议和操作指南。',path:'docs/workflows'},
+  {key:'domain_code',reason:'领域代码与契约：用于分析玩法规则和可调参数的读取链。',path:'Game.Core'},
+  {key:'engine_code',reason:'引擎实现：用于关联 Godot 场景、脚本、资源和素材。',path:'Game.Godot'},
+  {key:'domain_tests',reason:'领域测试：用于定位不依赖引擎的 xUnit 验收证据。',path:'Game.Core.Tests'},
+  {key:'engine_tests',reason:'引擎测试：用于定位场景和引擎集成的 GdUnit4 证据。',path:'Tests.Godot'},
+  {key:'project_entry',reason:'项目入口：用于了解环境要求和常用命令。',path:'README.md'},
+  {key:'repository_rules',reason:'仓库路由规则：用于定位权威来源和不可协商约束。',path:'AGENTS.md'},
+  {key:'delivery_profile',reason:'交付配置：用于识别当前交付模式和安全策略。',path:'DELIVERY_PROFILE.md'},
+  {key:'root_workflow',reason:'完整工作流：用于理解从初始化到交付的章节关系。',path:'workflow.md'},
+  {key:'testing_rules',reason:'测试规范：用于解释测试分层和质量门禁。',path:'docs/testing-framework.md'}
+];
+function renderSourcePathRequirements(config={}) {
+  const container=el('config-source-requirements');
+  container.replaceChildren(...sourcePathRequirements.map(item=>{
+    const row=document.createElement('div');
+    const reason=document.createElement('span'); reason.textContent=item.reason;
+    const input=document.createElement('input'); input.dataset.sourceKey=item.key;
+    input.value=config.source_path_bindings?.[item.key] ?? ((config.source_paths || []).includes(item.path) ? item.path : '');
+    input.placeholder=item.path; input.setAttribute('aria-label',item.reason);
+    input.addEventListener('input',updateConfigPreview);
+    row.append(reason,input); return row;
+  }));
+}
+function renderConfigEditor(config) {
+  renderSourcePathRequirements(config);
+  el('config-gdd-paths').value=(config.gdd_paths || []).join('\n');
+  el('config-task-scene-bindings').value=pretty(config.task_scene_bindings || []);
+  el('config-query-aliases').value=pretty(config.query_aliases || {});
+  configLoaded=true; updateConfigPreview();
+}
+function collectConfigEditor() {
+  const source_path_bindings=Object.fromEntries([...document.querySelectorAll('[data-source-key]')].map(input=>[input.dataset.sourceKey,input.value.trim()]));
+  return {
+    source_paths: Object.values(source_path_bindings).filter(Boolean),
+    source_path_bindings,
+    gdd_paths: configLines(el('config-gdd-paths').value),
+    task_scene_bindings: JSON.parse(el('config-task-scene-bindings').value || '[]'),
+    query_aliases: JSON.parse(el('config-query-aliases').value || '{}')
+  };
+}
+function updateConfigPreview() {
+  if(configLoaded) el('config-advanced').value=pretty(collectConfigEditor());
 }
 function setPageLocked(locked, message='The page is locked until the active operation finishes.') {
   el('app-main').inert = locked;
@@ -216,7 +269,7 @@ async function loadTasks(page=1) {
 async function loadStatus() {
   const state = await api('status'); el('revision').textContent = state.revision ? `${state.branch} @ ${state.revision} | scanned ${state.scanned_at}` : 'No successful local scan yet.';
   el('publication').textContent = `Published KCP pointer matches scan: ${state.publication.matches_scan}. ${state.publication.note}`;
-  if (!el('config').value.trim()) el('config').value = pretty(await api('config')); el('summary').replaceChildren();
+  if (!configLoaded) renderConfigEditor(await api('config')); el('summary').replaceChildren();
   const addMetric = (key,value,kind=null) => {
     const d=document.createElement(kind ? 'button' : 'div');d.className=kind ? 'metric metric-button' : 'metric';
     d.textContent=key+': '+value;
@@ -243,9 +296,24 @@ async function search(target) {
   for(const hit of result.impact_targets) el('targets').append(button(hit.type+' · '+hit.id,()=>search({type:hit.type,id:hit.id})));
   el('preview').textContent=pretty(result);
 }
+const consumerHelp = {
+  'repository-session': '综合查找：范围最广，适合不确定信息位于何处时查找仓库文档、代码和任务上下文。',
+  chapter4: '架构与契约：优先查找架构设计、功能切面、ADR 和契约边界。',
+  chapter5: '验收与规则：优先查找验收标准、语义约束、测试要求和历史决策。',
+  chapter6: '任务实施：优先查找任务实现涉及的代码、配置、场景、素材、测试和运行证据。',
+  review: '审查与交付：优先查找代码审查、安全、质量门禁和发布证据。'
+};
+function updateConsumerHelp() {
+  el('consumer-help').textContent=consumerHelp[el('consumer').value] || '';
+}
+el('consumer').addEventListener('change',updateConsumerHelp);
+updateConsumerHelp();
 el('close-detail').onclick=()=>el('detail').close();
 el('detail').onclose=()=>{activeTaskDetail=null;};
-el('scan').onclick=()=>run(async()=>{activeTaskDetail=null;const config=JSON.parse(el('config').value);await api('config',config);await api('scan',{});currentPage=1;await loadStatus();});
+el('open-config').onclick=()=>el('config-dialog').showModal();
+el('close-config').onclick=()=>el('config-dialog').close();
+for(const id of ['config-gdd-paths','config-task-scene-bindings','config-query-aliases']) el(id).addEventListener('input',()=>{try{updateConfigPreview();}catch(_){el('config-advanced').value='当前分区包含无效 JSON。';}});
+el('scan').onclick=()=>run(async()=>{activeTaskDetail=null;await api('config',collectConfigEditor());await api('scan',{});currentPage=1;await loadStatus();});
 el('runtime').textContent='Verify eligible tasks on main';
 el('runtime-all').textContent='Audit all gameplay on main';
 el('runtime').onclick=()=>run(async()=>{await api('runtime',{mode:'main'});await loadStatus();});
@@ -254,6 +322,6 @@ el('runtime-selected').onclick=()=>run(async()=>{await api('runtime',{task_ids:[
 el('select-page').onclick=()=>{visibleTaskIds.forEach(id=>selectedTasks.add(id));loadTasks(currentPage);};
 el('clear-selection').onclick=()=>{selectedTasks.clear();loadTasks(currentPage);};
 el('clear-filter').onclick=()=>run(()=>setFilter(null,null));
-el('save-config').onclick=()=>run(async()=>{await api('config',JSON.parse(el('config').value));el('publication').textContent='Configuration saved. Scan main to apply it; displayed results still use the previous configuration.';});
+el('save-config').onclick=()=>run(async()=>{await api('config',collectConfigEditor());el('publication').textContent='配置已保存。请重新扫描本地 main；当前结果仍使用上一次扫描配置。';});
 el('query-form').onsubmit=e=>{e.preventDefault();run(()=>search());};
 run(async()=>{token=(await api('session')).token;await refreshOperation();await loadStatus();operationPoll=setInterval(refreshOperation,1000);});
