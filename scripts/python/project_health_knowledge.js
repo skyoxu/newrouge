@@ -53,12 +53,28 @@ function sourceLink(path, taskDetail=null) {
     if(!taskDetail) activeTaskDetail=null;
     const s = await api('source?path=' + encodeURIComponent(path));
     if(taskDetail && s.revision !== taskDetail.navigation.revision) throw new Error('Source snapshot changed. Reopen the task before inspecting its sources.');
-    show(path + ' @ ' + s.revision.slice(0,12), s.content);
+    const config = taskDetail?.navigation?.configs?.find(item=>item.path===path);
+    show(path + ' @ ' + s.revision.slice(0,12), config ? renderSourceContent(s.content, config) : s.content);
     if(taskDetail) el('detail-links').append(button('Back to task navigation',async()=>renderTaskDetail(taskDetail)));
   });};
   return a;
 }
-function show(title, body) { el('detail-title').textContent = title; el('detail-body').hidden=false; el('detail-body').textContent = typeof body === 'string' ? body : pretty(body); el('detail-links').replaceChildren(); if (!el('detail').open) el('detail').showModal(); }
+function renderSourceContent(content, config) {
+  const lines = String(content).split('\n');
+  const marked = new Set((config.focused_fields || []).map(field=>Number(field.line)).filter(Number.isFinite));
+  const pointers = new Set((config.semantic?.parameters || []).map(p=>p.pointer || p.key).filter(p=>typeof p==='string' && p.startsWith('/')));
+  const suggested = new Set((config.fields || []).filter(f=>pointers.has(f.pointer)).map(f=>Number(f.line)).filter(Number.isFinite));
+  const semantic = config.semantic;
+  const pre = document.createElement('pre');
+  lines.forEach((line, index) => {
+    const row=document.createElement('span'); row.className=marked.has(index+1)?'source-line source-line-related':suggested.has(index+1)?'source-line source-line-suggested':'source-line';
+    const number=document.createElement('span'); number.className='source-line-number'; number.textContent=String(index+1).padStart(4,' ')+'  ';
+    row.append(number,document.createTextNode(line)); pre.append(row,'\n');
+  });
+  if(semantic){const note=document.createElement('div');note.className='source-semantic-note';note.textContent=`黄色：直接关联字段（${marked.size} 行）；蓝色：模型建议且 JSON 路径精确匹配（${suggested.size} 行）。路径匹配不代表已证明任务使用该字段。`;pre.prepend(note);}
+  return pre;
+}
+function show(title, body) { el('detail-title').textContent = title; el('detail-body').hidden=false; el('detail-body').replaceChildren(); if(body instanceof Node) el('detail-body').append(body); else el('detail-body').textContent = typeof body === 'string' ? body : pretty(body); el('detail-links').replaceChildren(); if (!el('detail').open) el('detail').showModal(); }
 function imageLink(path, revision) {
   const wrapper=document.createElement('span');wrapper.className='image-reference';
   const link=document.createElement('a');link.textContent=path;
@@ -78,7 +94,7 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
   const paragraph = (parent, value) => {const p=document.createElement('p');p.textContent=value;parent.append(p);};
   const linkedPath = path => textSources.has(path) ? sourceLink(path, activeTaskDetail) : document.createTextNode(path);
   const reference = (parent, label, path, line, suffix) => {const p=document.createElement('p');p.append(label,linkedPath(path),line ? ':'+line : '',suffix);parent.append(p);};
-  for (const [key, title] of [['configs','Configuration'],['code','Code'],['scenes','Scenes and nodes'],['assets','Assets'],['tests','Suggested verification']]) {
+  for (const [key, title] of [['configs','配置文件'],['code','代码'],['scenes','场景与节点'],['assets','素材'],['tests','建议验证']]) {
     const items=(nav[key] || []).filter(item=>related ? key!=='tests' && key!=='configs' && item.focus!=='core' : key==='tests' || key==='configs' || item.focus==='core');
     if(!items.length) continue;
     const section=document.createElement('div');section.className='navigation-group'; const heading=document.createElement('h3');heading.textContent=title+' ('+items.length+')';section.append(heading);box.append(section);
@@ -88,7 +104,10 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
       else summary.textContent=item.path+' · '+item.evidence_kind;
       entry.append(summary);section.append(entry);
       if(textSources.has(item.path)) entry.append(sourceLink(item.path, activeTaskDetail));
-      if(item.fields && !item.focused_fields?.length) paragraph(entry,'No task-specific configuration record identified.');
+      if(item.fields && !item.focused_fields?.length && !item.semantic) paragraph(entry,'未识别到任务专属配置字段。');
+      if(item.semantic){paragraph(entry,'功能说明（模型原文）: '+(item.semantic.explanation||''));paragraph(entry,'调参建议（模型原文）: '+(item.semantic.parameter_guidance||''));paragraph(entry,'修改影响（模型原文）: '+(item.semantic.modification_impact||''));
+        const params=item.semantic.parameters||[]; if(params.length){paragraph(entry,'语义字段:'); for(const param of params){const pointer=String(param.pointer||param.key||''); const matched=(item.fields||[]).some(field=>String(field.pointer||'')===pointer); paragraph(entry,`${pointer} = ${pretty(param.value)} — ${param.meaning||param.description||''} · ${matched?'字段存在，任务相关性由模型推断':'未匹配字段'}`);}}
+      }
       for(const field of item.focused_fields || []) paragraph(entry,`${field.pointer} = ${pretty(field.value)} · line ${field.line}`);
       if(item.parse_error) paragraph(entry,'Parse error: '+item.parse_error);
       for(const node of item.nodes || []) {
@@ -97,7 +116,7 @@ function renderNavigation(nav, box=el('detail-links'), related=false) {
         for(const property of node.properties) paragraph(nodeDetails,`${property.name} = ${property.value} · line ${property.line}`+(property.resources.length ? ' · '+pretty(property.resources) : ''));
       }
       if(item.command) paragraph(entry,item.command_status+': '+item.command);
-      const evidence=document.createElement('details');const evidenceTitle=document.createElement('summary');evidenceTitle.textContent='Reference evidence';evidence.append(evidenceTitle);entry.append(evidence);
+      const evidence=document.createElement('details');const evidenceTitle=document.createElement('summary');evidenceTitle.textContent='证据链';evidence.append(evidenceTitle);entry.append(evidence);
       for(const step of item.chain || []) reference(evidence,step.kind+': ',step.from || step.path,step.line,'');
       for(const reader of item.readers || []) reference(evidence,'Literal reference ',reader.reader,reader.line,' · '+reader.evidence);
       for(const user of item.users || []) reference(evidence,'Source clue ',user.source,user.line,' · '+user.evidence);
@@ -129,7 +148,7 @@ function renderTaskDetail(detail) {
     label.textContent=`More associations (${count})`;more.append(label);el('detail-links').append(more);
     more.addEventListener('toggle',()=>{if(more.open && !more.dataset.loaded){more.dataset.loaded='true';renderNavigation(detail.navigation,more,true);}});
   }
-  if(detail.resource_knowledge?.length){const box=document.createElement('details');const summary=document.createElement('summary');summary.textContent=`Resource knowledge by type (${detail.resource_knowledge.length})`;box.append(summary);for(const [kind,title] of [['config','Configuration'],['asset','Assets'],['scene','Scenes'],['code','Code'],['test','Tests']]){const items=detail.resource_knowledge.filter(x=>x.kind===kind);if(!items.length)continue;const group=document.createElement('details');const label=document.createElement('summary');label.textContent=`${title} (${items.length})`;group.append(label);for(const item of items){const p=document.createElement('p');p.textContent=`${item.path} — ${item.confidence}`;group.append(p);}box.append(group);}el('detail-links').append(box);}
+  if(detail.resource_knowledge?.length){const box=document.createElement('details');const summary=document.createElement('summary');summary.textContent=`资源知识（按类型，共 ${detail.resource_knowledge.length} 条）`;box.append(summary);for(const [kind,title] of [['config','配置文件'],['asset','素材'],['scene','场景'],['code','代码'],['test','测试']]){const items=detail.resource_knowledge.filter(x=>x.kind===kind);if(!items.length)continue;const group=document.createElement('details');const label=document.createElement('summary');label.textContent=`${title}（${items.length}）`;group.append(label);for(const item of items){const p=document.createElement('p');p.textContent=`${item.path} — 证据置信度：${item.confidence}`;group.append(p);}box.append(group);}el('detail-links').append(box);}
   const raw=document.createElement('details');raw.id='raw-evidence';const label=document.createElement('summary');label.textContent='Original task and evidence';raw.append(label);el('detail-links').append(raw);
   raw.addEventListener('toggle',()=>{if(raw.open && !raw.dataset.loaded){raw.dataset.loaded='true';const pre=document.createElement('pre');pre.textContent=pretty(detail);raw.append(pre);}});
 }

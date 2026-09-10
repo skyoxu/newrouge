@@ -365,6 +365,12 @@ def main(argv=None) -> int:
                 if links_path.exists():
                     links = read_json(links_path).get('generated', [])
                     result['resource_knowledge'] = [entry for entry in links if str(entry.get('task_id')) == str(args.task_id)]
+                semantic_path = root / 'docs/knowledge/generated' / f'task-{args.task_id}-semantic.json'
+                if semantic_path.exists():
+                    semantic = read_json(semantic_path)
+                    by_path = {item.get('path'): item for item in semantic.get('entries', [])}
+                    for item in result.get('navigation', {}).get('configs', []):
+                        item['semantic'] = by_path.get(item.get('path'))
             elif args.action == 'source':
                 if args.path not in state['sources']:
                     raise ValueError('Source is not in the scanned allowlist')

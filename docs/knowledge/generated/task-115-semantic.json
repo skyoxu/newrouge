@@ -7,471 +7,241 @@
     {
       "id": "config:115:Game.Core/Data/act1-config.json",
       "path": "Game.Core/Data/act1-config.json",
-      "explanation": "Defines Act 1 route graph, node sequencing, encounter links, reward pools, and referenced data files.",
-      "parameter_guidance": "Keep node IDs and next references consistent; update referenced pool or encounter IDs together.",
-      "modification_impact": "Changes route progression, available nodes, encounters, rewards, and dependent map or scene behavior."
-    },
-    {
-      "id": "config:115:Game.Core/Data/act1-enemy-definitions.json",
-      "path": "Game.Core/Data/act1-enemy-definitions.json",
-      "explanation": "Defines Act 1 enemy identities, categories, and base combat statistics.",
-      "parameter_guidance": "Modify HP, attack, defense, or intent pool entries only with matching enemy IDs used by rosters.",
-      "modification_impact": "Changes enemy strength and classification in encounters."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-card-definitions.json",
-      "path": "Game.Core/Data/m1-card-definitions.json",
-      "explanation": "Defines card metadata, costs, targets, rarities, effects, and upgrade routes.",
-      "parameter_guidance": "Preserve card IDs and localization keys; keep upgrade effect fields compatible with consumers.",
-      "modification_impact": "Changes card behavior, reward presentation, deck play, and upgrade outcomes."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-card-pools.json",
-      "path": "Game.Core/Data/m1-card-pools.json",
-      "explanation": "Defines card selection pools used by reward offers.",
-      "parameter_guidance": "Ensure every listed card ID exists in card definitions and pool IDs match reward references.",
-      "modification_impact": "Changes which cards can appear and how many choices are offered."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-curse-definitions.json",
-      "path": "Game.Core/Data/m1-curse-definitions.json",
-      "explanation": "Defines curse identity, text keys, removability, and effects.",
-      "parameter_guidance": "Keep curse IDs aligned with event and card effect references.",
-      "modification_impact": "Changes curse effects, removal behavior, and displayed descriptions."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-enemy-intent-definitions.json",
-      "path": "Game.Core/Data/m1-enemy-intent-definitions.json",
-      "explanation": "Defines enemy combat intents, icons, text keys, timings, targets, and effect amounts.",
-      "parameter_guidance": "Use valid enemy IDs and effect kinds; keep intent text keys synchronized with translations.",
-      "modification_impact": "Changes enemy telegraphs and combat actions."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-event-definitions.json",
-      "path": "Game.Core/Data/m1-event-definitions.json",
-      "explanation": "Defines event options, previews, outcomes, effects, and return routes.",
-      "parameter_guidance": "Preserve option and event IDs referenced by route nodes; validate effect fields and return_route values.",
-      "modification_impact": "Changes event choices, player-state changes, feedback, and navigation back to the map."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-relic-definitions.json",
-      "path": "Game.Core/Data/m1-relic-definitions.json",
-      "explanation": "Defines relic effects, trigger paths, timing, domains, parameters, and tags.",
-      "parameter_guidance": "Keep trigger paths and execution boundaries valid for the runtime systems.",
-      "modification_impact": "Changes combat or shop modifiers and relic presentation."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-rest-options.json",
-      "path": "Game.Core/Data/m1-rest-options.json",
-      "explanation": "Defines rest-site options, effects, confirmations, and targeting requirements.",
-      "parameter_guidance": "Keep option IDs stable and ensure required target flags match UI handling.",
-      "modification_impact": "Changes healing, upgrades, curse removal, and confirmation flow."
+      "explanation": "定义 Act 1 的节点图和奖励池引用。奖励确认或跳过完成后，路由逻辑需要依据当前节点的 next 配置返回地图或进入后续节点。",
+      "parameter_guidance": "实现奖励确认写回和跳过时，重点检查当前战斗节点对应的奖励池以及其后继节点，避免修改与奖励返回路径无关的节点配置。",
+      "modification_impact": "修改节点后继关系或奖励池引用会改变奖励处理完成后的流程；修改节点类型或标识可能影响战斗、地图和奖励场景之间的路由匹配。",
+      "parameters": [
+        {
+          "pointer": "/node_graph/nodes/0/reward_pool_id",
+          "meaning": "combat-01 完成后使用的奖励池标识。",
+          "value": "reward.act1.normal_1",
+          "line": 15,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/0/next/0",
+          "meaning": "combat-01 奖励流程结束后可前往的第一个后继节点。",
+          "value": "event-02",
+          "line": 17,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/0/next/1",
+          "meaning": "combat-01 奖励流程结束后可前往的第二个后继节点。",
+          "value": "combat-02",
+          "line": 18,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/2/reward_pool_id",
+          "meaning": "combat-02 完成后使用的奖励池标识。",
+          "value": "reward.act1.normal_2",
+          "line": 40,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/2/next/0",
+          "meaning": "combat-02 奖励流程结束后的后继节点。",
+          "value": "combat-03",
+          "line": 42,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/4/reward_pool_id",
+          "meaning": "combat-03 完成后使用的奖励池标识。",
+          "value": "reward.act1.normal_3",
+          "line": 63,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/node_graph/nodes/4/next/0",
+          "meaning": "combat-03 奖励流程结束后的后继节点。",
+          "value": "rest-04",
+          "line": 65,
+          "evidence_status": "field_exists_semantic_inference"
+        }
+      ]
     },
     {
       "id": "config:115:Game.Core/Data/m1-reward-pools.json",
       "path": "Game.Core/Data/m1-reward-pools.json",
-      "explanation": "Defines reward contents, gold, consumables, relic availability, and card-choice pools.",
-      "parameter_guidance": "Ensure referenced pool, card, relic, and consumable IDs exist and pick counts are valid.",
-      "modification_impact": "Changes reward offers and player inventory progression."
+      "explanation": "定义战斗奖励池及卡牌选择、金币、遗物等奖励条目。奖励确认需要将选中的奖励写回运行状态，跳过则应沿相同奖励完成路径继续流程而不写入选中奖励。",
+      "parameter_guidance": "实现时使用奖励池 ID、条目类型、选择数量和卡池引用来确定可确认内容及跳过后的空选择行为；不要从其他配置推断奖励条目。",
+      "modification_impact": "修改奖励条目、选择数量或卡池引用会改变奖励界面展示、确认后写回的数据以及后续运行状态。",
+      "parameters": [
+        {
+          "pointer": "/reward_pools/0/id",
+          "meaning": "普通战斗第一个奖励池的标识。",
+          "value": "reward.act1.normal_1",
+          "line": 5,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/0/entries/common_card_choice/pick",
+          "meaning": "该奖励池中普通卡牌选择的数量。",
+          "value": 3,
+          "line": 10,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/0/entries/common_card_choice/pool_id",
+          "meaning": "普通卡牌选择所使用的卡牌池标识。",
+          "value": "reward.act1.normal.common",
+          "line": 10,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/1/id",
+          "meaning": "事件奖励池的标识。",
+          "value": "reward.act1.event_1",
+          "line": 16,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/1/entries/common_card_choice/pick",
+          "meaning": "事件奖励中普通卡牌选择的数量。",
+          "value": 3,
+          "line": 21,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/2/id",
+          "meaning": "普通战斗第二个奖励池的标识。",
+          "value": "reward.act1.normal_2",
+          "line": 27,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/2/entries/common_card_choice/pick",
+          "meaning": "该奖励池中普通卡牌选择的数量。",
+          "value": 3,
+          "line": 32,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/2/entries/rare_card_choice/pick",
+          "meaning": "该奖励池中稀有卡牌选择的数量。",
+          "value": 3,
+          "line": 33,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/3/id",
+          "meaning": "普通战斗第三个奖励池的标识。",
+          "value": "reward.act1.normal_3",
+          "line": 38,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/3/entries/common_card_choice/pick",
+          "meaning": "该奖励池中普通卡牌选择的数量。",
+          "value": 3,
+          "line": 43,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/3/entries/rare_card_choice/pick",
+          "meaning": "该奖励池中稀有卡牌选择的数量。",
+          "value": 3,
+          "line": 44,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/4/id",
+          "meaning": "首领奖励池的标识。",
+          "value": "reward.act1.boss_1",
+          "line": 49,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/reward_pools/4/entries/rare_card_choice/pick",
+          "meaning": "首领奖励中稀有卡牌选择的数量。",
+          "value": 3,
+          "line": 60,
+          "evidence_status": "field_exists_semantic_inference"
+        }
+      ]
     },
     {
-      "id": "config:115:Game.Core/Data/m1-shop-pools.json",
-      "path": "Game.Core/Data/m1-shop-pools.json",
-      "explanation": "Defines shop offers, prices, services, allowed targets, and blocked feedback keys.",
-      "parameter_guidance": "Keep offer IDs unique and referenced card or relic IDs valid.",
-      "modification_impact": "Changes shop inventory, economy, service availability, and failure feedback."
-    },
-    {
-      "id": "config:115:Game.Core/Data/m1-warrior-starting-deck.json",
-      "path": "Game.Core/Data/m1-warrior-starting-deck.json",
-      "explanation": "Defines the Warrior starting deck and shuffle configuration.",
-      "parameter_guidance": "Keep card IDs valid and counts nonnegative; preserve shuffle mode and RNG stream semantics.",
-      "modification_impact": "Changes the initial deck and early-run draw order."
-    },
-    {
-      "id": "config:115:Game.Godot/Themes/default_theme.tres",
-      "path": "Game.Godot/Themes/default_theme.tres",
-      "explanation": "Provides the shared Godot theme referenced by main and settlement scenes.",
-      "parameter_guidance": "Modify theme resources with awareness of all scenes that reference this theme.",
-      "modification_impact": "Changes shared UI styling, fonts, colors, and control appearance."
+      "id": "config:115:Game.Core/Data/m1-card-definitions.json",
+      "path": "Game.Core/Data/m1-card-definitions.json",
+      "explanation": "提供奖励卡牌的定义和标识。奖励确认写回卡牌奖励时，需要使用这里的卡牌 ID 与基础数据保持一致。",
+      "parameter_guidance": "仅在奖励确认会把卡牌加入牌组时读取卡牌 ID、名称键和类型等字段；奖励跳过不应新增卡牌。",
+      "modification_impact": "修改卡牌标识或定义字段会影响奖励展示、卡牌写回后的牌组内容及后续战斗行为。",
+      "parameters": [
+        {
+          "pointer": "/cards/3/id",
+          "meaning": "可出现在奖励池中的重击卡牌标识。",
+          "value": "card.warrior.heavy_strike",
+          "line": 81,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/3/name_key",
+          "meaning": "重击卡牌显示名称的本地化键。",
+          "value": "card.warrior.heavy_strike.name",
+          "line": 82,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/4/id",
+          "meaning": "可出现在奖励池中的铁潮卡牌标识。",
+          "value": "card.warrior.iron_wave",
+          "line": 93,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/4/name_key",
+          "meaning": "铁潮卡牌显示名称的本地化键。",
+          "value": "card.warrior.iron_wave.name",
+          "line": 94,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/5/id",
+          "meaning": "可出现在奖励池中的横扫卡牌标识。",
+          "value": "card.warrior.cleave",
+          "line": 106,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/5/name_key",
+          "meaning": "横扫卡牌显示名称的本地化键。",
+          "value": "card.warrior.cleave.name",
+          "line": 107,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/6/id",
+          "meaning": "可出现在奖励池中的力量贯穿卡牌标识。",
+          "value": "card.warrior.power_through",
+          "line": 118,
+          "evidence_status": "field_exists_semantic_inference"
+        },
+        {
+          "pointer": "/cards/6/name_key",
+          "meaning": "力量贯穿卡牌显示名称的本地化键。",
+          "value": "card.warrior.power_through.name",
+          "line": 119,
+          "evidence_status": "field_exists_semantic_inference"
+        }
+      ]
     },
     {
       "id": "config:115:Game.Godot/Translations/en.csv",
       "path": "Game.Godot/Translations/en.csv",
-      "explanation": "Provides English localization strings used across gameplay and menus.",
-      "parameter_guidance": "Preserve key names referenced by data and scenes; update values without changing identifiers.",
-      "modification_impact": "Changes English UI text and feedback."
+      "explanation": "提供奖励界面及确认、跳过操作使用的英文文本资源。实现 UI 回写和跳过流程时，需要确保引用的文本键存在。",
+      "parameter_guidance": "该资源没有可用参数指针；通过现有本地化键引用文本，不应在任务说明中推断未列出的字段。",
+      "modification_impact": "修改文本会改变英文奖励界面的按钮、提示和反馈内容，但不会改变奖励状态或路由行为。",
+      "parameters": []
     },
     {
       "id": "config:115:Game.Godot/Translations/zh-CN.csv",
       "path": "Game.Godot/Translations/zh-CN.csv",
-      "explanation": "Provides Simplified Chinese localization strings used across gameplay and menus.",
-      "parameter_guidance": "Preserve localization keys and keep coverage aligned with English entries.",
-      "modification_impact": "Changes Chinese UI text and feedback."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_cleave.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_cleave.png",
-      "explanation": "Runtime card artwork used for the Cleave reward card.",
-      "parameter_guidance": "Replace the image while preserving the path or update every loader reference.",
-      "modification_impact": "Changes Cleave reward visuals only."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_defend.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_defend.png",
-      "explanation": "Runtime card artwork used for the Defend reward card and fallback display.",
-      "parameter_guidance": "Preserve image compatibility and fallback path expectations.",
-      "modification_impact": "Changes Defend reward visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_heavy_strike.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_heavy_strike.png",
-      "explanation": "Runtime card artwork used for Heavy Strike rewards.",
-      "parameter_guidance": "Keep the asset readable by Godot and preserve referenced location unless loaders change.",
-      "modification_impact": "Changes Heavy Strike reward visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_iron_wave.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_iron_wave.png",
-      "explanation": "Runtime card artwork used for Iron Wave rewards.",
-      "parameter_guidance": "Maintain the expected texture format and path.",
-      "modification_impact": "Changes Iron Wave reward visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_rage_surge.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_rage_surge.png",
-      "explanation": "Runtime card artwork used for Rage Surge reward displays.",
-      "parameter_guidance": "Preserve texture import compatibility and referenced path.",
-      "modification_impact": "Changes Rage Surge reward visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_reward_shield_wall.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_reward_shield_wall.png",
-      "explanation": "Runtime card artwork used for Shield Wall reward displays.",
-      "parameter_guidance": "Preserve texture import compatibility and referenced path.",
-      "modification_impact": "Changes Shield Wall reward visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
-      "path": "Game.Godot/Assets/Textures/Cards/card_spore_slash.png",
-      "explanation": "Runtime card artwork used by combat and startup loading.",
-      "parameter_guidance": "Keep the asset available at the referenced path or update both loaders.",
-      "modification_impact": "Changes Spore Slash combat or card visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
-      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_fungal_knight_target.png",
-      "explanation": "Enemy target or combat visual loaded by CombatScene.",
-      "parameter_guidance": "Preserve texture dimensions and path compatibility with combat loading.",
-      "modification_impact": "Changes Fungal Knight target visuals."
-    },
-    {
-      "id": "asset:115:Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
-      "path": "Game.Godot/Assets/Textures/Combat/Enemies/enemy_m1_slime_b.png",
-      "explanation": "Slime enemy combat artwork loaded by CombatScene.",
-      "parameter_guidance": "Preserve texture import compatibility and expected path.",
-      "modification_impact": "Changes Slime enemy visuals."
-    },
-    {
-      "id": "scene:115:Game.Godot/Examples/Components/Modal.tscn",
-      "path": "Game.Godot/Examples/Components/Modal.tscn",
-      "explanation": "Example reusable modal control with title, message, and action buttons.",
-      "parameter_guidance": "Keep node paths and Modal script attachment stable for its consumers.",
-      "modification_impact": "Changes example modal layout and interaction behavior."
-    },
-    {
-      "id": "scene:115:Game.Godot/Examples/Components/Toast.tscn",
-      "path": "Game.Godot/Examples/Components/Toast.tscn",
-      "explanation": "Example toast control with a timed display label.",
-      "parameter_guidance": "Keep Timer and label node paths aligned with Toast.cs.",
-      "modification_impact": "Changes example toast appearance and display duration."
-    },
-    {
-      "id": "scene:115:Game.Godot/Examples/Screens/DemoScreen.tscn",
-      "path": "Game.Godot/Examples/Screens/DemoScreen.tscn",
-      "explanation": "Example screen demonstrating toast, modal, and settings navigation.",
-      "parameter_guidance": "Preserve referenced component instances and button node paths.",
-      "modification_impact": "Changes demo-only UI composition and navigation examples."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Combat.tscn",
-      "path": "Game.Godot/Scenes/Combat.tscn",
-      "explanation": "Combat scene containing HUD, card interaction, enemy panels, overlays, and controls.",
-      "parameter_guidance": "Keep node paths consumed by CombatScene.cs and referenced subresources valid.",
-      "modification_impact": "Changes combat UI layout, controls, overlays, and displayed runtime state."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Event.tscn",
-      "path": "Game.Godot/Scenes/Event.tscn",
-      "explanation": "Event scene presenting event text, options, previews, feedback, and continuation.",
-      "parameter_guidance": "Preserve option and feedback node paths expected by EventScene.cs.",
-      "modification_impact": "Changes event presentation and interaction flow."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Main.tscn",
-      "path": "Game.Godot/Scenes/Main.tscn",
-      "explanation": "Main scene wiring bootstrap scripts, navigation, HUD, menus, settings, and overlays.",
-      "parameter_guidance": "Keep script attachments, inherited scenes, and navigator node paths stable.",
-      "modification_impact": "Changes application startup composition and screen navigation wiring."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Map/Map.tscn",
-      "path": "Game.Godot/Scenes/Map/Map.tscn",
-      "explanation": "Map scene displaying route nodes, edges, legends, feedback, and node actions.",
-      "parameter_guidance": "Keep route node names and action controls aligned with MapScene.cs.",
-      "modification_impact": "Changes map layout, route visualization, and node selection UI."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Rest.tscn",
-      "path": "Game.Godot/Scenes/Rest.tscn",
-      "explanation": "Rest scene presenting rest-site choices and upgrade confirmation controls.",
-      "parameter_guidance": "Preserve confirmation button and feedback node paths used by RestScene.gd.",
-      "modification_impact": "Changes rest-site UI and confirmation presentation."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Reward.tscn",
-      "path": "Game.Godot/Scenes/Reward.tscn",
-      "explanation": "Reward scene displaying reward entries, card choices, confirm, skip, and pass actions.",
-      "parameter_guidance": "Keep reward list, action buttons, and card-choice overlay paths aligned with RewardScene.gd.",
-      "modification_impact": "Changes reward selection, confirmation, skip behavior, and visual layout."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Settlement.tscn",
-      "path": "Game.Godot/Scenes/Settlement.tscn",
-      "explanation": "Settlement scene showing run outcome, progress, reason, and return action.",
-      "parameter_guidance": "Preserve metadata labels and return button paths used by SettlementScene.gd.",
-      "modification_impact": "Changes end-of-run summary presentation and return interaction."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Screens/SettingsScreen.tscn",
-      "path": "Game.Godot/Scenes/Screens/SettingsScreen.tscn",
-      "explanation": "Standalone settings screen with title and back control.",
-      "parameter_guidance": "Keep SettingsScreen.cs attachment and Back node path stable.",
-      "modification_impact": "Changes settings screen layout and navigation."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/Screens/StartScreen.tscn",
-      "path": "Game.Godot/Scenes/Screens/StartScreen.tscn",
-      "explanation": "Standalone start screen with a centered start label.",
-      "parameter_guidance": "Preserve StartScreen.cs attachment and root node structure.",
-      "modification_impact": "Changes start screen presentation."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/UI/CharacterSelect.tscn",
-      "path": "Game.Godot/Scenes/UI/CharacterSelect.tscn",
-      "explanation": "Character selection scene with Warrior, locked characters, summaries, and confirmation.",
-      "parameter_guidance": "Keep character buttons, lock labels, summary labels, and confirmation path names stable.",
-      "modification_impact": "Changes character selection UI and displayed character information."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/UI/DifficultySelect.tscn",
-      "path": "Game.Godot/Scenes/UI/DifficultySelect.tscn",
-      "explanation": "Difficulty selection scene with options, description, and confirmation.",
-      "parameter_guidance": "Preserve OptionButton and confirm node paths consumed by DifficultySelect.cs.",
-      "modification_impact": "Changes difficulty selection presentation and interaction."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/UI/HUD.tscn",
-      "path": "Game.Godot/Scenes/UI/HUD.tscn",
-      "explanation": "Shared HUD showing score, health, gold, difficulty, and run summary metadata.",
-      "parameter_guidance": "Keep labels and summary panel paths aligned with HUD.cs.",
-      "modification_impact": "Changes persistent gameplay status and run-summary display."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/UI/MainMenu.tscn",
-      "path": "Game.Godot/Scenes/UI/MainMenu.tscn",
-      "explanation": "Main menu scene for new run, continue, settings, quit, and blocked-continue dialogs.",
-      "parameter_guidance": "Preserve button and dialog node paths used by MainMenu.cs.",
-      "modification_impact": "Changes primary menu navigation and continue handling UI."
-    },
-    {
-      "id": "scene:115:Game.Godot/Scenes/UI/SettingsPanel.tscn",
-      "path": "Game.Godot/Scenes/UI/SettingsPanel.tscn",
-      "explanation": "Settings panel with volume, graphics, language, save, load, and close controls.",
-      "parameter_guidance": "Keep sliders, option buttons, and action button paths aligned with SettingsPanel.cs.",
-      "modification_impact": "Changes settings controls and their presentation."
-    },
-    {
-      "id": "cod:115:Game.Core/Services/EventBus.cs",
-      "path": "Game.Core/Services/EventBus.cs",
-      "explanation": "Core event-bus service candidate associated with cross-system event communication.",
-      "parameter_guidance": "Review event names and payload contracts before modifying publishers or subscribers.",
-      "modification_impact": "May alter communication between core systems and event-driven flows."
-    },
-    {
-      "id": "cod:115:Game.Godot/Adapters/EventBusAdapter.cs",
-      "path": "Game.Godot/Adapters/EventBusAdapter.cs",
-      "explanation": "Godot adapter candidate bridging core event-bus behavior into the engine layer.",
-      "parameter_guidance": "Keep adapter mappings consistent with core event contracts.",
-      "modification_impact": "May change propagation of core events into Godot scenes."
-    },
-    {
-      "id": "cod:115:Game.Godot/Examples/Components/Modal.cs",
-      "path": "Game.Godot/Examples/Components/Modal.cs",
-      "explanation": "Script candidate controlling the example modal component.",
-      "parameter_guidance": "Preserve referenced modal node paths and signal behavior.",
-      "modification_impact": "Changes example modal logic."
-    },
-    {
-      "id": "cod:115:Game.Godot/Examples/Components/Toast.cs",
-      "path": "Game.Godot/Examples/Components/Toast.cs",
-      "explanation": "Script candidate controlling the example toast component and timer.",
-      "parameter_guidance": "Keep label and timer lookups compatible with Toast.tscn.",
-      "modification_impact": "Changes example toast logic and timing."
-    },
-    {
-      "id": "cod:115:Game.Godot/Examples/Screens/DemoScreen.cs",
-      "path": "Game.Godot/Examples/Screens/DemoScreen.cs",
-      "explanation": "Script candidate driving the example demo screen interactions.",
-      "parameter_guidance": "Preserve referenced demo buttons and component paths.",
-      "modification_impact": "Changes example demonstration behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Bootstrap/InputMapper.cs",
-      "path": "Game.Godot/Scripts/Bootstrap/InputMapper.cs",
-      "explanation": "Bootstrap script candidate for input mapping initialization.",
-      "parameter_guidance": "Keep action names synchronized with project input definitions and consumers.",
-      "modification_impact": "May change keyboard or controller input behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Demo/GameEngineDemo.cs",
-      "path": "Game.Godot/Scripts/Demo/GameEngineDemo.cs",
-      "explanation": "Demo script candidate for engine demonstration behavior.",
-      "parameter_guidance": "Modify only with awareness of Main.tscn demo wiring.",
-      "modification_impact": "Changes demo functionality attached to the main scene."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Main.gd",
-      "path": "Game.Godot/Scripts/Main.gd",
-      "explanation": "Main runtime script candidate loading data, assets, and coordinating application flow.",
-      "parameter_guidance": "Preserve resource paths and startup sequencing when changing loaders or navigation.",
-      "modification_impact": "Can affect startup, data loading, navigation, asset selection, and reward flow."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Navigation/ScreenNavigator.cs",
-      "path": "Game.Godot/Scripts/Navigation/ScreenNavigator.cs",
-      "explanation": "Navigation script candidate managing screen transitions.",
-      "parameter_guidance": "Keep screen identifiers and route-owned return behavior consistent with callers.",
-      "modification_impact": "Changes screen transitions and return paths."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Reward/RewardEntryModifierPipelineBridge.cs",
-      "path": "Game.Godot/Scripts/Reward/RewardEntryModifierPipelineBridge.cs",
-      "explanation": "Reward integration script candidate bridging reward entries with modifier processing.",
-      "parameter_guidance": "Preserve reward entry contracts and modifier ordering.",
-      "modification_impact": "May change reward offer mutation and confirmation results."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/RewardScene.gd",
-      "path": "Game.Godot/Scripts/RewardScene.gd",
-      "explanation": "Reward scene script handling reward display, selection, confirmation, skipping, and return flow.",
-      "parameter_guidance": "Keep scene node paths, reward IDs, and route-owned return logic synchronized.",
-      "modification_impact": "Directly changes reward writeback, skip behavior, and navigation."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Screens/SettingsScreen.cs",
-      "path": "Game.Godot/Scripts/Screens/SettingsScreen.cs",
-      "explanation": "Settings screen controller candidate.",
-      "parameter_guidance": "Preserve SettingsScreen.tscn node references and back navigation contract.",
-      "modification_impact": "Changes settings screen interaction."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/Screens/StartScreen.cs",
-      "path": "Game.Godot/Scripts/Screens/StartScreen.cs",
-      "explanation": "Start screen controller candidate.",
-      "parameter_guidance": "Keep start scene node references valid.",
-      "modification_impact": "Changes start screen behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/CharacterSelect.cs",
-      "path": "Game.Godot/Scripts/UI/CharacterSelect.cs",
-      "explanation": "Character selection controller candidate.",
-      "parameter_guidance": "Keep character IDs, localization keys, and scene node paths aligned.",
-      "modification_impact": "Changes character selection and confirmation flow."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/CombatScene.cs",
-      "path": "Game.Godot/Scripts/UI/CombatScene.cs",
-      "explanation": "Combat controller candidate loading combat data, handling cards, enemies, HUD, and transitions.",
-      "parameter_guidance": "Preserve combat contracts, resource paths, and node lookups.",
-      "modification_impact": "Can change combat rules presentation, input, reward transition, and route return behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/DifficultySelect.cs",
-      "path": "Game.Godot/Scripts/UI/DifficultySelect.cs",
-      "explanation": "Difficulty selection controller candidate.",
-      "parameter_guidance": "Keep option values, descriptions, and confirmation navigation consistent.",
-      "modification_impact": "Changes difficulty selection behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/EventScene.cs",
-      "path": "Game.Godot/Scripts/UI/EventScene.cs",
-      "explanation": "Event controller candidate handling option selection, effects, feedback, and map return.",
-      "parameter_guidance": "Preserve event IDs, effect contracts, localization keys, and return route.",
-      "modification_impact": "Changes event resolution and navigation."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/HUD.cs",
-      "path": "Game.Godot/Scripts/UI/HUD.cs",
-      "explanation": "HUD controller candidate updating persistent status and run summary fields.",
-      "parameter_guidance": "Keep HUD node paths and stored summary metadata contracts stable.",
-      "modification_impact": "Changes runtime status display and settlement summary updates."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/MainMenu.cs",
-      "path": "Game.Godot/Scripts/UI/MainMenu.cs",
-      "explanation": "Main menu controller candidate handling new run, continue, settings, quit, and dialogs.",
-      "parameter_guidance": "Preserve menu node paths and navigation destinations.",
-      "modification_impact": "Changes primary application navigation and save/continue behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/MapScene.cs",
-      "path": "Game.Godot/Scripts/UI/MapScene.cs",
-      "explanation": "Map controller candidate loading Act 1 configuration and routing node selections.",
-      "parameter_guidance": "Keep route node IDs, scene destinations, and map node paths synchronized.",
-      "modification_impact": "Changes route display, node selection, and progression."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/RestScene.gd",
-      "path": "Game.Godot/Scripts/UI/RestScene.gd",
-      "explanation": "Rest controller candidate handling rest options, upgrade confirmation, and feedback.",
-      "parameter_guidance": "Preserve option IDs, target requirements, and node paths.",
-      "modification_impact": "Changes rest actions and return flow."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/SettingsLoader.cs",
-      "path": "Game.Godot/Scripts/UI/SettingsLoader.cs",
-      "explanation": "Settings loading controller candidate.",
-      "parameter_guidance": "Keep settings keys and panel references compatible with persisted settings data.",
-      "modification_impact": "Changes settings initialization and restoration."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/SettingsPanel.cs",
-      "path": "Game.Godot/Scripts/UI/SettingsPanel.cs",
-      "explanation": "Settings panel controller candidate handling volume, graphics, language, save, load, and close.",
-      "parameter_guidance": "Preserve control node paths and settings key contracts.",
-      "modification_impact": "Changes settings editing and persistence behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/SettlementScene.gd",
-      "path": "Game.Godot/Scripts/UI/SettlementScene.gd",
-      "explanation": "Settlement controller candidate presenting run outcome and return navigation.",
-      "parameter_guidance": "Keep summary metadata fields and return control wiring stable.",
-      "modification_impact": "Changes end-of-run display and return behavior."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/ShopScene.cs",
-      "path": "Game.Godot/Scripts/UI/ShopScene.cs",
-      "explanation": "Shop controller candidate handling offers, purchases, services, feedback, and leaving.",
-      "parameter_guidance": "Keep offer IDs, prices, service targets, and node paths consistent with shop data.",
-      "modification_impact": "Changes shop transactions, service behavior, and navigation."
-    },
-    {
-      "id": "cod:115:Game.Godot/Scripts/UI/ThemeApplier.cs",
-      "path": "Game.Godot/Scripts/UI/ThemeApplier.cs",
-      "explanation": "Theme application controller candidate for runtime UI styling.",
-      "parameter_guidance": "Preserve theme resource references and application timing.",
-      "modification_impact": "Changes runtime theme application across UI scenes."
+      "explanation": "提供奖励界面及确认、跳过操作使用的中文文本资源。实现 UI 回写和跳过流程时，需要确保中文本地化键与英文资源保持可用。",
+      "parameter_guidance": "该资源没有可用参数指针；通过现有本地化键引用文本，不应在任务说明中推断未列出的字段。",
+      "modification_impact": "修改文本会改变中文奖励界面的按钮、提示和反馈内容，但不会改变奖励状态或路由行为。",
+      "parameters": []
     }
   ]
 }
