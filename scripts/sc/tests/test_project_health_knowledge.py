@@ -13,7 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/python'))
 from _project_health_tasks import task_details, task_page, attach_task_scenes, scene_bindings
 from _project_health_http import handler_factory
-from project_health_knowledge import safe_file, load_config, read_json, write_json
+from project_health_knowledge import safe_file, load_config, query, read_json, write_json
 from impact_analyzer import ImpactAnalyzer, SymbolIndex
 from project_health_knowledge import DEFAULT_CONFIG, scan, base_dir, validate_config
 from project_health_knowledge import apply_runtime_eligibility, apply_runtime_results
@@ -600,6 +600,164 @@ class HttpTests(unittest.TestCase):
 
         self.assertEqual(validated['source_path_bindings']['product_requirements'], '')
         self.assertEqual(validated['source_paths'], ['custom/tasks'])
+
+
+class ActionableSearchTests(unittest.TestCase):
+    def make_state(self):
+        config = 'Game.Core/Data/m1-warrior-starting-deck.json'
+        reader = 'Game.Core/Services/WarriorStartingDeckService.cs'
+        test = 'Game.Core.Tests/Services/WarriorStartingDeckServiceTests.cs'
+        reward_config = 'Game.Core/Data/reward-pools.json'
+        save_code = 'Game.Core/Save/SaveResumeService.cs'
+        tasks = [
+            {'task': {'id': 24, 'title': 'Implement Warrior starting deck with 10 cards',
+                      'status': 'done', 'details': f'Refs: {reader} {test}'},
+             'mappings': {}, 'godot': {'scenes': []}},
+            {'task': {'id': 95, 'title': 'Seed CombatService runtime from the Warrior starting deck',
+                      'status': 'done', 'details': f'Refs: {reader} {test}'},
+             'mappings': {}, 'godot': {'scenes': []}},
+            {'task': {'id': 115, 'title': 'Resolve Reward card selection', 'status': 'done',
+                      'details': f'Refs: {reward_config}'},
+             'mappings': {}, 'godot': {'scenes': []}},
+            {'task': {'id': 32, 'title': 'Enforce save resume determinism', 'status': 'done',
+                      'details': f'Refs: {save_code}'},
+             'mappings': {}, 'godot': {'scenes': []}},
+        ]
+        sources = {
+            config: '{"deck_id":"deck.warrior.m1.starting","cards":[]}',
+            reader: f'const string Path = "{config}";',
+            test: 'WarriorStartingDeckService loads the Warrior starting deck.',
+            reward_config: '{"reward_pool_id":"reward.card.selection"}',
+            save_code: 'class SaveResumeService {}',
+        }
+        return {
+            'revision': 'a' * 40, 'tasks': tasks, 'sources': sources,
+            'file_manifest': sorted(sources), 'gdd_files': [],
+            'config': {'query_aliases': {}},
+            'policies': {'policies': [{'consumer': 'repository-session'}]},
+            'projections': {'projections': [{'consumer': 'repository-session',
+                                             'eligible_module_ids': []}]},
+            'catalog': {},
+        }
+
+    def run_query(self, root, state, text):
+        with mock.patch('project_health_knowledge.locate', return_value={'candidates': []}), \
+             mock.patch('project_health_knowledge.ImpactAnalyzer.from_exploratory_sources',
+                        return_value=None):
+            return query(root, state, {'query': text})
+
+    def test_action_query_returns_tasks_config_reader_and_test_in_top_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.run_query(Path(tmp), self.make_state(), 'Warrior starter deck')
+
+        top = result['actionable_results']['top']
+        self.assertTrue(any(item.get('task_id') in {'24', '95'} for item in top))
+        self.assertTrue(any(item.get('path', '').endswith('m1-warrior-starting-deck.json') for item in top))
+        self.assertTrue(any(item.get('path', '').endswith('WarriorStartingDeckService.cs')
+                            for item in top))
+        self.assertTrue(any(item.get('kind') == 'test' for item in top))
+        groups = result['actionable_results']
+        reader = next(item for item in groups['code']['items']
+                      if item['path'].endswith('WarriorStartingDeckService.cs'))
+        self.assertEqual(reader['evidence_strength'], 'direct')
+        deck = next(item for item in groups['configs']['items']
+                    if item['path'].endswith('m1-warrior-starting-deck.json'))
+        self.assertEqual(deck['evidence_strength'], 'direct')
+        self.assertTrue(any(item['path'].endswith('WarriorStartingDeckServiceTests.cs')
+                            for item in groups['tests']['items']))
+        self.assertIn('knowledge', result)
+        self.assertIn('impact_targets', result)
+
+    def test_exact_config_path_is_first_and_preserves_traceable_relations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.run_query(Path(tmp), self.make_state(),
+                                    'Game.Core/Data/m1-warrior-starting-deck.json')
+
+        configs = result['actionable_results']['configs']['items']
+        self.assertEqual(configs[0]['path'], 'Game.Core/Data/m1-warrior-starting-deck.json')
+        self.assertEqual(configs[0]['evidence_strength'], 'direct')
+        self.assertFalse(any(item['evidence_strength'] == 'inferred'
+                             for item in result['actionable_results']['top']))
+        self.assertTrue(result['actionable_results']['tasks']['items'])
+        self.assertTrue(result['actionable_results']['code']['items'])
+        self.assertTrue(result['actionable_results']['tests']['items'])
+
+    def test_alias_query_variant_can_produce_actionable_results(self):
+        state = self.make_state()
+        state['config']['query_aliases'] = {'奖励': ['Reward']}
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.run_query(Path(tmp), state, '奖励')
+
+        self.assertEqual(result['queries'], ['奖励', 'Reward'])
+        self.assertTrue(result['actionable_results']['tasks']['items'])
+
+    def test_domain_queries_prioritize_their_domain_without_deck_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reward = self.run_query(Path(tmp), self.make_state(), 'Reward card selection')
+            save = self.run_query(Path(tmp), self.make_state(), 'save resume determinism')
+
+        self.assertEqual(reward['actionable_results']['tasks']['items'][0]['task_id'], '115')
+        self.assertEqual(save['actionable_results']['tasks']['items'][0]['task_id'], '32')
+        for result in (reward, save):
+            self.assertFalse(any('warrior-starting-deck' in item.get('path', '')
+                                 for item in result['actionable_results']['top']))
+
+    def test_language_mismatch_returns_empty_action_groups_and_executed_query(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.run_query(Path(tmp), self.make_state(), '战士初始卡组')
+
+        self.assertEqual(result['queries'], ['战士初始卡组'])
+        for group in ('tasks', 'configs', 'code', 'tests'):
+            self.assertEqual(result['actionable_results'][group]['items'], [])
+
+    def test_stale_snapshot_reports_both_revisions_without_disabling_results(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch('project_health_knowledge.git', return_value='b' * 40):
+            result = self.run_query(Path(tmp), self.make_state(), 'Warrior starter deck')
+
+        freshness = result['snapshot_freshness']
+        self.assertTrue(freshness['stale'])
+        self.assertEqual(freshness['snapshot_revision'], 'a' * 40)
+        self.assertEqual(freshness['current_revision'], 'b' * 40)
+        self.assertTrue(result['actionable_results']['top'])
+
+    def test_action_query_bounds_expensive_task_navigation_expansion(self):
+        state = self.make_state()
+        state['tasks'] = [
+            {'task': {'id': task_id, 'title': f'Warrior starter deck variant {task_id}',
+                      'status': 'done'}, 'mappings': {}, 'godot': {'scenes': []}}
+            for task_id in range(1, 13)
+        ]
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch('project_health_knowledge.locate', return_value={'candidates': []}), \
+             mock.patch('project_health_knowledge.ImpactAnalyzer.from_exploratory_sources',
+                        return_value=None), \
+             mock.patch('project_health_knowledge.build_navigation',
+                        return_value={'configs': [], 'code': [], 'tests': []}) as navigation:
+            query(Path(tmp), state, {'query': 'Warrior starter deck'})
+
+        self.assertLessEqual(navigation.call_count, 4)
+
+    def test_direct_path_match_sorts_before_higher_scored_inferred_navigation(self):
+        state = self.make_state()
+        state['file_manifest'] = ['Game.Core/Data/m1-warrior-starting-deck.json']
+        inferred = {'path': 'Game.Core/Data/unrelated-config.json', 'focus': 'related',
+                    'evidence_kind': 'static_candidate'}
+        inferred_code = {'path': 'Game.Core/Services/UnrelatedService.cs', 'focus': 'related',
+                         'evidence_kind': 'static_candidate'}
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch('project_health_knowledge.locate', return_value={'candidates': []}), \
+             mock.patch('project_health_knowledge.ImpactAnalyzer.from_exploratory_sources',
+                        return_value=None), \
+             mock.patch('project_health_knowledge.build_navigation',
+                        return_value={'configs': [inferred], 'code': [inferred_code], 'tests': []}):
+            result = query(Path(tmp), state, {'query': 'Warrior starter deck'})
+
+        configs = result['actionable_results']['configs']['items']
+        self.assertEqual(configs[0]['path'], 'Game.Core/Data/m1-warrior-starting-deck.json')
+        self.assertEqual(configs[0]['evidence_strength'], 'direct')
+        self.assertFalse(any(item['evidence_strength'] == 'inferred'
+                             for item in result['actionable_results']['top']))
 
 
 if __name__ == '__main__':

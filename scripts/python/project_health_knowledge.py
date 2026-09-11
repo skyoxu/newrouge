@@ -284,6 +284,175 @@ def status(root: Path, state: dict) -> dict:
     return result
 
 
+ACTION_GROUP_LIMIT = 8
+ACTION_NAVIGATION_LIMIT = 4
+
+
+def _search_terms(text: str) -> set[str]:
+    """Return small deterministic search terms with light English normalization."""
+    result = set()
+    separated = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)
+    for value in re.findall(r'[\w]+', separated.casefold(), flags=re.UNICODE):
+        if len(value) <= 1:
+            continue
+        if value.endswith('ing') and len(value) > 5:
+            value = value[:-3]
+        elif value.endswith('er') and len(value) > 5:
+            value = value[:-2]
+        elif value.endswith('s') and len(value) > 4:
+            value = value[:-1]
+        result.add(value)
+    return result
+
+
+def _term_score(text: str, needles: set[str]) -> tuple[int, int]:
+    haystack = _search_terms(text)
+    matched = len(haystack & needles)
+    return matched, len(needles)
+
+
+def _snapshot_freshness(root: Path, revision: str | None) -> dict:
+    try:
+        current = git(root, 'rev-parse', 'HEAD')
+    except (RuntimeError, OSError, subprocess.SubprocessError):
+        current = None
+    stale = bool(current and revision and current != revision)
+    return {
+        'stale': stale,
+        'snapshot_revision': revision,
+        'current_revision': current,
+        'message': ('Snapshot is stale; results describe the scanned revision.' if stale
+                    else 'Snapshot matches the current revision.' if current == revision
+                    else 'Snapshot freshness could not be determined.'),
+    }
+
+
+def _action_item(kind: str, path: str | None, score: int, strength: str,
+                 reason: str, task: dict | None = None) -> dict:
+    item = {'kind': kind, 'score': score, 'evidence_strength': strength,
+            'reason': reason}
+    if path:
+        item['path'] = path
+    if task:
+        item['task_id'] = str(task['id'])
+        item['title'] = task.get('title', '')
+        item['status'] = task.get('status')
+    return item
+
+
+def _actionable_results(root: Path, state: dict, queries: list[str]) -> dict:
+    query_text = ' '.join(queries)
+    query_needles = [_search_terms(query) for query in queries]
+    query_needles = [needles for needles in query_needles if needles]
+    needles = set().union(*query_needles) if query_needles else set()
+
+    def best_score(text: str) -> tuple[int, int]:
+        """Score against each query variant so aliases do not dilute matches."""
+        scores = [_term_score(text, terms) for terms in query_needles]
+        return max(scores, key=lambda score: (score[0] == score[1], score[0], -score[1]),
+                   default=(0, 0))
+
+    normalized_query = query_text.casefold().replace('\\', '/')
+
+    def path_is_explicit(path: str) -> bool:
+        candidate = path.casefold().replace('\\', '/')
+        boundary = r'[a-z0-9_]'
+        pattern = rf'(?<!{boundary}){re.escape(candidate)}(?!{boundary})'
+        return re.search(pattern, normalized_query) is not None
+
+    exact_paths = {path for path in state.get('file_manifest', [])
+                   if path_is_explicit(path)}
+    task_candidates = []
+    for detail in state.get('tasks', []):
+        task = detail.get('task', {})
+        searchable = json.dumps({'task': task, 'mappings': detail.get('mappings', {})},
+                                ensure_ascii=False)
+        matched, total = best_score(searchable)
+        exact_task = re.search(r'\btask\s*#?\s*' + re.escape(str(task.get('id'))) + r'\b',
+                               query_text, flags=re.IGNORECASE)
+        if exact_task or (matched and (matched == total or matched >= min(2, total))):
+            title_matched, _ = best_score(str(task.get('title', '')))
+            score = 1000 if exact_task else 500 + matched * 40 + title_matched * 15
+            task_candidates.append((score, detail))
+    task_candidates.sort(key=lambda row: (-row[0], int(row[1]['task']['id'])))
+    task_candidates = task_candidates[:16]
+
+    groups = {name: {} for name in ('tasks', 'configs', 'code', 'tests')}
+    strength_rank = {'direct': 2, 'confirmed': 1, 'inferred': 0}
+
+    def put(group: str, key: str, item: dict) -> None:
+        current = groups[group].get(key)
+        if (current is None
+                or strength_rank[item['evidence_strength']] > strength_rank[current['evidence_strength']]
+                or (item['evidence_strength'] == current['evidence_strength']
+                    and item['score'] > current['score'])):
+            groups[group][key] = item
+
+    for score, detail in task_candidates:
+        task = detail['task']
+        put('tasks', str(task['id']), _action_item(
+            'task', None, score, 'direct', 'Task title or definition matches the query.', task))
+    for score, detail in task_candidates[:ACTION_NAVIGATION_LIMIT]:
+        task = detail['task']
+        navigation = build_navigation(detail, state)
+        task_id = str(task['id'])
+        for group, output_kind in (('configs', 'config'), ('code', 'code'), ('tests', 'test')):
+            for nav_item in navigation.get(group, []):
+                path = nav_item['path']
+                focus = nav_item.get('focus', 'core')
+                strength = ('confirmed' if focus == 'core' and
+                            nav_item.get('evidence_kind') != 'static_candidate' else 'inferred')
+                relation_score = score - (35 if strength == 'confirmed' else 180)
+                direct, _ = best_score(path)
+                if path in exact_paths:
+                    relation_score = 1200
+                    strength = 'direct'
+                else:
+                    relation_score += direct * 30
+                item = _action_item(output_kind, path, relation_score, strength,
+                                    f'Linked through task {task_id} navigation evidence.')
+                item['related_task_ids'] = [task_id]
+                put(group, path, item)
+
+    source_groups = (('configs', 'config', CONFIG_SUFFIXES),
+                     ('code', 'code', {'.cs', '.gd'}),
+                     ('tests', 'test', {'.cs', '.gd'}))
+    for path in state.get('file_manifest', []):
+        suffix = PurePosixPath(path).suffix.lower()
+        for group, kind, suffixes in source_groups:
+            if suffix not in suffixes:
+                continue
+            if group == 'tests' and not path.startswith(('Game.Core.Tests/', 'Tests.Godot/')):
+                continue
+            if group == 'code' and not path.startswith(('Game.Core/', 'Game.Godot/')):
+                continue
+            if group == 'configs' and not path.startswith(('Game.Core/', 'Game.Godot/')):
+                continue
+            matched, total = best_score(path)
+            if path in exact_paths:
+                put(group, path, _action_item(kind, path, 1400, 'direct',
+                                              'Exact scanned path matches the query.'))
+            elif total and matched == total:
+                put(group, path, _action_item(kind, path, 420 + matched * 20, 'direct',
+                                              'Scanned path matches all query terms.'))
+
+    ordered_groups = {}
+    kind_order = {'task': 0, 'config': 1, 'code': 2, 'test': 3}
+    for name in ('tasks', 'configs', 'code', 'tests'):
+        items = sorted(groups[name].values(), key=lambda item: (
+            -strength_rank[item['evidence_strength']], -item['score'],
+            kind_order[item['kind']], item.get('path', ''), item.get('task_id', '')))
+        visible = items[:ACTION_GROUP_LIMIT]
+        ordered_groups[name] = {'items': visible, 'total': len(items),
+                                'truncated': max(0, len(items) - len(visible))}
+    top = []
+    for name, limit in (('tasks', 2), ('configs', 1), ('code', 1), ('tests', 1)):
+        evidenced = [item for item in ordered_groups[name]['items']
+                     if item['evidence_strength'] != 'inferred']
+        top.extend(evidenced[:limit])
+    return {**ordered_groups, 'top': top, 'group_limit': ACTION_GROUP_LIMIT}
+
+
 def query(root: Path, state: dict, request: dict) -> dict:
     query_text = request.get('query')
     if not isinstance(query_text, str) or not query_text.strip() or len(query_text) > 2000:
@@ -326,11 +495,14 @@ def query(root: Path, state: dict, request: dict) -> dict:
         preview = analyzer.explore(request['target']) if analyzer and request.get('target') else None
     except ImpactIndexError as exc:
         preview = {'status': 'blocked', 'code': exc.code, 'reason': exc.reason, 'handoff_eligible': False}
+    freshness = _snapshot_freshness(root, state['revision'])
     result = {'status': 'exploratory', 'handoff_eligible': False, 'revision': state['revision'],
               'queries': queries, 'consumer': consumer, 'knowledge': list(candidates.values()),
               'gdd_supplements': supplemental, 'impact_targets': targets[:80],
               'impact_target_total': len(targets), 'impact_preview': preview,
               'impact_skipped_methods': analyzer.resolver.symbol_index.skipped_methods if analyzer else [],
+              'actionable_results': _actionable_results(root, state, queries),
+              'snapshot_freshness': freshness,
               'next_step': 'Select an exact Impact target. Formal handoff requires existing KCP accept/freeze and analyze_impact CLI.'}
     evidence = base_dir(root) / 'queries' / (uuid.uuid4().hex + '.json')
     write_json(evidence, result)

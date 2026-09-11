@@ -287,9 +287,37 @@ async function loadStatus() {
   for(const file of state.gdd_files) {const p=document.createElement('p'); if(file.available) p.append(sourceLink(file.path)); else p.textContent=file.path+' — missing or unsupported at main';el('gdds').append(p);}
   await loadTasks(currentPage);
 }
+function actionEntry(item) {
+  const row=document.createElement('p');row.className='action-entry';
+  if(item.kind==='task') {
+    row.append(button(`Task ${item.task_id} · ${item.title}`,async()=>renderTaskDetail(await api('task?id='+encodeURIComponent(item.task_id)))));
+  } else {
+    row.append(sourceLink(item.path));
+  }
+  const evidence=document.createElement('span');evidence.textContent=`${item.evidence_strength} · ${item.reason}`;
+  row.append(evidence);return row;
+}
+function renderActionable(result) {
+  const data=result.actionable_results;
+  const secondary=el('secondary-actionable');secondary.replaceChildren();let secondaryCount=0;
+  for(const [group,id] of [['tasks','action-tasks'],['configs','action-configs'],['code','action-code'],['tests','action-tests']]) {
+    const target=el(id);target.replaceChildren();
+    const primary=data[group].items.filter(item=>item.evidence_strength!=='inferred');
+    const weak=data[group].items.filter(item=>item.evidence_strength==='inferred');
+    if(primary.length) primary.forEach(item=>target.append(actionEntry(item)));
+    else {const empty=document.createElement('p');empty.className='empty-result';empty.textContent='No evidenced result in this group.';target.append(empty);}
+    weak.forEach(item=>{const wrapper=document.createElement('div');wrapper.className='secondary-entry';wrapper.append(actionEntry(item));secondary.append(wrapper);secondaryCount++;});
+    el(id+'-count').textContent=`${data[group].total} found · ${data[group].truncated} not shown`;
+  }
+  el('secondary-summary').textContent=`Lower-confidence results (${secondaryCount})`;
+  el('secondary-actionable').hidden=secondaryCount===0;
+}
 async function search(target) {
   const result = await api('query',{query:el('query').value,consumer:el('consumer').value,...(target ? {target} : {})});
   el('results').hidden=false; el('queries').textContent='Executed queries: '+result.queries.join(' | ');
+  const freshness=result.snapshot_freshness;el('snapshot-warning').hidden=!freshness.stale;
+  el('snapshot-warning').textContent=freshness.stale?`Snapshot is stale. Results describe ${freshness.snapshot_revision}; current HEAD is ${freshness.current_revision}.`:'';
+  renderActionable(result);
   el('knowledge').replaceChildren(); for(const hit of result.knowledge) {const p=document.createElement('p');p.append(sourceLink(hit.path),` · line ${hit.line_start} · ${hit.matched_query}`);el('knowledge').append(p);}
   el('supplements').replaceChildren();for(const hit of result.gdd_supplements) el('supplements').append(sourceLink(hit.path));
   el('targets').replaceChildren();el('target-count').textContent=`${result.impact_target_total} candidate targets; showing at most 80. ${result.impact_skipped_methods.length} unsupported method signatures omitted (details in evidence JSON). Narrow the query if needed. Select one to analyze.`;
