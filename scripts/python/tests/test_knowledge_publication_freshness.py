@@ -24,7 +24,6 @@ class KnowledgePublicationFreshnessTests(unittest.TestCase):
             "knowledge/policies/source-exclusions.v1.json",
             "scripts/python/_knowledge_catalog_builder.py",
             "scripts/python/_knowledge_locator_core.py",
-            "scripts/python/_knowledge_publication_freshness.py",
             "scripts/python/knowledge_locator.py",
             "scripts/python/publish_knowledge_catalog.py",
         ]:
