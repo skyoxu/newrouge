@@ -9,8 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from _knowledge_locator_core import locate
-from _knowledge_publication_freshness import publication_freshness_reason
+from _knowledge_locator_core import locate, publication_freshness_reason
 
 
 def _canonical_hash(value: Any) -> str:
