@@ -12,6 +12,7 @@ from typing import Any
 
 from _knowledge_catalog_builder import GitSnapshot, build_layers
 from _knowledge_locator_core import locate
+from _knowledge_publication_freshness import publication_freshness_reason
 
 
 POLICY_PATH = Path("knowledge/policies/consumer-policies.v1.json")
@@ -28,6 +29,7 @@ CONTROL_PLANE_PATHS = (
     "knowledge/evaluation",
     "scripts/python/_knowledge_catalog_builder.py",
     "scripts/python/_knowledge_locator_core.py",
+    "scripts/python/_knowledge_publication_freshness.py",
     "scripts/python/publish_knowledge_catalog.py",
 )
 GENERATION_ARTIFACTS = (
@@ -217,9 +219,14 @@ def _validate_generation(root: Path, pointer: dict[str, Any], *, require_current
             raise PublicationBlocked(f"generation_artifact_hash_invalid:{name}")
         artifacts[name] = artifact
     if require_current_ref:
-        current = _git(root, "rev-parse", str(manifest.get("authority_ref")))
-        if current.returncode or current.stdout.strip() != manifest.get("main_commit"):
-            raise PublicationBlocked("authority_ref_moved")
+        reason = publication_freshness_reason(
+            root,
+            str(manifest.get("main_commit") or ""),
+            str(manifest.get("authority_ref") or ""),
+            artifacts["exclusions"],
+        )
+        if reason is not None:
+            raise PublicationBlocked(reason)
     return manifest, artifacts
 
 
