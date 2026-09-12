@@ -9,6 +9,7 @@ from _knowledge_catalog_builder import _eligible_source, _excluded, normalize_pa
 CONTROL_PLANE_INPUT_FILES = {
     "scripts/python/_knowledge_catalog_builder.py",
     "scripts/python/_knowledge_locator_core.py",
+    "scripts/python/_knowledge_publication_freshness.py",
     "scripts/python/publish_knowledge_catalog.py",
 }
 CONTROL_PLANE_INPUT_PREFIXES = (
