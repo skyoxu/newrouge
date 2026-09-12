@@ -11,8 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from _knowledge_catalog_builder import GitSnapshot, build_layers
-from _knowledge_locator_core import locate
-from _knowledge_publication_freshness import publication_freshness_reason
+from _knowledge_locator_core import locate, publication_freshness_reason
 
 
 POLICY_PATH = Path("knowledge/policies/consumer-policies.v1.json")
@@ -29,7 +28,6 @@ CONTROL_PLANE_PATHS = (
     "knowledge/evaluation",
     "scripts/python/_knowledge_catalog_builder.py",
     "scripts/python/_knowledge_locator_core.py",
-    "scripts/python/_knowledge_publication_freshness.py",
     "scripts/python/publish_knowledge_catalog.py",
 )
 GENERATION_ARTIFACTS = (
