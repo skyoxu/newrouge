@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from _knowledge_locator_core import locate
+from _knowledge_locator_core import locate, publication_freshness_reason
 
 
 def _canonical_hash(value: Any) -> str:
@@ -22,14 +22,13 @@ def _git_blob_hash(root: Path, commit: str, path: str) -> str | None:
     return hashlib.sha256(completed.stdout).hexdigest() if completed.returncode == 0 else None
 
 
-def _fresh(root: Path, catalog: dict[str, Any]) -> bool:
+def _fresh(root: Path, catalog: dict[str, Any], exclusions: dict[str, Any]) -> bool:
     snapshot = catalog.get("source_snapshot", {})
     ref = snapshot.get("ref")
     commit = snapshot.get("commit")
     if not isinstance(ref, str) or not isinstance(commit, str):
         return False
-    current = subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, encoding="utf-8", check=False)
-    if current.returncode or current.stdout.strip() != commit:
+    if publication_freshness_reason(root, commit, ref, exclusions) is not None:
         return False
     for source in snapshot.get("sources", []):
         if not isinstance(source, dict):
@@ -101,6 +100,7 @@ def main() -> int:
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     policies = json.loads(policy_path.read_text(encoding="utf-8"))
     projections = json.loads(projection_path.read_text(encoding="utf-8"))
+    exclusions = json.loads((root / "knowledge/policies/source-exclusions.v1.json").read_text(encoding="utf-8"))
     snapshot = catalog.get("source_snapshot", {})
     policy = next((item for item in policies.get("policies", []) if item.get("consumer") == request.get("consumer")), None)
     projection = next((item for item in projections.get("projections", []) if item.get("consumer") == request.get("consumer")), None)
@@ -117,7 +117,7 @@ def main() -> int:
         and projection_path == root / "knowledge/projections/consumer-projections.v1.json"
     )
     publication_ok = args.allow_unpublished_inputs or not canonical_paths or _publication_valid(root, catalog, policies, projections)
-    if policy is None or projection is None or not bindings_ok or not publication_ok or not _fresh(root, catalog):
+    if policy is None or projection is None or not bindings_ok or not publication_ok or not _fresh(root, catalog, exclusions):
         status, candidates = "blocked", []
     else:
         maximum = min(args.max_candidates, int(policy.get("max_candidates", args.max_candidates)))

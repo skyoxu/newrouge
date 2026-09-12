@@ -2,14 +2,27 @@
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
+import subprocess
+from pathlib import Path, PurePosixPath
 from typing import Any
+
+from _knowledge_catalog_builder import _eligible_source, _excluded, normalize_path
 
 POLICY_EXACT_PATH_BONUS = 128
 TASK_IDENTITY_BONUS = 256
 TASK_SOURCE_PREFIX = ".taskmaster/tasks/"
 TASK_VIEW_ID = re.compile(r"\b(?:GM|NG)-\d+\b", re.IGNORECASE)
 TASK_NUMBER = re.compile(r"\btask\s+(?:id\s*)?(\d+)\b", re.IGNORECASE)
+
+PUBLICATION_CONTROL_PLANE_INPUT_FILES = {
+    "scripts/python/_knowledge_catalog_builder.py",
+    "scripts/python/_knowledge_locator_core.py",
+    "scripts/python/publish_knowledge_catalog.py",
+}
+PUBLICATION_CONTROL_PLANE_INPUT_PREFIXES = (
+    "knowledge/policies/",
+    "knowledge/evaluation/",
+)
 
 
 def tokens(query: str) -> list[str]:
@@ -188,3 +201,79 @@ def locate(request: dict[str, Any], catalog: dict[str, Any], policy: dict[str, A
             })
     ordered = sorted(ranked.values(), key=lambda item: (-item[0], item[1]))
     return {"status": "matched" if ordered else "insufficient_match", "candidates": [item[2] for item in ordered[:max_candidates]]}
+
+
+def _publication_relevant(path: str, exclusions: dict[str, Any]) -> bool:
+    normalized = normalize_path(path)
+    if normalized in PUBLICATION_CONTROL_PLANE_INPUT_FILES:
+        return True
+    if normalized.startswith(PUBLICATION_CONTROL_PLANE_INPUT_PREFIXES):
+        return True
+    return _eligible_source(normalized) and not _excluded(normalized, exclusions)
+
+
+def publication_freshness_reason(
+    root: Path,
+    published_commit: str,
+    authority_ref: str,
+    exclusions: dict[str, Any],
+) -> str | None:
+    """Return why a publication is stale, or None when current authority inputs are equivalent.
+
+    Main may advance after publication without staling the catalog when all intervening changes
+    are outside Knowledge inputs. Generated publication outputs are intentionally not eligible
+    sources, so committing catalogs/indexes/projections/snapshots does not invalidate itself.
+    """
+    if not published_commit or not authority_ref:
+        return "authority_binding_invalid"
+
+    current = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--verify", authority_ref],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    if current.returncode:
+        return "authority_ref_unavailable"
+
+    published = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "-e", f"{published_commit}^{{commit}}"],
+        capture_output=True,
+        check=False,
+    )
+    if published.returncode:
+        return "published_commit_unavailable"
+
+    ancestor = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", published_commit, current.stdout.strip()],
+        capture_output=True,
+        check=False,
+    )
+    if ancestor.returncode != 0:
+        return "authority_ref_diverged"
+
+    changed = subprocess.run(
+        [
+            "git", "-C", str(root), "diff", "--no-renames", "--name-only", "-z",
+            published_commit, current.stdout.strip(),
+        ],
+        capture_output=True,
+        check=False,
+    )
+    if changed.returncode:
+        return "authority_diff_failed"
+
+    for raw in changed.stdout.split(b"\0"):
+        if not raw:
+            continue
+        try:
+            path = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return "authority_path_encoding_invalid"
+        try:
+            if _publication_relevant(path, exclusions):
+                return "authority_inputs_changed"
+        except ValueError:
+            return "authority_path_invalid"
+    return None
