@@ -4,6 +4,64 @@ from __future__ import annotations
 import argparse, json, subprocess, sys, time
 from pathlib import Path
 
+GODOT_PATH_SUFFIXES = ('.tscn', '.gd', '.cs', '.tres', '.res', '.json', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.wav', '.ogg', '.mp3')
+
+def _changed_paths(root: Path) -> set[str]:
+    try:
+        proc = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], cwd=root, text=True,
+                              encoding='utf-8', capture_output=True, check=False)
+        return {line.replace('\\', '/') for line in proc.stdout.splitlines() if line.strip()}
+    except OSError:
+        return set()
+
+def _capture_element_manifest(root: Path, task_id: str) -> dict:
+    latest = root / 'logs/ci/project-health-knowledge/latest.json'
+    state = json.loads(latest.read_text(encoding='utf-8')) if latest.exists() else {}
+    graph = state.get('scene_graph') or {}
+    links_path = root / 'docs/knowledge/generated/task-resource-links.json'
+    links = json.loads(links_path.read_text(encoding='utf-8')) if links_path.exists() else {'generated': []}
+    entries = [entry for entry in links.get('generated', []) if str(entry.get('task_id')) == str(task_id)]
+    elements = []
+    seen = set()
+    for entry in entries:
+        path = str(entry.get('path') or '').replace('\\', '/')
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        item = {'path': path, 'kind': entry.get('kind'), 'status': 'verified' if entry.get('confidence') == 'confirmed' else 'inferred', 'evidence': entry.get('evidence', [])}
+        if item['kind'] == 'scene' and path in graph.get('nodes', {}):
+            scene = graph['nodes'][path]
+            item['nodes'] = [{'path': f"{node.get('parent') or '.'}/{node.get('name') or '(unnamed)'}", 'type': node.get('type')} for node in scene.get('nodes', [])]
+            item['scripts'] = scene.get('functional_summary', {}).get('scripts', [])
+            item['events'] = scene.get('functional_summary', {}).get('events', [])
+        if item['kind'] in {'config', 'asset'}:
+            item['readers'] = entry.get('readers', [])
+        elements.append(item)
+    changed = _changed_paths(root)
+    linked = {item['path'] for item in elements}
+    for path in sorted(changed - linked):
+        if path.lower().endswith(GODOT_PATH_SUFFIXES):
+            kind = 'scene' if path.lower().endswith('.tscn') else 'script' if path.lower().endswith(('.gd', '.cs')) else 'resource'
+            elements.append({'path': path, 'kind': kind, 'status': 'unmapped', 'evidence': [{'source': 'git-diff'}]})
+    gaps = []
+    for item in elements:
+        if item['status'] == 'unmapped':
+            gaps.append({'severity': 'P1' if item['kind'] in {'scene', 'script'} else 'P2', 'path': item['path'], 'reason': 'Changed Godot element has no task resource binding.'})
+        elif item['kind'] in {'scene', 'asset', 'config'} and not any(e.get('focus') == 'core' for e in item.get('evidence', []) if isinstance(e, dict)):
+            gaps.append({'severity': 'P2', 'path': item['path'], 'reason': 'Resource is recorded but lacks confirmed semantic focus.'})
+    payload = {'schema_version': 'newrouge.chapter6-element-capture.v1', 'task_id': str(task_id), 'source_revision': state.get('revision'), 'elements': elements, 'documentation_gaps': gaps, 'blocking': False}
+    out = root / 'docs/knowledge/generated' / f'chapter6-task-{task_id}-elements.json'
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    gaps_out = root / 'docs/knowledge/generated' / f'chapter6-task-{task_id}-documentation-gaps.md'
+    lines = [f'# Chapter 6 documentation gaps: task {task_id}', '', 'Generated from deterministic scan. These gaps are non-blocking follow-up items.', '']
+    if gaps:
+        lines.extend(f"- [{gap['severity']}] `{gap['path']}`: {gap['reason']}" for gap in gaps)
+    else:
+        lines.append('- No documentation gaps detected.')
+    gaps_out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    return {'path': str(out.relative_to(root)).replace('\\', '/'), 'elements': len(elements), 'documentation_gaps': len(gaps), 'blocking': False}
+
 def _semantic_prompt_entries(entries: list[dict]) -> list[dict]:
     compact = []
     for entry in entries:
@@ -181,10 +239,11 @@ def run(root: Path, task_id: str, write_task_refs: bool = False, semantic: bool 
         steps.append({'command': command, 'returncode': proc.returncode, 'stdout': proc.stdout[-2000:], 'stderr': proc.stderr[-2000:]})
         if proc.returncode:
             return {'status': 'knowledge_capture_failed', 'task_id': task_id, 'stop_step': len(steps), 'steps': steps}
+    capture = _capture_element_manifest(root, task_id)
     if semantic:
         semantic_result = _semantic_enrich(root, task_id, llm_backend)
-        return {'status': 'knowledge_captured', 'task_id': task_id, 'semantic_status': semantic_result, 'steps': steps}
-    return {'status': 'knowledge_captured', 'task_id': task_id, 'steps': steps}
+        return {'status': 'knowledge_captured', 'task_id': task_id, 'capture': capture, 'semantic_status': semantic_result, 'steps': steps}
+    return {'status': 'knowledge_captured', 'task_id': task_id, 'capture': capture, 'steps': steps}
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(); parser.add_argument('--repo-root', type=Path, default=Path.cwd()); parser.add_argument('--task-id', required=True); parser.add_argument('--write-task-refs', action='store_true'); parser.add_argument('--semantic', action='store_true'); parser.add_argument('--llm-backend', default='codex-cli')

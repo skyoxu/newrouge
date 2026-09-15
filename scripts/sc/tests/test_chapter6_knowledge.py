@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/python'))
@@ -99,6 +100,19 @@ class Chapter6KnowledgeTests(unittest.TestCase):
             result = chapter6_knowledge.run(root, '18')
             self.assertEqual(result['status'], 'knowledge_capture_failed')
             self.assertEqual(result['stop_step'], 1)
+
+    def test_capture_element_manifest_records_inferred_and_unmapped_without_blocking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'logs/ci/project-health-knowledge').mkdir(parents=True)
+            (root / 'docs/knowledge/generated').mkdir(parents=True)
+            (root / 'logs/ci/project-health-knowledge/latest.json').write_text(json.dumps({'revision': 'r1', 'scene_graph': {}}), encoding='utf-8')
+            (root / 'docs/knowledge/generated/task-resource-links.json').write_text(json.dumps({'generated': [
+                {'task_id': '7', 'path': 'Game.Godot/Scenes/Main.tscn', 'kind': 'scene', 'confidence': 'confirmed', 'evidence': []}]}), encoding='utf-8')
+            result = chapter6_knowledge._capture_element_manifest(root, '7')
+            payload = json.loads((root / result['path']).read_text(encoding='utf-8'))
+            self.assertEqual(payload['elements'][0]['status'], 'verified')
+            self.assertFalse(payload['blocking'])
 
 if __name__ == '__main__':
     unittest.main()

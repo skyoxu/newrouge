@@ -1,5 +1,9 @@
 # Project Health: Knowledge + Impact
 
+## Godot 场景图投影
+
+Knowledge 页面提供只读 Godot 场景图。扫描从 `project.godot` 的 `application/run/main_scene` 开始，确定性解析 `.tscn`、`.cs`、`.gd` 与资源路径，结果绑定扫描 revision 并通过 `/api/knowledge/scene-graph` 提供。循环使用 visited 集合终止；动态加载标记为 `dynamic-unknown`，未确认入口标记为 `unreachable-candidate`，不等同于运行时绝对不可达。用户浏览不调用大模型、不执行游戏或修改源文件。页面支持场景树、未确认场景列表及 Node/脚本/资源详情。
+
 素材列表中的 PNG/JPEG/WebP 相对路径支持悬停预览与点击打开图片。图片接口按导航 revision 读取 Git blob，要求路径属于扫描素材清单，单图最大 16 MiB；目录摘要及其他格式暂不提供图片预览。任务 18（战斗场景 UI 与绑定）可在 `More associations → Assets` 查看卡图及敌人图线索。
 
 任务详情默认仅列出明确任务来源、映射场景、附着脚本及直接配置/素材引用。集成测试环境、间接依赖和共享 ID 候选保留在默认折叠的 `More associations`；完整 JSON 与解析限制位于 `Original task and evidence`。配置默认仅列有明确记录 ID 匹配的字段，无法定位记录时保留源码入口。节点属性及引用证据按需展开。运行状态、失败原因和验证按钮保持可见。
@@ -128,3 +132,7 @@ py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18 --write-task-ref
 该阶段依次刷新项目扫描、生成任务资源关联并校验 catalog。失败状态为 `knowledge_capture_failed`，可从该阶段恢复，不会伪装成任务运行时测试失败或通过。
 
 The production catalog lives under `docs/knowledge/**`; `logs/**` remains evidence only. Resource entries are revision-bound and may be `confirmed`, `inferred`, `unverified`, or `removed`. Taskmaster views should keep only lightweight entry references. The existing `knowledge/` control plane remains the publication authority for global indexes; this catalog is its project-resource input, not a replacement.
+
+### Chapter 6 element capture
+
+`chapter6-knowledge` also writes `docs/knowledge/generated/chapter6-task-<id>-elements.json` and a matching `documentation-gaps.md`. The manifest records changed or linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene entries include discovered nodes, attached scripts, and published events when available. Gaps are severity-ranked (`P1` for unbound scenes/scripts, `P2` for missing semantic focus) and are non-blocking; they provide the next documentation follow-up without requiring 100% coverage.
