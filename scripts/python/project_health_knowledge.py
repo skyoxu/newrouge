@@ -17,6 +17,7 @@ from _knowledge_catalog_builder import DirectorySnapshot, LocalMainSnapshot, bui
 from _knowledge_locator_core import locate, tokens
 from _project_health_tasks import attach_task_scenes, task_details, task_page, task_summary
 from _project_health_navigation import ASSET_SUFFIXES, CONFIG_SUFFIXES, build_navigation
+from _godot_scene_graph import build_scene_graph
 from impact_analysis_index import build_and_publish_index
 from impact_analysis_index import ImpactIndexError
 from impact_analyzer import ImpactAnalyzer
@@ -55,6 +56,60 @@ def write_json(path: Path, data) -> None:
     temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
     temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     os.replace(temporary, path)
+
+
+def build_godot_element_index(root: Path, scene_graph: dict, sources: dict, tasks: list[dict], previous: dict | None = None, file_manifest: list[str] | None = None) -> dict:
+    """Build a project-level, deterministic index of Godot elements and documentation gaps."""
+    task_text = [json.dumps(detail, ensure_ascii=False) for detail in tasks]
+    elements = []
+    scene_nodes = scene_graph.get('nodes', {}) if isinstance(scene_graph, dict) else {}
+    references = scene_graph.get('code_references', []) if isinstance(scene_graph, dict) else []
+    referenced_paths = {str(edge.get('target')) for edge in references if isinstance(edge, dict) and edge.get('target')}
+    for path, scene in sorted(scene_nodes.items()):
+        summary = scene.get('functional_summary', {})
+        status = 'verified' if scene.get('classification') == 'confirmed-reachable' else 'inferred'
+        elements.append({'path': path, 'kind': 'scene', 'status': status,
+                         'nodes': [{'path': f"{node.get('parent') or '.'}/{node.get('name') or '(unnamed)'}", 'type': node.get('type')} for node in scene.get('nodes', [])],
+                         'scripts': summary.get('scripts', []), 'events': summary.get('events', []),
+                         'task_ids': sorted({str(x.get('task', {}).get('id')) for x in tasks if path in json.dumps(x, ensure_ascii=False)})})
+    candidate_paths = set(sources)
+    candidate_paths.update(file_manifest or [])
+    for path in sorted(candidate_paths):
+        suffix = Path(path).suffix.lower()
+        if suffix not in ('.gd', '.cs', '.tres', '.res') and suffix not in CONFIG_SUFFIXES and suffix not in ASSET_SUFFIXES:
+            continue
+        if suffix == '.tscn':
+            continue
+        if suffix in ('.gd', '.cs') and not path.startswith('Game.Godot/'):
+            continue
+        if suffix not in ('.gd', '.cs') and not path.startswith('Game.Godot/') and path not in referenced_paths:
+            continue
+        kind = 'script' if suffix in ('.gd', '.cs') else 'config' if suffix in CONFIG_SUFFIXES or suffix in ('.tres', '.res') else 'asset'
+        related_ids = sorted({str(x.get('task', {}).get('id')) for x, text in zip(tasks, task_text) if path in text})
+        status = 'verified' if related_ids else 'unmapped'
+        elements.append({'path': path, 'kind': kind, 'status': status, 'task_ids': related_ids})
+    current = {item['path'] for item in elements}
+    old = {item.get('path') for item in (previous or {}).get('elements', [])
+           if item.get('path') and (str(item['path']).endswith('.tscn') or str(item['path']).startswith('Game.Godot/'))}
+    stale = [{'path': path, 'status': 'stale', 'reason': 'Element existed in the previous index but is absent from the current scan.'} for path in sorted(old - current)]
+    gaps = [{'severity': 'P1' if item['kind'] in {'scene', 'script'} else 'P2', 'path': item['path'], 'reason': 'Element has no verified task association.'} for item in elements if item['status'] == 'unmapped']
+    return {'schema_version': 'newrouge.godot-element-index.v1', 'source_revision': None, 'elements': elements, 'stale': stale, 'documentation_gaps': gaps, 'blocking': False}
+
+
+QUERY_EVIDENCE_LIMIT = 200
+
+
+def prune_query_evidence(root: Path, keep: int = QUERY_EVIDENCE_LIMIT) -> None:
+    directory = base_dir(root) / 'queries'
+    if not directory.exists():
+        return
+    files = sorted((p for p in directory.glob('*.json') if p.is_file()),
+                   key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in files[max(0, keep):]:
+        try:
+            path.unlink()
+        except OSError:
+            continue
 
 
 def read_json(path: Path):
@@ -147,7 +202,7 @@ def scan(root: Path) -> dict:
         required = ['.taskmaster/tasks/tasks.json', '.taskmaster/tasks/tasks_back.json',
                     '.taskmaster/tasks/tasks_gameplay.json', 'knowledge/policies/consumer-policies.v1.json',
                     'knowledge/policies/source-exclusions.v1.json', *config['gdd_paths']]
-        allowed = config['source_paths'] + config['gdd_paths'] + ['knowledge/policies']
+        allowed = config['source_paths'] + config['gdd_paths'] + ['knowledge/policies', 'project.godot']
         for prefix in config['source_paths'] + config['gdd_paths']:
             if not any(p == prefix or p.startswith(prefix.rstrip('/') + '/') for p in trusted.paths):
                 raise ValueError('Configured source does not exist: ' + prefix)
@@ -161,6 +216,8 @@ def scan(root: Path) -> dict:
         index = {'status': 'unavailable', 'reason': 'Impact index is not built by exploratory scan'}
         # Only tracked, bounded UTF-8 source files enter the investigation workspace.
         selected = {m['source_path'] for m in catalog['modules']}
+        if 'project.godot' in trusted.paths:
+            selected.add('project.godot')
         selected.update(config['gdd_paths'])
         selected.update(p for p in trusted.paths if p.startswith(('Game.Godot/', 'Game.Core/', 'Game.Core.Tests/', 'Tests.Godot/'))
                         and Path(p).suffix.lower() in ({'.tscn', '.cs', '.gd'} | CONFIG_SUFFIXES))
@@ -174,6 +231,15 @@ def scan(root: Path) -> dict:
                     pass
         details = task_details(trusted)
         attach_task_scenes(details, sources, config['task_scene_bindings'])
+        scene_graph = build_scene_graph(sources, details, known_paths=trusted.paths)
+        previous_index_path = root / 'docs/knowledge/catalog/godot-elements.json'
+        previous_index = read_json(previous_index_path) if previous_index_path.exists() else None
+        file_manifest = sorted(set(sources) | {p for p in trusted.paths
+                             if p.startswith(('Game.Core/', 'Game.Godot/', 'Tests.Godot/', 'Game.Core.Tests/'))
+                             and Path(p).suffix.lower() in ASSET_SUFFIXES})
+        godot_elements = build_godot_element_index(root, scene_graph, sources, details, previous_index, file_manifest)
+        godot_elements['source_revision'] = revision
+        write_json(previous_index_path, godot_elements)
         gdds = [{'path': p, 'available': p in sources, 'role': 'supplementary-design-source',
                  'sha256': trusted.digest(p) if p in sources else None}
                 for p in config['gdd_paths']]
@@ -183,10 +249,8 @@ def scan(root: Path) -> dict:
                   'snapshot': None, 'summary': task_summary(details), 'tasks': details,
                   'gdd_files': gdds, 'config': config, 'index': index,
                   'catalog': catalog, 'policies': policies, 'projections': projections,
-                  'sources': sources,
-                  'file_manifest': sorted(set(sources) | {p for p in trusted.paths
-                      if p.startswith(('Game.Core/', 'Game.Godot/', 'Tests.Godot/', 'Game.Core.Tests/'))
-                      and Path(p).suffix.lower() in ASSET_SUFFIXES}),
+                  'sources': sources, 'scene_graph': scene_graph, 'godot_elements': godot_elements,
+                  'file_manifest': file_manifest,
                   'publication': {'main_commit': publication.get('main_commit'),
                   'matches_scan': publication.get('main_commit') == revision,
                   'note': 'Exploratory catalogs are not published or frozen KCP authority.'}}
@@ -271,6 +335,13 @@ def status(root: Path, state: dict) -> dict:
         state['summary'] = task_summary(state['tasks'])
     result = {key: state.get(key) for key in ('schema_version', 'revision', 'scanned_at', 'branch',
                                               'summary', 'gdd_files', 'publication', 'config')}
+    graph = state.get('scene_graph', {})
+    result['scene_graph'] = {
+        'main_scene': graph.get('main_scene'),
+        'nodes': len(graph.get('nodes', {})),
+        'confirmed_reachable': sum(1 for n in graph.get('nodes', {}).values() if n.get('classification') == 'confirmed-reachable'),
+        'diagnostics': len(graph.get('diagnostics', [])),
+    }
     runtime_path = base_dir(root) / 'runtime' / 'latest.json'
     if runtime_path.exists():
         runtime = read_json(runtime_path)
@@ -463,6 +534,37 @@ def query(root: Path, state: dict, request: dict) -> dict:
             queries.extend(values)
     queries = list(dict.fromkeys(queries))[:12]
     consumer = request.get('consumer', 'repository-session')
+    if consumer == 'dictionary':
+        entries = (state.get('scene_graph') or {}).get('data_dictionary', {}).get('entries', {})
+        hits = []
+        for text in queries:
+            needles = _search_terms(text)
+            for path, entry in entries.items():
+                haystack = f"{path} {entry.get('description', '')}"
+                matched, total = _term_score(haystack, needles)
+                if matched and (matched == total or matched >= min(2, total)):
+                    hits.append((matched, path, text, entry))
+        unique = {}
+        for score, path, text, entry in sorted(hits, key=lambda item: (-item[0], item[1])):
+            unique.setdefault(path, {'path': path, 'line_start': 0, 'line_end': 0,
+                                     'matched_query': text, 'dictionary': entry,
+                                     'score': score})
+        result = {'status': 'exploratory', 'handoff_eligible': False, 'revision': state['revision'],
+                  'queries': queries, 'consumer': consumer, 'knowledge': list(unique.values()),
+                  'gdd_supplements': [], 'impact_targets': [], 'impact_target_total': 0,
+                  'impact_preview': None, 'impact_skipped_methods': [],
+                  'actionable_results': {'tasks': {'items': [], 'total': 0, 'truncated': 0},
+                                         'configs': {'items': [], 'total': 0, 'truncated': 0},
+                                         'code': {'items': [], 'total': 0, 'truncated': 0},
+                                         'tests': {'items': [], 'total': 0, 'truncated': 0}},
+                  'scene_graph': state.get('scene_graph', {}),
+                  'snapshot_freshness': _snapshot_freshness(root, state['revision']),
+                  'next_step': 'Dictionary results are based on the latest local snapshot.'}
+        evidence = base_dir(root) / 'queries' / (uuid.uuid4().hex + '.json')
+        write_json(evidence, result)
+        prune_query_evidence(root)
+        result['evidence_path'] = evidence.relative_to(root).as_posix()
+        return result
     policy = next((p for p in state['policies']['policies'] if p['consumer'] == consumer), None)
     projection = next((p for p in state['projections']['projections'] if p['consumer'] == consumer), None)
     if not policy or not projection:
@@ -502,10 +604,12 @@ def query(root: Path, state: dict, request: dict) -> dict:
               'impact_target_total': len(targets), 'impact_preview': preview,
               'impact_skipped_methods': analyzer.resolver.symbol_index.skipped_methods if analyzer else [],
               'actionable_results': _actionable_results(root, state, queries),
+              'scene_graph': state.get('scene_graph', {}),
               'snapshot_freshness': freshness,
               'next_step': 'Select an exact Impact target. Formal handoff requires existing KCP accept/freeze and analyze_impact CLI.'}
     evidence = base_dir(root) / 'queries' / (uuid.uuid4().hex + '.json')
     write_json(evidence, result)
+    prune_query_evidence(root)
     result['evidence_path'] = evidence.relative_to(root).as_posix()
     return result
 
@@ -578,6 +682,9 @@ def main(argv=None) -> int:
                 if links_path.exists():
                     links = read_json(links_path).get('generated', [])
                     result['resource_knowledge'] = [entry for entry in links if str(entry.get('task_id')) == str(args.task_id)]
+                capture_path = root / 'docs/knowledge/generated' / f'chapter6-task-{args.task_id}-elements.json'
+                if capture_path.exists():
+                    result['chapter6_capture'] = read_json(capture_path)
                 semantic_path = root / 'docs/knowledge/generated' / f'task-{args.task_id}-semantic.json'
                 if semantic_path.exists():
                     semantic = read_json(semantic_path)

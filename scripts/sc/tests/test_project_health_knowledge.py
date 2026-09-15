@@ -13,7 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/python'))
 from _project_health_tasks import task_details, task_page, attach_task_scenes, scene_bindings
 from _project_health_http import handler_factory
-from project_health_knowledge import safe_file, load_config, query, read_json, write_json
+from project_health_knowledge import safe_file, load_config, query, read_json, write_json, prune_query_evidence, build_godot_element_index
 from impact_analyzer import ImpactAnalyzer, SymbolIndex
 from project_health_knowledge import DEFAULT_CONFIG, scan, base_dir, validate_config
 from project_health_knowledge import apply_runtime_eligibility, apply_runtime_results
@@ -23,6 +23,14 @@ from project_health_runtime import _complete, _gameplay_tasks, _run_task, _runti
 
 
 class TasksTests(unittest.TestCase):
+    def test_godot_element_index_tracks_unmapped_and_stale_without_blocking(self):
+        graph = {'nodes': {'Game.Godot/Scenes/Main.tscn': {'classification': 'confirmed-reachable', 'nodes': [], 'functional_summary': {}}}}
+        result = build_godot_element_index(Path('.'), graph, {'Game.Godot/Scripts/Main.gd': 'x', 'Game.Core/Service.cs': 'x'}, [], {'elements': [{'path': 'Game.Godot/Scenes/Old.tscn'}]})
+        self.assertEqual(result['elements'][0]['status'], 'verified')
+        self.assertEqual(result['elements'][1]['status'], 'unmapped')
+        self.assertNotIn('Game.Core/Service.cs', {item['path'] for item in result['elements']})
+        self.assertEqual(result['stale'][0]['path'], 'Game.Godot/Scenes/Old.tscn')
+        self.assertFalse(result['blocking'])
     def make_scan_source(self, root):
         write_json(root / '.taskmaster/tasks/tasks.json', {
             'master': {'tasks': [{'id': 1, 'title': 'Main task', 'status': 'done'}]}})
@@ -577,6 +585,25 @@ class HttpTests(unittest.TestCase):
         self.assertNotEqual(self.request('GET', '/../project-health-knowledge/latest.json')[0], 200)
         self.assertNotEqual(self.request('GET', '/server.json/../../secret')[0], 200)
 
+    def test_godot_views_are_read_only_and_revision_bound(self):
+        write_json(base_dir(self.root) / 'latest.json', {'revision': 'a' * 40, 'scene_graph': {
+            'main_scene': 'Game.Godot/Scenes/Main.tscn', 'nodes': {'Game.Godot/Scenes/Main.tscn': {'path': 'Game.Godot/Scenes/Main.tscn', 'classification': 'confirmed-reachable', 'nodes': []}}, 'edges': [], 'code_references': [], 'diagnostics': []}})
+        status, data = self.request('GET', '/api/knowledge/scene-graph')
+        self.assertEqual(status, 200); self.assertEqual(json.loads(data)['main_scene'], 'Game.Godot/Scenes/Main.tscn')
+        status, data = self.request('GET', '/api/knowledge/godot/unreachable')
+        self.assertEqual(status, 200); self.assertEqual(json.loads(data)['revision'], 'a' * 40)
+        self.assertEqual(self.request('GET', '/api/knowledge/godot/scene?path=../secret')[0], 422)
+
+    def test_godot_views_return_empty_snapshot_before_first_scan(self):
+        status, data = self.request('GET', '/api/knowledge/scene-graph')
+        self.assertEqual(status, 200)
+        graph = json.loads(data)
+        self.assertIsNone(graph['main_scene'])
+        self.assertEqual(graph['nodes'], {})
+        status, data = self.request('GET', '/api/knowledge/godot/unreachable')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(data)['items'], [])
+
     def test_config_save_is_explicit_and_validated(self):
         _, session = self.request('GET', '/api/knowledge/session')
         headers = {'Origin': f'http://127.0.0.1:{self.server.server_port}', 'Content-Type': 'application/json',
@@ -603,6 +630,16 @@ class HttpTests(unittest.TestCase):
 
 
 class ActionableSearchTests(unittest.TestCase):
+    def test_query_evidence_is_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            directory = base_dir(root) / 'queries'
+            directory.mkdir(parents=True)
+            for index in range(3):
+                write_json(directory / f'{index}.json', {'index': index})
+            prune_query_evidence(root, keep=2)
+            self.assertEqual(len(list(directory.glob('*.json'))), 2)
+
     def make_state(self):
         config = 'Game.Core/Data/m1-warrior-starting-deck.json'
         reader = 'Game.Core/Services/WarriorStartingDeckService.cs'
