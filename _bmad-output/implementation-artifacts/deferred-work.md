@@ -50,3 +50,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-project-health-modification-navigation.md`
   summary: 明确奖励 pick 超过卡池可用数量时的标题与数量规则。
   evidence: 既有列表生成最多取卡池长度，旧标题固定三选一也可与实际数量不符；本轮仅将标题数量绑定已有 pick，完整边界见配置审计与后续计划。
+- source_spec: `_bmad-output/implementation-artifacts/spec-scene-composition-load-sync.md`
+  summary: Preserve the last valid Composition graph state when a later graph refresh fails.
+  evidence: Existing loadGraph assigns the failed response to graphState before checking response.ok; later Composition interactions can rebuild from that invalid state and clear the previous table.

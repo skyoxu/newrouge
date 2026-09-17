@@ -37,6 +37,80 @@ test.describe('project health Godot scene graph', () => {
     await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
   });
 
+  test('refreshes scene composition after a delayed graph response', async ({ page }) => {
+    let releaseGraphResponse;
+    const graphResponseReleased = new Promise(resolve => { releaseGraphResponse = resolve; });
+    await page.route('**/api/knowledge/scene-graph', async route => {
+      const response = await route.fetch();
+      await graphResponseReleased;
+      await route.fulfill({ response });
+    });
+
+    const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
+    await page.goto(baseUrl + '/knowledge/scenes');
+    await page.getByRole('button', { name: 'Scene composition' }).click();
+    await expect(page.locator('#scene-structure')).toContainText('No resources in this category.');
+
+    releaseGraphResponse();
+
+    await expect(page.locator('tr[data-resource-type="scene"]').first()).toBeVisible();
+  });
+
+  test('keeps the route tree active after a delayed graph response', async ({ page }) => {
+    let releaseGraphResponse;
+    const graphResponseReleased = new Promise(resolve => { releaseGraphResponse = resolve; });
+    await page.route('**/api/knowledge/scene-graph', async route => {
+      const response = await route.fetch();
+      await graphResponseReleased;
+      await route.fulfill({ response });
+    });
+
+    const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
+    await page.goto(baseUrl + '/knowledge/scenes');
+    await expect(page.getByRole('button', { name: 'Scene route tree' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.scene-composition-toolbar')).toBeHidden();
+
+    releaseGraphResponse();
+
+    await expect(page.locator('[data-scene-path]').first()).toBeVisible();
+    await expect(page.locator('.scene-composition-toolbar')).toBeHidden();
+  });
+
+  test('shows the full route-tree closure by default and adds outside scenes only on request', async ({ page, request }) => {
+    const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
+    const graphResponse = await request.get(baseUrl + '/api/knowledge/scene-graph');
+    expect(graphResponse.ok()).toBeTruthy();
+    const graph = await graphResponse.json();
+    const deepScenePath = 'Game.Godot/Scenes/Screens/SettingsScreen.tscn';
+    const outsideScenePath = 'Game.Godot/Examples/Components/EventListenerPanel.tscn';
+    const distances = new Map([[graph.main_scene, 0]]);
+    const pending = [graph.main_scene];
+    while (pending.length) {
+      const source = pending.shift();
+      for (const edge of graph.edges.filter(edge => edge.source === source && graph.nodes[edge.target])) {
+        if (distances.has(edge.target)) continue;
+        distances.set(edge.target, distances.get(source) + 1);
+        pending.push(edge.target);
+      }
+    }
+    expect(graph.nodes[deepScenePath].classification).toBe('unreachable-candidate');
+    expect(distances.get(deepScenePath)).toBeGreaterThanOrEqual(2);
+    expect(distances.has(outsideScenePath)).toBeFalsy();
+
+    await page.goto(baseUrl + '/knowledge/scenes');
+    await expect(page.locator('#scene-status')).toContainText('scenes');
+    await page.getByRole('button', { name: 'Scene composition' }).click();
+
+    const deepRouteScene = page.locator(`tr[data-resource-path="${deepScenePath}"]`);
+    const outsideRouteScene = page.locator(`tr[data-resource-path="${outsideScenePath}"]`);
+
+    await expect(deepRouteScene).toBeVisible();
+    await expect(outsideRouteScene).toHaveCount(0);
+
+    await page.locator('#include-unreachable').check();
+    await expect(outsideRouteScene).toBeVisible();
+  });
+
   test('opens dedicated unconfirmed scene page and filters entries', async ({ page }) => {
     await page.goto((process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767') + '/knowledge/scenes/unreachable');
     await expect(page.getByRole('heading', { name: 'Unconfirmed Godot scenes' })).toBeVisible();
