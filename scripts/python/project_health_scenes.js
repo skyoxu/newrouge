@@ -117,6 +117,7 @@ async function loadGraph() {
   new Treant({ chart: { container: '#scene-graph', rootOrientation: 'NORTH', levelSeparation: 55, siblingSeparation: 35, subTeeSeparation: 45, connectors: { type: 'step', style: { 'stroke-width': 2, stroke: '#7aaeb5' } } }, nodeStructure: build(graphState.main_scene) });
   nodePaths.forEach((path, htmlId) => { const node = box.querySelector(`#${htmlId}`); if (node) { node.title = path; node.dataset.scenePath = path; node.setAttribute('aria-label', path); node.tabIndex = 0; node.addEventListener('click', () => window.openScenePreview(path)); node.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.openScenePreview(path); } }); } });
   el('scene-status').textContent = `${Object.keys(nodes).length} scenes · ${Object.values(nodes).filter(n => n.classification === 'confirmed-reachable').length} confirmed reachable · Treant tree layout · revision ${graphState.revision || 'snapshot'}`;
+  if (structureButton.getAttribute('aria-pressed') === 'true') renderStructure();
 }
 el('scene-graph-refresh').onclick = () => loadGraph().catch(error => { el('scene-status').textContent = error.message; });
 el('scene-probe').onclick = async () => { el('scene-status').textContent = 'Restarting deterministic probe...'; const session = await (await fetch('/api/knowledge/session')).json(); const response = await fetch('/api/knowledge/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Origin': location.origin, 'X-Project-Health-Token': session.token }, body: '{}' }); if (!response.ok) throw new Error('Probe failed'); await loadGraph(); };
@@ -137,7 +138,7 @@ const lastPage = document.createElement('button'); lastPage.type='button'; lastP
 const pageInput = document.createElement('input'); pageInput.type='number'; pageInput.min='1'; pageInput.value='1'; pageInput.setAttribute('aria-label','Page number'); pageInput.style.width='5em';
 const pageInfo = document.createElement('span'); pageInfo.className='scene-composition-page-info';
 structureToolbar.append(structureType, includeUnreachable, includeUnreachableLabel, includeUnreachableHelp, firstPage, previousPage, pageInput, nextPage, lastPage, pageInfo); structureHost.parentNode.insertBefore(structureToolbar, structureHost);
-structureToolbar.style.display='flex'; structureToolbar.style.alignItems='center'; structureToolbar.style.flexWrap='nowrap'; structureToolbar.style.gap='8px'; structureToolbar.style.overflowX='auto'; structureToolbar.style.whiteSpace='nowrap';
+structureToolbar.style.display='none'; structureToolbar.style.alignItems='center'; structureToolbar.style.flexWrap='nowrap'; structureToolbar.style.gap='8px'; structureToolbar.style.overflowX='auto'; structureToolbar.style.whiteSpace='nowrap';
 includeUnreachableLabel.style.margin='0'; includeUnreachableHelp.style.marginRight='12px';
 let structurePage = 1; const structurePageSize = 20;
 const graphButton = document.createElement('button'); graphButton.type = 'button'; graphButton.textContent = 'Scene route tree'; graphButton.setAttribute('aria-pressed', 'true');
@@ -158,9 +159,24 @@ function compositionResources() {
   for (const scene of Object.values(graphState?.nodes || {})) for (const entry of scene.knowledge_context || []) {
     if (entry.task_id) taskByPath.set(scene.path, [...(taskByPath.get(scene.path) || []), {id: String(entry.task_id), relation: 'direct-scene', level: entry.level}]);
   }
+  const routeTreeScenes = new Set();
+  const nodes = graphState?.nodes || {};
+  const pendingScenes = graphState?.main_scene && nodes[graphState.main_scene] ? [graphState.main_scene] : [];
+  const edgesBySource = new Map();
+  for (const edge of graphState?.edges || []) {
+    if (!edge.source || !edge.target || !nodes[edge.target]) continue;
+    if (!edgesBySource.has(edge.source)) edgesBySource.set(edge.source, []);
+    edgesBySource.get(edge.source).push(edge.target);
+  }
+  while (pendingScenes.length) {
+    const scenePath = pendingScenes.pop();
+    if (routeTreeScenes.has(scenePath)) continue;
+    routeTreeScenes.add(scenePath);
+    for (const target of edgesBySource.get(scenePath) || []) pendingScenes.push(target);
+  }
   for (const scene of Object.values(graphState?.nodes || {})) {
-    if (!includeUnreachable.checked && scene.classification !== 'confirmed-reachable') continue;
-    add(scene.path, 'scene', {nodes: scene.nodes?.length || 0, scripts: scene.functional_summary?.scripts?.length || 0, tasks: taskByPath.get(scene.path) || [], origins: [scene.classification === 'confirmed-reachable' ? 'route tree' : 'unreachable candidate']});
+    if (!includeUnreachable.checked && !routeTreeScenes.has(scene.path)) continue;
+    add(scene.path, 'scene', {nodes: scene.nodes?.length || 0, scripts: scene.functional_summary?.scripts?.length || 0, tasks: taskByPath.get(scene.path) || [], origins: [routeTreeScenes.has(scene.path) ? 'route tree' : 'unreachable candidate']});
     for (const script of scene.functional_summary?.scripts || []) add(script, 'script', {tasks: taskByPath.get(scene.path) || [], origins: ['attached to scene']});
     for (const config of scene.functional_summary?.config_references || []) add(config, 'config', {tasks: taskByPath.get(scene.path) || [], origins: ['scene script reference']});
     for (const node of scene.nodes || []) for (const resource of node.resources || []) {
@@ -206,7 +222,7 @@ function renderStructure() {
   table.append(tbody); scroll.append(table); structureHost.append(scroll); if(!filtered.length) structureHost.textContent='No resources in this category.';
   firstPage.disabled=previousPage.disabled=structurePage<=1; nextPage.disabled=lastPage.disabled=structurePage>=pages;
 }
-const setView = view => { const graphVisible = view === 'graph'; graphHost.style.display = graphVisible ? '' : 'none'; structureHost.style.display = graphVisible ? 'none' : ''; graphHost.hidden = !graphVisible; structureHost.hidden = graphVisible; graphButton.setAttribute('aria-pressed', String(graphVisible)); structureButton.setAttribute('aria-pressed', String(!graphVisible)); el('scene-status').textContent = graphVisible ? 'Scene route tree view · snapshot data' : 'Scene composition view · snapshot data'; };
+const setView = view => { const graphVisible = view === 'graph'; graphHost.style.display = graphVisible ? '' : 'none'; structureHost.style.display = graphVisible ? 'none' : ''; structureToolbar.style.display = graphVisible ? 'none' : 'flex'; graphHost.hidden = !graphVisible; structureHost.hidden = graphVisible; graphButton.setAttribute('aria-pressed', String(graphVisible)); structureButton.setAttribute('aria-pressed', String(!graphVisible)); el('scene-status').textContent = graphVisible ? 'Scene route tree view · snapshot data' : 'Scene composition view · snapshot data'; };
 structureButton.onclick = () => { structurePage=1; renderStructure(); setView('structure'); structureToolbar.hidden=false; };
 graphButton.onclick = () => { structureToolbar.hidden=true; setView('graph'); };
 structureType.onchange=()=>{structurePage=1;renderStructure();}; firstPage.onclick=()=>{structurePage=1;renderStructure();}; previousPage.onclick=()=>{structurePage--;renderStructure();}; nextPage.onclick=()=>{structurePage++;renderStructure();}; lastPage.onclick=()=>{structurePage=Number.MAX_SAFE_INTEGER;renderStructure();}; pageInput.onchange=()=>{structurePage=Math.max(1,Number(pageInput.value)||1);renderStructure();};
