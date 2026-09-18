@@ -427,6 +427,8 @@ def build_scene_graph(sources: dict[str, str], task_details: list[dict] | None =
                 if reference['source'] == script_path and reference.get('evidence_level', 'possible') == 'effective':
                     adjacency.setdefault(scene_path, []).append({
                         **reference, 'kind': 'script-reference'})
+    for edge in event_links:
+        adjacency.setdefault(edge['source'], []).append(edge)
     for edge in controller_links:
         adjacency.setdefault(edge['source'], []).append(edge)
     scene_edges = list(edges) + event_links + controller_links
