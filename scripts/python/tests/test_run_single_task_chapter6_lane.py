@@ -60,7 +60,16 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 }
                 report_path = root / "report.json"
                 report_path.write_text(json.dumps(report), encoding="utf-8")
-                before = (frozen_path.read_bytes(), report_path.read_bytes())
+                manifest_path = root / "run-manifest.v1.json"
+                manifest_path.write_text(json.dumps({
+                    "schema_version": "newrouge.impact-analysis-run-manifest.v1",
+                    "run_id": "test-run",
+                    "report_path": "report.json",
+                    "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
+                    "repository_revision": revision,
+                    "status": "ok",
+                }), encoding="utf-8")
+                before = (frozen_path.read_bytes(), report_path.read_bytes(), manifest_path.read_bytes())
                 argv = ["chapter6", "--task-id", "15", "--out-dir", str(out_dir),
                         "--frozen-context", "frozen.json", "--impact-report", "report.json",
                         "--revision", revision]
@@ -95,7 +104,7 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 self.assertEqual(summary["pending_step"], "review-pipeline-fork" if fork else "review-pipeline")
                 self.assertIn("review", summary["next_action"])
                 self.assertEqual([s["name"] for s in summary["steps"]][2:], calls)
-                self.assertEqual(before, (frozen_path.read_bytes(), report_path.read_bytes()))
+                self.assertEqual(before, (frozen_path.read_bytes(), report_path.read_bytes(), manifest_path.read_bytes()))
 
     def test_handoff_builder_forwards_all_arguments(self) -> None:
         cmd = lane.build_review_pipeline_cmd(
@@ -942,6 +951,14 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (root / "run-manifest.v1.json").write_text(json.dumps({
+                "schema_version": "newrouge.impact-analysis-run-manifest.v1",
+                "run_id": "test-run",
+                "report_path": "report.json",
+                "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
+                "repository_revision": revision,
+                "status": "ok",
+            }), encoding="utf-8")
             argv = [
                 "run_single_task_chapter6_lane.py",
                 "--task-id", "15",
