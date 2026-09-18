@@ -97,6 +97,12 @@ class ImpactAnalysisHandoffTests(unittest.TestCase):
             self.assertEqual("impact report hash manifest mismatch", result.reason)
             report_path.write_bytes(report_bytes)
 
+            manifest_path.unlink()
+            result = validate_handoff("frozen.json", "report.json", revision, repo_root=root)
+            self.assertFalse(result.ok)
+            self.assertEqual("impact run manifest is missing or invalid", result.reason)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
             for field, value, code, reason in [
                 ("report_sha256", "0" * 64, "invalid_kcp_binding", "impact report hash manifest mismatch"),
                 ("report_path", "logs/ci/other-report.json", "invalid_kcp_binding", "impact report path manifest mismatch"),
