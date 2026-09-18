@@ -2,20 +2,24 @@
 
 - Title: Keep MVG acceptance bounded and separate from task-state authority
 - Date: 2026-09-18
-- Status: Implemented; runtime validation in progress
+- Status: Implemented and verified within the reward pilot scope
 - Supersedes: None
 - Superseded by: None
 - Branch: feat/mvg-integration-acceptance
-- Git Head: 1d92ec562796522570feda8c341aaee8fe1f7e5a
+- Git Head: 43bee5d048d2d2c8285432b17900c0ccde014a62
 - Why now: Per-task gates do not prove behavior across the combined commits.
 - Context: User chose functional tasks, profile-based review, human gameplay evaluation and MVG knowledge refresh.
 - Decision: Add opt-in manifest and isolated runtime evidence; explicit mappings never exclude required tests; mutation remains optional.
 - Consequences: Reward pilot is a narrow example, not full MVG coverage. Input tests do not prove mouse geometry, focus navigation, save/reload or subjective quality.
-- Recovery impact: Use the matching run summary and input digest. Do not reuse planned-only output as runtime evidence. Pending Windows verification is recorded here rather than marked accepted.
-- Validation: Python failure-path tests and real manifest plan pass. Seeded mutation baseline: 3 passed; both boundary mutants killed by one assertion each. Godot C# build: 0 warnings/errors. Linux direct Godot diagnostic: reward journey 1 passed; disconnected-input challenge failed at the expected assertion (exit 100). Windows formal runner validation pending. Full recovery-doc validation on Linux reports pre-existing Windows drive-letter paths as missing; both new documents validate individually.
+- Recovery impact: Use the matching run summary and input digest. Do not reuse planned-only output as runtime evidence. Windows run evidence is scoped to the integrated input version; it is not task-status authorization.
+- Validation: Python failure-path tests and real manifest plan pass. Seeded mutation baseline: 3 passed; both boundary mutants killed by one assertion each. Godot C# build: 0 warnings/errors. Linux direct Godot diagnostic: reward journey 1 passed; disconnected-input challenge failed at the expected assertion (exit 100). Windows formal runner passed (runtime_verified=true), including the disconnected-input challenge, in Actions run 35334091880. Full recovery-doc validation passed on Windows. Full recovery-doc validation on Linux reports pre-existing Windows drive-letter paths as missing; both new documents validate individually.
 - Related ADRs: `docs/adr/ADR-0037-mvg-integration-evidence.md`
 - Related execution plans: `execution-plans/2026-09-18-mvg-integration.md`
 - Related task id(s): n/a - infrastructure work only; no task status writes.
-- Related run id: n/a - generated independently under the evidence roots.
+- Related run id: 20260918T102043Z-0bbc8abd; GitHub Actions 35334091880.
 - Related latest.json: n/a - task review pipeline remains unchanged.
 - Related pipeline artifacts: `logs/ci/mvg-acceptance/`, `logs/ci/mvg-mutation/`
+
+CI evidence: https://github.com/skyoxu/newrouge/actions/runs/35334091880
+
+Artifact: mvg-integration-evidence (10542590266). Existing broad quality/smoke checks remain separate from this pilot result.
