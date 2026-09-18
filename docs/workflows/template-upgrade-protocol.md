@@ -8,6 +8,8 @@ Related durable protocol:
 
 - `docs/workflows/workflow-rule-feedback-protocol.md`
   - defines how business repositories should feed workflow 5.1 and Chapter 6 execution evidence back into the template as reusable rules
+- `docs/workflows/cross-repo-migration-reconciliation.md`
+  - defines machine-checkable source-PR inventory reconciliation and optional authoritative GitHub verification
 
 ## Inputs
 1. Current target-repo state:
@@ -47,6 +49,10 @@ Related durable protocol:
 - `chapter7-ui-wiring-profile-bundle`
   - Treat `scripts/python/_chapter7_profile.py`, `run_chapter7_ui_wiring.py`, `chapter7_ui_gdd_writer.py`, `create_chapter7_tasks_from_ui_candidates.py`, `validate_chapter7_ui_wiring.py`, `dev_cli.py`, and `dev_cli_builders.py` as one migration unit when `--chapter7-profile-path` behavior changes.
   - Sync `docs/workflows/chapter7-profile.json`, `docs/workflows/chapter7-profile-guide.md`, `docs/workflows/templates/chapter7-profile.template.json`, `docs/workflows/templates/chapter7-profile.minimal.example.json`, `workflow.md`, `README.md`, `AGENTS.md`, and the workflow entrypoint indexes in the same batch.
+- `source-pr-reconciliation`
+  - For a bounded source PR migration, freeze the source repo, PR, merge commit, complete changed-file list, and canonical inventory SHA under `docs/migration/reconciliation/*.json`.
+  - Classify every source file exactly once as `copy_exact`, `adapt_target_native`, `already_present`, `derived_regenerate`, `business_only_drop`, or `protocol_name_retain`.
+  - Run offline reconciliation on every adopted target hard gate, and run `--verify-source-github` during migration creation/review to independently verify the frozen source PR inventory.
 
 ## Migration Order
 1. Baseline and identity
@@ -70,7 +76,11 @@ Related durable protocol:
    - If the repo uses gate bundle docs, sync mirror-runtime gate docs together with the gate list.
 7. Business-local adaptation
    - Rename project references, update overlay roots, adapt domain contract paths, and remove template fallback assumptions.
-8. Validation and stop-loss
+8. Source-PR reconciliation
+   - Create or update `docs/migration/reconciliation/<source>-<pr>.json` from the authoritative merged source PR inventory.
+   - Run `py -3 scripts/python/check_cross_repo_migration.py --manifest <manifest> --verify-source-github` during creation/review.
+   - Re-run deterministic offline reconciliation in the target repository before calling the migration complete.
+9. Validation and stop-loss
    - Run the minimum validation bundle before opening a PR.
 
 ## Required Localization Checklist
