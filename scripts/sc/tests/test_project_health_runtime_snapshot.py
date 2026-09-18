@@ -72,6 +72,34 @@ class SnapshotTests(unittest.TestCase):
                 self.assertEqual((snapshot / retained.relative_to(root)).read_text(encoding='utf-8'), 'project-import')
                 self.assertIn(retained.relative_to(root).as_posix(), manifest['files'])
 
+    def test_workspace_snapshot_retains_gdunit_runtime_bin_but_excludes_other_bin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.DEVNULL).decode().strip()
+
+            git('init', '-b', 'main')
+            gdunit_tool = root / 'Tests.Godot/addons/gdUnit4/bin/GdUnitCmdTool.gd'
+            ordinary_bin = root / 'Game.Core/bin/generated.txt'
+            gdunit_tool.parent.mkdir(parents=True)
+            ordinary_bin.parent.mkdir(parents=True)
+            gdunit_tool.write_text('runtime-tool', encoding='utf-8')
+            ordinary_bin.write_text('generated-output', encoding='utf-8')
+            git('add', '.')
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'initial')
+            revision = git('rev-parse', 'HEAD')
+            (root / '.git/info/exclude').write_text('logs/\n', encoding='utf-8')
+
+            snapshot = root / 'logs/workspace/source'
+            manifest = prepare_snapshot(root, snapshot, revision, 'workspace', time.monotonic() + 30)
+            gdunit_rel = gdunit_tool.relative_to(root).as_posix()
+            ordinary_rel = ordinary_bin.relative_to(root).as_posix()
+            self.assertEqual('runtime-tool', (snapshot / gdunit_rel).read_text(encoding='utf-8'))
+            self.assertIn(gdunit_rel, manifest['files'])
+            self.assertFalse((snapshot / ordinary_rel).exists())
+            self.assertNotIn(ordinary_rel, manifest['files'])
+
     def test_main_run_remains_verified_when_only_excluded_import_is_regenerated(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
