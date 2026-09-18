@@ -116,6 +116,7 @@ class GodotSceneGraphTests(unittest.TestCase):
         self.assertTrue(any(edge['kind'] == 'event-route' and edge['source'] == 'Menu.tscn' and edge['target'] == 'Difficulty.tscn' for edge in graph['edges']))
         route = next(edge for edge in graph['edges'] if edge.get('kind') == 'event-route')
         self.assertEqual(route['evidence_level'], 'effective')
+        self.assertEqual(graph['nodes']['Difficulty.tscn']['classification'], 'confirmed-reachable')
 
     def test_event_constant_publisher_is_linked_through_controller(self):
         sources = {
