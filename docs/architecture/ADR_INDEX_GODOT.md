@@ -38,6 +38,8 @@
 
 ## 待采纳（Proposed，未冻结）
 
+- ADR-0037: Bounded MVG Integration Evidence — `docs/adr/ADR-0037-mvg-integration-evidence.md`
+
 说明：这些 ADR 仍在评审中，不应作为“最终口径”被引用为硬规则。
 
 - ADR-0017: Quality Intelligence Dashboard and Governance — `docs/adr/ADR-0017-quality-intelligence-dashboard-and-governance.md`

@@ -830,6 +830,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--llm-backend", default="codex-cli")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
 
+    from run_mvg_acceptance import register_arguments, run as run_mvg
+    p_mvg = sub.add_parser("run-mvg-acceptance", help="Plan or run isolated MVG integration evidence")
+    register_arguments(p_mvg)
+    p_mvg.set_defaults(func=run_mvg)
+
     return parser
 
 
