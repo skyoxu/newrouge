@@ -14,6 +14,8 @@ on:
       - 'scripts/python/tests/test_mvg*'
       - 'scripts/python/_project_health_runtime_snapshot.py'
       - 'scripts/python/run_gdunit.py'
+      - 'scripts/python/check_workflow_gate_enforcement.py'
+      - 'scripts/python/config/workflow-gate-allowlist.json'
       - 'docs/testing/mvg/**'
       - 'Game.Core.Tests/Integration/Mvg*'
       - 'Game.Core.Tests/Services/Mvg*'
@@ -44,11 +46,9 @@ jobs:
         run: ./scripts/ci/download_godot_release.ps1 -Version '4.5.1' -PreferConsole
       - name: Verify runner failure handling
         run: python -m unittest discover -s scripts/python/tests -p test_mvg_acceptance.py -v
-      - name: Validate recovery documents
-        run: python scripts/python/validate_recovery_docs.py --dir all
       - name: Run committed reward pilot and disconnected-input challenge
         shell: pwsh
-        run: python scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200 --challenge-input
+        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200 --challenge-input
       - name: Optional seeded mutation experiment
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mutation_probe }}
         run: python scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD

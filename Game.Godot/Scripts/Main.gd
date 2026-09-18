@@ -1344,6 +1344,14 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
     if normalized != "confirm" and normalized != "skip":
         return {"ok": false, "reason": "unsupported-action", "scene_path": current_scene}
 
+    var resolved_type = selected_reward_type if normalized == "confirm" else skip_reward_type
+    var selection_state = _reward_selection_state_by_context.get(_reward_offer_active_context_id, {})
+    if not resolved_type.is_empty() and typeof(selection_state) == TYPE_DICTIONARY:
+        for bucket in ["claimed_reward_types", "skipped_reward_types"]:
+            var resolved_types = (selection_state as Dictionary).get(bucket, [])
+            if typeof(resolved_types) == TYPE_ARRAY and (resolved_types as Array).has(resolved_type):
+                return {"ok": false, "reason": "reward-type-already-resolved", "scene_path": current_scene}
+
     var deck_before = _run_deck_card_ids.size()
     if normalized == "confirm":
         _apply_reward_claim(selected_reward_type, selected_card_id, selected_index)

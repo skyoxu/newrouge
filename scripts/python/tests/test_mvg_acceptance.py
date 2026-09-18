@@ -3,6 +3,7 @@ import argparse
 import copy
 import json
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -125,6 +126,103 @@ class MvgAcceptanceTests(unittest.TestCase):
         self.assertFalse(summary['runtime_verified'])
         self.assertEqual('workspace:digest', summary['source_revision'])
         self.assertEqual('blocked', summary['status'])
+
+    def test_similar_class_and_suite_names_cannot_substitute_for_expected(self):
+        path = self.root / 'results.trx'
+        path.write_text('<TestRun><UnitTestResult testName="ExpectedExtra.A" outcome="Passed"/></TestRun>')
+        self.assertFalse(read_test_evidence(self.root, 'dotnet', 'Expected', 1)['passed'])
+        path = self.root / 'results.xml'
+        path.write_text('<testsuites><testsuite name="expected_extra"><testcase name="test_a"/></testsuite></testsuites>')
+        self.assertFalse(read_test_evidence(self.root, 'gdunit', 'expected', 1)['passed'])
+
+    def test_report_counters_and_duplicate_results_are_checked(self):
+        path = self.root / 'results.xml'
+        for xml in [
+            '<testsuites tests="2"><testsuite name="expected" tests="1"><testcase name="a"/></testsuite></testsuites>',
+            '<testsuite name="expected" tests="2"><testcase name="a"/></testsuite>',
+            '<testsuite name="expected"><testcase name="a"/><testcase name="a"/></testsuite>',
+        ]:
+            path.write_text(xml)
+            self.assertFalse(read_test_evidence(self.root, 'gdunit', 'expected', 1)['passed'])
+        path = self.root / 'results.trx'
+        path.write_text('<TestRun><UnitTestResult testName="Expected.A" outcome="Passed"/>'
+                        '<Counters total="2" passed="2" failed="0"/></TestRun>')
+        self.assertFalse(read_test_evidence(self.root, 'dotnet', 'Expected', 1)['passed'])
+
+    def test_commit_recommendation_does_not_include_head_or_working_changes(self):
+        from run_mvg_acceptance import changed_paths
+        calls = []
+        def fake_git(root, *args):
+            calls.append(args)
+            return 'base-sha' if args[0] == 'rev-parse' else 'Game.Core/A.cs\0'
+        with patch('run_mvg_acceptance.git', side_effect=fake_git):
+            paths, reason = changed_paths(self.root, 'base', 'old-commit', workspace=False)
+        self.assertEqual(['Game.Core/A.cs'], paths)
+        self.assertEqual('', reason)
+        self.assertIn(('diff', '--name-only', '--no-renames', '-z', 'base-sha', 'old-commit'), calls)
+        self.assertFalse(any('HEAD' in call or 'ls-files' in call for call in calls))
+
+    def test_old_commit_uses_its_manifest_and_comparison_target(self):
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(self.root), *args], text=True).strip()
+        git('init', '-q')
+        git('config', 'user.email', 'test@example.invalid')
+        git('config', 'user.name', 'Test')
+        (self.root / 'manifest.json').write_text(json.dumps(self.manifest))
+        git('add', '.')
+        git('commit', '-qm', 'initial')
+        old = git('rev-parse', 'HEAD')
+        changed = copy.deepcopy(self.manifest)
+        changed['mvg_id'] = 'different-workspace'
+        (self.root / 'manifest.json').write_text(json.dumps(changed))
+        parser = argparse.ArgumentParser()
+        register_arguments(parser)
+        args = parser.parse_args(['--mode', 'recommend', '--snapshot', 'commit',
+                                  '--revision', old, '--base', old, '--manifest', 'manifest.json'])
+        self.assertEqual(0, run(args, self.root))
+        summary = json.loads(next(self.root.glob('logs/ci/mvg-acceptance/*/summary.json')).read_text())
+        self.assertEqual('pilot', summary['mvg_id'])
+        self.assertEqual(old, summary['recommendation']['comparison_target'])
+        self.assertFalse(summary['recommendation']['includes_working_changes'])
+        self.assertEqual([], summary['recommendation']['unmapped_changes'])
+
+    def test_godot_prewarm_is_reused_only_after_first_suite_passes(self):
+        parser = argparse.ArgumentParser()
+        register_arguments(parser)
+        args = parser.parse_args(['--manifest', 'manifest.json', '--mode', 'run'])
+        doc = copy.deepcopy(self.manifest)
+        doc['tests'] = [dict(id=name, kind='gdunit') for name in ['first', 'second']]
+        def snapshot(root, target, revision, mode, deadline):
+            target.mkdir(parents=True)
+            (target / 'manifest.json').write_text(json.dumps(doc))
+            return dict(source_revision='workspace:digest', snapshot_digest='digest')
+        with patch('run_mvg_acceptance.git', return_value='a' * 40), \
+             patch('run_mvg_acceptance.prepare_snapshot', side_effect=snapshot), \
+             patch('run_mvg_acceptance.validate_manifest', return_value=[]), \
+             patch('run_mvg_acceptance.recommend', return_value={}), \
+             patch('run_mvg_acceptance.execute_test', return_value={'status': 'passed'}) as execute:
+            self.assertEqual(0, run(args, self.root))
+        self.assertEqual([True, False], [c.kwargs['prewarm'] for c in execute.call_args_list])
+        self.assertNotEqual(execute.call_args_list[0].args[2], execute.call_args_list[1].args[2])
+
+    def test_workflow_scan_ignores_trigger_paths_but_checks_run_blocks(self):
+        from check_workflow_gate_enforcement import _extract_workflow_scripts
+        workflow = """on:
+  pull_request:
+    paths:
+      - 'scripts/python/listened.py'
+jobs:
+  check:
+    steps:
+      - name: scripts/python/label.py
+        run: |
+          python scripts/python/real.py
+          python scripts/python/second.py
+      - run: python scripts/python/inline.py
+      - uses: actions/checkout@v4
+"""
+        self.assertEqual({'scripts/python/real.py', 'scripts/python/second.py',
+                          'scripts/python/inline.py'}, _extract_workflow_scripts(workflow))
 
     def test_suite_setup_errors_override_passing_testcases(self):
         path = self.root / 'results.xml'

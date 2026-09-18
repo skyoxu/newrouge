@@ -1,12 +1,12 @@
 # MVG integration implementation
 
 - Title: MVG integration evidence and reward pilot
-- Status: Completed
+- Status: In progress
 - Branch: feat/mvg-integration-acceptance
 - Git Head: 43bee5d048d2d2c8285432b17900c0ccde014a62
 - Goal: Verify integrated task behavior without adding heavy per-task review.
 - Scope: Manifest, ownership validation, isolated runner, reward tests, conservative recommendations, optional mutation and chapter documentation.
-- Current step: Implementation delivered in PR #180; no merge performed.
+- Current step: Repair the P1/P2 review findings and verify Windows CI.
 - Last completed step: Windows MVG Integration Pilot run 35334091880 passed, including the disconnected-input challenge.
 - Stop-loss: Do not count missing/skipped reports, compilation failure or timeout as acceptance or mutation detection.
 - Next action: Review PR #180 and remaining existing repository checks; extend the pilot manifest for actual full-MVG scope.

@@ -23,7 +23,8 @@
         "Game.Godot/Scripts/Main.gd",
         "Game.Godot/Scenes/Reward.tscn",
         "Game.Godot/Scenes/Main.tscn",
-        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs"
+        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs",
+        "Tests.Godot/tests/Integration/Mvg/reward_fixture.gd"
       ],
       "handoffs": [
         {
@@ -53,13 +54,15 @@
           "contract_ref": "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs",
           "behavior": "Claim once, remove the claimed entry, apply remaining reward and return through the route owner.",
           "test_ids": [
-            "reward-input"
+            "reward-input",
+            "reward-idempotency"
           ]
         }
       ],
       "test_ids": [
         "reward-core",
-        "reward-input"
+        "reward-input",
+        "reward-idempotency"
       ]
     }
   ],
@@ -81,6 +84,14 @@
       "path": "Tests.Godot/tests/Integration/Mvg/test_reward_input_journey.gd",
       "min_tests": 1,
       "challenge": "disconnect-reward-input"
+    },
+    {
+      "id": "reward-idempotency",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
+      "min_tests": 2
     }
   ]
 }

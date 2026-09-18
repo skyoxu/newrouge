@@ -40,6 +40,23 @@ def read_test_evidence(directory: Path, kind: str, expected: str, min_tests: int
         for path in files:
             tree = ET.parse(path).getroot()
             result['reports'].append(str(path))
+            local_cases = [node for node in tree.iter()
+                           if node.tag.split('}')[-1] == ('UnitTestResult' if kind == 'dotnet' else 'testcase')]
+            identities = [case.get('executionId') or case.get('testName') or
+                          (case.get('classname', '') + ':' + case.get('name', '')) for case in local_cases]
+            if len(identities) != len(set(identities)):
+                return {**result, 'reason': 'duplicate-test-results'}
+            for node in tree.iter():
+                tag = node.tag.split('}')[-1]
+                if tag in {'testsuite', 'testsuites'} and 'tests' in node.attrib:
+                    if int(node.get('tests')) != len(list(node.iter('testcase'))):
+                        return {**result, 'reason': 'inconsistent-test-count'}
+                if tag == 'Counters':
+                    counts = {'total': len(local_cases),
+                              'passed': sum(c.get('outcome') == 'Passed' for c in local_cases),
+                              'failed': sum(c.get('outcome') == 'Failed' for c in local_cases)}
+                    if any(key in node.attrib and int(node.get(key)) != count for key, count in counts.items()):
+                        return {**result, 'reason': 'inconsistent-test-count'}
             # Suite/setup errors can exist without a failed testcase. Never lose them.
             for node in tree.iter():
                 tag = node.tag.split('}')[-1]
@@ -51,7 +68,8 @@ def read_test_evidence(directory: Path, kind: str, expected: str, min_tests: int
             if kind == 'dotnet':
                 cases = [node for node in tree.iter() if node.tag.split('}')[-1] == 'UnitTestResult']
                 for case in cases:
-                    if expected not in case.get('testName', ''):
+                    class_name = case.get('testName', '').split('(', 1)[0].rsplit('.', 1)[0]
+                    if expected != class_name:
                         return {**result, 'reason': 'unexpected-test-selection'}
                     outcome = case.get('outcome', '')
                     result['tests'] += 1
@@ -60,8 +78,8 @@ def read_test_evidence(directory: Path, kind: str, expected: str, min_tests: int
             else:
                 for suite in tree.iter('testsuite'):
                     for case in suite.findall('testcase'):
-                        identity = suite.get('name', '') + ' ' + case.get('classname', '')
-                        if expected not in identity:
+                        if (suite.get('name', '') != expected or
+                                case.get('classname', expected) != expected):
                             return {**result, 'reason': 'unexpected-test-selection'}
                         result['tests'] += 1
                         result['failed'] += case.find('failure') is not None or case.find('error') is not None
@@ -79,7 +97,7 @@ def read_test_evidence(directory: Path, kind: str, expected: str, min_tests: int
 
 
 def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: float,
-                 env: dict | None = None) -> dict:
+                 env: dict | None = None, *, prewarm: bool = True) -> dict:
     out.mkdir(parents=True, exist_ok=False)
     if test['kind'] == 'dotnet':
         command = ['dotnet', 'test', 'Game.Core.Tests/Game.Core.Tests.csproj', '--configuration', 'Debug',
@@ -93,8 +111,10 @@ def execute_test(root: Path, test: dict, out: Path, godot_bin: str, deadline: fl
             previous.rename(out / 'previous-project-reports')
         report = out / 'current'
         command = [sys.executable, 'scripts/python/run_gdunit.py', '--godot-bin', godot_bin,
-                   '--project', 'Tests.Godot', '--prewarm', '--add', test['path'].removeprefix('Tests.Godot/'),
+                   '--project', 'Tests.Godot', '--add', test['path'].removeprefix('Tests.Godot/'),
                    '--timeout-sec', str(max(1, int(deadline - time.monotonic()))), '--rd', str(report)]
+        if prewarm:
+            command.append('--prewarm')
         expected = Path(test['path']).stem
     rc = run_child(command, root, out / 'console.log', deadline - time.monotonic(), env)
     evidence = read_test_evidence(out if test['kind'] == 'dotnet' else out / 'current',

@@ -37,11 +37,11 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 可通过 `--manifest <repo-relative.json>` 选择其他 MVG。正式收尾优先 commit 模式；workspace 模式记录文件内容摘要，不得冒充某个提交的验证。运行器将输入复制到独立快照，隔离 user:// 数据，复用 xUnit 和现有 GdUnit4 Windows Junction 入口。全局预算默认 900 秒，可用 `--timeout-sec` 调整；超时不是缺陷被检测的证据。
 
-每次输出到 `logs/ci/mvg-acceptance/<run-id>/`。plan/recommend 返回成功时 runtime_verified 仍为 false。run 只有所有清单测试实际执行、达到 min_tests、零失败、零跳过且进程成功，才会标记 runtime_verified=true。缺报告、空报告、错误测试选择、准备失败均阻断。摘要只代表该清单范围与该输入版本，不能自动写任务 done。
+每次输出到 `logs/ci/mvg-acceptance/<run-id>/`。plan/recommend 返回成功时 runtime_verified 仍为 false。run 只有所有清单测试实际执行、达到 min_tests、零失败、零跳过且进程成功，才会标记 runtime_verified=true。缺报告、空报告、错误测试选择、计数不一致、重复用例结果和准备失败均阻断。测试类/套件身份精确匹配，不接受近似名称。摘要只代表该清单范围与该输入版本，不能自动写任务 done。
 
 ## 奖励旅程试点
 
-领域测试组合真实 CardPoolCatalog、CardPoolSelectionService 和 DeterministicOfferService，验证相同上下文重新进入时奖励锁定稳定。引擎测试实例化真实 Main 与 EventBus，通过准备接口建立已结束战斗的奖励状态，随后使用 Viewport InputEventAction 激活 UI，验证选择一张卡、不能重复领取、领取剩余奖励后返回地图。
+领域测试组合真实 CardPoolCatalog、CardPoolSelectionService 和 DeterministicOfferService，验证相同上下文重新进入时奖励锁定稳定。引擎测试实例化真实 Main 与 EventBus，通过准备接口建立已结束战斗的奖励状态，随后使用 Viewport InputEventAction 激活 UI，验证选择一张卡、领取入口移除、金币准确增加配置金额、领取剩余奖励后返回地图。独立 scene-method 套件向真实结算入口重复提交同一领卡/金币请求，验证第二次拒绝且资源只增加一次。
 
 准备/观察接口可以读取状态；触发领取不能直接调用业务方法或手工 emit pressed。等待以界面/领域状态为条件，使用有上限的逐帧轮询，超时输出场景与状态；清理节点、输入和语言设置。此测试主动设置按钮焦点，不证明导航顺序、鼠标命中、遮挡、OS 输入或存档重载，也不证明完整战斗流程。
 
@@ -51,7 +51,7 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 ## 影响建议与边界
 
-recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。未知文件、无映射或取不到比较范围时回退到 full-mvg。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
+recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
 
 这是一层独立的回归建议，不是完整调用图，也不替代正式 Impact/KCP。需要覆盖新场景引用、动态加载或信号边时，以真实链路测试和显式路径补充映射；不要把“没有找到边”解释成“不受影响”。无需按任务刷新知识库。
 
@@ -68,3 +68,5 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 ## CI 与人工验收
 
 `.github/workflows/mvg-integration.yml` 对本入口相关改动运行 Windows 奖励试点，也允许手动执行；变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
+
+同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。

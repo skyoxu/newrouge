@@ -28,14 +28,15 @@ def git(root: Path, *args: str) -> str:
                           timeout=30).stdout.decode('utf-8').strip()
 
 
-def changed_paths(root: Path, base: str) -> tuple[list[str], str]:
+def changed_paths(root: Path, base: str, revision: str = 'HEAD', *, workspace: bool = True) -> tuple[list[str], str]:
     try:
         paths = set()
         if base:
             resolved = git(root, 'rev-parse', '--verify', base + '^{commit}')
-            paths.update(git(root, 'diff', '--name-only', '--no-renames', '-z', resolved, 'HEAD').split('\0'))
-        paths.update(git(root, 'diff', '--name-only', '--no-renames', '-z', 'HEAD').split('\0'))
-        paths.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0'))
+            paths.update(git(root, 'diff', '--name-only', '--no-renames', '-z', resolved, revision).split('\0'))
+        if workspace:
+            paths.update(git(root, 'diff', '--name-only', '--no-renames', '-z', revision).split('\0'))
+            paths.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0'))
         return sorted(paths - {''}), '' if paths - {''} else 'No changed paths; absence is not proof of no impact'
     except (subprocess.SubprocessError, OSError) as exc:
         return [], 'Git change range unavailable: ' + str(exc)
@@ -68,7 +69,7 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
         summary.update(base_commit=revision, workspace_dirty=bool(git(root, 'status', '--porcelain')))
         deadline = time.monotonic() + args.timeout_sec
         execution_root = root
-        if args.mode == 'run':
+        if args.mode == 'run' or args.snapshot == 'commit':
             execution_root = out / 'snapshot'
             snapshot = prepare_snapshot(root, execution_root, revision,
                                         'main' if args.snapshot == 'commit' else 'workspace', deadline)
@@ -80,8 +81,13 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
         summary.update(mvg_id=doc.get('mvg_id'), manifest=args.manifest, validation_errors=errors)
         if errors:
             raise ValueError('; '.join(errors))
-        paths, unknown = changed_paths(root, args.base)
+        comparison_revision = revision if args.snapshot == 'commit' else git(root, 'rev-parse', 'HEAD')
+        paths, unknown = changed_paths(root, args.base, comparison_revision,
+                                       workspace=args.snapshot == 'workspace')
         summary['recommendation'] = recommend(doc, paths, unknown_reason=unknown)
+        summary['recommendation']['comparison_target'] = (summary.get('source_revision', 'workspace')
+                                                          if args.snapshot == 'workspace' else revision)
+        summary['recommendation']['includes_working_changes'] = args.snapshot == 'workspace'
         summary['required_tests'] = [test['id'] for test in doc['tests']]
         if args.mode != 'run':
             summary['status'] = 'planned' if args.mode == 'plan' else 'recommended'
@@ -93,13 +99,17 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             env['XDG_DATA_HOME'] = str(out / 'user-data')
             env['GDUNIT_STRICT_EXIT_CODE'] = '1'
             env.pop('MVG_INPUT_CHALLENGE', None)
+            godot_ready = False
             for test in doc['tests']:
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Global runtime budget exhausted')
-                result = execute_test(execution_root, test, out / test['id'], args.godot_bin, deadline, env)
+                result = execute_test(execution_root, test, out / test['id'], args.godot_bin,
+                                      deadline, env, prewarm=not godot_ready)
                 summary['steps'].append(result)
                 if result['status'] != 'passed':
                     raise RuntimeError('Required test failed or is unverified: ' + test['id'])
+                if test['kind'] == 'gdunit':
+                    godot_ready = True
             if args.challenge_input:
                 targets = [test for test in doc['tests'] if test.get('challenge') == 'disconnect-reward-input']
                 if not targets:
@@ -108,7 +118,7 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
                 summary['challenges'] = []
                 for test in targets:
                     result = execute_test(execution_root, test, out / ('challenge-' + test['id']),
-                                          args.godot_bin, deadline, env)
+                                          args.godot_bin, deadline, env, prewarm=not godot_ready)
                     # A crash, missing runtime or compilation error is NOT a detected defect.
                     detected = (result['exit_code'] not in {0, 124, 127}
                                 and result['evidence']['failed'] > 0
