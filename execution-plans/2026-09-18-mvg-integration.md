@@ -1,0 +1,21 @@
+# MVG integration implementation
+
+- Title: MVG integration evidence and reward pilot
+- Status: In progress
+- Branch: feat/mvg-integration-acceptance
+- Git Head: 1d92ec562796522570feda8c341aaee8fe1f7e5a
+- Goal: Verify integrated task behavior without adding heavy per-task review.
+- Scope: Manifest, ownership validation, isolated runner, reward tests, conservative recommendations, optional mutation and chapter documentation.
+- Current step: Runtime verification and Windows CI preparation.
+- Last completed step: Python failure-path checks and manifest plan passed.
+- Stop-loss: Do not count missing/skipped reports, compilation failure or timeout as acceptance or mutation detection.
+- Next action: Validate the reward input journey and seeded mutation, then commit and push the branch.
+- Recovery command: py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode plan
+- Open questions: Windows runtime evidence is pending; reward pilot does not represent the whole MVG.
+- Exit criteria: Scoped tests pass, execution limits documented, branch pushed without merging.
+- Related ADRs: `docs/adr/ADR-0037-mvg-integration-evidence.md`
+- Related decision logs: `decision-logs/2026-09-18-mvg-integration.md`
+- Related task id(s): n/a - infrastructure work; pilot references existing business tasks without changing status.
+- Related run id: n/a - independent MVG runs are stored by generated run id.
+- Related latest.json: n/a - no task review pipeline run or authority changes.
+- Related pipeline artifacts: `logs/ci/mvg-acceptance/`, `logs/ci/mvg-mutation/`

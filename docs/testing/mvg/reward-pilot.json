@@ -1,0 +1,86 @@
+{
+  "schema_version": "newrouge.mvg-integration.v1",
+  "mvg_id": "reward-pilot",
+  "scope_note": "One integration pilot, not complete MVG coverage or human gameplay approval. Core composition and engine-action evidence are distinct. No OS mouse/focus-navigation or save/reload claim.",
+  "flows": [
+    {
+      "id": "reward-claim-and-return",
+      "outcome": "A locked offer is stable; engine action input claims exactly one card and remaining reward, then returns to the map.",
+      "task_ids": [
+        19,
+        61,
+        84,
+        85,
+        114,
+        115,
+        128
+      ],
+      "source_paths": [
+        "Game.Core/Services/CardPoolCatalog.cs",
+        "Game.Core/Services/CardPoolSelectionService.cs",
+        "Game.Core/Services/DeterministicOfferService.cs",
+        "Game.Godot/Scripts/RewardScene.gd",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scenes/Reward.tscn",
+        "Game.Godot/Scenes/Main.tscn",
+        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 84,
+          "consumer_task": 114,
+          "owner_task": 114,
+          "contract_ref": "Game.Core/Contracts/Offers/OfferLockSnapshot.cs",
+          "behavior": "Preserve the first offer identity and order when re-entering the same context.",
+          "test_ids": [
+            "reward-core"
+          ]
+        },
+        {
+          "producer_task": 114,
+          "consumer_task": 128,
+          "owner_task": 128,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+          "behavior": "Present the current reward snapshot on the actual reward scene.",
+          "test_ids": [
+            "reward-input"
+          ]
+        },
+        {
+          "producer_task": 128,
+          "consumer_task": 115,
+          "owner_task": 115,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs",
+          "behavior": "Claim once, remove the claimed entry, apply remaining reward and return through the route owner.",
+          "test_ids": [
+            "reward-input"
+          ]
+        }
+      ],
+      "test_ids": [
+        "reward-core",
+        "reward-input"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "reward-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Integration/MvgRewardOfferIntegrationTests.cs",
+      "selector": "Game.Core.Tests.Integration.MvgRewardOfferIntegrationTests",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-input",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "engine-input",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_input_journey.gd",
+      "min_tests": 1,
+      "challenge": "disconnect-reward-input"
+    }
+  ]
+}

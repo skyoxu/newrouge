@@ -107,3 +107,5 @@ Current stop-loss families:
 - Project-health latest pointer: `logs/ci/project-health/latest.json`
 - Project-health dashboard page: `logs/ci/project-health/latest.html`
 - Project-health report catalog: `logs/ci/project-health/report-catalog.latest.json`
+
+- [MVG 集成验收](workflows/mvg-integration-acceptance.md)：交接归属、整合提交测试、保守回归建议与可选变异实验。
