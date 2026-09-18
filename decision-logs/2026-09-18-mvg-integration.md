@@ -24,8 +24,10 @@ CI evidence: https://github.com/skyoxu/newrouge/actions/runs/35334091880
 
 Artifact: mvg-integration-evidence (10542590266). Existing broad quality/smoke checks remain separate from this pilot result.
 
-## Review repair in progress
+## Review repairs
 
-Needs Fix: workflow gate registration (P1), exact report identity/counts, reward amount/idempotency assertions and recommendation revision binding (P2). Repair on the same branch; retain all existing gates. Evidence: logs/ci/mvg-repair/.
+Resolved review findings: workflow gate registration (P1), exact report identity/counts, reward amount/idempotency assertions and recommendation revision binding (P2). Repair on the same branch; retain all existing gates. Evidence: logs/ci/mvg-repair/.
 
-Repair evidence: the new actual-entry replay test first failed (two cards after two identical claims), then passed after rejecting already-resolved typed rewards. Local Godot reward suites: 3 passed, zero failures/skips. Exact gold assertions, report identity/count checks, revision-bound comparison and shared prewarm implemented. Workflow enforcement now reports zero violations. Windows rerun pending.
+Repair evidence: the new actual-entry replay test first failed (two cards after two identical claims), then passed after rejecting already-resolved typed rewards. Local Godot reward suites: 3 passed, zero failures/skips. Exact gold assertions, report identity/count checks, revision-bound comparison and shared prewarm implemented. Workflow enforcement now reports zero violations. Windows MVG rerun 35336807426 passed; this includes exact report matching, both Godot suites with shared prewarm, and the disconnected-input challenge. Full PR check statuses remain GitHub authority.
+
+All four review findings are implemented. The additionally reproduced typed reward replay bug is fixed at the actual settlement entry. No existing gate was disabled; recovery-document validation remains in the existing quality bundle.
