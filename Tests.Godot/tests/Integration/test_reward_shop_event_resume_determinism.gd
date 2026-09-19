@@ -28,7 +28,7 @@ func _new_db(name: String) -> Node:
     if ClassDB.class_exists("SqliteDataStore"):
         db = ClassDB.instantiate("SqliteDataStore")
     else:
-        var script := load("res://Game.Godot/Adapters/SqliteDataStore.cs")
+        var script = load("res://Game.Godot/Adapters/SqliteDataStore.cs")
         assert_that(script).is_not_null()
         assert_that(script.has_method("new")).is_true()
         db = script.new()
@@ -47,10 +47,10 @@ func _new_db(name: String) -> Node:
 
 func _setup_sql_db(path: String) -> Dictionary:
     var db := await _new_db("SqlDb")
-    var helper_script := load("res://Game.Godot/Adapters/Db/DbTestHelper.cs")
+    var helper_script = load("res://Game.Godot/Adapters/Db/DbTestHelper.cs")
     assert_that(helper_script).is_not_null()
     assert_that(helper_script.has_method("new")).is_true()
-    var helper := helper_script.new()
+    var helper = helper_script.new()
     add_child(auto_free(helper))
     helper.ForceManaged()
 
@@ -59,10 +59,10 @@ func _setup_sql_db(path: String) -> Dictionary:
     helper.CreateSchema()
     helper.ClearAll()
 
-    var bridge_script := load("res://Game.Godot/Adapters/Db/RepositoryTestBridge.cs")
+    var bridge_script = load("res://Game.Godot/Adapters/Db/RepositoryTestBridge.cs")
     assert_that(bridge_script).is_not_null()
     assert_that(bridge_script.has_method("new")).is_true()
-    var bridge := bridge_script.new()
+    var bridge = bridge_script.new()
     add_child(auto_free(bridge))
     return {"db": db, "helper": helper, "bridge": bridge}
 
