@@ -136,4 +136,4 @@ Recovery stop-loss rules:
 - Keep docs and tasks aligned through ADR + Base + Overlay + Task refs.
 - Repository Knowledge Control Plane is derived routing infrastructure; source documents remain authoritative.
 
-MVG 集成验收入口与奖励试点：[使用说明](docs/workflows/mvg-integration-acceptance.md)。
+MVG 集成验收入口、M1 production critical scope 与奖励 pilot 示例：[使用说明](docs/workflows/mvg-integration-acceptance.md)。
