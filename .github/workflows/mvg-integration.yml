@@ -53,7 +53,7 @@ permissions:
 jobs:
   m1-critical:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
@@ -78,9 +78,9 @@ jobs:
       - name: Run committed M1 critical scope and disconnected-input challenge
         shell: pwsh
         run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/m1-critical.json --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1800 --challenge-input
-      - name: Run workspace M1 critical scope
+      - name: Run workspace reward pilot
         shell: pwsh
-        run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/m1-critical.json --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1800
+        run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/reward-pilot.json --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200
       - name: Optional seeded mutation experiment
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mutation_probe }}
         run: python scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
