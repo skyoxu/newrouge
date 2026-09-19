@@ -1,0 +1,281 @@
+{
+  "schema_version": "newrouge.mvg-integration.v1",
+  "mvg_id": "full-mvg-critical-journeys",
+  "scope_note": "Critical-journey MVG coverage for run entry, map/combat progression, combat resolution, and reward claim/return. This is the repository's full MVG regression scope for machine-verifiable critical journeys, not a claim of exhaustive UX, OS input geometry, save corruption recovery, localization completeness, or human gameplay approval.",
+  "flows": [
+    {
+      "id": "run-entry-to-map",
+      "outcome": "Starting a new run follows the command-owned run state into the real M1 route MainMenu -> DifficultySelect -> CharacterSelect -> Map without demo or placeholder detours.",
+      "task_ids": [
+        43,
+        59,
+        70
+      ],
+      "source_paths": [
+        "Game.Core/State/RunStateMachine.cs",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scripts/UI/MainMenu.cs",
+        "Game.Godot/Scripts/UI/DifficultySelect.cs",
+        "Game.Godot/Scripts/UI/CharacterSelect.cs",
+        "Game.Godot/Scenes/Map/Map.tscn"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 43,
+          "consumer_task": 59,
+          "owner_task": 59,
+          "contract_ref": "Game.Core/Contracts/Events/RunStartedEvent.cs",
+          "behavior": "A deterministic run start becomes the UI-owned M1 entry route rather than a parallel demo path.",
+          "test_ids": [
+            "run-state-core",
+            "run-entry-route"
+          ]
+        },
+        {
+          "producer_task": 59,
+          "consumer_task": 70,
+          "owner_task": 70,
+          "contract_ref": "Game.Core/Contracts/Run/RunTransition.cs",
+          "behavior": "Confirmed difficulty and character selection hand the active run to the map-owned route surface.",
+          "test_ids": [
+            "run-entry-route"
+          ]
+        }
+      ],
+      "test_ids": [
+        "run-state-core",
+        "run-entry-route"
+      ]
+    },
+    {
+      "id": "map-combat-reward-return",
+      "outcome": "The live map selects a reachable combat node, enters Combat, completes the node flow, resolves reward skip, returns to Map, and advances route ownership without a secondary map owner.",
+      "task_ids": [
+        43,
+        60,
+        61,
+        70,
+        97
+      ],
+      "source_paths": [
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scripts/UI/MapScene.cs",
+        "Game.Godot/Scenes/Map/Map.tscn",
+        "Game.Godot/Scenes/Combat.tscn",
+        "Game.Godot/Scenes/Reward.tscn"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 70,
+          "consumer_task": 97,
+          "owner_task": 97,
+          "contract_ref": "Game.Core/Contracts/Events/MapNodeSelectedEvent.cs",
+          "behavior": "Map route ownership selects the reachable combat node and exposes the destination through the generated route graph.",
+          "test_ids": [
+            "map-navigation"
+          ]
+        },
+        {
+          "producer_task": 97,
+          "consumer_task": 43,
+          "owner_task": 43,
+          "contract_ref": "Game.Core/Contracts/Run/RunCommand.cs",
+          "behavior": "Completing the selected node and resolving its reward advances deterministic run state back to the map route owner.",
+          "test_ids": [
+            "map-navigation",
+            "run-state-core"
+          ]
+        },
+        {
+          "producer_task": 43,
+          "consumer_task": 61,
+          "owner_task": 61,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+          "behavior": "Combat completion hands reward presentation to the reward route before the map progression is committed.",
+          "test_ids": [
+            "map-navigation"
+          ]
+        }
+      ],
+      "test_ids": [
+        "map-navigation",
+        "run-state-core"
+      ]
+    },
+    {
+      "id": "combat-card-play-and-targeting",
+      "outcome": "Combat uses shared core resolution contracts for card cost/effects while the real combat scene enforces legal targeting, refusal paths, and visible state transitions without scene-local business branches.",
+      "task_ids": [
+        6,
+        72,
+        73
+      ],
+      "source_paths": [
+        "Game.Core/Services/CombatService.cs",
+        "Game.Core/Contracts/Combat/CombatLoop.cs",
+        "Game.Core/Contracts/Combat/CombatRuntimeResolutionContracts.cs",
+        "Game.Godot/Scripts/UI/CombatScene.cs",
+        "Game.Godot/Scenes/Combat.tscn"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 6,
+          "consumer_task": 72,
+          "owner_task": 72,
+          "contract_ref": "Game.Core/Contracts/Combat/CombatRuntimeResolutionContracts.cs",
+          "behavior": "Core card resolution, cost and effect results are consumed by the combat scene through the shared runtime contract.",
+          "test_ids": [
+            "combat-core",
+            "combat-targeting"
+          ]
+        },
+        {
+          "producer_task": 72,
+          "consumer_task": 73,
+          "owner_task": 73,
+          "contract_ref": "Game.Core/Contracts/Combat/CombatTurnProgression.cs",
+          "behavior": "Scene targeting and turn progression preserve legal enemy ownership and reject invalid targets without mutating protected resources.",
+          "test_ids": [
+            "combat-targeting"
+          ]
+        }
+      ],
+      "test_ids": [
+        "combat-core",
+        "combat-targeting"
+      ]
+    },
+    {
+      "id": "reward-claim-and-return",
+      "outcome": "A locked offer is stable; engine action input claims exactly one card and remaining reward, then returns to the map.",
+      "task_ids": [
+        19,
+        61,
+        84,
+        85,
+        114,
+        115,
+        128
+      ],
+      "source_paths": [
+        "Game.Core/Services/CardPoolCatalog.cs",
+        "Game.Core/Services/CardPoolSelectionService.cs",
+        "Game.Core/Services/DeterministicOfferService.cs",
+        "Game.Godot/Scripts/RewardScene.gd",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scenes/Reward.tscn",
+        "Game.Godot/Scenes/Main.tscn",
+        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs",
+        "Tests.Godot/tests/Integration/Mvg/reward_fixture.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 84,
+          "consumer_task": 114,
+          "owner_task": 114,
+          "contract_ref": "Game.Core/Contracts/Offers/OfferLockSnapshot.cs",
+          "behavior": "Preserve the first offer identity and order when re-entering the same context.",
+          "test_ids": [
+            "reward-core"
+          ]
+        },
+        {
+          "producer_task": 114,
+          "consumer_task": 128,
+          "owner_task": 128,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+          "behavior": "Present the current reward snapshot on the actual reward scene.",
+          "test_ids": [
+            "reward-input"
+          ]
+        },
+        {
+          "producer_task": 128,
+          "consumer_task": 115,
+          "owner_task": 115,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs",
+          "behavior": "Claim once, remove the claimed entry, apply remaining reward and return through the route owner.",
+          "test_ids": [
+            "reward-input",
+            "reward-idempotency"
+          ]
+        }
+      ],
+      "test_ids": [
+        "reward-core",
+        "reward-input",
+        "reward-idempotency"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "run-state-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/State/GameStateMachineTests.cs",
+      "selector": "Game.Core.Tests.State.GameStateMachineTests",
+      "min_tests": 1
+    },
+    {
+      "id": "run-entry-route",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "map-navigation",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "combat-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Services/CombatServiceTests.cs",
+      "selector": "Game.Core.Tests.Services.CombatServiceTests",
+      "min_tests": 1
+    },
+    {
+      "id": "combat-targeting",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Scenes/Battle/test_battle_card_targeting_drag_play_flow.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Integration/MvgRewardOfferIntegrationTests.cs",
+      "selector": "Game.Core.Tests.Integration.MvgRewardOfferIntegrationTests",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-input",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "engine-input",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_input_journey.gd",
+      "min_tests": 1,
+      "challenge": "disconnect-reward-input"
+    },
+    {
+      "id": "reward-idempotency",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
+      "min_tests": 2
+    }
+  ]
+}
