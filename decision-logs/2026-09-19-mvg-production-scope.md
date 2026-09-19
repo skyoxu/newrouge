@@ -1,0 +1,21 @@
+# MVG production scope boundary
+
+- Title: Promote MVG acceptance from pilot-only to declared production-critical scope
+- Date: 2026-09-19
+- Status: Implemented; target branch validation pending
+- Supersedes: decision-logs/2026-09-18-mvg-integration.md
+- Superseded by: None
+- Branch: feat/production-mvg-scope-20260919
+- Git Head: 196c5b9ceabe6a4a1b76c678535fb310b8aab594
+- Why now: The existing reward pilot proves one cross-task journey but does not protect the broader M1 critical loop or distinguish pilot claims from production-scope claims.
+- Context: The runner, snapshot isolation, exact report validation, input challenge and conservative recommendation layers are already stable. The remaining gap is manifest scope and automatic triggering on critical business changes.
+- Decision: Add an explicit scope_kind of pilot or production. Production scope requires at least three cross-task flows, implemented domain-integration / scene-method / engine-input evidence, and explicit exclusions. Make docs/testing/mvg/m1-production.json the default executable manifest while retaining reward-pilot.json as a narrow example.
+- Consequences: full-mvg means all required tests in the selected manifest. It does not mean unlimited whole-game proof. The current production-critical scope covers encounter-to-reward return, Continue restore for Reward/Shop/Event state, and combat runtime-to-presentation integrity.
+- Recovery impact: Resume from the production manifest and its declared exclusions. Do not use the old reward pilot as evidence that the production scope passed.
+- Validation: Pending branch Windows MVG, Windows Quality and Windows Smoke checks. The committed manifest has a repository-real validator regression and the workflow triggers on the critical source/test paths it declares.
+- Related ADRs: docs/adr/ADR-0037-mvg-integration-evidence.md
+- Related execution plans: execution-plans/2026-09-19-mvg-production-scope.md
+- Related task id(s): Existing business tasks 22, 44, 61, 77, 78, 84, 98, 114, 115 and 128 are referenced; this decision does not write task status.
+- Related run id: pending
+- Related latest.json: n/a - MVG evidence remains separate from Chapter 6 task review authority.
+- Related pipeline artifacts: logs/ci/mvg-acceptance/**, logs/ci/mvg-mutation/**
