@@ -142,9 +142,13 @@ def recommend(doc: dict, changed_paths: list[str], *, unknown_reason: str = '') 
             mapped.update(hits)
             evidence.append({'flow_id': flow['id'], 'changed_paths': hits, 'test_ids': flow['test_ids']})
     unmapped = sorted(set(changed_paths) - mapped)
+    coverage = doc.get('coverage') if isinstance(doc.get('coverage'), dict) else {}
     return {'recommendation': 'full-mvg' if unmapped or not matched or unknown_reason else 'related-first',
             'matched_flows': matched, 'evidence_paths': evidence, 'unmapped_changes': unmapped,
             'unknown_reason': unknown_reason,
             'required_tests': [test['id'] for test in doc['tests']],
+            'manifest_coverage_mode': coverage.get('mode', 'unknown'),
+            'manifest_scope_id': coverage.get('scope_id', ''),
+            'manifest_blocking_task_ids': coverage.get('blocking_task_ids', []),
             'authorizes_test_exclusion': False,
-            'analysis_scope': 'Explicit manifest source/contract/test mappings; not a call graph'}
+            'analysis_scope': 'Explicit manifest source/contract/test mappings; full-mvg means all tests in this manifest, not automatic product-wide coverage'}
