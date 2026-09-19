@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _mvg_manifest import validate_manifest, recommend
 from _mvg_execution import read_test_evidence
-from run_mvg_acceptance import register_arguments, run
+from run_mvg_acceptance import DEFAULT_MANIFEST, register_arguments, run
 
 
 class MvgAcceptanceTests(unittest.TestCase):
@@ -39,6 +39,17 @@ class MvgAcceptanceTests(unittest.TestCase):
                        'evidence_level': 'domain-integration',
                        'path': 'Game.Core.Tests/A.cs',
                        'selector': 'Game.Core.Tests.A', 'min_tests': 1}]}
+
+    def test_repository_full_manifest_is_default_and_executable(self):
+        repo_root = Path(__file__).resolve().parents[3]
+        self.assertEqual('docs/testing/mvg/full-mvg.json', DEFAULT_MANIFEST)
+        doc = json.loads((repo_root / DEFAULT_MANIFEST).read_text(encoding='utf-8'))
+        self.assertEqual([], validate_manifest(repo_root, doc, executable=True))
+        self.assertEqual(
+            {'run-entry-to-map', 'map-combat-reward-return', 'combat-card-play-and-targeting', 'reward-claim-and-return'},
+            {flow['id'] for flow in doc['flows']},
+        )
+        self.assertGreaterEqual(len(doc['tests']), 8)
 
     def test_planning_allows_missing_planned_test_but_execution_rejects_it(self):
         self.manifest['tests'][0].update(state='planned', path='Game.Core.Tests/Future.cs')
