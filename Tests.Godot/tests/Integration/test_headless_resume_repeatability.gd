@@ -282,7 +282,7 @@ func test_continue_with_valid_metadata_restores_into_map_or_combat_boundary() ->
         _write_autosave(_build_continue_autosave_json(str(case_data["save_point_id"]), str(case_data["route_owner"])))
 
         var main := await _load_main_for_continue()
-        var menu := main.get_node("MainMenu") as Control
+        var menu := main.get_node("MenuLayer/MainMenu") as Control
         var continue_btn := menu.get_node("VBox/BtnContinue") as Button
         continue_btn.emit_signal("pressed")
         await get_tree().process_frame
@@ -302,13 +302,13 @@ func test_continue_should_block_when_route_ownership_does_not_match_resume_targe
     _write_autosave(_build_continue_autosave_json("combat_start", "map"))
 
     var main := await _load_main_for_continue()
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     var continue_btn := menu.get_node("VBox/BtnContinue") as Button
     continue_btn.emit_signal("pressed")
     await get_tree().process_frame
     await get_tree().process_frame
 
-    var blocked_dialog := main.get_node_or_null("MainMenu/ContinueBlockedDialog") as Control
+    var blocked_dialog := menu.get_node_or_null("ContinueBlockedDialog") as Control
     assert_bool(menu.visible).is_true()
     assert_bool(blocked_dialog != null and blocked_dialog.visible).is_true()
     assert_bool(_event_types.has("core.run.continue.blocked")).is_true()
@@ -322,14 +322,14 @@ func test_continue_should_keep_menu_boundary_when_resume_target_is_locked_surfac
     _write_autosave(_build_continue_autosave_json("event_reward_claim", "map"))
 
     var main := await _load_main_for_continue()
-    var menu := main.get_node("MainMenu") as Control
+    var menu := main.get_node("MenuLayer/MainMenu") as Control
     var continue_btn := menu.get_node("VBox/BtnContinue") as Button
     continue_btn.emit_signal("pressed")
     await get_tree().process_frame
     await get_tree().process_frame
 
-    var blocked_dialog := main.get_node_or_null("MainMenu/ContinueBlockedDialog") as Control
-    var message_label := main.get_node_or_null("MainMenu/ContinueBlockedDialog/MarginContainer/VBox/MessageLabel") as Label
+    var blocked_dialog := menu.get_node_or_null("ContinueBlockedDialog") as Control
+    var message_label := menu.get_node_or_null("ContinueBlockedDialog/MarginContainer/VBox/MessageLabel") as Label
     assert_bool(menu.visible).is_true()
     assert_bool(blocked_dialog != null and blocked_dialog.visible).is_true()
     assert_bool(message_label != null).is_true()
