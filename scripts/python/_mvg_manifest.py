@@ -8,6 +8,8 @@ from pathlib import Path, PurePosixPath
 SCHEMA = 'newrouge.mvg-integration.v1'
 LEVELS = {'dotnet': {'domain-integration'},
           'gdunit': {'scene-method', 'engine-input'}}
+SCOPE_KINDS = {'pilot', 'production'}
+PRODUCTION_LEVELS = {'domain-integration', 'scene-method', 'engine-input'}
 
 
 def safe_path(root: Path, value: str) -> Path:
@@ -33,6 +35,9 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
             errors.append('Unsupported schema_version')
         if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', doc.get('mvg_id', '')):
             errors.append('Invalid mvg_id')
+        scope_kind = doc.get('scope_kind')
+        if scope_kind not in SCOPE_KINDS:
+            errors.append('Invalid scope_kind')
         tasks_doc = read_manifest(root, '.taskmaster/tasks/tasks.json')
         tasks = {int(row['id']) for row in tasks_doc['master']['tasks']}
         flows, tests = doc['flows'], doc['tests']
@@ -43,6 +48,17 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
             if len(ids) != len(set(ids)) or any(not re.fullmatch(r'[a-z0-9][a-z0-9-]*', i) for i in ids):
                 errors.append(f'Duplicate or invalid {label} id')
         test_ids = {row['id'] for row in tests}
+        if scope_kind == 'production':
+            exclusions = doc.get('explicit_exclusions')
+            if not isinstance(exclusions, list) or not exclusions or any(not isinstance(item, str) or not item.strip() for item in exclusions):
+                errors.append('Production scope requires explicit_exclusions')
+            if len(flows) < 3:
+                errors.append('Production scope requires at least three flows')
+            levels = {row.get('evidence_level') for row in tests}
+            if not PRODUCTION_LEVELS <= levels:
+                errors.append('Production scope requires domain-integration, scene-method and engine-input evidence')
+            if any(row.get('state') != 'implemented' for row in tests):
+                errors.append('Production scope cannot contain planned tests')
         for test in tests:
             label = test['id']
             if test['state'] not in {'planned', 'implemented'}:
@@ -68,6 +84,8 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
             ids = flow['task_ids']
             if not ids or any(type(i) is not int or i not in tasks for i in ids):
                 errors.append(f'{label}: unknown or empty task_ids')
+            if scope_kind == 'production' and len(set(ids)) < 2:
+                errors.append(f'{label}: production flow must cross at least two tasks')
             if not flow['outcome'].strip() or not flow['source_paths'] or not flow['handoffs']:
                 errors.append(f'{label}: outcome, sources and handoffs are required')
             for path in flow['source_paths']:
@@ -109,5 +127,7 @@ def recommend(doc: dict, changed_paths: list[str], *, unknown_reason: str = '') 
             'matched_flows': matched, 'evidence_paths': evidence, 'unmapped_changes': unmapped,
             'unknown_reason': unknown_reason,
             'required_tests': [test['id'] for test in doc['tests']],
+            'scope_kind': doc.get('scope_kind', 'pilot'),
+            'mvg_id': doc.get('mvg_id', ''),
             'authorizes_test_exclusion': False,
             'analysis_scope': 'Explicit manifest source/contract/test mappings; not a call graph'}
