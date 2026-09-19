@@ -98,6 +98,14 @@ class CrossRepoMigrationReconciliationTests(unittest.TestCase):
         self.assertTrue(any("source.repo must be a safe owner/name" in item for item in errors))
         self.assertTrue(any("unsafe source changed-file path" in item for item in errors))
 
+    def test_dot_segment_repository_names_are_rejected(self):
+        for repo_name in ["../source", "owner/..", "./source", "owner/."]:
+            with self.subTest(repo_name=repo_name):
+                doc = copy.deepcopy(self.manifest)
+                doc["source"]["repo"] = repo_name
+                errors = migration.validate_manifest(doc, self.root)
+                self.assertTrue(any("source.repo must be a safe owner/name" in item for item in errors))
+
     def test_windows_absolute_target_path_is_rejected(self):
         doc = copy.deepcopy(self.manifest)
         doc["entries"][0]["target_paths"] = ["C:/shared.py"]
