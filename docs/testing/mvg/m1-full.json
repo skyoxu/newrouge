@@ -1,0 +1,349 @@
+{
+  "schema_version": "newrouge.mvg-integration.v1",
+  "mvg_id": "m1-full",
+  "scope_note": "Target automated M1 MVG scope. It is intentionally plan-only while scoped Taskmaster work is non-done; executable full verification must fail closed until blocking_task_ids is empty.",
+  "coverage": {
+    "mode": "full",
+    "scope_id": "m1-player-loop",
+    "required_flow_ids": [
+      "new-run-entry-to-map",
+      "map-node-owned-flow",
+      "continue-resume-recovery",
+      "combat-reward-return"
+    ],
+    "blocking_task_ids": [
+      59,
+      60
+    ],
+    "excluded_claims": [
+      "Human gameplay approval and balance quality remain separate.",
+      "OS-native mouse geometry, device-specific focus navigation and subjective presentation quality remain separate.",
+      "A full runtime_verified claim is forbidden while blocking_task_ids is non-empty."
+    ]
+  },
+  "flows": [
+    {
+      "id": "new-run-entry-to-map",
+      "outcome": "New Run follows MainMenu -> DifficultySelect -> CharacterSelect -> Map without demo/placeholder routing and emits the run-start boundary.",
+      "task_ids": [
+        14,
+        59
+      ],
+      "source_paths": [
+        "Game.Godot/Scenes/Main.tscn",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scripts/UI/MainMenu.cs",
+        "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 14,
+          "consumer_task": 59,
+          "owner_task": 59,
+          "contract_ref": "Game.Core/Contracts/Events/RunStateTransitionedEvent.cs",
+          "behavior": "Main-menu New Run hands routing to the governed M1 entry chain and reaches Map only after confirmed difficulty and character selection.",
+          "test_ids": [
+            "run-entry-domain",
+            "run-entry-scene"
+          ]
+        }
+      ],
+      "test_ids": [
+        "run-entry-domain",
+        "run-entry-scene"
+      ]
+    },
+    {
+      "id": "map-node-owned-flow",
+      "outcome": "A reachable Map node enters its owned Combat/Event/Shop/Rest flow and returns through the route owner; blocked or illegal nodes leave progression unchanged with an explicit reason.",
+      "task_ids": [
+        42,
+        60,
+        69,
+        97,
+        110
+      ],
+      "source_paths": [
+        "Game.Core/Services/MapNodeRouteOwnershipService.cs",
+        "Game.Godot/Scripts/UI/MapScene.cs",
+        "Game.Godot/Scripts/Main.gd",
+        "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+        "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 42,
+          "consumer_task": 60,
+          "owner_task": 60,
+          "contract_ref": "Game.Core/Contracts/Run/RunTransition.cs",
+          "behavior": "A selected reachable map node becomes a route-owned transition; completion returns through the same boundary and refusals preserve progression.",
+          "test_ids": [
+            "map-route-domain",
+            "map-route-scene",
+            "map-state-scene"
+          ]
+        }
+      ],
+      "test_ids": [
+        "map-route-domain",
+        "map-route-scene",
+        "map-state-scene"
+      ]
+    },
+    {
+      "id": "continue-resume-recovery",
+      "outcome": "A valid autosave resumes deterministically into its owned boundary, while invalid or locked-surface Continue states fail closed with visible recovery actions.",
+      "task_ids": [
+        44,
+        63,
+        87,
+        98,
+        103
+      ],
+      "source_paths": [
+        "Game.Core/Services/ContinueLoadValidationService.cs",
+        "Game.Core/Contracts/Save/ContinueMetadata.cs",
+        "Game.Godot/Scripts/UI/MainMenu.cs",
+        "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+        "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 44,
+          "consumer_task": 87,
+          "owner_task": 87,
+          "contract_ref": "Game.Core/Contracts/Save/ContinueMetadata.cs",
+          "behavior": "Persisted deterministic resume evidence is interpreted by the real Continue boundary before routing.",
+          "test_ids": [
+            "resume-domain",
+            "resume-repeatability"
+          ]
+        },
+        {
+          "producer_task": 87,
+          "consumer_task": 98,
+          "owner_task": 98,
+          "contract_ref": "Game.Core/Contracts/Save/AutosaveSnapshot.cs",
+          "behavior": "Continue restores the saved route owner, including locked Reward/Shop/Event surfaces, rather than silently starting a new run.",
+          "test_ids": [
+            "resume-repeatability",
+            "continue-blocked"
+          ]
+        },
+        {
+          "producer_task": 98,
+          "consumer_task": 103,
+          "owner_task": 103,
+          "contract_ref": "Game.Core/Contracts/Save/ContinueLoadValidationResult.cs",
+          "behavior": "Invalid or unsupported restore state is rejected with an explicit reason and visible recovery boundary.",
+          "test_ids": [
+            "resume-domain",
+            "continue-blocked"
+          ]
+        }
+      ],
+      "test_ids": [
+        "resume-domain",
+        "resume-repeatability",
+        "continue-blocked"
+      ]
+    },
+    {
+      "id": "combat-reward-return",
+      "outcome": "Combat runtime resolution reaches the route-owned Reward flow; the Reward offer remains stable, claims once, and returns through the owned route without duplicate writeback.",
+      "task_ids": [
+        61,
+        83,
+        84,
+        85,
+        114,
+        115,
+        128
+      ],
+      "source_paths": [
+        "Game.Core/Services/CombatService.cs",
+        "Game.Godot/Scripts/UI/CombatScene.cs",
+        "Game.Godot/Scripts/RewardScene.gd",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+        "Tests.Godot/tests/Integration/Mvg/reward_fixture.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 83,
+          "consumer_task": 61,
+          "owner_task": 61,
+          "contract_ref": "Game.Core/Contracts/Events/CombatEndedEvent.cs",
+          "behavior": "Combat completion hands routing to the standalone Reward boundary rather than a scene-local shortcut.",
+          "test_ids": [
+            "combat-core",
+            "combat-scene",
+            "reward-route"
+          ]
+        },
+        {
+          "producer_task": 84,
+          "consumer_task": 114,
+          "owner_task": 114,
+          "contract_ref": "Game.Core/Contracts/Offers/OfferLockSnapshot.cs",
+          "behavior": "The generated reward offer is locked and preserves identity/order across re-entry.",
+          "test_ids": [
+            "reward-core"
+          ]
+        },
+        {
+          "producer_task": 114,
+          "consumer_task": 128,
+          "owner_task": 128,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+          "behavior": "The locked offer is presented on the real Reward UI boundary.",
+          "test_ids": [
+            "reward-input",
+            "reward-route"
+          ]
+        },
+        {
+          "producer_task": 128,
+          "consumer_task": 115,
+          "owner_task": 115,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs",
+          "behavior": "Confirm/skip writes back once and returns through the route owner.",
+          "test_ids": [
+            "reward-input",
+            "reward-idempotency",
+            "reward-route"
+          ]
+        }
+      ],
+      "test_ids": [
+        "combat-core",
+        "combat-scene",
+        "reward-core",
+        "reward-input",
+        "reward-idempotency",
+        "reward-route"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "run-entry-domain",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs",
+      "selector": "Game.Core.Tests.Tasks.Task0059AcceptanceTests",
+      "min_tests": 1
+    },
+    {
+      "id": "run-entry-scene",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "map-route-domain",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs",
+      "selector": "Game.Core.Tests.Tasks.Task0060AcceptanceTests",
+      "min_tests": 1
+    },
+    {
+      "id": "map-route-scene",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "map-state-scene",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "resume-domain",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Services/ContinueLoadValidationServiceCoverageTests.cs",
+      "selector": "Game.Core.Tests.Services.ContinueLoadValidationServiceCoverageTests",
+      "min_tests": 1
+    },
+    {
+      "id": "resume-repeatability",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "continue-blocked",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "combat-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Services/CombatServiceTests.cs",
+      "selector": "Game.Core.Tests.Services.CombatServiceTests",
+      "min_tests": 1
+    },
+    {
+      "id": "combat-scene",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Integration/MvgRewardOfferIntegrationTests.cs",
+      "selector": "Game.Core.Tests.Integration.MvgRewardOfferIntegrationTests",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-input",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "engine-input",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_input_journey.gd",
+      "min_tests": 1,
+      "challenge": "disconnect-reward-input"
+    },
+    {
+      "id": "reward-idempotency",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
+      "min_tests": 2
+    },
+    {
+      "id": "reward-route",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd",
+      "min_tests": 1
+    }
+  ]
+}
