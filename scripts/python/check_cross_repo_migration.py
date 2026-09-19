@@ -30,6 +30,14 @@ HEX40_RE = re.compile(r"^[0-9a-f]{40}$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
+def _safe_repo_name(value: Any) -> bool:
+    text = str(value or "")
+    if not REPO_RE.fullmatch(text):
+        return False
+    owner, repo = text.split("/", 1)
+    return owner not in {".", ".."} and repo not in {".", ".."}
+
+
 def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
@@ -117,13 +125,13 @@ def validate_manifest(doc: dict[str, Any], repo_root: Path) -> list[str]:
         errors.append("entries must be an array")
         entries = []
 
-    if not isinstance(source.get("repo"), str) or not REPO_RE.fullmatch(str(source.get("repo"))):
+    if not isinstance(source.get("repo"), str) or not _safe_repo_name(source.get("repo")):
         errors.append("source.repo must be a safe owner/name")
     if not isinstance(source.get("pr"), int) or int(source.get("pr") or 0) <= 0:
         errors.append("source.pr must be a positive integer")
     if not HEX40_RE.fullmatch(str(source.get("merge_commit") or "")):
         errors.append("source.merge_commit must be a full 40-character lowercase git hash")
-    if not isinstance(target.get("repo"), str) or not REPO_RE.fullmatch(str(target.get("repo"))):
+    if not isinstance(target.get("repo"), str) or not _safe_repo_name(target.get("repo")):
         errors.append("target.repo must be a safe owner/name")
 
     changed_files = source.get("changed_files")
@@ -237,7 +245,7 @@ def _github_json(url: str, token: str) -> Any:
 def fetch_github_source_inventory(source: dict[str, Any], token: str = "") -> dict[str, Any]:
     repo = str(source.get("repo") or "")
     pr = int(source.get("pr") or 0)
-    if not REPO_RE.fullmatch(repo) or pr <= 0:
+    if not _safe_repo_name(repo) or pr <= 0:
         raise ValueError("source.repo/source.pr are invalid")
     base = f"https://api.github.com/repos/{repo}"
     pr_doc = _github_json(f"{base}/pulls/{pr}", token)
