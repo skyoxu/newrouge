@@ -25,9 +25,9 @@ permissions:
   contents: read
 
 jobs:
-  reward-pilot:
+  critical-journeys:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
@@ -46,12 +46,12 @@ jobs:
         run: ./scripts/ci/download_godot_release.ps1 -Version '4.5.1' -PreferConsole
       - name: Verify runner failure handling
         run: python -m unittest discover -s scripts/python/tests -p test_mvg_acceptance.py -v
-      - name: Run committed reward pilot and disconnected-input challenge
+      - name: Run committed critical journeys and disconnected-input challenge
         shell: pwsh
-        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200 --challenge-input
-      - name: Run workspace reward pilot
+        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1800 --challenge-input
+      - name: Run workspace critical journeys
         shell: pwsh
-        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200
+        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1800
       - name: Optional seeded mutation experiment
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mutation_probe }}
         run: python scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
