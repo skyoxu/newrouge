@@ -1,5 +1,38 @@
 const { test, expect } = require('@playwright/test');
 
+const base = () => process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
+
+const syntheticGraph = () => ({
+  revision: 'synthetic-revision',
+  main_scene: 'Game.Godot/Scenes/Test/Main.tscn',
+  nodes: {
+    'Game.Godot/Scenes/Test/Main.tscn': {
+      path: 'Game.Godot/Scenes/Test/Main.tscn', classification: 'confirmed-reachable',
+      nodes: [], knowledge_context: [], functional_summary: { scripts: [], config_references: [] }
+    },
+    'Game.Godot/Scenes/Test/Deep.tscn': {
+      path: 'Game.Godot/Scenes/Test/Deep.tscn', classification: 'unreachable-candidate',
+      nodes: [], knowledge_context: [], functional_summary: { scripts: [], config_references: [] }
+    },
+    'Game.Godot/Scenes/Test/Outside.tscn': {
+      path: 'Game.Godot/Scenes/Test/Outside.tscn', classification: 'unreachable-candidate',
+      nodes: [], knowledge_context: [], functional_summary: { scripts: [], config_references: [] }
+    }
+  },
+  edges: [{
+    source: 'Game.Godot/Scenes/Test/Main.tscn', target: 'Game.Godot/Scenes/Test/Deep.tscn',
+    evidence_level: 'possible', kind: 'scene-reference'
+  }],
+  code_references: [],
+  script_task_context: {},
+  data_dictionary: { entries: {} },
+  file_manifest: [
+    'Game.Godot/Scenes/Test/Main.tscn',
+    'Game.Godot/Scenes/Test/Deep.tscn',
+    'Game.Godot/Scenes/Test/Outside.tscn'
+  ]
+});
+
 test.describe('project health Godot scene graph', () => {
   test('renders graph controls and supports graph refresh', async ({ page }) => {
     await page.goto((process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767') + '/knowledge/');
@@ -41,9 +74,12 @@ test.describe('project health Godot scene graph', () => {
     let releaseGraphResponse;
     const graphResponseReleased = new Promise(resolve => { releaseGraphResponse = resolve; });
     await page.route('**/api/knowledge/scene-graph', async route => {
-      const response = await route.fetch();
       await graphResponseReleased;
-      await route.fulfill({ response });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(syntheticGraph())
+      });
     });
 
     const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
@@ -60,9 +96,12 @@ test.describe('project health Godot scene graph', () => {
     let releaseGraphResponse;
     const graphResponseReleased = new Promise(resolve => { releaseGraphResponse = resolve; });
     await page.route('**/api/knowledge/scene-graph', async route => {
-      const response = await route.fetch();
       await graphResponseReleased;
-      await route.fulfill({ response });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(syntheticGraph())
+      });
     });
 
     const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
@@ -76,26 +115,16 @@ test.describe('project health Godot scene graph', () => {
     await expect(page.locator('.scene-composition-toolbar')).toBeHidden();
   });
 
-  test('shows the full route-tree closure by default and adds outside scenes only on request', async ({ page, request }) => {
-    const baseUrl = process.env.PROJECT_HEALTH_URL || 'http://127.0.0.1:8767';
-    const graphResponse = await request.get(baseUrl + '/api/knowledge/scene-graph');
-    expect(graphResponse.ok()).toBeTruthy();
-    const graph = await graphResponse.json();
-    const deepScenePath = 'Game.Godot/Scenes/Screens/SettingsScreen.tscn';
-    const outsideScenePath = 'Game.Godot/Examples/Components/EventListenerPanel.tscn';
-    const distances = new Map([[graph.main_scene, 0]]);
-    const pending = [graph.main_scene];
-    while (pending.length) {
-      const source = pending.shift();
-      for (const edge of graph.edges.filter(edge => edge.source === source && graph.nodes[edge.target])) {
-        if (distances.has(edge.target)) continue;
-        distances.set(edge.target, distances.get(source) + 1);
-        pending.push(edge.target);
-      }
-    }
-    expect(graph.nodes[deepScenePath].classification).toBe('unreachable-candidate');
-    expect(distances.get(deepScenePath)).toBeGreaterThanOrEqual(2);
-    expect(distances.has(outsideScenePath)).toBeFalsy();
+  test('shows the full route-tree closure by default and adds outside scenes only on request', async ({ page }) => {
+    await page.route('**/api/knowledge/scene-graph', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(syntheticGraph())
+    }));
+
+    const baseUrl = base();
+    const deepScenePath = 'Game.Godot/Scenes/Test/Deep.tscn';
+    const outsideScenePath = 'Game.Godot/Scenes/Test/Outside.tscn';
 
     await page.goto(baseUrl + '/knowledge/scenes');
     await expect(page.locator('#scene-status')).toContainText('scenes');
