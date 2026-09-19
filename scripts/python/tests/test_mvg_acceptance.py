@@ -70,6 +70,17 @@ class MvgAcceptanceTests(unittest.TestCase):
         self.assertEqual('pilot', result['scope_kind'])
         self.assertEqual('pilot', result['mvg_id'])
 
+    def test_committed_production_manifest_is_structurally_valid(self):
+        repo_root = Path(__file__).resolve().parents[3]
+        doc = json.loads((repo_root / 'docs/testing/mvg/m1-production.json').read_text(encoding='utf-8'))
+        self.assertEqual([], validate_manifest(repo_root, doc, executable=False))
+        self.assertEqual('production', doc['scope_kind'])
+        self.assertGreaterEqual(len(doc['flows']), 3)
+        self.assertEqual(
+            {'domain-integration', 'scene-method', 'engine-input'},
+            {test['evidence_level'] for test in doc['tests']},
+        )
+
     def test_missing_owner_unknown_task_and_uncovered_handoff_are_rejected(self):
         for change in [dict(owner_task=99), dict(test_ids=[]), dict(contract_ref='../escape')]:
             with self.subTest(change=change):
