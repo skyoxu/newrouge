@@ -15,7 +15,7 @@ from _mvg_manifest import read_manifest, recommend, validate_manifest
 from _mvg_execution import execute_test
 from _project_health_runtime_snapshot import prepare_snapshot
 
-DEFAULT_MANIFEST = 'docs/testing/mvg/reward-pilot.json'
+DEFAULT_MANIFEST = 'docs/testing/mvg/full-mvg.json'
 
 
 def write_json(path: Path, payload: dict) -> None:
