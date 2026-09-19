@@ -1,0 +1,21 @@
+# MVG production scope rollout
+
+- Title: Promote reward pilot infrastructure into M1 production-critical MVG coverage
+- Status: In validation
+- Branch: feat/production-mvg-scope-20260919
+- Git Head: 196c5b9ceabe6a4a1b76c678535fb310b8aab594
+- Goal: Replace pilot-only default coverage with a machine-distinguishable production scope built from existing real cross-task tests.
+- Scope: scope_kind validation, production manifest, default runner selection, workflow source-path triggers, documentation and repository-real manifest regression.
+- Current step: Run protected branch checks and repair only evidence-backed failures.
+- Last completed step: Added m1-production.json with three critical flows and six existing tests; reward-pilot.json is now explicitly pilot scope.
+- Stop-loss: Do not call a manifest production unless it meets the enforced three-flow, three-evidence-layer and explicit-exclusion requirements. Do not weaken existing tests merely to make the production scope green.
+- Next action: Inspect MVG Integration, Windows Quality and Windows Smoke on the PR head. If green, close this plan and merge normally.
+- Recovery command: py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode plan
+- Open questions: Additional future journeys may cover startup-to-first-combat, fail/restart, focus navigation and OS pointer behavior, but they are not part of this initial production-critical claim.
+- Exit criteria: Committed production manifest validates; commit and workspace MVG runs are runtime_verified; disconnected reward-input challenge is detected; Quality and Smoke stay green.
+- Related ADRs: docs/adr/ADR-0037-mvg-integration-evidence.md
+- Related decision logs: decision-logs/2026-09-19-mvg-production-scope.md
+- Related task id(s): Existing business tasks only; no Taskmaster status writes.
+- Related run id: pending
+- Related latest.json: n/a
+- Related pipeline artifacts: logs/ci/mvg-acceptance/**, logs/ci/mvg-mutation/**
