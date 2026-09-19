@@ -78,6 +78,6 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ## CI 与人工验收
 
-`.github/workflows/mvg-integration.yml` 对相关改动先 plan 校验 `m1-full` 目标 inventory，再运行 commit/workspace 两份 `m1-critical` 多 flow 范围，并在 committed critical run 上执行奖励输入断线反例；变异实验仍仅手动选择。只要 `m1-full.coverage.blocking_task_ids` 非空，CI 不得把 critical 通过解释为 full-MVG runtime verified。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
+`.github/workflows/mvg-integration.yml` 对相关改动先 plan 校验 `m1-full` 目标 inventory，再在 commit 快照运行完整 `m1-critical` 多 flow 范围并执行奖励输入断线反例；workspace 快照继续运行较小的 `reward-pilot`，专门守住未提交输入与 GdUnit4 runtime-bin 快照语义，避免把完整 critical 套件重复执行两遍。变异实验仍仅手动选择。只要 `m1-full.coverage.blocking_task_ids` 非空，CI 不得把 critical 通过解释为 full-MVG runtime verified。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
 
 同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。
