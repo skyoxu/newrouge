@@ -123,7 +123,7 @@ func _persist_payload_roundtrip(saved_payload: Dictionary, tag: String) -> Dicti
 
     var username := "repeat_%s" % str(Time.get_ticks_usec())
     assert_that(bridge.UpsertUser(username)).is_true()
-    var uid := bridge.FindUserId(username)
+    var uid = bridge.FindUserId(username)
     assert_that(uid).is_not_null()
     var payload_json := JSON.stringify(saved_payload)
     assert_that(bridge.UpsertSave(uid, 1, payload_json)).is_true()
