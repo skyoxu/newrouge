@@ -28,6 +28,7 @@ CLASSIFICATIONS = {
 }
 HEX40_RE = re.compile(r"^[0-9a-f]{40}$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+MIGRATION_MARKER_RE = re.compile(r"(?mi)^Migration-Key:\s*(\S+)\s*$")
 
 
 def _safe_repo_name(value: Any) -> bool:
@@ -133,6 +134,19 @@ def validate_manifest(doc: dict[str, Any], repo_root: Path) -> list[str]:
         errors.append("source.merge_commit must be a full 40-character lowercase git hash")
     if not isinstance(target.get("repo"), str) or not _safe_repo_name(target.get("repo")):
         errors.append("target.repo must be a safe owner/name")
+
+    identity_declared = "migration_key" in target
+    if identity_declared:
+        target_pr = target.get("pr")
+        target_branch = str(target.get("branch") or "")
+        migration_key = str(target.get("migration_key") or "")
+        if type(target_pr) is not int or target_pr < 1:
+            errors.append("target.pr must be a positive integer when canonical identity is declared")
+        if not target_branch or target_branch.startswith("/") or ".." in target_branch or any(ch.isspace() for ch in target_branch):
+            errors.append("target.branch must be a safe non-empty branch name when canonical identity is declared")
+        expected_key = f"{source.get('repo')}@{source.get('merge_commit')}->{target.get('repo')}"
+        if migration_key != expected_key:
+            errors.append("target.migration_key must bind source repo + merge commit + target repo")
 
     changed_files = source.get("changed_files")
     if not isinstance(changed_files, list) or not changed_files or not all(isinstance(item, str) and item for item in changed_files):
@@ -271,6 +285,89 @@ def fetch_github_source_inventory(source: dict[str, Any], token: str = "") -> di
     }
 
 
+def extract_migration_key(body: str) -> str:
+    match = MIGRATION_MARKER_RE.search(body or "")
+    return match.group(1) if match else ""
+
+
+def current_pr_from_event(event_path: str) -> dict[str, Any]:
+    if not event_path:
+        return {}
+    path = Path(event_path)
+    if not path.is_file():
+        return {}
+    payload = _read_json(path)
+    pr = payload.get("pull_request")
+    return pr if isinstance(pr, dict) else {}
+
+
+def fetch_open_pull_requests(repository: str, token: str = "") -> list[dict[str, Any]]:
+    if not _safe_repo_name(repository):
+        raise ValueError("target repository is invalid")
+    output: list[dict[str, Any]] = []
+    page = 1
+    while True:
+        rows = _github_json(
+            f"https://api.github.com/repos/{repository}/pulls?state=open&per_page=100&page={page}",
+            token,
+        )
+        if not isinstance(rows, list):
+            raise ValueError("target open pull request response is invalid")
+        output.extend(row for row in rows if isinstance(row, dict))
+        if len(rows) < 100:
+            break
+        page += 1
+        if page > 100:
+            raise ValueError("target pull request pagination exceeded safety limit")
+    return output
+
+
+def verify_target_open_pr(doc: dict[str, Any], *, event_path: str, repository: str,
+                          token: str = "") -> list[str]:
+    source = doc.get("source")
+    target = doc.get("target")
+    if not isinstance(source, dict) or not isinstance(target, dict):
+        return ["source/target must be objects before canonical PR verification"]
+    required = ("pr", "branch", "migration_key")
+    if any(key not in target for key in required):
+        return ["target canonical identity requires pr, branch and migration_key"]
+    target_repo = str(target.get("repo") or "")
+    if repository != target_repo:
+        return [f"GITHUB_REPOSITORY mismatch expected={target_repo} actual={repository}"]
+    current = current_pr_from_event(event_path)
+    if not current:
+        return ["pull_request event payload is required for canonical PR verification"]
+
+    errors: list[str] = []
+    expected_pr = target.get("pr")
+    expected_branch = str(target.get("branch") or "")
+    expected_key = str(target.get("migration_key") or "")
+    head = current.get("head") if isinstance(current.get("head"), dict) else {}
+    if current.get("number") != expected_pr:
+        errors.append(f"current PR number does not match target.pr expected={expected_pr} actual={current.get('number')}")
+    if str(head.get("ref") or "") != expected_branch:
+        errors.append("current PR branch does not match target.branch")
+    if extract_migration_key(str(current.get("body") or "")) != expected_key:
+        errors.append("current PR Migration-Key marker does not match target.migration_key")
+
+    try:
+        open_prs = fetch_open_pull_requests(repository, token)
+    except ValueError as exc:
+        return errors + [str(exc)]
+    matching = [
+        row for row in open_prs
+        if extract_migration_key(str(row.get("body") or "")) == expected_key
+    ]
+    if len(matching) != 1:
+        errors.append(
+            "expected exactly one open PR for target.migration_key; "
+            f"found {[row.get('number') for row in matching]}"
+        )
+    elif matching[0].get("number") != expected_pr:
+        errors.append("canonical open PR does not match target.pr")
+    return errors
+
+
 def verify_source_github(doc: dict[str, Any], token: str = "") -> list[str]:
     source = doc.get("source")
     if not isinstance(source, dict):
@@ -291,7 +388,9 @@ def verify_source_github(doc: dict[str, Any], token: str = "") -> list[str]:
     return errors
 
 
-def validate_file(path: Path, repo_root: Path, *, verify_github: bool = False, token: str = "") -> list[str]:
+def validate_file(path: Path, repo_root: Path, *, verify_github: bool = False,
+                  check_open_prs: bool = False, event_path: str = "",
+                  repository: str = "", token: str = "") -> list[str]:
     try:
         doc = _read_json(path)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
@@ -299,6 +398,10 @@ def validate_file(path: Path, repo_root: Path, *, verify_github: bool = False, t
     errors = validate_manifest(doc, repo_root)
     if verify_github and not errors:
         errors.extend(verify_source_github(doc, token))
+    if check_open_prs and not errors:
+        errors.extend(verify_target_open_pr(
+            doc, event_path=event_path, repository=repository, token=token
+        ))
     return [f"{path}: {item}" for item in errors]
 
 
@@ -309,6 +412,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", action="append", default=[])
     parser.add_argument("--require-manifests", action="store_true")
     parser.add_argument("--verify-source-github", action="store_true")
+    parser.add_argument("--check-open-prs", action="store_true")
     parser.add_argument("--github-token-env", default="GITHUB_TOKEN")
     parser.add_argument("--out", default="")
     args = parser.parse_args(argv)
@@ -320,15 +424,28 @@ def main(argv: list[str] | None = None) -> int:
     errors: list[str] = []
     if not manifests and args.require_manifests:
         errors.append(f"no reconciliation manifests found under {args.dir}")
-    token = os.getenv(args.github_token_env, "") if args.verify_source_github else ""
+    if args.check_open_prs and len(manifests) != 1:
+        errors.append("--check-open-prs requires exactly one reconciliation manifest")
+    token = os.getenv(args.github_token_env, "") if (args.verify_source_github or args.check_open_prs) else ""
+    event_path = os.getenv("GITHUB_EVENT_PATH", "") if args.check_open_prs else ""
+    repository = os.getenv("GITHUB_REPOSITORY", "") if args.check_open_prs else ""
     for path in manifests:
-        errors.extend(validate_file(path, root, verify_github=args.verify_source_github, token=token))
+        errors.extend(validate_file(
+            path,
+            root,
+            verify_github=args.verify_source_github,
+            check_open_prs=args.check_open_prs and len(manifests) == 1,
+            event_path=event_path,
+            repository=repository,
+            token=token,
+        ))
 
     status = "failed" if errors else ("skipped" if not manifests else "passed")
     summary = {
         "schema_version": SUMMARY_SCHEMA_VERSION,
         "status": status,
         "github_source_verified": bool(args.verify_source_github and manifests and not errors),
+        "canonical_pr_verified": bool(args.check_open_prs and len(manifests) == 1 and not errors),
         "manifests": [str(path.relative_to(root)).replace("\\", "/") for path in manifests if path.is_relative_to(root)],
         "errors": errors,
     }
