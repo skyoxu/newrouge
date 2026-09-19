@@ -113,6 +113,9 @@ class MvgAcceptanceTests(unittest.TestCase):
         self.assertEqual(['claim-test'], known['required_tests'])
         unknown = recommend(self.manifest, ['Game.Godot/new.gd'])
         self.assertEqual('full-mvg', unknown['recommendation'])
+        self.assertEqual('pilot', unknown['manifest_coverage_mode'])
+        self.assertEqual('unit-test-pilot', unknown['manifest_scope_id'])
+        self.assertEqual([], unknown['manifest_blocking_task_ids'])
         self.assertEqual(['Game.Godot/new.gd'], unknown['unmapped_changes'])
         self.assertFalse(unknown['authorizes_test_exclusion'])
 
