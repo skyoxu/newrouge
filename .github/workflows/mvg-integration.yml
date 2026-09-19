@@ -1,4 +1,4 @@
-name: MVG Integration Pilot
+name: MVG Integration
 
 on:
   workflow_dispatch:
@@ -17,17 +17,43 @@ on:
       - 'scripts/python/check_workflow_gate_enforcement.py'
       - 'scripts/python/config/workflow-gate-allowlist.json'
       - 'docs/testing/mvg/**'
+      - '.taskmaster/tasks/tasks.json'
+      - 'Game.Core/Services/CombatService.cs'
+      - 'Game.Core/Services/ContinueLoadValidationService.cs'
+      - 'Game.Core/Contracts/Save/**'
+      - 'Game.Core/Contracts/Events/CombatEndedEvent.cs'
+      - 'Game.Core/Contracts/Events/RewardOffer*Event.cs'
+      - 'Game.Core/Contracts/Offers/OfferLockSnapshot.cs'
+      - 'Game.Core/Contracts/Run/RunTransition.cs'
+      - 'Game.Core/Contracts/Events/RunStateTransitionedEvent.cs'
+      - 'Game.Godot/Scripts/Main.gd'
+      - 'Game.Godot/Scripts/UI/MainMenu.cs'
+      - 'Game.Godot/Scripts/UI/MapScene.cs'
+      - 'Game.Godot/Scripts/UI/CombatScene.cs'
+      - 'Game.Godot/Scripts/RewardScene.gd'
+      - 'Game.Godot/Scripts/Reward/**'
+      - 'Game.Godot/Scenes/Main.tscn'
       - 'Game.Core.Tests/Integration/Mvg*'
-      - 'Game.Core.Tests/Services/Mvg*'
+      - 'Game.Core.Tests/Services/CombatServiceTests.cs'
+      - 'Game.Core.Tests/Services/ContinueLoadValidationServiceCoverageTests.cs'
+      - 'Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs'
+      - 'Game.Core.Tests/Tasks/Task0060AcceptanceTests.cs'
       - 'Tests.Godot/tests/Integration/Mvg/**'
+      - 'Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd'
+      - 'Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd'
+      - 'Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd'
+      - 'Tests.Godot/tests/Integration/test_map_navigation_state_transitions.gd'
+      - 'Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd'
+      - 'Tests.Godot/tests/Scenes/Combat/test_combat_scene_ui_bindings.gd'
+      - 'Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd'
 
 permissions:
   contents: read
 
 jobs:
-  reward-pilot:
+  m1-critical:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
@@ -46,12 +72,15 @@ jobs:
         run: ./scripts/ci/download_godot_release.ps1 -Version '4.5.1' -PreferConsole
       - name: Verify runner failure handling
         run: python -m unittest discover -s scripts/python/tests -p test_mvg_acceptance.py -v
-      - name: Run committed reward pilot and disconnected-input challenge
+      - name: Validate target full-MVG scope inventory
         shell: pwsh
-        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200 --challenge-input
+        run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/m1-full.json --mode plan --snapshot commit --revision HEAD --timeout-sec 1200
+      - name: Run committed M1 critical scope and disconnected-input challenge
+        shell: pwsh
+        run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/m1-critical.json --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1800 --challenge-input
       - name: Run workspace reward pilot
         shell: pwsh
-        run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200
+        run: python scripts/python/run_mvg_acceptance.py --manifest docs/testing/mvg/reward-pilot.json --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200
       - name: Optional seeded mutation experiment
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mutation_probe }}
         run: python scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD

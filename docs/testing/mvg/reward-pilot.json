@@ -93,5 +93,16 @@
       "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
       "min_tests": 2
     }
-  ]
+  ],
+  "coverage": {
+    "mode": "pilot",
+    "scope_id": "reward-only",
+    "required_flow_ids": [
+      "reward-claim-and-return"
+    ],
+    "blocking_task_ids": [],
+    "excluded_claims": [
+      "This pilot does not cover New Run entry, Map node routing, Continue/resume, full combat resolution, human gameplay approval, balance, mouse geometry or focus navigation."
+    ]
+  }
 }

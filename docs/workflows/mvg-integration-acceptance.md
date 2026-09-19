@@ -16,7 +16,15 @@
 
 ## 清单与责任
 
-首个可运行样例是 `docs/testing/mvg/reward-pilot.json`。它只覆盖奖励试点，不能据此宣布整个 MVG 已验收。扩展时复制其结构，替换 mvg_id、flows 和 tests，并逐条核对范围：
+当前清单分三层：
+
+- `docs/testing/mvg/reward-pilot.json`：单一奖励链路 pilot，仅用于窄范围示例与反例实验。
+- `docs/testing/mvg/m1-critical.json`：当前默认可执行的多 flow critical regression，只引用 Taskmaster 中已 `done` 的关键 Continue/Resume 与 Combat→Reward→Return 边界。
+- `docs/testing/mvg/m1-full.json`：M1 自动化 full-scope 目标 inventory。它把 New Run→Map、Map→Node、Continue/Resume、Combat→Reward→Return 全部列入范围；只要 scoped task 仍非 `done`，就必须把对应 task id 写入 `coverage.blocking_task_ids`，`run` 模式会 fail-closed，不能产生 full runtime_verified。
+
+每个 manifest 必须包含 `coverage`：`mode`、`scope_id`、与 flow 顺序完全一致的 `required_flow_ids`、真实的 `blocking_task_ids` 和非空 `excluded_claims`。这让“跑完整个当前清单”与“整个 M1 MVG 已覆盖”成为两个不同命题。
+
+扩展时复制其结构，替换 mvg_id、coverage、flows 和 tests，并逐条核对范围：
 
 - flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids。
 - handoff：producer_task / consumer_task / owner_task、contract_ref、behavior、test_ids。
@@ -28,9 +36,12 @@
 ## Windows 命令
 
 ```powershell
+# 默认清单现在是可执行的 M1 critical scope：
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode plan
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode recommend --base origin/main
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --challenge-input
+# 目标 full scope：T59/T60 未 done 时只能 plan，run 必须 fail-closed：
+py -3 scripts/python/dev_cli.py run-mvg-acceptance --manifest docs/testing/mvg/m1-full.json --mode plan --snapshot commit --revision HEAD
 # 开发中的未提交改动：
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspace --godot-bin $env:GODOT_BIN
 ```
@@ -51,7 +62,7 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 ## 影响建议与边界
 
-recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
+recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。这里的 `full-mvg` 仅表示“运行当前选中 manifest 的全部 required_tests”；输出同时携带 `manifest_coverage_mode`、`manifest_scope_id` 和 `manifest_blocking_task_ids`。只有 coverage.mode=full、blocking_task_ids 为空且对应 run 真正 runtime_verified，才有资格描述为该 scope 的 full-MVG 运行证据。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
 
 这是一层独立的回归建议，不是完整调用图，也不替代正式 Impact/KCP。需要覆盖新场景引用、动态加载或信号边时，以真实链路测试和显式路径补充映射；不要把“没有找到边”解释成“不受影响”。无需按任务刷新知识库。
 
@@ -67,6 +78,6 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ## CI 与人工验收
 
-`.github/workflows/mvg-integration.yml` 对本入口相关改动运行 Windows 奖励试点，也允许手动执行；变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
+`.github/workflows/mvg-integration.yml` 对相关改动先 plan 校验 `m1-full` 目标 inventory，再在 commit 快照运行完整 `m1-critical` 多 flow 范围并执行奖励输入断线反例；workspace 快照继续运行较小的 `reward-pilot`，专门守住未提交输入与 GdUnit4 runtime-bin 快照语义，避免把完整 critical 套件重复执行两遍。变异实验仍仅手动选择。只要 `m1-full.coverage.blocking_task_ids` 非空，CI 不得把 critical 通过解释为 full-MVG runtime verified。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
 
 同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。
