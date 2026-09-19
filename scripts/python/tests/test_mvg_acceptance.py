@@ -28,7 +28,7 @@ class MvgAcceptanceTests(unittest.TestCase):
         path.parent.mkdir(parents=True)
         path.write_text(json.dumps({'master': {'tasks': [{'id': 1}, {'id': 2}]}}))
         self.manifest = {
-            'schema_version': 'newrouge.mvg-integration.v1', 'mvg_id': 'pilot',
+            'schema_version': 'newrouge.mvg-integration.v1', 'mvg_id': 'pilot', 'scope_kind': 'pilot',
             'flows': [{'id': 'claim', 'outcome': 'Claim once', 'task_ids': [1, 2],
                        'source_paths': ['Game.Core/A.cs'],
                        'handoffs': [{'producer_task': 1, 'consumer_task': 2, 'owner_task': 2,
@@ -44,6 +44,31 @@ class MvgAcceptanceTests(unittest.TestCase):
         self.manifest['tests'][0].update(state='planned', path='Game.Core.Tests/Future.cs')
         self.assertEqual([], validate_manifest(self.root, self.manifest, executable=False))
         self.assertTrue(validate_manifest(self.root, self.manifest, executable=True))
+
+    def test_production_scope_requires_three_cross_task_flows_all_evidence_levels_and_exclusions(self):
+        doc = copy.deepcopy(self.manifest)
+        doc['scope_kind'] = 'production'
+        errors = validate_manifest(self.root, doc)
+        self.assertTrue(any('at least three flows' in item for item in errors))
+        self.assertTrue(any('explicit_exclusions' in item for item in errors))
+        self.assertTrue(any('domain-integration, scene-method and engine-input' in item for item in errors))
+
+    def test_production_scope_cannot_claim_planned_tests(self):
+        doc = copy.deepcopy(self.manifest)
+        doc['scope_kind'] = 'production'
+        doc['explicit_exclusions'] = ['human gameplay']
+        doc['flows'] = [copy.deepcopy(self.manifest['flows'][0]) for _ in range(3)]
+        for idx, flow in enumerate(doc['flows']):
+            flow['id'] = f'claim-{idx}'
+        doc['tests'][0]['state'] = 'planned'
+        doc['tests'][0]['path'] = 'Game.Core.Tests/Future.cs'
+        errors = validate_manifest(self.root, doc, executable=False)
+        self.assertTrue(any('cannot contain planned tests' in item for item in errors))
+
+    def test_recommendation_reports_manifest_scope(self):
+        result = recommend(self.manifest, ['Game.Core/A.cs'])
+        self.assertEqual('pilot', result['scope_kind'])
+        self.assertEqual('pilot', result['mvg_id'])
 
     def test_missing_owner_unknown_task_and_uncovered_handoff_are_rejected(self):
         for change in [dict(owner_task=99), dict(test_ids=[]), dict(contract_ref='../escape')]:
