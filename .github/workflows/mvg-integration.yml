@@ -19,13 +19,34 @@ on:
       - 'docs/testing/mvg/**'
       - 'Game.Core.Tests/Integration/Mvg*'
       - 'Game.Core.Tests/Services/Mvg*'
+      - 'Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs'
       - 'Tests.Godot/tests/Integration/Mvg/**'
+      - 'Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd'
+      - 'Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd'
+      - 'Game.Core/Services/RewardRouteOwnershipService.cs'
+      - 'Game.Core/Services/CardPoolCatalog.cs'
+      - 'Game.Core/Services/DeterministicOfferService.cs'
+      - 'Game.Core/Contracts/Offers/**'
+      - 'Game.Core/Contracts/Events/RewardOffer*'
+      - 'Game.Core/Contracts/Combat/**'
+      - 'Game.Core/Repositories/ISaveGameRepository.cs'
+      - 'Game.Godot/Scripts/RewardScene.gd'
+      - 'Game.Godot/Scripts/Main.gd'
+      - 'Game.Godot/Scripts/Reward/**'
+      - 'Game.Godot/Scripts/UI/CombatScene.cs'
+      - 'Game.Godot/Scenes/Reward.tscn'
+      - 'Game.Godot/Scenes/Main.tscn'
+      - 'Game.Godot/Scenes/Event.tscn'
+      - 'Game.Godot/Scenes/Shop.tscn'
+      - 'Game.Godot/Scenes/Combat.tscn'
+      - 'Game.Godot/Adapters/SqliteDataStore.cs'
+      - 'Game.Godot/Adapters/Db/SaveGameRepository.cs'
 
 permissions:
   contents: read
 
 jobs:
-  reward-pilot:
+  m1-production:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -46,10 +67,10 @@ jobs:
         run: ./scripts/ci/download_godot_release.ps1 -Version '4.5.1' -PreferConsole
       - name: Verify runner failure handling
         run: python -m unittest discover -s scripts/python/tests -p test_mvg_acceptance.py -v
-      - name: Run committed reward pilot and disconnected-input challenge
+      - name: Run committed M1 production scope and disconnected-input challenge
         shell: pwsh
         run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200 --challenge-input
-      - name: Run workspace reward pilot
+      - name: Run workspace M1 production scope
         shell: pwsh
         run: python scripts/python/run_mvg_acceptance.py --mode run --snapshot workspace --revision HEAD --godot-bin $env:GODOT_BIN --timeout-sec 1200
       - name: Optional seeded mutation experiment
