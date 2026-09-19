@@ -92,8 +92,11 @@ def generate(root: Path, task_ids: set[str] | None = None, write_task_refs: bool
     catalog_path = root / 'docs/knowledge/catalog/knowledge-catalog.json'
     if catalog_path.exists():
         catalog = read_json(catalog_path)
-        catalog_entries = [entry for entry in catalog.get('entries', [])
-                           if not task_ids or str(entry.get('task_id')) not in task_ids]
+        if not task_ids:
+            catalog_entries = []
+        else:
+            catalog_entries = [entry for entry in catalog.get('entries', [])
+                               if str(entry.get('task_id')) not in task_ids]
         unique = {entry.get('id'): entry for entry in catalog_entries + entries}
         catalog['entries'] = list(unique.values())
         catalog['last_scan_revision'] = state.get('revision')
@@ -124,7 +127,8 @@ def main(argv=None) -> int:
     parser.add_argument('--task-id', action='append', dest='task_ids')
     parser.add_argument('--write-task-refs', action='store_true')
     args = parser.parse_args(argv)
-    print(json.dumps(generate(args.repo_root.resolve(), set(args.task_ids or []), args.write_task_refs), ensure_ascii=False))
+    selected = set(args.task_ids) if args.task_ids else None
+    print(json.dumps(generate(args.repo_root.resolve(), selected, args.write_task_refs), ensure_ascii=False))
     return 0
 
 
