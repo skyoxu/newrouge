@@ -4,7 +4,7 @@
 - Date: 2026-09-18
 - Status: Implemented and verified within the reward pilot scope
 - Supersedes: None
-- Superseded by: None
+- Superseded by: decision-logs/2026-09-19-mvg-production-scope.md
 - Branch: feat/mvg-integration-acceptance
 - Git Head: 43bee5d048d2d2c8285432b17900c0ccde014a62
 - Why now: Per-task gates do not prove behavior across the combined commits.
