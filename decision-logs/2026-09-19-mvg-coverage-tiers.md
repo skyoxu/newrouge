@@ -1,0 +1,21 @@
+# MVG coverage tiers and full-scope boundary
+
+- Title: Separate pilot, critical and full MVG coverage claims
+- Date: 2026-09-19
+- Status: Implemented on feature branch; target validation pending
+- Supersedes: None
+- Superseded by: None
+- Branch: feat/m1-full-mvg-scope-20260919
+- Git Head: c7a2f8457b7354f2c286f41e37c22f34b4c59954
+- Why now: The existing reward pilot proves one cross-task journey but cannot represent the complete M1 player loop, while Taskmaster still marks T59 and T60 non-done.
+- Context: The MVG runner already provides isolated snapshots, fail-closed report validation, engine-input challenge evidence and conservative regression recommendation. The missing capability is an explicit machine-readable coverage boundary.
+- Decision: Introduce coverage modes pilot, critical and full. Keep reward-pilot as a narrow example, add an executable done-only m1-critical manifest, and add an m1-full target inventory whose runtime execution is blocked until every scoped task is done.
+- Consequences: A full-mvg recommendation means all tests in the selected manifest, not automatic product-wide coverage. Full-scope runtime evidence requires coverage.mode=full, no blocking_task_ids and runtime_verified=true.
+- Recovery impact: Resume from the matching execution plan and inspect Taskmaster T59/T60 before attempting m1-full run. Do not remove blockers to make CI green; task status remains Taskmaster authority.
+- Validation: Source implementation is pending Windows PR checks. CI is configured to plan-validate m1-full, run committed m1-critical with the disconnected reward-input challenge, and run the smaller reward pilot against workspace snapshot semantics.
+- Related ADRs: `docs/adr/ADR-0037-mvg-integration-evidence.md`
+- Related execution plans: `execution-plans/2026-09-19-mvg-full-scope-expansion.md`
+- Related task id(s): T59 and T60 are explicit full-scope blockers; no task status is changed by this decision.
+- Related run id: Pending PR checks.
+- Related latest.json: N/A; MVG acceptance is separate from Chapter 6 latest.json authority.
+- Related pipeline artifacts: `logs/ci/mvg-acceptance/**`, `logs/ci/mvg-mutation/**`
