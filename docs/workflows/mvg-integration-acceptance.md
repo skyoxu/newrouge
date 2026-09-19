@@ -62,7 +62,7 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 ## 影响建议与边界
 
-recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
+recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。这里的 `full-mvg` 仅表示“运行当前选中 manifest 的全部 required_tests”；输出同时携带 `manifest_coverage_mode`、`manifest_scope_id` 和 `manifest_blocking_task_ids`。只有 coverage.mode=full、blocking_task_ids 为空且对应 run 真正 runtime_verified，才有资格描述为该 scope 的 full-MVG 运行证据。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
 
 这是一层独立的回归建议，不是完整调用图，也不替代正式 Impact/KCP。需要覆盖新场景引用、动态加载或信号边时，以真实链路测试和显式路径补充映射；不要把“没有找到边”解释成“不受影响”。无需按任务刷新知识库。
 
