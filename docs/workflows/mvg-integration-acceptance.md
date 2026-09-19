@@ -16,14 +16,19 @@
 
 ## 清单与责任
 
-首个可运行样例是 `docs/testing/mvg/reward-pilot.json`。它只覆盖奖励试点，不能据此宣布整个 MVG 已验收。扩展时复制其结构，替换 mvg_id、flows 和 tests，并逐条核对范围：
+默认执行清单是 `docs/testing/mvg/m1-production.json`；`docs/testing/mvg/reward-pilot.json` 保留为窄范围 pilot 示例。两者都使用同一 schema，但必须显式声明 `scope_kind`：
 
-- flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids。
+- `pilot`：允许单条或少量探索性 flow，不得据此宣称 production MVG scope 已覆盖。
+- `production`：至少 3 条跨任务 flow，所有测试必须 implemented，并同时具备 domain-integration / scene-method / engine-input 三层证据；还必须列出 `explicit_exclusions`，明确机器报告没有证明什么。
+
+逐条核对：
+
+- flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids；production flow 至少跨 2 个任务。
 - handoff：producer_task / consumer_task / owner_task、contract_ref、behavior、test_ids。
 - test：唯一 id、kind（dotnet/gdunit）、state（planned/implemented）、仓库相对 path、evidence_level、min_tests；dotnet 还需测试类 selector。
-- planned 允许测试文件暂不存在；run 必须全部 implemented 且文件存在。implemented 只表示实现已存在，不表示通过。
+- pilot 的 planned 测试允许文件暂不存在；production 不允许 planned 测试冒充已覆盖范围。
 
-清单验证器检查归属、任务引用、测试覆盖关系和文件存在性，但不理解行为语义。事件契约引用表示交接设计来源，不代表测试已断言事件总线发布。跨层真实性需看测试实际调用路径。测试入口不得使用重建领域模型的 fake 作为生产集成证据。
+清单验证器检查 scope claim、归属、任务引用、测试覆盖关系和文件存在性，但不理解行为语义。事件契约引用表示交接设计来源，不代表测试已断言事件总线发布。跨层真实性需看测试实际调用路径。测试入口不得使用重建领域模型的 fake 作为生产集成证据。
 
 ## Windows 命令
 
@@ -39,7 +44,17 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 每次输出到 `logs/ci/mvg-acceptance/<run-id>/`。plan/recommend 返回成功时 runtime_verified 仍为 false。run 只有所有清单测试实际执行、达到 min_tests、零失败、零跳过且进程成功，才会标记 runtime_verified=true。缺报告、空报告、错误测试选择、计数不一致、重复用例结果和准备失败均阻断。测试类/套件身份精确匹配，不接受近似名称。摘要只代表该清单范围与该输入版本，不能自动写任务 done。
 
-## 奖励旅程试点
+## M1 production critical scope
+
+当前 production manifest 覆盖 3 条关键跨任务闭环：
+
+1. `encounter-reward-return`：Encounter 完成 → Reward → 锁定 offer → confirm/skip → route-owned Map 返回。
+2. `continue-resume-surfaces`：Event/Reward/Shop 可观察状态 → save → exit → DB reload → Continue 恢复。
+3. `combat-runtime-presentation`：共享 combat runtime snapshot → Combat presentation → accepted/refused feedback；拒绝路径不得修改确定性状态。
+
+这不是“整个游戏无限范围”的声明。manifest 显式排除 OS 鼠标几何、focus navigation 完整性、主观玩法/平衡、性能指标和所有内容排列组合。这里的 production 含义是：对当前声明的 M1 critical scope，至少三条真实跨任务 journey 已用三层自动证据形成可执行闭环。
+
+## 奖励旅程试点（保留示例）
 
 领域测试组合真实 CardPoolCatalog、CardPoolSelectionService 和 DeterministicOfferService，验证相同上下文重新进入时奖励锁定稳定。引擎测试实例化真实 Main 与 EventBus，通过准备接口建立已结束战斗的奖励状态，随后使用 Viewport InputEventAction 激活 UI，验证选择一张卡、领取入口移除、金币准确增加配置金额、领取剩余奖励后返回地图。独立 scene-method 套件向真实结算入口重复提交同一领卡/金币请求，验证第二次拒绝且资源只增加一次。
 
@@ -51,7 +66,7 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 
 ## 影响建议与边界
 
-recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
+recommend 比较 Git 改动与清单中 source_paths、contract_ref、测试路径，输出命中链路及文件证据。commit 模式的清单和比较终点均绑定 --revision，不混入当前工作区；workspace 模式明确标记包含工作区改动。未知文件、无映射或取不到比较范围时回退到 full-mvg。这里的 full-mvg 始终表示“运行当前所选 manifest 的全部 required_tests”，输出同时携带 scope_kind 和 mvg_id；它不表示 manifest 明确排除的行为已经被证明。所有情况下 required_tests 保持完整；related-first 仅表示优先级建议，当前执行器仍运行全部清单测试。
 
 这是一层独立的回归建议，不是完整调用图，也不替代正式 Impact/KCP。需要覆盖新场景引用、动态加载或信号边时，以真实链路测试和显式路径补充映射；不要把“没有找到边”解释成“不受影响”。无需按任务刷新知识库。
 
@@ -67,6 +82,6 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ## CI 与人工验收
 
-`.github/workflows/mvg-integration.yml` 对本入口相关改动运行 Windows 奖励试点，也允许手动执行；变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
+`.github/workflows/mvg-integration.yml` 对 production critical journey 的 manifest、测试及其关键 source 路径改动运行 Windows M1 production scope，也允许手动执行；变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
 
 同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。
