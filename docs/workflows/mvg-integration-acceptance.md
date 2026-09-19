@@ -16,7 +16,7 @@
 
 ## 清单与责任
 
-首个可运行样例是 `docs/testing/mvg/reward-pilot.json`。它只覆盖奖励试点，不能据此宣布整个 MVG 已验收。扩展时复制其结构，替换 mvg_id、flows 和 tests，并逐条核对范围：
+`docs/testing/mvg/full-mvg.json` 是默认机器验收范围，当前定义 4 条关键玩家旅程：Run Entry → Map、Map → Combat → Reward → Map、Combat Card Play/Targeting、Reward Claim/Return。`docs/testing/mvg/reward-pilot.json` 保留为窄域示例和奖励链路调试入口。所谓 full-MVG 指“仓库明确声明的关键旅程全集”，不是全游戏所有 UX、OS 输入几何、存档损坏恢复、翻译完整性或人工试玩都被自动证明。扩展范围时更新 full manifest，并逐条核对：
 
 - flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids。
 - handoff：producer_task / consumer_task / owner_task、contract_ref、behavior、test_ids。
@@ -38,6 +38,19 @@ py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspa
 可通过 `--manifest <repo-relative.json>` 选择其他 MVG。正式收尾优先 commit 模式；workspace 模式记录文件内容摘要，不得冒充某个提交的验证。运行器将输入复制到独立快照，隔离 user:// 数据，复用 xUnit 和现有 GdUnit4 Windows Junction 入口。全局预算默认 900 秒，可用 `--timeout-sec` 调整；超时不是缺陷被检测的证据。
 
 每次输出到 `logs/ci/mvg-acceptance/<run-id>/`。plan/recommend 返回成功时 runtime_verified 仍为 false。run 只有所有清单测试实际执行、达到 min_tests、零失败、零跳过且进程成功，才会标记 runtime_verified=true。缺报告、空报告、错误测试选择、计数不一致、重复用例结果和准备失败均阻断。测试类/套件身份精确匹配，不接受近似名称。摘要只代表该清单范围与该输入版本，不能自动写任务 done。
+
+## Full-MVG critical journeys
+
+当前 full scope 由 `docs/testing/mvg/full-mvg.json` 定义，并作为 CLI 默认 manifest 与 PR MVG workflow 的正式执行范围：
+
+- `run-entry-to-map`：新开局从 MainMenu 经 DifficultySelect、CharacterSelect 进入真实 Map，结合 RunStateMachine 领域状态证据。
+- `map-combat-reward-return`：Map 选择可达战斗节点，完成节点与奖励后回到 Map，并验证路线归属推进。
+- `combat-card-play-and-targeting`：CombatService 的共享解析契约与真实 CombatScene 的合法目标/拒绝路径组合验证。
+- `reward-claim-and-return`：锁定奖励、引擎输入领取、幂等结算并返回地图。
+
+full manifest 当前复用 8 个稳定测试套件，覆盖 domain-integration、scene-method 与 engine-input 三类证据。所有测试仍是 required tests；Impact recommendation 只改变回归优先级，不允许排除 full scope 中的必测项。
+
+新增关键旅程时，优先证明跨 Task handoff 和玩家主循环，而不是把每个单任务测试都塞进 MVG。若某项体验只能通过鼠标空间命中、视觉层级、手感、性能或主观试玩确认，应继续留在人验范围，不为了“100% 自动化”伪造证据。
 
 ## 奖励旅程试点
 
@@ -67,6 +80,6 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ## CI 与人工验收
 
-`.github/workflows/mvg-integration.yml` 对本入口相关改动运行 Windows 奖励试点，也允许手动执行；变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
+`.github/workflows/mvg-integration.yml` 对本入口相关改动运行 Windows full-MVG critical journeys（commit + workspace 两种快照），并在 commit 基线上继续执行奖励输入断线反例；也允许手动执行，变异实验仅手动选择。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。完整 MVG 的清单范围、视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
 
 同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。
