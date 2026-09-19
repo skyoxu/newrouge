@@ -9,9 +9,9 @@
 - Current step: All review repairs implemented; Windows MVG pilot verified. Track full PR checks on GitHub before merging.
 - Last completed step: Windows MVG Integration Pilot run 35336807426 passed after the review repairs.
 - Stop-loss: Do not count missing/skipped reports, compilation failure or timeout as acceptance or mutation detection.
-- Next action: Review PR #180 and remaining existing repository checks; extend the pilot manifest for actual full-MVG scope.
+- Next action: Superseded by execution-plans/2026-09-19-mvg-production-scope.md.
 - Recovery command: py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode plan
-- Open questions: Reward pilot does not represent the whole MVG. Broad checks are tracked on PR #180; no merge authorization.
+- Open questions: Historical pilot boundary only; production-scope follow-up is tracked separately.
 - Exit criteria: Scoped tests pass, execution limits documented, branch pushed without merging.
 - Related ADRs: `docs/adr/ADR-0037-mvg-integration-evidence.md`
 - Related decision logs: `decision-logs/2026-09-18-mvg-integration.md`
