@@ -19,6 +19,7 @@ Each manifest freezes:
 - changed_file_count;
 - optional changed_files_sha256, computed from the sorted JSON changed-file array and checked when present;
 - target repository;
+- optional canonical target PR identity: PR number, branch, and `Migration-Key`;
 - exactly one classification entry for every source changed file.
 
 ## Classifications
@@ -63,6 +64,31 @@ This mode verifies:
 
 Do not make ordinary hard gates depend on cross-repository network availability unless the repository explicitly accepts that dependency. The recommended model is remote verification at migration creation/review, deterministic offline verification on every target hard gate.
 
+## Canonical target PR verification
+
+Targets that want duplicate-migration protection may opt in by adding `migration_key` alongside the existing target PR metadata. Legacy manifests that carry only `pr` and `branch` remain valid. Canonical verification uses all three fields under `target`:
+
+- `pr`: canonical target pull-request number;
+- `branch`: canonical target head branch;
+- `migration_key`: `<source-repo>@<source-merge-commit>-><target-repo>`.
+
+The target PR body must contain exactly the same marker on its own line:
+
+~~~text
+Migration-Key: owner/source@0123456789abcdef0123456789abcdef01234567->owner/target
+~~~
+
+During target PR CI, verify that the current PR matches the manifest identity and that exactly one open PR carries that migration key:
+
+~~~powershell
+$env:GITHUB_TOKEN = "<token with target repo pull-request read access>"
+py -3 scripts/python/check_cross_repo_migration.py --manifest docs/migration/reconciliation/<source>-<pr>.json --check-open-prs
+~~~
+
+This online check uses `GITHUB_EVENT_PATH` and `GITHUB_REPOSITORY`. It fails closed when the event PR number, head branch, or PR-body marker disagrees with the manifest, or when zero/multiple open PRs carry the same migration key. Use `--check-open-prs` with exactly one reconciliation manifest.
+
+This complements source inventory verification: source verification proves *what* was migrated; canonical PR verification proves *which single target PR* owns that migration.
+
 ## Example skeleton
 
 ~~~json
@@ -82,7 +108,8 @@ Do not make ordinary hard gates depend on cross-repository network availability 
   "target": {
     "repo": "owner/target",
     "pr": 456,
-    "branch": "sync-source-123"
+    "branch": "sync-source-123",
+    "migration_key": "owner/source@0123456789abcdef0123456789abcdef01234567->owner/target"
   },
   "entries": [
     {
@@ -111,7 +138,8 @@ A bounded source PR is not reconciled until:
 4. copy_exact files match the frozen source blob;
 5. every target-native adaptation has target-owned validation evidence;
 6. generated source publication state is regenerated from target inputs instead of copied;
-7. target protected checks are green.
+7. if canonical target identity is adopted, the PR number/branch/body marker match the manifest and exactly one open PR owns the migration key;
+8. target protected checks are green.
 
 A source PR that only publishes generated state should still receive an explicit derived_regenerate reconciliation record when the target tracks source evolution by PR.
 

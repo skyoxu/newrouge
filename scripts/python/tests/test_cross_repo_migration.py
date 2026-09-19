@@ -58,8 +58,87 @@ class CrossRepoMigrationReconciliationTests(unittest.TestCase):
             ],
         }
 
+    def _manifest_with_identity(self):
+        doc = copy.deepcopy(self.manifest)
+        key = f"owner/source@{'a' * 40}->owner/target"
+        doc["target"].update({
+            "pr": 42,
+            "branch": "sync-source-7",
+            "migration_key": key,
+        })
+        return doc, key
+
     def test_valid_manifest_accepts_exact_adapted_and_dropped_files(self):
         self.assertEqual([], migration.validate_manifest(self.manifest, self.root))
+
+    def test_optional_canonical_target_identity_is_checked_when_present(self):
+        doc, _ = self._manifest_with_identity()
+        self.assertEqual([], migration.validate_manifest(doc, self.root))
+
+        doc["target"]["migration_key"] = "owner/source@" + ("b" * 40) + "->owner/target"
+        errors = migration.validate_manifest(doc, self.root)
+        self.assertTrue(any("migration_key must bind" in item for item in errors))
+
+    def test_legacy_target_pr_metadata_remains_valid_without_migration_key(self):
+        doc = copy.deepcopy(self.manifest)
+        doc["target"].update({"pr": 42, "branch": "sync-source-7"})
+        self.assertEqual([], migration.validate_manifest(doc, self.root))
+
+    def test_partial_or_unsafe_canonical_target_identity_is_rejected(self):
+        doc = copy.deepcopy(self.manifest)
+        doc["target"]["migration_key"] = f"owner/source@{'a' * 40}->owner/target"
+        errors = migration.validate_manifest(doc, self.root)
+        self.assertTrue(any("target.pr" in item for item in errors))
+        self.assertTrue(any("target.branch" in item for item in errors))
+
+        doc, _ = self._manifest_with_identity()
+        doc["target"]["branch"] = "../bad branch"
+        errors = migration.validate_manifest(doc, self.root)
+        self.assertTrue(any("target.branch" in item for item in errors))
+
+    def test_canonical_open_pr_accepts_unique_current_pr(self):
+        doc, key = self._manifest_with_identity()
+        event = self.root / "event.json"
+        event.write_text(json.dumps({
+            "pull_request": {
+                "number": 42,
+                "head": {"ref": "sync-source-7"},
+                "body": f"Migration-Key: {key}\n",
+            },
+        }), encoding="utf-8")
+        with mock.patch.object(migration, "fetch_open_pull_requests", return_value=[{
+            "number": 42,
+            "body": f"Migration-Key: {key}\n",
+        }]):
+            errors = migration.verify_target_open_pr(
+                doc,
+                event_path=str(event),
+                repository="owner/target",
+                token="token",
+            )
+        self.assertEqual([], errors)
+
+    def test_canonical_open_pr_rejects_duplicate_migration_key(self):
+        doc, key = self._manifest_with_identity()
+        event = self.root / "event.json"
+        event.write_text(json.dumps({
+            "pull_request": {
+                "number": 42,
+                "head": {"ref": "sync-source-7"},
+                "body": f"Migration-Key: {key}\n",
+            },
+        }), encoding="utf-8")
+        with mock.patch.object(migration, "fetch_open_pull_requests", return_value=[
+            {"number": 42, "body": f"Migration-Key: {key}\n"},
+            {"number": 99, "body": f"Migration-Key: {key}\n"},
+        ]):
+            errors = migration.verify_target_open_pr(
+                doc,
+                event_path=str(event),
+                repository="owner/target",
+                token="token",
+            )
+        self.assertTrue(any("expected exactly one open PR" in item for item in errors))
 
     def test_changed_file_inventory_digest_is_optional_but_checked_when_present(self):
         doc = copy.deepcopy(self.manifest)
@@ -138,6 +217,17 @@ class CrossRepoMigrationReconciliationTests(unittest.TestCase):
         with mock.patch.object(migration, "fetch_github_source_inventory", return_value=remote):
             errors = migration.verify_source_github(self.manifest)
         self.assertTrue(any("source merge commit mismatch" in item for item in errors))
+
+    def test_check_open_prs_requires_exactly_one_manifest(self):
+        out = self.root / "canonical.json"
+        rc = migration.main([
+            "--root", str(self.root),
+            "--check-open-prs",
+            "--out", str(out),
+        ])
+        self.assertEqual(1, rc)
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        self.assertTrue(any("requires exactly one" in item for item in payload["errors"]))
 
     def test_no_manifests_is_skipped_unless_required(self):
         out = self.root / "summary.json"
