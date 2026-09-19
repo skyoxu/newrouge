@@ -100,7 +100,7 @@ func _setup_sql_db(path: String) -> Dictionary:
     var helper_script := load("res://Game.Godot/Adapters/Db/DbTestHelper.cs")
     assert_that(helper_script).is_not_null()
     assert_that(helper_script.has_method("new")).is_true()
-    var helper := helper_script.new()
+    var helper = helper_script.new()
     add_child(auto_free(helper))
     helper.ForceManaged()
     assert_that(db.has_method("TryOpen")).is_true()
@@ -111,7 +111,7 @@ func _setup_sql_db(path: String) -> Dictionary:
     var bridge_script := load("res://Game.Godot/Adapters/Db/RepositoryTestBridge.cs")
     assert_that(bridge_script).is_not_null()
     assert_that(bridge_script.has_method("new")).is_true()
-    var bridge := bridge_script.new()
+    var bridge = bridge_script.new()
     add_child(auto_free(bridge))
     return {"db": db, "bridge": bridge}
 
