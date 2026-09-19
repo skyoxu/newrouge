@@ -1,0 +1,21 @@
+# M1 MVG full-scope expansion
+
+- Title: Expand bounded Reward MVG into critical multi-flow coverage and a governed full-scope target
+- Status: In validation
+- Branch: feat/m1-full-mvg-scope-20260919
+- Git Head: c7a2f8457b7354f2c286f41e37c22f34b4c59954
+- Goal: Establish a truthful M1 MVG coverage model that executes completed critical journeys now and prevents premature full-MVG claims while scoped tasks remain non-done.
+- Scope: MVG coverage contract, reward pilot classification, m1-critical manifest, m1-full target manifest, runner summary context, Windows workflow and operator documentation.
+- Current step: Open the PR and validate manifest structure plus real Windows execution for m1-critical and workspace reward-pilot evidence.
+- Last completed step: Added pilot/critical/full coverage modes; created done-only Continue/Resume and Combat-to-Reward-to-Return critical flows; created full target flows for New Run-to-Map and Map-to-Node with T59/T60 blockers.
+- Stop-loss: Never change Taskmaster status from MVG tooling; never treat plan/recommend output as runtime evidence; never remove blocking_task_ids unless the scoped Taskmaster tasks are actually done; do not duplicate the full critical runtime on workspace CI merely to increase test count.
+- Next action: Run protected PR checks. If manifest validation or runtime tests fail, repair the actual mapping/test contract. If all checks pass, merge this capability before adapting the same tiered model into lastking.
+- Recovery command: `py -3 scripts/python/dev_cli.py run-mvg-acceptance --manifest docs/testing/mvg/m1-full.json --mode plan --snapshot commit --revision HEAD`
+- Open questions: T59 and T60 remain Taskmaster blockers for executable full scope. Human gameplay, balance, OS-native mouse geometry and subjective presentation remain outside automated MVG claims.
+- Exit criteria: m1-full plan validates with exactly T59/T60 blockers; m1-critical commit run is runtime_verified; disconnected-input challenge is detected; workspace reward pilot is runtime_verified; Quality and Smoke remain green.
+- Related ADRs: `docs/adr/ADR-0037-mvg-integration-evidence.md`
+- Related decision logs: `decision-logs/2026-09-19-mvg-coverage-tiers.md`
+- Related task id(s): T59, T60 blockers; critical scope uses only done tasks.
+- Related run id: Pending PR checks.
+- Related latest.json: N/A; no Chapter 6 review authority is created.
+- Related pipeline artifacts: `logs/ci/mvg-acceptance/**`, `logs/ci/mvg-mutation/**`
