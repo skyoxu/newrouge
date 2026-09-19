@@ -93,5 +93,6 @@
       "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
       "min_tests": 2
     }
-  ]
+  ],
+  "scope_kind": "pilot"
 }
