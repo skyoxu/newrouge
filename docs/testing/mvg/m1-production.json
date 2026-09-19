@@ -1,0 +1,204 @@
+{
+  "schema_version": "newrouge.mvg-integration.v1",
+  "mvg_id": "m1-production",
+  "scope_kind": "production",
+  "scope_note": "Production-critical M1 integration scope. Covers encounter-to-reward return, deterministic Continue restore across Reward/Shop/Event, and combat runtime-to-presentation state integrity. It is not a claim of exhaustive human gameplay, OS mouse geometry, focus navigation, performance, or every content permutation.",
+  "explicit_exclusions": [
+    "OS-level mouse geometry and pointer hit-testing",
+    "Keyboard/controller focus-navigation completeness",
+    "Subjective gameplay quality and balance",
+    "Performance/load-time guarantees",
+    "Every card/enemy/event/content permutation"
+  ],
+  "flows": [
+    {
+      "id": "encounter-reward-return",
+      "outcome": "Encounter completion enters the real Reward flow, preserves one locked offer, resolves confirm/skip once, and returns through the route owner to Map.",
+      "task_ids": [
+        61,
+        84,
+        114,
+        128,
+        115
+      ],
+      "source_paths": [
+        "Game.Core/Services/RewardRouteOwnershipService.cs",
+        "Game.Core/Services/CardPoolCatalog.cs",
+        "Game.Core/Services/DeterministicOfferService.cs",
+        "Game.Godot/Scripts/RewardScene.gd",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scenes/Reward.tscn",
+        "Game.Godot/Scenes/Main.tscn",
+        "Game.Godot/Scripts/Reward/RewardOfferProvider.cs",
+        "Tests.Godot/tests/Integration/Mvg/reward_fixture.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 61,
+          "consumer_task": 114,
+          "owner_task": 114,
+          "contract_ref": "Game.Core/Contracts/Offers/OfferLockSnapshot.cs",
+          "behavior": "Route entry hands a stable reward context to offer locking so re-entry preserves the first offer identity and order.",
+          "test_ids": [
+            "reward-route-core",
+            "reward-core"
+          ]
+        },
+        {
+          "producer_task": 114,
+          "consumer_task": 128,
+          "owner_task": 128,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+          "behavior": "The locked reward snapshot is presented on the actual Reward scene and can be exercised through engine input.",
+          "test_ids": [
+            "reward-input"
+          ]
+        },
+        {
+          "producer_task": 128,
+          "consumer_task": 115,
+          "owner_task": 115,
+          "contract_ref": "Game.Core/Contracts/Events/RewardOfferSelectedEvent.cs",
+          "behavior": "Confirm/skip resolves once, writes back the selected reward state, and returns through the route-owned Map path.",
+          "test_ids": [
+            "reward-input",
+            "reward-idempotency",
+            "reward-route-core"
+          ]
+        }
+      ],
+      "test_ids": [
+        "reward-route-core",
+        "reward-core",
+        "reward-input",
+        "reward-idempotency"
+      ]
+    },
+    {
+      "id": "continue-resume-surfaces",
+      "outcome": "A persisted Event choice plus locked Reward and Shop state survives save, exit, database reload, and Continue without changing selected results or observable output.",
+      "task_ids": [
+        22,
+        44,
+        98
+      ],
+      "source_paths": [
+        "Game.Godot/Scenes/Event.tscn",
+        "Game.Godot/Scenes/Reward.tscn",
+        "Game.Godot/Scenes/Shop.tscn",
+        "Game.Godot/Adapters/SqliteDataStore.cs",
+        "Game.Godot/Adapters/Db/SaveGameRepository.cs",
+        "Game.Core/Repositories/ISaveGameRepository.cs",
+        "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 22,
+          "consumer_task": 44,
+          "owner_task": 44,
+          "contract_ref": "Game.Core/Repositories/ISaveGameRepository.cs",
+          "behavior": "Observable event/reward/shop state crosses the save boundary using the repository contract rather than transient scene memory.",
+          "test_ids": [
+            "resume-surfaces"
+          ]
+        },
+        {
+          "producer_task": 44,
+          "consumer_task": 98,
+          "owner_task": 98,
+          "contract_ref": "Game.Godot/Adapters/Db/SaveGameRepository.cs",
+          "behavior": "Continue reload restores the persisted locked surfaces and selected results after the storage roundtrip.",
+          "test_ids": [
+            "resume-surfaces"
+          ]
+        }
+      ],
+      "test_ids": [
+        "resume-surfaces"
+      ]
+    },
+    {
+      "id": "combat-runtime-presentation",
+      "outcome": "Shared combat runtime state is rendered through the Combat scene; accepted and rejected commands produce visible feedback while rejected paths preserve deterministic state.",
+      "task_ids": [
+        77,
+        78
+      ],
+      "source_paths": [
+        "Game.Core/Contracts/Combat/CombatHudSnapshot.cs",
+        "Game.Core/Services/CombatHudExplainabilityService.cs",
+        "Game.Godot/Scripts/UI/CombatScene.cs",
+        "Game.Godot/Scenes/Combat.tscn",
+        "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 77,
+          "consumer_task": 78,
+          "owner_task": 78,
+          "contract_ref": "Game.Core/Contracts/Combat/CombatHudSnapshot.cs",
+          "behavior": "Combat runtime output crosses into presentation as a snapshot; UI feedback may explain outcomes but rejected commands must not mutate runtime state.",
+          "test_ids": [
+            "combat-feedback"
+          ]
+        }
+      ],
+      "test_ids": [
+        "combat-feedback"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "reward-route-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Tasks/Task0061AcceptanceTests.cs",
+      "selector": "Game.Core.Tests.Tasks.Task0061AcceptanceTests",
+      "min_tests": 3
+    },
+    {
+      "id": "reward-core",
+      "kind": "dotnet",
+      "state": "implemented",
+      "evidence_level": "domain-integration",
+      "path": "Game.Core.Tests/Integration/MvgRewardOfferIntegrationTests.cs",
+      "selector": "Game.Core.Tests.Integration.MvgRewardOfferIntegrationTests",
+      "min_tests": 1
+    },
+    {
+      "id": "reward-input",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "engine-input",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_input_journey.gd",
+      "min_tests": 1,
+      "challenge": "disconnect-reward-input"
+    },
+    {
+      "id": "reward-idempotency",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/Mvg/test_reward_claim_idempotency.gd",
+      "min_tests": 2
+    },
+    {
+      "id": "resume-surfaces",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_reward_shop_event_resume_determinism.gd",
+      "min_tests": 1
+    },
+    {
+      "id": "combat-feedback",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Scenes/Combat/test_combat_scene_feedback_log.gd",
+      "min_tests": 1
+    }
+  ]
+}
