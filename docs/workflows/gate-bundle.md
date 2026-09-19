@@ -82,6 +82,7 @@ py -3 scripts/python/remind_overlay_task_drift.py --write --overlay-index docs/a
 - `llm_check_subtasks_coverage.py`
 - `check_obligations_reuse_regression.py`
 - `obligations unittest suite`（`test_obligations_guard.py` / `test_obligations_extract_helpers.py` / `test_obligations_code_fingerprint.py` / `test_obligations_output_contract.py` / `test_obligations_cli_guards.py` / `test_obligations_pipeline_order.py`）
+- `Project Health core unittest coverage`（scene graph / navigation / runtime snapshot / local server / Chapter 6 knowledge；随 `obligations_unittest` 一并阻断）
 - `check_gate_bundle_consistency.py`
 - `check_workflow_gate_enforcement.py`
 - `validate_chapter7_ui_wiring.py` (profile-aware when invoked with `--chapter7-profile-path`)
