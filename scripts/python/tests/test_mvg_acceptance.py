@@ -46,10 +46,11 @@ class MvgAcceptanceTests(unittest.TestCase):
         doc = json.loads((repo_root / DEFAULT_MANIFEST).read_text(encoding='utf-8'))
         self.assertEqual([], validate_manifest(repo_root, doc, executable=True))
         self.assertEqual(
-            {'run-entry-to-map', 'map-combat-reward-return', 'combat-card-play-and-targeting', 'reward-claim-and-return'},
+            {'run-entry-to-map', 'continue-resume-boundary', 'map-combat-reward-return',
+             'combat-card-play-and-targeting', 'reward-claim-and-return'},
             {flow['id'] for flow in doc['flows']},
         )
-        self.assertGreaterEqual(len(doc['tests']), 8)
+        self.assertGreaterEqual(len(doc['tests']), 9)
 
     def test_planning_allows_missing_planned_test_but_execution_rejects_it(self):
         self.manifest['tests'][0].update(state='planned', path='Game.Core.Tests/Future.cs')
