@@ -48,6 +48,36 @@
       ]
     },
     {
+      "id": "continue-resume-boundary",
+      "outcome": "A valid autosave Continue resumes through the main-menu boundary into the owned Map or Combat target, while ownership mismatch and locked-surface resumes fail closed at the menu.",
+      "task_ids": [
+        44,
+        87
+      ],
+      "source_paths": [
+        "Game.Core/Contracts/Save/AutosaveSnapshot.cs",
+        "Game.Core/Contracts/Save/ContinueMetadata.cs",
+        "Game.Godot/Scripts/Main.gd",
+        "Game.Godot/Scripts/UI/MainMenu.cs",
+        "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd"
+      ],
+      "handoffs": [
+        {
+          "producer_task": 44,
+          "consumer_task": 87,
+          "owner_task": 87,
+          "contract_ref": "Game.Core/Contracts/Save/AutosaveSnapshot.cs",
+          "behavior": "Persisted run state and save-point metadata are validated before Continue restores the route owner into Map or Combat; invalid ownership remains blocked.",
+          "test_ids": [
+            "continue-resume"
+          ]
+        }
+      ],
+      "test_ids": [
+        "continue-resume"
+      ]
+    },
+    {
       "id": "map-combat-reward-return",
       "outcome": "The live map selects a reachable combat node, enters Combat, completes the node flow, resolves reward skip, returns to Map, and advances route ownership without a secondary map owner.",
       "task_ids": [
@@ -225,6 +255,14 @@
       "evidence_level": "scene-method",
       "path": "Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd",
       "min_tests": 1
+    },
+    {
+      "id": "continue-resume",
+      "kind": "gdunit",
+      "state": "implemented",
+      "evidence_level": "scene-method",
+      "path": "Tests.Godot/tests/Integration/test_headless_resume_repeatability.gd",
+      "min_tests": 4
     },
     {
       "id": "map-navigation",
