@@ -455,7 +455,9 @@ def chunk_size_for_group(
     split_profile: str,
 ) -> int:
     if split_profile == "compact":
-        return max_anchors_per_intent
+        # Compact may reduce packaging churn, but it must never bypass the
+        # repository-wide Chapter 3 complexity ceiling.
+        return max(1, min(max_anchors_per_intent, 7))
     if split_profile == "expanded":
         size = 4 if layer in {"ci", "docs"} else 3
     else:
