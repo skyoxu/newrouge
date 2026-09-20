@@ -77,7 +77,12 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def stable_requirement_id(kind: str, block_ids: list[str], statement: str) -> str:
-    raw = kind + chr(0) + chr(0).join(sorted(block_ids)) + chr(0) + statement
+    # Automatic ids are semantic-text bound rather than source-location bound so
+    # exact duplicate atoms can merge across batches without id churn when the
+    # same rule gains another source reference. Use an explicit requirement_id
+    # when identical wording must intentionally remain separate.
+    normalized = " ".join(statement.split()).casefold()
+    raw = kind + chr(0) + normalized
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12].upper()
     return f"{PREFIX[kind]}-{digest}"
 
@@ -351,6 +356,7 @@ def prepare(
             "delivery_potential": "Set a boolean for every review_required block. Keyword hints are hints only and never decide this field.",
             "uncertainty": "Use unresolved explicitly. Delivery-potential unresolved blocks block stable closure.",
             "batch_accounting": "output_accounted_count starts with verified reused blocks; after review it must equal the batch input count.",
+            "equivalent_merge": "Exact normalized duplicate atoms auto-merge across blocks. Reuse one explicit requirement_id for semantically equivalent paraphrases; use distinct explicit ids when identical wording is intentionally separate.",
         },
         "batch_summaries": [{
             "batch_id": row["batch_id"],
@@ -478,8 +484,6 @@ def compile_projection(
             requirement_id = str(atom.get("requirement_id") or "").strip()
             if not requirement_id:
                 requirement_id = stable_requirement_id(kind, source_block_ids, statement)
-            if requirement_id in by_requirement:
-                raise ValueError(f"duplicate requirement_id: {requirement_id}")
             delivery_relevant = atom.get("delivery_relevant")
             if not isinstance(delivery_relevant, bool):
                 delivery_relevant = DELIVERY_DEFAULT[kind]
@@ -502,8 +506,87 @@ def compile_projection(
             }
             if atom.get("rationale"):
                 row["rationale"] = str(atom["rationale"])
-            requirements.append(row)
-            by_requirement[requirement_id] = row
+
+            existing = by_requirement.get(requirement_id)
+            if existing is not None:
+                if existing.get("kind") != kind:
+                    raise ValueError(
+                        f"equivalent requirement {requirement_id} has conflicting kinds"
+                    )
+                explicit_id = bool(str(atom.get("requirement_id") or "").strip())
+                if (
+                    not explicit_id
+                    and " ".join(str(existing.get("statement") or "").split()).casefold()
+                    != " ".join(statement.split()).casefold()
+                ):
+                    raise ValueError(
+                        f"automatic requirement id collision for {requirement_id}"
+                    )
+                for field in ("delivery_relevant", "sink_policy", "status"):
+                    if existing.get(field) != row.get(field):
+                        raise ValueError(
+                            f"equivalent requirement {requirement_id} conflicts on {field}"
+                        )
+                for field in ("owner_hint", "layer_hint"):
+                    left = existing.get(field)
+                    right = row.get(field)
+                    if left and right and left != right:
+                        raise ValueError(
+                            f"equivalent requirement {requirement_id} conflicts on {field}"
+                        )
+                    if not left and right:
+                        existing[field] = right
+                existing["source_block_ids"] = sorted(set(
+                    list(existing.get("source_block_ids", [])) + source_block_ids
+                ))
+                existing["capability_ids"] = sorted(set(
+                    list(existing.get("capability_ids", []))
+                    + list(row.get("capability_ids", []))
+                ))
+                sink_map = {
+                    json.dumps(value, ensure_ascii=False, sort_keys=True): value
+                    for value in list(existing.get("non_task_sinks", []))
+                    + list(row.get("non_task_sinks", []))
+                    if isinstance(value, dict)
+                }
+                existing["non_task_sinks"] = [
+                    sink_map[key] for key in sorted(sink_map)
+                ]
+                priority_rank = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+                priorities = [
+                    str(existing.get("priority") or "P2").upper(),
+                    str(row.get("priority") or "P2").upper(),
+                ]
+                existing["priority"] = min(
+                    priorities, key=lambda value: priority_rank.get(value, 99)
+                )
+                statements = {
+                    str(existing.get("statement") or "").strip(),
+                    statement,
+                    *[
+                        str(value).strip()
+                        for value in existing.get("equivalent_statements", [])
+                        if str(value).strip()
+                    ],
+                }
+                statements.discard("")
+                canonical = str(existing.get("statement") or "").strip()
+                aliases = sorted(value for value in statements if value != canonical)
+                if aliases:
+                    existing["equivalent_statements"] = aliases
+                rationales = {
+                    str(value).strip()
+                    for value in (
+                        existing.get("rationale"),
+                        row.get("rationale"),
+                    )
+                    if value and str(value).strip()
+                }
+                if rationales:
+                    existing["rationale"] = " | ".join(sorted(rationales))
+            else:
+                requirements.append(row)
+                by_requirement[requirement_id] = row
             requirement_ids.append(requirement_id)
         accounting.append({
             "block_id": block_id,
@@ -566,6 +649,10 @@ def compile_projection(
             **extra,
         })
 
+    for requirement in requirements:
+        for block_id in requirement.get("source_block_ids", []):
+            add_edge("source_block", str(block_id), "requirement",
+                     requirement["requirement_id"], "projects_to")
     for capability in capabilities:
         for rid in capability["requirement_ids"]:
             add_edge("requirement", rid, "capability", capability["capability_id"], "grouped_by")
