@@ -298,6 +298,80 @@ def parse_source(path: Path, root: Path) -> tuple[dict[str, Any], list[dict[str,
     }, blocks
 
 
+def _block_family(row: dict[str, Any]) -> tuple[str, tuple[str, ...], str]:
+    return (
+        str(row.get("source_path") or ""),
+        tuple(str(x) for x in row.get("heading_path", [])),
+        str(row.get("block_type") or ""),
+    )
+
+
+def stabilize_add_mode_ids(
+    blocks: list[dict[str, Any]], previous: dict[str, Any] | None
+) -> None:
+    if not previous:
+        return
+    old_rows = [
+        row for row in previous.get("blocks", [])
+        if isinstance(row, dict) and row.get("block_id")
+    ]
+    used_old: set[str] = set()
+    used_new: set[str] = set()
+
+    # First preserve ids for semantically identical blocks even when an insertion
+    # shifted their ordinal within the same heading/type family.
+    for row in blocks:
+        family = _block_family(row)
+        candidates = [
+            old for old in old_rows
+            if str(old.get("block_id")) not in used_old
+            and _block_family(old) == family
+            and old.get("content_hash") == row.get("content_hash")
+        ]
+        if not candidates:
+            continue
+        current_ordinal = int(row.get("ordinal") or 0)
+        chosen = min(
+            candidates,
+            key=lambda old: (
+                abs(int(old.get("ordinal") or 0) - current_ordinal),
+                str(old.get("block_id")),
+            ),
+        )
+        block_id = str(chosen["block_id"])
+        row["block_id"] = block_id
+        used_old.add(block_id)
+        used_new.add(block_id)
+
+    old_by_id = {str(row["block_id"]): row for row in old_rows}
+    for row in blocks:
+        block_id = str(row.get("block_id") or "")
+        if block_id in used_new:
+            continue
+        old = old_by_id.get(block_id)
+        if old is not None and block_id not in used_old and _block_family(old) == _block_family(row):
+            # Same logical slot with different content: retain id so delta reports changed.
+            used_old.add(block_id)
+            used_new.add(block_id)
+            continue
+        # A newly inserted block may have generated an id already reclaimed by an
+        # unchanged shifted block. Give the insertion a deterministic content-bound id.
+        seed = {
+            "source_path": row.get("source_path"),
+            "heading_path": row.get("heading_path", []),
+            "block_type": row.get("block_type"),
+            "content_hash": row.get("content_hash"),
+            "line_start": row.get("line_start"),
+        }
+        candidate = "SB-" + canonical_sha(seed)[:16].upper()
+        salt = 1
+        while candidate in used_new:
+            candidate = "SB-" + canonical_sha({**seed, "salt": salt})[:16].upper()
+            salt += 1
+        row["block_id"] = candidate
+        used_new.add(candidate)
+
+
 def compute_delta(blocks: list[dict[str, Any]], previous: dict[str, Any] | None) -> dict[str, Any]:
     if not previous:
         return {"unchanged": [], "changed": [], "added": [row["block_id"] for row in blocks], "removed": []}
@@ -340,6 +414,9 @@ def build_ledger(
         sources.append(source)
         blocks.extend(parsed)
     binding = [{"path": row["path"], "source_type": row["source_type"], "sha256": row["sha256"]} for row in sources]
+    if mode == "add":
+        stabilize_add_mode_ids(blocks, previous_ledger)
+
     manifest_sha = canonical_sha(binding)
     source_revision = "source-set:" + manifest_sha[:24]
     generated = dt.datetime.now(dt.timezone.utc).isoformat()
