@@ -652,6 +652,14 @@ def reconcile(
     }
     acceptance_coverage: dict[str, list[int]] = {rid: [] for rid in task["semantic_refs"]}
     topology_edges: list[dict[str, Any]] = []
+    for rid in task["semantic_refs"]:
+        if rid in requirements:
+            topology_edges.append({
+                "source_type": "requirement", "source_id": rid,
+                "target_type": "task", "target_id": str(task_id),
+                "relation": "implemented_by",
+                "contribution": "chapter5_stabilized",
+            })
     acceptance_findings: list[dict[str, Any]] = []
     for index, text in enumerate(task["acceptance"], 1):
         link = links_by_index.get(index)
