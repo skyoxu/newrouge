@@ -80,6 +80,7 @@ Every source block must be accounted for. Every active delivery Requirement must
 - Workspace Last Attempt is refreshed for every registered Chapter 3 run when `--refresh-local` is used.
 - Workspace Latest Successful advances only when semantic conservation and the triplet baseline both pass.
 - A failed attempt must never overwrite Latest Successful.
+- Local topology write failures are an independent `knowledge_refresh_failed` family. `attempt_refresh_failed`, `stable_refresh_failed`, and planning-topology refresh failures are retryable concerns; a stable refresh failure blocks Chapter 3 completion and canonical publication even when semantic/triplet gates already passed.
 - Main topology remains committed/trusted-ref state. Workspace topology never advances KCP current/LKG.
 - Project Health exposes Workspace `attempt` and `stable` views separately.
 - Recovery, Chapter 6, Review, or ordinary consumers must not invoke publication as an implicit repair.
