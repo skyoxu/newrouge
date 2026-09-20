@@ -24,6 +24,21 @@ This reads committed source from the trusted ref and reports source/module count
 
 `build_knowledge_catalog.py --write` remains a low-level migration/debug primitive. It does **not** create a valid current publication and must not be used as the normal maintenance publication path.
 
+## Registered Chapter closure producers
+
+Chapter 3 and Chapter 5 are the only workflow stages allowed to call the registered closure refresh hook:
+
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local
+
+This is not a consumer recovery side effect. The rules are:
+
+- every registered Chapter run may update the run-scoped Workspace **last attempt** topology so failure/concern state is inspectable;
+- only a passed closure gate may advance the Workspace **latest successful** topology;
+- failed or partial runs must never overwrite latest successful;
+- `--write-planning-artifacts` is allowed only after the registered closure gate has passed;
+- `--publish-if-eligible` remains subject to the same trusted-ref and clean-worktree publication rules below;
+- Chapter 6, Review, recovery, and ordinary consumers must never call this hook to repair or advance global knowledge implicitly.
 ## Explicit publication
 
 After maintainer review:
