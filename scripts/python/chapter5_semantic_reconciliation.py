@@ -881,6 +881,8 @@ def reconcile(
     }
     _write_json(out_path, reconciliation)
     _write_json(readiness_path, readiness_doc)
+    _write_json(root / DEFAULT_RECONCILIATION_DIR / "latest.json", reconciliation)
+    _write_json(root / DEFAULT_READINESS_DIR / "latest.json", readiness_doc)
     return reconciliation, readiness_doc
 
 
