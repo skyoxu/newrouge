@@ -486,7 +486,12 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
         }, ensure_ascii=False))
         return 2
     print(json.dumps(result, ensure_ascii=False))
-    return 0 if result.get("publication_status") != "failed" else 2
+    failed = (
+        result.get("local_refresh_status") == "failed"
+        or result.get("chapter_closure_status") == "knowledge_refresh_failed"
+        or result.get("publication_status") == "failed"
+    )
+    return 2 if failed else 0
 
 
 def build_parser() -> argparse.ArgumentParser:
