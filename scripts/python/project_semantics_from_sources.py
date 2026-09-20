@@ -212,6 +212,9 @@ def prepare(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     index, batches = build_batches(ledger, max_blocks, max_chars)
     batch_dir.mkdir(parents=True, exist_ok=True)
+    for stale in batch_dir.glob("batch-*.json"):
+        if stale.is_file():
+            stale.unlink()
     block_to_batch: dict[str, str] = {}
     for batch in batches:
         for block_id in batch["block_ids"]:
