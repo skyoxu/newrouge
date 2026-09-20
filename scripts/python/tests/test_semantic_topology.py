@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -75,6 +77,48 @@ def valid_docs(revision="a" * 40):
 
 
 class SemanticTopologyTests(unittest.TestCase):
+    def test_validator_allows_legacy_checkout_without_git_main_ref(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/python/validate_semantic_topology.py",
+                    "--repo-root",
+                    tmp,
+                ],
+                cwd=Path(__file__).resolve().parents[3],
+                text=True,
+                encoding="utf-8",
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr)
+            self.assertEqual("legacy_unmapped", json.loads(completed.stdout)["status"])
+
+    def test_validator_blocks_partial_topology_without_touching_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / TOPOLOGY_ARTIFACTS["manifest"]
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text("{}", encoding="utf-8")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/python/validate_semantic_topology.py",
+                    "--repo-root",
+                    tmp,
+                ],
+                cwd=Path(__file__).resolve().parents[3],
+                text=True,
+                encoding="utf-8",
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(1, completed.returncode)
+            payload = json.loads(completed.stdout)
+            self.assertEqual("blocked", payload["status"])
+            self.assertEqual("partial topology artifact set", payload["reason"])
+
     def test_kcp_builder_classifies_topology_as_derived_planning_source(self):
         snapshot = FakeSnapshot({
             "docs/planning/semantic-topology/semantic-requirements.v1.json": {
