@@ -96,6 +96,11 @@ def build_batches(
     if max_blocks < 1 or max_chars < 1:
         raise ValueError("batch limits must be positive")
 
+    # Reserve a bounded slice for adjacent context. Ownership/accounting still
+    # applies only to target blocks; context is read-only evidence.
+    context_reserve = min(4000, max(0, max_chars // 5))
+    target_budget = max(1, max_chars - context_reserve)
+
     batches: list[dict[str, Any]] = []
     current: list[dict[str, Any]] = []
     current_chars = 0
@@ -110,16 +115,19 @@ def build_batches(
             "first_block_id": current[0]["block_id"],
             "last_block_id": current[-1]["block_id"],
             "input_block_count": len(current),
-            "input_char_count": current_chars,
+            "owned_char_count": current_chars,
             "max_blocks_per_batch": max_blocks,
             "max_chars_per_batch": max_chars,
             "block_ids": [row["block_id"] for row in current],
             "blocks": current,
+            "context_before": [],
+            "context_after": [],
             "producer_contract": {
                 "ownership": "Only block_ids in this batch may be claimed as primary ownership.",
-                "cross_block": "Atoms may reference more source_block_ids when semantics span blocks.",
+                "context": "context_before/context_after are read-only adjacent context; never count them as primary ownership.",
+                "cross_block": "Atoms may reference more source_block_ids when semantics span target/context blocks.",
                 "no_silent_loss": "Every owned block requires atoms or one explicit disposition.",
-                "context_budget": "The entire batch is bounded deterministically; no source text may be truncated.",
+                "context_budget": "Target plus context input is bounded deterministically; no source text may be truncated.",
             },
         })
         current = []
@@ -132,11 +140,53 @@ def build_batches(
                 f"source block {row.get('block_id')} exceeds max_chars_per_batch "
                 f"({cost}>{max_chars}); do not truncate it silently"
             )
-        if current and (len(current) >= max_blocks or current_chars + cost > max_chars):
+        effective_limit = target_budget if cost <= target_budget else max_chars
+        if current and (
+            len(current) >= max_blocks
+            or current_chars + cost > target_budget
+        ):
             flush()
         current.append(row)
         current_chars += cost
+        if current_chars >= effective_limit or len(current) >= max_blocks:
+            flush()
     flush()
+
+    index_by_id = {
+        str(row.get("block_id")): index
+        for index, row in enumerate(blocks)
+        if row.get("block_id")
+    }
+    for batch in batches:
+        first_index = index_by_id[str(batch["first_block_id"])]
+        last_index = index_by_id[str(batch["last_block_id"])]
+        total_chars = int(batch["owned_char_count"])
+
+        before = blocks[first_index - 1] if first_index > 0 else None
+        if before is not None:
+            cost = _batch_cost(before)
+            if total_chars + cost <= max_chars:
+                batch["context_before"] = [before]
+                total_chars += cost
+
+        after = blocks[last_index + 1] if last_index + 1 < len(blocks) else None
+        if after is not None:
+            cost = _batch_cost(after)
+            if total_chars + cost <= max_chars:
+                batch["context_after"] = [after]
+                total_chars += cost
+
+        batch["context_before_block_ids"] = [
+            str(row["block_id"]) for row in batch["context_before"]
+        ]
+        batch["context_after_block_ids"] = [
+            str(row["block_id"]) for row in batch["context_after"]
+        ]
+        batch["context_block_count"] = (
+            len(batch["context_before"]) + len(batch["context_after"])
+        )
+        batch["context_char_count"] = total_chars - int(batch["owned_char_count"])
+        batch["input_char_count"] = total_chars
 
     index = {
         "schema_version": "chapter3.semantic-projection-batches.v1",
@@ -146,7 +196,11 @@ def build_batches(
         "batch_count": len(batches),
         "max_blocks_per_batch": max_blocks,
         "max_chars_per_batch": max_chars,
-        "batches": [{key: value for key, value in batch.items() if key != "blocks"} for batch in batches],
+        "context_reserve_chars": context_reserve,
+        "batches": [{
+            key: value for key, value in batch.items()
+            if key not in {"blocks", "context_before", "context_after"}
+        } for batch in batches],
     }
     return index, batches
 
