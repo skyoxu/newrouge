@@ -343,7 +343,10 @@ def run(
             )
             planning_status = "written"
 
-    publication_status, publication_reason = maybe_publish(root, publish_if_eligible)
+    if closure_passed:
+        publication_status, publication_reason = maybe_publish(root, publish_if_eligible)
+    else:
+        publication_status, publication_reason = "deferred", "closure_not_passed"
     summary = {
         "schema_version": "chapter-knowledge-refresh-summary.v1",
         "source": source,
