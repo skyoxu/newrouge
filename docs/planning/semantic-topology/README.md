@@ -17,6 +17,9 @@ Chapter 3 will eventually produce these files:
 
 Until the producer exists, the absence of these artifacts is valid migration state. Consumers must report `legacy_unmapped` / `topology unavailable`; they must not fabricate nodes.
 
+Machine-readable minimum contracts live under `docs/planning/semantic-topology/schemas/**`. The runtime validator intentionally uses the same required fields without introducing a new JSON Schema package dependency. Once topology artifacts exist, missing artifact hashes, source-file hash drift, invalid ids/refs or schema-version drift are blocking structural failures.
+
+
 ## Authority and identity
 
 - Source blocks are stable locators into original authority; copied preview text is never authority.
