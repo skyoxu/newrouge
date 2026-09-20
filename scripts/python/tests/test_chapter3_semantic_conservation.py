@@ -664,6 +664,42 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             checks = conservation_mod.projection_checks(root, ledger, semantics)
             self.assertNotIn("FR-1", checks["unresolved_delivery_potential"])
 
+    def test_projection_compile_requires_source_manifest_binding_and_valid_status(self) -> None:
+        ledger = {
+            "source_revision": "source-set:test",
+            "source_manifest_sha256": "sha256:" + "1" * 64,
+            "blocks": [{
+                "block_id": "SB-1",
+                "source_path": "docs/gdd/a.md",
+                "content_hash": "sha256:" + "a" * 64,
+                "raw_text": "Rule.",
+            }],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            index, candidate = projection_mod.prepare(ledger, 1, Path(tmp), 3000)
+        candidate["batch_summaries"][0]["output_accounted_count"] = 1
+        result = candidate["block_results"][0]
+        result.update({
+            "delivery_potential": True,
+            "disposition": "atomized",
+            "atoms": [{
+                "requirement_id": "FR-1",
+                "kind": "functional",
+                "statement": "Rule.",
+                "source_block_ids": ["SB-1"],
+                "delivery_relevant": True,
+            }],
+        })
+
+        candidate.pop("source_manifest_sha256")
+        with self.assertRaisesRegex(ValueError, "source_manifest_sha256"):
+            projection_mod.compile_projection(ledger, index, candidate)
+
+        candidate["source_manifest_sha256"] = ledger["source_manifest_sha256"]
+        candidate["block_results"][0]["atoms"][0]["status"] = "actve"
+        with self.assertRaisesRegex(ValueError, "unsupported requirement status"):
+            projection_mod.compile_projection(ledger, index, candidate)
+
     def test_projection_blocks_stale_semantic_binding_and_duplicate_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -677,6 +713,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             accounting = {
                 "block_id": block_id,
                 "batch_id": "BATCH-0001",
+                "block_content_hash": ledger["blocks"][0]["content_hash"],
                 "requirement_ids": [],
                 "disposition": "context",
                 "delivery_potential": False,
@@ -695,6 +732,43 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual("blocked", report["status"])
             self.assertEqual(2, report["blocking_counts"]["binding_mismatches"])
             self.assertEqual(1, report["blocking_counts"]["duplicate_accounting_blocks"])
+
+    def test_projection_validation_blocks_invalid_status_and_accounting_links(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "docs/gdd/a.md"
+            source.parent.mkdir(parents=True)
+            source.write_text("Rule.\n", encoding="utf-8")
+            _manifest, ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/a.md"], "init", explicit=True
+            )
+            block = ledger["blocks"][0]
+            semantics = {
+                "source_revision": ledger["source_revision"],
+                "source_manifest_sha256": ledger["source_manifest_sha256"],
+                "source_accounting": [{
+                    "block_id": block["block_id"],
+                    "block_content_hash": block["content_hash"],
+                    "disposition": "bogus",
+                    "delivery_potential": True,
+                    "requirement_ids": ["FR-MISSING"],
+                }],
+                "requirements": [{
+                    "requirement_id": "FR-1",
+                    "kind": "functional",
+                    "statement": "Rule.",
+                    "source_block_ids": [block["block_id"]],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "actve",
+                }],
+            }
+            report, _edges = conservation_mod.validate(
+                root, ledger, semantics, "projection"
+            )
+            self.assertEqual("blocked", report["status"])
+            self.assertEqual(1, report["blocking_counts"]["invalid_semantics"])
+            self.assertEqual(1, report["blocking_counts"]["invalid_source_accounting"])
 
     def test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers(self) -> None:
         semantic_blocked = {
@@ -764,6 +838,23 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         report = coverage_mod.audit(semantics, candidates, None, reconciled_task)
         self.assertEqual([], report["stale_existing_task_mappings"])
         self.assertEqual("ok", report["status"])
+
+        semantics["requirements"].append({
+            "requirement_id": "FR-OLD",
+            "kind": "functional",
+            "statement": "Superseded rule.",
+            "source_block_ids": ["SB-OLD"],
+            "delivery_relevant": True,
+            "sink_policy": "task_or_global_constraint",
+            "status": "superseded",
+        })
+        superseded_task = [{"id": "OLD2", "semantic_refs": ["FR-OLD"]}]
+        report = coverage_mod.audit(semantics, candidates, None, superseded_task)
+        self.assertEqual("blocked", report["status"])
+        self.assertEqual(
+            ["FR-OLD"],
+            report["stale_existing_task_mappings"][0]["stale_requirement_ids"],
+        )
 
     def test_closure_requires_delivery_sink_and_accepts_task_sink(self) -> None:
         semantics = {
@@ -910,24 +1001,29 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "candidates": root / "logs/ci/task-generation/task-candidates.enriched.json",
             "report": root / "logs/ci/task-generation/semantic-conservation-report.json",
         }
-        write_json(paths["manifest"], {
+        manifest = {
             "schema_version": "chapter3.source-manifest.v1",
             "source_revision": "source-set:test",
             "manifest_sha256": "sha256:" + "1" * 64,
             "repository_revision": "a" * 40,
-        })
-        write_json(paths["ledger"], {
+        }
+        ledger = {
             "schema_version": "newrouge.source-blocks.v1",
             "source_revision": "source-set:test",
-            "source_manifest_sha256": "sha256:" + "1" * 64,
+            "source_manifest_sha256": manifest["manifest_sha256"],
             "blocks": [block],
-        })
-        write_json(paths["semantics"], {
+        }
+        semantics = {
             "schema_version": "newrouge.semantic-requirements.v1",
             "source_revision": "source-set:test",
+            "source_manifest_sha256": manifest["manifest_sha256"],
             "source_accounting": [{
-                "block_id": "SB-1", "disposition": "atomized",
-                "requirement_ids": ["FR-1"], "delivery_potential": True,
+                "block_id": "SB-1",
+                "batch_id": "BATCH-0001",
+                "block_content_hash": block["content_hash"],
+                "disposition": "atomized",
+                "requirement_ids": ["FR-1"],
+                "delivery_potential": True,
             }],
             "requirements": [{
                 "requirement_id": "FR-1",
@@ -939,28 +1035,37 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 "sink_policy": "task_or_global_constraint",
                 "status": "active",
             }],
-        })
+        }
+        candidates = {"candidates": []} if status == "blocked" else {"candidates": [{
+            "id": "T1",
+            "title": "Shop rule",
+            "status": "pending",
+            "semantic_refs": ["FR-1"],
+            "capability_refs": [],
+            "complexity_score": 1,
+        }]}
+        write_json(paths["manifest"], manifest)
+        write_json(paths["ledger"], ledger)
+        write_json(paths["semantics"], semantics)
         write_json(paths["capabilities"], {
             "schema_version": "newrouge.capabilities.v1",
             "capabilities": [],
         })
         write_json(paths["edges"], {
             "schema_version": "newrouge.topology-edges.v1",
-            "edges": [{
-                "source_type": "requirement", "source_id": "FR-1",
-                "target_type": "task", "target_id": "T1",
-                "relation": "implemented_by",
-            }],
+            "edges": [],
         })
-        write_json(paths["candidates"], {"candidates": [{
-            "id": "T1", "title": "Shop rule", "status": "pending",
-            "semantic_refs": ["FR-1"], "capability_refs": [],
-        }]})
-        write_json(paths["report"], {
-            "schema_version": "chapter3.semantic-conservation-report.v1",
-            "status": status,
-            "blocking_counts": {} if status == "passed" else {"orphan_delivery_requirements": 1},
-        })
+        write_json(paths["candidates"], candidates)
+        report, task_edges = conservation_mod.validate(
+            root, ledger, semantics, "closure", candidates
+        )
+        self.assertEqual(status, report["status"])
+        write_json(paths["report"], report)
+        if task_edges:
+            write_json(paths["edges"], {
+                "schema_version": "newrouge.topology-edges.v1",
+                "edges": task_edges,
+            })
         return paths
 
     def test_passed_closure_promotes_planning_topology_without_self_staling_revision(self) -> None:
@@ -993,11 +1098,10 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual("source-set:test", manifest["source_revision"])
             self.assertTrue(manifest["artifacts"])
 
-            write_json(paths["report"], {
-                "schema_version": "chapter3.semantic-conservation-report.v1",
-                "status": "blocked",
-                "blocking_counts": {"orphan_delivery_requirements": 1},
-            })
+            blocked_report = json.loads(paths["report"].read_text(encoding="utf-8"))
+            blocked_report["status"] = "blocked"
+            blocked_report["blocking_counts"]["orphan_delivery_requirements"] = 1
+            write_json(paths["report"], blocked_report)
             summary = refresh_mod.run(
                 root,
                 source="chapter3",
@@ -1016,6 +1120,92 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             )
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
+
+    def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            report = json.loads(paths["report"].read_text(encoding="utf-8"))
+            report["stage"] = "projection"
+            write_json(paths["report"], report)
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-projection-spoof",
+                refresh_local=True,
+                write_planning=True,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("blocked", summary["closure_evidence_status"])
+            self.assertIn("closure_stage_required", summary["closure_evidence_reason"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+            self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
+
+    def test_planning_refresh_failure_restores_previous_stable_and_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            first = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-first",
+                refresh_local=True,
+                write_planning=True,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertTrue(first["closure_passed"])
+            stable_path = root / refresh_mod.STABLE_PATH
+            stable_before = stable_path.read_bytes()
+            manifest_path = root / "docs/planning/semantic-topology/topology-manifest.v1.json"
+            manifest_before = manifest_path.read_bytes()
+
+            real_copy = refresh_mod.shutil.copyfile
+            calls = {"count": 0}
+
+            def failing_copy(source, destination):
+                calls["count"] += 1
+                if calls["count"] == 2:
+                    raise OSError("planning copy failure")
+                return real_copy(source, destination)
+
+            with patch.object(refresh_mod.shutil, "copyfile", side_effect=failing_copy):
+                second = refresh_mod.run(
+                    root,
+                    source="chapter3",
+                    trigger_run_id="run-second",
+                    refresh_local=True,
+                    write_planning=True,
+                    publish_if_eligible=False,
+                    triplet_status="passed",
+                    source_manifest_path=paths["manifest"],
+                    ledger_path=paths["ledger"],
+                    semantics_path=paths["semantics"],
+                    capabilities_path=paths["capabilities"],
+                    edges_path=paths["edges"],
+                    candidates_path=paths["candidates"],
+                    report_path=paths["report"],
+                )
+            self.assertFalse(second["closure_passed"])
+            self.assertEqual("planning_topology_refresh_failed", second["local_refresh_failure_family"])
+            self.assertEqual(stable_before, stable_path.read_bytes())
+            self.assertEqual(manifest_before, manifest_path.read_bytes())
 
     def test_regression_summary_separates_source_semantic_and_task_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1313,11 +1503,10 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertTrue(summary["closure_passed"])
             stable_before = (root / refresh_mod.STABLE_PATH).read_text(encoding="utf-8")
 
-            write_json(paths["report"], {
-                "schema_version": "chapter3.semantic-conservation-report.v1",
-                "status": "blocked",
-                "blocking_counts": {"orphan_delivery_requirements": 1},
-            })
+            blocked_report = json.loads(paths["report"].read_text(encoding="utf-8"))
+            blocked_report["status"] = "blocked"
+            blocked_report["blocking_counts"]["orphan_delivery_requirements"] = 1
+            write_json(paths["report"], blocked_report)
             summary = refresh_mod.run(
                 root,
                 source="chapter3",
