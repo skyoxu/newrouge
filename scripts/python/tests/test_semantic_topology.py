@@ -171,7 +171,6 @@ class SemanticTopologyTests(unittest.TestCase):
                     "statement": "Requirement text",
                     "kind": "functional",
                     "source_block_ids": ["SB-1"],
-                    "capability_ids": ["CAP-1"],
                 }]
             },
             "docs/planning/semantic-topology/capabilities.v1.json": {
