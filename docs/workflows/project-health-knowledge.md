@@ -10,6 +10,9 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 - Capability is optional grouping. Requirements may route directly to Task/global constraint/quality gate/ADR-owned sink.
 - The page is read-only and does not create or modify Requirement, Task or Acceptance.
 - Scene details may display `Trace to design` through governed Task relationships. The trace is navigation/evidence only and does not convert static/runtime attachment into acceptance proof.
+- `Trace to design` entries are clickable node-level links into `/knowledge/topology?focus=<kind>:<id>`. Topology node details expose related-node links so Task/Capability/Requirement/Source Block navigation is reversible.
+- Existing task-view `acceptance[]` entries appear as read-only Acceptance nodes even before Chapter 5 semantic-origin edges exist; their `topology_origin` remains `unmapped` until an explicit governed edge is present.
+- The Orphan filter consumes the backend `sink_resolved` result; a Requirement that only reaches a Capability with no delivery sink remains visible as orphan.
 
 The registered structural source is `docs/planning/semantic-topology/**`. Chapter 3/5 producer and automatic refresh behavior are separate workflow changes and are not introduced by this structural layer.
 
