@@ -82,31 +82,70 @@ def stable_requirement_id(kind: str, block_ids: list[str], statement: str) -> st
     return f"{PREFIX[kind]}-{digest}"
 
 
-def build_batches(ledger: dict[str, Any], max_blocks: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _batch_cost(row: dict[str, Any]) -> int:
+    # Use serialized character count as a deterministic context-budget proxy.
+    return len(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+
+
+def build_batches(
+    ledger: dict[str, Any],
+    max_blocks: int,
+    max_chars: int = 24000,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     blocks = [row for row in ledger.get("blocks", []) if isinstance(row, dict)]
-    batches = []
-    for offset in range(0, len(blocks), max_blocks):
-        rows = blocks[offset : offset + max_blocks]
+    if max_blocks < 1 or max_chars < 1:
+        raise ValueError("batch limits must be positive")
+
+    batches: list[dict[str, Any]] = []
+    current: list[dict[str, Any]] = []
+    current_chars = 0
+
+    def flush() -> None:
+        nonlocal current, current_chars
+        if not current:
+            return
         batch_id = f"BATCH-{len(batches) + 1:04d}"
         batches.append({
             "batch_id": batch_id,
-            "first_block_id": rows[0]["block_id"] if rows else None,
-            "last_block_id": rows[-1]["block_id"] if rows else None,
-            "input_block_count": len(rows),
-            "block_ids": [row["block_id"] for row in rows],
-            "blocks": rows,
+            "first_block_id": current[0]["block_id"],
+            "last_block_id": current[-1]["block_id"],
+            "input_block_count": len(current),
+            "input_char_count": current_chars,
+            "max_blocks_per_batch": max_blocks,
+            "max_chars_per_batch": max_chars,
+            "block_ids": [row["block_id"] for row in current],
+            "blocks": current,
             "producer_contract": {
                 "ownership": "Only block_ids in this batch may be claimed as primary ownership.",
                 "cross_block": "Atoms may reference more source_block_ids when semantics span blocks.",
                 "no_silent_loss": "Every owned block requires atoms or one explicit disposition.",
+                "context_budget": "The entire batch is bounded deterministically; no source text may be truncated.",
             },
         })
+        current = []
+        current_chars = 0
+
+    for row in blocks:
+        cost = _batch_cost(row)
+        if cost > max_chars:
+            raise ValueError(
+                f"source block {row.get('block_id')} exceeds max_chars_per_batch "
+                f"({cost}>{max_chars}); do not truncate it silently"
+            )
+        if current and (len(current) >= max_blocks or current_chars + cost > max_chars):
+            flush()
+        current.append(row)
+        current_chars += cost
+    flush()
+
     index = {
         "schema_version": "chapter3.semantic-projection-batches.v1",
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "source_revision": ledger.get("source_revision"),
         "source_block_count": len(blocks),
         "batch_count": len(batches),
+        "max_blocks_per_batch": max_blocks,
+        "max_chars_per_batch": max_chars,
         "batches": [{key: value for key, value in batch.items() if key != "blocks"} for batch in batches],
     }
     return index, batches
@@ -116,8 +155,9 @@ def prepare(
     ledger: dict[str, Any],
     max_blocks: int,
     batch_dir: Path,
+    max_chars: int = 24000,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    index, batches = build_batches(ledger, max_blocks)
+    index, batches = build_batches(ledger, max_blocks, max_chars)
     batch_dir.mkdir(parents=True, exist_ok=True)
     block_to_batch = {}
     for batch in batches:
@@ -131,8 +171,8 @@ def prepare(
             "batch_id": block_to_batch.get(block_id),
             "block_id": block_id,
             "atoms": [],
-            "disposition": "unresolved",
-            "delivery_potential": bool(block.get("requirement_like_hint")),
+            "disposition": "",
+            "delivery_potential": None,
             "decision": None,
         })
     candidate = {
@@ -140,17 +180,20 @@ def prepare(
         "generated_at_utc": index["generated_at_utc"],
         "source_revision": ledger.get("source_revision"),
         "instructions": {
-            "producer": "Fill atoms or disposition without deleting block_results.",
+            "producer": "Review every block. Fill atoms or one explicit disposition; never leave the template blank.",
             "allowed_dispositions": sorted(ALLOWED_DISPOSITIONS),
             "allowed_kinds": sorted(set(KIND_MAP)),
-            "uncertainty": "Use unresolved. Delivery-potential unresolved blocks block stable closure.",
+            "delivery_potential": "Set a boolean for every block. Keyword hints are hints only and never decide this field.",
+            "uncertainty": "Use unresolved explicitly. Delivery-potential unresolved blocks block stable closure.",
+            "batch_accounting": "After reviewing a batch, set output_accounted_count to the number of owned blocks explicitly reviewed.",
         },
         "batch_summaries": [{
             "batch_id": row["batch_id"],
             "first_block_id": row["first_block_id"],
             "last_block_id": row["last_block_id"],
             "input_block_count": row["input_block_count"],
-            "output_accounted_count": row["input_block_count"],
+            "input_char_count": row["input_char_count"],
+            "output_accounted_count": 0,
         } for row in index["batches"]],
         "block_results": results,
         "capabilities": [],
@@ -173,6 +216,12 @@ def compile_projection(
     batches: dict[str, Any],
     candidate: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    source_revision = str(ledger.get("source_revision") or "")
+    if str(batches.get("source_revision") or "") != source_revision:
+        raise ValueError("semantic batch source_revision does not match source ledger")
+    if str(candidate.get("source_revision") or "") != source_revision:
+        raise ValueError("semantic candidate source_revision does not match source ledger")
+
     blocks = {
         str(row.get("block_id")): row
         for row in ledger.get("blocks", [])
@@ -183,6 +232,28 @@ def compile_projection(
         for batch in batches.get("batches", [])
         for block_id in batch.get("block_ids", [])
     }
+    expected_batches = {
+        str(batch.get("batch_id")): batch
+        for batch in batches.get("batches", [])
+        if isinstance(batch, dict) and batch.get("batch_id")
+    }
+    summaries = candidate.get("batch_summaries", [])
+    if not isinstance(summaries, list):
+        raise ValueError("batch_summaries must be a list")
+    summary_by_id = {
+        str(row.get("batch_id")): row
+        for row in summaries if isinstance(row, dict) and row.get("batch_id")
+    }
+    if set(summary_by_id) != set(expected_batches):
+        raise ValueError("candidate batch summaries do not match prepared batches")
+    for batch_id, expected in expected_batches.items():
+        summary = summary_by_id[batch_id]
+        for field in ("first_block_id", "last_block_id", "input_block_count"):
+            if summary.get(field) != expected.get(field):
+                raise ValueError(f"batch summary mismatch for {batch_id}: {field}")
+        if int(summary.get("output_accounted_count") or 0) != int(expected.get("input_block_count") or 0):
+            raise ValueError(f"batch {batch_id} output_accounted_count does not reconcile")
+
     results = candidate.get("block_results", [])
     if not isinstance(results, list):
         raise ValueError("block_results must be a list")
@@ -206,6 +277,8 @@ def compile_projection(
         if not isinstance(atoms, list):
             raise ValueError(f"atoms must be a list for {block_id}")
         disposition = str(result.get("disposition") or "").strip()
+        if not isinstance(result.get("delivery_potential"), bool):
+            raise ValueError(f"block {block_id} must explicitly set delivery_potential")
         if not atoms and disposition not in ALLOWED_DISPOSITIONS:
             raise ValueError(f"block {block_id} has neither atoms nor valid disposition")
         if atoms and disposition and disposition not in ALLOWED_DISPOSITIONS:
@@ -355,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--repo-root", default=".")
     prepare_parser.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
     prepare_parser.add_argument("--max-blocks-per-batch", type=int, default=40)
+    prepare_parser.add_argument("--max-chars-per-batch", type=int, default=24000)
     prepare_parser.add_argument("--batch-dir", default="logs/ci/task-generation/semantic-batches")
     prepare_parser.add_argument("--batches-out", default="logs/ci/task-generation/semantic-projection.batches.v1.json")
     prepare_parser.add_argument("--candidate-out", default="logs/ci/task-generation/semantic-projection.candidate.json")
@@ -372,7 +446,16 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.repo_root).resolve()
     if args.action == "prepare":
         ledger = load_json(root / args.ledger)
-        index, candidate = prepare(ledger, max(1, args.max_blocks_per_batch), root / args.batch_dir)
+        try:
+            index, candidate = prepare(
+                ledger,
+                max(1, args.max_blocks_per_batch),
+                root / args.batch_dir,
+                max(1, args.max_chars_per_batch),
+            )
+        except ValueError as exc:
+            print(f"semantic_projection_prepare_error={exc}")
+            return 2
         write_json(root / args.batches_out, index)
         write_json(root / args.candidate_out, candidate)
         print(
