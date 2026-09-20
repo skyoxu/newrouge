@@ -132,6 +132,15 @@ def audit_semantic(
     for rid, task_ids in by_req.items():
         if task_ids:
             covered_blocks.update(semantic_blocks.get(rid, set()))
+    for rid, requirement in requirements.items():
+        non_task_sinks = [
+            sink for sink in requirement.get("non_task_sinks", [])
+            if isinstance(sink, dict)
+            and str(sink.get("type") or "") in NON_TASK_SINK_TYPES
+            and str(sink.get("id") or "").strip()
+        ]
+        if non_task_sinks:
+            covered_blocks.update(semantic_blocks.get(rid, set()))
 
     packaging_rows = []
     packaging_missing = []
