@@ -663,6 +663,9 @@ def compile_projection(
                 raise ValueError(f"non-task sink for {rid} must be an object")
             sink_type = str(sink.get("type") or "").strip()
             sink_id = str(sink.get("id") or "").strip()
+            if sink_type == "adr_owned":
+                sink_type = "adr"
+                sink["type"] = "adr"
             if sink_type not in {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"} or not sink_id:
                 raise ValueError(f"invalid non-task sink for {rid}")
             add_edge("requirement", rid, sink_type, sink_id, str(sink.get("relation") or "governed_by"))
