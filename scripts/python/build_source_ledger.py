@@ -16,6 +16,7 @@ from typing import Any
 DEFAULT_SOURCE_GLOBS = [
     "docs/prd/**/*.md",
     "docs/gdd/**/*.md",
+    "_bmad-output/gdd.md",
     "docs/epics/**/*.md",
     "docs/stories/**/*.md",
 ]
