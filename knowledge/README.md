@@ -14,6 +14,8 @@ The Knowledge Control Plane only answers: **where should a trusted consumer read
 
 Topology artifacts and their machine-readable schemas are included in the trusted-ref source snapshot/catalog, so the existing publication generation hash binds their exact bytes through the snapshot/catalog artifacts. Schema documents are cataloged for integrity but are `semantic_eligible=false` and therefore do not compete in ordinary Locator ranking.
 
+For semantic-topology data files, the catalog additionally projects Source Block / Requirement / Capability node metadata. Locator results may include `topology_node` with node id/type, original authority source path/hash, related topology nodes and related Task ids. This is still location/projection metadata: consumers must re-read the returned authority source and Task/Acceptance records before using the claim.
+
 ## Layers
 
 1. `knowledge/snapshots/repository-source-snapshot.v1.json`

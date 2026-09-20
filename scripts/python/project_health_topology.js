@@ -17,12 +17,38 @@ function nodeRows(state) {
     .concat((nodes.source_blocks || []).map(x => Object.assign({kind: 'source_block'}, x)))
     .concat((nodes.requirements || []).map(x => Object.assign({kind: 'requirement'}, x)))
     .concat((nodes.capabilities || []).map(x => Object.assign({kind: 'capability'}, x)))
-    .concat((nodes.tasks || []).map(x => Object.assign({kind: 'task'}, x)));
+    .concat((nodes.tasks || []).map(x => Object.assign({kind: 'task'}, x)))
+    .concat((nodes.acceptance || []).map(x => Object.assign({kind: 'acceptance'}, x)));
 }
 
 function nodeId(row) {
   return row.block_id || row.source_block_id || row.requirement_id || row.semantic_id ||
-    row.capability_id || row.task_id || row.taskmaster_id || row.id || '(unnamed)';
+    row.capability_id || row.acceptance_id || row.task_id || row.taskmaster_id || row.id || '(unnamed)';
+}
+
+function currentMode() {
+  return byId('topology-identity').value || 'main';
+}
+
+function focusTarget() {
+  const value = new URLSearchParams(window.location.search).get('focus') || '';
+  const split = value.indexOf(':');
+  if (split <= 0) return null;
+  return {kind: value.slice(0, split), id: value.slice(split + 1)};
+}
+
+function topologyHref(kind, id) {
+  const params = new URLSearchParams({mode: currentMode(), focus: kind + ':' + id});
+  return '/knowledge/topology?' + params.toString();
+}
+
+function makeTopologyLink(kind, id, label) {
+  const link = document.createElement('a');
+  link.href = topologyHref(kind, id);
+  link.textContent = label || (kind + ':' + id);
+  link.dataset.topologyKind = kind;
+  link.dataset.topologyId = id;
+  return link;
 }
 
 function matches(row) {
@@ -38,13 +64,9 @@ function matches(row) {
   if (capability && !blob.includes(capability)) return false;
   if (chapter && !blob.includes(chapter)) return false;
   if (source && !blob.includes(source)) return false;
-  if (state === 'unresolved' && !blob.includes('unresolved')) return false;
+  if (state === 'unresolved' && !(row.topology_states || []).includes('unresolved')) return false;
   if (state === 'stale' && topology && topology.fresh !== false && !blob.includes('stale')) return false;
-  if (state === 'orphan') {
-    const id = nodeId(row);
-    const linked = (topology.edges || []).some(e => endpoint(e, 'source').id == id || endpoint(e, 'target').id == id);
-    if (linked) return false;
-  }
+  if (state === 'orphan' && !(row.kind === 'requirement' && row.sink_resolved === false)) return false;
   return true;
 }
 
@@ -63,6 +85,41 @@ async function openSource(row) {
   byId('topology-source-preview').showModal();
 }
 
+function relatedNodes(row) {
+  const id = nodeId(row);
+  const result = [];
+  const add = (kind, value) => {
+    if (value == null) return;
+    const key = kind + ':' + value;
+    if (!result.some(item => item.key === key)) result.push({key, kind, id: String(value)});
+  };
+  if (row.kind === 'requirement') {
+    (row.source_block_ids || []).forEach(value => add('source_block', value));
+    (row.capability_ids || []).forEach(value => add('capability', value));
+  } else if (row.kind === 'capability') {
+    (row.requirement_ids || row.covers || []).forEach(value => add('requirement', value));
+  } else if (row.kind === 'task') {
+    const trace = topology?.task_trace?.[String(id)] || {};
+    (trace.source_blocks || []).forEach(value => add('source_block', value));
+    (trace.requirements || []).forEach(value => add('requirement', value));
+    (trace.capabilities || []).forEach(value => add('capability', value));
+    (trace.acceptance || []).forEach(value => add('acceptance', value));
+  } else if (row.kind === 'acceptance') {
+    add('task', row.task_id);
+  } else if (row.kind === 'source_block') {
+    (topology?.nodes?.requirements || [])
+      .filter(req => (req.source_block_ids || []).map(String).includes(String(id)))
+      .forEach(req => add('requirement', nodeId(Object.assign({kind: 'requirement'}, req))));
+  }
+  (topology?.edges || []).forEach(edge => {
+    const source = endpoint(edge, 'source');
+    const target = endpoint(edge, 'target');
+    if (String(source.id) === String(id) && source.kind === row.kind) add(target.kind, target.id);
+    if (String(target.id) === String(id) && target.kind === row.kind) add(source.kind, source.id);
+  });
+  return result.filter(item => item.id && item.id !== '(unnamed)');
+}
+
 function addNodeActions(detail, row) {
   if (row.kind === 'source_block' && row.source_path) {
     const button = document.createElement('button');
@@ -72,13 +129,25 @@ function addNodeActions(detail, row) {
     button.onclick = () => openSource(row).catch(error => byId('topology-status').textContent = error.message);
     detail.append(button);
   }
-  if (row.kind === 'task' && nodeId(row) !== '(unnamed)') {
+  const taskId = row.kind === 'task' ? nodeId(row) : row.task_id;
+  if (taskId && taskId !== '(unnamed)') {
     const link = document.createElement('a');
-    link.href = '/api/knowledge/task?id=' + encodeURIComponent(nodeId(row));
+    link.href = '/api/knowledge/task?id=' + encodeURIComponent(taskId);
     link.target = '_blank';
     link.rel = 'noopener';
-    link.textContent = 'Open existing task detail';
+    link.textContent = row.kind === 'acceptance' ? 'Open owning task detail' : 'Open existing task detail';
     detail.append(link);
+  }
+  const related = relatedNodes(row);
+  if (related.length) {
+    const nav = document.createElement('p');
+    nav.className = 'topology-related';
+    nav.append(document.createTextNode('Related: '));
+    related.forEach((item, index) => {
+      if (index) nav.append(document.createTextNode(' · '));
+      nav.append(makeTopologyLink(item.kind, item.id, item.kind + ':' + item.id));
+    });
+    detail.append(nav);
   }
 }
 
@@ -102,14 +171,24 @@ function render() {
     card.textContent = key + ': ' + value;
     summary.append(card);
   });
+  const focus = focusTarget();
+  let focusElement = null;
   nodeRows(topology).filter(matches).forEach(row => {
     const detail = document.createElement('details');
+    const id = nodeId(row);
+    detail.dataset.topologyKind = row.kind;
+    detail.dataset.topologyId = id;
     const title = document.createElement('summary');
-    title.textContent = row.kind + ' · ' + nodeId(row);
+    title.textContent = row.kind + ' · ' + id;
     const pre = document.createElement('pre');
     pre.textContent = JSON.stringify(row, null, 2);
     detail.append(title, pre);
     addNodeActions(detail, row);
+    if (focus && focus.kind === row.kind && String(focus.id) === String(id)) {
+      detail.open = true;
+      detail.classList.add('topology-focus');
+      focusElement = detail;
+    }
     host.append(detail);
   });
   if (!host.children.length) {
@@ -129,10 +208,14 @@ function render() {
     edgeBody.append(tr);
   });
   byId('topology-problems').textContent = JSON.stringify((topology && topology.problems) || [], null, 2);
+  if (focusElement) focusElement.scrollIntoView({block: 'center'});
 }
 
 async function load() {
-  const mode = byId('topology-identity').value;
+  const params = new URLSearchParams(window.location.search);
+  const requestedMode = params.get('mode');
+  if (requestedMode === 'main' || requestedMode === 'workspace') byId('topology-identity').value = requestedMode;
+  const mode = currentMode();
   const response = await fetch('/api/knowledge/topology?mode=' + encodeURIComponent(mode), {cache: 'no-store'});
   topology = await response.json();
   if (!response.ok) throw new Error(topology.reason || 'Topology request failed');
