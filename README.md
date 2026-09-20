@@ -104,10 +104,13 @@ Recovery stop-loss rules:
 - Gate bundle only:
   - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
 - Chapter 3 task triplet baseline:
-  - `py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --prd-path <path> --gdd-path <path> --epics-path <path> --stories-path <path>`
-  - `py -3 scripts/python/normalize_task_intents.py --mode <init|add>`
-  - `py -3 scripts/python/generate_task_candidates_from_sources.py --mode <init|add>`
+  - `py -3 scripts/python/build_source_ledger.py --mode <init|add> --prd-path <path> --gdd-path <path> --epics-path <path> --stories-path <path>`
+  - `py -3 scripts/python/project_semantics_from_sources.py prepare --max-blocks-per-batch 40 --max-chars-per-batch 24000` → approved Chapter 3 model/Skill explicitly reviews every batch/block
+  - `py -3 scripts/python/project_semantics_from_sources.py compile && py -3 scripts/python/validate_semantic_conservation.py --stage projection`
+  - `py -3 scripts/python/normalize_task_intents.py --mode <init|add> && py -3 scripts/python/generate_task_candidates_from_sources.py --mode <init|add> && py -3 scripts/python/enrich_task_candidates.py`
+  - `py -3 scripts/python/audit_task_candidate_coverage.py && py -3 scripts/python/validate_semantic_conservation.py --stage closure`
   - `py -3 scripts/python/compile_task_triplet.py --mode <init|add>`
+  - run end: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`
 - Chapter 4 overlays and contracts:
   - `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
   - `py -3 scripts/python/validate_overlay_execution.py --prd-id <PRD-ID> --strict-refs`
