@@ -278,8 +278,11 @@ def parse_json(source_path: str, source_sha: str, text: str) -> list[dict[str, A
 
 
 def parse_source(path: Path, root: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    text = path.read_text(encoding="utf-8", errors="replace")
     source_path = rel(path, root)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"authoritative source is not valid UTF-8: {source_path}") from exc
     source_sha = sha256_text(text)
     if path.suffix.lower() in {".md", ".markdown"}:
         source_type = "markdown"
