@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from scripts.python._knowledge_catalog_builder import build_layers
+from scripts.python._knowledge_locator_core import locate
 from scripts.python._semantic_topology import (
     TOPOLOGY_ARTIFACTS,
     attach_scene_design_trace,
@@ -150,6 +151,75 @@ class SemanticTopologyTests(unittest.TestCase):
         eligible = projections["projections"][0]["eligible_module_ids"]
         self.assertEqual([modules[semantic_path]["module_id"]], eligible)
 
+    def test_kcp_locator_returns_topology_node_authority_and_related_task(self):
+        source_text = "Requirement text\n"
+        source_sha = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+        snapshot = FakeSnapshot({
+            "docs/gdd/a.md": source_text,
+            "docs/planning/semantic-topology/source-blocks.v1.json": {
+                "blocks": [{
+                    "block_id": "SB-1",
+                    "source_path": "docs/gdd/a.md",
+                    "source_sha256": source_sha,
+                    "line_start": 1,
+                    "line_end": 1,
+                }]
+            },
+            "docs/planning/semantic-topology/semantic-requirements.v1.json": {
+                "requirements": [{
+                    "requirement_id": "FR-1",
+                    "statement": "Requirement text",
+                    "kind": "functional",
+                    "source_block_ids": ["SB-1"],
+                    "capability_ids": ["CAP-1"],
+                }]
+            },
+            "docs/planning/semantic-topology/capabilities.v1.json": {
+                "capabilities": [{
+                    "capability_id": "CAP-1",
+                    "title": "Test capability",
+                    "requirement_ids": ["FR-1"],
+                }]
+            },
+            "docs/planning/semantic-topology/topology-edges.v1.json": {
+                "edges": [
+                    {
+                        "source_type": "requirement", "source_id": "FR-1",
+                        "target_type": "capability", "target_id": "CAP-1",
+                        "relation": "grouped_by",
+                    },
+                    {
+                        "source_type": "capability", "source_id": "CAP-1",
+                        "target_type": "task", "target_id": "7",
+                        "relation": "implemented_by",
+                    },
+                ]
+            },
+        })
+        policy = {
+            "consumer": "repository-session",
+            "domains": ["game-design"],
+            "statuses": ["active"],
+            "visibility": ["active"],
+            "path_prefixes": ["docs/planning/semantic-topology/"],
+            "exact_paths": [],
+        }
+        policies = {"policy_revision": "test", "policies": [policy]}
+        _snapshot, catalog, projections = build_layers(snapshot, {"rules": []}, policies)
+        eligible = set(projections["projections"][0]["eligible_module_ids"])
+        result = locate({"query": "FR-1"}, catalog, policy, eligible, 5)
+        self.assertEqual("matched", result["status"])
+        candidate = next(
+            item for item in result["candidates"]
+            if item.get("topology_node", {}).get("node_id") == "FR-1"
+        )
+        node = candidate["topology_node"]
+        self.assertEqual("requirement", node["node_type"])
+        self.assertEqual(["7"], node["related_task_ids"])
+        self.assertEqual("docs/gdd/a.md", node["authority_sources"][0]["path"])
+        self.assertEqual(source_sha, node["authority_sources"][0]["source_sha256"])
+        self.assertEqual("topology-node", candidate["rank_evidence"]["location_strategy"])
+
     def test_missing_artifacts_are_explicit_legacy_unmapped(self):
         view = load_topology_from_snapshot(FakeSnapshot({}), [])
         self.assertFalse(view["available"])
@@ -173,6 +243,38 @@ class SemanticTopologyTests(unittest.TestCase):
         self.assertEqual(["FR-1"], trace["requirements"])
         self.assertEqual("navigation_only", trace["semantic_claim"])
 
+    def test_acceptance_nodes_project_existing_task_view_authority(self):
+        details = [{
+            "task": {"id": 7, "title": "Do it", "status": "pending"},
+            "mappings": {
+                "tasks_back": [{
+                    "taskmaster_id": 7,
+                    "acceptance": ["Result must be deterministic."],
+                }],
+                "tasks_gameplay": [],
+            },
+            "godot": {"status": "unmapped", "scenes": []},
+        }]
+        view = load_topology_from_snapshot(FakeSnapshot(valid_docs()), details)
+        self.assertEqual(1, len(view["nodes"]["acceptance"]))
+        acceptance = view["nodes"]["acceptance"][0]
+        self.assertEqual("7", acceptance["task_id"])
+        self.assertEqual("unmapped", acceptance["topology_origin"])
+        self.assertIn(acceptance["acceptance_id"], view["task_trace"]["7"]["acceptance"])
+        self.assertEqual(0, view["summary"]["acceptance_with_semantic_origin"])
+
+        docs = valid_docs()
+        docs[TOPOLOGY_ARTIFACTS["edges"]]["edges"].append({
+            "source_type": "requirement",
+            "source_id": "FR-1",
+            "target_type": "acceptance",
+            "target_id": acceptance["acceptance_id"],
+            "relation": "accepted_by",
+        })
+        view = load_topology_from_snapshot(FakeSnapshot(docs), details)
+        self.assertEqual(1, view["summary"]["acceptance_with_semantic_origin"])
+        self.assertEqual("mapped", view["nodes"]["acceptance"][0]["topology_origin"])
+
     def test_capability_without_delivery_sink_keeps_requirement_orphan(self):
         docs = valid_docs()
         docs[TOPOLOGY_ARTIFACTS["edges"]] = {"edges": [
@@ -182,6 +284,9 @@ class SemanticTopologyTests(unittest.TestCase):
         ]}
         view = load_topology_from_snapshot(FakeSnapshot(docs), [])
         self.assertEqual(1, view["summary"]["orphan_requirements"])
+        requirement = view["nodes"]["requirements"][0]
+        self.assertFalse(requirement["sink_resolved"])
+        self.assertIn("orphan", requirement["topology_states"])
         docs[TOPOLOGY_ARTIFACTS["edges"]]["edges"].append(
             {"source_type": "capability", "source_id": "CAP-1",
              "target_type": "task", "target_id": "7",
@@ -190,6 +295,7 @@ class SemanticTopologyTests(unittest.TestCase):
         details = [{"task": {"id": 7, "status": "pending"}, "godot": {"scenes": []}}]
         view = load_topology_from_snapshot(FakeSnapshot(docs), details)
         self.assertEqual(0, view["summary"]["orphan_requirements"])
+        self.assertTrue(view["nodes"]["requirements"][0]["sink_resolved"])
 
     def test_revision_mismatch_is_stale_not_rewritten(self):
         view = load_topology_from_snapshot(FakeSnapshot(valid_docs("b" * 40)), [])
