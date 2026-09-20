@@ -15,7 +15,28 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 - The Orphan filter consumes the backend `sink_resolved` result; a Requirement that only reaches a Capability with no delivery sink remains visible as orphan.
 - Knowledge query candidates that resolve a topology node display its node id/type, related Task ids and original authority source path/hash, with a link into the focused topology view.
 
-The registered structural source is `docs/planning/semantic-topology/**`. Chapter 3/5 producer and automatic refresh behavior are separate workflow changes and are not introduced by this structural layer.
+The registered structural source is `docs/planning/semantic-topology/**`.
+
+### Chapter 3 / Chapter 5 Workspace refresh
+
+Registered closure producers use the unified Chapter Knowledge refresh hook rather than writing Project Health/KCP state ad hoc.
+
+- Every Chapter 3/5 run may refresh **Workspace → Last attempt** with its run identity, partial topology, failures and conservation concerns.
+- Only closure PASS may advance **Workspace → Latest successful**.
+- Failed/partial attempts never overwrite Latest Successful.
+- Workspace identity remains `workspace:<digest>` / run-bound and never advances main `latest.json`, runtime-verified main evidence, KCP `current`, or `last-known-good`.
+- `publication_deferred` is a normal result for non-main/dirty/non-publishable runs and does not by itself fail Chapter 3.
+- The topology page exposes the Workspace selector `Last attempt / Latest successful` so operators can compare the current failed attempt against the previous stable closure.
+- Canonical publication remains trusted-ref/main-only. Recovery, Chapter 6, Review and ordinary consumers must not use publication as an implicit repair action.
+
+Unified entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>
+```
+
+Use `--write-planning-artifacts` only after closure PASS to promote stable topology files under `docs/planning/semantic-topology/**`; use `--publish-if-eligible` only when trusted-ref publication is intended.
+
 
 
 ## Godot 场景图投影
