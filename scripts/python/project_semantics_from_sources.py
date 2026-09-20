@@ -151,41 +151,149 @@ def build_batches(
     return index, batches
 
 
+def _reviewed_result(row: dict[str, Any]) -> bool:
+    atoms = row.get("atoms", [])
+    disposition = str(row.get("disposition") or "").strip()
+    return (
+        isinstance(row.get("delivery_potential"), bool)
+        and isinstance(atoms, list)
+        and (bool(atoms) or disposition in ALLOWED_DISPOSITIONS)
+    )
+
+
+def _result_requirement_ids(row: dict[str, Any]) -> set[str]:
+    result: set[str] = set()
+    for atom in row.get("atoms", []):
+        if not isinstance(atom, dict):
+            continue
+        kind_raw = atom.get("kind")
+        try:
+            kind = normalize_kind(kind_raw)
+        except ValueError:
+            continue
+        statement = str(atom.get("statement") or "").strip()
+        block_ids = [str(value) for value in atom.get("source_block_ids", [row.get("block_id")]) if value]
+        if not statement or not block_ids:
+            continue
+        requirement_id = str(atom.get("requirement_id") or "").strip()
+        result.add(requirement_id or stable_requirement_id(kind, block_ids, statement))
+    return result
+
+
+def _reusable_previous_result(
+    block: dict[str, Any],
+    previous: dict[str, Any],
+    unchanged_ids: set[str],
+) -> bool:
+    block_id = str(block.get("block_id") or "")
+    if block_id not in unchanged_ids or not _reviewed_result(previous):
+        return False
+    if str(previous.get("block_content_hash") or "") != str(block.get("content_hash") or ""):
+        return False
+    for atom in previous.get("atoms", []):
+        if not isinstance(atom, dict):
+            return False
+        refs = {
+            str(value)
+            for value in atom.get("source_block_ids", [block_id])
+            if value is not None
+        }
+        if not refs or not refs.issubset(unchanged_ids):
+            return False
+    return True
+
+
 def prepare(
     ledger: dict[str, Any],
     max_blocks: int,
     batch_dir: Path,
     max_chars: int = 24000,
+    previous_candidate: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     index, batches = build_batches(ledger, max_blocks, max_chars)
     batch_dir.mkdir(parents=True, exist_ok=True)
-    block_to_batch = {}
+    block_to_batch: dict[str, str] = {}
     for batch in batches:
         for block_id in batch["block_ids"]:
-            block_to_batch[block_id] = batch["batch_id"]
+            block_to_batch[str(block_id)] = batch["batch_id"]
         write_json(batch_dir / f"{batch['batch_id'].lower()}.json", batch)
-    results = []
+
+    previous_by_block = {
+        str(row.get("block_id")): row
+        for row in (previous_candidate or {}).get("block_results", [])
+        if isinstance(row, dict) and row.get("block_id")
+    }
+    delta = ledger.get("delta") if isinstance(ledger.get("delta"), dict) else {}
+    unchanged_ids = {str(value) for value in delta.get("unchanged", [])}
+    if str(ledger.get("mode") or "") != "add":
+        unchanged_ids = set()
+
+    results: list[dict[str, Any]] = []
+    reused_requirement_ids: set[str] = set()
+    reused_blocks: list[str] = []
+    review_required_blocks: list[str] = []
+    reused_per_batch: dict[str, int] = {}
+
     for block in ledger.get("blocks", []):
+        if not isinstance(block, dict):
+            continue
         block_id = str(block.get("block_id"))
-        results.append({
-            "batch_id": block_to_batch.get(block_id),
+        batch_id = block_to_batch.get(block_id)
+        row: dict[str, Any] = {
+            "batch_id": batch_id,
             "block_id": block_id,
+            "block_content_hash": block.get("content_hash"),
             "atoms": [],
             "disposition": "",
             "delivery_potential": None,
             "decision": None,
-        })
+            "review_status": "review_required",
+        }
+        prior = previous_by_block.get(block_id)
+        if prior is not None and _reusable_previous_result(block, prior, unchanged_ids):
+            row.update({
+                "atoms": json.loads(json.dumps(prior.get("atoms", []), ensure_ascii=False)),
+                "disposition": str(prior.get("disposition") or ""),
+                "delivery_potential": prior.get("delivery_potential"),
+                "decision": json.loads(json.dumps(prior.get("decision"), ensure_ascii=False)),
+                "review_status": "reused_unchanged",
+                "reused_from_source_revision": previous_candidate.get("source_revision"),
+            })
+            reused_blocks.append(block_id)
+            reused_requirement_ids.update(_result_requirement_ids(row))
+            if batch_id:
+                reused_per_batch[batch_id] = reused_per_batch.get(batch_id, 0) + 1
+        else:
+            review_required_blocks.append(block_id)
+        results.append(row)
+
+    previous_capabilities = [
+        row for row in (previous_candidate or {}).get("capabilities", [])
+        if isinstance(row, dict)
+    ]
+    reusable_capabilities = []
+    stale_capabilities = []
+    for capability in previous_capabilities:
+        refs = {str(value) for value in capability.get("requirement_ids", []) if value}
+        if refs and refs.issubset(reused_requirement_ids):
+            reusable_capabilities.append(json.loads(json.dumps(capability, ensure_ascii=False)))
+        else:
+            if capability.get("capability_id"):
+                stale_capabilities.append(str(capability["capability_id"]))
+
     candidate = {
         "schema_version": "chapter3.semantic-projection-candidate.v1",
         "generated_at_utc": index["generated_at_utc"],
+        "mode": ledger.get("mode"),
         "source_revision": ledger.get("source_revision"),
+        "source_manifest_sha256": ledger.get("source_manifest_sha256"),
         "instructions": {
-            "producer": "Review every block. Fill atoms or one explicit disposition; never leave the template blank.",
+            "producer": "Review every review_required block. Reused unchanged blocks are already accounted and must not be silently rewritten.",
             "allowed_dispositions": sorted(ALLOWED_DISPOSITIONS),
             "allowed_kinds": sorted(set(KIND_MAP)),
-            "delivery_potential": "Set a boolean for every block. Keyword hints are hints only and never decide this field.",
+            "delivery_potential": "Set a boolean for every review_required block. Keyword hints are hints only and never decide this field.",
             "uncertainty": "Use unresolved explicitly. Delivery-potential unresolved blocks block stable closure.",
-            "batch_accounting": "After reviewing a batch, set output_accounted_count to the number of owned blocks explicitly reviewed.",
+            "batch_accounting": "output_accounted_count starts with verified reused blocks; after review it must equal the batch input count.",
         },
         "batch_summaries": [{
             "batch_id": row["batch_id"],
@@ -193,13 +301,23 @@ def prepare(
             "last_block_id": row["last_block_id"],
             "input_block_count": row["input_block_count"],
             "input_char_count": row["input_char_count"],
-            "output_accounted_count": 0,
+            "output_accounted_count": reused_per_batch.get(row["batch_id"], 0),
+            "reused_accounted_count": reused_per_batch.get(row["batch_id"], 0),
         } for row in index["batches"]],
         "block_results": results,
-        "capabilities": [],
+        "capabilities": reusable_capabilities,
+        "reuse_summary": {
+            "previous_source_revision": (previous_candidate or {}).get("source_revision"),
+            "reused_blocks": sorted(reused_blocks),
+            "review_required_blocks": sorted(review_required_blocks),
+            "removed_blocks": sorted(str(value) for value in delta.get("removed", [])),
+            "reused_capabilities": sorted(
+                str(row.get("capability_id")) for row in reusable_capabilities if row.get("capability_id")
+            ),
+            "stale_capabilities": sorted(stale_capabilities),
+        },
     }
     return index, candidate
-
 
 def normalize_kind(value: Any) -> str:
     key = str(value or "").strip()
@@ -221,6 +339,10 @@ def compile_projection(
         raise ValueError("semantic batch source_revision does not match source ledger")
     if str(candidate.get("source_revision") or "") != source_revision:
         raise ValueError("semantic candidate source_revision does not match source ledger")
+    ledger_manifest_sha = str(ledger.get("source_manifest_sha256") or "")
+    candidate_manifest_sha = str(candidate.get("source_manifest_sha256") or "")
+    if candidate_manifest_sha and candidate_manifest_sha != ledger_manifest_sha:
+        raise ValueError("semantic candidate source_manifest_sha256 does not match source ledger")
 
     blocks = {
         str(row.get("block_id")): row
@@ -270,6 +392,8 @@ def compile_projection(
         if block_id in seen_blocks:
             raise ValueError(f"duplicate primary block result: {block_id}")
         seen_blocks.add(block_id)
+        if str(result.get("block_content_hash") or "") != str(blocks[block_id].get("content_hash") or ""):
+            raise ValueError(f"stale block_content_hash for {block_id}")
         batch_id = str(result.get("batch_id") or "")
         if assigned.get(block_id) != batch_id:
             raise ValueError(f"batch ownership mismatch for {block_id}")
@@ -327,10 +451,13 @@ def compile_projection(
         accounting.append({
             "block_id": block_id,
             "batch_id": batch_id,
+            "block_content_hash": result.get("block_content_hash"),
             "requirement_ids": requirement_ids,
             "disposition": disposition or ("atomized" if atoms else ""),
             "delivery_potential": bool(result.get("delivery_potential")),
             "decision": result.get("decision"),
+            "review_status": str(result.get("review_status") or "reviewed"),
+            "reused_from_source_revision": result.get("reused_from_source_revision"),
         })
     missing = sorted(set(blocks) - seen_blocks)
     if missing:
@@ -432,6 +559,11 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--batch-dir", default="logs/ci/task-generation/semantic-batches")
     prepare_parser.add_argument("--batches-out", default="logs/ci/task-generation/semantic-projection.batches.v1.json")
     prepare_parser.add_argument("--candidate-out", default="logs/ci/task-generation/semantic-projection.candidate.json")
+    prepare_parser.add_argument(
+        "--previous-candidate",
+        default="",
+        help="Optional prior semantic candidate for add-mode per-block reuse. Defaults to candidate-out when it already exists.",
+    )
 
     compile_parser = sub.add_parser("compile")
     compile_parser.add_argument("--repo-root", default=".")
@@ -446,12 +578,18 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.repo_root).resolve()
     if args.action == "prepare":
         ledger = load_json(root / args.ledger)
+        previous_candidate = None
+        if str(ledger.get("mode") or "") == "add":
+            previous_path = root / (args.previous_candidate or args.candidate_out)
+            if previous_path.is_file():
+                previous_candidate = load_json(previous_path)
         try:
             index, candidate = prepare(
                 ledger,
                 max(1, args.max_blocks_per_batch),
                 root / args.batch_dir,
                 max(1, args.max_chars_per_batch),
+                previous_candidate=previous_candidate,
             )
         except ValueError as exc:
             print(f"semantic_projection_prepare_error={exc}")
@@ -460,7 +598,9 @@ def main(argv: list[str] | None = None) -> int:
         write_json(root / args.candidate_out, candidate)
         print(
             f"semantic_batches={root / args.batches_out} batches={index['batch_count']} "
-            f"blocks={index['source_block_count']} candidate={root / args.candidate_out}"
+            f"blocks={index['source_block_count']} reused={len(candidate.get('reuse_summary', {}).get('reused_blocks', []))} "
+            f"review_required={len(candidate.get('reuse_summary', {}).get('review_required_blocks', []))} "
+            f"candidate={root / args.candidate_out}"
         )
         return 0
     try:
