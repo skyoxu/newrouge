@@ -34,31 +34,42 @@ class FakeSnapshot:
 
 
 def valid_docs(revision="a" * 40):
+    source_text = "Requirement text\n"
+    source_sha = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     docs = {
-        TOPOLOGY_ARTIFACTS["source_blocks"]: {"blocks": [
+        "docs/gdd/a.md": source_text,
+        TOPOLOGY_ARTIFACTS["source_blocks"]: {"schema_version": "newrouge.source-blocks.v1", "blocks": [
             {"block_id": "SB-1", "source_path": "docs/gdd/a.md",
-             "line_start": 1, "line_end": 2}
+             "line_start": 1, "line_end": 1, "content_hash": "sha256:" + ("1" * 64),
+             "source_sha256": source_sha}
         ]},
-        TOPOLOGY_ARTIFACTS["requirements"]: {"requirements": [
-            {"requirement_id": "FR-1", "source_block_ids": ["SB-1"],
-             "delivery_relevant": True, "status": "active",
-             "capability_ids": ["CAP-1"]}
+        TOPOLOGY_ARTIFACTS["requirements"]: {"schema_version": "newrouge.semantic-requirements.v1", "requirements": [
+            {"requirement_id": "FR-1", "kind": "functional", "statement": "Requirement text",
+             "source_block_ids": ["SB-1"], "delivery_relevant": True, "status": "active",
+             "sink_policy": "task_or_global_constraint", "capability_ids": ["CAP-1"]}
         ]},
-        TOPOLOGY_ARTIFACTS["capabilities"]: {"capabilities": [
-            {"capability_id": "CAP-1", "requirement_ids": ["FR-1"]}
+        TOPOLOGY_ARTIFACTS["capabilities"]: {"schema_version": "newrouge.capabilities.v1", "capabilities": [
+            {"capability_id": "CAP-1", "title": "Test capability", "requirement_ids": ["FR-1"]}
         ]},
-        TOPOLOGY_ARTIFACTS["edges"]: {"edges": [
+        TOPOLOGY_ARTIFACTS["edges"]: {"schema_version": "newrouge.topology-edges.v1", "edges": [
             {"source_type": "requirement", "source_id": "FR-1",
              "target_type": "task", "target_id": "7",
              "relation": "implemented_by"}
         ]},
     }
+    artifacts = {}
+    for key in ("source_blocks", "requirements", "capabilities", "edges"):
+        artifact_path = TOPOLOGY_ARTIFACTS[key]
+        raw = json.dumps(docs[artifact_path]).encode("utf-8")
+        artifacts[artifact_path] = "sha256:" + hashlib.sha256(raw).hexdigest()
     docs[TOPOLOGY_ARTIFACTS["manifest"]] = {
         "schema_version": "newrouge.semantic-topology-manifest.v1",
-        "source_revision": revision,
+        "source_revision": "source-set:test",
+        "source_manifest_sha256": "sha256:" + ("0" * 64),
+        "repository_revision": revision,
         "schema_revision": "v1",
         "generator_revision": "test",
-        "artifacts": {},
+        "artifacts": artifacts,
     }
     return docs
 
@@ -134,8 +145,22 @@ class SemanticTopologyTests(unittest.TestCase):
         view = load_topology_from_snapshot(FakeSnapshot(valid_docs("b" * 40)), [])
         self.assertFalse(view["fresh"])
         self.assertTrue(any(
-            x["kind"] == "source_revision_mismatch" for x in view["problems"]
+            x["kind"] == "repository_revision_mismatch" for x in view["problems"]
         ))
+
+    def test_source_hash_drift_marks_topology_stale(self):
+        docs = valid_docs()
+        docs["docs/gdd/a.md"] = "Changed requirement text\n"
+        view = load_topology_from_snapshot(FakeSnapshot(docs), [])
+        self.assertFalse(view["fresh"])
+        self.assertTrue(any(x["kind"] == "source_hash_mismatch" for x in view["problems"]))
+
+    def test_task_semantic_refs_must_resolve(self):
+        details = [{"task": {"id": 7, "status": "pending", "semantic_refs": ["FR-MISSING"]},
+                    "godot": {"scenes": []}}]
+        view = load_topology_from_snapshot(FakeSnapshot(valid_docs()), details)
+        self.assertFalse(view["fresh"])
+        self.assertTrue(any(x["kind"] == "invalid_task_semantic_ref" for x in view["problems"]))
 
     def test_workspace_preview_requires_workspace_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
