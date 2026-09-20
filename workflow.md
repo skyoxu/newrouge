@@ -83,6 +83,16 @@ py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage red --do
 - prototype 被保留后，仍要回到正式 `6.3 -> 6.4 -> 6.5 -> 6.6` 重新走一遍
 - prototype lane 可以放宽 task/review/acceptance 编排，但不能绕过当前安全边界
 
+### 1.5 Semantic delivery topology is structural metadata
+
+The repository may contain `docs/planning/semantic-topology/**` as a derived traceability layer:
+
+```text
+GDD/PRD -> Source Block -> Semantic Requirement -> optional Capability -> Task -> Acceptance -> evidence
+```
+
+This does not add or remove Chapter 3-7 steps. Capability has no task lifecycle; Taskmaster remains task-state authority. Missing topology is allowed during migration and must be shown as `legacy_unmapped`, never guessed. Project Health Main topology is bound to local `refs/heads/main`; Workspace/Chapter-run topology is preview-only.
+
 ## 2. Phase 0：仓库初始化（Repository Bootstrap）
 
 从模板创建新仓后，先执行这一阶段。
