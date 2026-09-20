@@ -15,6 +15,7 @@ if str(PYTHON_DIR) not in sys.path:
 
 import audit_task_candidate_coverage as coverage_mod
 import build_source_ledger as ledger_mod
+import dev_cli as dev_cli_mod
 import enrich_task_candidates as enrich_mod
 import normalize_task_intents as intents_mod
 import project_semantics_from_sources as projection_mod
@@ -997,6 +998,56 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
 
             summary = regression_mod.build_summary(root, out_dir, None)
             self.assertEqual("not_run", summary["layers"]["semantic"]["status"])
+
+    def test_publication_eligibility_is_trusted_main_and_clean_only(self) -> None:
+        root = Path(".")
+        cases = [
+            (["feature/test", "", "a" * 40, "a" * 40], False, "trusted_ref_required"),
+            (["main", " M workflow.md", "a" * 40, "a" * 40], False, "dirty_worktree"),
+            (["main", "", "a" * 40, "b" * 40], False, "head_not_local_main"),
+            (["main", "", "a" * 40, "a" * 40], True, "eligible"),
+        ]
+        for responses, expected_ok, reason_prefix in cases:
+            with self.subTest(reason=reason_prefix):
+                with patch.object(refresh_mod, "git_result", side_effect=responses):
+                    ok, reason = refresh_mod.publication_eligibility(root)
+                self.assertEqual(expected_ok, ok)
+                self.assertTrue(reason.startswith(reason_prefix), reason)
+
+    def test_dev_cli_refresh_hook_fails_on_local_refresh_failure_but_not_deferred_publication(self) -> None:
+        class Args:
+            repo_root = "."
+            source = "chapter3"
+            trigger_run_id = "run-test"
+            refresh_local = True
+            write_planning_artifacts = False
+            publish_if_eligible = True
+            triplet_status = "passed"
+            source_manifest = "logs/ci/task-generation/source-manifest.v1.json"
+            ledger = "logs/ci/task-generation/source-blocks.v1.json"
+            semantics = "logs/ci/task-generation/semantic-requirements.v1.json"
+            capabilities = "logs/ci/task-generation/capabilities.v1.json"
+            edges = "logs/ci/task-generation/topology-edges.v1.json"
+            candidates = "logs/ci/task-generation/task-candidates.enriched.json"
+            report = "logs/ci/task-generation/semantic-conservation-report.json"
+
+        failed = {
+            "local_refresh_status": "failed",
+            "chapter_closure_status": "knowledge_refresh_failed",
+            "publication_status": "deferred",
+            "publication_reason": "knowledge_refresh_failed",
+        }
+        with patch.object(refresh_mod, "run", return_value=failed):
+            self.assertEqual(2, dev_cli_mod.cmd_refresh_knowledge(Args()))
+
+        deferred = {
+            "local_refresh_status": "stable_refreshed",
+            "chapter_closure_status": "passed",
+            "publication_status": "deferred",
+            "publication_reason": "dirty_worktree",
+        }
+        with patch.object(refresh_mod, "run", return_value=deferred):
+            self.assertEqual(0, dev_cli_mod.cmd_refresh_knowledge(Args()))
 
     def test_failed_closure_never_attempts_canonical_publication(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
