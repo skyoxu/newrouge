@@ -84,6 +84,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/validate_task_master_triplet.py`
 - `scripts/python/collect_ui_wiring_inputs.py`
 - `scripts/python/validate_contracts.py`
+- `scripts/python/validate_semantic_topology.py`: validates revision/hash-bound semantic topology when present; missing topology remains a compatible `legacy_unmapped` migration state unless `--require-available` is requested.
 - `scripts/python/check_domain_contracts.py`
 - `scripts/python/sync_task_overlay_refs.py`
 - `scripts/sc/llm_generate_overlays_batch.py`
