@@ -301,6 +301,8 @@ def build_summary(
             'test_refs': _merge_refs(*[item.get('test_refs') or [] for item in [*gameplay_views, *back_views]]),
             'acceptance': _merge_refs(*[item.get('acceptance') or [] for item in [*gameplay_views, *back_views]]),
             'contract_refs': _merge_refs(*[item.get('contractRefs') or [] for item in [*gameplay_views, *back_views]]),
+            'semantic_refs': _merge_refs(*[item.get('semantic_refs') or item.get('requirement_ids') or [] for item in [*gameplay_views, *back_views]]),
+            'capability_refs': _merge_refs(*[item.get('capability_refs') or [] for item in [*gameplay_views, *back_views]]),
             'overlay_requirement_ids': _merge_refs(*[[item['requirement_id']] for item in overlay_requirements]),
             'overlay_expected_logs': _merge_refs(
                 *[[value for value in item.get('expected_logs', [])] for item in overlay_requirements],
