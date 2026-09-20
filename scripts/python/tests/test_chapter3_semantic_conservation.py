@@ -84,6 +84,115 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertTrue(any(row["block_type"] == "table_row" for row in ledger["blocks"]))
             self.assertTrue(any(row["requirement_like_hint"] for row in ledger["blocks"]))
 
+    def test_json_ledger_preserves_exact_source_slice_and_precise_span(self) -> None:
+        text = (
+            "{\n"
+            "  \"rule\": {\n"
+            "    \"message\": \"必须保持  原始空格\",\n"
+            "    \"items\": [1, 2]\n"
+            "  },\n"
+            "  \"plain\": \"值\"\n"
+            "}\n"
+        )
+        source_sha = ledger_mod.sha256_text(text)
+        blocks = ledger_mod.parse_json("docs/gdd/rules.json", source_sha, text)
+        by_pointer = {row["json_pointer"]: row for row in blocks}
+
+        rule = by_pointer["/rule"]
+        expected = (
+            "\"rule\": {\n"
+            "    \"message\": \"必须保持  原始空格\",\n"
+            "    \"items\": [1, 2]\n"
+            "  }"
+        )
+        self.assertEqual(expected, rule["raw_text"])
+        self.assertEqual((2, 5), (rule["line_start"], rule["line_end"]))
+        self.assertEqual(
+            expected,
+            text[rule["source_char_start"]:rule["source_char_end_exclusive"]],
+        )
+        self.assertEqual(
+            "sha256:" + ledger_mod.sha256_text(expected),
+            rule["content_hash"],
+        )
+
+        plain = by_pointer["/plain"]
+        self.assertEqual("\"plain\": \"值\"", plain["raw_text"])
+        self.assertEqual((6, 6), (plain["line_start"], plain["line_end"]))
+        self.assertEqual(
+            plain["raw_text"],
+            text[plain["source_char_start"]:plain["source_char_end_exclusive"]],
+        )
+
+    def test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gdd = root / "docs/gdd/rules.md"
+            gdd.parent.mkdir(parents=True)
+            samples = [
+                "玩家必须保留当前生命值。",
+                "商店不得升级卡牌。",
+                "奖励只能从当前 Act 池选择。",
+                "牌组至少保留一张牌。",
+                "事件不可跳过结算。",
+                "系统允许移除诅咒。",
+                "目标是在三回合内完成教学。",
+                "禁止预览操作推进 RNG。",
+            ]
+            implicit = "升级为同一张卡的升级态。"
+            gdd.write_text(
+                "# 规则\n\n" + "\n\n".join([*samples, implicit]) + "\n",
+                encoding="utf-8",
+            )
+            _manifest, ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/rules.md"], "init", explicit=True
+            )
+            raw_blocks = {row["raw_text"]: row for row in ledger["blocks"]}
+            for sample in samples:
+                self.assertIn(sample, raw_blocks)
+                self.assertTrue(raw_blocks[sample]["requirement_like_hint"])
+            self.assertIn(implicit, raw_blocks)
+            implicit_block = raw_blocks[implicit]
+            self.assertFalse(implicit_block["requirement_like_hint"])
+
+            batch_index, candidate = projection_mod.prepare(
+                ledger, 40, root / "batches", max_chars=24000
+            )
+            for summary in candidate["batch_summaries"]:
+                summary["output_accounted_count"] = summary["input_block_count"]
+            for result in candidate["block_results"]:
+                if result["block_id"] == implicit_block["block_id"]:
+                    result.update({
+                        "delivery_potential": True,
+                        "disposition": "atomized",
+                        "atoms": [{
+                            "requirement_id": "FR-UPGRADE-FORM",
+                            "kind": "functional",
+                            "statement": implicit,
+                            "source_block_ids": [implicit_block["block_id"]],
+                            "delivery_relevant": True,
+                        }],
+                    })
+                else:
+                    result.update({
+                        "delivery_potential": False,
+                        "disposition": "context",
+                        "atoms": [],
+                    })
+
+            semantics, _caps, _edges = projection_mod.compile_projection(
+                ledger, batch_index, candidate
+            )
+            requirement = next(
+                row for row in semantics["requirements"]
+                if row["requirement_id"] == "FR-UPGRADE-FORM"
+            )
+            self.assertEqual(implicit, requirement["statement"])
+            report, _ = conservation_mod.validate(
+                root, ledger, semantics, "projection"
+            )
+            self.assertEqual("passed", report["status"])
+
     def test_default_source_discovery_includes_optional_bmad_gdd_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1127,6 +1236,24 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             })
         return paths
 
+    def test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = refresh_mod.begin_run_attempt(
+                root,
+                source="chapter3",
+                trigger_run_id="run-start-only",
+            )
+            self.assertEqual("attempt_refreshed_started", summary["local_refresh_status"])
+            self.assertFalse(summary["closure_passed"])
+            attempt_path = root / refresh_mod.ATTEMPT_PATH
+            self.assertTrue(attempt_path.is_file())
+            attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+            self.assertEqual("concern", attempt["status"])
+            self.assertEqual("started", attempt["chapter_run"]["lifecycle_status"])
+            self.assertFalse(attempt["chapter_run"]["closure_passed"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
     def test_passed_closure_promotes_planning_topology_without_self_staling_revision(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1262,6 +1389,15 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 summary["triplet_evidence_reason"],
             )
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+            attempt = json.loads(
+                (root / refresh_mod.ATTEMPT_PATH).read_text(encoding="utf-8")
+            )
+            self.assertEqual("concern", attempt["status"])
+            self.assertFalse(attempt["chapter_run"]["closure_passed"])
+            self.assertTrue(any(
+                row.get("kind") == "triplet_baseline_evidence_invalid"
+                for row in attempt.get("problems", [])
+            ))
 
     def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1423,6 +1559,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         class Args:
             repo_root = "."
             source = "chapter3"
+            begin_run = False
             trigger_run_id = "run-test"
             refresh_local = True
             write_planning_artifacts = False
