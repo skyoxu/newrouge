@@ -586,7 +586,7 @@ def reconcile(
         score, best_rid = scored[-1]
         status = str(override.get("status") or "").strip()
         if status not in ALLOWED_MATCH_STATUS:
-            status = "equivalent" if score >= 0.45 else ("partial" if score >= 0.15 else "needs_human_decision")
+            status = "equivalent" if score >= 0.25 else ("partial" if score >= 0.10 else "needs_human_decision")
         chosen = sorted(set(explicit_ids or [best_rid]))
         matched_requirements.update(chosen)
         obligation_to_requirements[oid] = chosen
