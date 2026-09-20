@@ -415,7 +415,7 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         block = normalized.get("source_block")
         if req and (
             task
-            or ((right_kind or "").casefold() in {"global_constraint", "quality_gate", "adr"})
+            or ((right_kind or "").casefold() in {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"})
             or (cap and cap in capability_sinks)
         ):
             sink_requirements.add(req)
