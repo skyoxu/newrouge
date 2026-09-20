@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 BLOCKING_PRIORITIES = {"P0", "P1"}
-NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"}
+NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "adr_owned", "deferred", "exclusion"}
 DEFAULT_TASK_VIEWS = [
     ".taskmaster/tasks/tasks_back.json",
     ".taskmaster/tasks/tasks_gameplay.json",
