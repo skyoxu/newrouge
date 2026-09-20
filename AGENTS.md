@@ -91,6 +91,7 @@
   - `py -3 scripts/python/normalize_task_intents.py --mode <init|add> && py -3 scripts/python/generate_task_candidates_from_sources.py --mode <init|add> && py -3 scripts/python/enrich_task_candidates.py`
   - `py -3 scripts/python/audit_task_candidate_coverage.py && py -3 scripts/python/validate_semantic_conservation.py --stage closure`
   - `py -3 scripts/python/compile_task_triplet.py --mode <init|add>`
+  - after triplet rebuild + semantic tier backfill: `py -3 scripts/python/attest_chapter3_triplet_baseline.py`
   - run end: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`
 - Chapter 4 Overlay 与契约基线:
   - `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
