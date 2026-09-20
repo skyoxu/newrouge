@@ -131,7 +131,11 @@ def handler_factory(root: Path):
                             }
                         self.send(topology)
                     elif mode == 'workspace':
-                        self.send(load_workspace_topology(root))
+                        workspace_view = params.get('view', ['attempt'])[0]
+                        if workspace_view not in ('attempt', 'stable'):
+                            self.send({'reason': 'Unknown workspace topology view'}, 400)
+                        else:
+                            self.send(load_workspace_topology(root, workspace_view))
                     else:
                         self.send({'reason': 'Unknown topology identity'}, 400)
                 elif parsed.path == '/api/knowledge/scene-graph':
