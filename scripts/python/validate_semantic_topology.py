@@ -25,13 +25,7 @@ def main(argv=None) -> int:
             "identity": view.get("identity"),
         }, ensure_ascii=False))
         return 1 if args.require_available else 0
-    blocking = [
-        problem for problem in view.get("problems", [])
-        if problem.get("kind") in {
-            "artifact_hash_mismatch", "missing_artifact",
-            "artifact_read_failed", "source_revision_mismatch",
-        }
-    ]
+    blocking = list(view.get("problems", []))
     status = "passed" if view.get("fresh") and not blocking else "blocked"
     print(json.dumps({
         "status": status,
