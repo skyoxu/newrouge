@@ -48,6 +48,40 @@ function matches(row) {
   return true;
 }
 
+async function openSource(row) {
+  if (!topology || topology.identity?.kind !== 'main') return;
+  const path = row.source_path;
+  const response = await fetch('/api/knowledge/source?path=' + encodeURIComponent(path), {cache: 'no-store'});
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.reason || 'Source request failed');
+  if (payload.revision !== topology.identity.revision) throw new Error('Source snapshot changed; refresh topology before reading source.');
+  const start = Number(row.start_line || row.line_start || row.line || 1);
+  const end = Number(row.end_line || row.line_end || start);
+  const lines = String(payload.content || '').split(/\r?\n/);
+  byId('topology-source-title').textContent = path + ':' + start + '-' + end;
+  byId('topology-source-body').textContent = lines.slice(Math.max(0, start - 1), Math.max(start, end)).join('\n');
+  byId('topology-source-preview').showModal();
+}
+
+function addNodeActions(detail, row) {
+  if (row.kind === 'source_block' && row.source_path) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = topology?.identity?.kind === 'main' ? 'Open source at this revision' : 'Workspace source preview unavailable';
+    button.disabled = topology?.identity?.kind !== 'main';
+    button.onclick = () => openSource(row).catch(error => byId('topology-status').textContent = error.message);
+    detail.append(button);
+  }
+  if (row.kind === 'task' && nodeId(row) !== '(unnamed)') {
+    const link = document.createElement('a');
+    link.href = '/api/knowledge/task?id=' + encodeURIComponent(nodeId(row));
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'Open existing task detail';
+    detail.append(link);
+  }
+}
+
 function render() {
   const status = byId('topology-status');
   const host = byId('topology-nodes');
@@ -75,6 +109,7 @@ function render() {
     const pre = document.createElement('pre');
     pre.textContent = JSON.stringify(row, null, 2);
     detail.append(title, pre);
+    addNodeActions(detail, row);
     host.append(detail);
   });
   if (!host.children.length) {
