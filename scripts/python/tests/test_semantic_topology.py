@@ -86,6 +86,24 @@ class SemanticTopologyTests(unittest.TestCase):
         self.assertEqual(["FR-1"], trace["requirements"])
         self.assertEqual("navigation_only", trace["semantic_claim"])
 
+    def test_capability_without_delivery_sink_keeps_requirement_orphan(self):
+        docs = valid_docs()
+        docs[TOPOLOGY_ARTIFACTS["edges"]] = {"edges": [
+            {"source_type": "requirement", "source_id": "FR-1",
+             "target_type": "capability", "target_id": "CAP-1",
+             "relation": "grouped_by"}
+        ]}
+        view = load_topology_from_snapshot(FakeSnapshot(docs), [])
+        self.assertEqual(1, view["summary"]["orphan_requirements"])
+        docs[TOPOLOGY_ARTIFACTS["edges"]]["edges"].append(
+            {"source_type": "capability", "source_id": "CAP-1",
+             "target_type": "task", "target_id": "7",
+             "relation": "implemented_by"}
+        )
+        details = [{"task": {"id": 7, "status": "pending"}, "godot": {"scenes": []}}]
+        view = load_topology_from_snapshot(FakeSnapshot(docs), details)
+        self.assertEqual(0, view["summary"]["orphan_requirements"])
+
     def test_revision_mismatch_is_stale_not_rewritten(self):
         view = load_topology_from_snapshot(FakeSnapshot(valid_docs("b" * 40)), [])
         self.assertFalse(view["fresh"])
