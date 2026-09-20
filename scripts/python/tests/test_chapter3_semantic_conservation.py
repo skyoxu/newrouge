@@ -1178,7 +1178,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             )
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked", summary["closure_evidence_status"])
-            self.assertIn("task_coverage_not_passed", summary["closure_evidence_reason"])
+            self.assertIn("coverage_status_mismatch", summary["closure_evidence_reason"])
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
 
     def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
