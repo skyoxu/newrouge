@@ -398,7 +398,7 @@ def sync_view(
     *,
     skip_done: bool,
     master_done_task_ids: set[str],
-    active_requirement_ids: set[str] | None,
+    active_requirement_ids: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], FileSyncResult]:
     tasks = _load_json(view_path)
     if not isinstance(tasks, list):
