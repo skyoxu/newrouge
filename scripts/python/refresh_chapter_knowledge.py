@@ -27,8 +27,22 @@ def load_json(path: Path, default: Any = None) -> Any:
 
 
 def write_json(path: Path, payload: Any) -> None:
+    """Atomically replace JSON so a failed refresh cannot corrupt prior stable state."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        tmp.replace(path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -266,6 +280,35 @@ def partial_attempt(
     return payload
 
 
+def _mark_attempt_refresh_failure(
+    root: Path,
+    attempt: dict[str, Any],
+    family: str,
+    reason: str,
+) -> bool:
+    """Best-effort: make Project Health Last Attempt show the refresh failure."""
+    attempt["status"] = "concern"
+    attempt["fresh"] = False
+    problems = attempt.setdefault("problems", [])
+    if isinstance(problems, list):
+        problems.append({
+            "kind": "knowledge_refresh_failed",
+            "failure_family": family,
+            "reason": reason,
+        })
+    chapter_run = attempt.setdefault("chapter_run", {})
+    if isinstance(chapter_run, dict):
+        chapter_run["closure_passed"] = False
+        chapter_run["knowledge_refresh_status"] = "failed"
+        chapter_run["knowledge_refresh_failure_family"] = family
+    try:
+        write_json(root / ATTEMPT_PATH, attempt)
+        write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+    except OSError:
+        return False
+    return True
+
+
 def _refresh_failure_summary(
     root: Path,
     *,
@@ -397,6 +440,9 @@ def run(
             try:
                 write_json(root / STABLE_PATH, stable)
             except OSError as exc:
+                _mark_attempt_refresh_failure(
+                    root, attempt, "stable_refresh_failed", str(exc)
+                )
                 return _refresh_failure_summary(
                     root,
                     source=source,
@@ -423,6 +469,9 @@ def run(
                     root, source_manifest, ledger_path, semantics_path, capabilities_path, edges_path
                 )
             except (OSError, ValueError) as exc:
+                _mark_attempt_refresh_failure(
+                    root, attempt, "planning_topology_refresh_failed", str(exc)
+                )
                 return _refresh_failure_summary(
                     root,
                     source=source,
