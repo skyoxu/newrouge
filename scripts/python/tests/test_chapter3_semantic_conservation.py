@@ -591,6 +591,55 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             report, _edges = conservation_mod.validate(root, ledger, semantics, "projection")
             self.assertEqual("passed", report["status"])
 
+    def test_projection_conservation_blocks_unresolved_delivery_requirement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "docs/gdd/a.md"
+            source.parent.mkdir(parents=True)
+            source.write_text("Rule.\n", encoding="utf-8")
+            source_sha = ledger_mod.sha256_text(source.read_text(encoding="utf-8"))
+            ledger = {
+                "source_revision": "source-set:test",
+                "source_manifest_sha256": "sha256:" + "1" * 64,
+                "blocks": [{
+                    "block_id": "SB-1",
+                    "source_path": "docs/gdd/a.md",
+                    "source_sha256": source_sha,
+                    "content_hash": "sha256:" + "a" * 64,
+                }],
+            }
+            semantics = {
+                "source_revision": "source-set:test",
+                "source_manifest_sha256": "sha256:" + "1" * 64,
+                "source_accounting": [{
+                    "block_id": "SB-1",
+                    "block_content_hash": "sha256:" + "a" * 64,
+                    "disposition": "atomized",
+                    "delivery_potential": True,
+                    "requirement_ids": ["FR-1"],
+                }],
+                "requirements": [{
+                    "requirement_id": "FR-1",
+                    "kind": "functional",
+                    "statement": "Rule.",
+                    "source_block_ids": ["SB-1"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "unresolved",
+                }],
+            }
+            checks = conservation_mod.projection_checks(root, ledger, semantics)
+            self.assertIn("FR-1", checks["unresolved_delivery_potential"])
+            self.assertIn("FR-1", checks["unresolved_delivery_requirements"])
+
+            semantics["requirements"][0]["decision"] = {
+                "owner": "design-owner",
+                "reason": "Explicitly defer until milestone M2.",
+                "resolved_disposition": "deferred",
+            }
+            checks = conservation_mod.projection_checks(root, ledger, semantics)
+            self.assertNotIn("FR-1", checks["unresolved_delivery_potential"])
+
     def test_projection_blocks_stale_semantic_binding_and_duplicate_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
