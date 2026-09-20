@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view
+from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
 ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
@@ -231,6 +231,33 @@ def maybe_publish(root: Path, requested: bool) -> tuple[str, str]:
     return "published", "trusted_ref_publication_complete"
 
 
+def partial_attempt(
+    source: str,
+    trigger_run_id: str,
+    reason: str,
+    missing: list[str],
+) -> dict[str, Any]:
+    raw = source + chr(0) + trigger_run_id + chr(0) + reason
+    revision = "workspace:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+    payload = unavailable_topology("workspace", revision, reason)
+    payload["identity"].update({
+        "trigger_run_id": trigger_run_id,
+        "chapter_source": source,
+        "source_revision": "unknown",
+    })
+    payload["workspace_view"] = "last_attempt"
+    payload["status"] = "concern"
+    payload["problems"] = [{"kind": "missing_refresh_input", "path": path} for path in missing]
+    payload["chapter_run"] = {
+        "source": source,
+        "trigger_run_id": trigger_run_id,
+        "conservation_status": "unavailable",
+        "triplet_status": "unknown",
+        "closure_passed": False,
+    }
+    return payload
+
+
 def run(
     root: Path,
     *,
@@ -256,7 +283,26 @@ def run(
     ]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
-        raise ValueError("missing refresh inputs: " + ", ".join(missing))
+        reason = "partial Chapter closure: required refresh inputs are missing"
+        if refresh_local:
+            attempt = partial_attempt(source, trigger_run_id, reason, missing)
+            write_json(root / ATTEMPT_PATH, attempt)
+            write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+        return {
+            "schema_version": "chapter-knowledge-refresh-summary.v1",
+            "source": source,
+            "trigger_run_id": trigger_run_id,
+            "topology_revision": None,
+            "closure_passed": False,
+            "local_refresh_status": "attempt_refreshed_partial" if refresh_local else "skipped",
+            "planning_artifact_status": "blocked_by_closure",
+            "publication_status": "deferred",
+            "publication_reason": "missing_refresh_inputs",
+            "current_generation_id": current_generation(root),
+            "attempt_path": ATTEMPT_PATH.as_posix() if refresh_local else None,
+            "stable_path": None,
+            "missing_inputs": missing,
+        }
 
     source_manifest = load_json(source_manifest_path, {})
     ledger = load_json(ledger_path, {})
