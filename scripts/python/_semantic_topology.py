@@ -124,8 +124,18 @@ def _task_rows(task_details: list[dict[str, Any]] | None) -> list[dict[str, Any]
 def _validate_artifact_hashes(snapshot: Any, manifest: dict[str, Any],
                               problems: list[dict[str, Any]]) -> None:
     bindings = manifest.get("artifacts")
+    expected_paths = {
+        TOPOLOGY_ARTIFACTS["source_blocks"],
+        TOPOLOGY_ARTIFACTS["requirements"],
+        TOPOLOGY_ARTIFACTS["capabilities"],
+        TOPOLOGY_ARTIFACTS["edges"],
+    }
     if not isinstance(bindings, dict):
+        problems.append({"kind": "missing_artifact_bindings"})
         return
+    for required_path in sorted(expected_paths):
+        if required_path not in bindings:
+            problems.append({"kind": "missing_artifact_binding", "path": required_path})
     for path, expected in bindings.items():
         if not isinstance(path, str) or not isinstance(expected, str):
             problems.append({"kind": "invalid_manifest_binding", "path": str(path)})
@@ -137,6 +147,29 @@ def _validate_artifact_hashes(snapshot: Any, manifest: dict[str, Any],
         if expected.removeprefix("sha256:") != actual:
             problems.append({"kind": "artifact_hash_mismatch", "path": path,
                              "expected": expected, "actual": actual})
+
+
+def _validate_source_hashes(snapshot: Any, source_blocks: list[dict[str, Any]],
+                            problems: list[dict[str, Any]]) -> None:
+    paths = set(getattr(snapshot, "paths", ()))
+    for row in source_blocks:
+        block_id = _node_id("source_block", row)
+        path = row.get("source_path")
+        expected = row.get("source_sha256") or row.get("source_file_sha256")
+        if not isinstance(path, str) or not path:
+            problems.append({"kind": "source_block_missing_path", "source_block_id": block_id})
+            continue
+        if path not in paths:
+            problems.append({"kind": "source_file_missing", "source_block_id": block_id, "path": path})
+            continue
+        if not isinstance(expected, str) or not expected:
+            problems.append({"kind": "source_block_missing_source_hash",
+                             "source_block_id": block_id, "path": path})
+            continue
+        actual = snapshot.digest(path)
+        if expected.removeprefix("sha256:") != actual:
+            problems.append({"kind": "source_hash_mismatch", "source_block_id": block_id,
+                             "path": path, "expected": expected, "actual": actual})
 
 
 def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
@@ -153,7 +186,17 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
 
     block_ids = {node_id for row in source_blocks if (node_id := _node_id("source_block", row))}
     requirement_ids = {node_id for row in requirements if (node_id := _node_id("requirement", row))}
+    capability_ids = {node_id for row in capabilities if (node_id := _node_id("capability", row))}
     task_ids = {row["task_id"] for row in tasks}
+
+    for kind, rows in (("source_block", source_blocks), ("requirement", requirements),
+                       ("capability", capabilities)):
+        ids = [_node_id(kind, row) for row in rows]
+        if any(value is None for value in ids):
+            problems.append({"kind": "missing_node_id", "node_type": kind})
+        duplicates = sorted({value for value in ids if value is not None and ids.count(value) > 1})
+        for value in duplicates:
+            problems.append({"kind": "duplicate_node_id", "node_type": kind, "id": value})
 
     for row in requirements:
         rid = _node_id("requirement", row)
@@ -168,11 +211,33 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     for row in capabilities:
         cid = _node_id("capability", row)
         refs = row.get("requirement_ids", row.get("covers", []))
-        if isinstance(refs, list):
-            for ref in refs:
+        if not isinstance(refs, list):
+            problems.append({"kind": "invalid_capability_requirement_refs",
+                             "capability_id": cid})
+            continue
+        for ref in refs:
+            if str(ref) not in requirement_ids:
+                problems.append({"kind": "missing_requirement_ref",
+                                 "capability_id": cid, "requirement_id": str(ref)})
+
+    for row in tasks:
+        task_id = row["task_id"]
+        semantic_refs = row.get("semantic_refs", [])
+        capability_refs = row.get("capability_refs", [])
+        if isinstance(semantic_refs, list):
+            for ref in semantic_refs:
                 if str(ref) not in requirement_ids:
-                    problems.append({"kind": "missing_requirement_ref",
-                                     "capability_id": cid, "requirement_id": str(ref)})
+                    problems.append({"kind": "invalid_task_semantic_ref",
+                                     "task_id": task_id, "requirement_id": str(ref)})
+        elif semantic_refs:
+            problems.append({"kind": "invalid_task_semantic_refs_shape", "task_id": task_id})
+        if isinstance(capability_refs, list):
+            for ref in capability_refs:
+                if str(ref) not in capability_ids:
+                    problems.append({"kind": "invalid_task_capability_ref",
+                                     "task_id": task_id, "capability_id": str(ref)})
+        elif capability_refs:
+            problems.append({"kind": "invalid_task_capability_refs_shape", "task_id": task_id})
 
     task_trace: dict[str, dict[str, set[str]]] = {
         task_id: {"requirements": set(), "capabilities": set(),
@@ -255,18 +320,26 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         not in {"deferred", "excluded", "out_of_scope"}
     ]
     source_revision = manifest.get("source_revision")
+    repository_revision = manifest.get("repository_revision")
     revision = identity.get("revision")
-    fresh = not source_revision or not revision or source_revision == revision
-    if not fresh:
-        problems.append({"kind": "source_revision_mismatch",
-                         "manifest_revision": source_revision,
+    fresh = True
+    if repository_revision and revision and repository_revision != revision:
+        fresh = False
+        problems.append({"kind": "repository_revision_mismatch",
+                         "manifest_revision": repository_revision,
                          "identity_revision": revision})
 
     serial_trace = {
         task_id: {key: sorted(values) for key, values in trace.items()}
         for task_id, trace in task_trace.items()
     }
-    severe = {"artifact_hash_mismatch", "missing_artifact", "source_revision_mismatch"}
+    severe = {
+        "artifact_hash_mismatch", "missing_artifact", "missing_artifact_binding",
+        "missing_artifact_bindings", "source_hash_mismatch", "source_file_missing",
+        "source_block_missing_source_hash", "repository_revision_mismatch",
+        "missing_source_block_ref", "missing_requirement_ref", "invalid_task_semantic_ref",
+        "invalid_task_capability_ref", "duplicate_node_id", "missing_node_id",
+    }
     return {
         "schema_version": "newrouge.semantic-topology-view.v1",
         "available": True,
@@ -336,6 +409,9 @@ def load_topology_from_snapshot(snapshot: Any,
         return result
     problems: list[dict[str, Any]] = []
     _validate_artifact_hashes(snapshot, documents["manifest"], problems)
+    _validate_source_hashes(
+        snapshot, _rows(documents["source_blocks"], "blocks", "source_blocks"), problems
+    )
     return build_topology_view(
         identity, documents["manifest"], documents["source_blocks"],
         documents["requirements"], documents["capabilities"], documents["edges"],
