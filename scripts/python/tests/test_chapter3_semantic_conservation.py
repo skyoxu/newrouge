@@ -1001,6 +1001,9 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "edges": root / "logs/ci/task-generation/topology-edges.v1.json",
             "candidates": root / "logs/ci/task-generation/task-candidates.enriched.json",
             "coverage": root / "logs/ci/task-generation/coverage-report.json",
+            "triplet_attestation": (
+                root / "logs/ci/task-generation/triplet-baseline-attestation.json"
+            ),
             "report": root / "logs/ci/task-generation/semantic-conservation-report.json",
         }
         manifest = {
@@ -1058,6 +1061,26 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "edges": [],
         })
         write_json(paths["candidates"], candidates)
+        tasks_dir = root / ".taskmaster/tasks"
+        write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
+        write_json(tasks_dir / "tasks_back.json", [])
+        write_json(tasks_dir / "tasks_gameplay.json", [])
+        task_files = {}
+        for value in refresh_mod.TRIPLET_TASK_FILES:
+            task_path = root / value
+            task_files[value] = {
+                "sha256": "sha256:" + refresh_mod.sha256_bytes(task_path.read_bytes()),
+                "size": task_path.stat().st_size,
+            }
+        write_json(paths["triplet_attestation"], {
+            "schema_version": "chapter3.triplet-baseline-attestation.v1",
+            "status": "passed",
+            "task_files": task_files,
+            "checks": [
+                {"name": name, "status": "passed", "returncode": 0}
+                for name in sorted(refresh_mod.TRIPLET_REQUIRED_CHECKS)
+            ],
+        })
         coverage = coverage_mod.audit_semantic(
             semantics, candidates, None, []
         )
@@ -1179,6 +1202,36 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked", summary["closure_evidence_status"])
             self.assertIn("coverage_status_mismatch", summary["closure_evidence_reason"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
+    def test_stale_triplet_attestation_cannot_promote_latest_successful(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            tasks_back = root / ".taskmaster/tasks/tasks_back.json"
+            write_json(tasks_back, [{"id": "changed-after-attestation"}])
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-stale-triplet-attestation",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("blocked", summary["triplet_evidence_status"])
+            self.assertIn(
+                "triplet_file_hash_mismatch",
+                summary["triplet_evidence_reason"],
+            )
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
 
     def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
@@ -1354,6 +1407,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             candidates = "logs/ci/task-generation/task-candidates.enriched.json"
             report = "logs/ci/task-generation/semantic-conservation-report.json"
             coverage = "logs/ci/task-generation/coverage-report.json"
+            triplet_attestation = "logs/ci/task-generation/triplet-baseline-attestation.json"
 
         failed = {
             "local_refresh_status": "failed",
