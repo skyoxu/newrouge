@@ -457,10 +457,21 @@ def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
 def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     """Refresh a registered Chapter closure topology attempt/stable view."""
 
-    from refresh_chapter_knowledge import run as refresh
+    from refresh_chapter_knowledge import begin_run_attempt, run as refresh
     root = Path(args.repo_root).resolve()
     try:
-        result = refresh(
+        if bool(args.begin_run):
+            if args.source != "chapter3":
+                raise ValueError("--begin-run is currently reserved for Chapter 3 run lifecycle")
+            if args.write_planning_artifacts or args.publish_if_eligible:
+                raise ValueError("--begin-run cannot write planning artifacts or publish")
+            result = begin_run_attempt(
+                root,
+                source=args.source,
+                trigger_run_id=args.trigger_run_id,
+            )
+        else:
+            result = refresh(
             root,
             source=args.source,
             trigger_run_id=args.trigger_run_id,
@@ -476,8 +487,8 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
             candidates_path=root / args.candidates,
             report_path=root / args.report,
             coverage_path=root / args.coverage,
-            triplet_attestation_path=root / args.triplet_attestation,
-        )
+                triplet_attestation_path=root / args.triplet_attestation,
+            )
     except ValueError as exc:
         print(json.dumps({
             "source": args.source,
@@ -879,6 +890,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument("--repo-root", default=".")
     p_refresh.add_argument("--source", choices=["chapter3", "chapter5"], required=True)
     p_refresh.add_argument("--trigger-run-id", required=True)
+    p_refresh.add_argument(
+        "--begin-run",
+        action="store_true",
+        help="record a Chapter 3 run-start attempt before expensive/model-backed work",
+    )
     p_refresh.add_argument("--refresh-local", action="store_true")
     p_refresh.add_argument("--write-planning-artifacts", action="store_true")
     p_refresh.add_argument("--publish-if-eligible", action="store_true")
