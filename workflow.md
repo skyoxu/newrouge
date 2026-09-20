@@ -264,6 +264,8 @@ Prepare deterministic batches so a large GDD never depends on fitting in one mod
 
 Outputs include a batch index, per-batch source payloads, and `semantic-projection.candidate.json`. Every batch records first/last Source Block, input count, deterministic character budget and accounted output count. If one Source Block itself exceeds the configured budget, preparation fails; it never truncates the source text silently.
 
+When budget permits, each batch also carries the immediately adjacent Source Blocks as `context_before` / `context_after`. They are context-only and never contribute primary ownership or output-accounted counts. Cross-block atoms may reference them by Source Block ID. Projection compile merges exact normalized duplicates automatically; semantically equivalent paraphrases merge only when the producer reuses one explicit `requirement_id`. All contributing Source Block refs are retained.
+
 The approved Chapter 3 model/Skill must read **every batch file** and fill every existing `block_result`. The candidate template starts intentionally unreviewed: blank disposition, `delivery_potential=null`, and batch `output_accounted_count=0`. For each owned Source Block the model must explicitly set delivery potential and emit one or more semantic atoms or one explicit disposition, then reconcile the batch output count. `requirement_like_hint` is diagnostic only and cannot decide that an untouched block is non-delivery. The model must never delete a block result to make the projection pass.
 
 Allowed semantic kinds: `functional`, `non_functional`, `invariant`, `failure`, `scope`, `metric`, `constraint`, `risk`, `context`, `rationale` (FR/NFR/INV/FAIL/SCOPE/METRIC/CONSTRAINT/RISK/CONTEXT/RATIONALE aliases are accepted).
