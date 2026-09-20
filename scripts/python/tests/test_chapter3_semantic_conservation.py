@@ -418,6 +418,75 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 merged.get("equivalent_statements", []),
             )
 
+    def test_projection_compile_rejects_duplicate_primary_batch_ownership(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = {
+                "schema_version": "newrouge.source-blocks.v1",
+                "source_revision": "source-set:test",
+                "source_manifest_sha256": "sha256:" + "1" * 64,
+                "blocks": [{
+                    "block_id": "SB-1",
+                    "source_path": "docs/gdd/a.md",
+                    "content_hash": "sha256:" + "a" * 64,
+                    "raw_text": "Rule.",
+                }],
+            }
+            batch_index, candidate = semantics_mod.prepare(
+                ledger, 1, root / "batches", max_chars=3000
+            )
+            duplicate = dict(batch_index["batches"][0])
+            duplicate["batch_id"] = "BATCH-9999"
+            batch_index["batches"].append(duplicate)
+            with self.assertRaisesRegex(ValueError, "duplicate primary batch ownership"):
+                semantics_mod.compile_projection(ledger, batch_index, candidate)
+
+    def test_projection_canonicalizes_adr_owned_sink_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = {
+                "schema_version": "newrouge.source-blocks.v1",
+                "source_revision": "source-set:test",
+                "source_manifest_sha256": "sha256:" + "1" * 64,
+                "blocks": [{
+                    "block_id": "SB-1",
+                    "source_path": "docs/gdd/a.md",
+                    "content_hash": "sha256:" + "a" * 64,
+                    "raw_text": "Architecture owns this constraint.",
+                }],
+            }
+            batch_index, candidate = semantics_mod.prepare(
+                ledger, 1, root / "batches", max_chars=3000
+            )
+            candidate["batch_summaries"][0]["output_accounted_count"] = 1
+            result = candidate["block_results"][0]
+            result.update({
+                "delivery_potential": True,
+                "disposition": "atomized",
+                "atoms": [{
+                    "requirement_id": "CONSTRAINT-ADR",
+                    "kind": "constraint",
+                    "statement": "Architecture owns this constraint.",
+                    "source_block_ids": ["SB-1"],
+                    "delivery_relevant": True,
+                    "sink_policy": "adr_owned",
+                    "non_task_sinks": [{
+                        "type": "adr_owned",
+                        "id": "ADR-0038",
+                        "relation": "governed_by",
+                    }],
+                }],
+            })
+            semantics, _caps, edges = semantics_mod.compile_projection(
+                ledger, batch_index, candidate
+            )
+            requirement = semantics["requirements"][0]
+            self.assertEqual("adr", requirement["non_task_sinks"][0]["type"])
+            self.assertTrue(any(
+                edge["target_type"] == "adr" and edge["target_id"] == "ADR-0038"
+                for edge in edges["edges"]
+            ))
+
     def test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting(self) -> None:
         ledger = {
             "source_revision": "source-set:test",
