@@ -250,6 +250,8 @@ The ledger records headings, paragraphs, list items, blockquotes, table rows, co
 
 For `add`, the ledger also reports unchanged/changed/added/removed Source Blocks. Stable IDs are reused for identical blocks even when an insertion shifts their ordinal inside the same source/heading/type family; genuinely changed logical slots retain their old ID and enter changed/reconcile. Reuse is allowed only when source family and content hash justify it.
 
+When a prior semantic candidate exists, Projection A preparation may prefill only fully reviewed results for ledger `unchanged` blocks with the same `content_hash`. Cross-block semantics are reusable only when every referenced block is unchanged. Changed/added blocks stay `review_required`, removed blocks are discarded, and capabilities depending on stale Requirements are not reused.
+
 The legacy requirements index may still be generated from the ledger for downstream packaging evidence:
 
     py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --ledger-input logs/ci/task-generation/source-blocks.v1.json
@@ -297,6 +299,7 @@ Every generated intent preserves `semantic_refs`, optional `capability_refs`, So
 Enrichment preserves existing ADR/overlay/contract/test evidence and also emits advisory `implementation_files`, `implementation_overlap_candidates`, and `file_churn_signal`. File overlap is a review signal only; it does not mechanically merge tasks.
 
 Complexity remains governed by the existing rule: Tasks above 7/10 must split; when semantic cohesion prevents further Task splitting, use Subtasks.
+ The normalizer splits semantic groups before a Task intent can exceed 7; it never hides an oversized group by capping the score.
 
 ### 3.6 Audit Semantic Sink Coverage
 
@@ -313,7 +316,7 @@ Then run the closure conservation gate:
 
     py -3 scripts/python/validate_semantic_conservation.py --stage closure
 
-This additionally blocks active delivery orphans, stale/unknown Task claims and complexity above 7. It emits final Task sink edges into `topology-edges.v1.json`.
+This additionally blocks active delivery orphans, stale/unknown Task claims and complexity above 7. Existing task-view entries that already carry stale `semantic_refs` also block unless the current candidate reconciles the same Task ID with valid refs. It emits final Task sink edges into `topology-edges.v1.json`.
 
 ### 3.7 Compile And Review The Task Triplet Patch
 
@@ -355,6 +358,7 @@ Rules:
 - Workspace state never advances canonical KCP current/LKG.
 
 After closure PASS, the reviewed stable artifacts may be written under `docs/planning/semantic-topology/` with `--write-planning-artifacts`. Formal KCP publication remains explicit and requires committed clean `main`; use `--publish-if-eligible` only under those conditions.
+ A blocked/unknown closure always returns publication deferred with reason `closure_not_passed` and never attempts canonical publication.
 
 ### 3.10 Chapter 3 Stop-Loss
 
@@ -377,7 +381,7 @@ Use the read-only regression check against a business repo:
 
     py -3 scripts/python/run_chapter3_regression_check.py <business-repo> --prd-path docs/prd --gdd-path docs/gdd --gdd-path _bmad-output/gdd.md
 
-The regression report must expose full Source Block counts alongside legacy anchor counts. It is diagnostic evidence only and must not tune production rules to reproduce mature Chapter 4/5/6/7 history.
+The regression report exposes separate source / semantic / task layers plus the legacy/mature-task shadow comparison. If no reviewed semantic artifact is supplied, the semantic layer explicitly reports `not_run`; use `--semantic-requirements <path>` to include reviewed semantic metrics. It is diagnostic evidence only and must not tune production rules to reproduce mature Chapter 4/5/6/7 history.
 
 ### 3.12 Chapter 3 Semantic Boundary
 
