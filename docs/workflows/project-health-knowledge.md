@@ -1,5 +1,19 @@
 # Project Health: Knowledge + Impact
 
+## Design → Delivery Topology
+
+The existing loopback service exposes a read-only `/knowledge/topology` view and `/api/knowledge/topology?mode=main|workspace`.
+
+- Main topology is identity/revision-bound to the scanned local `refs/heads/main` snapshot.
+- Workspace/Chapter-run topology is preview-only and uses a separate workspace/run identity. It cannot overwrite the main `latest.json`, KCP publication pointer, or runtime-verified main evidence.
+- Missing topology artifacts are a valid migration state and render as `legacy_unmapped`; the page does not infer or fabricate Requirement/Capability mappings.
+- Capability is optional grouping. Requirements may route directly to Task/global constraint/quality gate/ADR-owned sink.
+- The page is read-only and does not create or modify Requirement, Task or Acceptance.
+- Scene details may display `Trace to design` through governed Task relationships. The trace is navigation/evidence only and does not convert static/runtime attachment into acceptance proof.
+
+The registered structural source is `docs/planning/semantic-topology/**`. Chapter 3/5 producer and automatic refresh behavior are separate workflow changes and are not introduced by this structural layer.
+
+
 ## Godot 场景图投影
 
 Knowledge 页面提供只读 Godot 场景图。扫描从 `project.godot` 的 `application/run/main_scene` 开始，确定性解析 `.tscn`、`.cs`、`.gd` 与资源路径，结果绑定扫描 revision 并通过 `/api/knowledge/scene-graph` 提供。循环使用 visited 集合终止；动态加载标记为 `dynamic-unknown`，未确认入口标记为 `unreachable-candidate`，不等同于运行时绝对不可达。用户浏览不调用大模型、不执行游戏或修改源文件。页面支持场景树、未确认场景列表及 Node/脚本/资源详情。
