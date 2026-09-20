@@ -277,6 +277,147 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         self.assertTrue(all(row["disposition"] == "" for row in candidate["block_results"]))
         self.assertTrue(all(row["delivery_potential"] is None for row in candidate["block_results"]))
 
+    def test_projection_batches_include_adjacent_context_without_transferring_ownership(self) -> None:
+        ledger = {
+            "source_revision": "source-set:test",
+            "blocks": [
+                {
+                    "block_id": f"SB-{index}",
+                    "source_path": "docs/gdd/a.md",
+                    "heading_path": ["Rules"],
+                    "line_start": index,
+                    "line_end": index,
+                    "raw_text": f"Rule {index}",
+                    "content_hash": "sha256:" + str(index) * 64,
+                }
+                for index in range(1, 5)
+            ],
+        }
+        index, batches = semantics_mod.build_batches(
+            ledger, max_blocks=2, max_chars=3000
+        )
+        self.assertEqual(2, index["batch_count"])
+        first, second = batches
+        self.assertEqual(["SB-1", "SB-2"], first["block_ids"])
+        self.assertEqual(["SB-3"], first["context_after_block_ids"])
+        self.assertNotIn("SB-3", first["block_ids"])
+        self.assertEqual(["SB-3", "SB-4"], second["block_ids"])
+        self.assertEqual(["SB-2"], second["context_before_block_ids"])
+        self.assertNotIn("SB-2", second["block_ids"])
+        self.assertLessEqual(first["input_char_count"], first["max_chars_per_batch"])
+        self.assertLessEqual(second["input_char_count"], second["max_chars_per_batch"])
+
+    def test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = {
+                "schema_version": "newrouge.source-blocks.v1",
+                "source_revision": "source-set:test",
+                "source_manifest_sha256": "sha256:" + "1" * 64,
+                "blocks": [
+                    {
+                        "block_id": "SB-1", "source_path": "docs/gdd/a.md",
+                        "content_hash": "sha256:" + "a" * 64,
+                        "raw_text": "Shop cannot upgrade cards.",
+                    },
+                    {
+                        "block_id": "SB-2", "source_path": "docs/gdd/a.md",
+                        "content_hash": "sha256:" + "b" * 64,
+                        "raw_text": "Shop cannot upgrade cards.",
+                    },
+                    {
+                        "block_id": "SB-3", "source_path": "docs/gdd/a.md",
+                        "content_hash": "sha256:" + "c" * 64,
+                        "raw_text": "Shop upgrades are forbidden.",
+                    },
+                ],
+            }
+            batch_index, candidate = semantics_mod.prepare(
+                ledger, 1, root / "batches", max_chars=3000
+            )
+            by_block = {
+                row["block_id"]: row for row in candidate["block_results"]
+            }
+            for row in candidate["batch_summaries"]:
+                row["output_accounted_count"] = row["input_block_count"]
+
+            by_block["SB-1"].update({
+                "delivery_potential": True,
+                "disposition": "atomized",
+                "atoms": [{
+                    "kind": "FR",
+                    "statement": "Shop cannot upgrade cards.",
+                    "source_block_ids": ["SB-1"],
+                }],
+            })
+            by_block["SB-2"].update({
+                "delivery_potential": True,
+                "disposition": "atomized",
+                "atoms": [{
+                    "kind": "functional",
+                    "statement": "  SHOP cannot   upgrade cards. ",
+                    "source_block_ids": ["SB-2"],
+                }],
+            })
+            by_block["SB-3"].update({
+                "delivery_potential": True,
+                "disposition": "atomized",
+                "atoms": [{
+                    "requirement_id": "FR-SHOP-EXPLICIT",
+                    "kind": "functional",
+                    "statement": "Shop upgrades are forbidden.",
+                    "source_block_ids": ["SB-3"],
+                }],
+            })
+
+            semantics, _caps, edges = semantics_mod.compile_projection(
+                ledger, batch_index, candidate
+            )
+            automatic = [
+                row for row in semantics["requirements"]
+                if row["requirement_id"] != "FR-SHOP-EXPLICIT"
+            ]
+            self.assertEqual(1, len(automatic))
+            self.assertEqual(["SB-1", "SB-2"], automatic[0]["source_block_ids"])
+            rid = automatic[0]["requirement_id"]
+            accounting = {
+                row["block_id"]: row["requirement_ids"]
+                for row in semantics["source_accounting"]
+            }
+            self.assertEqual([rid], accounting["SB-1"])
+            self.assertEqual([rid], accounting["SB-2"])
+            self.assertTrue(all(
+                any(
+                    edge["source_type"] == "source_block"
+                    and edge["source_id"] == block_id
+                    and edge["target_type"] == "requirement"
+                    and edge["target_id"] == rid
+                    for edge in edges["edges"]
+                )
+                for block_id in ("SB-1", "SB-2")
+            ))
+
+            # Reuse one explicit id to merge semantically equivalent paraphrases.
+            by_block["SB-1"]["atoms"][0]["requirement_id"] = "FR-MERGED"
+            by_block["SB-2"]["atoms"][0] = {
+                "requirement_id": "FR-MERGED",
+                "kind": "functional",
+                "statement": "The shop must never upgrade cards.",
+                "source_block_ids": ["SB-2"],
+            }
+            semantics, _caps, _edges = semantics_mod.compile_projection(
+                ledger, batch_index, candidate
+            )
+            merged = next(
+                row for row in semantics["requirements"]
+                if row["requirement_id"] == "FR-MERGED"
+            )
+            self.assertEqual(["SB-1", "SB-2"], merged["source_block_ids"])
+            self.assertIn(
+                "The shop must never upgrade cards.",
+                merged.get("equivalent_statements", []),
+            )
+
     def test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting(self) -> None:
         ledger = {
             "source_revision": "source-set:test",
