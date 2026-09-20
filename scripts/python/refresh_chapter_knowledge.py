@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
+from validate_semantic_conservation import validate as validate_semantic_conservation
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
 ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
@@ -47,6 +48,73 @@ def write_json(path: Path, payload: Any) -> None:
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _snapshot_file(path: Path) -> bytes | None:
+    return path.read_bytes() if path.is_file() else None
+
+
+def _restore_file(path: Path, snapshot: bytes | None) -> None:
+    if snapshot is None:
+        if path.exists():
+            path.unlink()
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".restore.tmp")
+    try:
+        tmp.write_bytes(snapshot)
+        tmp.replace(path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
+def closure_evidence(
+    root: Path,
+    source: str,
+    ledger: dict[str, Any],
+    semantics: dict[str, Any],
+    candidates: dict[str, Any],
+    persisted_report: dict[str, Any],
+) -> tuple[dict[str, Any], bool, str]:
+    """Re-validate Chapter 3 closure and bind refresh to the exact current artifacts."""
+    if source != "chapter3":
+        passed = persisted_report.get("status") == "passed"
+        return persisted_report, passed, "legacy_registered_source"
+
+    recomputed, _edges = validate_semantic_conservation(
+        root, ledger, semantics, "closure", candidates
+    )
+    errors: list[str] = []
+    if persisted_report.get("schema_version") != "chapter3.semantic-conservation-report.v1":
+        errors.append("invalid_report_schema")
+    if persisted_report.get("stage") != "closure":
+        errors.append("closure_stage_required")
+    if str(persisted_report.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("report_source_revision_mismatch")
+    if str(persisted_report.get("source_manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("report_source_manifest_mismatch")
+    if persisted_report.get("status") != recomputed.get("status"):
+        errors.append("report_status_mismatch")
+    if persisted_report.get("blocking_counts", {}) != recomputed.get("blocking_counts", {}):
+        errors.append("report_blocking_counts_mismatch")
+
+    passed = not errors and recomputed.get("status") == "passed"
+    if passed:
+        return recomputed, True, "verified_closure"
+
+    effective = dict(recomputed)
+    blocking = dict(effective.get("blocking_counts", {}))
+    blocking["closure_evidence_invalid"] = 1
+    effective["blocking_counts"] = blocking
+    effective["status"] = "blocked"
+    details = dict(effective.get("details", {}))
+    details["closure_evidence_errors"] = errors or ["recomputed_closure_blocked"]
+    effective["details"] = details
+    return effective, False, ",".join(errors or ["recomputed_closure_blocked"])
 
 
 def workspace_revision(
@@ -169,33 +237,45 @@ def copy_planning_artifacts(
         "capabilities": capabilities_path,
         "edges": edges_path,
     }
-    artifact_hashes = {}
-    for key, destination in destinations.items():
-        source_path = sources[key]
-        if not source_path.is_file():
-            raise ValueError(f"missing topology source artifact: {source_path}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source_path, destination)
-        artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(destination.read_bytes())
-    manifest = {
-        "schema_version": "newrouge.semantic-topology-manifest.v1",
-        "source_revision": source_manifest.get("source_revision"),
-        "source_manifest_sha256": source_manifest.get("manifest_sha256"),
-        "schema_revision": "v1",
-        "generator_revision": "chapter3-semantic-conservation-v1",
-        "artifacts": artifact_hashes,
-    }
-    # Do not write repository_revision here: the generated topology is
-    # committed after this step, so binding it to the pre-commit HEAD would make
-    # the just-committed topology immediately stale. Keep the observed source
-    # checkout only as audit metadata; canonical freshness is bound later by KCP
-    # publication plus per-source hashes.
-    source_repository_revision = source_manifest.get("repository_revision")
-    if isinstance(source_repository_revision, str) and source_repository_revision:
-        manifest["source_repository_revision"] = source_repository_revision
     manifest_path = root / TOPOLOGY_ARTIFACTS["manifest"]
-    write_json(manifest_path, manifest)
-    return manifest
+    snapshots = {
+        path: _snapshot_file(path)
+        for path in [*destinations.values(), manifest_path]
+    }
+    try:
+        artifact_hashes = {}
+        for key, destination in destinations.items():
+            source_path = sources[key]
+            if not source_path.is_file():
+                raise ValueError(f"missing topology source artifact: {source_path}")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, destination)
+            artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(destination.read_bytes())
+        manifest = {
+            "schema_version": "newrouge.semantic-topology-manifest.v1",
+            "source_revision": source_manifest.get("source_revision"),
+            "source_manifest_sha256": source_manifest.get("manifest_sha256"),
+            "schema_revision": "v1",
+            "generator_revision": "chapter3-semantic-conservation-v1",
+            "artifacts": artifact_hashes,
+        }
+        # Do not write repository_revision here: the generated topology is
+        # committed after this step, so binding it to the pre-commit HEAD would make
+        # the just-committed topology immediately stale. Keep the observed source
+        # checkout only as audit metadata; canonical freshness is bound later by KCP
+        # publication plus per-source hashes.
+        source_repository_revision = source_manifest.get("repository_revision")
+        if isinstance(source_repository_revision, str) and source_repository_revision:
+            manifest["source_repository_revision"] = source_repository_revision
+        write_json(manifest_path, manifest)
+        return manifest
+    except Exception:
+        for path, snapshot in snapshots.items():
+            try:
+                _restore_file(path, snapshot)
+            except OSError:
+                pass
+        raise
 
 
 def git_result(root: Path, args: list[str]) -> str:
@@ -404,17 +484,25 @@ def run(
     capabilities = load_json(capabilities_path, {})
     edges = load_json(edges_path, {})
     candidates = load_json(candidates_path, {})
-    report = load_json(report_path, {})
+    persisted_report = load_json(report_path, {})
+    report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
+        root, source, ledger, semantics, candidates, persisted_report
+    )
     semantic_triplet_closure_passed = (
-        report.get("status") == "passed" and triplet_status == "passed"
+        closure_evidence_passed and triplet_status == "passed"
     )
 
     attempt = build_workspace_view(
         source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
         edges, candidates, report, triplet_status, "last_attempt",
     )
+    attempt.setdefault("chapter_run", {})["closure_evidence_status"] = (
+        "verified" if closure_evidence_passed else "blocked"
+    )
+    attempt["chapter_run"]["closure_evidence_reason"] = closure_evidence_reason
     local_status = "skipped"
     attempt_written = False
+    stable_snapshot = _snapshot_file(root / STABLE_PATH)
     if refresh_local:
         try:
             write_json(root / ATTEMPT_PATH, attempt)
@@ -455,8 +543,11 @@ def run(
                 )
             local_status = "stable_refreshed"
 
+    stable_required = write_planning or publish_if_eligible
     closure_passed = semantic_triplet_closure_passed and (
-        not refresh_local or local_status == "stable_refreshed"
+        local_status == "stable_refreshed"
+        if refresh_local
+        else not stable_required
     )
 
     planning_status = "not_requested"
@@ -469,6 +560,10 @@ def run(
                     root, source_manifest, ledger_path, semantics_path, capabilities_path, edges_path
                 )
             except (OSError, ValueError) as exc:
+                try:
+                    _restore_file(root / STABLE_PATH, stable_snapshot)
+                except OSError:
+                    pass
                 _mark_attempt_refresh_failure(
                     root, attempt, "planning_topology_refresh_failed", str(exc)
                 )
@@ -494,6 +589,8 @@ def run(
         "trigger_run_id": trigger_run_id,
         "topology_revision": attempt.get("identity", {}).get("revision"),
         "semantic_triplet_closure_passed": semantic_triplet_closure_passed,
+        "closure_evidence_status": "verified" if closure_evidence_passed else "blocked",
+        "closure_evidence_reason": closure_evidence_reason,
         "closure_passed": closure_passed,
         "chapter_closure_status": "passed" if closure_passed else "concern",
         "local_refresh_status": local_status,
