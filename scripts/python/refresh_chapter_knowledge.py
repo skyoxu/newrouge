@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
+from audit_task_candidate_coverage import DEFAULT_TASK_VIEWS, audit as audit_task_coverage
 from validate_semantic_conservation import validate as validate_semantic_conservation
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
@@ -20,6 +21,7 @@ LEGACY_ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest.json"
 STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
 DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
+DEFAULT_LEGACY_REQUIREMENTS_PATH = Path("logs/ci/task-generation/requirements.index.json")
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -91,6 +93,17 @@ def closure_evidence(
     recomputed, _edges = validate_semantic_conservation(
         root, ledger, semantics, "closure", candidates
     )
+    existing_tasks: list[dict[str, Any]] = []
+    for value in DEFAULT_TASK_VIEWS:
+        payload = load_json(root / value, [])
+        if isinstance(payload, list):
+            existing_tasks.extend(row for row in payload if isinstance(row, dict))
+    legacy_requirements = load_json(
+        root / DEFAULT_LEGACY_REQUIREMENTS_PATH, {"anchors": []}
+    )
+    recomputed_coverage = audit_task_coverage(
+        semantics, candidates, legacy_requirements, existing_tasks
+    )
     errors: list[str] = []
     if str(source_manifest.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         errors.append("source_manifest_revision_mismatch")
@@ -100,8 +113,18 @@ def closure_evidence(
         errors.append("invalid_coverage_schema")
     if coverage.get("coverage_model") != "semantic-sink":
         errors.append("semantic_sink_coverage_required")
-    if coverage.get("status") != "ok":
+    if coverage.get("status") != recomputed_coverage.get("status"):
+        errors.append("coverage_status_mismatch")
+    if recomputed_coverage.get("status") != "ok":
         errors.append("task_coverage_not_passed")
+    if coverage.get("missing_blocking_count") != recomputed_coverage.get("missing_blocking_count"):
+        errors.append("coverage_blocking_count_mismatch")
+    if coverage.get("invalid_task_semantic_refs", []) != recomputed_coverage.get("invalid_task_semantic_refs", []):
+        errors.append("coverage_invalid_refs_mismatch")
+    if coverage.get("stale_existing_task_mappings", []) != recomputed_coverage.get("stale_existing_task_mappings", []):
+        errors.append("coverage_stale_mapping_mismatch")
+    if coverage.get("legacy_p0_p1_packaging", {}) != recomputed_coverage.get("legacy_p0_p1_packaging", {}):
+        errors.append("coverage_legacy_packaging_mismatch")
     if str(coverage.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         errors.append("coverage_source_revision_mismatch")
     if str(coverage.get("source_manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
