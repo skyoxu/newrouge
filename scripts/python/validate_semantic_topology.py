@@ -18,7 +18,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
     snapshot = LocalMainSnapshot(root)
-    view = load_topology_from_snapshot(snapshot, task_details(snapshot))
+    view = load_topology_from_snapshot(snapshot, [])
     if not view.get("available"):
         status = "blocked" if args.require_available else "legacy_unmapped"
         print(json.dumps({
@@ -27,6 +27,7 @@ def main(argv=None) -> int:
             "identity": view.get("identity"),
         }, ensure_ascii=False))
         return 1 if args.require_available else 0
+    view = load_topology_from_snapshot(snapshot, task_details(snapshot))
     blocking = list(view.get("problems", []))
     status = "passed" if view.get("fresh") and not blocking else "blocked"
     print(json.dumps({
