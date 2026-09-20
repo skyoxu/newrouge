@@ -168,6 +168,26 @@ class SemanticTopologyTests(unittest.TestCase):
         self.assertFalse(view["fresh"])
         self.assertTrue(any(x["kind"] == "invalid_task_semantic_ref" for x in view["problems"]))
 
+    def test_workspace_preview_rejects_main_authority_claim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "logs/ci/project-health-knowledge/topology/workspace-latest.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps({
+                "available": True,
+                "identity": {
+                    "kind": "workspace",
+                    "revision": "workspace:test",
+                    "authority_ref": "refs/heads/main",
+                },
+            }), encoding="utf-8")
+            view = load_workspace_topology(root)
+            self.assertFalse(view["available"])
+            self.assertTrue(any(
+                item["kind"] == "workspace_claims_main_authority"
+                for item in view["problems"]
+            ))
+
     def test_workspace_preview_requires_workspace_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
