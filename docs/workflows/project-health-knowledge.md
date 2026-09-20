@@ -21,6 +21,7 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 
 Registered closure producers use the unified Chapter Knowledge refresh hook rather than writing Project Health/KCP state ad hoc.
 
+- Chapter 3 records **Workspace → Last attempt** at run start through `refresh-knowledge --begin-run`, then refreshes it again at run end with available topology/gate evidence. An interrupted run therefore remains visible instead of silently leaving no attempt record.
 - Every Chapter 3/5 run may refresh **Workspace → Last attempt** with its run identity, partial topology, failures and conservation concerns.
 - Only closure PASS may advance **Workspace → Latest successful**.
 - For Chapter 3, refresh re-validates the current ledger/semantics/candidates at `stage=closure`, requires the persisted conservation report to match the same source revision/source manifest/blocking counts, recomputes semantic-sink task coverage, and requires a passed triplet-baseline attestation whose hashes match the current three Taskmaster files. A projection-stage, stale, blocked, or mismatched artifact cannot promote Latest Successful.

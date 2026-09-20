@@ -105,6 +105,8 @@ def append_block(
     line_end: int,
     raw_text: str,
     json_pointer: str | None = None,
+    source_char_start: int | None = None,
+    source_char_end_exclusive: int | None = None,
 ) -> None:
     raw = raw_text.rstrip()
     if not raw.strip():
@@ -132,6 +134,10 @@ def append_block(
     }
     if json_pointer is not None:
         row["json_pointer"] = json_pointer
+    if source_char_start is not None:
+        row["source_char_start"] = source_char_start
+    if source_char_end_exclusive is not None:
+        row["source_char_end_exclusive"] = source_char_end_exclusive
     blocks.append(row)
 
 
@@ -247,32 +253,101 @@ def parse_text(source_path: str, source_sha: str, text: str) -> list[dict[str, A
     return blocks
 
 
+def _json_skip_ws(text: str, offset: int) -> int:
+    while offset < len(text) and text[offset] in " \t\r\n":
+        offset += 1
+    return offset
+
+
+def _json_line_at(text: str, offset: int) -> int:
+    return text.count("\n", 0, max(0, offset)) + 1
+
+
+def _json_span_lines(text: str, start: int, end_exclusive: int) -> tuple[int, int]:
+    line_start = _json_line_at(text, start)
+    last = start if end_exclusive <= start else end_exclusive - 1
+    return line_start, _json_line_at(text, last)
+
+
 def parse_json(source_path: str, source_sha: str, text: str) -> list[dict[str, Any]]:
+    """Parse top-level JSON blocks while preserving exact authoritative source slices."""
     blocks: list[dict[str, Any]] = []
     ordinals: dict[tuple[tuple[str, ...], str], int] = defaultdict(int)
     line_end = max(1, len(text.splitlines()))
+    decoder = json.JSONDecoder()
     try:
         value = json.loads(text)
     except json.JSONDecodeError:
         append_block(blocks, ordinals, source_path, source_sha, "json_invalid", [], 1, line_end, text)
         return blocks
+
+    start = _json_skip_ws(text, 0)
     if isinstance(value, dict):
-        for key, item in value.items():
-            pointer = "/" + str(key).replace("~", "~0").replace("/", "~1")
+        offset = _json_skip_ws(text, start + 1)
+        while offset < len(text) and text[offset] != "}":
+            member_start = offset
+            try:
+                key, key_end = decoder.raw_decode(text, offset)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"failed to locate JSON member source span: {source_path}") from exc
+            if not isinstance(key, str):
+                raise ValueError(f"JSON object key is not a string: {source_path}")
+            offset = _json_skip_ws(text, key_end)
+            if offset >= len(text) or text[offset] != ":":
+                raise ValueError(f"failed to locate JSON member separator: {source_path}")
+            value_start = _json_skip_ws(text, offset + 1)
+            try:
+                _item, value_end = decoder.raw_decode(text, value_start)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"failed to locate JSON member value span: {source_path}") from exc
+            member_end = value_end
+            line_start, member_line_end = _json_span_lines(text, member_start, member_end)
+            pointer = "/" + key.replace("~", "~0").replace("/", "~1")
             append_block(
-                blocks, ordinals, source_path, source_sha, "json_member", [str(key)],
-                1, line_end, json.dumps({key: item}, ensure_ascii=False, indent=2), pointer,
+                blocks, ordinals, source_path, source_sha, "json_member", [key],
+                line_start, member_line_end, text[member_start:member_end], pointer,
+                member_start, member_end,
             )
+            offset = _json_skip_ws(text, value_end)
+            if offset < len(text) and text[offset] == ",":
+                offset = _json_skip_ws(text, offset + 1)
+                continue
+            if offset < len(text) and text[offset] == "}":
+                break
+            raise ValueError(f"failed to locate next JSON member boundary: {source_path}")
     elif isinstance(value, list):
-        for index, item in enumerate(value):
+        offset = _json_skip_ws(text, start + 1)
+        index = 0
+        while offset < len(text) and text[offset] != "]":
+            item_start = offset
+            try:
+                _item, item_end = decoder.raw_decode(text, item_start)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"failed to locate JSON item source span: {source_path}") from exc
+            line_start, item_line_end = _json_span_lines(text, item_start, item_end)
             append_block(
                 blocks, ordinals, source_path, source_sha, "json_item", [],
-                1, line_end, json.dumps(item, ensure_ascii=False, indent=2), f"/{index}",
+                line_start, item_line_end, text[item_start:item_end], f"/{index}",
+                item_start, item_end,
             )
+            index += 1
+            offset = _json_skip_ws(text, item_end)
+            if offset < len(text) and text[offset] == ",":
+                offset = _json_skip_ws(text, offset + 1)
+                continue
+            if offset < len(text) and text[offset] == "]":
+                break
+            raise ValueError(f"failed to locate next JSON item boundary: {source_path}")
     else:
+        try:
+            _item, value_end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"failed to locate JSON value source span: {source_path}") from exc
+        line_start, value_line_end = _json_span_lines(text, start, value_end)
         append_block(
             blocks, ordinals, source_path, source_sha, "json_value", [],
-            1, line_end, json.dumps(value, ensure_ascii=False), "",
+            line_start, value_line_end, text[start:value_end], "",
+            start, value_end,
         )
     return blocks
 

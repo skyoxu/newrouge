@@ -75,6 +75,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/project_semantics_from_sources.py`: prepares bounded Semantic Projection A batches and compiles model/Skill-produced atoms/dispositions into Requirement/Capability/base-edge artifacts. It does not call a specific LLM provider.
 - `scripts/python/validate_semantic_conservation.py`: validates source accounting, source/hash integrity, unresolved delivery potential, semantic validity and closure-time Requirement→sink/Task refs/complexity.
 - `scripts/python/attest_chapter3_triplet_baseline.py`: runs the Chapter 3 task-link/ref/triplet/semantic-tier validators and writes a machine-readable attestation bound to the current Taskmaster triplet hashes.
+- `scripts/python/run_chapter3_guarded.py`: top-level scripted Chapter 3 lifecycle guard; records a start Attempt Preview and always invokes the final refresh after the wrapped child command returns/fails.
 - `scripts/python/refresh_chapter_knowledge.py`: registered Chapter 3/5 closure hook for Workspace Last Attempt / Latest Successful topology and conditional trusted-ref publication. Prefer the `dev_cli.py refresh-knowledge` wrapper.
 - `scripts/python/extract_requirement_anchors.py`: extracts stable requirement anchors from configurable PRD, GDD, epics, stories, overlays, ADRs, and custom planning globs.
 - `scripts/python/generate_task_candidates_from_sources.py`: converts requirement anchors into normalized task candidates without writing final task files.

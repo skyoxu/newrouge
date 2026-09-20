@@ -22,7 +22,7 @@ Machine-readable minimum contracts live under `docs/planning/semantic-topology/s
 
 ## Authority and identity
 
-- Source blocks are stable locators into original authority; copied preview text is never authority.
+- Source blocks are stable locators into original authority; copied preview text is never authority. JSON blocks preserve their logical `json_pointer` plus exact `source_char_start` / `source_char_end_exclusive` offsets, and `raw_text` is the corresponding original source slice rather than a JSON re-serialization.
 - Semantic Requirements are normalized projections bound to one or more source blocks.
 - Capability is optional grouping only. It has no sprint, status or completion lifecycle.
 - Taskmaster remains the only task-state authority.
