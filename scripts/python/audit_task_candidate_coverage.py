@@ -16,6 +16,10 @@ from typing import Any
 
 BLOCKING_PRIORITIES = {"P0", "P1"}
 NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"}
+DEFAULT_TASK_VIEWS = [
+    ".taskmaster/tasks/tasks_back.json",
+    ".taskmaster/tasks/tasks_gameplay.json",
+]
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -76,6 +80,7 @@ def audit_semantic(
     semantics: dict[str, Any],
     candidates: dict[str, Any],
     legacy_requirements: dict[str, Any] | None = None,
+    existing_tasks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     by_req, tasks = candidate_coverage(candidates)
     requirements = {
@@ -97,6 +102,40 @@ def audit_semantic(
                     "requirement_id": str(rid),
                     "reason": "unknown_requirement",
                 })
+    candidate_by_id = {
+        str(task.get("id")): task
+        for task in tasks
+        if task.get("id") is not None
+    }
+    stale_existing = []
+    for task in existing_tasks or []:
+        if not isinstance(task, dict) or task.get("id") is None:
+            continue
+        task_id = str(task.get("id"))
+        refs = task.get("semantic_refs")
+        if not isinstance(refs, list) or not refs:
+            continue
+        unknown = sorted({str(rid) for rid in refs if str(rid) not in requirements})
+        if not unknown:
+            continue
+        replacement = candidate_by_id.get(task_id)
+        replacement_refs = (
+            replacement.get("semantic_refs", replacement.get("requirement_ids", []))
+            if isinstance(replacement, dict) else []
+        )
+        reconciled = (
+            isinstance(replacement_refs, list)
+            and bool(replacement_refs)
+            and all(str(rid) in requirements for rid in replacement_refs)
+        )
+        if not reconciled:
+            stale_existing.append({
+                "task_id": task_id,
+                "stale_requirement_ids": unknown,
+                "reason": "existing_task_semantic_mapping_stale",
+                "reconcile": "update or remove the stale semantic mapping before triplet write",
+            })
+
     rows = []
     missing = []
     for rid, requirement in sorted(requirements.items()):
@@ -162,7 +201,7 @@ def audit_semantic(
         if not covered:
             packaging_missing.append(row)
 
-    blocked = bool(missing or invalid_refs or packaging_missing)
+    blocked = bool(missing or invalid_refs or stale_existing or packaging_missing)
     return {
         "schema": "task-generation.coverage-report.v2",
         "coverage_model": "semantic-sink",
@@ -175,6 +214,7 @@ def audit_semantic(
         "coverage": rows,
         "missing_blocking": missing,
         "invalid_task_semantic_refs": invalid_refs,
+        "stale_existing_task_mappings": stale_existing,
         "source_coverage": semantics.get("source_accounting", []),
         "legacy_p0_p1_packaging": {
             "checked_count": len(packaging_rows),
@@ -190,9 +230,10 @@ def audit(
     requirements: dict[str, Any],
     candidates: dict[str, Any],
     legacy_requirements: dict[str, Any] | None = None,
+    existing_tasks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if requirements.get("schema_version") == "newrouge.semantic-requirements.v1":
-        return audit_semantic(requirements, candidates, legacy_requirements)
+        return audit_semantic(requirements, candidates, legacy_requirements, existing_tasks)
     return audit_legacy(requirements, candidates)
 
 
@@ -208,6 +249,11 @@ def blocking_after_p1_waiver(result: dict[str, Any]) -> list[dict[str, Any]]:
         blockers.extend(
             {"kind": "invalid_task_semantic_ref", **row}
             for row in result.get("invalid_task_semantic_refs", [])
+            if isinstance(row, dict)
+        )
+        blockers.extend(
+            {"kind": "stale_existing_task_mapping", **row}
+            for row in result.get("stale_existing_task_mappings", [])
             if isinstance(row, dict)
         )
         packaging = result.get("legacy_p0_p1_packaging", {})
@@ -234,12 +280,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
     parser.add_argument("--out", default="logs/ci/task-generation/coverage-report.json")
     parser.add_argument("--allow-missing-p1", action="store_true")
+    parser.add_argument(
+        "--task-view",
+        action="append",
+        default=[],
+        help="Existing task view to inspect for stale semantic mappings; defaults to tasks_back/tasks_gameplay.",
+    )
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     semantics_path = root / args.semantics
     source = load_json(semantics_path) if semantics_path.is_file() else load_json(root / args.requirements, {})
     legacy = load_json(root / args.requirements, {"anchors": []}) if semantics_path.is_file() else None
-    result = audit(source, load_json(root / args.candidates, {"candidates": []}), legacy)
+    task_view_paths = args.task_view or DEFAULT_TASK_VIEWS
+    existing_tasks: list[dict[str, Any]] = []
+    for value in task_view_paths:
+        payload = load_json(root / value, [])
+        if isinstance(payload, list):
+            existing_tasks.extend(row for row in payload if isinstance(row, dict))
+    result = audit(
+        source,
+        load_json(root / args.candidates, {"candidates": []}),
+        legacy,
+        existing_tasks,
+    )
     out = root / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
