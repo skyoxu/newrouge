@@ -18,6 +18,7 @@ import build_source_ledger as ledger_mod
 import enrich_task_candidates as enrich_mod
 import normalize_task_intents as intents_mod
 import project_semantics_from_sources as projection_mod
+import run_chapter3_regression_check as regression_mod
 import refresh_chapter_knowledge as refresh_mod
 import validate_semantic_conservation as conservation_mod
 from _semantic_topology import load_workspace_topology
@@ -704,6 +705,61 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             )
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
+
+    def test_regression_summary_separates_source_semantic_and_task_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out_dir = root / "regression"
+            tasks_dir = root / ".taskmaster/tasks"
+            tasks_dir.mkdir(parents=True)
+            write_json(tasks_dir / "tasks.json", {"master": {"tasks": [{"id": "1", "title": "Baseline"}]}})
+            write_json(tasks_dir / "tasks_back.json", [])
+            write_json(tasks_dir / "tasks_gameplay.json", [])
+            write_json(out_dir / "task-candidates.enriched.json", {"candidates": [{"id": "T1"}]})
+            write_json(out_dir / "coverage-report.json", {
+                "status": "ok",
+                "coverage_model": "semantic-sink",
+                "missing_blocking_count": 0,
+            })
+            write_json(out_dir / "task-intents.quality.json", {
+                "status": "ok",
+                "issue_count": 0,
+                "issue_counts": {},
+            })
+            write_json(out_dir / "source-blocks.v1.json", {
+                "blocks": [
+                    {"block_id": "SB-1", "source_path": "docs/gdd/a.md"},
+                    {"block_id": "SB-2", "source_path": "docs/gdd/a.md"},
+                ],
+                "parser_inventory": {"paragraph": 2},
+                "delta": {"unchanged": ["SB-1"], "changed": ["SB-2"], "added": [], "removed": []},
+            })
+            write_json(out_dir / "requirements.index.json", {"anchors": [{"requirement_id": "LEGACY-1"}]})
+            semantic_path = root / "semantic-requirements.v1.json"
+            write_json(semantic_path, {
+                "schema_version": "newrouge.semantic-requirements.v1",
+                "source_revision": "source-set:test",
+                "source_accounting": [
+                    {"block_id": "SB-1", "disposition": "atomized", "delivery_potential": True},
+                    {"block_id": "SB-2", "disposition": "context", "delivery_potential": False},
+                ],
+                "requirements": [{
+                    "requirement_id": "FR-1",
+                    "delivery_relevant": True,
+                    "status": "active",
+                }],
+            })
+            summary = regression_mod.build_summary(root, out_dir, semantic_path)
+            self.assertEqual("chapter3.regression-check.v2", summary["schema"])
+            self.assertEqual(2, summary["layers"]["source"]["source_block_count"])
+            self.assertEqual("available", summary["layers"]["semantic"]["status"])
+            self.assertEqual(1.0, summary["layers"]["semantic"]["source_accounting_coverage"])
+            self.assertEqual(1, summary["layers"]["semantic"]["delivery_requirement_count"])
+            self.assertEqual(1, summary["layers"]["task"]["candidate_count"])
+            self.assertEqual(1, summary["shadow_compare"]["legacy_requirement_anchor_count"])
+
+            summary = regression_mod.build_summary(root, out_dir, None)
+            self.assertEqual("not_run", summary["layers"]["semantic"]["status"])
 
     def test_failed_closure_never_attempts_canonical_publication(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
