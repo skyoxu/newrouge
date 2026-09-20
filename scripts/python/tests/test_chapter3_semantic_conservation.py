@@ -1000,6 +1000,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "capabilities": root / "logs/ci/task-generation/capabilities.v1.json",
             "edges": root / "logs/ci/task-generation/topology-edges.v1.json",
             "candidates": root / "logs/ci/task-generation/task-candidates.enriched.json",
+            "coverage": root / "logs/ci/task-generation/coverage-report.json",
             "report": root / "logs/ci/task-generation/semantic-conservation-report.json",
         }
         manifest = {
@@ -1057,6 +1058,11 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "edges": [],
         })
         write_json(paths["candidates"], candidates)
+        coverage = coverage_mod.audit_semantic(
+            semantics, candidates, None, []
+        )
+        self.assertEqual("ok" if status == "passed" else "blocked", coverage["status"])
+        write_json(paths["coverage"], coverage)
         report, task_edges = conservation_mod.validate(
             root, ledger, semantics, "closure", candidates
         )
@@ -1145,6 +1151,34 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertTrue(summary["semantic_triplet_closure_passed"])
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("skipped", summary["local_refresh_status"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
+    def test_blocked_or_stale_task_coverage_cannot_promote_latest_successful(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            coverage = json.loads(paths["coverage"].read_text(encoding="utf-8"))
+            coverage["status"] = "blocked"
+            write_json(paths["coverage"], coverage)
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-coverage-blocked",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("blocked", summary["closure_evidence_status"])
+            self.assertIn("task_coverage_not_passed", summary["closure_evidence_reason"])
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
 
     def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
@@ -1319,6 +1353,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             edges = "logs/ci/task-generation/topology-edges.v1.json"
             candidates = "logs/ci/task-generation/task-candidates.enriched.json"
             report = "logs/ci/task-generation/semantic-conservation-report.json"
+            coverage = "logs/ci/task-generation/coverage-report.json"
 
         failed = {
             "local_refresh_status": "failed",
