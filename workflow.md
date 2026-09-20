@@ -207,253 +207,180 @@ MVG 集成补充：按 [MVG 集成验收](docs/workflows/mvg-integration-accepta
 
 ### 3.0 Choose The Chapter 3 Route First
 
-Do not treat `tasks.json` as a file that must be authored directly by Taskmaster MCP.
-The default route is now:
+Do not author `tasks.json` directly. Chapter 3 now uses semantic conservation before coarse task generation while preserving the existing triplet authority:
 
-- `tasks_back.json` and `tasks_gameplay.json` are the reviewable business task views.
-- `tasks.json` is a Taskmaster-compatible compiled view.
-- An LLM may generate or refine task candidates, but it must not directly write the final `tasks.json`.
-- Normalized candidates must be enriched with repository evidence before coverage audit.
-- Requirement coverage must be audited through a coverage matrix before triplet compilation.
+- `tasks_back.json` and `tasks_gameplay.json` remain reviewable business task views.
+- `tasks.json` remains the Taskmaster-compatible compiled view.
+- Original PRD/GDD/planning sources remain semantic authority.
+- Source Block / Semantic Requirement / Capability / topology are derived traceability layers.
+- Capability is optional and has no task status.
+- Chapter 3 generated dependencies are provisional and must be semantically corrected in Chapter 5 when needed.
 
-Choose one route before running scripts:
+Choose one route:
 
-1. `init`: new project initialization without a trusted task triplet baseline.
-2. `add`: added-task refresh for an existing task triplet.
+1. `init`: new project initialization.
+2. `add`: changed-source refresh for an existing triplet. Unchanged Source Blocks may be reused only when identity and content hash still match.
 
-### 3.1 Prepare Planning Inputs
+### 3.1 Declare Authoritative Planning Inputs
 
-Prepare PRD, GDD, traceability docs, and rules-supporting docs required by the project.
+Declare all PRD/GDD/epics/stories/custom planning inputs. Explicit source paths are fail-fast: a declared path/glob that resolves to no supported source file blocks the run.
 
-Source paths must be configurable per business repo. Do not assume every repo uses the same PRD/GDD/epics/stories directories.
-
-Use explicit path parameters when the business repo layout differs:
-
-- `--prd-path <dir|file|glob>`
-- `--gdd-path <dir|file|glob>`
-- `--epics-path <dir|file|glob>`
-- `--stories-path <dir|file|glob>`
-- `--source-glob <glob>` for additional custom planning sources; include ADR or overlay sources only when they are intentionally part of the planning input, not as Chapter 4/5-derived evidence
-
-If no explicit paths are provided, the extractor falls back to template defaults:
+Default source families remain:
 
 - `docs/prd/**/*.md`
 - `docs/gdd/**/*.md`
 - `docs/epics/**/*.md`
 - `docs/stories/**/*.md`
-ADR and overlay files are not default Chapter 3 requirement sources. Chapter 3 may enrich candidates with existing ADR, overlay, contract, test, and task-view evidence later, but it should not optimize task generation toward Chapter 4/5-derived fields.
 
-### 3.2 Extract Requirement Anchors
+Use repeatable `--prd-path`, `--gdd-path`, `--epics-path`, `--stories-path`, and `--source-glob` for non-default layouts. ADR/overlay files are not default Chapter 3 sources.
 
-Extract stable requirement anchors before generating any task:
+### 3.2 Build The Complete Source Block Ledger
 
-```powershell
-py -3 scripts/python/extract_requirement_anchors.py --mode init --prd-path <prd-dir> --gdd-path <gdd-dir> --epics-path <epics-dir> --stories-path <stories-dir>
-```
+Before any requirement-like filtering, build a complete deterministic ledger:
 
-For added tasks, scope extraction to changed sources when possible:
+    py -3 scripts/python/build_source_ledger.py --mode <init|add> --prd-path <path> --gdd-path <path> ...
 
-```powershell
-py -3 scripts/python/extract_requirement_anchors.py --mode add --prd-path <changed-prd-dir-or-file> --gdd-path <changed-gdd-dir-or-file> --epics-path <changed-epics-dir-or-file> --stories-path <changed-stories-dir-or-file>
-```
+Default outputs:
 
-For custom layouts, repeat parameters or mix them with `--source-glob`:
+- `logs/ci/task-generation/source-manifest.v1.json`
+- `logs/ci/task-generation/source-blocks.v1.json`
 
-```powershell
-py -3 scripts/python/extract_requirement_anchors.py --mode add --prd-path docs/design/prd --gdd-path docs/design/gdd --source-glob docs/planning/**/*.md
-```
+The ledger records headings, paragraphs, list items, blockquotes, table rows, code fences, supported JSON members/items, source path/hash, line range, full raw text, block type, ordinal and stable Source Block identity. `requirement_like_hint` is diagnostic only and never removes a block.
 
-Default output:
+For `add`, the ledger also reports unchanged/changed/added/removed Source Blocks. Reuse is allowed only when stable identity and content hash still match.
 
-- `logs/ci/task-generation/requirements.index.json`
+The legacy requirements index may still be generated from the ledger for downstream packaging evidence:
 
-### 3.3 Normalize Task Intents
+    py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --ledger-input logs/ci/task-generation/source-blocks.v1.json
 
-Normalize raw requirement anchors into implementation-shaped task intents before candidate generation:
+### 3.3 Semantic Projection A In Bounded Batches
 
-```powershell
-py -3 scripts/python/normalize_task_intents.py --mode init --id-prefix INT
-py -3 scripts/python/audit_task_intents_quality.py
-```
+Prepare deterministic batches so a large GDD never depends on fitting in one model context:
 
-For added tasks, prefer an explicit business prefix:
+    py -3 scripts/python/project_semantics_from_sources.py prepare
 
-```powershell
-py -3 scripts/python/normalize_task_intents.py --mode add --id-prefix <SG|NG|GM|GEN>
-```
+Outputs include a batch index, per-batch source payloads, and `semantic-projection.candidate.json`. Every batch records first/last Source Block, input count and accounted output count.
 
-Default output:
+The approved Chapter 3 model/Skill must read **every batch file** and fill every existing `block_result`. For each owned Source Block it must emit one or more semantic atoms or one explicit disposition. It must never delete a block result to make the projection pass.
 
-- `logs/ci/task-generation/task-intents.normalized.json`
+Allowed semantic kinds: `functional`, `non_functional`, `invariant`, `failure`, `scope`, `metric`, `constraint`, `risk`, `context`, `rationale` (FR/NFR/INV/FAIL/SCOPE/METRIC/CONSTRAINT/RISK/CONTEXT/RATIONALE aliases are accepted).
+
+Allowed dispositions: `atomized`, `context`, `rationale`, `duplicate`, `superseded`, `deferred`, `out_of_scope`, `adr_owned`, `unresolved`.
+
+Compile the projection:
+
+    py -3 scripts/python/project_semantics_from_sources.py compile
+
+Then run the first hard semantic conservation gate:
+
+    py -3 scripts/python/validate_semantic_conservation.py --stage projection
+
+This blocks on missing Source Block accounting, invalid semantic/source refs, source hash drift, or delivery-potential `unresolved` blocks without an explicit owner decision, reason and resolved disposition.
+
+### 3.4 Normalize Coarse Task Intents From Validated Semantics
+
+After projection PASS:
+
+    py -3 scripts/python/normalize_task_intents.py --mode <init|add> --id-prefix <prefix>
+    py -3 scripts/python/audit_task_intents_quality.py
+
+`normalize_task_intents.py` prefers `semantic-requirements.v1.json` when present. It generates Tasks only for active delivery semantics that require Task sinks. Explicit global constraint / quality gate / ADR/deferred/exclusion sinks do not require fake Tasks or fake Capabilities.
+
+Every generated intent preserves `semantic_refs`, optional `capability_refs`, Source refs and a complexity score. `depends_on` is explicitly `provisional`; same owner/layer or generation adjacency is not semantic dependency proof.
+
+### 3.5 Generate And Enrich Task Candidates
+
+    py -3 scripts/python/generate_task_candidates_from_sources.py --mode <init|add> --id-prefix <prefix>
+    py -3 scripts/python/enrich_task_candidates.py
+
+Enrichment preserves existing ADR/overlay/contract/test evidence and also emits advisory `implementation_files`, `implementation_overlap_candidates`, and `file_churn_signal`. File overlap is a review signal only; it does not mechanically merge tasks.
+
+Complexity remains governed by the existing rule: Tasks above 7/10 must split; when semantic cohesion prevents further Task splitting, use Subtasks.
+
+### 3.6 Audit Semantic Sink Coverage
+
+    py -3 scripts/python/audit_task_candidate_coverage.py
+
+The primary coverage model is now semantic sink coverage:
+
+- every active delivery Requirement must have a Task candidate or explicit governed non-Task sink;
+- every Task semantic ref must resolve;
+- Capability is optional;
+- the legacy P0/P1 positive-filter view remains only a downstream packaging gate, bridged by Source Block identity.
+
+Then run the closure conservation gate:
+
+    py -3 scripts/python/validate_semantic_conservation.py --stage closure
+
+This additionally blocks active delivery orphans, stale/unknown Task claims and complexity above 7. It emits final Task sink edges into `topology-edges.v1.json`.
+
+### 3.7 Compile And Review The Task Triplet Patch
+
+Generate a patch first:
+
+    py -3 scripts/python/compile_task_triplet.py --mode <init|add>
+
+Write only after review:
+
+    py -3 scripts/python/compile_task_triplet.py --mode <init|add> --write
+
+Task views preserve lightweight `semantic_refs`, optional `capability_refs`, provisional dependency metadata, complexity and overlap signals. Taskmaster remains the only task-state authority.
+
+### 3.8 Build And Validate The Authoritative Triplet
+
+Rebuild the compiled view and run the existing baseline unchanged:
+
+    py -3 scripts/python/build_taskmaster_tasks.py
+    py -3 scripts/python/task_links_validate.py
+    py -3 scripts/python/check_tasks_all_refs.py
+    py -3 scripts/python/validate_task_master_triplet.py
+    py -3 scripts/python/backfill_semantic_review_tier.py --mode conservative --write
+    py -3 scripts/python/validate_semantic_review_tier.py --mode conservative
+
+Closure is not PASS until these baseline validators are clean.
+
+### 3.9 Refresh Workspace Topology At Every Run End
+
+Every Chapter 3 run must finish by recording its local topology attempt:
+
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>
 
 Rules:
 
-- This layer is deterministic and auditable; it is the PRD/GDD-to-task-intent rewrite boundary.
-- Do not let an LLM write `.taskmaster/tasks/tasks.json` directly.
-- Every intent must preserve `requirement_ids` and `source_refs`.
-- Review `logs/ci/task-generation/task-intents.quality.json` when the audit reports duplicate prefixes, generic titles, metadata noise, or oversized intent groups.
-- Keep Chapter 4/5-derived overlay, contract, and semantic tier fields out of Chapter 3 optimization pressure.
+- every run may update Workspace **Last Attempt**;
+- only semantic-conservation PASS + triplet baseline PASS may update Workspace **Latest Successful**;
+- a failed/partial attempt never overwrites Latest Successful;
+- Project Health exposes Workspace `attempt` and `stable` separately from Main;
+- Workspace state never advances canonical KCP current/LKG.
 
-### 3.4 Generate Task Candidates
+After closure PASS, the reviewed stable artifacts may be written under `docs/planning/semantic-topology/` with `--write-planning-artifacts`. Formal KCP publication remains explicit and requires committed clean `main`; use `--publish-if-eligible` only under those conditions.
 
-Generate normalized task candidates from task intents. If no intent file exists, the script falls back to requirement-anchor grouping for backward compatibility:
+### 3.10 Chapter 3 Stop-Loss
 
-```powershell
-py -3 scripts/python/generate_task_candidates_from_sources.py --mode init --id-prefix GEN
-```
+Stop before Chapter 4/6 when any of these are true:
 
-For added tasks, prefer an explicit business prefix:
+- declared source paths are missing;
+- Source Block accounting is incomplete;
+- a semantic batch omits or duplicates primary ownership;
+- source hash drift is detected;
+- delivery-potential semantics remain unresolved without explicit owner decision/rationale;
+- active delivery Requirement has no explainable sink;
+- Task semantic refs are missing/stale;
+- complexity exceeds 7 without split/subtask treatment;
+- triplet validators fail;
+- the same deterministic failure fingerprint repeats.
 
-```powershell
-py -3 scripts/python/generate_task_candidates_from_sources.py --mode add --id-prefix <SG|NG|GM|GEN>
-```
+### 3.11 Optional Regression Check
 
-Default output:
+Use the read-only regression check against a business repo:
 
-- `logs/ci/task-generation/task-candidates.normalized.json`
+    py -3 scripts/python/run_chapter3_regression_check.py <business-repo> --prd-path docs/prd --gdd-path docs/gdd --gdd-path _bmad-output/gdd.md
 
-Rules:
+The regression report must expose full Source Block counts alongside legacy anchor counts. It is diagnostic evidence only and must not tune production rules to reproduce mature Chapter 4/5/6/7 history.
 
-- LLM assistance is allowed only if the result is converted back into the normalized schema.
-- Do not let an LLM write `.taskmaster/tasks/tasks.json` directly.
-- Do not skip `requirement_ids` or `source_refs`.
+### 3.12 Chapter 3 Semantic Boundary
 
-### 3.5 Enrich Task Candidates
-
-Enrich normalized candidates with repository evidence before coverage audit:
-
-```powershell
-py -3 scripts/python/enrich_task_candidates.py
-```
-
-Default output:
-
-- `logs/ci/task-generation/task-candidates.enriched.json`
-
-The enrichment layer uses existing ADRs, overlays, contract event constants, tests, and task views to improve:
-
-- `adr_refs`
-- `chapter_refs`
-- `overlay_refs`
-- `contractRefs` as domain event type values, not contract file paths
-- `test_refs`
-- `acceptance`
-- `test_strategy`
-- `owner`
-- `layer`
-- `labels`
-- `evidence_refs`
-- duplicate-candidate signals
-
-### 3.6 Audit The Coverage Matrix
-
-Audit requirement coverage before compiling task views:
-
-```powershell
-py -3 scripts/python/audit_task_candidate_coverage.py
-```
-
-Default output:
-
-- `logs/ci/task-generation/coverage-report.json`
-
-Hard rules:
-
-- Missing `P0/P1` requirement coverage blocks triplet compilation.
-- Every candidate task must trace back to `requirement_ids` and `source_refs`.
-- Added tasks must be checked against the coverage matrix, not only by title similarity.
-- Duplicate candidates must be reviewed before `compile_task_triplet.py --write`.
-
-### 3.7 Compile A Task Triplet Patch
-
-Generate a patch first; do not write task files by default:
-
-```powershell
-py -3 scripts/python/compile_task_triplet.py --mode init
-```
-
-For added tasks:
-
-```powershell
-py -3 scripts/python/compile_task_triplet.py --mode add
-```
-
-Default output:
-
-- `logs/ci/task-generation/task-triplet.patch.json`
-
-Write only after reviewing the patch:
-
-```powershell
-py -3 scripts/python/compile_task_triplet.py --mode <init|add> --write
-```
-
-### 3.8 Build The Authoritative Triplet
-
-Real business repositories use this standard shape:
-
-- `.taskmaster/tasks/tasks.json`
-- `.taskmaster/tasks/tasks_back.json`
-- `.taskmaster/tasks/tasks_gameplay.json`
-
-If `tasks_back.json` and `tasks_gameplay.json` exist and you need to rebuild `tasks.json`, run:
-
-```powershell
-py -3 scripts/python/build_taskmaster_tasks.py
-```
-
-For added tasks, write or patch `tasks_back.json` / `tasks_gameplay.json` first, then rebuild `tasks.json`.
-
-### 3.9 Validate The Triplet Baseline
-
-```powershell
-py -3 scripts/python/task_links_validate.py
-py -3 scripts/python/check_tasks_all_refs.py
-py -3 scripts/python/validate_task_master_triplet.py
-```
-
-After adding tasks, rerun at least this section before Chapter 4 overlay work or Chapter 6 task execution.
-
-### 3.10 Standardize Semantic Review Tier Early
-
-Recommended default:
-
-```powershell
-py -3 scripts/python/backfill_semantic_review_tier.py --mode conservative --write
-py -3 scripts/python/validate_semantic_review_tier.py --mode conservative
-```
-
-Use `conservative` by default. Do not materialize runtime profile defaults into task views unless that is an explicit project decision.
-
-### 3.11 Chapter 3 Stop-Loss
-
-Stop before entering Chapter 4 or Chapter 6 when any of these are true:
-
-- `coverage-report.json` still has P0/P1 missing coverage.
-- A candidate task has no `requirement_ids` or `source_refs`.
-- Added tasks duplicate existing task semantics without an explicit merge or supersede decision.
-- `task_links_validate.py`, `check_tasks_all_refs.py`, or `validate_task_master_triplet.py` fails.
-- `semantic_review_tier` is missing or fails validation.
-
-### 3.12 Optional Regression Check
-
-Use the read-only regression check to validate Chapter 3 generation quality against a business repo without writing task files:
-
-```powershell
-py -3 scripts/python/run_chapter3_regression_check.py <business-repo> --prd-path docs/prd --gdd-path docs/gdd
-```
-
-For custom layouts, repeat input path flags:
-
-```powershell
-py -3 scripts/python/run_chapter3_regression_check.py <business-repo> --prd-path docs/prd --gdd-path docs/gdd --gdd-path _bmad-output/gdd.md --epics-path _bmad-output/epics.md
-```
-
-Default output:
-
-- `logs/analysis/chapter3-regression/<repo>/regression-summary.json`
-
-This check is for regression evidence only. Do not tune Chapter 3 rules to exactly reproduce a mature repo's Chapter 4/5/6/7 task history.
+Chapter 3 intentionally produces coarse but source-complete delivery structure. It does **not** perform the independent second GDD reread or final Acceptance stabilization; those remain Chapter 5 responsibilities.
 
 ## 4. Phase 2：Overlays 与 Contracts 基线
 
