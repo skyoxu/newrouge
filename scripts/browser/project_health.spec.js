@@ -280,7 +280,7 @@ test.describe('project health semantic topology', () => {
     await page.goto(base() + '/knowledge/topology?mode=main&focus=acceptance%3AAC-T7-abc');
     const acceptance = page.locator('details[data-topology-kind="acceptance"][data-topology-id="AC-T7-abc"]');
     await expect(acceptance).toBeVisible();
-    await expect(acceptance).toHaveAttribute('open', '');
+    await expect(acceptance).toHaveJSProperty('open', true);
 
     await page.locator('#filter-state').selectOption('orphan');
     const orphan = page.locator('details[data-topology-kind="requirement"][data-topology-id="FR-ORPHAN"]');
