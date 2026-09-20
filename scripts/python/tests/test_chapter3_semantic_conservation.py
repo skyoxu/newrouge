@@ -305,7 +305,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 for index in range(1, 5)
             ],
         }
-        index, batches = semantics_mod.build_batches(
+        index, batches = projection_mod.build_batches(
             ledger, max_blocks=2, max_chars=3000
         )
         self.assertEqual(2, index["batch_count"])
@@ -326,7 +326,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 {**ledger["blocks"][1], "block_id": "SB-B", "source_path": "docs/gdd/b.md"},
             ],
         }
-        _index, separated = semantics_mod.build_batches(
+        _index, separated = projection_mod.build_batches(
             cross_file, max_blocks=1, max_chars=3000
         )
         self.assertEqual([], separated[0]["context_after_block_ids"])
@@ -357,7 +357,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                     },
                 ],
             }
-            batch_index, candidate = semantics_mod.prepare(
+            batch_index, candidate = projection_mod.prepare(
                 ledger, 1, root / "batches", max_chars=3000
             )
             by_block = {
@@ -395,7 +395,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 }],
             })
 
-            semantics, _caps, edges = semantics_mod.compile_projection(
+            semantics, _caps, edges = projection_mod.compile_projection(
                 ledger, batch_index, candidate
             )
             automatic = [
@@ -430,7 +430,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 "statement": "The shop must never upgrade cards.",
                 "source_block_ids": ["SB-2"],
             }
-            semantics, _caps, _edges = semantics_mod.compile_projection(
+            semantics, _caps, _edges = projection_mod.compile_projection(
                 ledger, batch_index, candidate
             )
             merged = next(
@@ -457,14 +457,14 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                     "raw_text": "Rule.",
                 }],
             }
-            batch_index, candidate = semantics_mod.prepare(
+            batch_index, candidate = projection_mod.prepare(
                 ledger, 1, root / "batches", max_chars=3000
             )
             duplicate = dict(batch_index["batches"][0])
             duplicate["batch_id"] = "BATCH-9999"
             batch_index["batches"].append(duplicate)
             with self.assertRaisesRegex(ValueError, "duplicate primary batch ownership"):
-                semantics_mod.compile_projection(ledger, batch_index, candidate)
+                projection_mod.compile_projection(ledger, batch_index, candidate)
 
     def test_projection_canonicalizes_adr_owned_sink_alias(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -480,7 +480,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                     "raw_text": "Architecture owns this constraint.",
                 }],
             }
-            batch_index, candidate = semantics_mod.prepare(
+            batch_index, candidate = projection_mod.prepare(
                 ledger, 1, root / "batches", max_chars=3000
             )
             candidate["batch_summaries"][0]["output_accounted_count"] = 1
@@ -502,7 +502,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                     }],
                 }],
             })
-            semantics, _caps, edges = semantics_mod.compile_projection(
+            semantics, _caps, edges = projection_mod.compile_projection(
                 ledger, batch_index, candidate
             )
             requirement = semantics["requirements"][0]
