@@ -12,6 +12,8 @@ The Knowledge Control Plane only answers: **where should a trusted consumer read
 
 `docs/planning/semantic-topology/**` is a revision-bound derived planning topology that KCP may index and locate. It remains below original GDD/PRD/ADR/Task/Acceptance authority. Workspace/Chapter-run topology previews are not canonical KCP generations and never advance `current` or `last-known-good`.
 
+Topology artifacts and their machine-readable schemas are included in the trusted-ref source snapshot/catalog, so the existing publication generation hash binds their exact bytes through the snapshot/catalog artifacts. Schema documents are cataloged for integrity but are `semantic_eligible=false` and therefore do not compete in ordinary Locator ranking.
+
 ## Layers
 
 1. `knowledge/snapshots/repository-source-snapshot.v1.json`
