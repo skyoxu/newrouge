@@ -57,6 +57,17 @@
           },
           "raw_text": {
             "type": "string"
+          },
+          "json_pointer": {
+            "type": "string"
+          },
+          "source_char_start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source_char_end_exclusive": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
