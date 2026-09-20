@@ -27,6 +27,7 @@ Machine-readable minimum contracts live under `docs/planning/semantic-topology/s
 - Capability is optional grouping only. It has no sprint, status or completion lifecycle.
 - Taskmaster remains the only task-state authority.
 - Acceptance remains governed by the Chapter 5/task acceptance system.
+- Project Health may project current task-view `acceptance[]` entries as read-only Acceptance nodes using stable `task_id + statement hash` ids. These nodes remain task-view authority; only explicit topology edges may mark semantic origin as mapped.
 - Scene/script/resource/test links are evidence and navigation, not proof that a semantic requirement is accepted.
 - Main topology is bound to `refs/heads/main` and canonical KCP publication identity.
 - Workspace/Chapter-run topology is preview-only and must use an explicit `workspace:<digest>` or run identity. It never updates KCP `current` / `last-known-good`.
