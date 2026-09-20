@@ -1,0 +1,323 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PYTHON_DIR = REPO_ROOT / "scripts" / "python"
+if str(PYTHON_DIR) not in sys.path:
+    sys.path.insert(0, str(PYTHON_DIR))
+
+import build_source_ledger as ledger_mod
+import chapter5_semantic_reconciliation as ch5
+import chapter6_knowledge as chapter6_knowledge
+import chapter6_route
+
+
+def write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+class Chapter5SemanticReconciliationTests(unittest.TestCase):
+    def _prepare_source(self, root: Path, text: str = "# Rules\n\nU1 route choice is irreversible.\n"):
+        source = root / "docs/gdd/a.md"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(text, encoding="utf-8")
+        manifest, ledger = ledger_mod.build_ledger(
+            root, ["docs/gdd/a.md"], "init", explicit=True
+        )
+        manifest_path = root / ch5.DEFAULT_SOURCE_MANIFEST
+        ledger_path = root / ch5.DEFAULT_SOURCE_LEDGER
+        write_json(manifest_path, manifest)
+        write_json(ledger_path, ledger)
+        return manifest_path, ledger_path, ledger
+
+    def _compile_snapshot(self, root: Path, *, statement: str, priority: str = "P1"):
+        manifest_path, ledger_path, ledger = self._prepare_source(root)
+        candidate_path = root / ch5.DEFAULT_EXTRACTION_CANDIDATE
+        snapshot_path = root / ch5.DEFAULT_EXTRACTION_SNAPSHOT
+        result = ch5.prepare_extraction_b(
+            root,
+            manifest_path=manifest_path,
+            ledger_path=ledger_path,
+            candidate_path=candidate_path,
+            snapshot_path=snapshot_path,
+        )
+        self.assertEqual("review_required", result["status"])
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        target = None
+        for row in candidate["block_results"]:
+            if "irreversible" in row["raw_source"]:
+                target = row
+                row.update({
+                    "review_status": "reviewed",
+                    "delivery_potential": True,
+                    "disposition": "",
+                    "obligations": [{
+                        "statement": statement,
+                        "kind": "invariant",
+                        "priority": priority,
+                        "delivery_relevant": True,
+                        "source_block_ids": [row["block_id"]],
+                    }],
+                })
+            else:
+                row.update({
+                    "review_status": "reviewed",
+                    "delivery_potential": False,
+                    "disposition": "context",
+                    "obligations": [],
+                })
+        self.assertIsNotNone(target)
+        write_json(candidate_path, candidate)
+        snapshot = ch5.compile_extraction_b(
+            root,
+            manifest_path=manifest_path,
+            ledger_path=ledger_path,
+            candidate_path=candidate_path,
+            snapshot_path=snapshot_path,
+        )
+        self.assertEqual("complete", snapshot["status"])
+        return manifest_path, ledger_path, ledger, snapshot
+
+    def _write_semantics(self, root: Path, ledger: dict, *, include: bool = True):
+        block = next(row for row in ledger["blocks"] if "irreversible" in row["raw_text"])
+        requirements = []
+        if include:
+            requirements = [{
+                "requirement_id": "INV-U1",
+                "kind": "invariant",
+                "statement": "U1 route choice is irreversible.",
+                "source_block_ids": [block["block_id"]],
+                "delivery_relevant": True,
+                "status": "active",
+                "priority": "P1",
+                "non_task_sinks": [],
+            }]
+        payload = {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "source_revision": ledger["source_revision"],
+            "source_manifest_sha256": ledger["source_manifest_sha256"],
+            "source_accounting": [],
+            "requirements": requirements,
+        }
+        path = root / ch5.DEFAULT_CH3_SEMANTICS
+        write_json(path, payload)
+        return path
+
+    def _write_task(self, root: Path, *, semantic_refs=None, acceptance=None, depends_on=None, overlap=None):
+        semantic_refs = list(semantic_refs or [])
+        acceptance = list(acceptance or [])
+        row = {
+            "id": "GM-0001",
+            "taskmaster_id": 1,
+            "title": "Route choice",
+            "status": "pending",
+            "semantic_refs": semantic_refs,
+            "acceptance": acceptance,
+            "depends_on": list(depends_on or []),
+            "implementation_overlap_candidates": list(overlap or []),
+            "overlay_refs": ["docs/architecture/overlays/PRD/08/_index.md"],
+            "contractRefs": ["core.route.selected"],
+        }
+        write_json(root / ".taskmaster/tasks/tasks_gameplay.json", [row])
+        write_json(root / ".taskmaster/tasks/tasks_back.json", [])
+        return row
+
+    def test_global_orphan_finds_missing_semantic_even_when_all_task_refs_are_removed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=False)
+            self._write_task(root, semantic_refs=[], acceptance=[])
+            out = ch5.reconciliation_path_for_task(root, "1")
+            readiness = ch5.readiness_path_for_task(root, "1")
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=None,
+                out_path=out,
+                readiness_path=readiness,
+            )
+            statuses = {row["status"] for row in reconciliation["findings"]}
+            self.assertIn("missing_in_ch3", statuses)
+            self.assertEqual(1, reconciliation["summary"]["orphan_delivery_semantic"])
+            self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_equivalent_wording_is_not_required_to_match_as_raw_string(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="Route choice cannot be reversed once selected."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "authority_refs": ["ADR-ROUTE"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+                "allow_concerns": True,
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            source_findings = [
+                row for row in reconciliation["findings"]
+                if row.get("finding_type") == "source_semantic"
+                and row.get("chapter5_obligation")
+            ]
+            self.assertEqual("equivalent", source_findings[0]["status"])
+            self.assertIn(gate["readiness"], {"READY", "CONCERNS"})
+            self.assertTrue(gate["closure_allowed"])
+
+    def test_extraction_b_cache_reuses_same_identity_and_invalidates_on_source_change(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, ledger_path, _ledger, snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            candidate_path = root / ch5.DEFAULT_EXTRACTION_CANDIDATE
+            snapshot_path = root / ch5.DEFAULT_EXTRACTION_SNAPSHOT
+            hit = ch5.prepare_extraction_b(
+                root,
+                manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                candidate_path=candidate_path,
+                snapshot_path=snapshot_path,
+            )
+            self.assertEqual("cache_hit", hit["status"])
+            self.assertEqual(snapshot["extraction_b_snapshot_id"], hit["extraction_b_snapshot_id"])
+
+            source = root / "docs/gdd/a.md"
+            source.write_text("# Rules\n\nU1 route choice is irreversible after confirmation.\n", encoding="utf-8")
+            manifest2, ledger2 = ledger_mod.build_ledger(
+                root, ["docs/gdd/a.md"], "init", explicit=True
+            )
+            write_json(manifest_path, manifest2)
+            write_json(ledger_path, ledger2)
+            miss = ch5.prepare_extraction_b(
+                root,
+                manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                candidate_path=candidate_path,
+                snapshot_path=snapshot_path,
+            )
+            self.assertEqual("review_required", miss["status"])
+            self.assertNotEqual(snapshot["extraction_b_snapshot_id"], miss["extraction_b_snapshot_id"])
+
+    def test_dependency_and_overlap_decisions_are_machine_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+                depends_on=[2],
+                overlap=[3],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+                "dependency_decisions": [
+                    {
+                        "dependency_id": 2,
+                        "action": "remove",
+                        "dependency_reason": "Chapter 3 owner/layer adjacency only.",
+                        "dependency_evidence": [],
+                    },
+                    {
+                        "dependency_id": 4,
+                        "action": "add",
+                        "relation": "contract",
+                        "dependency_reason": "Consumes route-selection contract.",
+                        "dependency_evidence": ["core.route.selected"],
+                    },
+                ],
+                "overlap_decisions": [{
+                    "other_task_id": 3,
+                    "status": "keep_separate",
+                    "rationale": "Shared scene surface but separate semantic ownership.",
+                }],
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            actions = {(row["dependency_id"], row["action"]) for row in reconciliation["dependency_corrections"]}
+            self.assertIn(("2", "remove"), actions)
+            self.assertIn(("4", "add"), actions)
+            self.assertEqual("keep_separate", reconciliation["overlap_reviews"][0]["status"])
+            self.assertNotEqual("BLOCKED", gate["readiness"])
+
+    def test_chapter6_route_blocks_when_readiness_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, payload = chapter6_route.route_chapter6(
+                repo_root=Path(tmp), task_id="1"
+            )
+            self.assertEqual(3, rc)
+            self.assertEqual("chapter5_readiness", payload["blocked_by"])
+            self.assertEqual("return_to_chapter5", payload["chapter6_next_action"])
+
+    def test_chapter6_capture_never_mutates_global_knowledge_or_project_health(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            current = root / "knowledge/indexes/current.json"
+            lkg = root / "knowledge/indexes/last-known-good.json"
+            health = root / "logs/ci/project-health-knowledge/latest.json"
+            links = root / "docs/knowledge/generated/task-resource-links.json"
+            write_json(current, {"generation_id": "g1"})
+            write_json(lkg, {"generation_id": "g0"})
+            write_json(health, {"revision": "main", "scene_graph": {}})
+            write_json(links, {"generated": []})
+            before = {path: path.read_bytes() for path in (current, lkg, health, links)}
+
+            result = chapter6_knowledge.run(root, "1")
+            self.assertEqual("knowledge_captured", result["status"])
+            self.assertEqual("not_performed", result["global_refresh"])
+            self.assertTrue((root / "logs/ci/chapter6-knowledge/task-1/knowledge-capture-candidate.json").is_file())
+            for path, data in before.items():
+                self.assertEqual(data, path.read_bytes())
+
+            rejected = chapter6_knowledge.run(root, "1", write_task_refs=True)
+            self.assertEqual("knowledge_capture_failed", rejected["status"])
+            self.assertEqual("chapter6_global_task_ref_write_forbidden", rejected["reason"])
+
+
+if __name__ == "__main__":
+    unittest.main()
