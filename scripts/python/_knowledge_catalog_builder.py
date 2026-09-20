@@ -330,7 +330,13 @@ def _enrich_topology_nodes(modules: list[dict[str, Any]]) -> None:
                 if block:
                     authority_sources.extend(block.get("authority_sources", []))
             node["authority_sources"] = authority_sources
-            for capability_id in node.get("capability_ids", []):
+            capability_ids = set(node.get("capability_ids", []))
+            capability_ids.update(
+                str(item.get("node_id"))
+                for item in node.get("related_nodes", [])
+                if item.get("node_type") == "capability" and item.get("node_id")
+            )
+            for capability_id in sorted(capability_ids):
                 capability = lookup.get(("capability", capability_id))
                 if capability:
                     for task_id in capability.get("related_task_ids", []):
