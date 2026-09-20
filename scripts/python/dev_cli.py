@@ -516,6 +516,8 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
                 report_path=root / args.report,
                 coverage_path=root / args.coverage,
                 triplet_attestation_path=root / args.triplet_attestation,
+                reconciliation_path=root / args.reconciliation,
+                readiness_path=root / args.readiness,
             )
     except ValueError as exc:
         print(json.dumps({
@@ -955,6 +957,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--triplet-attestation",
         default="logs/ci/task-generation/triplet-baseline-attestation.json",
     )
+    p_refresh.add_argument("--reconciliation", default="logs/ci/chapter5/reconciliation/latest.json")
+    p_refresh.add_argument("--readiness", default="logs/ci/chapter5/readiness/latest.json")
     p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
     from run_mvg_acceptance import register_arguments, run as run_mvg
