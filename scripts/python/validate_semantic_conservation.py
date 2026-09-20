@@ -34,16 +34,38 @@ def sha256_file(path: Path) -> str:
 
 
 def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, Any]) -> dict[str, Any]:
+    binding_mismatches = []
+    ledger_revision = str(ledger.get("source_revision") or "")
+    semantic_revision = str(semantics.get("source_revision") or "")
+    if not semantic_revision or semantic_revision != ledger_revision:
+        binding_mismatches.append({
+            "field": "source_revision",
+            "ledger": ledger_revision,
+            "semantics": semantic_revision,
+        })
+    ledger_manifest = str(ledger.get("source_manifest_sha256") or "")
+    semantic_manifest = str(semantics.get("source_manifest_sha256") or "")
+    if not semantic_manifest or semantic_manifest != ledger_manifest:
+        binding_mismatches.append({
+            "field": "source_manifest_sha256",
+            "ledger": ledger_manifest,
+            "semantics": semantic_manifest,
+        })
+
     blocks = {
         str(row.get("block_id")): row
         for row in ledger.get("blocks", [])
         if isinstance(row, dict) and row.get("block_id")
     }
-    accounting = {
-        str(row.get("block_id")): row
-        for row in semantics.get("source_accounting", [])
+    accounting_rows = [
+        row for row in semantics.get("source_accounting", [])
         if isinstance(row, dict) and row.get("block_id")
-    }
+    ]
+    accounting_ids = [str(row.get("block_id")) for row in accounting_rows]
+    duplicate_accounting = sorted({
+        block_id for block_id in accounting_ids if accounting_ids.count(block_id) > 1
+    })
+    accounting = {str(row.get("block_id")): row for row in accounting_rows}
     unaccounted = sorted(set(blocks) - set(accounting))
     unknown_accounting = sorted(set(accounting) - set(blocks))
     invalid_semantics = []
@@ -109,6 +131,8 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
             unresolved_delivery.append(block_id)
 
     return {
+        "binding_mismatches": binding_mismatches,
+        "duplicate_accounting_blocks": duplicate_accounting,
         "unaccounted_source_blocks": unaccounted,
         "unknown_accounting_blocks": unknown_accounting,
         "invalid_semantics": invalid_semantics,
@@ -233,6 +257,8 @@ def validate(
     if stage == "closure":
         closure, task_edges = closure_checks(semantics, candidates)
     blocking_counts = {
+        "binding_mismatches": len(projection["binding_mismatches"]),
+        "duplicate_accounting_blocks": len(projection["duplicate_accounting_blocks"]),
         "unaccounted_source_blocks": len(projection["unaccounted_source_blocks"]),
         "unknown_accounting_blocks": len(projection["unknown_accounting_blocks"]),
         "invalid_semantics": len(projection["invalid_semantics"]),
