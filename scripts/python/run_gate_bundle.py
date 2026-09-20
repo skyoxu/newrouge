@@ -335,6 +335,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.python.tests.test_run_single_task_chapter6_lane",
                 "scripts.python.tests.test_cross_repo_migration",
                 "scripts.python.tests.test_semantic_topology",
+                "scripts.python.tests.test_semantic_topology_http",
                 "scripts.sc.tests.test_generate_knowledge_links",
                 "scripts.sc.tests.test_godot_scene_graph",
                 "scripts.sc.tests.test_project_health_navigation",
