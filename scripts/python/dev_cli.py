@@ -454,6 +454,34 @@ def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
     return 0 if result.get("status") == "knowledge_captured" else 1
 
 
+def cmd_run_chapter3_guarded(args: argparse.Namespace) -> int:
+    """Run one scripted Chapter 3 command inside the start/end attempt guard."""
+
+    from run_chapter3_guarded import run_guarded
+    command = list(args.command or [])
+    if command and command[0] == "--":
+        command = command[1:]
+    try:
+        rc, result = run_guarded(
+            Path(args.repo_root).resolve(),
+            trigger_run_id=args.trigger_run_id,
+            command=command,
+            triplet_status_on_success=args.triplet_status_on_success,
+            write_planning=bool(args.write_planning_artifacts),
+            publish_if_eligible=bool(args.publish_if_eligible),
+        )
+    except ValueError as exc:
+        print(json.dumps({
+            "schema_version": "chapter3.guarded-run-summary.v1",
+            "status": "failed",
+            "trigger_run_id": args.trigger_run_id,
+            "reason": str(exc),
+        }, ensure_ascii=False))
+        return 2
+    print(json.dumps(result, ensure_ascii=False))
+    return rc
+
+
 def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     """Refresh a registered Chapter closure topology attempt/stable view."""
 
@@ -882,6 +910,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--semantic", action="store_true")
     p_c6k.add_argument("--llm-backend", default="codex-cli")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
+
+    p_ch3_guard = sub.add_parser(
+        "run-chapter3-guarded",
+        help="run a scripted Chapter 3 command with guaranteed start/end Attempt Preview refresh",
+    )
+    p_ch3_guard.add_argument("--repo-root", default=".")
+    p_ch3_guard.add_argument("--trigger-run-id", required=True)
+    p_ch3_guard.add_argument(
+        "--triplet-status-on-success",
+        choices=["passed", "blocked", "unknown"],
+        default="unknown",
+    )
+    p_ch3_guard.add_argument("--write-planning-artifacts", action="store_true")
+    p_ch3_guard.add_argument("--publish-if-eligible", action="store_true")
+    p_ch3_guard.add_argument("command", nargs=argparse.REMAINDER)
+    p_ch3_guard.set_defaults(func=cmd_run_chapter3_guarded)
 
     p_refresh = sub.add_parser(
         "refresh-knowledge",
