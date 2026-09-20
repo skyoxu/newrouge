@@ -121,6 +121,52 @@ def _task_rows(task_details: list[dict[str, Any]] | None) -> list[dict[str, Any]
     return rows
 
 
+def _acceptance_rows(task_details: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Project existing task-view acceptance authority into stable read-only nodes."""
+    by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    for detail in task_details or []:
+        task = detail.get("task") if isinstance(detail.get("task"), dict) else {}
+        task_id = task.get("id")
+        if task_id is None:
+            continue
+        mappings = detail.get("mappings") if isinstance(detail.get("mappings"), dict) else {}
+        for view_name, rows in mappings.items():
+            if view_name not in {"tasks_back", "tasks_gameplay"} or not isinstance(rows, list):
+                continue
+            source_path = f".taskmaster/tasks/{view_name}.json"
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                values = row.get("acceptance", [])
+                if not isinstance(values, list):
+                    continue
+                for index, value in enumerate(values, 1):
+                    if not isinstance(value, str) or not value.strip():
+                        continue
+                    statement = value.strip()
+                    key = (str(task_id), statement)
+                    digest = hashlib.sha256(
+                        (str(task_id) + "\0" + statement).encode("utf-8")
+                    ).hexdigest()[:12]
+                    node = by_key.setdefault(key, {
+                        "acceptance_id": f"AC-T{task_id}-{digest}",
+                        "task_id": str(task_id),
+                        "statement": statement,
+                        "source_views": [],
+                        "source_paths": [],
+                        "source_indexes": [],
+                        "topology_origin": "unmapped",
+                    })
+                    if view_name not in node["source_views"]:
+                        node["source_views"].append(view_name)
+                    if source_path not in node["source_paths"]:
+                        node["source_paths"].append(source_path)
+                    marker = {"view": view_name, "index": index}
+                    if marker not in node["source_indexes"]:
+                        node["source_indexes"].append(marker)
+    return sorted(by_key.values(), key=lambda row: (row["task_id"], row["acceptance_id"]))
+
+
 def _sha_field(value: Any) -> bool:
     if not isinstance(value, str):
         return False
@@ -270,11 +316,16 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     capabilities = _rows(capabilities_doc, "capabilities")
     edges = _rows(edges_doc, "edges")
     tasks = _task_rows(task_details)
+    acceptance = _acceptance_rows(task_details)
 
     block_ids = {node_id for row in source_blocks if (node_id := _node_id("source_block", row))}
     requirement_ids = {node_id for row in requirements if (node_id := _node_id("requirement", row))}
     capability_ids = {node_id for row in capabilities if (node_id := _node_id("capability", row))}
     task_ids = {row["task_id"] for row in tasks}
+    acceptance_ids = {
+        node_id for row in acceptance
+        if (node_id := _node_id("acceptance", row))
+    }
 
     for kind, rows in (("source_block", source_blocks), ("requirement", requirements),
                        ("capability", capabilities)):
@@ -331,6 +382,11 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
                   "source_blocks": set(), "acceptance": set()}
         for task_id in task_ids
     }
+    for row in acceptance:
+        task_id = str(row.get("task_id", ""))
+        acceptance_id = _node_id("acceptance", row)
+        if task_id in task_trace and acceptance_id:
+            task_trace[task_id]["acceptance"].add(acceptance_id)
     sink_requirements: set[str] = set()
     acceptance_origins: set[str] = set()
     capability_sinks: set[str] = set()
@@ -363,6 +419,11 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
             sink_requirements.add(req)
         if acc and req:
             acceptance_origins.add(acc)
+            if acc in acceptance_ids:
+                for row in acceptance:
+                    if _node_id("acceptance", row) == acc:
+                        row["topology_origin"] = "mapped"
+                        break
         if task and task in task_trace:
             if req:
                 task_trace[task]["requirements"].add(req)
@@ -406,6 +467,26 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         and str(row.get("sink_policy", "")).casefold()
         not in {"deferred", "excluded", "out_of_scope"}
     ]
+    orphan_ids = {
+        _node_id("requirement", row) for row in orphan
+        if _node_id("requirement", row)
+    }
+    unresolved_ids = {
+        _node_id("requirement", row) for row in unresolved
+        if _node_id("requirement", row)
+    }
+    requirement_view: list[dict[str, Any]] = []
+    for row in requirements:
+        projected = dict(row)
+        rid = _node_id("requirement", row)
+        states: list[str] = []
+        if rid in orphan_ids:
+            states.append("orphan")
+        if rid in unresolved_ids:
+            states.append("unresolved")
+        projected["topology_states"] = states
+        projected["sink_resolved"] = rid not in orphan_ids
+        requirement_view.append(projected)
     source_revision = manifest.get("source_revision")
     repository_revision = manifest.get("repository_revision")
     revision = identity.get("revision")
@@ -434,10 +515,10 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         },
         "nodes": {
             "source_blocks": source_blocks,
-            "requirements": requirements,
+            "requirements": requirement_view,
             "capabilities": capabilities,
             "tasks": tasks,
-            "acceptance": [],
+            "acceptance": acceptance,
         },
         "edges": edges,
         "task_trace": serial_trace,
@@ -453,7 +534,9 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
                 if serial_trace.get(t["task_id"], {}).get("requirements")
                 or t.get("semantic_refs")
             ]),
-            "acceptance_with_semantic_origin": len(acceptance_origins),
+            "acceptance_with_semantic_origin": len(
+                [item for item in acceptance if item["acceptance_id"] in acceptance_origins]
+            ),
             "orphan_requirements": len(orphan),
             "unresolved_requirements": len(unresolved),
         },
