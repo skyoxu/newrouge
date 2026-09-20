@@ -25,15 +25,15 @@ from impact_analyzer import ImpactAnalyzer
 
 CONFIG = 'scripts/python/project_health_knowledge_config.json'
 REF = 'refs/heads/main'
+STRUCTURAL_SOURCE_PATHS = ['docs/planning/semantic-topology']
 SOURCE_PATHS = ['.taskmaster/tasks', 'docs/prd', 'docs/gdd', 'docs/adr', 'docs/architecture',
                 'docs/agents', 'docs/workflows', 'Game.Core', 'Game.Godot',
                 'Game.Core.Tests', 'Tests.Godot', 'README.md', 'AGENTS.md',
-                'DELIVERY_PROFILE.md', 'workflow.md', 'docs/testing-framework.md',
-                'docs/planning/semantic-topology']
+                'DELIVERY_PROFILE.md', 'workflow.md', 'docs/testing-framework.md']
 SOURCE_PATH_BINDINGS = dict(zip(
     ('tasks', 'product_requirements', 'game_design', 'architecture_decisions', 'architecture', 'agent_rules',
      'workflows', 'domain_code', 'engine_code', 'domain_tests', 'engine_tests', 'project_entry',
-     'repository_rules', 'delivery_profile', 'root_workflow', 'testing_rules', 'semantic_topology'),
+     'repository_rules', 'delivery_profile', 'root_workflow', 'testing_rules'),
     SOURCE_PATHS,
 ))
 DEFAULT_CONFIG = {
@@ -199,12 +199,12 @@ def scan(root: Path) -> dict:
             trusted = LocalMainSnapshot(root, REF)
             revision = trusted.commit
         else:
-            trusted = DirectorySnapshot(root, config['source_paths'] + config['gdd_paths'] + ['knowledge/policies'])
+            trusted = DirectorySnapshot(root, config['source_paths'] + config['gdd_paths'] + STRUCTURAL_SOURCE_PATHS + ['knowledge/policies'])
             revision = trusted.commit
         required = ['.taskmaster/tasks/tasks.json', '.taskmaster/tasks/tasks_back.json',
                     '.taskmaster/tasks/tasks_gameplay.json', 'knowledge/policies/consumer-policies.v1.json',
                     'knowledge/policies/source-exclusions.v1.json', *config['gdd_paths']]
-        allowed = config['source_paths'] + config['gdd_paths'] + ['knowledge/policies', 'project.godot']
+        allowed = config['source_paths'] + config['gdd_paths'] + STRUCTURAL_SOURCE_PATHS + ['knowledge/policies', 'project.godot']
         for prefix in config['source_paths'] + config['gdd_paths']:
             if not any(p == prefix or p.startswith(prefix.rstrip('/') + '/') for p in trusted.paths):
                 raise ValueError('Configured source does not exist: ' + prefix)
