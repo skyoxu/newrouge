@@ -94,12 +94,20 @@ class Chapter6KnowledgeTests(unittest.TestCase):
         self.assertEqual(model[0]['bindings'][0]['type'], 'TextureRect')
         self.assertEqual(model[0]['bindings'][0]['evidence_status'], 'static_binding_semantic_explanation')
 
-    def test_failure_is_explicit_and_stops_at_failing_stage(self):
+    def test_capture_is_task_local_even_when_global_scans_are_absent(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             result = chapter6_knowledge.run(root, '18')
+            self.assertEqual(result['status'], 'knowledge_captured')
+            self.assertEqual(result['global_refresh'], 'not_performed')
+            self.assertTrue((root / 'logs/ci/chapter6-knowledge/task-18/knowledge-capture-candidate.json').is_file())
+
+    def test_legacy_write_task_refs_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = chapter6_knowledge.run(root, '18', write_task_refs=True)
             self.assertEqual(result['status'], 'knowledge_capture_failed')
-            self.assertEqual(result['stop_step'], 1)
+            self.assertEqual(result['reason'], 'chapter6_global_task_ref_write_forbidden')
 
     def test_capture_element_manifest_records_inferred_and_unmapped_without_blocking(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -109,7 +117,8 @@ class Chapter6KnowledgeTests(unittest.TestCase):
             (root / 'logs/ci/project-health-knowledge/latest.json').write_text(json.dumps({'revision': 'r1', 'scene_graph': {}}), encoding='utf-8')
             (root / 'docs/knowledge/generated/task-resource-links.json').write_text(json.dumps({'generated': [
                 {'task_id': '7', 'path': 'Game.Godot/Scenes/Main.tscn', 'kind': 'scene', 'confidence': 'confirmed', 'evidence': []}]}), encoding='utf-8')
-            result = chapter6_knowledge._capture_element_manifest(root, '7')
+            out_dir = root / 'logs/ci/chapter6-knowledge/task-7'
+            result = chapter6_knowledge._capture_element_manifest(root, '7', out_dir)
             payload = json.loads((root / result['path']).read_text(encoding='utf-8'))
             self.assertEqual(payload['elements'][0]['status'], 'verified')
             self.assertFalse(payload['blocking'])
