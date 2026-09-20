@@ -167,15 +167,18 @@ def build_batches(
         last_index = index_by_id[str(batch["last_block_id"])]
         total_chars = int(batch["owned_char_count"])
 
+        first_source = str(blocks[first_index].get("source_path") or "")
+        last_source = str(blocks[last_index].get("source_path") or "")
+
         before = blocks[first_index - 1] if first_index > 0 else None
-        if before is not None:
+        if before is not None and str(before.get("source_path") or "") == first_source:
             cost = _batch_cost(before)
             if total_chars + cost <= max_chars:
                 batch["context_before"] = [before]
                 total_chars += cost
 
         after = blocks[last_index + 1] if last_index + 1 < len(blocks) else None
-        if after is not None:
+        if after is not None and str(after.get("source_path") or "") == last_source:
             cost = _batch_cost(after)
             if total_chars + cost <= max_chars:
                 batch["context_after"] = [after]
