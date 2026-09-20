@@ -196,6 +196,36 @@ def audit(
     return audit_legacy(requirements, candidates)
 
 
+def blocking_after_p1_waiver(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return blockers that --allow-missing-p1 is never allowed to waive."""
+    blockers: list[dict[str, Any]] = []
+    if result.get("coverage_model") == "semantic-sink":
+        blockers.extend(
+            {"kind": "semantic_sink", **row}
+            for row in result.get("missing_blocking", [])
+            if isinstance(row, dict)
+        )
+        blockers.extend(
+            {"kind": "invalid_task_semantic_ref", **row}
+            for row in result.get("invalid_task_semantic_refs", [])
+            if isinstance(row, dict)
+        )
+        packaging = result.get("legacy_p0_p1_packaging", {})
+        blockers.extend(
+            {"kind": "legacy_packaging", **row}
+            for row in packaging.get("missing", [])
+            if isinstance(row, dict) and str(row.get("priority", "")).upper() != "P1"
+        )
+        return blockers
+
+    blockers.extend(
+        {"kind": "legacy_packaging", **row}
+        for row in result.get("missing_blocking", [])
+        if isinstance(row, dict) and str(row.get("priority", "")).upper() != "P1"
+    )
+    return blockers
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".")
@@ -217,8 +247,18 @@ def main(argv: list[str] | None = None) -> int:
         f"coverage_report={out} model={result['coverage_model']} "
         f"status={result['status']} missing_blocking={result['missing_blocking_count']}"
     )
-    if result["status"] != "ok" and not args.allow_missing_p1:
+    if result["status"] == "ok":
+        return 0
+    if not args.allow_missing_p1:
         return 2
+    remaining = blocking_after_p1_waiver(result)
+    if remaining:
+        print(
+            "coverage_waiver_rejected="
+            + json.dumps(remaining[:20], ensure_ascii=False, separators=(",", ":"))
+        )
+        return 2
+    print("coverage_waiver=legacy_p1_packaging_only")
     return 0
 
 
