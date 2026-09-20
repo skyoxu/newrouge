@@ -51,6 +51,29 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertTrue(any(row["block_type"] == "table_row" for row in ledger["blocks"]))
             self.assertTrue(any(row["requirement_like_hint"] for row in ledger["blocks"]))
 
+    def test_default_source_discovery_includes_optional_bmad_gdd_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            docs_gdd = root / "docs/gdd/game.md"
+            docs_gdd.parent.mkdir(parents=True)
+            docs_gdd.write_text("Docs GDD rule.\n", encoding="utf-8")
+            bmad_gdd = root / "_bmad-output/gdd.md"
+            bmad_gdd.parent.mkdir(parents=True)
+            bmad_gdd.write_text("BMAD GDD rule.\n", encoding="utf-8")
+            args = type("Args", (), {
+                "prd_path": [], "gdd_path": [], "epics_path": [],
+                "stories_path": [], "source_glob": [],
+            })()
+            patterns, explicit = ledger_mod.collect_patterns(root, args)
+            manifest, ledger = ledger_mod.build_ledger(
+                root, patterns, "init", explicit=explicit
+            )
+            paths = {row["path"] for row in manifest["sources"]}
+            self.assertIn("docs/gdd/game.md", paths)
+            self.assertIn("_bmad-output/gdd.md", paths)
+            raw = "\n".join(row["raw_text"] for row in ledger["blocks"])
+            self.assertIn("BMAD GDD rule.", raw)
+
     def test_declared_missing_source_is_fail_fast(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
