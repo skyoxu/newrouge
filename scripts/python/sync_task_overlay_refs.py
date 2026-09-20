@@ -317,6 +317,22 @@ def _ensure_overlay_files_exist(root: Path, paths: OverlayPaths) -> list[str]:
     return [rel for rel in required if not (root / rel).exists()]
 
 
+def _active_semantic_requirement_ids(root: Path) -> set[str] | None:
+    path = root / "logs/ci/task-generation/semantic-requirements.v1.json"
+    if not path.is_file():
+        return None
+    payload = _load_json(path)
+    if not isinstance(payload, dict) or payload.get("schema_version") != "newrouge.semantic-requirements.v1":
+        raise ValueError("Invalid Chapter 3 semantic requirements artifact.")
+    return {
+        str(row.get("requirement_id"))
+        for row in payload.get("requirements", [])
+        if isinstance(row, dict)
+        and row.get("requirement_id")
+        and str(row.get("status", "active")).strip().lower() == "active"
+    }
+
+
 def _refs_for_task(paths: OverlayPaths) -> list[str]:
     ordered = [
         paths.index,
@@ -382,6 +398,7 @@ def sync_view(
     *,
     skip_done: bool,
     master_done_task_ids: set[str],
+    active_requirement_ids: set[str] | None,
 ) -> tuple[list[dict[str, Any]], FileSyncResult]:
     tasks = _load_json(view_path)
     if not isinstance(tasks, list):
@@ -401,8 +418,33 @@ def sync_view(
                 continue
         task_id = str(task.get("id", "")).strip()
         current = _normalize_refs(task.get("overlay_refs"))
+        task_changed = False
         if current != expected:
             task["overlay_refs"] = expected
+            task_changed = True
+
+        semantic_refs = _normalize_refs(task.get("semantic_refs") or task.get("requirement_ids"))
+        if semantic_refs:
+            if active_requirement_ids is None:
+                raise ValueError(
+                    f"{view_path.name}: task {task_id or task.get('taskmaster_id')} has semantic_refs but Chapter 3 semantic artifact is missing"
+                )
+            stale = sorted(set(semantic_refs) - active_requirement_ids)
+            if stale:
+                raise ValueError(
+                    f"{view_path.name}: task {task_id or task.get('taskmaster_id')} has stale semantic refs: {stale}"
+                )
+            overlay_map = {ref: list(semantic_refs) for ref in expected}
+            if task.get("overlay_requirement_refs") != overlay_map:
+                task["overlay_requirement_refs"] = overlay_map
+                task_changed = True
+            contract_refs = _normalize_refs(task.get("contractRefs"))
+            if contract_refs:
+                contract_map = {ref: list(semantic_refs) for ref in contract_refs}
+                if task.get("contract_requirement_refs") != contract_map:
+                    task["contract_requirement_refs"] = contract_map
+                    task_changed = True
+        if task_changed:
             changed_ids.append(task_id or str(task.get("taskmaster_id", "?")))
 
     return tasks, FileSyncResult(
@@ -527,18 +569,21 @@ def main() -> int:
 
     master_payload_for_done = _load_json(tasks_json_path)
     master_done_ids = _done_master_task_ids(master_payload_for_done)
+    active_requirement_ids = _active_semantic_requirement_ids(root)
     master_payload, master_result = sync_master(tasks_json_path, paths, skip_done=bool(args.skip_done))
     back_payload, back_result = sync_view(
         tasks_back_path,
         paths,
         skip_done=bool(args.skip_done),
         master_done_task_ids=master_done_ids,
+        active_requirement_ids=active_requirement_ids,
     )
     gameplay_payload, gameplay_result = sync_view(
         tasks_gameplay_path,
         paths,
         skip_done=bool(args.skip_done),
         master_done_task_ids=master_done_ids,
+        active_requirement_ids=active_requirement_ids,
     )
     results = [master_result, back_result, gameplay_result]
 
