@@ -25,13 +25,13 @@ from impact_analyzer import ImpactAnalyzer
 
 CONFIG = 'scripts/python/project_health_knowledge_config.json'
 REF = 'refs/heads/main'
-SOURCE_PATHS = ['.taskmaster/tasks', 'docs/prd', 'docs/adr', 'docs/architecture',
+SOURCE_PATHS = ['.taskmaster/tasks', 'docs/prd', 'docs/gdd', 'docs/adr', 'docs/architecture',
                 'docs/agents', 'docs/workflows', 'Game.Core', 'Game.Godot',
                 'Game.Core.Tests', 'Tests.Godot', 'README.md', 'AGENTS.md',
                 'DELIVERY_PROFILE.md', 'workflow.md', 'docs/testing-framework.md',
                 'docs/planning/semantic-topology']
 SOURCE_PATH_BINDINGS = dict(zip(
-    ('tasks', 'product_requirements', 'architecture_decisions', 'architecture', 'agent_rules',
+    ('tasks', 'product_requirements', 'game_design', 'architecture_decisions', 'architecture', 'agent_rules',
      'workflows', 'domain_code', 'engine_code', 'domain_tests', 'engine_tests', 'project_entry',
      'repository_rules', 'delivery_profile', 'root_workflow', 'testing_rules', 'semantic_topology'),
     SOURCE_PATHS,
