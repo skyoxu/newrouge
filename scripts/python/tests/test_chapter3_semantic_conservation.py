@@ -20,6 +20,7 @@ import dev_cli as dev_cli_mod
 import enrich_task_candidates as enrich_mod
 import normalize_task_intents as intents_mod
 import project_semantics_from_sources as projection_mod
+import run_chapter3_guarded as guarded_mod
 import run_chapter3_regression_check as regression_mod
 import refresh_chapter_knowledge as refresh_mod
 import validate_semantic_conservation as conservation_mod
@@ -1236,6 +1237,33 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             })
         return paths
 
+    def test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class Failed:
+                returncode = 7
+
+            rc, summary = guarded_mod.run_guarded(
+                root,
+                trigger_run_id="run-child-failed",
+                command=["fake-chapter3-run"],
+                runner=lambda *args, **kwargs: Failed(),
+            )
+            self.assertEqual(7, rc)
+            self.assertEqual("failed", summary["status"])
+            self.assertEqual(7, summary["child_returncode"])
+            self.assertEqual(
+                "attempt_refreshed_partial",
+                summary["final_refresh"]["local_refresh_status"],
+            )
+            attempt_path = root / refresh_mod.ATTEMPT_PATH
+            self.assertTrue(attempt_path.is_file())
+            attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+            self.assertEqual("concern", attempt["status"])
+            self.assertFalse(attempt["chapter_run"]["closure_passed"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
     def test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1591,6 +1619,16 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "publication_reason": "dirty_worktree",
         }
         with patch.object(refresh_mod, "run", return_value=deferred):
+            self.assertEqual(0, dev_cli_mod.cmd_refresh_knowledge(Args()))
+
+        Args.begin_run = True
+        Args.publish_if_eligible = False
+        started = {
+            "local_refresh_status": "attempt_refreshed_started",
+            "chapter_closure_status": "concern",
+            "publication_status": "deferred",
+        }
+        with patch.object(refresh_mod, "begin_run_attempt", return_value=started):
             self.assertEqual(0, dev_cli_mod.cmd_refresh_knowledge(Args()))
 
     def test_failed_closure_never_attempts_canonical_publication(self) -> None:
