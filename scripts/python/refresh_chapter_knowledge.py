@@ -19,6 +19,7 @@ ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
 LEGACY_ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest.json"
 STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
+DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -75,9 +76,11 @@ def _restore_file(path: Path, snapshot: bytes | None) -> None:
 def closure_evidence(
     root: Path,
     source: str,
+    source_manifest: dict[str, Any],
     ledger: dict[str, Any],
     semantics: dict[str, Any],
     candidates: dict[str, Any],
+    coverage: dict[str, Any],
     persisted_report: dict[str, Any],
 ) -> tuple[dict[str, Any], bool, str]:
     """Re-validate Chapter 3 closure and bind refresh to the exact current artifacts."""
@@ -89,6 +92,20 @@ def closure_evidence(
         root, ledger, semantics, "closure", candidates
     )
     errors: list[str] = []
+    if str(source_manifest.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("source_manifest_revision_mismatch")
+    if str(source_manifest.get("manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("source_manifest_hash_mismatch")
+    if coverage.get("schema") != "task-generation.coverage-report.v2":
+        errors.append("invalid_coverage_schema")
+    if coverage.get("coverage_model") != "semantic-sink":
+        errors.append("semantic_sink_coverage_required")
+    if coverage.get("status") != "ok":
+        errors.append("task_coverage_not_passed")
+    if str(coverage.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("coverage_source_revision_mismatch")
+    if str(coverage.get("source_manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("coverage_source_manifest_mismatch")
     if persisted_report.get("schema_version") != "chapter3.semantic-conservation-report.v1":
         errors.append("invalid_report_schema")
     if persisted_report.get("stage") != "closure":
@@ -436,13 +453,17 @@ def run(
     edges_path: Path,
     candidates_path: Path,
     report_path: Path,
+    coverage_path: Path | None = None,
 ) -> dict[str, Any]:
     if source not in REGISTERED_SOURCES:
         raise ValueError(f"unregistered closure producer: {source}")
+    coverage_path = coverage_path or (root / DEFAULT_COVERAGE_PATH)
     required = [
         source_manifest_path, ledger_path, semantics_path, capabilities_path,
         edges_path, candidates_path, report_path,
     ]
+    if source == "chapter3":
+        required.append(coverage_path)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -484,9 +505,10 @@ def run(
     capabilities = load_json(capabilities_path, {})
     edges = load_json(edges_path, {})
     candidates = load_json(candidates_path, {})
+    coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
     persisted_report = load_json(report_path, {})
     report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
-        root, source, ledger, semantics, candidates, persisted_report
+        root, source, source_manifest, ledger, semantics, candidates, coverage, persisted_report
     )
     semantic_triplet_closure_passed = (
         closure_evidence_passed and triplet_status == "passed"
@@ -500,6 +522,7 @@ def run(
         "verified" if closure_evidence_passed else "blocked"
     )
     attempt["chapter_run"]["closure_evidence_reason"] = closure_evidence_reason
+    attempt["chapter_run"]["task_coverage_status"] = coverage.get("status", "unknown")
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
@@ -591,6 +614,7 @@ def run(
         "semantic_triplet_closure_passed": semantic_triplet_closure_passed,
         "closure_evidence_status": "verified" if closure_evidence_passed else "blocked",
         "closure_evidence_reason": closure_evidence_reason,
+        "task_coverage_status": coverage.get("status", "unknown"),
         "closure_passed": closure_passed,
         "chapter_closure_status": "passed" if closure_passed else "concern",
         "local_refresh_status": local_status,
@@ -621,6 +645,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--edges", default="logs/ci/task-generation/topology-edges.v1.json")
     parser.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
     parser.add_argument("--report", default="logs/ci/task-generation/semantic-conservation-report.json")
+    parser.add_argument("--coverage", default=DEFAULT_COVERAGE_PATH.as_posix())
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -639,6 +664,7 @@ def main(argv: list[str] | None = None) -> int:
             edges_path=root / args.edges,
             candidates_path=root / args.candidates,
             report_path=root / args.report,
+            coverage_path=root / args.coverage,
         )
     except ValueError as exc:
         print(json.dumps({
