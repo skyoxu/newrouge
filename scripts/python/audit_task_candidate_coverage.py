@@ -227,6 +227,8 @@ def audit_semantic(
         "schema": "task-generation.coverage-report.v2",
         "coverage_model": "semantic-sink",
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "source_revision": semantics.get("source_revision"),
+        "source_manifest_sha256": semantics.get("source_manifest_sha256"),
         "requirement_count": len(rows),
         "candidate_count": len(tasks),
         "missing_count": len(missing),
