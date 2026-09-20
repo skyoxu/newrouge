@@ -12,6 +12,7 @@ PYTHON_DIR = REPO_ROOT / "scripts" / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
 
+import audit_task_candidate_coverage as coverage_mod
 import build_source_ledger as ledger_mod
 import enrich_task_candidates as enrich_mod
 import normalize_task_intents as intents_mod
@@ -263,6 +264,46 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual("blocked", report["status"])
             self.assertEqual(2, report["blocking_counts"]["binding_mismatches"])
             self.assertEqual(1, report["blocking_counts"]["duplicate_accounting_blocks"])
+
+    def test_missing_p1_waiver_never_bypasses_semantic_or_p0_blockers(self) -> None:
+        semantic_blocked = {
+            "coverage_model": "semantic-sink",
+            "missing_blocking": [{
+                "requirement_id": "FR-1",
+                "priority": "P1",
+                "coverage_status": "missing",
+            }],
+            "invalid_task_semantic_refs": [],
+            "legacy_p0_p1_packaging": {
+                "missing": [{
+                    "requirement_id": "LEGACY-P1",
+                    "priority": "P1",
+                }]
+            },
+        }
+        remaining = coverage_mod.blocking_after_p1_waiver(semantic_blocked)
+        self.assertTrue(any(row["kind"] == "semantic_sink" for row in remaining))
+
+        packaging_only_p1 = {
+            "coverage_model": "semantic-sink",
+            "missing_blocking": [],
+            "invalid_task_semantic_refs": [],
+            "legacy_p0_p1_packaging": {
+                "missing": [{"requirement_id": "LEGACY-P1", "priority": "P1"}]
+            },
+        }
+        self.assertEqual([], coverage_mod.blocking_after_p1_waiver(packaging_only_p1))
+
+        packaging_p0 = {
+            "coverage_model": "semantic-sink",
+            "missing_blocking": [],
+            "invalid_task_semantic_refs": [],
+            "legacy_p0_p1_packaging": {
+                "missing": [{"requirement_id": "LEGACY-P0", "priority": "P0"}]
+            },
+        }
+        remaining = coverage_mod.blocking_after_p1_waiver(packaging_p0)
+        self.assertEqual("legacy_packaging", remaining[0]["kind"])
 
     def test_closure_requires_delivery_sink_and_accepts_task_sink(self) -> None:
         semantics = {
