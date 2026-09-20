@@ -71,6 +71,39 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertGreaterEqual(len(second["delta"]["changed"]), 1)
             self.assertGreaterEqual(len(second["delta"]["unchanged"]), 1)
 
+    def test_add_mode_preserves_unchanged_ids_when_block_is_inserted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gdd = root / "docs/gdd/game.md"
+            gdd.parent.mkdir(parents=True)
+            gdd.write_text("# H\n\nA paragraph.\n\nB paragraph.\n", encoding="utf-8")
+            _manifest, first = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "init", explicit=True
+            )
+            old_by_text = {
+                row["raw_text"]: row["block_id"]
+                for row in first["blocks"]
+                if row["block_type"] == "paragraph"
+            }
+            gdd.write_text(
+                "# H\n\nInserted paragraph.\n\nA paragraph.\n\nB paragraph.\n",
+                encoding="utf-8",
+            )
+            _manifest, second = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "add", explicit=True, previous_ledger=first
+            )
+            new_by_text = {
+                row["raw_text"]: row["block_id"]
+                for row in second["blocks"]
+                if row["block_type"] == "paragraph"
+            }
+            self.assertEqual(old_by_text["A paragraph."], new_by_text["A paragraph."])
+            self.assertEqual(old_by_text["B paragraph."], new_by_text["B paragraph."])
+            self.assertIn(new_by_text["A paragraph."], second["delta"]["unchanged"])
+            self.assertIn(new_by_text["B paragraph."], second["delta"]["unchanged"])
+            self.assertEqual(1, len(second["delta"]["added"]))
+            self.assertEqual([], second["delta"]["removed"])
+
     def test_projection_batches_account_for_every_source_block(self) -> None:
         ledger = {
             "source_revision": "source-set:test",
