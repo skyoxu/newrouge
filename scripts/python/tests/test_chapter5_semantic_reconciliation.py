@@ -16,6 +16,7 @@ import build_source_ledger as ledger_mod
 import chapter5_semantic_reconciliation as ch5
 import chapter6_knowledge as chapter6_knowledge
 import chapter6_route
+import refresh_chapter_knowledge as refresh_mod
 
 
 def write_json(path: Path, payload) -> None:
@@ -284,6 +285,78 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn(("4", "add"), actions)
             self.assertEqual("keep_separate", reconciliation["overlap_reviews"][0]["status"])
             self.assertNotEqual("BLOCKED", gate["readiness"])
+
+    def test_chapter5_knowledge_refresh_promotes_only_verified_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            reconciliation_path = ch5.reconciliation_path_for_task(root, "1")
+            readiness_path = ch5.readiness_path_for_task(root, "1")
+            _reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            self.assertEqual("READY", gate["readiness"])
+
+            capabilities = root / "logs/ci/task-generation/capabilities.v1.json"
+            edges = root / "logs/ci/task-generation/topology-edges.v1.json"
+            candidates = root / "logs/ci/task-generation/task-candidates.enriched.json"
+            write_json(capabilities, {
+                "schema_version": "newrouge.capabilities.v1",
+                "capabilities": [],
+            })
+            write_json(edges, {
+                "schema_version": "newrouge.topology-edges.v1",
+                "edges": [],
+            })
+            write_json(candidates, {"candidates": [{"id": "1", "semantic_refs": ["INV-U1"]}]})
+
+            summary = refresh_mod.run(
+                root,
+                source="chapter5",
+                trigger_run_id="ch5-test",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="unknown",
+                source_manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                semantics_path=semantics_path,
+                capabilities_path=capabilities,
+                edges_path=edges,
+                candidates_path=candidates,
+                report_path=root / "unused.json",
+                reconciliation_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            self.assertTrue(summary["closure_passed"])
+            self.assertEqual("stable_refreshed", summary["local_refresh_status"])
+            stabilized = root / refresh_mod.CHAPTER5_STABLE_PATH
+            self.assertTrue(stabilized.is_file())
+            payload = json.loads(stabilized.read_text(encoding="utf-8"))
+            self.assertEqual("READY", payload["chapter_run"]["readiness"])
+            self.assertTrue(payload["reconciliation"]["summary"])
 
     def test_chapter6_route_blocks_when_readiness_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
