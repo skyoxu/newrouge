@@ -420,13 +420,6 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         task_id: {key: sorted(values) for key, values in trace.items()}
         for task_id, trace in task_trace.items()
     }
-    severe = {
-        "artifact_hash_mismatch", "missing_artifact", "missing_artifact_binding",
-        "missing_artifact_bindings", "source_hash_mismatch", "source_file_missing",
-        "source_block_missing_source_hash", "repository_revision_mismatch",
-        "missing_source_block_ref", "missing_requirement_ref", "invalid_task_semantic_ref",
-        "invalid_task_capability_ref", "duplicate_node_id", "missing_node_id",
-    }
     return {
         "schema_version": "newrouge.semantic-topology-view.v1",
         "available": True,
