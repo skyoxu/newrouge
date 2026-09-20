@@ -679,7 +679,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         })
         return paths
 
-    def test_passed_closure_promotes_planning_topology_with_repository_revision(self) -> None:
+    def test_passed_closure_promotes_planning_topology_without_self_staling_revision(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             paths = self._refresh_fixture(root, "passed")
@@ -704,7 +704,8 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             manifest_path = root / "docs/planning/semantic-topology/topology-manifest.v1.json"
             self.assertTrue(manifest_path.is_file())
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            self.assertEqual("a" * 40, manifest["repository_revision"])
+            self.assertNotIn("repository_revision", manifest)
+            self.assertEqual("a" * 40, manifest["source_repository_revision"])
             self.assertEqual("source-set:test", manifest["source_revision"])
             self.assertTrue(manifest["artifacts"])
 
@@ -815,6 +816,78 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("deferred", summary["publication_status"])
             self.assertEqual("closure_not_passed", summary["publication_reason"])
+
+    def test_attempt_refresh_failure_has_independent_failure_family(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "blocked")
+            real_write = refresh_mod.write_json
+
+            def failing_write(path: Path, payload) -> None:
+                if path == root / refresh_mod.ATTEMPT_PATH:
+                    raise OSError("attempt disk failure")
+                real_write(path, payload)
+
+            with patch.object(refresh_mod, "write_json", side_effect=failing_write):
+                summary = refresh_mod.run(
+                    root,
+                    source="chapter3",
+                    trigger_run_id="run-attempt-write-fail",
+                    refresh_local=True,
+                    write_planning=False,
+                    publish_if_eligible=True,
+                    triplet_status="blocked",
+                    source_manifest_path=paths["manifest"],
+                    ledger_path=paths["ledger"],
+                    semantics_path=paths["semantics"],
+                    capabilities_path=paths["capabilities"],
+                    edges_path=paths["edges"],
+                    candidates_path=paths["candidates"],
+                    report_path=paths["report"],
+                )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("knowledge_refresh_failed", summary["chapter_closure_status"])
+            self.assertEqual("failed", summary["local_refresh_status"])
+            self.assertEqual("attempt_refresh_failed", summary["local_refresh_failure_family"])
+            self.assertEqual("deferred", summary["publication_status"])
+            self.assertEqual("knowledge_refresh_failed", summary["publication_reason"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
+    def test_stable_refresh_failure_blocks_chapter_closure_and_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            real_write = refresh_mod.write_json
+
+            def failing_write(path: Path, payload) -> None:
+                if path == root / refresh_mod.STABLE_PATH:
+                    raise OSError("stable disk failure")
+                real_write(path, payload)
+
+            with patch.object(refresh_mod, "write_json", side_effect=failing_write):
+                summary = refresh_mod.run(
+                    root,
+                    source="chapter3",
+                    trigger_run_id="run-stable-write-fail",
+                    refresh_local=True,
+                    write_planning=True,
+                    publish_if_eligible=True,
+                    triplet_status="passed",
+                    source_manifest_path=paths["manifest"],
+                    ledger_path=paths["ledger"],
+                    semantics_path=paths["semantics"],
+                    capabilities_path=paths["capabilities"],
+                    edges_path=paths["edges"],
+                    candidates_path=paths["candidates"],
+                    report_path=paths["report"],
+                )
+            self.assertTrue(summary["semantic_triplet_closure_passed"])
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("knowledge_refresh_failed", summary["chapter_closure_status"])
+            self.assertEqual("stable_refresh_failed", summary["local_refresh_failure_family"])
+            self.assertEqual("deferred", summary["publication_status"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+            self.assertFalse((root / "docs/planning/semantic-topology/topology-manifest.v1.json").exists())
 
     def test_failed_attempt_does_not_overwrite_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
