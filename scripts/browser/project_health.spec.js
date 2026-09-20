@@ -225,5 +225,66 @@ test.describe('project health semantic topology', () => {
     await expect(page.locator('#scene-preview')).toContainText('Trace to design');
     await expect(page.locator('#scene-preview')).toContainText('FR-TEST-001');
     await expect(page.locator('#scene-preview')).toContainText('not acceptance proof');
+    const requirementLink = page.locator('#scene-preview a[data-topology-kind="requirement"][data-topology-id="FR-TEST-001"]');
+    await expect(requirementLink).toBeVisible();
+    await expect(requirementLink).toHaveAttribute('href', /\/knowledge\/topology\?.*focus=requirement%3AFR-TEST-001/);
+    await expect(page.locator('#scene-preview a[data-topology-kind="task"][data-topology-id="7"]')).toBeVisible();
+    await expect(page.locator('#scene-preview a[data-topology-kind="capability"][data-topology-id="CAP-TEST"]')).toBeVisible();
+    await expect(page.locator('#scene-preview a[data-topology-kind="source_block"][data-topology-id="SB-GDD-001"]')).toBeVisible();
+  });
+
+
+  test('renders acceptance nodes and uses backend orphan semantics', async ({ page }) => {
+    await page.route('**/api/knowledge/topology?mode=main', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: true,
+        fresh: true,
+        identity: { kind: 'main', revision: 'main-revision' },
+        status: 'fresh',
+        nodes: {
+          source_blocks: [{ block_id: 'SB-1', source_path: 'docs/gdd/a.md', line_start: 1, line_end: 1 }],
+          requirements: [{
+            requirement_id: 'FR-ORPHAN',
+            source_block_ids: ['SB-1'],
+            topology_states: ['orphan'],
+            sink_resolved: false
+          }],
+          capabilities: [{ capability_id: 'CAP-ORPHAN', requirement_ids: ['FR-ORPHAN'] }],
+          tasks: [{ task_id: '7', title: 'Task 7', status: 'pending' }],
+          acceptance: [{
+            acceptance_id: 'AC-T7-abc',
+            task_id: '7',
+            statement: 'Must work',
+            topology_origin: 'unmapped'
+          }]
+        },
+        edges: [{
+          source_type: 'requirement', source_id: 'FR-ORPHAN',
+          target_type: 'capability', target_id: 'CAP-ORPHAN',
+          relation: 'grouped_by'
+        }],
+        task_trace: {
+          '7': {
+            source_blocks: ['SB-1'], requirements: ['FR-ORPHAN'],
+            capabilities: ['CAP-ORPHAN'], acceptance: ['AC-T7-abc']
+          }
+        },
+        summary: { orphan_requirements: 1, acceptance_with_semantic_origin: 0 },
+        problems: []
+      })
+    }));
+
+    await page.goto(base() + '/knowledge/topology?mode=main&focus=acceptance%3AAC-T7-abc');
+    const acceptance = page.locator('details[data-topology-kind="acceptance"][data-topology-id="AC-T7-abc"]');
+    await expect(acceptance).toBeVisible();
+    await expect(acceptance).toHaveAttribute('open', '');
+
+    await page.locator('#filter-state').selectOption('orphan');
+    const orphan = page.locator('details[data-topology-kind="requirement"][data-topology-id="FR-ORPHAN"]');
+    await expect(orphan).toBeVisible();
+    await expect(page.locator('details[data-topology-kind="capability"]')).toHaveCount(0);
   });
 });
