@@ -454,6 +454,46 @@ def cmd_chapter6_knowledge(args: argparse.Namespace) -> int:
     return 0 if result.get("status") == "knowledge_captured" else 1
 
 
+def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
+    """Refresh a registered Chapter closure topology attempt/stable view."""
+
+    from refresh_chapter_knowledge import run as refresh
+    root = Path(args.repo_root).resolve()
+    try:
+        result = refresh(
+            root,
+            source=args.source,
+            trigger_run_id=args.trigger_run_id,
+            refresh_local=bool(args.refresh_local),
+            write_planning=bool(args.write_planning_artifacts),
+            publish_if_eligible=bool(args.publish_if_eligible),
+            triplet_status=args.triplet_status,
+            source_manifest_path=root / args.source_manifest,
+            ledger_path=root / args.ledger,
+            semantics_path=root / args.semantics,
+            capabilities_path=root / args.capabilities,
+            edges_path=root / args.edges,
+            candidates_path=root / args.candidates,
+            report_path=root / args.report,
+        )
+    except ValueError as exc:
+        print(json.dumps({
+            "source": args.source,
+            "trigger_run_id": args.trigger_run_id,
+            "local_refresh_status": "failed",
+            "publication_status": "deferred",
+            "publication_reason": str(exc),
+        }, ensure_ascii=False))
+        return 2
+    print(json.dumps(result, ensure_ascii=False))
+    failed = (
+        result.get("local_refresh_status") == "failed"
+        or result.get("chapter_closure_status") == "knowledge_refresh_failed"
+        or result.get("publication_status") == "failed"
+    )
+    return 2 if failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dev CLI for Godot+C# template (AI-friendly entrypoint)",
@@ -829,6 +869,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_c6k.add_argument("--semantic", action="store_true")
     p_c6k.add_argument("--llm-backend", default="codex-cli")
     p_c6k.set_defaults(func=cmd_chapter6_knowledge)
+
+    p_refresh = sub.add_parser(
+        "refresh-knowledge",
+        help="refresh a registered Chapter 3/5 topology attempt and optional stable/publication state",
+    )
+    p_refresh.add_argument("--repo-root", default=".")
+    p_refresh.add_argument("--source", choices=["chapter3", "chapter5"], required=True)
+    p_refresh.add_argument("--trigger-run-id", required=True)
+    p_refresh.add_argument("--refresh-local", action="store_true")
+    p_refresh.add_argument("--write-planning-artifacts", action="store_true")
+    p_refresh.add_argument("--publish-if-eligible", action="store_true")
+    p_refresh.add_argument("--triplet-status", choices=["passed", "blocked", "unknown"], default="unknown")
+    p_refresh.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
+    p_refresh.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
+    p_refresh.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
+    p_refresh.add_argument("--capabilities", default="logs/ci/task-generation/capabilities.v1.json")
+    p_refresh.add_argument("--edges", default="logs/ci/task-generation/topology-edges.v1.json")
+    p_refresh.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
+    p_refresh.add_argument("--report", default="logs/ci/task-generation/semantic-conservation-report.json")
+    p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
     from run_mvg_acceptance import register_arguments, run as run_mvg
     p_mvg = sub.add_parser("run-mvg-acceptance", help="Plan or run isolated MVG integration evidence")

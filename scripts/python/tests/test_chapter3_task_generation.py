@@ -181,8 +181,13 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
             split_profile="balanced",
         )
 
-        self.assertEqual(1, compact["intent_count"])
+        self.assertEqual(2, compact["intent_count"])
         self.assertEqual(2, balanced["intent_count"])
+        self.assertTrue(all(intent.get("complexity_score", 0) <= 7 for intent in compact["intents"]))
+        self.assertEqual(
+            sorted(anchor["requirement_id"] for anchor in anchors),
+            sorted(rid for intent in compact["intents"] for rid in intent["requirement_ids"]),
+        )
         self.assertEqual(
             sorted(anchor["requirement_id"] for anchor in anchors),
             sorted(rid for intent in balanced["intents"] for rid in intent["requirement_ids"]),

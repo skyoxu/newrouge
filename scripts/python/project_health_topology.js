@@ -30,6 +30,15 @@ function currentMode() {
   return byId('topology-identity').value || 'main';
 }
 
+function currentWorkspaceView() {
+  return byId('workspace-view')?.value || 'attempt';
+}
+
+function syncWorkspaceControls() {
+  const label = byId('workspace-view-label');
+  if (label) label.hidden = currentMode() !== 'workspace';
+}
+
 function focusTarget() {
   const value = new URLSearchParams(window.location.search).get('focus') || '';
   const split = value.indexOf(':');
@@ -39,6 +48,7 @@ function focusTarget() {
 
 function topologyHref(kind, id) {
   const params = new URLSearchParams({mode: currentMode(), focus: kind + ':' + id});
+  if (currentMode() === 'workspace') params.set('view', currentWorkspaceView());
   return '/knowledge/topology?' + params.toString();
 }
 
@@ -161,7 +171,8 @@ function render() {
   edgeBody.replaceChildren();
   const identity = (topology && topology.identity) || {};
   if (topology && topology.available) {
-    status.textContent = (identity.kind || 'unknown') + ' · ' + (identity.revision || 'no revision') + ' · ' + (topology.status || '');
+    const viewLabel = identity.kind === 'workspace' ? ' · ' + (topology.workspace_view || currentWorkspaceView()) : '';
+    status.textContent = (identity.kind || 'unknown') + ' · ' + (identity.revision || 'no revision') + viewLabel + ' · ' + (topology.status || '');
   } else {
     status.textContent = (identity.kind || 'unknown') + ' · ' + ((topology && topology.reason) || 'topology unavailable');
   }
@@ -215,8 +226,14 @@ async function load() {
   const params = new URLSearchParams(window.location.search);
   const requestedMode = params.get('mode');
   if (requestedMode === 'main' || requestedMode === 'workspace') byId('topology-identity').value = requestedMode;
+  const requestedView = params.get('view');
+  if (requestedView === 'attempt' || requestedView === 'stable') byId('workspace-view').value = requestedView;
+  syncWorkspaceControls();
   const mode = currentMode();
-  const response = await fetch('/api/knowledge/topology?mode=' + encodeURIComponent(mode), {cache: 'no-store'});
+  const view = currentWorkspaceView();
+  const query = new URLSearchParams({mode});
+  if (mode === 'workspace') query.set('view', view);
+  const response = await fetch('/api/knowledge/topology?' + query.toString(), {cache: 'no-store'});
   topology = await response.json();
   if (!response.ok) throw new Error(topology.reason || 'Topology request failed');
   render();
@@ -224,6 +241,10 @@ async function load() {
 
 ['filter-kind','filter-state','filter-task-status','filter-capability','filter-chapter','filter-source']
   .forEach(id => byId(id).addEventListener('input', render));
-byId('topology-identity').addEventListener('change', () => load().catch(e => byId('topology-status').textContent = e.message));
+byId('topology-identity').addEventListener('change', () => {
+  syncWorkspaceControls();
+  load().catch(e => byId('topology-status').textContent = e.message);
+});
+byId('workspace-view').addEventListener('change', () => load().catch(e => byId('topology-status').textContent = e.message));
 byId('topology-refresh').onclick = () => load().catch(e => byId('topology-status').textContent = e.message);
 load().catch(e => byId('topology-status').textContent = e.message);

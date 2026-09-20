@@ -10,6 +10,8 @@
   - Introduce a derived Repository Knowledge Control Plane under `knowledge/**`.
   - Treat `docs/planning/semantic-topology/**` as revision-bound derived planning topology that KCP may index by location; original GDD/PRD/ADR/Task/Acceptance sources remain authoritative.
   - Canonical KCP publication remains trusted-ref only. Workspace/Chapter-run topology previews are local investigation state and MUST NOT advance `current` or `last-known-good`.
+  - Registered closure producers (`chapter3`, `chapter5`) may invoke the unified Knowledge refresh hook at run end. Every run may refresh Workspace Last Attempt; only closure PASS may refresh Workspace Latest Successful; canonical publication still requires trusted-ref eligibility.
+  - Ordinary consumers, Chapter 6, Review, and Recovery MUST NOT rebuild or publish global Knowledge as an implicit repair side effect.
   - Repository source remains authoritative; generated knowledge artifacts may not override source.
   - Initial domains are `toolchain`, `game-design`, `game-runtime`, and `delivery`.
   - Keep domain, visibility, lifecycle, and enforcement level as independent dimensions.
