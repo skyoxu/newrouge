@@ -36,6 +36,8 @@
     "testing_rules": "docs/testing-framework.md"
   },
   "gdd_paths": [
+    "_bmad-output/gdd.md",
+    "docs/gdd/GDD-NEWROUGE-V1.md",
     "docs/gdd/ui-gdd-flow.md"
   ],
   "task_scene_bindings": [
