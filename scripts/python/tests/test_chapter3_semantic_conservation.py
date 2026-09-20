@@ -78,6 +78,17 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             raw = "\n".join(row["raw_text"] for row in ledger["blocks"])
             self.assertIn("BMAD GDD rule.", raw)
 
+    def test_authoritative_source_invalid_utf8_is_fail_fast(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "docs/gdd/bad.md"
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b"valid-prefix\xffinvalid")
+            with self.assertRaisesRegex(ValueError, "not valid UTF-8"):
+                ledger_mod.build_ledger(
+                    root, ["docs/gdd/bad.md"], "init", explicit=True
+                )
+
     def test_declared_missing_source_is_fail_fast(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
