@@ -167,11 +167,13 @@ def copy_planning_artifacts(
         "schema_version": "newrouge.semantic-topology-manifest.v1",
         "source_revision": source_manifest.get("source_revision"),
         "source_manifest_sha256": source_manifest.get("manifest_sha256"),
-        "repository_revision": source_manifest.get("repository_revision"),
         "schema_revision": "v1",
         "generator_revision": "chapter3-semantic-conservation-v1",
         "artifacts": artifact_hashes,
     }
+    repository_revision = source_manifest.get("repository_revision")
+    if isinstance(repository_revision, str) and repository_revision:
+        manifest["repository_revision"] = repository_revision
     manifest_path = root / TOPOLOGY_ARTIFACTS["manifest"]
     write_json(manifest_path, manifest)
     return manifest
