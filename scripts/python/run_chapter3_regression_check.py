@@ -111,6 +111,8 @@ def build_summary(repo_root: Path, out_dir: Path) -> dict[str, Any]:
     filtered = filtered_tasks_json(repo_root)
     coverage = json.loads((out_dir / "coverage-report.json").read_text(encoding="utf-8"))
     quality = json.loads((out_dir / "task-intents.quality.json").read_text(encoding="utf-8"))
+    ledger = json.loads((out_dir / "source-blocks.v1.json").read_text(encoding="utf-8"))
+    legacy_index = json.loads((out_dir / "requirements.index.json").read_text(encoding="utf-8"))
     return {
         "schema": "chapter3.regression-check.v1",
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -125,6 +127,12 @@ def build_summary(repo_root: Path, out_dir: Path) -> dict[str, Any]:
         "intent_quality_status": quality.get("status"),
         "intent_quality_issue_count": quality.get("issue_count"),
         "intent_quality_issue_counts": quality.get("issue_counts", {}),
+        "source_block_count": len(ledger.get("blocks", [])),
+        "legacy_requirement_anchor_count": len(legacy_index.get("anchors", [])),
+        "legacy_anchor_to_source_block_ratio": round(
+            len(legacy_index.get("anchors", [])) / len(ledger.get("blocks", [])), 4
+        ) if ledger.get("blocks") else None,
+        "source_parser_inventory": ledger.get("parser_inventory", {}),
     }
 
 
@@ -155,6 +163,8 @@ def main(argv: list[str] | None = None) -> int:
         out_dir = template_root / out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    source_manifest = out_dir / "source-manifest.v1.json"
+    source_blocks = out_dir / "source-blocks.v1.json"
     requirements = out_dir / "requirements.index.json"
     intents = out_dir / "task-intents.normalized.json"
     quality = out_dir / "task-intents.quality.json"
@@ -168,12 +178,30 @@ def main(argv: list[str] | None = None) -> int:
         [
             "py",
             "-3",
-            "scripts/python/extract_requirement_anchors.py",
+            "scripts/python/build_source_ledger.py",
             "--repo-root",
             str(repo_root),
             "--mode",
             args.mode,
             *add_typed_sources(args),
+            "--manifest-out",
+            str(source_manifest),
+            "--out",
+            str(source_blocks),
+        ],
+    )
+    run(
+        template_root,
+        [
+            "py",
+            "-3",
+            "scripts/python/extract_requirement_anchors.py",
+            "--repo-root",
+            str(repo_root),
+            "--mode",
+            args.mode,
+            "--ledger-input",
+            str(source_blocks),
             "--out",
             str(requirements),
         ],
@@ -230,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
         f"repo={repo_root.name} candidates={summary['candidate_count']} "
         f"filtered_tasks={summary['filtered_tasks_json_count']} "
         f"coverage={summary['coverage_status']} quality={summary['intent_quality_status']} "
+        f"source_blocks={summary['source_block_count']} legacy_anchors={summary['legacy_requirement_anchor_count']} "
         f"out={out_dir / 'regression-summary.json'}"
     )
     return 0
