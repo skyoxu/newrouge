@@ -25,6 +25,7 @@ TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
 ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
 LEGACY_ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest.json"
 STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
+CHAPTER5_STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-stabilized.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
 DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
 DEFAULT_LEGACY_REQUIREMENTS_PATH = Path("logs/ci/task-generation/requirements.index.json")
@@ -897,6 +898,8 @@ def run(
             )
             try:
                 write_json(root / STABLE_PATH, stable)
+                if source == "chapter5":
+                    write_json(root / CHAPTER5_STABLE_PATH, stable)
             except OSError as exc:
                 _mark_attempt_refresh_failure(
                     root, attempt, "stable_refresh_failed", str(exc)
