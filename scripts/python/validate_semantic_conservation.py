@@ -14,7 +14,7 @@ VALID_KINDS = {
     "functional", "non_functional", "invariant", "failure", "scope", "metric",
     "constraint", "risk", "context", "rationale",
 }
-NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "deferred", "exclusion"}
+NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "adr_owned", "deferred", "exclusion"}
 
 
 def load_json(path: Path, default: Any = None) -> Any:
