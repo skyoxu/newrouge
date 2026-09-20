@@ -171,9 +171,14 @@ def copy_planning_artifacts(
         "generator_revision": "chapter3-semantic-conservation-v1",
         "artifacts": artifact_hashes,
     }
-    repository_revision = source_manifest.get("repository_revision")
-    if isinstance(repository_revision, str) and repository_revision:
-        manifest["repository_revision"] = repository_revision
+    # Do not write repository_revision here: the generated topology is
+    # committed after this step, so binding it to the pre-commit HEAD would make
+    # the just-committed topology immediately stale. Keep the observed source
+    # checkout only as audit metadata; canonical freshness is bound later by KCP
+    # publication plus per-source hashes.
+    source_repository_revision = source_manifest.get("repository_revision")
+    if isinstance(source_repository_revision, str) and source_repository_revision:
+        manifest["source_repository_revision"] = source_repository_revision
     manifest_path = root / TOPOLOGY_ARTIFACTS["manifest"]
     write_json(manifest_path, manifest)
     return manifest
