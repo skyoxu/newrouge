@@ -79,7 +79,10 @@ class SemanticTopologyTests(unittest.TestCase):
         snapshot = FakeSnapshot({
             "docs/planning/semantic-topology/semantic-requirements.v1.json": {
                 "requirements": [{"requirement_id": "FR-1"}]
-            }
+            },
+            "docs/planning/semantic-topology/schemas/semantic-requirements.v1.schema.json": {
+                "$id": "newrouge.semantic-requirements.v1"
+            },
         })
         policies = {
             "policy_revision": "test",
@@ -93,12 +96,15 @@ class SemanticTopologyTests(unittest.TestCase):
             }],
         }
         _snapshot, catalog, projections = build_layers(snapshot, {"rules": []}, policies)
-        self.assertEqual(1, len(catalog["modules"]))
-        module = catalog["modules"][0]
-        self.assertEqual("semantic-topology", module["kind"])
-        self.assertEqual("derived-planning-topology", module["source_role"])
+        self.assertEqual(2, len(catalog["modules"]))
+        modules = {module["source_path"]: module for module in catalog["modules"]}
+        semantic_path = "docs/planning/semantic-topology/semantic-requirements.v1.json"
+        schema_path = "docs/planning/semantic-topology/schemas/semantic-requirements.v1.schema.json"
+        self.assertEqual("semantic-topology", modules[semantic_path]["kind"])
+        self.assertEqual("derived-planning-topology", modules[semantic_path]["source_role"])
+        self.assertFalse(modules[schema_path]["semantic_eligible"])
         eligible = projections["projections"][0]["eligible_module_ids"]
-        self.assertEqual([module["module_id"]], eligible)
+        self.assertEqual([modules[semantic_path]["module_id"]], eligible)
 
     def test_missing_artifacts_are_explicit_legacy_unmapped(self):
         view = load_topology_from_snapshot(FakeSnapshot({}), [])
