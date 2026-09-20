@@ -80,3 +80,23 @@ flowchart TB
 - [ ] 引用的 Contracts 路径真实存在（`py -3 scripts/python/validate_contracts.py` 可通过）
 - [ ] Test-Refs：列出至少 1 个 xUnit 或 1 个 GdUnit4 用例路径（初期可为占位用例，但必须存在文件）
 - [ ] 08 正文不复制阈值（阈值只引用 ADR/Base 章节）
+
+
+## Semantic Delivery Topology
+
+The repository may expose a derived design-to-delivery topology without changing the Godot/Core layering or Taskmaster lifecycle:
+
+```text
+GDD / PRD authority
+  -> Source Block Ledger
+  -> Semantic Requirement
+  -> optional Capability
+  -> Taskmaster Task
+  -> Overlay / Contract links
+  -> Chapter 5 Acceptance
+  -> implementation / evidence
+```
+
+Capability is optional. Cross-task invariants, NFRs and platform/quality constraints may route directly from a Semantic Requirement to a Task, global constraint, quality gate or ADR-owned sink. Taskmaster remains the sole task-state authority. Scene/script/resource/test relationships are lateral evidence only and never become design authority or acceptance proof.
+
+The structural projection lives under `docs/planning/semantic-topology/**`; original source documents remain authoritative. All projected nodes/edges must be revision/hash-bound and stale mappings must not be displayed as fresh.
