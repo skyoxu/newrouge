@@ -479,6 +479,39 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         self.assertEqual([], closure["orphan_delivery_requirements"])
         self.assertTrue(any(edge["target_id"] == "T1" for edge in edges))
 
+    def test_compact_intents_split_before_complexity_exceeds_seven(self) -> None:
+        anchors = [
+            {
+                "requirement_id": f"FR-{index}",
+                "source_path": "docs/gdd/a.md",
+                "line": index,
+                "kind": "functional",
+                "priority": "P1",
+                "text": f"Rule {index}",
+                "refs": [],
+                "source_block_ids": [f"SB-{index}"],
+                "capability_id": "CAP-ONE",
+                "capability_title": "One capability",
+                "layer_hint": "core",
+                "owner_hint": "gameplay",
+                "semantic": True,
+            }
+            for index in range(1, 9)
+        ]
+        result = intents_mod.build_intents(
+            {"schema": "chapter3.validated-semantics.v1", "anchors": anchors},
+            "init", "TST", 8, "compact",
+        )
+        self.assertEqual(2, result["intent_count"])
+        self.assertEqual([7, 1], [row["complexity_score"] for row in result["intents"]])
+        covered = {
+            rid
+            for row in result["intents"]
+            for rid in row["semantic_refs"]
+        }
+        self.assertEqual({f"FR-{index}" for index in range(1, 9)}, covered)
+        self.assertTrue(all(row["complexity_score"] <= 7 for row in result["intents"]))
+
     def test_semantic_intent_keeps_capability_and_provisional_dependency(self) -> None:
         semantics = {
             "requirements": [
