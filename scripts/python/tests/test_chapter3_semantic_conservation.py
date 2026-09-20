@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -522,6 +523,35 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             )
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
+
+    def test_failed_closure_never_attempts_canonical_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "blocked")
+            with patch.object(
+                refresh_mod,
+                "maybe_publish",
+                side_effect=AssertionError("publication must not run before closure passes"),
+            ):
+                summary = refresh_mod.run(
+                    root,
+                    source="chapter3",
+                    trigger_run_id="run-blocked-publish",
+                    refresh_local=True,
+                    write_planning=False,
+                    publish_if_eligible=True,
+                    triplet_status="blocked",
+                    source_manifest_path=paths["manifest"],
+                    ledger_path=paths["ledger"],
+                    semantics_path=paths["semantics"],
+                    capabilities_path=paths["capabilities"],
+                    edges_path=paths["edges"],
+                    candidates_path=paths["candidates"],
+                    report_path=paths["report"],
+                )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("deferred", summary["publication_status"])
+            self.assertEqual("closure_not_passed", summary["publication_reason"])
 
     def test_failed_attempt_does_not_overwrite_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
