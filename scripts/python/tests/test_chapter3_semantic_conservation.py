@@ -185,6 +185,8 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             block = ledger["blocks"][0]
             semantics = {
                 "schema_version": "newrouge.semantic-requirements.v1",
+                "source_revision": ledger["source_revision"],
+                "source_manifest_sha256": ledger["source_manifest_sha256"],
                 "source_accounting": [{
                     "block_id": block["block_id"],
                     "batch_id": "BATCH-0001",
@@ -206,6 +208,38 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             }
             report, _edges = conservation_mod.validate(root, ledger, semantics, "projection")
             self.assertEqual("passed", report["status"])
+
+    def test_projection_blocks_stale_semantic_binding_and_duplicate_accounting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "docs/gdd/a.md"
+            source.parent.mkdir(parents=True)
+            source.write_text("规则。\n", encoding="utf-8")
+            _manifest, ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/a.md"], "init", explicit=True
+            )
+            block_id = ledger["blocks"][0]["block_id"]
+            accounting = {
+                "block_id": block_id,
+                "batch_id": "BATCH-0001",
+                "requirement_ids": [],
+                "disposition": "context",
+                "delivery_potential": False,
+                "decision": None,
+            }
+            semantics = {
+                "schema_version": "newrouge.semantic-requirements.v1",
+                "source_revision": "source-set:stale",
+                "source_manifest_sha256": "sha256:" + "0" * 64,
+                "source_accounting": [accounting, dict(accounting)],
+                "requirements": [],
+            }
+            report, _edges = conservation_mod.validate(
+                root, ledger, semantics, "projection"
+            )
+            self.assertEqual("blocked", report["status"])
+            self.assertEqual(2, report["blocking_counts"]["binding_mismatches"])
+            self.assertEqual(1, report["blocking_counts"]["duplicate_accounting_blocks"])
 
     def test_closure_requires_delivery_sink_and_accepts_task_sink(self) -> None:
         semantics = {
