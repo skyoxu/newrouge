@@ -220,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
             args.id_prefix,
             "--requirements",
             str(requirements),
+            "--semantics",
+            str(out_dir / "legacy-shadow-no-semantics.json"),
             "--split-profile",
             args.split_profile,
             "--out",
@@ -248,7 +250,14 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     run(template_root, ["py", "-3", "scripts/python/enrich_task_candidates.py", "--repo-root", str(repo_root), "--candidates", str(candidates), "--out", str(enriched)])
-    run(template_root, ["py", "-3", "scripts/python/audit_task_candidate_coverage.py", "--repo-root", str(repo_root), "--requirements", str(requirements), "--candidates", str(enriched), "--out", str(coverage)])
+    run(template_root, [
+        "py", "-3", "scripts/python/audit_task_candidate_coverage.py",
+        "--repo-root", str(repo_root),
+        "--requirements", str(requirements),
+        "--semantics", str(out_dir / "legacy-shadow-no-semantics.json"),
+        "--candidates", str(enriched),
+        "--out", str(coverage),
+    ])
     run(template_root, ["py", "-3", "scripts/python/compile_task_triplet.py", "--repo-root", str(repo_root), "--mode", args.mode, "--candidates", str(enriched), "--coverage", str(coverage), "--out", str(patch)])
 
     summary = build_summary(repo_root, out_dir)
