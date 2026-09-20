@@ -42,16 +42,19 @@ Every source block must be accounted for. Every active delivery Requirement must
 2. Build the complete Source Block Ledger with `py -3 scripts/python/build_source_ledger.py --mode <init|add> ...`. This step inventories all supported source blocks before semantic filtering.
 3. Build the compatibility anchor index from that ledger with `py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --ledger-input logs/ci/task-generation/source-blocks.v1.json`. The compatibility index is downstream evidence only.
 4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. Batches are bounded by both block count and `--max-chars-per-batch`; a single oversized Source Block fails instead of being truncated. The batch index must cover every Source Block exactly once as primary ownership.
+   - In `add` mode, a prior candidate may be reused only for ledger `unchanged` blocks whose `content_hash` still matches and whose prior result was fully reviewed. Cross-block atoms are reusable only when every referenced Source Block is unchanged. Changed/added blocks remain `review_required`; removed blocks and stale capabilities are not carried forward.
 5. The approved Chapter 3 model/Skill reads **every batch file** and fills `semantic-projection.candidate.json`. The template intentionally starts with blank disposition, `delivery_potential=null`, and `output_accounted_count=0`; these are not defaults the model may leave untouched. For every owned Source Block, explicitly set delivery potential and emit one or more semantic atoms or exactly one explicit disposition, then reconcile the batch output count. Never delete a `block_result` to make a batch pass.
 6. Compile Projection A with `py -3 scripts/python/project_semantics_from_sources.py compile`.
 7. Run `py -3 scripts/python/validate_semantic_conservation.py --stage projection`. Stop on unaccounted source blocks, source hash drift, invalid semantic refs, or unresolved delivery-potential blocks without an explicit owner decision and rationale.
 8. Normalize coarse task intents from validated semantics with `py -3 scripts/python/normalize_task_intents.py --mode <init|add>`, then run `audit_task_intents_quality.py`.
 9. Generate and enrich candidates. Enrichment may add implementation-file and overlap/file-churn advisory signals; these signals never mechanically force a merge.
 10. Audit semantic sink coverage with `audit_task_candidate_coverage.py`. The old P0/P1 positive-filter view remains only a downstream packaging check bridged by Source Block IDs.
+    - Existing task-view entries that already carry `semantic_refs` are part of add-mode reconciliation. A ref to a removed/replaced Requirement blocks closure unless this run updates the same Task ID with valid current refs.
 11. Run `validate_semantic_conservation.py --stage closure`. Active delivery Requirements without a Task/non-Task sink, invalid Task semantic refs, or Task complexity above 7 block closure.
 12. Compile a task-triplet patch. Review before `--write`. Build `tasks.json` from the two reviewable task views and run the existing triplet validators unchanged.
 13. Backfill/validate semantic review tier conservatively as before.
 14. At the end of **every** Chapter 3 run, call `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`. Failed/partial runs update only Last Attempt. Passed closure may update Latest Successful.
+    - A blocked/unknown closure always defers `--publish-if-eligible` with `closure_not_passed`; canonical publication is never attempted before closure PASS.
 15. Only after closure PASS may `--write-planning-artifacts` promote the stable topology files under `docs/planning/semantic-topology/`. `--publish-if-eligible` remains trusted-ref/main-only and is normally deferred until the artifacts are committed.
 
 ## Semantic Projection A Contract
@@ -67,6 +70,7 @@ Every source block must be accounted for. Every active delivery Requirement must
 
 - Tasks remain intentionally coarse in Chapter 3. Chapter 5 owns the second semantic stabilization pass.
 - Complexity greater than 7/10 must be split into Tasks; if semantic cohesion prevents further Task splitting, use Subtasks under the existing governance.
+- The normalizer splits semantic groups before an intent can exceed 7. It must not cap an oversized score to hide the split requirement; semantic refs across the split remain collectively equivalent.
 - `depends_on` emitted here is provisional. Same owner/layer or generation adjacency is not semantic proof of dependency.
 - Preserve `semantic_refs`, optional `capability_refs`, source refs, and complexity metadata into the task views.
 - `implementation_overlap_candidates` and `file_churn_signal` are advisory task-boundary quality evidence only.
@@ -101,7 +105,7 @@ Every source block must be accounted for. Every active delivery Requirement must
 
 ## Regression Evidence
 
-`run_chapter3_regression_check.py` is read-only regression evidence. It should report full Source Block counts alongside legacy positive-filter anchor counts so silent-loss risk remains visible. Do not tune production rules to mimic mature Chapter 4/5/6/7 history.
+`run_chapter3_regression_check.py` is read-only regression evidence. It reports separate source / semantic / task layers plus the legacy/mature-task shadow comparison. Without a reviewed semantic artifact, the semantic layer must say `not_run`; it must not infer semantics from legacy positive-filter anchors. Use `--semantic-requirements <path>` when reviewed semantics are available. Do not tune production rules to mimic mature Chapter 4/5/6/7 history.
 
 ## Maintenance
 
