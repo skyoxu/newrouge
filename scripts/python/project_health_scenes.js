@@ -67,18 +67,40 @@ window.openScenePreview = path => {
     const traceDetail = document.createElement('details'); traceDetail.open = true; traceDetail.className = 'scene-design-trace';
     const traceTitle = document.createElement('summary'); traceTitle.textContent = 'Trace to design'; traceDetail.append(traceTitle);
     const note = document.createElement('p'); note.textContent = 'Navigation only. Scene/static/runtime evidence is not acceptance proof.'; traceDetail.append(note);
-    const rows = [
-      ['Tasks', (trace.tasks || []).map(item => item.task_id + (item.title ? ' · ' + item.title : ''))],
-      ['Capabilities', trace.capabilities || []],
-      ['Requirements', trace.requirements || []],
-      ['GDD source blocks', trace.source_blocks || []],
-      ['Evidence levels', trace.evidence_levels || []],
+    const topologyLink = (kind, id, label) => {
+      const link = document.createElement('a');
+      const params = new URLSearchParams({mode: 'main', focus: kind + ':' + id});
+      link.href = '/knowledge/topology?' + params.toString();
+      link.textContent = label || String(id);
+      link.dataset.topologyKind = kind;
+      link.dataset.topologyId = String(id);
+      return link;
+    };
+    const linkedRows = [
+      ['Tasks', (trace.tasks || []).map(item => ({
+        kind: 'task', id: item.task_id,
+        label: item.task_id + (item.title ? ' · ' + item.title : '')
+      }))],
+      ['Capabilities', (trace.capabilities || []).map(id => ({kind: 'capability', id, label: id}))],
+      ['Requirements', (trace.requirements || []).map(id => ({kind: 'requirement', id, label: id}))],
+      ['GDD source blocks', (trace.source_blocks || []).map(id => ({kind: 'source_block', id, label: id}))],
     ];
-    for (const [label, values] of rows) {
+    for (const [label, values] of linkedRows) {
       const line = document.createElement('p');
-      line.textContent = label + ': ' + (values.length ? values.join(', ') : 'unmapped');
+      line.append(document.createTextNode(label + ': '));
+      if (!values.length) {
+        line.append(document.createTextNode('unmapped'));
+      } else {
+        values.forEach((value, index) => {
+          if (index) line.append(document.createTextNode(' · '));
+          line.append(topologyLink(value.kind, value.id, value.label));
+        });
+      }
       traceDetail.append(line);
     }
+    const evidence = document.createElement('p');
+    evidence.textContent = 'Evidence levels: ' + ((trace.evidence_levels || []).length ? trace.evidence_levels.join(', ') : 'unmapped');
+    traceDetail.append(evidence);
     body.append(traceDetail);
   }
   if (functional.scripts?.length) {
