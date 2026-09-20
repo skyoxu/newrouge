@@ -24,6 +24,7 @@ Registered closure producers use the unified Chapter Knowledge refresh hook rath
 - Every Chapter 3/5 run may refresh **Workspace → Last attempt** with its run identity, partial topology, failures and conservation concerns.
 - Only closure PASS may advance **Workspace → Latest successful**.
 - Failed/partial attempts never overwrite Latest Successful.
+- Attempt/Stable write failures are explicit `knowledge_refresh_failed` concerns with a concrete failure family. A `stable_refresh_failed` result keeps Chapter closure in concern/failed state and canonical publication deferred even if semantic conservation and triplet validation already passed.
 - Workspace identity remains `workspace:<digest>` / run-bound and never advances main `latest.json`, runtime-verified main evidence, KCP `current`, or `last-known-good`.
 - `publication_deferred` is a normal result for non-main/dirty/non-publishable runs and does not by itself fail Chapter 3.
 - The topology page exposes the Workspace selector `Last attempt / Latest successful` so operators can compare the current failed attempt against the previous stable closure.
