@@ -8,6 +8,10 @@ Repository facts remain owned by their source files, including `AGENTS.md`, `wor
 
 The Knowledge Control Plane only answers: **where should a trusted consumer read?**
 
+## Semantic topology
+
+`docs/planning/semantic-topology/**` is a revision-bound derived planning topology that KCP may index and locate. It remains below original GDD/PRD/ADR/Task/Acceptance authority. Workspace/Chapter-run topology previews are not canonical KCP generations and never advance `current` or `last-known-good`.
+
 ## Layers
 
 1. `knowledge/snapshots/repository-source-snapshot.v1.json`
