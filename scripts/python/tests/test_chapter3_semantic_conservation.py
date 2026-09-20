@@ -129,6 +129,125 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual(1, len(second["delta"]["added"]))
             self.assertEqual([], second["delta"]["removed"])
 
+    def test_add_mode_reuses_only_hash_stable_reviewed_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gdd = root / "docs/gdd/game.md"
+            gdd.parent.mkdir(parents=True)
+            gdd.write_text("# H\n\nA paragraph.\n\nB paragraph.\n", encoding="utf-8")
+            _manifest, first_ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "init", explicit=True
+            )
+            _index, first_candidate = projection_mod.prepare(
+                first_ledger, 40, root / "batches-first"
+            )
+            for row in first_candidate["block_results"]:
+                row.update({
+                    "atoms": [],
+                    "disposition": "context",
+                    "delivery_potential": False,
+                    "review_status": "reviewed",
+                })
+            for summary in first_candidate["batch_summaries"]:
+                summary["output_accounted_count"] = summary["input_block_count"]
+
+            gdd.write_text(
+                "# H\n\nInserted paragraph.\n\nA paragraph.\n\nB paragraph.\n",
+                encoding="utf-8",
+            )
+            _manifest, second_ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "add", explicit=True,
+                previous_ledger=first_ledger,
+            )
+            index, second_candidate = projection_mod.prepare(
+                second_ledger, 40, root / "batches-second",
+                previous_candidate=first_candidate,
+            )
+            by_text = {
+                block["raw_text"]: block["block_id"]
+                for block in second_ledger["blocks"]
+                if block["block_type"] == "paragraph"
+            }
+            results = {
+                row["block_id"]: row for row in second_candidate["block_results"]
+            }
+            self.assertEqual(
+                "reused_unchanged", results[by_text["A paragraph."]]["review_status"]
+            )
+            self.assertEqual(
+                "reused_unchanged", results[by_text["B paragraph."]]["review_status"]
+            )
+            inserted = results[by_text["Inserted paragraph."]]
+            self.assertEqual("review_required", inserted["review_status"])
+            self.assertIsNone(inserted["delivery_potential"])
+            self.assertIn(
+                by_text["Inserted paragraph."],
+                second_candidate["reuse_summary"]["review_required_blocks"],
+            )
+            self.assertEqual(
+                len(second_candidate["reuse_summary"]["reused_blocks"]),
+                sum(row["reused_accounted_count"] for row in second_candidate["batch_summaries"]),
+            )
+            self.assertEqual(
+                index["source_block_count"],
+                len(second_candidate["block_results"]),
+            )
+
+    def test_add_mode_cross_block_semantics_stale_when_any_source_block_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gdd = root / "docs/gdd/game.md"
+            gdd.parent.mkdir(parents=True)
+            gdd.write_text("# H\n\nA rule.\n\nB rule.\n", encoding="utf-8")
+            _manifest, first_ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "init", explicit=True
+            )
+            _index, first_candidate = projection_mod.prepare(
+                first_ledger, 40, root / "batches-first"
+            )
+            paragraphs = [
+                row for row in first_ledger["blocks"]
+                if row["block_type"] == "paragraph"
+            ]
+            a_id, b_id = paragraphs[0]["block_id"], paragraphs[1]["block_id"]
+            for row in first_candidate["block_results"]:
+                if row["block_id"] == a_id:
+                    row.update({
+                        "atoms": [{
+                            "kind": "FR",
+                            "statement": "A and B form one rule.",
+                            "source_block_ids": [a_id, b_id],
+                        }],
+                        "disposition": "",
+                        "delivery_potential": True,
+                        "review_status": "reviewed",
+                    })
+                else:
+                    row.update({
+                        "atoms": [],
+                        "disposition": "context",
+                        "delivery_potential": False,
+                        "review_status": "reviewed",
+                    })
+            for summary in first_candidate["batch_summaries"]:
+                summary["output_accounted_count"] = summary["input_block_count"]
+
+            gdd.write_text("# H\n\nA rule.\n\nB rule changed.\n", encoding="utf-8")
+            _manifest, second_ledger = ledger_mod.build_ledger(
+                root, ["docs/gdd/*.md"], "add", explicit=True,
+                previous_ledger=first_ledger,
+            )
+            _index, second_candidate = projection_mod.prepare(
+                second_ledger, 40, root / "batches-second",
+                previous_candidate=first_candidate,
+            )
+            result = next(
+                row for row in second_candidate["block_results"]
+                if row["block_id"] == a_id
+            )
+            self.assertEqual("review_required", result["review_status"])
+            self.assertEqual([], result["atoms"])
+
     def test_projection_batches_account_for_every_source_block(self) -> None:
         ledger = {
             "source_revision": "source-set:test",
