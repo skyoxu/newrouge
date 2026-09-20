@@ -15,8 +15,7 @@
     "AGENTS.md",
     "DELIVERY_PROFILE.md",
     "workflow.md",
-    "docs/testing-framework.md",
-    "docs/planning/semantic-topology"
+    "docs/testing-framework.md"
   ],
   "source_path_bindings": {
     "tasks": ".taskmaster/tasks",
@@ -34,8 +33,7 @@
     "repository_rules": "AGENTS.md",
     "delivery_profile": "DELIVERY_PROFILE.md",
     "root_workflow": "workflow.md",
-    "testing_rules": "docs/testing-framework.md",
-    "semantic_topology": "docs/planning/semantic-topology"
+    "testing_rules": "docs/testing-framework.md"
   },
   "gdd_paths": [
     "docs/gdd/ui-gdd-flow.md"
