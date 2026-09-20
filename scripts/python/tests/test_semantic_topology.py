@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.python._knowledge_catalog_builder import build_layers
 from scripts.python._semantic_topology import (
     TOPOLOGY_ARTIFACTS,
     attach_scene_design_trace,
@@ -63,6 +64,31 @@ def valid_docs(revision="a" * 40):
 
 
 class SemanticTopologyTests(unittest.TestCase):
+    def test_kcp_builder_classifies_topology_as_derived_planning_source(self):
+        snapshot = FakeSnapshot({
+            "docs/planning/semantic-topology/semantic-requirements.v1.json": {
+                "requirements": [{"requirement_id": "FR-1"}]
+            }
+        })
+        policies = {
+            "policy_revision": "test",
+            "policies": [{
+                "consumer": "repository-session",
+                "domains": ["game-design"],
+                "statuses": ["active"],
+                "visibility": ["active"],
+                "exact_paths": [],
+                "path_prefixes": ["docs/planning/semantic-topology/"],
+            }],
+        }
+        _snapshot, catalog, projections = build_layers(snapshot, {"rules": []}, policies)
+        self.assertEqual(1, len(catalog["modules"]))
+        module = catalog["modules"][0]
+        self.assertEqual("semantic-topology", module["kind"])
+        self.assertEqual("derived-planning-topology", module["source_role"])
+        eligible = projections["projections"][0]["eligible_module_ids"]
+        self.assertEqual([module["module_id"]], eligible)
+
     def test_missing_artifacts_are_explicit_legacy_unmapped(self):
         view = load_topology_from_snapshot(FakeSnapshot({}), [])
         self.assertFalse(view["available"])
