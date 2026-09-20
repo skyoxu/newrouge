@@ -462,7 +462,9 @@ def chunk_size_for_group(
         size = 6 if layer in {"ci", "docs"} or topic in {"validation-gates", "testing", "architecture-docs"} else 4
     if is_structured_requirement_group(anchors):
         size = min(size, 4)
-    return max(1, min(max_anchors_per_intent, size))
+    # Complexity governance is structural: never hide an oversized intent by
+    # capping its score. Split before task generation so each Task skeleton is <= 7.
+    return max(1, min(max_anchors_per_intent, size, 7))
 
 
 def build_intents(
@@ -532,7 +534,8 @@ def build_intents(
                     "capability_refs": sorted(set(
                         str(a.get("capability_id")) for a in group if a.get("capability_id")
                     )),
-                    "complexity_score": min(7, max(1, len(group))),
+                    "complexity_score": max(1, len(group)),
+                    "complexity_split_applied": len(anchors) > len(group),
                     "covered_anchor_count": len(group),
                     "generation_mode": mode,
                 }
