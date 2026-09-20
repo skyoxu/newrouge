@@ -1122,6 +1122,31 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertFalse(summary["closure_passed"])
             self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
 
+    def test_chapter3_closure_requires_local_stable_refresh(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-no-local-refresh",
+                refresh_local=False,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertTrue(summary["semantic_triplet_closure_passed"])
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("skipped", summary["local_refresh_status"])
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
     def test_projection_stage_report_cannot_promote_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
