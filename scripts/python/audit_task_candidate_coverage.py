@@ -72,7 +72,11 @@ def audit_legacy(requirements: dict[str, Any], candidates: dict[str, Any]) -> di
     }
 
 
-def audit_semantic(semantics: dict[str, Any], candidates: dict[str, Any]) -> dict[str, Any]:
+def audit_semantic(
+    semantics: dict[str, Any],
+    candidates: dict[str, Any],
+    legacy_requirements: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     by_req, tasks = candidate_coverage(candidates)
     requirements = {
         str(row.get("requirement_id")): row
@@ -120,7 +124,36 @@ def audit_semantic(semantics: dict[str, Any], candidates: dict[str, Any]) -> dic
         rows.append(row)
         if not covered:
             missing.append(row)
-    blocked = bool(missing or invalid_refs)
+    semantic_blocks = {
+        rid: {str(value) for value in row.get("source_block_ids", [])}
+        for rid, row in requirements.items()
+    }
+    covered_blocks: set[str] = set()
+    for rid, task_ids in by_req.items():
+        if task_ids:
+            covered_blocks.update(semantic_blocks.get(rid, set()))
+
+    packaging_rows = []
+    packaging_missing = []
+    for anchor in (legacy_requirements or {}).get("anchors", []):
+        if not isinstance(anchor, dict):
+            continue
+        priority = str(anchor.get("priority", "P2")).upper()
+        if priority not in BLOCKING_PRIORITIES:
+            continue
+        block_id = str(anchor.get("source_block_id") or "")
+        covered = bool(block_id and block_id in covered_blocks)
+        row = {
+            "requirement_id": str(anchor.get("requirement_id") or ""),
+            "source_block_id": block_id,
+            "priority": priority,
+            "coverage_status": "covered" if covered else "missing",
+        }
+        packaging_rows.append(row)
+        if not covered:
+            packaging_missing.append(row)
+
+    blocked = bool(missing or invalid_refs or packaging_missing)
     return {
         "schema": "task-generation.coverage-report.v2",
         "coverage_model": "semantic-sink",
@@ -134,12 +167,23 @@ def audit_semantic(semantics: dict[str, Any], candidates: dict[str, Any]) -> dic
         "missing_blocking": missing,
         "invalid_task_semantic_refs": invalid_refs,
         "source_coverage": semantics.get("source_accounting", []),
+        "legacy_p0_p1_packaging": {
+            "checked_count": len(packaging_rows),
+            "missing_count": len(packaging_missing),
+            "status": "ok" if not packaging_missing else "blocked",
+            "coverage": packaging_rows,
+            "missing": packaging_missing,
+        },
     }
 
 
-def audit(requirements: dict[str, Any], candidates: dict[str, Any]) -> dict[str, Any]:
+def audit(
+    requirements: dict[str, Any],
+    candidates: dict[str, Any],
+    legacy_requirements: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if requirements.get("schema_version") == "newrouge.semantic-requirements.v1":
-        return audit_semantic(requirements, candidates)
+        return audit_semantic(requirements, candidates, legacy_requirements)
     return audit_legacy(requirements, candidates)
 
 
@@ -155,7 +199,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.repo_root).resolve()
     semantics_path = root / args.semantics
     source = load_json(semantics_path) if semantics_path.is_file() else load_json(root / args.requirements, {})
-    result = audit(source, load_json(root / args.candidates, {"candidates": []}))
+    legacy = load_json(root / args.requirements, {"anchors": []}) if semantics_path.is_file() else None
+    result = audit(source, load_json(root / args.candidates, {"candidates": []}), legacy)
     out = root / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
