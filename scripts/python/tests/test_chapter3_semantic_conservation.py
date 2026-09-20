@@ -13,6 +13,7 @@ PYTHON_DIR = REPO_ROOT / "scripts" / "python"
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
 
+import attest_chapter3_triplet_baseline as triplet_attest_mod
 import audit_task_candidate_coverage as coverage_mod
 import build_source_ledger as ledger_mod
 import dev_cli as dev_cli_mod
@@ -31,6 +32,34 @@ def write_json(path: Path, payload) -> None:
 
 
 class Chapter3SemanticConservationTests(unittest.TestCase):
+    def test_triplet_attestation_binds_current_task_file_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tasks_dir = root / ".taskmaster/tasks"
+            write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
+            write_json(tasks_dir / "tasks_back.json", [])
+            write_json(tasks_dir / "tasks_gameplay.json", [])
+
+            with patch.object(
+                triplet_attest_mod,
+                "run_check",
+                side_effect=lambda _root, name, _args: {
+                    "name": name,
+                    "status": "passed",
+                    "returncode": 0,
+                },
+            ), patch.object(triplet_attest_mod, "git_revision", return_value="a" * 40):
+                payload = triplet_attest_mod.attest(root)
+
+            self.assertEqual("passed", payload["status"])
+            ok, reason = refresh_mod.verify_triplet_attestation(root, payload)
+            self.assertTrue(ok, reason)
+
+            write_json(tasks_dir / "tasks_back.json", [{"id": "changed"}])
+            ok, reason = refresh_mod.verify_triplet_attestation(root, payload)
+            self.assertFalse(ok)
+            self.assertIn("triplet_file_hash_mismatch", reason)
+
     def test_full_ledger_keeps_chinese_and_long_blocks_before_filtering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
