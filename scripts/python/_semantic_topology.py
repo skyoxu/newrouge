@@ -181,6 +181,15 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     }
     sink_requirements: set[str] = set()
     acceptance_origins: set[str] = set()
+    capability_sinks: set[str] = set()
+    for edge in edges:
+        left_kind, left_id = _edge_endpoint(edge, "source")
+        right_kind, right_id = _edge_endpoint(edge, "target")
+        if (left_kind or "").casefold() == "capability" and left_id and (
+            (right_kind or "").casefold() in {"task", "global_constraint", "quality_gate", "adr"}
+        ):
+            capability_sinks.add(left_id)
+
     for edge in edges:
         left_kind, left_id = _edge_endpoint(edge, "source")
         right_kind, right_id = _edge_endpoint(edge, "target")
@@ -194,8 +203,11 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
         cap = normalized.get("capability")
         acc = normalized.get("acceptance")
         block = normalized.get("source_block")
-        if req and (task or cap or (right_kind or "").casefold()
-                    in {"global_constraint", "quality_gate", "adr"}):
+        if req and (
+            task
+            or ((right_kind or "").casefold() in {"global_constraint", "quality_gate", "adr"})
+            or (cap and cap in capability_sinks)
+        ):
             sink_requirements.add(req)
         if acc and req:
             acceptance_origins.add(acc)
