@@ -64,6 +64,8 @@ Every source block must be accounted for. Every active delivery Requirement must
 - `unresolved` is visible uncertainty, not permission to drop a block. If the block is delivery-potential, stable closure requires an explicit owner decision, reason, and resolved disposition.
 - A Requirement may sink through Capability -> Task, directly to Task, to multiple Tasks, or to a global constraint / quality gate / ADR-owned sink. Do not fabricate Capability nodes.
 - Batch counters are deterministic: first/last block id, input block count, input character budget, and accounted output count must reconcile before moving on.
+- Batch files carry bounded `context_before` / `context_after` neighbor blocks when budget permits. These are read-only context: primary ownership and output accounting remain only on `block_ids`.
+- Projection compile deterministically merges exact normalized duplicate atoms across blocks. Semantically equivalent paraphrases may share one explicit `requirement_id`; the merged Requirement preserves the union of all `source_block_ids` and source edges. It never performs fuzzy similarity guessing.
 - `requirement_like_hint` is diagnostic only. It must never pre-classify an untouched block as non-delivery; every block requires explicit model/Skill review.
 
 ## Task Generation Rules
