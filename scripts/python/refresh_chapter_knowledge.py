@@ -272,6 +272,7 @@ def build_workspace_view(
     report: dict[str, Any],
     triplet_status: str,
     view_kind: str,
+    closure_passed_override: bool | None = None,
 ) -> dict[str, Any]:
     source_revision = str(
         ledger.get("source_revision")
@@ -307,7 +308,11 @@ def build_workspace_view(
         view_problems(report, triplet_status),
     )
     report_passed = report.get("status") == "passed"
-    closure_passed = report_passed and triplet_status == "passed"
+    closure_passed = (
+        bool(closure_passed_override)
+        if closure_passed_override is not None
+        else report_passed and triplet_status == "passed"
+    )
     view["workspace_view"] = view_kind
     view["chapter_run"] = {
         "source": source,
@@ -463,6 +468,58 @@ def partial_attempt(
         "closure_passed": False,
     }
     return payload
+
+
+def begin_run_attempt(
+    root: Path,
+    *,
+    source: str,
+    trigger_run_id: str,
+) -> dict[str, Any]:
+    """Record a run-start attempt so an interrupted Chapter run still leaves evidence."""
+    if source not in REGISTERED_SOURCES:
+        raise ValueError(f"unregistered closure producer: {source}")
+    attempt = partial_attempt(
+        source,
+        trigger_run_id,
+        "chapter run started; closure evidence not available yet",
+        [],
+    )
+    attempt.setdefault("chapter_run", {})["lifecycle_status"] = "started"
+    attempt["chapter_run"]["knowledge_refresh_status"] = "attempt_started"
+    attempt_written = False
+    try:
+        write_json(root / ATTEMPT_PATH, attempt)
+        attempt_written = True
+        write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+    except OSError as exc:
+        return _refresh_failure_summary(
+            root,
+            source=source,
+            trigger_run_id=trigger_run_id,
+            topology_revision=attempt.get("identity", {}).get("revision"),
+            semantic_triplet_closure_passed=False,
+            family="attempt_refresh_failed",
+            reason=str(exc),
+            attempt_written=attempt_written,
+        )
+    return {
+        "schema_version": "chapter-knowledge-refresh-summary.v1",
+        "source": source,
+        "trigger_run_id": trigger_run_id,
+        "topology_revision": attempt.get("identity", {}).get("revision"),
+        "semantic_triplet_closure_passed": False,
+        "closure_passed": False,
+        "chapter_closure_status": "concern",
+        "local_refresh_status": "attempt_refreshed_started",
+        "local_refresh_failure_family": None,
+        "planning_artifact_status": "not_requested",
+        "publication_status": "deferred",
+        "publication_reason": "chapter_run_in_progress",
+        "current_generation_id": current_generation(root),
+        "attempt_path": ATTEMPT_PATH.as_posix(),
+        "stable_path": None,
+    }
 
 
 def _mark_attempt_refresh_failure(
@@ -623,6 +680,7 @@ def run(
     attempt = build_workspace_view(
         source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
         edges, candidates, report, triplet_status, "last_attempt",
+        closure_passed_override=semantic_triplet_closure_passed,
     )
     attempt.setdefault("chapter_run", {})["closure_evidence_status"] = (
         "verified" if closure_evidence_passed else "blocked"
@@ -633,6 +691,14 @@ def run(
         "verified" if triplet_evidence_passed else "blocked"
     )
     attempt["chapter_run"]["triplet_evidence_reason"] = triplet_evidence_reason
+    if triplet_status == "passed" and not triplet_evidence_passed:
+        attempt.setdefault("problems", []).append({
+            "kind": "triplet_baseline_evidence_invalid",
+            "reason": triplet_evidence_reason,
+        })
+        attempt["status"] = "concern"
+        attempt["fresh"] = False
+        attempt["chapter_run"]["closure_passed"] = False
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
@@ -657,6 +723,7 @@ def run(
             stable = build_workspace_view(
                 source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
                 edges, candidates, report, triplet_status, "latest_successful",
+                closure_passed_override=True,
             )
             try:
                 write_json(root / STABLE_PATH, stable)
