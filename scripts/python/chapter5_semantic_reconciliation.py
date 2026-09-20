@@ -45,7 +45,7 @@ ALLOWED_DEPENDENCY_RELATIONS = {
 BLOCKING_FINDINGS = {
     "invented_in_ch3", "conflict_with_adr", "unsupported_task_claim",
     "orphan_acceptance", "partial_acceptance", "untraceable_acceptance",
-    "out_of_task_scope",
+    "out_of_task_scope", "invalid_dependency",
 }
 REFS_RE = re.compile(r"\bRefs:\s*([^\n]+)$", re.IGNORECASE)
 
@@ -787,6 +787,50 @@ def reconcile(
             "dependency_evidence": evidence,
         })
 
+    final_dependencies = set(task["depends_on"])
+    for row in dependency_corrections:
+        dep = _canonical_task_id(row.get("dependency_id"))
+        if not dep:
+            continue
+        if row.get("action") == "remove":
+            final_dependencies.discard(dep)
+        elif row.get("action") in {"keep", "add"}:
+            final_dependencies.add(dep)
+
+    numeric_task = int(task_id) if str(task_id).isdigit() else None
+    for dep in sorted(final_dependencies):
+        if numeric_task is not None and dep.isdigit() and int(dep) > numeric_task:
+            findings.append({
+                "finding_type": "dependency",
+                "status": "invalid_dependency",
+                "dependency_id": dep,
+                "reason": "forward dependency is not allowed after Chapter 5 stabilization",
+            })
+
+    graph: dict[str, set[str]] = {}
+    for item in task_rows:
+        row = item["row"]
+        graph.setdefault(item["task_id"], set()).update(
+            _canonical_task_id(x) for x in row.get("depends_on", [])
+            if _canonical_task_id(x)
+        )
+    graph[str(task_id)] = set(final_dependencies)
+
+    def reaches(start: str, target: str, visiting: set[str]) -> bool:
+        if start == target:
+            return True
+        if start in visiting:
+            return False
+        visiting.add(start)
+        return any(reaches(dep, target, visiting) for dep in graph.get(start, set()))
+
+    if any(reaches(dep, str(task_id), set()) for dep in final_dependencies):
+        findings.append({
+            "finding_type": "dependency",
+            "status": "invalid_dependency",
+            "reason": "dependency cycle detected after Chapter 5 stabilization",
+        })
+
     overlap_decisions = decisions.get("overlap_decisions", [])
     if not isinstance(overlap_decisions, list):
         overlap_decisions = []
@@ -863,6 +907,7 @@ def reconcile(
         "source_scope": snapshot.get("source_scope", []),
         "findings": all_findings,
         "dependency_corrections": dependency_corrections,
+        "final_dependencies": sorted(final_dependencies),
         "overlap_reviews": overlap_reviews,
         "acceptance_coverage": acceptance_coverage,
         "topology_edges": topology_edges,
@@ -896,6 +941,47 @@ def reconcile(
     _write_json(root / DEFAULT_RECONCILIATION_DIR / "latest.json", reconciliation)
     _write_json(root / DEFAULT_READINESS_DIR / "latest.json", readiness_doc)
     return reconciliation, readiness_doc
+
+
+def apply_task_corrections(
+    root: Path,
+    task_id: str,
+    reconciliation: dict[str, Any],
+    readiness: dict[str, Any],
+    decisions: dict[str, Any],
+) -> list[str]:
+    if readiness.get("closure_allowed") is not True:
+        raise ValueError("cannot apply Chapter 5 task corrections while readiness is blocked")
+    changed: list[str] = []
+    final_dependencies = [
+        int(value) if str(value).isdigit() else str(value)
+        for value in reconciliation.get("final_dependencies", [])
+    ]
+    for view_path in DEFAULT_TASK_VIEWS:
+        path = root / view_path
+        payload = _load_json(path, [])
+        if not isinstance(payload, list):
+            continue
+        dirty = False
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
+            row_id = _canonical_task_id(
+                row.get("taskmaster_id") if row.get("taskmaster_id") is not None else row.get("id")
+            )
+            if row_id != str(task_id):
+                continue
+            row["depends_on"] = final_dependencies
+            row["dependency_status"] = "chapter5_stabilized"
+            row["dependency_decisions"] = reconciliation.get("dependency_corrections", [])
+            row["overlap_reviews"] = reconciliation.get("overlap_reviews", [])
+            row["acceptance_semantic_links"] = decisions.get("acceptance_links", [])
+            row["chapter5_readiness"] = readiness.get("readiness")
+            dirty = True
+        if dirty:
+            _write_json(path, payload)
+            changed.append(view_path.as_posix())
+    return changed
 
 
 def readiness_path_for_task(root: Path, task_id: str) -> Path:
@@ -968,6 +1054,7 @@ def build_parser() -> argparse.ArgumentParser:
     reconcile_cmd.add_argument("--decisions", default="")
     reconcile_cmd.add_argument("--out", default="")
     reconcile_cmd.add_argument("--readiness-out", default="")
+    reconcile_cmd.add_argument("--apply-task-corrections", action="store_true")
 
     check_cmd = sub.add_parser("check-readiness", help="fail closed unless Chapter 5 allows the task to enter Chapter 6")
     check_cmd.add_argument("--task-id", required=True)
@@ -1018,12 +1105,19 @@ def main(argv: list[str] | None = None) -> int:
             out_path=out,
             readiness_path=readiness_out,
         )
+        changed_task_views: list[str] = []
+        if args.apply_task_corrections:
+            decisions_payload = _load_json(decisions, {}) if decisions and decisions.is_file() else {}
+            changed_task_views = apply_task_corrections(
+                root, task_id, reconciliation, readiness, decisions_payload
+            )
         print(json.dumps({
             "status": readiness["readiness"],
             "closure_allowed": readiness["closure_allowed"],
             "reconciliation": out.relative_to(root).as_posix(),
             "readiness": readiness_out.relative_to(root).as_posix(),
             "summary": reconciliation["summary"],
+            "changed_task_views": changed_task_views,
         }, ensure_ascii=False))
         return 0 if readiness["closure_allowed"] else 3
     ok, payload, reason = load_task_readiness(root, args.task_id)
