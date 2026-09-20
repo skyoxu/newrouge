@@ -266,6 +266,37 @@ def partial_attempt(
     return payload
 
 
+def _refresh_failure_summary(
+    root: Path,
+    *,
+    source: str,
+    trigger_run_id: str,
+    topology_revision: str | None,
+    semantic_triplet_closure_passed: bool,
+    family: str,
+    reason: str,
+    attempt_written: bool,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "chapter-knowledge-refresh-summary.v1",
+        "source": source,
+        "trigger_run_id": trigger_run_id,
+        "topology_revision": topology_revision,
+        "semantic_triplet_closure_passed": semantic_triplet_closure_passed,
+        "closure_passed": False,
+        "chapter_closure_status": "knowledge_refresh_failed",
+        "local_refresh_status": "failed",
+        "local_refresh_failure_family": family,
+        "local_refresh_reason": reason,
+        "planning_artifact_status": "blocked_by_knowledge_refresh",
+        "publication_status": "deferred",
+        "publication_reason": "knowledge_refresh_failed",
+        "current_generation_id": current_generation(root),
+        "attempt_path": ATTEMPT_PATH.as_posix() if attempt_written else None,
+        "stable_path": None,
+    }
+
+
 def run(
     root: Path,
     *,
@@ -294,8 +325,20 @@ def run(
         reason = "partial Chapter closure: required refresh inputs are missing"
         if refresh_local:
             attempt = partial_attempt(source, trigger_run_id, reason, missing)
-            write_json(root / ATTEMPT_PATH, attempt)
-            write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+            try:
+                write_json(root / ATTEMPT_PATH, attempt)
+                write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+            except OSError as exc:
+                return _refresh_failure_summary(
+                    root,
+                    source=source,
+                    trigger_run_id=trigger_run_id,
+                    topology_revision=attempt.get("identity", {}).get("revision"),
+                    semantic_triplet_closure_passed=False,
+                    family="attempt_refresh_failed",
+                    reason=str(exc),
+                    attempt_written=False,
+                )
         return {
             "schema_version": "chapter-knowledge-refresh-summary.v1",
             "source": source,
@@ -319,33 +362,77 @@ def run(
     edges = load_json(edges_path, {})
     candidates = load_json(candidates_path, {})
     report = load_json(report_path, {})
-    closure_passed = report.get("status") == "passed" and triplet_status == "passed"
+    semantic_triplet_closure_passed = (
+        report.get("status") == "passed" and triplet_status == "passed"
+    )
 
     attempt = build_workspace_view(
         source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
         edges, candidates, report, triplet_status, "last_attempt",
     )
     local_status = "skipped"
+    attempt_written = False
     if refresh_local:
-        write_json(root / ATTEMPT_PATH, attempt)
-        write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+        try:
+            write_json(root / ATTEMPT_PATH, attempt)
+            attempt_written = True
+            write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+        except OSError as exc:
+            return _refresh_failure_summary(
+                root,
+                source=source,
+                trigger_run_id=trigger_run_id,
+                topology_revision=attempt.get("identity", {}).get("revision"),
+                semantic_triplet_closure_passed=semantic_triplet_closure_passed,
+                family="attempt_refresh_failed",
+                reason=str(exc),
+                attempt_written=attempt_written,
+            )
         local_status = "attempt_refreshed"
-        if closure_passed:
+        if semantic_triplet_closure_passed:
             stable = build_workspace_view(
                 source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
                 edges, candidates, report, triplet_status, "latest_successful",
             )
-            write_json(root / STABLE_PATH, stable)
+            try:
+                write_json(root / STABLE_PATH, stable)
+            except OSError as exc:
+                return _refresh_failure_summary(
+                    root,
+                    source=source,
+                    trigger_run_id=trigger_run_id,
+                    topology_revision=attempt.get("identity", {}).get("revision"),
+                    semantic_triplet_closure_passed=True,
+                    family="stable_refresh_failed",
+                    reason=str(exc),
+                    attempt_written=True,
+                )
             local_status = "stable_refreshed"
+
+    closure_passed = semantic_triplet_closure_passed and (
+        not refresh_local or local_status == "stable_refreshed"
+    )
 
     planning_status = "not_requested"
     if write_planning:
         if not closure_passed:
             planning_status = "blocked_by_closure"
         else:
-            copy_planning_artifacts(
-                root, source_manifest, ledger_path, semantics_path, capabilities_path, edges_path
-            )
+            try:
+                copy_planning_artifacts(
+                    root, source_manifest, ledger_path, semantics_path, capabilities_path, edges_path
+                )
+            except (OSError, ValueError) as exc:
+                return _refresh_failure_summary(
+                    root,
+                    source=source,
+                    trigger_run_id=trigger_run_id,
+                    topology_revision=attempt.get("identity", {}).get("revision"),
+                    semantic_triplet_closure_passed=True,
+                    family="planning_topology_refresh_failed",
+                    reason=str(exc),
+                    attempt_written=attempt_written,
+                )
             planning_status = "written"
 
     if closure_passed:
@@ -357,8 +444,11 @@ def run(
         "source": source,
         "trigger_run_id": trigger_run_id,
         "topology_revision": attempt.get("identity", {}).get("revision"),
+        "semantic_triplet_closure_passed": semantic_triplet_closure_passed,
         "closure_passed": closure_passed,
+        "chapter_closure_status": "passed" if closure_passed else "concern",
         "local_refresh_status": local_status,
+        "local_refresh_failure_family": None,
         "planning_artifact_status": planning_status,
         "publication_status": publication_status,
         "publication_reason": publication_reason,
