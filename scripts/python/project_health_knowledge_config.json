@@ -2,6 +2,7 @@
   "source_paths": [
     ".taskmaster/tasks",
     "docs/prd",
+    "docs/gdd",
     "docs/adr",
     "docs/architecture",
     "docs/agents",
@@ -20,6 +21,7 @@
   "source_path_bindings": {
     "tasks": ".taskmaster/tasks",
     "product_requirements": "docs/prd",
+    "game_design": "docs/gdd",
     "architecture_decisions": "docs/adr",
     "architecture": "docs/architecture",
     "agent_rules": "docs/agents",
