@@ -128,7 +128,52 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             {row["block_id"] for row in ledger["blocks"]},
             {row["block_id"] for row in candidate["block_results"]},
         )
-        self.assertTrue(all(row["input_block_count"] == row["output_accounted_count"] for row in candidate["batch_summaries"]))
+        self.assertTrue(all(row["output_accounted_count"] == 0 for row in candidate["batch_summaries"]))
+        self.assertTrue(all(row["disposition"] == "" for row in candidate["block_results"]))
+        self.assertTrue(all(row["delivery_potential"] is None for row in candidate["block_results"]))
+
+    def test_projection_compile_rejects_unreviewed_blocks_and_requires_batch_accounting(self) -> None:
+        ledger = {
+            "source_revision": "source-set:test",
+            "source_manifest_sha256": "sha256:" + "1" * 64,
+            "blocks": [{
+                "block_id": "SB-1",
+                "source_path": "docs/gdd/a.md",
+                "line_start": 1,
+                "line_end": 1,
+                "raw_text": "升级为同一张卡的升级态。",
+                "content_hash": "sha256:" + "2" * 64,
+                "source_sha256": "3" * 64,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            index, candidate = projection_mod.prepare(ledger, 40, Path(tmp), 24000)
+        with self.assertRaisesRegex(ValueError, "output_accounted_count"):
+            projection_mod.compile_projection(ledger, index, candidate)
+
+        candidate["batch_summaries"][0]["output_accounted_count"] = 1
+        candidate["block_results"][0].update({
+            "disposition": "context",
+            "delivery_potential": False,
+        })
+        semantics, capabilities, _edges = projection_mod.compile_projection(ledger, index, candidate)
+        self.assertEqual("context", semantics["source_accounting"][0]["disposition"])
+        self.assertEqual([], capabilities["capabilities"])
+
+    def test_projection_batch_budget_never_truncates_oversized_block(self) -> None:
+        ledger = {
+            "source_revision": "source-set:test",
+            "blocks": [{
+                "block_id": "SB-LONG",
+                "source_path": "docs/gdd/a.md",
+                "line_start": 1,
+                "line_end": 1,
+                "raw_text": "长" * 2000,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ValueError, "do not truncate it silently"):
+                projection_mod.prepare(ledger, 40, Path(tmp), 1000)
 
     def test_projection_conservation_blocks_delivery_potential_unresolved(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
