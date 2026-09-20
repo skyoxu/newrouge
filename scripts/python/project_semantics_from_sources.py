@@ -412,6 +412,31 @@ def compile_projection(
         for row in ledger.get("blocks", [])
         if isinstance(row, dict) and row.get("block_id")
     }
+    owned_block_ids = [
+        str(block_id)
+        for batch in batches.get("batches", [])
+        if isinstance(batch, dict)
+        for block_id in batch.get("block_ids", [])
+    ]
+    duplicate_ownership = sorted({
+        block_id for block_id in owned_block_ids
+        if owned_block_ids.count(block_id) > 1
+    })
+    if duplicate_ownership:
+        raise ValueError(
+            "duplicate primary batch ownership: " + ", ".join(duplicate_ownership[:20])
+        )
+    unknown_owned = sorted(set(owned_block_ids) - set(blocks))
+    if unknown_owned:
+        raise ValueError(
+            "prepared batches reference unknown source blocks: "
+            + ", ".join(unknown_owned[:20])
+        )
+    missing_owned = sorted(set(blocks) - set(owned_block_ids))
+    if missing_owned:
+        raise ValueError(
+            "prepared batches omit source blocks: " + ", ".join(missing_owned[:20])
+        )
     assigned = {
         str(block_id): str(batch.get("batch_id"))
         for batch in batches.get("batches", [])
