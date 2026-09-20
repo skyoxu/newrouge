@@ -119,6 +119,12 @@ Consumer semantic fit is owned by the consumer. A ranked Locator candidate does 
 7. Read `docs/architecture/base/00-README.md` and `docs/architecture/ADR_INDEX_GODOT.md` before changing architecture, overlays, or contracts.
 8. Read `docs/testing-framework.md` before changing tests or gates.
 
+## Semantic topology routing
+
+`docs/planning/semantic-topology/**` is a derived planning topology, not a replacement SSoT. KCP may return its locations when policy allows, but a consumer must re-read the referenced GDD/PRD/ADR/Task/Acceptance authority before relying on the semantic claim. Capability nodes are optional grouping and never carry Taskmaster status.
+
+Project Health exposes Main and Workspace/Chapter-run topology identities separately. Main remains trusted-ref/revision-bound; Workspace is local preview only and must not be treated as published repository fact.
+
 ## File Location Quick Reference
 
 - PRD source material: `docs/prd/**/*.md`
