@@ -158,3 +158,72 @@ test.describe('project health Godot scene graph', () => {
     await request;
   });
 });
+
+
+test.describe('project health semantic topology', () => {
+  test('renders legacy main topology and keeps workspace identity explicit', async ({ page }) => {
+    await page.route('**/api/knowledge/topology?mode=main', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: false,
+        fresh: false,
+        identity: { kind: 'main', revision: 'main-revision' },
+        status: 'legacy_unmapped',
+        reason: 'topology unavailable',
+        nodes: { source_blocks: [], requirements: [], capabilities: [], tasks: [], acceptance: [] },
+        edges: [], task_trace: {}, summary: {}, problems: []
+      })
+    }));
+    await page.route('**/api/knowledge/topology?mode=workspace', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: true,
+        fresh: true,
+        identity: { kind: 'workspace', revision: 'workspace:test' },
+        status: 'fresh',
+        nodes: { source_blocks: [], requirements: [], capabilities: [], tasks: [], acceptance: [] },
+        edges: [], task_trace: {}, summary: {}, problems: []
+      })
+    }));
+
+    await page.goto(base() + '/knowledge/topology');
+    await expect(page.getByRole('heading', { name: 'Design → Delivery Topology' })).toBeVisible();
+    await expect(page.locator('#topology-status')).toContainText('main');
+    await expect(page.locator('#topology-status')).toContainText('topology unavailable');
+
+    await page.locator('#topology-identity').selectOption('workspace');
+    await expect(page.locator('#topology-status')).toContainText('workspace:test');
+  });
+
+  test('scene preview exposes design trace as navigation only', async ({ page }) => {
+    const graph = syntheticGraph();
+    graph.design_trace = {
+      'Game.Godot/Scenes/Test/Main.tscn': {
+        tasks: [{ task_id: '7', title: 'Test task', status: 'pending' }],
+        capabilities: ['CAP-TEST'],
+        requirements: ['FR-TEST-001'],
+        source_blocks: ['SB-GDD-001'],
+        evidence_levels: ['static_attached'],
+        semantic_claim: 'navigation_only'
+      }
+    };
+    await page.route('**/api/knowledge/scene-graph', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(graph)
+    }));
+
+    await page.goto(base() + '/knowledge/scenes');
+    const scene = page.locator('[data-scene-path="Game.Godot/Scenes/Test/Main.tscn"]').first();
+    await expect(scene).toBeVisible();
+    await scene.click();
+    await expect(page.locator('#scene-preview')).toBeVisible();
+    await expect(page.locator('#scene-preview')).toContainText('Trace to design');
+    await expect(page.locator('#scene-preview')).toContainText('FR-TEST-001');
+    await expect(page.locator('#scene-preview')).toContainText('not acceptance proof');
+  });
+});

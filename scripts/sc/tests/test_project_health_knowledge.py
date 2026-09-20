@@ -585,6 +585,37 @@ class HttpTests(unittest.TestCase):
         self.assertNotEqual(self.request('GET', '/../project-health-knowledge/latest.json')[0], 200)
         self.assertNotEqual(self.request('GET', '/server.json/../../secret')[0], 200)
 
+    def test_topology_page_and_main_route_are_available_before_producer(self):
+        status, page = self.request('GET', '/knowledge/topology')
+        self.assertEqual(status, 200)
+        self.assertIn(b'Design', page)
+        status, data = self.request('GET', '/api/knowledge/topology?mode=main')
+        self.assertEqual(status, 200)
+        topology = json.loads(data)
+        self.assertFalse(topology['available'])
+        self.assertEqual(topology['identity']['kind'], 'main')
+        self.assertEqual(topology['status'], 'legacy_unmapped')
+
+    def test_workspace_topology_route_never_reuses_main_identity(self):
+        write_json(base_dir(self.root) / 'topology/workspace-latest.json', {
+            'schema_version': 'newrouge.semantic-topology-view.v1',
+            'available': True,
+            'fresh': True,
+            'identity': {'kind': 'workspace', 'revision': 'workspace:test'},
+            'status': 'fresh',
+            'nodes': {'source_blocks': [], 'requirements': [], 'capabilities': [],
+                      'tasks': [], 'acceptance': []},
+            'edges': [], 'task_trace': {}, 'summary': {}, 'problems': [],
+        })
+        status, data = self.request('GET', '/api/knowledge/topology?mode=workspace')
+        self.assertEqual(status, 200)
+        topology = json.loads(data)
+        self.assertEqual(topology['identity']['kind'], 'workspace')
+        self.assertEqual(topology['identity']['revision'], 'workspace:test')
+        status, data = self.request('GET', '/api/knowledge/topology?mode=main')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(data)['identity']['kind'], 'main')
+
     def test_godot_views_are_read_only_and_revision_bound(self):
         write_json(base_dir(self.root) / 'latest.json', {'revision': 'a' * 40, 'scene_graph': {
             'main_scene': 'Game.Godot/Scenes/Main.tscn', 'nodes': {'Game.Godot/Scenes/Main.tscn': {'path': 'Game.Godot/Scenes/Main.tscn', 'classification': 'confirmed-reachable', 'nodes': []}}, 'edges': [], 'code_references': [], 'diagnostics': []}})

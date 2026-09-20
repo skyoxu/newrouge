@@ -62,6 +62,25 @@ window.openScenePreview = path => {
   const p = document.createElement('p'); p.textContent = `${scene.description || 'Godot scene'} · ${scene.classification || 'unknown'}`; body.append(p);
   const functional = scene.functional_summary || {};
   const sceneMeaning = document.createElement('p'); sceneMeaning.className = 'scene-dictionary-description'; sceneMeaning.textContent = `Data dictionary: ${dictionaryDescription(path, 'No dictionary description available.')}`; body.append(sceneMeaning);
+  const trace = graphState?.design_trace?.[path];
+  if (trace) {
+    const traceDetail = document.createElement('details'); traceDetail.open = true; traceDetail.className = 'scene-design-trace';
+    const traceTitle = document.createElement('summary'); traceTitle.textContent = 'Trace to design'; traceDetail.append(traceTitle);
+    const note = document.createElement('p'); note.textContent = 'Navigation only. Scene/static/runtime evidence is not acceptance proof.'; traceDetail.append(note);
+    const rows = [
+      ['Tasks', (trace.tasks || []).map(item => item.task_id + (item.title ? ' · ' + item.title : ''))],
+      ['Capabilities', trace.capabilities || []],
+      ['Requirements', trace.requirements || []],
+      ['GDD source blocks', trace.source_blocks || []],
+      ['Evidence levels', trace.evidence_levels || []],
+    ];
+    for (const [label, values] of rows) {
+      const line = document.createElement('p');
+      line.textContent = label + ': ' + (values.length ? values.join(', ') : 'unmapped');
+      traceDetail.append(line);
+    }
+    body.append(traceDetail);
+  }
   if (functional.scripts?.length) {
     const heading = document.createElement('h3'); heading.textContent = `Attached scripts (${functional.scripts.length})`; body.append(heading);
     for (const script of functional.scripts) {

@@ -1,5 +1,19 @@
 # Project Health: Knowledge + Impact
 
+## Design → Delivery Topology
+
+The existing loopback service exposes a read-only `/knowledge/topology` view and `/api/knowledge/topology?mode=main|workspace`.
+
+- Main topology is identity/revision-bound to the scanned local `refs/heads/main` snapshot.
+- Workspace/Chapter-run topology is preview-only and uses a separate workspace/run identity. It cannot overwrite the main `latest.json`, KCP publication pointer, or runtime-verified main evidence.
+- Missing topology artifacts are a valid migration state and render as `legacy_unmapped`; the page does not infer or fabricate Requirement/Capability mappings.
+- Capability is optional grouping. Requirements may route directly to Task/global constraint/quality gate/ADR-owned sink.
+- The page is read-only and does not create or modify Requirement, Task or Acceptance.
+- Scene details may display `Trace to design` through governed Task relationships. The trace is navigation/evidence only and does not convert static/runtime attachment into acceptance proof.
+
+The registered structural source is `docs/planning/semantic-topology/**`. Chapter 3/5 producer and automatic refresh behavior are separate workflow changes and are not introduced by this structural layer.
+
+
 ## Godot 场景图投影
 
 Knowledge 页面提供只读 Godot 场景图。扫描从 `project.godot` 的 `application/run/main_scene` 开始，确定性解析 `.tscn`、`.cs`、`.gd` 与资源路径，结果绑定扫描 revision 并通过 `/api/knowledge/scene-graph` 提供。循环使用 visited 集合终止；动态加载标记为 `dynamic-unknown`，未确认入口标记为 `unreachable-candidate`，不等同于运行时绝对不可达。用户浏览不调用大模型、不执行游戏或修改源文件。页面支持场景树、未确认场景列表及 Node/脚本/资源详情。
@@ -66,7 +80,7 @@ CLI：`py -3 scripts/python/project_health_runtime.py --godot-bin "$env:GODOT_BI
 
 配置编辑器直接显示在页面中，不需要展开折叠面板。`Save local configuration` 只保存配置，`Scan local main` 才会用新配置重建扫描结果。状态统计项可点击并在服务端分页前筛选任务列表；再次点击当前统计项或使用 `Clear filter` 恢复全部任务。
 
-- `source_paths`: 明确的文件或目录范围；默认包含任务三联、架构、契约、运行时和测试。禁止根目录、logs、Git 元数据和越界路径。扫描与探索查询共享同一内容集。
+- `source_paths`: 明确的文件或目录范围；默认包含任务三联、PRD/GDD、架构、契约、运行时和测试。`docs/planning/semantic-topology` 是固定的可选结构源：main 尚未包含时显示 `legacy_unmapped`，不会作为缺失配置阻断扫描。禁止根目录、logs、Git 元数据和越界路径。扫描与探索查询共享同一内容集。
 
 - `gdd_paths`: 多个仓库相对路径，支持 UTF-8 `.md` / `.txt` / `.json`。路径必须存在于扫描的 main；不支持任意本地绝对路径、PDF/DOCX、软链接或浏览器任意文件读取。缺失项会显示为不可用。
 - `query_aliases`: 中文术语到短查询数组。每个别名作为独立 query 执行，原始输入保留。默认提供奖励/Reward、存档/Save、战斗/Combat；不是自动翻译或跨语言向量检索。

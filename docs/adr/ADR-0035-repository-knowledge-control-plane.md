@@ -8,6 +8,8 @@
   - Ji Mu Yun has a proven repository knowledge control-plane lineage, but its Hosted Context E2/account/project isolation capabilities are SaaS-specific and are not appropriate for this Windows-only single-player game repository.
 - Decision:
   - Introduce a derived Repository Knowledge Control Plane under `knowledge/**`.
+  - Treat `docs/planning/semantic-topology/**` as revision-bound derived planning topology that KCP may index by location; original GDD/PRD/ADR/Task/Acceptance sources remain authoritative.
+  - Canonical KCP publication remains trusted-ref only. Workspace/Chapter-run topology previews are local investigation state and MUST NOT advance `current` or `last-known-good`.
   - Repository source remains authoritative; generated knowledge artifacts may not override source.
   - Initial domains are `toolchain`, `game-design`, `game-runtime`, and `delivery`.
   - Keep domain, visibility, lifecycle, and enforcement level as independent dimensions.
