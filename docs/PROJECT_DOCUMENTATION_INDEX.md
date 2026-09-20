@@ -109,3 +109,13 @@ Current stop-loss families:
 - Project-health report catalog: `logs/ci/project-health/report-catalog.latest.json`
 
 - [MVG 集成验收](workflows/mvg-integration-acceptance.md)：交接归属、整合提交测试、保守回归建议与可选变异实验。
+
+
+## Semantic Delivery Topology
+
+- Structural contract and migration notes: `docs/planning/semantic-topology/README.md`
+- Architecture decision: `docs/adr/ADR-0038-semantic-delivery-topology.md`
+- Read-only validator: `py -3 scripts/python/validate_semantic_topology.py`
+- Local Project Health view: `/knowledge/topology`
+- Main topology is bound to `refs/heads/main`; Workspace/Chapter-run topology is preview-only.
+- Source/GDD, ADR/architecture, Taskmaster and Acceptance remain authority. Topology and KCP are derived navigation/projection layers.
