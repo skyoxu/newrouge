@@ -38,6 +38,7 @@ This is not a consumer recovery side effect. The rules are:
 - failed or partial runs must never overwrite latest successful;
 - `--write-planning-artifacts` is allowed only after the registered closure gate has passed;
 - `--publish-if-eligible` remains subject to the same trusted-ref and clean-worktree publication rules below;
+- registered Chapter closure must PASS before publication is attempted; blocked/unknown closure returns publication deferred even on clean main;
 - Chapter 6, Review, recovery, and ordinary consumers must never call this hook to repair or advance global knowledge implicitly.
 ## Explicit publication
 
