@@ -17,6 +17,9 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'python'))
+from chapter5_semantic_reconciliation import load_task_readiness
 from typing import Any
 
 from agent_to_agent_review import write_agent_review
@@ -1843,6 +1846,14 @@ def main() -> int:
     if not task_id:
         print("[sc-review-pipeline] ERROR: invalid --task-id")
         return 2
+    readiness_ok, readiness_payload, readiness_reason = load_task_readiness(repo_root(), task_id)
+    if not readiness_ok:
+        print(
+            "[sc-review-pipeline] ERROR: chapter5_readiness: "
+            + readiness_reason
+            + "; return to Chapter 5 before Review."
+        )
+        return 12
     if bool(args.allow_overwrite) and bool(args.force_new_run_id):
         print("[sc-review-pipeline] ERROR: --allow-overwrite and --force-new-run-id are mutually exclusive.")
         return 2
