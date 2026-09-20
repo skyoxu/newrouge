@@ -305,6 +305,32 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         self.assertEqual("context", semantics["source_accounting"][0]["disposition"])
         self.assertEqual([], capabilities["capabilities"])
 
+    def test_projection_prepare_removes_stale_managed_batch_files(self) -> None:
+        ledger = {
+            "source_revision": "source-set:test",
+            "source_manifest_sha256": "sha256:" + "1" * 64,
+            "mode": "init",
+            "blocks": [
+                {
+                    "block_id": "SB-1",
+                    "source_path": "docs/gdd/a.md",
+                    "line_start": 1,
+                    "line_end": 1,
+                    "block_type": "paragraph",
+                    "content_hash": "sha256:" + "a" * 64,
+                    "raw_text": "A",
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            batch_dir = Path(tmp)
+            (batch_dir / "batch-9999.json").write_text("{}", encoding="utf-8")
+            (batch_dir / "keep.txt").write_text("keep", encoding="utf-8")
+            projection_mod.prepare(ledger, 40, batch_dir)
+            self.assertFalse((batch_dir / "batch-9999.json").exists())
+            self.assertTrue((batch_dir / "batch-0001.json").is_file())
+            self.assertTrue((batch_dir / "keep.txt").is_file())
+
     def test_projection_batch_budget_never_truncates_oversized_block(self) -> None:
         ledger = {
             "source_revision": "source-set:test",
