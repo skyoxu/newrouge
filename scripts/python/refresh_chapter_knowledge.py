@@ -211,7 +211,12 @@ def verify_triplet_attestation(
         errors.append("missing_triplet_checks:" + ",".join(missing_checks))
     for name in sorted(TRIPLET_REQUIRED_CHECKS & set(by_name)):
         row = by_name[name]
-        if row.get("status") != "passed" or int(row.get("returncode", 1)) != 0:
+        try:
+            returncode = int(row.get("returncode", 1))
+        except (TypeError, ValueError):
+            returncode = 1
+            errors.append(f"invalid_triplet_check_returncode:{name}")
+        if row.get("status") != "passed" or returncode != 0:
             errors.append(f"triplet_check_failed:{name}")
 
     return not errors, ",".join(errors) if errors else "verified_triplet_baseline"
