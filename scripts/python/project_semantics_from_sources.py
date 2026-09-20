@@ -531,6 +531,10 @@ def compile_projection(
             }
             if atom.get("rationale"):
                 row["rationale"] = str(atom["rationale"])
+            if isinstance(atom.get("decision"), dict):
+                row["decision"] = atom["decision"]
+            if atom.get("disposition"):
+                row["disposition"] = str(atom["disposition"])
 
             existing = by_requirement.get(requirement_id)
             if existing is not None:
