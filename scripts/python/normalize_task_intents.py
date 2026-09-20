@@ -146,6 +146,87 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+SEMANTIC_LAYER = {
+    "functional": "core",
+    "non_functional": "ci",
+    "invariant": "core",
+    "failure": "core",
+    "scope": "core",
+    "metric": "ci",
+    "constraint": "ci",
+    "risk": "docs",
+}
+SEMANTIC_OWNER = {
+    "functional": "gameplay",
+    "non_functional": "architecture",
+    "invariant": "gameplay",
+    "failure": "gameplay",
+    "scope": "gameplay",
+    "metric": "architecture",
+    "constraint": "architecture",
+    "risk": "architecture",
+}
+
+
+def semantic_to_anchors(
+    semantics: dict[str, Any],
+    source_blocks: dict[str, Any],
+    capabilities: dict[str, Any],
+) -> list[dict[str, Any]]:
+    blocks = {
+        str(row.get("block_id")): row
+        for row in source_blocks.get("blocks", [])
+        if isinstance(row, dict) and row.get("block_id")
+    }
+    cap_by_req: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for capability in capabilities.get("capabilities", []):
+        if not isinstance(capability, dict):
+            continue
+        for rid in capability.get("requirement_ids", []):
+            cap_by_req[str(rid)].append(capability)
+    anchors: list[dict[str, Any]] = []
+    for requirement in semantics.get("requirements", []):
+        if not isinstance(requirement, dict):
+            continue
+        if str(requirement.get("status", "active")).casefold() != "active":
+            continue
+        if requirement.get("delivery_relevant") is not True:
+            continue
+        non_task_sinks = [
+            row for row in requirement.get("non_task_sinks", [])
+            if isinstance(row, dict) and row.get("type") and row.get("id")
+        ]
+        policy = str(requirement.get("sink_policy") or "task_or_global_constraint").casefold()
+        if non_task_sinks and policy not in {"task", "task_required"}:
+            continue
+        if policy in {"global_constraint", "quality_gate", "adr_owned", "deferred", "exclusion"}:
+            continue
+        rid = str(requirement.get("requirement_id"))
+        refs = [str(value) for value in requirement.get("source_block_ids", [])]
+        first = blocks.get(refs[0]) if refs else None
+        source_path = str((first or {}).get("source_path") or "docs/gdd/unknown.md")
+        line = int((first or {}).get("line_start") or 1)
+        caps = cap_by_req.get(rid, [])
+        primary_cap = caps[0] if caps else None
+        kind = str(requirement.get("kind") or "functional")
+        anchors.append({
+            "requirement_id": rid,
+            "source_path": source_path,
+            "line": line,
+            "kind": kind,
+            "priority": str(requirement.get("priority") or "P2").upper(),
+            "text": str(requirement.get("statement") or ""),
+            "refs": [],
+            "source_block_ids": refs,
+            "capability_id": str((primary_cap or {}).get("capability_id") or ""),
+            "capability_title": str((primary_cap or {}).get("title") or ""),
+            "layer_hint": str(requirement.get("layer_hint") or SEMANTIC_LAYER.get(kind, "core")),
+            "owner_hint": str(requirement.get("owner_hint") or SEMANTIC_OWNER.get(kind, "gameplay")),
+            "semantic": True,
+        })
+    return anchors
+
+
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
@@ -200,6 +281,14 @@ def priority_of(anchors: list[dict[str, Any]]) -> str:
 
 
 def choose_topic(anchor: dict[str, Any]) -> tuple[str, str, str]:
+    if anchor.get("semantic"):
+        capability_id = str(anchor.get("capability_id") or "").strip()
+        topic = capability_id.lower() if capability_id else str(anchor.get("kind") or "requirement").lower()
+        return (
+            topic,
+            str(anchor.get("layer_hint") or "core"),
+            str(anchor.get("owner_hint") or "gameplay"),
+        )
     tokens = anchor_words(anchor)
     best: tuple[int, str, str, str] | None = None
     for topic, needles, layer, owner in TOPIC_RULES:
@@ -386,7 +475,8 @@ def build_intents(
     grouped: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for anchor in index.get("anchors", []):
         topic, layer, owner = choose_topic(anchor)
-        key = (str(anchor.get("kind", "requirement")), layer, owner, topic, source_stem(anchor))
+        grouping_stem = str(anchor.get("capability_id") or "") or source_stem(anchor)
+        key = (str(anchor.get("kind", "requirement")), layer, owner, topic, grouping_stem)
         grouped[key].append(anchor)
 
     intents: list[dict[str, Any]] = []
@@ -399,7 +489,7 @@ def build_intents(
             requirement_ids = [str(a.get("requirement_id")) for a in group]
             source_refs = [f"{a.get('source_path')}:{a.get('line')}" for a in group]
             refs = sorted({ref for a in group for ref in a.get("refs", []) if isinstance(ref, str)})
-            phrase = title_phrase(group, topic)
+            phrase = str(group[0].get("capability_title") or "").strip() or title_phrase(group, topic)
             title_split_index = split_index if len(anchors) > chunk_size else 0
             current_id = f"{id_prefix}-{next_index:04d}"
             dependency_key = (owner, layer)
@@ -417,6 +507,11 @@ def build_intents(
                     "layer": layer,
                     "owner": owner,
                     "depends_on": depends_on,
+                    "dependency_status": "provisional",
+                    "dependency_reason": (
+                        "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency"
+                        if depends_on else "none"
+                    ),
                     "adr_refs": [r for r in refs if r.startswith("ADR-")],
                     "chapter_refs": [],
                     "overlay_refs": [r for r in refs if r.startswith("docs/architecture/overlays/")],
@@ -433,6 +528,11 @@ def build_intents(
                     "test_strategy": intent_test_strategy(topic, layer),
                     "source_refs": source_refs,
                     "requirement_ids": requirement_ids,
+                    "semantic_refs": requirement_ids,
+                    "capability_refs": sorted(set(
+                        str(a.get("capability_id")) for a in group if a.get("capability_id")
+                    )),
+                    "complexity_score": min(7, max(1, len(group))),
                     "covered_anchor_count": len(group),
                     "generation_mode": mode,
                 }
@@ -458,6 +558,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Normalize requirement anchors into implementation task intents.")
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--requirements", default=DEFAULT_REQUIREMENTS)
+    parser.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
+    parser.add_argument("--source-blocks", default="logs/ci/task-generation/source-blocks.v1.json")
+    parser.add_argument("--capabilities", default="logs/ci/task-generation/capabilities.v1.json")
     parser.add_argument("--mode", choices=["init", "add"], default="init")
     parser.add_argument("--id-prefix", default="INT")
     parser.add_argument("--max-anchors-per-intent", type=int, default=8)
@@ -466,13 +569,29 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = Path(args.repo_root).resolve()
+    semantics_path = root / args.semantics
+    if semantics_path.is_file():
+        semantics = load_json(semantics_path)
+        if semantics.get("schema_version") != "newrouge.semantic-requirements.v1":
+            raise SystemExit("semantic requirements schema is invalid")
+        index = {
+            "schema": "chapter3.validated-semantics.v1",
+            "anchors": semantic_to_anchors(
+                semantics,
+                load_json(root / args.source_blocks),
+                load_json(root / args.capabilities) if (root / args.capabilities).is_file() else {"capabilities": []},
+            ),
+        }
+    else:
+        index = load_json(root / args.requirements)
     result = build_intents(
-        load_json(root / args.requirements),
+        index,
         args.mode,
         args.id_prefix,
         args.max_anchors_per_intent,
         args.split_profile,
     )
+    result["source_schema"] = index.get("schema")
     out = root / args.out
     write_json(out, result)
     print(f"task_intents={out} intents={result['intent_count']} anchors={result['source_anchor_count']}")
