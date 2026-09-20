@@ -39,7 +39,7 @@ SOURCE_PATH_BINDINGS = dict(zip(
 DEFAULT_CONFIG = {
     'source_paths': SOURCE_PATHS,
     'source_path_bindings': SOURCE_PATH_BINDINGS,
-    'gdd_paths': ['docs/gdd/ui-gdd-flow.md'],
+    'gdd_paths': ['_bmad-output/gdd.md', 'docs/gdd/GDD-NEWROUGE-V1.md', 'docs/gdd/ui-gdd-flow.md'],
     'task_scene_bindings': [{
         'task_id': 115, 'scene': 'Game.Godot/Scenes/Reward.tscn', 'node': '.',
         'script': 'Game.Godot/Scripts/RewardScene.gd',
@@ -197,11 +197,9 @@ def scan(root: Path) -> dict:
         config = load_config(root)
         if (root / '.git').exists() or (root / '.git').is_file():
             trusted = LocalMainSnapshot(root, REF)
-            topology_trusted = LocalMainSnapshot(root, REF)
             revision = trusted.commit
         else:
             trusted = DirectorySnapshot(root, config['source_paths'] + config['gdd_paths'] + STRUCTURAL_SOURCE_PATHS + ['knowledge/policies'])
-            topology_trusted = trusted
             revision = trusted.commit
         required = ['.taskmaster/tasks/tasks.json', '.taskmaster/tasks/tasks_back.json',
                     '.taskmaster/tasks/tasks_gameplay.json', 'knowledge/policies/consumer-policies.v1.json',
@@ -235,21 +233,7 @@ def scan(root: Path) -> dict:
                     pass
         details = task_details(trusted)
         attach_task_scenes(details, sources, config['task_scene_bindings'])
-        semantic_topology = load_topology_from_snapshot(topology_trusted, details, identity_kind='main')
-        if semantic_topology.get('available'):
-            topology_source_paths = {
-                str(row.get('source_path'))
-                for row in semantic_topology.get('nodes', {}).get('source_blocks', [])
-                if isinstance(row, dict) and isinstance(row.get('source_path'), str)
-            }
-            for path in sorted(topology_source_paths):
-                if path in topology_trusted.paths and path not in sources:
-                    data = topology_trusted.read_bytes(path)
-                    if len(data) <= 4 * 1024 * 1024:
-                        try:
-                            sources[path] = data.decode('utf-8-sig')
-                        except UnicodeDecodeError:
-                            pass
+        semantic_topology = load_topology_from_snapshot(trusted, details, identity_kind='main')
         scene_graph = build_scene_graph(sources, details, known_paths=trusted.paths)
         attach_scene_design_trace(scene_graph, semantic_topology, details)
         previous_index_path = root / 'docs/knowledge/catalog/godot-elements.json'
