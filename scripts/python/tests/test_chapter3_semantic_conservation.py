@@ -380,6 +380,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "schema_version": "chapter3.source-manifest.v1",
             "source_revision": "source-set:test",
             "manifest_sha256": "sha256:" + "1" * 64,
+            "repository_revision": "a" * 40,
         })
         write_json(paths["ledger"], {
             "schema_version": "newrouge.source-blocks.v1",
@@ -427,6 +428,59 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             "blocking_counts": {} if status == "passed" else {"orphan_delivery_requirements": 1},
         })
         return paths
+
+    def test_passed_closure_promotes_planning_topology_with_repository_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-promote",
+                refresh_local=True,
+                write_planning=True,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertTrue(summary["closure_passed"])
+            self.assertEqual("written", summary["planning_artifact_status"])
+            manifest_path = root / "docs/planning/semantic-topology/topology-manifest.v1.json"
+            self.assertTrue(manifest_path.is_file())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual("a" * 40, manifest["repository_revision"])
+            self.assertEqual("source-set:test", manifest["source_revision"])
+            self.assertTrue(manifest["artifacts"])
+
+            write_json(paths["report"], {
+                "schema_version": "chapter3.semantic-conservation-report.v1",
+                "status": "blocked",
+                "blocking_counts": {"orphan_delivery_requirements": 1},
+            })
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-blocked-promote",
+                refresh_local=True,
+                write_planning=True,
+                publish_if_eligible=False,
+                triplet_status="blocked",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("blocked_by_closure", summary["planning_artifact_status"])
 
     def test_failed_attempt_does_not_overwrite_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
