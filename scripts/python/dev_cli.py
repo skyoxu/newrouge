@@ -475,6 +475,7 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
             edges_path=root / args.edges,
             candidates_path=root / args.candidates,
             report_path=root / args.report,
+            coverage_path=root / args.coverage,
         )
     except ValueError as exc:
         print(json.dumps({
@@ -888,6 +889,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument("--edges", default="logs/ci/task-generation/topology-edges.v1.json")
     p_refresh.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
     p_refresh.add_argument("--report", default="logs/ci/task-generation/semantic-conservation-report.json")
+    p_refresh.add_argument("--coverage", default="logs/ci/task-generation/coverage-report.json")
     p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
     from run_mvg_acceptance import register_arguments, run as run_mvg
