@@ -114,21 +114,36 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
                 "actual": actual,
             })
 
-    unresolved_delivery = []
-    for block_id, row in accounting.items():
-        if str(row.get("disposition")) != "unresolved" or not bool(row.get("delivery_potential")):
-            continue
-        decision = row.get("decision")
-        resolved = (
-            isinstance(decision, dict)
-            and str(decision.get("owner") or "").strip()
-            and str(decision.get("reason") or "").strip()
-            and str(decision.get("resolved_disposition") or "") in {
+    def resolved_decision(value: Any) -> bool:
+        return (
+            isinstance(value, dict)
+            and str(value.get("owner") or "").strip()
+            and str(value.get("reason") or "").strip()
+            and str(value.get("resolved_disposition") or "") in {
                 "deferred", "out_of_scope", "adr_owned", "context", "rationale",
             }
         )
-        if not resolved:
+
+    unresolved_delivery = []
+    unresolved_requirements = []
+    for block_id, row in accounting.items():
+        if str(row.get("disposition")) != "unresolved" or not bool(row.get("delivery_potential")):
+            continue
+        if not resolved_decision(row.get("decision")):
             unresolved_delivery.append(block_id)
+
+    for row in requirements:
+        if row.get("delivery_relevant") is not True:
+            continue
+        if (
+            str(row.get("status") or "").casefold() != "unresolved"
+            and str(row.get("disposition") or "").casefold() != "unresolved"
+        ):
+            continue
+        rid = str(row.get("requirement_id") or "")
+        if not resolved_decision(row.get("decision")):
+            unresolved_requirements.append(rid)
+            unresolved_delivery.append(rid)
 
     return {
         "binding_mismatches": binding_mismatches,
@@ -138,6 +153,7 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
         "invalid_semantics": invalid_semantics,
         "source_hash_drift": source_hash_drift,
         "unresolved_delivery_potential": sorted(unresolved_delivery),
+        "unresolved_delivery_requirements": sorted(unresolved_requirements),
         "source_block_count": len(blocks),
         "semantic_requirement_count": len(requirements),
     }
