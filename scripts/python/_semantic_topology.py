@@ -522,6 +522,25 @@ def load_workspace_topology(root: Path) -> dict[str, Any]:
         )
         result["problems"] = [{"kind": "identity_mismatch"}]
         return result
+    revision = identity.get("revision")
+    run_identity = identity.get("trigger_run_id") or identity.get("run_id")
+    if not (
+        isinstance(revision, str)
+        and revision.startswith(("workspace:", "run:", "chapter:"))
+    ) and not (isinstance(run_identity, str) and run_identity):
+        result = unavailable_topology(
+            "workspace", str(revision) if revision is not None else None,
+            "workspace preview requires workspace/run identity"
+        )
+        result["problems"] = [{"kind": "workspace_identity_missing"}]
+        return result
+    if identity.get("authority_ref") == "refs/heads/main":
+        result = unavailable_topology(
+            "workspace", str(revision) if revision is not None else None,
+            "workspace preview cannot claim main authority"
+        )
+        result["problems"] = [{"kind": "workspace_claims_main_authority"}]
+        return result
     payload["schema_version"] = "newrouge.semantic-topology-view.v1"
     payload["available"] = bool(payload.get("available", True))
     payload["identity"] = identity
