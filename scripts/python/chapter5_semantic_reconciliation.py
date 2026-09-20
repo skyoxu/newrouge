@@ -45,6 +45,7 @@ ALLOWED_DEPENDENCY_RELATIONS = {
 BLOCKING_FINDINGS = {
     "invented_in_ch3", "conflict_with_adr", "unsupported_task_claim",
     "orphan_acceptance", "partial_acceptance", "untraceable_acceptance",
+    "out_of_task_scope",
 }
 REFS_RE = re.compile(r"\bRefs:\s*([^\n]+)$", re.IGNORECASE)
 
@@ -832,11 +833,14 @@ def reconcile(
             blocking.append(finding)
         elif status in {"missing_in_ch3", "orphan_delivery_semantic"}:
             (blocking if priority in {"P0", "P1"} else concerns).append(finding)
-        elif status in {"partial", "needs_human_decision", "out_of_task_scope"}:
-            concerns.append(finding)
+        elif status in {"partial", "needs_human_decision"}:
+            if priority in {"P0", "P1"}:
+                blocking.append(finding)
+            else:
+                concerns.append(finding)
     for row in dependency_corrections:
         if row.get("action") == "needs_human_decision":
-            concerns.append({"finding_type": "dependency", **row})
+            blocking.append({"finding_type": "dependency", "status": "dependency_unresolved", **row})
     for row in overlap_reviews:
         if row.get("status") == "needs_human_decision":
             concerns.append({"finding_type": "overlap", **row})
