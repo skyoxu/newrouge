@@ -38,7 +38,7 @@ Every source block must be accounted for. Every active delivery Requirement must
 
 ## Idempotent Procedure
 
-1. Resolve `init` versus `add` and declare the authoritative PRD/GDD/epics/stories/custom source paths.
+1. Resolve `init` versus `add`, allocate a `trigger_run_id`, and immediately record the run-start attempt with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --begin-run`. This is the Chapter 3 run-lifecycle guard: if later model/tool work is interrupted, Project Health still has a visible Last Attempt instead of silently losing the run.
 2. Build the complete Source Block Ledger with `py -3 scripts/python/build_source_ledger.py --mode <init|add> ...`. This step inventories all supported source blocks before semantic filtering.
 3. Build the compatibility anchor index from that ledger with `py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --ledger-input logs/ci/task-generation/source-blocks.v1.json`. The compatibility index is downstream evidence only.
 4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. Batches are bounded by both block count and `--max-chars-per-batch`; a single oversized Source Block fails instead of being truncated. The batch index must cover every Source Block exactly once as primary ownership.
