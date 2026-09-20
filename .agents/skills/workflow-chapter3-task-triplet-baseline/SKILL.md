@@ -41,8 +41,8 @@ Every source block must be accounted for. Every active delivery Requirement must
 1. Resolve `init` versus `add` and declare the authoritative PRD/GDD/epics/stories/custom source paths.
 2. Build the complete Source Block Ledger with `py -3 scripts/python/build_source_ledger.py --mode <init|add> ...`. This step inventories all supported source blocks before semantic filtering.
 3. Build the compatibility anchor index from that ledger with `py -3 scripts/python/extract_requirement_anchors.py --mode <init|add> --ledger-input logs/ci/task-generation/source-blocks.v1.json`. The compatibility index is downstream evidence only.
-4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. The batch index must cover every Source Block exactly once as primary ownership.
-5. The approved Chapter 3 model/Skill reads **every batch file** and fills `semantic-projection.candidate.json`. For every owned Source Block, emit one or more semantic atoms or exactly one explicit disposition. Never delete a `block_result` to make a batch pass.
+4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. Batches are bounded by both block count and `--max-chars-per-batch`; a single oversized Source Block fails instead of being truncated. The batch index must cover every Source Block exactly once as primary ownership.
+5. The approved Chapter 3 model/Skill reads **every batch file** and fills `semantic-projection.candidate.json`. The template intentionally starts with blank disposition, `delivery_potential=null`, and `output_accounted_count=0`; these are not defaults the model may leave untouched. For every owned Source Block, explicitly set delivery potential and emit one or more semantic atoms or exactly one explicit disposition, then reconcile the batch output count. Never delete a `block_result` to make a batch pass.
 6. Compile Projection A with `py -3 scripts/python/project_semantics_from_sources.py compile`.
 7. Run `py -3 scripts/python/validate_semantic_conservation.py --stage projection`. Stop on unaccounted source blocks, source hash drift, invalid semantic refs, or unresolved delivery-potential blocks without an explicit owner decision and rationale.
 8. Normalize coarse task intents from validated semantics with `py -3 scripts/python/normalize_task_intents.py --mode <init|add>`, then run `audit_task_intents_quality.py`.
@@ -60,7 +60,8 @@ Every source block must be accounted for. Every active delivery Requirement must
 - Allowed dispositions: atomized, context, rationale, duplicate, superseded, deferred, out_of_scope, adr_owned, unresolved.
 - `unresolved` is visible uncertainty, not permission to drop a block. If the block is delivery-potential, stable closure requires an explicit owner decision, reason, and resolved disposition.
 - A Requirement may sink through Capability -> Task, directly to Task, to multiple Tasks, or to a global constraint / quality gate / ADR-owned sink. Do not fabricate Capability nodes.
-- Batch counters are deterministic: first/last block id, input block count, and accounted output count must reconcile before moving on.
+- Batch counters are deterministic: first/last block id, input block count, input character budget, and accounted output count must reconcile before moving on.
+- `requirement_like_hint` is diagnostic only. It must never pre-classify an untouched block as non-delivery; every block requires explicit model/Skill review.
 
 ## Task Generation Rules
 
