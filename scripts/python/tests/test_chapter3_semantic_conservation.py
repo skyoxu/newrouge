@@ -887,7 +887,74 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual("stable_refresh_failed", summary["local_refresh_failure_family"])
             self.assertEqual("deferred", summary["publication_status"])
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+            attempt = load_workspace_topology(root, "attempt")
+            self.assertEqual("concern", attempt["status"])
+            self.assertFalse(attempt["chapter_run"]["closure_passed"])
+            self.assertEqual(
+                "stable_refresh_failed",
+                attempt["chapter_run"]["knowledge_refresh_failure_family"],
+            )
+            self.assertTrue(any(
+                problem.get("kind") == "knowledge_refresh_failed"
+                for problem in attempt.get("problems", [])
+            ))
             self.assertFalse((root / "docs/planning/semantic-topology/topology-manifest.v1.json").exists())
+
+    def test_stable_write_failure_preserves_previous_successful_topology(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            first = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-first-pass",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertTrue(first["closure_passed"])
+            stable_path = root / refresh_mod.STABLE_PATH
+            stable_before = stable_path.read_bytes()
+            real_write = refresh_mod.write_json
+
+            def failing_write(path: Path, payload) -> None:
+                if path == stable_path:
+                    raise OSError("stable replace failure")
+                real_write(path, payload)
+
+            with patch.object(refresh_mod, "write_json", side_effect=failing_write):
+                second = refresh_mod.run(
+                    root,
+                    source="chapter3",
+                    trigger_run_id="run-second-pass",
+                    refresh_local=True,
+                    write_planning=False,
+                    publish_if_eligible=True,
+                    triplet_status="passed",
+                    source_manifest_path=paths["manifest"],
+                    ledger_path=paths["ledger"],
+                    semantics_path=paths["semantics"],
+                    capabilities_path=paths["capabilities"],
+                    edges_path=paths["edges"],
+                    candidates_path=paths["candidates"],
+                    report_path=paths["report"],
+                )
+            self.assertFalse(second["closure_passed"])
+            self.assertEqual("stable_refresh_failed", second["local_refresh_failure_family"])
+            self.assertEqual(stable_before, stable_path.read_bytes())
+            stable = load_workspace_topology(root, "stable")
+            attempt = load_workspace_topology(root, "attempt")
+            self.assertEqual("run-first-pass", stable["identity"]["trigger_run_id"])
+            self.assertEqual("run-second-pass", attempt["identity"]["trigger_run_id"])
+            self.assertEqual("concern", attempt["status"])
 
     def test_failed_attempt_does_not_overwrite_latest_successful(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
