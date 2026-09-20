@@ -425,6 +425,35 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         remaining = coverage_mod.blocking_after_p1_waiver(packaging_p0)
         self.assertEqual("legacy_packaging", remaining[0]["kind"])
 
+    def test_coverage_blocks_stale_existing_task_mapping_until_reconciled(self) -> None:
+        semantics = {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "source_accounting": [],
+            "requirements": [{
+                "requirement_id": "FR-NEW",
+                "kind": "functional",
+                "statement": "Current rule.",
+                "source_block_ids": ["SB-1"],
+                "delivery_relevant": True,
+                "sink_policy": "task_or_global_constraint",
+                "status": "active",
+            }],
+        }
+        candidates = {"candidates": [{
+            "id": "T1",
+            "semantic_refs": ["FR-NEW"],
+            "requirement_ids": ["FR-NEW"],
+        }]}
+        stale_task = [{"id": "OLD", "semantic_refs": ["FR-REMOVED"]}]
+        report = coverage_mod.audit(semantics, candidates, None, stale_task)
+        self.assertEqual("blocked", report["status"])
+        self.assertEqual("OLD", report["stale_existing_task_mappings"][0]["task_id"])
+
+        reconciled_task = [{"id": "T1", "semantic_refs": ["FR-REMOVED"]}]
+        report = coverage_mod.audit(semantics, candidates, None, reconciled_task)
+        self.assertEqual([], report["stale_existing_task_mappings"])
+        self.assertEqual("ok", report["status"])
+
     def test_closure_requires_delivery_sink_and_accepts_task_sink(self) -> None:
         semantics = {
             "requirements": [{
