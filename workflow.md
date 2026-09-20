@@ -353,6 +353,12 @@ At the start of every Chapter 3 run, before source parsing or model-backed proje
 
 This start record is intentionally a concern/partial attempt. If the run is interrupted before closure, Last Attempt still identifies the failed/incomplete run and Latest Successful is untouched.
 
+For scripted top-level automation, wrap the complete child workflow instead of manually pairing start/end calls:
+
+    py -3 scripts/python/dev_cli.py run-chapter3-guarded --trigger-run-id <run-id> --triplet-status-on-success <passed|blocked|unknown> -- <command...>
+
+The guard writes the start attempt before launching the child and invokes the same final Knowledge refresh after the child returns or fails. A child command that claims a full `passed` run still exits non-zero unless the verified Chapter 3 closure actually passes.
+
 After rebuilding the triplet and backfilling semantic review tier, produce the machine-readable triplet baseline evidence:
 
     py -3 scripts/python/attest_chapter3_triplet_baseline.py
