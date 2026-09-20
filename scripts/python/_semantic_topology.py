@@ -119,6 +119,8 @@ def _task_rows(task_details: list[dict[str, Any]] | None) -> list[dict[str, Any]
             "status": task.get("status"),
             "semantic_refs": task.get("semantic_refs", task.get("requirement_ids", [])),
             "capability_refs": task.get("capability_refs", []),
+            "overlay_requirement_refs": task.get("overlay_requirement_refs", {}),
+            "contract_requirement_refs": task.get("contract_requirement_refs", {}),
         })
     return rows
 
@@ -316,9 +318,50 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     source_blocks = _rows(source_blocks_doc, "blocks", "source_blocks")
     requirements = _rows(requirements_doc, "requirements", "semantic_requirements", "atoms")
     capabilities = _rows(capabilities_doc, "capabilities")
-    edges = _rows(edges_doc, "edges")
+    edges = list(_rows(edges_doc, "edges"))
     tasks = _task_rows(task_details)
     acceptance = _acceptance_rows(task_details)
+    overlay_nodes: dict[str, dict[str, Any]] = {}
+    contract_nodes: dict[str, dict[str, Any]] = {}
+    derived_edge_keys = {
+        (
+            str(edge.get("source_type") or ""),
+            str(edge.get("source_id") or ""),
+            str(edge.get("target_type") or ""),
+            str(edge.get("target_id") or ""),
+            str(edge.get("relation") or ""),
+        )
+        for edge in edges if isinstance(edge, dict)
+    }
+    for task in tasks:
+        task_id = str(task.get("task_id") or "")
+        for field, target_type, node_map in (
+            ("overlay_requirement_refs", "overlay", overlay_nodes),
+            ("contract_requirement_refs", "contract", contract_nodes),
+        ):
+            mapping = task.get(field)
+            if not isinstance(mapping, dict):
+                continue
+            for target_id, refs in mapping.items():
+                target = str(target_id or "").strip()
+                if not target:
+                    continue
+                node_map.setdefault(target, {"id": target, "path": target})
+                if not isinstance(refs, list):
+                    problems.append({"kind": f"invalid_{target_type}_requirement_refs", "task_id": task_id, "target_id": target})
+                    continue
+                for rid in refs:
+                    requirement_id = str(rid)
+                    key = ("requirement", requirement_id, target_type, target, "constrained_by")
+                    if key not in derived_edge_keys:
+                        edges.append({
+                            "source_type": "requirement",
+                            "source_id": requirement_id,
+                            "target_type": target_type,
+                            "target_id": target,
+                            "relation": "constrained_by",
+                        })
+                        derived_edge_keys.add(key)
 
     block_ids = {node_id for row in source_blocks if (node_id := _node_id("source_block", row))}
     requirement_ids = {node_id for row in requirements if (node_id := _node_id("requirement", row))}
@@ -521,6 +564,8 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
             "capabilities": capabilities,
             "tasks": tasks,
             "acceptance": acceptance,
+            "overlays": sorted(overlay_nodes.values(), key=lambda row: row["id"]),
+            "contracts": sorted(contract_nodes.values(), key=lambda row: row["id"]),
         },
         "edges": edges,
         "task_trace": serial_trace,
@@ -539,6 +584,8 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
             "acceptance_with_semantic_origin": len(
                 [item for item in acceptance if item["acceptance_id"] in acceptance_origins]
             ),
+            "overlays_with_semantic_origin": len(overlay_nodes),
+            "contracts_with_semantic_origin": len(contract_nodes),
             "orphan_requirements": len(orphan),
             "unresolved_requirements": len(unresolved),
         },
