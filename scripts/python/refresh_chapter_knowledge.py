@@ -22,6 +22,20 @@ STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
 DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
 DEFAULT_LEGACY_REQUIREMENTS_PATH = Path("logs/ci/task-generation/requirements.index.json")
+DEFAULT_TRIPLET_ATTESTATION_PATH = Path(
+    "logs/ci/task-generation/triplet-baseline-attestation.json"
+)
+TRIPLET_TASK_FILES = [
+    ".taskmaster/tasks/tasks.json",
+    ".taskmaster/tasks/tasks_back.json",
+    ".taskmaster/tasks/tasks_gameplay.json",
+]
+TRIPLET_REQUIRED_CHECKS = {
+    "task_links_validate",
+    "check_tasks_all_refs",
+    "validate_task_master_triplet",
+    "validate_semantic_review_tier",
+}
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -155,6 +169,52 @@ def closure_evidence(
     details["closure_evidence_errors"] = errors or ["recomputed_closure_blocked"]
     effective["details"] = details
     return effective, False, ",".join(errors or ["recomputed_closure_blocked"])
+
+
+def verify_triplet_attestation(
+    root: Path,
+    payload: dict[str, Any],
+) -> tuple[bool, str]:
+    errors: list[str] = []
+    if payload.get("schema_version") != "chapter3.triplet-baseline-attestation.v1":
+        errors.append("invalid_triplet_attestation_schema")
+    if payload.get("status") != "passed":
+        errors.append("triplet_attestation_not_passed")
+
+    task_files = payload.get("task_files")
+    if not isinstance(task_files, dict):
+        task_files = {}
+        errors.append("invalid_triplet_task_file_manifest")
+    for value in TRIPLET_TASK_FILES:
+        path = root / value
+        row = task_files.get(value)
+        if not path.is_file():
+            errors.append(f"triplet_file_missing:{value}")
+            continue
+        if not isinstance(row, dict):
+            errors.append(f"triplet_file_not_attested:{value}")
+            continue
+        actual = "sha256:" + sha256_bytes(path.read_bytes())
+        if str(row.get("sha256") or "") != actual:
+            errors.append(f"triplet_file_hash_mismatch:{value}")
+
+    checks = payload.get("checks")
+    by_name = {
+        str(row.get("name")): row
+        for row in checks
+        if isinstance(row, dict) and row.get("name")
+    } if isinstance(checks, list) else {}
+    if not isinstance(checks, list):
+        errors.append("invalid_triplet_checks")
+    missing_checks = sorted(TRIPLET_REQUIRED_CHECKS - set(by_name))
+    if missing_checks:
+        errors.append("missing_triplet_checks:" + ",".join(missing_checks))
+    for name in sorted(TRIPLET_REQUIRED_CHECKS & set(by_name)):
+        row = by_name[name]
+        if row.get("status") != "passed" or int(row.get("returncode", 1)) != 0:
+            errors.append(f"triplet_check_failed:{name}")
+
+    return not errors, ",".join(errors) if errors else "verified_triplet_baseline"
 
 
 def workspace_revision(
@@ -477,16 +537,22 @@ def run(
     candidates_path: Path,
     report_path: Path,
     coverage_path: Path | None = None,
+    triplet_attestation_path: Path | None = None,
 ) -> dict[str, Any]:
     if source not in REGISTERED_SOURCES:
         raise ValueError(f"unregistered closure producer: {source}")
     coverage_path = coverage_path or (root / DEFAULT_COVERAGE_PATH)
+    triplet_attestation_path = (
+        triplet_attestation_path or (root / DEFAULT_TRIPLET_ATTESTATION_PATH)
+    )
     required = [
         source_manifest_path, ledger_path, semantics_path, capabilities_path,
         edges_path, candidates_path, report_path,
     ]
     if source == "chapter3":
         required.append(coverage_path)
+        if triplet_status == "passed":
+            required.append(triplet_attestation_path)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -530,11 +596,23 @@ def run(
     candidates = load_json(candidates_path, {})
     coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
     persisted_report = load_json(report_path, {})
+    triplet_attestation = (
+        load_json(triplet_attestation_path, {})
+        if source == "chapter3" and triplet_status == "passed"
+        else {}
+    )
+    triplet_evidence_passed, triplet_evidence_reason = (
+        verify_triplet_attestation(root, triplet_attestation)
+        if source == "chapter3" and triplet_status == "passed"
+        else (False, f"triplet_status_{triplet_status}")
+    )
     report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
         root, source, source_manifest, ledger, semantics, candidates, coverage, persisted_report
     )
     semantic_triplet_closure_passed = (
-        closure_evidence_passed and triplet_status == "passed"
+        closure_evidence_passed
+        and triplet_status == "passed"
+        and triplet_evidence_passed
     )
 
     attempt = build_workspace_view(
@@ -546,6 +624,10 @@ def run(
     )
     attempt["chapter_run"]["closure_evidence_reason"] = closure_evidence_reason
     attempt["chapter_run"]["task_coverage_status"] = coverage.get("status", "unknown")
+    attempt["chapter_run"]["triplet_evidence_status"] = (
+        "verified" if triplet_evidence_passed else "blocked"
+    )
+    attempt["chapter_run"]["triplet_evidence_reason"] = triplet_evidence_reason
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
@@ -638,6 +720,10 @@ def run(
         "closure_evidence_status": "verified" if closure_evidence_passed else "blocked",
         "closure_evidence_reason": closure_evidence_reason,
         "task_coverage_status": coverage.get("status", "unknown"),
+        "triplet_evidence_status": (
+            "verified" if triplet_evidence_passed else "blocked"
+        ),
+        "triplet_evidence_reason": triplet_evidence_reason,
         "closure_passed": closure_passed,
         "chapter_closure_status": "passed" if closure_passed else "concern",
         "local_refresh_status": local_status,
@@ -669,6 +755,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
     parser.add_argument("--report", default="logs/ci/task-generation/semantic-conservation-report.json")
     parser.add_argument("--coverage", default=DEFAULT_COVERAGE_PATH.as_posix())
+    parser.add_argument(
+        "--triplet-attestation",
+        default=DEFAULT_TRIPLET_ATTESTATION_PATH.as_posix(),
+    )
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -688,6 +778,7 @@ def main(argv: list[str] | None = None) -> int:
             candidates_path=root / args.candidates,
             report_path=root / args.report,
             coverage_path=root / args.coverage,
+            triplet_attestation_path=root / args.triplet_attestation,
         )
     except ValueError as exc:
         print(json.dumps({
