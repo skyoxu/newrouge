@@ -1,6 +1,6 @@
 # ADR-0038: Semantic Delivery Topology
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-20
 - Context:
   - The repository currently has strong authority boundaries for GDD/PRD, ADR/architecture, Taskmaster, acceptance, Knowledge and Project Health, but no governed intermediate topology that traces original design semantics through delivery artifacts.
