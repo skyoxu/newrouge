@@ -319,6 +319,19 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         self.assertLessEqual(first["input_char_count"], first["max_chars_per_batch"])
         self.assertLessEqual(second["input_char_count"], second["max_chars_per_batch"])
 
+        cross_file = {
+            "source_revision": "source-set:test",
+            "blocks": [
+                {**ledger["blocks"][0], "block_id": "SB-A", "source_path": "docs/gdd/a.md"},
+                {**ledger["blocks"][1], "block_id": "SB-B", "source_path": "docs/gdd/b.md"},
+            ],
+        }
+        _index, separated = semantics_mod.build_batches(
+            cross_file, max_blocks=1, max_chars=3000
+        )
+        self.assertEqual([], separated[0]["context_after_block_ids"])
+        self.assertEqual([], separated[1]["context_before_block_ids"])
+
     def test_projection_merge_preserves_all_sources_for_duplicate_and_equivalent_atoms(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
