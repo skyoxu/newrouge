@@ -23,7 +23,7 @@ Registered closure producers use the unified Chapter Knowledge refresh hook rath
 
 - Every Chapter 3/5 run may refresh **Workspace → Last attempt** with its run identity, partial topology, failures and conservation concerns.
 - Only closure PASS may advance **Workspace → Latest successful**.
-- For Chapter 3, refresh re-validates the current ledger/semantics/candidates at `stage=closure` and requires the persisted conservation report to match the same source revision, source manifest and blocking counts. A projection-stage or stale report cannot promote Latest Successful.
+- For Chapter 3, refresh re-validates the current ledger/semantics/candidates at `stage=closure`, requires the persisted conservation report to match the same source revision/source manifest/blocking counts, and requires a bound semantic-sink `coverage-report.json` with `status=ok`. A projection-stage, stale, or blocked coverage/report artifact cannot promote Latest Successful.
 - Failed/partial attempts never overwrite Latest Successful.
 - Stable/planning promotion is failure-atomic: planning topology write failures restore the previous Latest Successful and the previous planning artifacts instead of leaving a partial promotion.
 - Attempt/Stable write failures are explicit `knowledge_refresh_failed` concerns with a concrete failure family. A `stable_refresh_failed` result keeps Chapter closure in concern/failed state and canonical publication deferred even if semantic conservation and triplet validation already passed.
