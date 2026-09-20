@@ -219,6 +219,15 @@ class SemanticTopologyTests(unittest.TestCase):
         self.assertEqual(source_sha, node["authority_sources"][0]["source_sha256"])
         self.assertEqual("topology-node", candidate["rank_evidence"]["location_strategy"])
 
+        capability_result = locate({"query": "CAP-1"}, catalog, policy, eligible, 5)
+        capability_candidate = next(
+            item for item in capability_result["candidates"]
+            if item.get("topology_node", {}).get("node_id") == "CAP-1"
+        )
+        capability_node = capability_candidate["topology_node"]
+        self.assertEqual(["7"], capability_node["related_task_ids"])
+        self.assertEqual("docs/gdd/a.md", capability_node["authority_sources"][0]["path"])
+
     def test_missing_artifacts_are_explicit_legacy_unmapped(self):
         view = load_topology_from_snapshot(FakeSnapshot({}), [])
         self.assertFalse(view["available"])
