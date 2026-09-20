@@ -229,6 +229,7 @@ Default source families remain:
 
 - `docs/prd/**/*.md`
 - `docs/gdd/**/*.md`
+- `_bmad-output/gdd.md` when present (optional default pattern; missing is allowed unless explicitly declared)
 - `docs/epics/**/*.md`
 - `docs/stories/**/*.md`
 
