@@ -199,6 +199,46 @@ test.describe('project health semantic topology', () => {
     await expect(page.locator('#topology-status')).toContainText('workspace:test');
   });
 
+  test('switches workspace last attempt and latest successful independently', async ({ page }) => {
+    await page.route('**/api/knowledge/topology?mode=workspace&view=attempt', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: true,
+        fresh: false,
+        identity: { kind: 'workspace', revision: 'workspace:attempt', trigger_run_id: 'run-fail' },
+        workspace_view: 'last_attempt',
+        status: 'concern',
+        nodes: { source_blocks: [], requirements: [], capabilities: [], tasks: [], acceptance: [] },
+        edges: [], task_trace: {}, summary: {}, problems: [{ kind: 'orphan_delivery_requirements', count: 1 }]
+      })
+    }));
+    await page.route('**/api/knowledge/topology?mode=workspace&view=stable', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: true,
+        fresh: true,
+        identity: { kind: 'workspace', revision: 'workspace:stable', trigger_run_id: 'run-pass' },
+        workspace_view: 'latest_successful',
+        status: 'passed',
+        nodes: { source_blocks: [], requirements: [], capabilities: [], tasks: [], acceptance: [] },
+        edges: [], task_trace: {}, summary: {}, problems: []
+      })
+    }));
+
+    await page.goto(base() + '/knowledge/topology?mode=workspace&view=attempt');
+    await expect(page.locator('#workspace-view-label')).toBeVisible();
+    await expect(page.locator('#topology-status')).toContainText('workspace:attempt');
+    await expect(page.locator('#topology-problems')).toContainText('orphan_delivery_requirements');
+
+    await page.locator('#workspace-view').selectOption('stable');
+    await expect(page.locator('#topology-status')).toContainText('workspace:stable');
+    await expect(page.locator('#topology-problems')).not.toContainText('orphan_delivery_requirements');
+  });
+
   test('scene preview exposes design trace as navigation only', async ({ page }) => {
     const graph = syntheticGraph();
     graph.design_trace = {
