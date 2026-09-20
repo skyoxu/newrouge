@@ -318,6 +318,7 @@ def stabilize_add_mode_ids(
     ]
     used_old: set[str] = set()
     used_new: set[str] = set()
+    matched_rows: set[int] = set()
 
     # First preserve ids for semantically identical blocks even when an insertion
     # shifted their ordinal within the same heading/type family.
@@ -343,11 +344,12 @@ def stabilize_add_mode_ids(
         row["block_id"] = block_id
         used_old.add(block_id)
         used_new.add(block_id)
+        matched_rows.add(id(row))
 
     old_by_id = {str(row["block_id"]): row for row in old_rows}
     for row in blocks:
         block_id = str(row.get("block_id") or "")
-        if block_id in used_new:
+        if id(row) in matched_rows:
             continue
         old = old_by_id.get(block_id)
         if old is not None and block_id not in used_old and _block_family(old) == _block_family(row):
