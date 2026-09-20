@@ -596,6 +596,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 "source_accounting": [{
                     "block_id": block["block_id"],
                     "batch_id": "BATCH-0001",
+                    "block_content_hash": block["content_hash"],
                     "requirement_ids": [],
                     "disposition": "unresolved",
                     "delivery_potential": True,
