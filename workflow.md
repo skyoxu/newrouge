@@ -247,7 +247,7 @@ Default outputs:
 
 The ledger records headings, paragraphs, list items, blockquotes, table rows, code fences, supported JSON members/items, source path/hash, line range, full raw text, block type, ordinal and stable Source Block identity. `requirement_like_hint` is diagnostic only and never removes a block.
 
-For `add`, the ledger also reports unchanged/changed/added/removed Source Blocks. Reuse is allowed only when stable identity and content hash still match.
+For `add`, the ledger also reports unchanged/changed/added/removed Source Blocks. Stable IDs are reused for identical blocks even when an insertion shifts their ordinal inside the same source/heading/type family; genuinely changed logical slots retain their old ID and enter changed/reconcile. Reuse is allowed only when source family and content hash justify it.
 
 The legacy requirements index may still be generated from the ledger for downstream packaging evidence:
 
@@ -257,11 +257,11 @@ The legacy requirements index may still be generated from the ledger for downstr
 
 Prepare deterministic batches so a large GDD never depends on fitting in one model context:
 
-    py -3 scripts/python/project_semantics_from_sources.py prepare
+    py -3 scripts/python/project_semantics_from_sources.py prepare --max-blocks-per-batch 40 --max-chars-per-batch 24000
 
-Outputs include a batch index, per-batch source payloads, and `semantic-projection.candidate.json`. Every batch records first/last Source Block, input count and accounted output count.
+Outputs include a batch index, per-batch source payloads, and `semantic-projection.candidate.json`. Every batch records first/last Source Block, input count, deterministic character budget and accounted output count. If one Source Block itself exceeds the configured budget, preparation fails; it never truncates the source text silently.
 
-The approved Chapter 3 model/Skill must read **every batch file** and fill every existing `block_result`. For each owned Source Block it must emit one or more semantic atoms or one explicit disposition. It must never delete a block result to make the projection pass.
+The approved Chapter 3 model/Skill must read **every batch file** and fill every existing `block_result`. The candidate template starts intentionally unreviewed: blank disposition, `delivery_potential=null`, and batch `output_accounted_count=0`. For each owned Source Block the model must explicitly set delivery potential and emit one or more semantic atoms or one explicit disposition, then reconcile the batch output count. `requirement_like_hint` is diagnostic only and cannot decide that an untouched block is non-delivery. The model must never delete a block result to make the projection pass.
 
 Allowed semantic kinds: `functional`, `non_functional`, `invariant`, `failure`, `scope`, `metric`, `constraint`, `risk`, `context`, `rationale` (FR/NFR/INV/FAIL/SCOPE/METRIC/CONSTRAINT/RISK/CONTEXT/RATIONALE aliases are accepted).
 
