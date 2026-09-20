@@ -21,6 +21,8 @@ TOPOLOGY_ARTIFACTS = {
     "edges": f"{TOPOLOGY_DIR}/topology-edges.v1.json",
 }
 WORKSPACE_TOPOLOGY = Path("logs/ci/project-health-knowledge/topology/workspace-latest.json")
+WORKSPACE_TOPOLOGY_ATTEMPT = Path("logs/ci/project-health-knowledge/topology/workspace-last-attempt.json")
+WORKSPACE_TOPOLOGY_STABLE = Path("logs/ci/project-health-knowledge/topology/workspace-latest-successful.json")
 
 
 def _sha256(data: bytes) -> str:
@@ -583,12 +585,24 @@ def load_topology_from_snapshot(snapshot: Any,
     )
 
 
-def load_workspace_topology(root: Path) -> dict[str, Any]:
-    path = root / WORKSPACE_TOPOLOGY
-    if not path.is_file():
+def load_workspace_topology(root: Path, view: str = "attempt") -> dict[str, Any]:
+    if view not in {"attempt", "stable"}:
         return unavailable_topology(
-            "workspace", None, "no workspace/chapter-run topology preview exists"
+            "workspace", None, f"unknown workspace topology view: {view}"
         )
+    if view == "stable":
+        path = root / WORKSPACE_TOPOLOGY_STABLE
+        label = "latest successful"
+    else:
+        preferred = root / WORKSPACE_TOPOLOGY_ATTEMPT
+        path = preferred if preferred.is_file() else root / WORKSPACE_TOPOLOGY
+        label = "last attempt"
+    if not path.is_file():
+        result = unavailable_topology(
+            "workspace", None, f"no workspace/chapter-run {label} topology exists"
+        )
+        result["workspace_view"] = view
+        return result
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -596,6 +610,7 @@ def load_workspace_topology(root: Path) -> dict[str, Any]:
             "workspace", None, f"workspace topology preview is invalid: {exc}"
         )
         result["problems"] = [{"kind": "workspace_preview_invalid", "reason": str(exc)}]
+        result["workspace_view"] = view
         return result
     identity = payload.get("identity") if isinstance(payload.get("identity"), dict) else {}
     if identity.get("kind") != "workspace":
@@ -604,6 +619,7 @@ def load_workspace_topology(root: Path) -> dict[str, Any]:
             "workspace preview must declare identity.kind=workspace"
         )
         result["problems"] = [{"kind": "identity_mismatch"}]
+        result["workspace_view"] = view
         return result
     revision = identity.get("revision")
     run_identity = identity.get("trigger_run_id") or identity.get("run_id")
@@ -616,6 +632,7 @@ def load_workspace_topology(root: Path) -> dict[str, Any]:
             "workspace preview requires workspace/run identity"
         )
         result["problems"] = [{"kind": "workspace_identity_missing"}]
+        result["workspace_view"] = view
         return result
     if identity.get("authority_ref") == "refs/heads/main":
         result = unavailable_topology(
@@ -623,10 +640,12 @@ def load_workspace_topology(root: Path) -> dict[str, Any]:
             "workspace preview cannot claim main authority"
         )
         result["problems"] = [{"kind": "workspace_claims_main_authority"}]
+        result["workspace_view"] = view
         return result
     payload["schema_version"] = "newrouge.semantic-topology-view.v1"
     payload["available"] = bool(payload.get("available", True))
     payload["identity"] = identity
+    payload["workspace_view"] = view
     return payload
 
 
