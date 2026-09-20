@@ -13,6 +13,7 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 - `Trace to design` entries are clickable node-level links into `/knowledge/topology?focus=<kind>:<id>`. Topology node details expose related-node links so Task/Capability/Requirement/Source Block navigation is reversible.
 - Existing task-view `acceptance[]` entries appear as read-only Acceptance nodes even before Chapter 5 semantic-origin edges exist; their `topology_origin` remains `unmapped` until an explicit governed edge is present.
 - The Orphan filter consumes the backend `sink_resolved` result; a Requirement that only reaches a Capability with no delivery sink remains visible as orphan.
+- Knowledge query candidates that resolve a topology node display its node id/type, related Task ids and original authority source path/hash, with a link into the focused topology view.
 
 The registered structural source is `docs/planning/semantic-topology/**`. Chapter 3/5 producer and automatic refresh behavior are separate workflow changes and are not introduced by this structural layer.
 
