@@ -125,6 +125,29 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             text[plain["source_char_start"]:plain["source_char_end_exclusive"]],
         )
 
+        compact = '{"rule":{"message":"必须保持  原始空格","items":[1,2]},"plain":"值"}'
+        compact_blocks = ledger_mod.parse_json(
+            "docs/gdd/rules.json",
+            ledger_mod.sha256_text(compact),
+            compact,
+        )
+        compact_rule = next(
+            row for row in compact_blocks if row["json_pointer"] == "/rule"
+        )
+        self.assertEqual(
+            json.loads(text)["rule"],
+            json.loads("{" + compact_rule["raw_text"] + "}")["rule"],
+        )
+        self.assertNotEqual(rule["raw_text"], compact_rule["raw_text"])
+        self.assertEqual((1, 1), (compact_rule["line_start"], compact_rule["line_end"]))
+        self.assertEqual(
+            compact_rule["raw_text"],
+            compact[
+                compact_rule["source_char_start"]:
+                compact_rule["source_char_end_exclusive"]
+            ],
+        )
+
     def test_chinese_normative_and_implicit_rules_enter_semantic_review_without_keyword_filtering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1263,6 +1286,28 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertEqual("concern", attempt["status"])
             self.assertFalse(attempt["chapter_run"]["closure_passed"])
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
+    def test_guarded_chapter3_full_run_fails_closed_when_closure_cannot_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class Passed:
+                returncode = 0
+
+            rc, summary = guarded_mod.run_guarded(
+                root,
+                trigger_run_id="run-child-passed-without-artifacts",
+                command=["fake-full-chapter3-run"],
+                triplet_status_on_success="passed",
+                runner=lambda *args, **kwargs: Passed(),
+            )
+            self.assertEqual(2, rc)
+            self.assertEqual("failed", summary["status"])
+            self.assertFalse(summary["final_refresh"]["closure_passed"])
+            self.assertEqual(
+                "missing_refresh_inputs",
+                summary["final_refresh"]["publication_reason"],
+            )
 
     def test_chapter3_begin_run_writes_attempt_before_closure_artifacts_exist(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
