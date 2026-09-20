@@ -322,14 +322,19 @@ def _enrich_topology_nodes(modules: list[dict[str, Any]]) -> None:
             if source_type == "task" and source_id not in target["related_task_ids"]:
                 target["related_task_ids"].append(source_id)
 
+    # Resolve authority sources before capability rollups so file ordering cannot affect output.
+    for (node_type, _), node in lookup.items():
+        if node_type != "requirement":
+            continue
+        authority_sources = []
+        for block_id in node.get("source_block_ids", []):
+            block = lookup.get(("source_block", block_id))
+            if block:
+                authority_sources.extend(block.get("authority_sources", []))
+        node["authority_sources"] = authority_sources
+
     for (node_type, _), node in lookup.items():
         if node_type == "requirement":
-            authority_sources = []
-            for block_id in node.get("source_block_ids", []):
-                block = lookup.get(("source_block", block_id))
-                if block:
-                    authority_sources.extend(block.get("authority_sources", []))
-            node["authority_sources"] = authority_sources
             capability_ids = set(node.get("capability_ids", []))
             capability_ids.update(
                 str(item.get("node_id"))
