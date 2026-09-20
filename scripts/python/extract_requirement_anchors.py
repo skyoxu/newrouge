@@ -139,21 +139,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stories-path", action="append", default=[])
     parser.add_argument("--mode", choices=["init", "add"], default="init")
     parser.add_argument("--previous-ledger", default="")
+    parser.add_argument("--ledger-input", default="")
     parser.add_argument("--manifest-out", default="logs/ci/task-generation/source-manifest.v1.json")
     parser.add_argument("--source-blocks-out", default="logs/ci/task-generation/source-blocks.v1.json")
     parser.add_argument("--out", default="logs/ci/task-generation/requirements.index.json")
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
-    patterns, explicit = collect_patterns(root, args)
-    previous = None
-    previous_path = root / args.previous_ledger if args.previous_ledger else root / args.source_blocks_out
-    if args.mode == "add" and previous_path.is_file():
-        previous = json.loads(previous_path.read_text(encoding="utf-8"))
-    try:
-        manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous)
-    except ValueError as exc:
-        print(f"requirements_adapter_error={exc}")
-        return 2
+    if args.ledger_input:
+        ledger_path = root / args.ledger_input
+        if not ledger_path.is_file():
+            print(f"requirements_adapter_error=ledger input not found: {ledger_path}")
+            return 2
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+        manifest = {
+            "manifest_sha256": ledger.get("source_manifest_sha256"),
+            "source_revision": ledger.get("source_revision"),
+        }
+    else:
+        patterns, explicit = collect_patterns(root, args)
+        previous = None
+        previous_path = root / args.previous_ledger if args.previous_ledger else root / args.source_blocks_out
+        if args.mode == "add" and previous_path.is_file():
+            previous = json.loads(previous_path.read_text(encoding="utf-8"))
+        try:
+            manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous)
+        except ValueError as exc:
+            print(f"requirements_adapter_error={exc}")
+            return 2
+        write_json(root / args.manifest_out, manifest)
+        write_json(root / args.source_blocks_out, ledger)
     anchors = anchors_from_ledger(ledger)
     index = {
         "schema": "task-generation.requirements-index.v1",
@@ -166,8 +180,6 @@ def main(argv: list[str] | None = None) -> int:
         "compatibility_filter": "requirement-like-hint-only",
         "anchors": anchors,
     }
-    write_json(root / args.manifest_out, manifest)
-    write_json(root / args.source_blocks_out, ledger)
     write_json(root / args.out, index)
     print(
         f"requirements_index={root / args.out} anchors={len(anchors)} "
