@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from _knowledge_catalog_builder import LocalMainSnapshot
+from _project_health_tasks import task_details
 from _semantic_topology import load_topology_from_snapshot
 
 
@@ -16,7 +17,8 @@ def main(argv=None) -> int:
     parser.add_argument("--require-available", action="store_true")
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
-    view = load_topology_from_snapshot(LocalMainSnapshot(root), [])
+    snapshot = LocalMainSnapshot(root)
+    view = load_topology_from_snapshot(snapshot, task_details(snapshot))
     if not view.get("available"):
         status = "blocked" if args.require_available else "legacy_unmapped"
         print(json.dumps({
