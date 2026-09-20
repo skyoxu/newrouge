@@ -167,6 +167,7 @@ def copy_planning_artifacts(
         "schema_version": "newrouge.semantic-topology-manifest.v1",
         "source_revision": source_manifest.get("source_revision"),
         "source_manifest_sha256": source_manifest.get("manifest_sha256"),
+        "repository_revision": source_manifest.get("repository_revision"),
         "schema_revision": "v1",
         "generator_revision": "chapter3-semantic-conservation-v1",
         "artifacts": artifact_hashes,
