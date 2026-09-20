@@ -347,6 +347,12 @@ Closure is not PASS until these baseline validators are clean.
 
 ### 3.9 Refresh Workspace Topology At Every Run End
 
+At the start of every Chapter 3 run, before source parsing or model-backed projection, allocate the run id and record the run lifecycle attempt:
+
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --begin-run
+
+This start record is intentionally a concern/partial attempt. If the run is interrupted before closure, Last Attempt still identifies the failed/incomplete run and Latest Successful is untouched.
+
 After rebuilding the triplet and backfilling semantic review tier, produce the machine-readable triplet baseline evidence:
 
     py -3 scripts/python/attest_chapter3_triplet_baseline.py
