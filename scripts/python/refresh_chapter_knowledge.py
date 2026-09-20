@@ -543,7 +543,7 @@ def run(
                 )
             local_status = "stable_refreshed"
 
-    stable_required = write_planning or publish_if_eligible
+    stable_required = source == "chapter3" or write_planning or publish_if_eligible
     closure_passed = semantic_triplet_closure_passed and (
         local_status == "stable_refreshed"
         if refresh_local
