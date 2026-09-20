@@ -12,12 +12,30 @@ from pathlib import Path
 from typing import Any
 
 from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
+from audit_task_candidate_coverage import DEFAULT_TASK_VIEWS, audit as audit_task_coverage
+from validate_semantic_conservation import validate as validate_semantic_conservation
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
 ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
 LEGACY_ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest.json"
 STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
+DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
+DEFAULT_LEGACY_REQUIREMENTS_PATH = Path("logs/ci/task-generation/requirements.index.json")
+DEFAULT_TRIPLET_ATTESTATION_PATH = Path(
+    "logs/ci/task-generation/triplet-baseline-attestation.json"
+)
+TRIPLET_TASK_FILES = [
+    ".taskmaster/tasks/tasks.json",
+    ".taskmaster/tasks/tasks_back.json",
+    ".taskmaster/tasks/tasks_gameplay.json",
+]
+TRIPLET_REQUIRED_CHECKS = {
+    "task_links_validate",
+    "check_tasks_all_refs",
+    "validate_task_master_triplet",
+    "validate_semantic_review_tier",
+}
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -47,6 +65,161 @@ def write_json(path: Path, payload: Any) -> None:
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _snapshot_file(path: Path) -> bytes | None:
+    return path.read_bytes() if path.is_file() else None
+
+
+def _restore_file(path: Path, snapshot: bytes | None) -> None:
+    if snapshot is None:
+        if path.exists():
+            path.unlink()
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".restore.tmp")
+    try:
+        tmp.write_bytes(snapshot)
+        tmp.replace(path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
+def closure_evidence(
+    root: Path,
+    source: str,
+    source_manifest: dict[str, Any],
+    ledger: dict[str, Any],
+    semantics: dict[str, Any],
+    candidates: dict[str, Any],
+    coverage: dict[str, Any],
+    persisted_report: dict[str, Any],
+) -> tuple[dict[str, Any], bool, str]:
+    """Re-validate Chapter 3 closure and bind refresh to the exact current artifacts."""
+    if source != "chapter3":
+        passed = persisted_report.get("status") == "passed"
+        return persisted_report, passed, "legacy_registered_source"
+
+    recomputed, _edges = validate_semantic_conservation(
+        root, ledger, semantics, "closure", candidates
+    )
+    existing_tasks: list[dict[str, Any]] = []
+    for value in DEFAULT_TASK_VIEWS:
+        payload = load_json(root / value, [])
+        if isinstance(payload, list):
+            existing_tasks.extend(row for row in payload if isinstance(row, dict))
+    legacy_requirements = load_json(
+        root / DEFAULT_LEGACY_REQUIREMENTS_PATH, {"anchors": []}
+    )
+    recomputed_coverage = audit_task_coverage(
+        semantics, candidates, legacy_requirements, existing_tasks
+    )
+    errors: list[str] = []
+    if str(source_manifest.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("source_manifest_revision_mismatch")
+    if str(source_manifest.get("manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("source_manifest_hash_mismatch")
+    if coverage.get("schema") != "task-generation.coverage-report.v2":
+        errors.append("invalid_coverage_schema")
+    if coverage.get("coverage_model") != "semantic-sink":
+        errors.append("semantic_sink_coverage_required")
+    if coverage.get("status") != recomputed_coverage.get("status"):
+        errors.append("coverage_status_mismatch")
+    if recomputed_coverage.get("status") != "ok":
+        errors.append("task_coverage_not_passed")
+    if coverage.get("missing_blocking_count") != recomputed_coverage.get("missing_blocking_count"):
+        errors.append("coverage_blocking_count_mismatch")
+    if coverage.get("invalid_task_semantic_refs", []) != recomputed_coverage.get("invalid_task_semantic_refs", []):
+        errors.append("coverage_invalid_refs_mismatch")
+    if coverage.get("stale_existing_task_mappings", []) != recomputed_coverage.get("stale_existing_task_mappings", []):
+        errors.append("coverage_stale_mapping_mismatch")
+    if coverage.get("legacy_p0_p1_packaging", {}) != recomputed_coverage.get("legacy_p0_p1_packaging", {}):
+        errors.append("coverage_legacy_packaging_mismatch")
+    if str(coverage.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("coverage_source_revision_mismatch")
+    if str(coverage.get("source_manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("coverage_source_manifest_mismatch")
+    if persisted_report.get("schema_version") != "chapter3.semantic-conservation-report.v1":
+        errors.append("invalid_report_schema")
+    if persisted_report.get("stage") != "closure":
+        errors.append("closure_stage_required")
+    if str(persisted_report.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        errors.append("report_source_revision_mismatch")
+    if str(persisted_report.get("source_manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
+        errors.append("report_source_manifest_mismatch")
+    if persisted_report.get("status") != recomputed.get("status"):
+        errors.append("report_status_mismatch")
+    if persisted_report.get("blocking_counts", {}) != recomputed.get("blocking_counts", {}):
+        errors.append("report_blocking_counts_mismatch")
+
+    passed = not errors and recomputed.get("status") == "passed"
+    if passed:
+        return recomputed, True, "verified_closure"
+
+    effective = dict(recomputed)
+    blocking = dict(effective.get("blocking_counts", {}))
+    blocking["closure_evidence_invalid"] = 1
+    effective["blocking_counts"] = blocking
+    effective["status"] = "blocked"
+    details = dict(effective.get("details", {}))
+    details["closure_evidence_errors"] = errors or ["recomputed_closure_blocked"]
+    effective["details"] = details
+    return effective, False, ",".join(errors or ["recomputed_closure_blocked"])
+
+
+def verify_triplet_attestation(
+    root: Path,
+    payload: dict[str, Any],
+) -> tuple[bool, str]:
+    errors: list[str] = []
+    if payload.get("schema_version") != "chapter3.triplet-baseline-attestation.v1":
+        errors.append("invalid_triplet_attestation_schema")
+    if payload.get("status") != "passed":
+        errors.append("triplet_attestation_not_passed")
+
+    task_files = payload.get("task_files")
+    if not isinstance(task_files, dict):
+        task_files = {}
+        errors.append("invalid_triplet_task_file_manifest")
+    for value in TRIPLET_TASK_FILES:
+        path = root / value
+        row = task_files.get(value)
+        if not path.is_file():
+            errors.append(f"triplet_file_missing:{value}")
+            continue
+        if not isinstance(row, dict):
+            errors.append(f"triplet_file_not_attested:{value}")
+            continue
+        actual = "sha256:" + sha256_bytes(path.read_bytes())
+        if str(row.get("sha256") or "") != actual:
+            errors.append(f"triplet_file_hash_mismatch:{value}")
+
+    checks = payload.get("checks")
+    by_name = {
+        str(row.get("name")): row
+        for row in checks
+        if isinstance(row, dict) and row.get("name")
+    } if isinstance(checks, list) else {}
+    if not isinstance(checks, list):
+        errors.append("invalid_triplet_checks")
+    missing_checks = sorted(TRIPLET_REQUIRED_CHECKS - set(by_name))
+    if missing_checks:
+        errors.append("missing_triplet_checks:" + ",".join(missing_checks))
+    for name in sorted(TRIPLET_REQUIRED_CHECKS & set(by_name)):
+        row = by_name[name]
+        try:
+            returncode = int(row.get("returncode", 1))
+        except (TypeError, ValueError):
+            returncode = 1
+            errors.append(f"invalid_triplet_check_returncode:{name}")
+        if row.get("status") != "passed" or returncode != 0:
+            errors.append(f"triplet_check_failed:{name}")
+
+    return not errors, ",".join(errors) if errors else "verified_triplet_baseline"
 
 
 def workspace_revision(
@@ -169,33 +342,45 @@ def copy_planning_artifacts(
         "capabilities": capabilities_path,
         "edges": edges_path,
     }
-    artifact_hashes = {}
-    for key, destination in destinations.items():
-        source_path = sources[key]
-        if not source_path.is_file():
-            raise ValueError(f"missing topology source artifact: {source_path}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source_path, destination)
-        artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(destination.read_bytes())
-    manifest = {
-        "schema_version": "newrouge.semantic-topology-manifest.v1",
-        "source_revision": source_manifest.get("source_revision"),
-        "source_manifest_sha256": source_manifest.get("manifest_sha256"),
-        "schema_revision": "v1",
-        "generator_revision": "chapter3-semantic-conservation-v1",
-        "artifacts": artifact_hashes,
-    }
-    # Do not write repository_revision here: the generated topology is
-    # committed after this step, so binding it to the pre-commit HEAD would make
-    # the just-committed topology immediately stale. Keep the observed source
-    # checkout only as audit metadata; canonical freshness is bound later by KCP
-    # publication plus per-source hashes.
-    source_repository_revision = source_manifest.get("repository_revision")
-    if isinstance(source_repository_revision, str) and source_repository_revision:
-        manifest["source_repository_revision"] = source_repository_revision
     manifest_path = root / TOPOLOGY_ARTIFACTS["manifest"]
-    write_json(manifest_path, manifest)
-    return manifest
+    snapshots = {
+        path: _snapshot_file(path)
+        for path in [*destinations.values(), manifest_path]
+    }
+    try:
+        artifact_hashes = {}
+        for key, destination in destinations.items():
+            source_path = sources[key]
+            if not source_path.is_file():
+                raise ValueError(f"missing topology source artifact: {source_path}")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, destination)
+            artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(destination.read_bytes())
+        manifest = {
+            "schema_version": "newrouge.semantic-topology-manifest.v1",
+            "source_revision": source_manifest.get("source_revision"),
+            "source_manifest_sha256": source_manifest.get("manifest_sha256"),
+            "schema_revision": "v1",
+            "generator_revision": "chapter3-semantic-conservation-v1",
+            "artifacts": artifact_hashes,
+        }
+        # Do not write repository_revision here: the generated topology is
+        # committed after this step, so binding it to the pre-commit HEAD would make
+        # the just-committed topology immediately stale. Keep the observed source
+        # checkout only as audit metadata; canonical freshness is bound later by KCP
+        # publication plus per-source hashes.
+        source_repository_revision = source_manifest.get("repository_revision")
+        if isinstance(source_repository_revision, str) and source_repository_revision:
+            manifest["source_repository_revision"] = source_repository_revision
+        write_json(manifest_path, manifest)
+        return manifest
+    except Exception:
+        for path, snapshot in snapshots.items():
+            try:
+                _restore_file(path, snapshot)
+            except OSError:
+                pass
+        raise
 
 
 def git_result(root: Path, args: list[str]) -> str:
@@ -356,13 +541,23 @@ def run(
     edges_path: Path,
     candidates_path: Path,
     report_path: Path,
+    coverage_path: Path | None = None,
+    triplet_attestation_path: Path | None = None,
 ) -> dict[str, Any]:
     if source not in REGISTERED_SOURCES:
         raise ValueError(f"unregistered closure producer: {source}")
+    coverage_path = coverage_path or (root / DEFAULT_COVERAGE_PATH)
+    triplet_attestation_path = (
+        triplet_attestation_path or (root / DEFAULT_TRIPLET_ATTESTATION_PATH)
+    )
     required = [
         source_manifest_path, ledger_path, semantics_path, capabilities_path,
         edges_path, candidates_path, report_path,
     ]
+    if source == "chapter3":
+        required.append(coverage_path)
+        if triplet_status == "passed":
+            required.append(triplet_attestation_path)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -404,17 +599,43 @@ def run(
     capabilities = load_json(capabilities_path, {})
     edges = load_json(edges_path, {})
     candidates = load_json(candidates_path, {})
-    report = load_json(report_path, {})
+    coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
+    persisted_report = load_json(report_path, {})
+    triplet_attestation = (
+        load_json(triplet_attestation_path, {})
+        if source == "chapter3" and triplet_status == "passed"
+        else {}
+    )
+    triplet_evidence_passed, triplet_evidence_reason = (
+        verify_triplet_attestation(root, triplet_attestation)
+        if source == "chapter3" and triplet_status == "passed"
+        else (False, f"triplet_status_{triplet_status}")
+    )
+    report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
+        root, source, source_manifest, ledger, semantics, candidates, coverage, persisted_report
+    )
     semantic_triplet_closure_passed = (
-        report.get("status") == "passed" and triplet_status == "passed"
+        closure_evidence_passed
+        and triplet_status == "passed"
+        and triplet_evidence_passed
     )
 
     attempt = build_workspace_view(
         source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
         edges, candidates, report, triplet_status, "last_attempt",
     )
+    attempt.setdefault("chapter_run", {})["closure_evidence_status"] = (
+        "verified" if closure_evidence_passed else "blocked"
+    )
+    attempt["chapter_run"]["closure_evidence_reason"] = closure_evidence_reason
+    attempt["chapter_run"]["task_coverage_status"] = coverage.get("status", "unknown")
+    attempt["chapter_run"]["triplet_evidence_status"] = (
+        "verified" if triplet_evidence_passed else "blocked"
+    )
+    attempt["chapter_run"]["triplet_evidence_reason"] = triplet_evidence_reason
     local_status = "skipped"
     attempt_written = False
+    stable_snapshot = _snapshot_file(root / STABLE_PATH)
     if refresh_local:
         try:
             write_json(root / ATTEMPT_PATH, attempt)
@@ -455,8 +676,11 @@ def run(
                 )
             local_status = "stable_refreshed"
 
+    stable_required = source == "chapter3" or write_planning or publish_if_eligible
     closure_passed = semantic_triplet_closure_passed and (
-        not refresh_local or local_status == "stable_refreshed"
+        local_status == "stable_refreshed"
+        if refresh_local
+        else not stable_required
     )
 
     planning_status = "not_requested"
@@ -469,6 +693,10 @@ def run(
                     root, source_manifest, ledger_path, semantics_path, capabilities_path, edges_path
                 )
             except (OSError, ValueError) as exc:
+                try:
+                    _restore_file(root / STABLE_PATH, stable_snapshot)
+                except OSError:
+                    pass
                 _mark_attempt_refresh_failure(
                     root, attempt, "planning_topology_refresh_failed", str(exc)
                 )
@@ -494,6 +722,13 @@ def run(
         "trigger_run_id": trigger_run_id,
         "topology_revision": attempt.get("identity", {}).get("revision"),
         "semantic_triplet_closure_passed": semantic_triplet_closure_passed,
+        "closure_evidence_status": "verified" if closure_evidence_passed else "blocked",
+        "closure_evidence_reason": closure_evidence_reason,
+        "task_coverage_status": coverage.get("status", "unknown"),
+        "triplet_evidence_status": (
+            "verified" if triplet_evidence_passed else "blocked"
+        ),
+        "triplet_evidence_reason": triplet_evidence_reason,
         "closure_passed": closure_passed,
         "chapter_closure_status": "passed" if closure_passed else "concern",
         "local_refresh_status": local_status,
@@ -524,6 +759,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--edges", default="logs/ci/task-generation/topology-edges.v1.json")
     parser.add_argument("--candidates", default="logs/ci/task-generation/task-candidates.enriched.json")
     parser.add_argument("--report", default="logs/ci/task-generation/semantic-conservation-report.json")
+    parser.add_argument("--coverage", default=DEFAULT_COVERAGE_PATH.as_posix())
+    parser.add_argument(
+        "--triplet-attestation",
+        default=DEFAULT_TRIPLET_ATTESTATION_PATH.as_posix(),
+    )
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -542,6 +782,8 @@ def main(argv: list[str] | None = None) -> int:
             edges_path=root / args.edges,
             candidates_path=root / args.candidates,
             report_path=root / args.report,
+            coverage_path=root / args.coverage,
+            triplet_attestation_path=root / args.triplet_attestation,
         )
     except ValueError as exc:
         print(json.dumps({

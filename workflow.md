@@ -347,9 +347,15 @@ Closure is not PASS until these baseline validators are clean.
 
 ### 3.9 Refresh Workspace Topology At Every Run End
 
-Every Chapter 3 run must finish by recording its local topology attempt:
+After rebuilding the triplet and backfilling semantic review tier, produce the machine-readable triplet baseline evidence:
+
+    py -3 scripts/python/attest_chapter3_triplet_baseline.py
+
+Every Chapter 3 run must then finish by recording its local topology attempt:
 
     py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>
+
+When `--triplet-status passed` is supplied, refresh also requires the attestation to be `passed` and to match the current hashes of all three Taskmaster files.
 
 Rules:
 

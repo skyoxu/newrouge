@@ -19,6 +19,7 @@ ALLOWED_DISPOSITIONS = {
     "atomized", "context", "rationale", "duplicate", "superseded", "deferred",
     "out_of_scope", "adr_owned", "unresolved",
 }
+ALLOWED_REQUIREMENT_STATUSES = {"active", "superseded", "removed", "unresolved"}
 KIND_MAP = {
     "FR": "functional",
     "NFR": "non_functional",
@@ -407,7 +408,7 @@ def compile_projection(
         raise ValueError("semantic candidate source_revision does not match source ledger")
     ledger_manifest_sha = str(ledger.get("source_manifest_sha256") or "")
     candidate_manifest_sha = str(candidate.get("source_manifest_sha256") or "")
-    if candidate_manifest_sha and candidate_manifest_sha != ledger_manifest_sha:
+    if not candidate_manifest_sha or candidate_manifest_sha != ledger_manifest_sha:
         raise ValueError("semantic candidate source_manifest_sha256 does not match source ledger")
 
     blocks = {
@@ -518,6 +519,11 @@ def compile_projection(
             sinks = atom.get("non_task_sinks", [])
             if not isinstance(sinks, list):
                 raise ValueError(f"non_task_sinks must be a list for {requirement_id}")
+            status = str(atom.get("status") or "active").strip().casefold()
+            if status not in ALLOWED_REQUIREMENT_STATUSES:
+                raise ValueError(
+                    f"unsupported requirement status for {requirement_id}: {status}"
+                )
             row = {
                 "requirement_id": requirement_id,
                 "kind": kind,
@@ -526,7 +532,7 @@ def compile_projection(
                 "delivery_relevant": delivery_relevant,
                 "capability_ids": sorted(set(str(value) for value in atom.get("capability_ids", []))),
                 "sink_policy": str(atom.get("sink_policy") or "task_or_global_constraint"),
-                "status": str(atom.get("status") or "active"),
+                "status": status,
                 "priority": str(atom.get("priority") or "P2").upper(),
                 "owner_hint": atom.get("owner_hint"),
                 "layer_hint": atom.get("layer_hint"),

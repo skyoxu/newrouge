@@ -14,6 +14,11 @@ VALID_KINDS = {
     "functional", "non_functional", "invariant", "failure", "scope", "metric",
     "constraint", "risk", "context", "rationale",
 }
+VALID_REQUIREMENT_STATUSES = {"active", "superseded", "removed", "unresolved"}
+VALID_SOURCE_DISPOSITIONS = {
+    "atomized", "context", "rationale", "duplicate", "superseded", "deferred",
+    "out_of_scope", "adr_owned", "unresolved",
+}
 NON_TASK_SINK_TYPES = {"global_constraint", "quality_gate", "adr", "adr_owned", "deferred", "exclusion"}
 
 
@@ -88,10 +93,52 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
             issues.append("invalid_delivery_relevant")
         if not str(row.get("sink_policy") or "").strip():
             issues.append("missing_sink_policy")
-        if not str(row.get("status") or "").strip():
+        status = str(row.get("status") or "").strip().casefold()
+        if not status:
             issues.append("missing_status")
+        elif status not in VALID_REQUIREMENT_STATUSES:
+            issues.append("invalid_status")
         if issues:
             invalid_semantics.append({"requirement_id": rid, "issues": issues})
+
+    requirements_by_id = {
+        str(row.get("requirement_id")): row
+        for row in requirements
+        if row.get("requirement_id")
+    }
+    invalid_source_accounting = []
+    for row in accounting_rows:
+        block_id = str(row.get("block_id") or "")
+        issues = []
+        block = blocks.get(block_id)
+        if block is None:
+            continue
+        if str(row.get("block_content_hash") or "") != str(block.get("content_hash") or ""):
+            issues.append("stale_block_content_hash")
+        disposition = str(row.get("disposition") or "").strip()
+        if disposition not in VALID_SOURCE_DISPOSITIONS:
+            issues.append("invalid_disposition")
+        if not isinstance(row.get("delivery_potential"), bool):
+            issues.append("invalid_delivery_potential")
+        requirement_ids = row.get("requirement_ids")
+        if not isinstance(requirement_ids, list):
+            issues.append("invalid_requirement_ids")
+        else:
+            for rid_value in requirement_ids:
+                rid = str(rid_value)
+                requirement = requirements_by_id.get(rid)
+                if requirement is None:
+                    issues.append(f"unknown_requirement_id:{rid}")
+                    continue
+                if block_id not in {
+                    str(value) for value in requirement.get("source_block_ids", [])
+                }:
+                    issues.append(f"requirement_source_mismatch:{rid}")
+        if issues:
+            invalid_source_accounting.append({
+                "block_id": block_id,
+                "issues": issues,
+            })
 
     source_hash_drift = []
     seen_paths = set()
@@ -151,6 +198,7 @@ def projection_checks(root: Path, ledger: dict[str, Any], semantics: dict[str, A
         "unaccounted_source_blocks": unaccounted,
         "unknown_accounting_blocks": unknown_accounting,
         "invalid_semantics": invalid_semantics,
+        "invalid_source_accounting": invalid_source_accounting,
         "source_hash_drift": source_hash_drift,
         "unresolved_delivery_potential": sorted(unresolved_delivery),
         "unresolved_delivery_requirements": sorted(unresolved_requirements),
@@ -278,6 +326,7 @@ def validate(
         "unaccounted_source_blocks": len(projection["unaccounted_source_blocks"]),
         "unknown_accounting_blocks": len(projection["unknown_accounting_blocks"]),
         "invalid_semantics": len(projection["invalid_semantics"]),
+        "invalid_source_accounting": len(projection["invalid_source_accounting"]),
         "source_hash_drift": len(projection["source_hash_drift"]),
         "unresolved_delivery_potential": len(projection["unresolved_delivery_potential"]),
         "orphan_delivery_requirements": len(closure["orphan_delivery_requirements"]),
@@ -290,6 +339,7 @@ def validate(
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "stage": stage,
         "source_revision": ledger.get("source_revision"),
+        "source_manifest_sha256": ledger.get("source_manifest_sha256"),
         "status": "blocked" if blocked else "passed",
         "blocking_counts": blocking_counts,
         "source_coverage": {

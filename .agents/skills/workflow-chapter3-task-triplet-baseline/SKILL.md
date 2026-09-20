@@ -52,8 +52,8 @@ Every source block must be accounted for. Every active delivery Requirement must
     - Existing task-view entries that already carry `semantic_refs` are part of add-mode reconciliation. A ref to a removed/replaced Requirement blocks closure unless this run updates the same Task ID with valid current refs.
 11. Run `validate_semantic_conservation.py --stage closure`. Active delivery Requirements without a Task/non-Task sink, invalid Task semantic refs, or Task complexity above 7 block closure.
 12. Compile a task-triplet patch. Review before `--write`. Build `tasks.json` from the two reviewable task views and run the existing triplet validators unchanged.
-13. Backfill/validate semantic review tier conservatively as before.
-14. At the end of **every** Chapter 3 run, call `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`. Failed/partial runs update only Last Attempt. Passed closure may update Latest Successful.
+13. Backfill semantic review tier conservatively, then run `py -3 scripts/python/attest_chapter3_triplet_baseline.py`. This reruns the Chapter 3 triplet validators and writes a task-file-hash-bound attestation; a caller-provided `--triplet-status passed` is not sufficient by itself.
+14. At the end of **every** Chapter 3 run, call `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`. Failed/partial runs update only Last Attempt. A passed run advances Latest Successful only when semantic closure, task coverage, and the bound triplet attestation all verify.
     - A blocked/unknown closure always defers `--publish-if-eligible` with `closure_not_passed`; canonical publication is never attempted before closure PASS.
 15. Only after closure PASS may `--write-planning-artifacts` promote the stable topology files under `docs/planning/semantic-topology/`. `--publish-if-eligible` remains trusted-ref/main-only and is normally deferred until the artifacts are committed.
 

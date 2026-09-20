@@ -96,11 +96,20 @@ def audit_semantic(
             invalid_refs.append({"task_id": task_id, "reason": "invalid_ref_shape"})
             continue
         for rid in refs:
-            if str(rid) not in requirements:
+            rid_text = str(rid)
+            requirement = requirements.get(rid_text)
+            if requirement is None:
                 invalid_refs.append({
                     "task_id": task_id,
-                    "requirement_id": str(rid),
+                    "requirement_id": rid_text,
                     "reason": "unknown_requirement",
+                })
+                continue
+            if str(requirement.get("status", "active")).casefold() in {"removed", "superseded"}:
+                invalid_refs.append({
+                    "task_id": task_id,
+                    "requirement_id": rid_text,
+                    "reason": "stale_requirement",
                 })
     candidate_by_id = {
         str(task.get("id")): task
@@ -115,8 +124,16 @@ def audit_semantic(
         refs = task.get("semantic_refs")
         if not isinstance(refs, list) or not refs:
             continue
-        unknown = sorted({str(rid) for rid in refs if str(rid) not in requirements})
-        if not unknown:
+        stale = sorted({
+            str(rid)
+            for rid in refs
+            if (
+                str(rid) not in requirements
+                or str(requirements[str(rid)].get("status", "active")).casefold()
+                in {"removed", "superseded"}
+            )
+        })
+        if not stale:
             continue
         replacement = candidate_by_id.get(task_id)
         replacement_refs = (
@@ -126,12 +143,16 @@ def audit_semantic(
         reconciled = (
             isinstance(replacement_refs, list)
             and bool(replacement_refs)
-            and all(str(rid) in requirements for rid in replacement_refs)
+            and all(
+                str(rid) in requirements
+                and str(requirements[str(rid)].get("status", "active")).casefold() == "active"
+                for rid in replacement_refs
+            )
         )
         if not reconciled:
             stale_existing.append({
                 "task_id": task_id,
-                "stale_requirement_ids": unknown,
+                "stale_requirement_ids": stale,
                 "reason": "existing_task_semantic_mapping_stale",
                 "reconcile": "update or remove the stale semantic mapping before triplet write",
             })
@@ -206,6 +227,8 @@ def audit_semantic(
         "schema": "task-generation.coverage-report.v2",
         "coverage_model": "semantic-sink",
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "source_revision": semantics.get("source_revision"),
+        "source_manifest_sha256": semantics.get("source_manifest_sha256"),
         "requirement_count": len(rows),
         "candidate_count": len(tasks),
         "missing_count": len(missing),
