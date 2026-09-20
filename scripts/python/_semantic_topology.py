@@ -121,6 +121,93 @@ def _task_rows(task_details: list[dict[str, Any]] | None) -> list[dict[str, Any]
     return rows
 
 
+def _sha_field(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    raw = value.removeprefix("sha256:")
+    return len(raw) == 64 and all(ch in "0123456789abcdef" for ch in raw)
+
+
+def _validate_minimum_shapes(documents: dict[str, Any],
+                             problems: list[dict[str, Any]]) -> None:
+    expected = {
+        "manifest": "newrouge.semantic-topology-manifest.v1",
+        "source_blocks": "newrouge.source-blocks.v1",
+        "requirements": "newrouge.semantic-requirements.v1",
+        "capabilities": "newrouge.capabilities.v1",
+        "edges": "newrouge.topology-edges.v1",
+    }
+    for key, schema_version in expected.items():
+        document = documents.get(key)
+        if not isinstance(document, dict):
+            problems.append({"kind": "invalid_artifact_shape", "artifact": key})
+            continue
+        if document.get("schema_version") != schema_version:
+            problems.append({"kind": "schema_version_mismatch", "artifact": key,
+                             "expected": schema_version,
+                             "actual": document.get("schema_version")})
+
+    manifest = documents.get("manifest") if isinstance(documents.get("manifest"), dict) else {}
+    for field in ("source_revision", "schema_revision", "generator_revision"):
+        if not isinstance(manifest.get(field), str) or not manifest.get(field):
+            problems.append({"kind": "manifest_missing_field", "field": field})
+    if not _sha_field(manifest.get("source_manifest_sha256")):
+        problems.append({"kind": "manifest_invalid_source_manifest_hash"})
+
+    for row in _rows(documents.get("source_blocks"), "blocks", "source_blocks"):
+        block_id = _node_id("source_block", row)
+        for field in ("source_path", "content_hash", "source_sha256"):
+            if not isinstance(row.get(field), str) or not row.get(field):
+                problems.append({"kind": "source_block_missing_field",
+                                 "source_block_id": block_id, "field": field})
+        if not isinstance(row.get("line_start"), int) or not isinstance(row.get("line_end"), int):
+            problems.append({"kind": "source_block_invalid_line_range",
+                             "source_block_id": block_id})
+        elif row["line_start"] < 1 or row["line_end"] < row["line_start"]:
+            problems.append({"kind": "source_block_invalid_line_range",
+                             "source_block_id": block_id})
+        if not _sha_field(row.get("content_hash")):
+            problems.append({"kind": "source_block_invalid_content_hash",
+                             "source_block_id": block_id})
+
+    valid_kinds = {
+        "functional", "non_functional", "invariant", "failure", "scope",
+        "metric", "constraint", "risk", "context", "rationale",
+    }
+    for row in _rows(documents.get("requirements"), "requirements", "semantic_requirements", "atoms"):
+        rid = _node_id("requirement", row)
+        if row.get("kind") not in valid_kinds:
+            problems.append({"kind": "invalid_requirement_kind",
+                             "requirement_id": rid, "value": row.get("kind")})
+        if not isinstance(row.get("statement"), str) or not row.get("statement").strip():
+            problems.append({"kind": "requirement_missing_statement", "requirement_id": rid})
+        refs = row.get("source_block_ids")
+        if not isinstance(refs, list) or not refs:
+            problems.append({"kind": "requirement_missing_source_blocks", "requirement_id": rid})
+        if not isinstance(row.get("delivery_relevant"), bool):
+            problems.append({"kind": "requirement_invalid_delivery_relevance", "requirement_id": rid})
+        for field in ("sink_policy", "status"):
+            if not isinstance(row.get(field), str) or not row.get(field):
+                problems.append({"kind": "requirement_missing_field",
+                                 "requirement_id": rid, "field": field})
+
+    for row in _rows(documents.get("capabilities"), "capabilities"):
+        cid = _node_id("capability", row)
+        if not isinstance(row.get("title"), str) or not row.get("title").strip():
+            problems.append({"kind": "capability_missing_title", "capability_id": cid})
+        refs = row.get("requirement_ids")
+        if not isinstance(refs, list) or not refs:
+            problems.append({"kind": "capability_missing_requirements", "capability_id": cid})
+
+    for edge in _rows(documents.get("edges"), "edges"):
+        missing = [
+            field for field in ("source_type", "source_id", "target_type", "target_id", "relation")
+            if not isinstance(edge.get(field), str) or not edge.get(field)
+        ]
+        if missing:
+            problems.append({"kind": "invalid_edge_shape", "missing_fields": missing})
+
+
 def _validate_artifact_hashes(snapshot: Any, manifest: dict[str, Any],
                               problems: list[dict[str, Any]]) -> None:
     bindings = manifest.get("artifacts")
@@ -343,7 +430,7 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     return {
         "schema_version": "newrouge.semantic-topology-view.v1",
         "available": True,
-        "fresh": fresh and not any(p.get("kind") in severe for p in problems),
+        "fresh": fresh and not problems,
         "identity": identity,
         "status": "fresh" if fresh and not problems else "stale_or_concern",
         "manifest": {
@@ -408,6 +495,7 @@ def load_topology_from_snapshot(snapshot: Any,
         result["problems"] = [{"kind": "artifact_read_failed", "reason": str(exc)}]
         return result
     problems: list[dict[str, Any]] = []
+    _validate_minimum_shapes(documents, problems)
     _validate_artifact_hashes(snapshot, documents["manifest"], problems)
     _validate_source_hashes(
         snapshot, _rows(documents["source_blocks"], "blocks", "source_blocks"), problems
