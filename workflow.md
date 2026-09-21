@@ -501,7 +501,8 @@ Chapter 5 进入任何单 Task Acceptance 稳定化之前，先从 Chapter 3 的
 先构建或复用全局 Extraction B：
 
 ```powershell
-py -3 scripts/python/chapter5_semantic_reconciliation.py prepare
+py -3 scripts/python/chapter5_semantic_reconciliation.py prepare --trigger-run-id <run-id>
+# prepare 会先写 Chapter 5 run-start Last Attempt；中途失败/中断也不会无痕
 # 独立审阅 logs/ci/chapter5/extraction-b.candidate.json 的每一个 raw_source block
 py -3 scripts/python/chapter5_semantic_reconciliation.py compile
 ```
@@ -517,13 +518,14 @@ py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-
 
 `decisions.json` 用于显式记录：
 
-- Extraction B obligation ↔ Chapter 3 Requirement 的 equivalent/partial/missing/invented/conflict 决策；
+- Extraction B obligation ↔ Chapter 3 Requirement 的 equivalent/partial/missing/invented/conflict 决策；必须显式写 status + rationale。词面 similarity 只用于候选排序，不能自动证明 equivalent；
+- 每个 in-scope ADR/Contract 的 `authority_decisions`：`compatible | conflict | out_of_scope`，compatible/conflict 还需 Requirement refs + rationale；未审阅直接 BLOCKED；
 - Acceptance ↔ Requirement/ADR/Contract + test refs；
 - dependency 的 keep/remove/add、relation、`dependency_reason`、`dependency_evidence`；
 - overlap 的 `keep_separate | merge_recommended | overlap_justified` + rationale；
 - 若允许非阻断 concerns，显式 `allow_concerns=true`。
 
-`BLOCKED` 禁止进入 Chapter 6；`CONCERNS` 只有显式 policy allowance 才可 closure。Chapter 6 的 `chapter6-route` 和 Review 都会重新验证 readiness/reconciliation hash，不接受陈旧 sidecar。
+`BLOCKED` 禁止进入 Chapter 6；`CONCERNS` 只有显式 policy allowance 才可 closure。readiness 绑定统一 `chapter5_input_fingerprint`：source manifest/Ledger、Extraction B snapshot、Chapter 3 semantic requirements、Task semantic refs/Acceptance/dependency/overlap、Overlay/Contract/ADR bytes 都属于指纹输入。Chapter 6、Review 与 Chapter 5 Knowledge stable promotion 都会复算该指纹，任一输入漂移即视为 stale。
 
 Chapter 5 run 结束时统一刷新 Knowledge：
 
