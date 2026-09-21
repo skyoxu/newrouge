@@ -921,14 +921,20 @@ def run(
         attempt["chapter_run"]["closure_passed"] = False
     stable_input_hash = None
     if source == "chapter5":
-        stable_input_hash = "sha256:" + _canonical_payload_sha({
-            "source_revision": reconciliation.get("source_revision"),
-            "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
-            "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
-            "reconciliation_sha256": readiness.get("reconciliation_sha256"),
-            "readiness": readiness.get("readiness"),
-            "closure_allowed": readiness.get("closure_allowed"),
-        })
+        input_fingerprint = reconciliation.get("input_fingerprint")
+        stable_input_hash = (
+            str(input_fingerprint.get("sha256") or "")
+            if isinstance(input_fingerprint, dict)
+            else ""
+        )
+        if not stable_input_hash:
+            stable_input_hash = "sha256:" + _canonical_payload_sha({
+                "source_revision": reconciliation.get("source_revision"),
+                "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+                "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
+                "readiness": readiness.get("readiness"),
+                "closure_allowed": readiness.get("closure_allowed"),
+            })
         attempt.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
     local_status = "skipped"
     attempt_written = False
