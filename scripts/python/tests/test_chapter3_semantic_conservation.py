@@ -1122,6 +1122,152 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         self.assertTrue(any(row["depends_on"] for row in result["intents"]))
         self.assertTrue(all(row["dependency_status"] == "provisional" for row in result["intents"]))
 
+    def test_semantic_intent_uses_chinese_heading_without_capability(self) -> None:
+        semantics = {
+            "requirements": [
+                {
+                    "requirement_id": "FR-COMBAT-1",
+                    "kind": "functional",
+                    "statement": "夜晚开始后敌人的刷新压力逐步提高。",
+                    "source_block_ids": ["SB-C1"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "active",
+                    "priority": "P1",
+                },
+                {
+                    "requirement_id": "FR-COMBAT-2",
+                    "kind": "functional",
+                    "statement": "玩家必须能感知当前刷新压力的变化。",
+                    "source_block_ids": ["SB-C2"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "active",
+                    "priority": "P1",
+                },
+                {
+                    "requirement_id": "FR-SHOP-1",
+                    "kind": "functional",
+                    "statement": "商店刷新商品时保持价格规则稳定。",
+                    "source_block_ids": ["SB-S1"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "active",
+                    "priority": "P1",
+                },
+            ]
+        }
+        blocks = {"blocks": [
+            {
+                "block_id": "SB-C1",
+                "source_path": "docs/gdd/game.md",
+                "line_start": 10,
+                "heading_path": ["战斗", "战斗节奏"],
+            },
+            {
+                "block_id": "SB-C2",
+                "source_path": "docs/gdd/game.md",
+                "line_start": 11,
+                "heading_path": ["战斗", "战斗节奏"],
+            },
+            {
+                "block_id": "SB-S1",
+                "source_path": "docs/gdd/game.md",
+                "line_start": 30,
+                "heading_path": ["商店", "商店规则"],
+            },
+        ]}
+        anchors = intents_mod.semantic_to_anchors(
+            semantics, blocks, {"capabilities": []}
+        )
+        result = intents_mod.build_intents(
+            {"schema": "chapter3.validated-semantics.v1", "anchors": anchors},
+            "init", "TST", 7, "compact",
+        )
+        self.assertEqual(2, result["intent_count"])
+        self.assertEqual(
+            {"实现战斗节奏", "实现商店规则"},
+            {row["title"] for row in result["intents"]},
+        )
+        combat = next(row for row in result["intents"] if row["title"] == "实现战斗节奏")
+        self.assertEqual(
+            {"FR-COMBAT-1", "FR-COMBAT-2"},
+            set(combat["semantic_refs"]),
+        )
+        self.assertEqual([], combat["capability_refs"])
+        self.assertEqual(0, result["joint_capability_shadow"]["candidate_group_count"])
+
+    def test_multi_capability_grouping_is_preserved_and_shadowed_advisory_only(self) -> None:
+        semantics = {
+            "requirements": [
+                {
+                    "requirement_id": "FR-1",
+                    "kind": "functional",
+                    "statement": "Reward choice must persist across resume.",
+                    "source_block_ids": ["SB-1"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "active",
+                    "priority": "P1",
+                },
+                {
+                    "requirement_id": "FR-2",
+                    "kind": "functional",
+                    "statement": "Reward presentation must expose deterministic choice state.",
+                    "source_block_ids": ["SB-2"],
+                    "delivery_relevant": True,
+                    "sink_policy": "task_or_global_constraint",
+                    "status": "active",
+                    "priority": "P1",
+                },
+            ]
+        }
+        blocks = {"blocks": [
+            {"block_id": "SB-1", "source_path": "docs/gdd/reward.md", "line_start": 1},
+            {"block_id": "SB-2", "source_path": "docs/gdd/reward.md", "line_start": 2},
+        ]}
+        capabilities = {"capabilities": [
+            {
+                "capability_id": "CAP-UI",
+                "title": "Reward presentation",
+                "requirement_ids": ["FR-1", "FR-2"],
+            },
+            {
+                "capability_id": "CAP-REWARD",
+                "title": "Reward determinism",
+                "requirement_ids": ["FR-1", "FR-2"],
+            },
+        ]}
+        anchors = intents_mod.semantic_to_anchors(semantics, blocks, capabilities)
+        self.assertTrue(all(
+            row["capability_ids"] == ["CAP-REWARD", "CAP-UI"]
+            for row in anchors
+        ))
+        self.assertTrue(all(row["capability_id"] == "CAP-UI" for row in anchors))
+
+        result = intents_mod.build_intents(
+            {"schema": "chapter3.validated-semantics.v1", "anchors": anchors},
+            "init", "TST", 7, "compact",
+        )
+        self.assertEqual(1, result["intent_count"])
+        self.assertEqual(
+            ["CAP-REWARD", "CAP-UI"],
+            result["intents"][0]["capability_refs"],
+        )
+        shadow = result["joint_capability_shadow"]
+        self.assertEqual("advisory", shadow["mode"])
+        self.assertFalse(shadow["affects_default_grouping"])
+        self.assertEqual(1, shadow["candidate_group_count"])
+        self.assertEqual(
+            ["CAP-REWARD", "CAP-UI"],
+            shadow["candidates"][0]["capability_refs"],
+        )
+        self.assertEqual(
+            ["FR-1", "FR-2"],
+            shadow["candidates"][0]["requirement_ids"],
+        )
+        self.assertTrue(shadow["candidates"][0]["advisory_only"])
+
     def test_enrichment_emits_file_overlap_as_advisory_signal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

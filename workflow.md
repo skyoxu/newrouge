@@ -291,7 +291,9 @@ After projection PASS:
 
 `normalize_task_intents.py` prefers `semantic-requirements.v1.json` when present. It generates Tasks only for active delivery semantics that require Task sinks. Explicit global constraint / quality gate / ADR/deferred/exclusion sinks do not require fake Tasks or fake Capabilities.
 
-Every generated intent preserves `semantic_refs`, optional `capability_refs`, Source refs and a complexity score. `depends_on` is explicitly `provisional`; same owner/layer or generation adjacency is not semantic dependency proof.
+Every generated intent preserves `semantic_refs`, every applicable `capability_refs`, Source refs and a complexity score. `depends_on` is explicitly `provisional`; same owner/layer or generation adjacency is not semantic dependency proof.
+
+When a Requirement has no Capability, Task normalization groups by the owning Source heading before falling back to the source path. CJK headings/statements may supply the deterministic Task focus/title so Chinese GDDs do not depend on ASCII token extraction. Requirements with multiple Capabilities retain the full Capability set; identical multi-Capability signatures are emitted as advisory joint-grouping shadow evidence only and do not alter the default Task partition.
 
 ### 3.5 Generate And Enrich Task Candidates
 

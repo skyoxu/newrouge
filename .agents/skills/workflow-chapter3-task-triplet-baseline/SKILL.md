@@ -74,7 +74,9 @@ Every source block must be accounted for. Every active delivery Requirement must
 - Complexity greater than 7/10 must be split into Tasks; if semantic cohesion prevents further Task splitting, use Subtasks under the existing governance.
 - The normalizer splits semantic groups before an intent can exceed 7. It must not cap an oversized score to hide the split requirement; semantic refs across the split remain collectively equivalent.
 - `depends_on` emitted here is provisional. Same owner/layer or generation adjacency is not semantic proof of dependency.
-- Preserve `semantic_refs`, optional `capability_refs`, source refs, and complexity metadata into the task views.
+- Preserve `semantic_refs`, every applicable `capability_refs`, source refs, and complexity metadata into the task views.
+- When Capability is absent, group semantic anchors by source heading before source-path fallback. CJK headings/statements may provide the deterministic Task focus/title; do not reintroduce keyword-based semantic filtering.
+- Shared multi-Capability signatures emit advisory joint-grouping shadow evidence only. They must not change the default Task partition until separately promoted by policy/regression evidence.
 - `implementation_overlap_candidates` and `file_churn_signal` are advisory task-boundary quality evidence only.
 
 ## Knowledge / Project Health Closure
