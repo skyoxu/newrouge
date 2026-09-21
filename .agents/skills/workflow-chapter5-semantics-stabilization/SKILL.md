@@ -1,6 +1,6 @@
 ---
 name: workflow-chapter5-semantics-stabilization
-description: Run the fixed Chapter 5 conditional semantics stabilization workflow from workflow.md. Use when a business repo needs task triplet semantics stabilization, lightweight semantic lanes, batch instability handling, acceptance extraction guardrails, or idempotent Chapter 5 recovery before Chapter 6.
+description: Run the fixed Chapter 5 semantic reconciliation workflow from workflow.md. Use when a business repo needs Independent Extraction B, global orphan/omission audit, bidirectional Requirement/Acceptance validation, dependency/overlap stabilization, readiness gating, Knowledge refresh, or the legacy lightweight acceptance lane before Chapter 6.
 ---
 
 # Workflow Chapter 5 Semantics Stabilization
@@ -17,7 +17,8 @@ Operate Chapter 5 from `workflow.md` idempotently for a business repository that
 - Keep generated code, scripts, tests, comments, and log messages in English.
 - Do not modify the business repo unless the user explicitly asks for that change.
 - Do not rerun expensive steps before reading existing recovery artifacts.
-- During Knowledge Control Plane migration, Locator candidates are shadow-only and cannot satisfy acceptance/semantic obligations without direct-source reread and consumer judgment.
+- During Knowledge Control Plane migration, Locator candidates are shadow-only. Complete source scope comes from the authoritative manifest/Ledger A, never task refs.
+- Chapter 5 is a registered closure producer: every run may update Last Attempt, but only READY or policy-allowed CONCERNS may advance Latest Stabilized.
 
 ## Repository Layout
 
@@ -71,6 +72,7 @@ A `logs/ci/knowledge-context/**` bundle is optional shadow routing evidence only
 - The same deterministic failure fingerprint appears repeatedly.
 - The next action would duplicate work already covered by task, overlay, candidate, or manifest evidence.
 - A Locator candidate cannot be re-read/hash-verified from repository authority; reject it and use the direct-source path.
+- Extraction B source scope is incomplete, stale, or task-selected; stop before task-local reconciliation.
 
 ## Business Evidence References
 
