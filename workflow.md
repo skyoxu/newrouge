@@ -148,7 +148,7 @@ This step only feeds project-health, GDD/PRD/prototype routing, and prototype la
 这是新仓在“完成改名、路径清理、入口索引修复”之后的第一个完整验证点。
 
 ```powershell
-py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
+py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"
 py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
@@ -1218,8 +1218,10 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
 ### 6.9 Commit 前的仓库级验证
 
+Chapter 6 的 6.9 必须使用 `--skip-project-health`。这只跳过会刷新 Project Health 的 repo-health prelude；gate bundle、dotnet、GdUnit/smoke 仍按原 hard-check contract 执行。
+
 ```powershell
-py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
+py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"
 py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
@@ -1351,7 +1353,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 9. 6.9 repository hard checks:
 
 ```powershell
-py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
+py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"
 py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
