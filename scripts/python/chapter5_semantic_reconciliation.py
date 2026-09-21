@@ -713,6 +713,7 @@ def _authority_decisions(
                 "authority_ref": ref,
                 "authority_sha256": item.get("sha256"),
                 "reason": "authority compatibility has not been explicitly reviewed",
+                "priority": "P1",
                 "action": "review_authority_compatibility",
             })
     return reviews, findings
