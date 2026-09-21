@@ -826,7 +826,7 @@ def reconcile(
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
 
-    findings: list[dict[str, Any]] = []
+    findings: list[dict[str, Any]] = list(authority_findings)
     matched_requirements: set[str] = set()
     obligation_to_requirements: dict[str, list[str]] = {}
     for obligation in snapshot.get("semantic_inventory", []):
