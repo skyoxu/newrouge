@@ -490,8 +490,6 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     root = Path(args.repo_root).resolve()
     try:
         if bool(args.begin_run):
-            if args.source != "chapter3":
-                raise ValueError("--begin-run is currently reserved for Chapter 3 run lifecycle")
             if args.write_planning_artifacts or args.publish_if_eligible:
                 raise ValueError("--begin-run cannot write planning artifacts or publish")
             result = begin_run_attempt(
@@ -519,6 +517,7 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
                 triplet_attestation_path=root / args.triplet_attestation,
                 reconciliation_path=root / args.reconciliation,
                 readiness_path=root / args.readiness,
+                chapter5_snapshot_path=root / args.chapter5_snapshot,
             )
     except ValueError as exc:
         print(json.dumps({
@@ -945,7 +944,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument(
         "--begin-run",
         action="store_true",
-        help="record a Chapter 3 run-start attempt before expensive/model-backed work",
+        help="record a registered Chapter 3/5 run-start attempt before expensive/model-backed work",
     )
     p_refresh.add_argument("--refresh-local", action="store_true")
     p_refresh.add_argument("--write-planning-artifacts", action="store_true")
@@ -965,6 +964,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_refresh.add_argument("--reconciliation", default="logs/ci/chapter5/reconciliation/latest.json")
     p_refresh.add_argument("--readiness", default="logs/ci/chapter5/readiness/latest.json")
+    p_refresh.add_argument("--chapter5-snapshot", default="logs/ci/chapter5/extraction-b.snapshot.json")
     p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
     from run_mvg_acceptance import register_arguments, run as run_mvg
