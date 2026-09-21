@@ -221,6 +221,112 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn(gate["readiness"], {"READY", "CONCERNS"})
             self.assertTrue(gate["closure_allowed"])
 
+    def test_lexical_similarity_cannot_auto_equate_negated_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="Route choice cannot be reversed once selected."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
+            semantics["requirements"][0]["statement"] = "Route choice can be reversed once selected."
+            write_json(semantics_path, semantics)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "authority_decisions": [{
+                    "authority_ref": "core.route.selected",
+                    "status": "compatible",
+                    "requirement_ids": ["INV-U1"],
+                    "rationale": "Contract existence is not the semantic verdict under test.",
+                }],
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            source = next(
+                row for row in reconciliation["findings"]
+                if row.get("finding_type") == "source_semantic"
+                and row.get("chapter5_obligation")
+            )
+            self.assertGreater(source["similarity"], 0.25)
+            self.assertEqual("needs_human_decision", source["status"])
+            self.assertEqual("review_required", source["semantic_verdict_source"])
+            self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_authority_compatibility_requires_explicit_verdict_and_conflict_blocks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            payload = self._ready_decisions(root)
+            payload.pop("authority_decisions")
+            payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(any(
+                row.get("status") == "authority_unresolved"
+                for row in reconciliation["findings"]
+            ))
+            self.assertEqual("BLOCKED", gate["readiness"])
+
+            payload["authority_decisions"] = [{
+                "authority_ref": "core.route.selected",
+                "status": "conflict",
+                "requirement_ids": ["INV-U1"],
+                "rationale": "The contract semantics conflict with the stabilized invariant.",
+            }]
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(any(
+                row.get("status") == "authority_conflict"
+                for row in reconciliation["findings"]
+            ))
+            self.assertEqual("BLOCKED", gate["readiness"])
+
     def test_invented_chapter3_behavior_and_acceptance_scope_creep_block_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -305,6 +411,20 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 for row in reconciliation["findings"]
             ))
             self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_prepare_cli_begins_chapter5_attempt_before_extraction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._prepare_source(root)
+            with mock.patch.object(ch5, "_begin_chapter5_attempt") as begin:
+                rc = ch5.main([
+                    "--repo-root", str(root),
+                    "prepare",
+                    "--trigger-run-id", "chapter5-test-run",
+                ])
+            self.assertEqual(0, rc)
+            begin.assert_called_once_with(root.resolve(), "chapter5-test-run")
+            self.assertTrue((root / ch5.DEFAULT_EXTRACTION_CANDIDATE).is_file())
 
     def test_extraction_b_cache_reuses_same_identity_and_invalidates_on_source_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -535,6 +655,70 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             )
             self.assertIn("contract_missing:core.route.selected", reconciliation["authority_scope_errors"])
             self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_readiness_fingerprint_invalidates_semantics_task_and_authority_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            payload = self._ready_decisions(root)
+            payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            write_json(decisions, payload)
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            original_semantics = semantics_path.read_bytes()
+            semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
+            semantics["requirements"][0]["statement"] = "Route choice is reversible."
+            write_json(semantics_path, semantics)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
+            semantics_path.write_bytes(original_semantics)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            task_path = root / ".taskmaster/tasks/tasks_gameplay.json"
+            original_task = task_path.read_bytes()
+            task_payload = json.loads(task_path.read_text(encoding="utf-8"))
+            task_payload[0]["acceptance"] = ["Route may be changed later. Refs: Game.Core.Tests/RouteTests.cs"]
+            write_json(task_path, task_payload)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
+            task_path.write_bytes(original_task)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            contract = root / "Game.Core/Contracts/RouteEvents.cs"
+            contract.write_text(
+                'public static class RouteEvents { public const string Selected = "core.route.selected"; } // changed\n',
+                encoding="utf-8",
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
 
     def test_chapter6_readiness_becomes_stale_when_source_bytes_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
