@@ -48,7 +48,7 @@ SKILLS = {
             "Prepare deterministic semantic batches bounded by block count and character budget. Oversized single blocks fail rather than truncate.",
             "The approved model must read every batch, explicitly set delivery_potential, fill atoms or a disposition for every block_result, and reconcile output_accounted_count; requirement_like_hint is diagnostic only.",
             "Compile Semantic Projection A and run the projection conservation gate; stop on silent loss, invalid refs, source drift, or unresolved delivery-potential semantics.",
-            "Normalize implementation-shaped task intents from active validated semantics. Preserve semantic_refs/capability_refs and mark generated dependencies provisional.",
+            "Normalize implementation-shaped task intents from active validated semantics. When Capability is absent, use source heading before source-path fallback and CJK-aware heading/statement focus for stable titles. Preserve all semantic_refs/capability_refs; emit shared multi-Capability grouping only as advisory shadow evidence. Mark generated dependencies provisional.",
             "Audit intent quality, generate candidates, and enrich them with repository evidence plus implementation-overlap/file-churn advisory signals.",
             "Audit semantic sink coverage; retain the old P0/P1 coverage only as a Source-Block-bridged packaging gate.",
             "Run the closure conservation gate; active delivery Requirements require Task/non-Task sinks and task complexity must be at most 7.",
