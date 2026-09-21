@@ -1175,7 +1175,10 @@ def reconcile(
             blocking.append(finding)
         elif status in {"missing_in_ch3", "orphan_delivery_semantic"}:
             (blocking if priority in {"P0", "P1"} else concerns).append(finding)
-        elif status in {"partial", "needs_human_decision"}:
+        elif status == "needs_human_decision":
+            # An unresolved semantic/authority verdict is never a closable concern.
+            blocking.append(finding)
+        elif status == "partial":
             if priority in {"P0", "P1"}:
                 blocking.append(finding)
             else:
