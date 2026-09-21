@@ -42,6 +42,7 @@ ALLOWED_OVERLAP_DECISIONS = {
 ALLOWED_DEPENDENCY_RELATIONS = {
     "producer_consumer", "contract", "schema", "state", "asset_scene_availability",
 }
+ALLOWED_AUTHORITY_STATUS = {"compatible", "conflict", "out_of_scope"}
 BLOCKING_FINDINGS = {
     "invented_in_ch3", "conflict_with_adr", "unsupported_task_claim",
     "orphan_acceptance", "partial_acceptance", "untraceable_acceptance",
@@ -618,6 +619,105 @@ def _parse_acceptance_test_refs(text: str) -> list[str]:
     })
 
 
+
+def _task_semantic_surface(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task_id": str(task.get("task_id") or ""),
+        "semantic_refs": list(task.get("semantic_refs") or []),
+        "capability_refs": list(task.get("capability_refs") or []),
+        "depends_on": list(task.get("depends_on") or []),
+        "acceptance": list(task.get("acceptance") or []),
+        "implementation_overlap_candidates": list(task.get("implementation_overlap_candidates") or []),
+        "overlay_refs": list(task.get("overlay_refs") or []),
+        "contract_refs": list(task.get("contract_refs") or []),
+    }
+
+
+def build_chapter5_input_fingerprint(
+    root: Path,
+    *,
+    manifest_path: Path,
+    ledger_path: Path,
+    snapshot: dict[str, Any],
+    semantics_path: Path,
+    task: dict[str, Any],
+    authority_scope: dict[str, Any],
+    authority_reconciliation: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "source_manifest_sha": "sha256:" + _sha_file(manifest_path) if manifest_path.is_file() else None,
+        "source_block_ledger_sha": "sha256:" + _sha_file(ledger_path) if ledger_path.is_file() else None,
+        "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
+        "extraction_b_cache_key": snapshot.get("cache_key"),
+        "semantic_requirements_sha": "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None,
+        "task_semantic_surface": _task_semantic_surface(task),
+        "authority_scope": authority_scope,
+        "authority_reconciliation": list(authority_reconciliation or []),
+    }
+    return {
+        "schema_version": "newrouge.chapter5-input-fingerprint.v1",
+        "payload": payload,
+        "sha256": "sha256:" + _canonical_sha(payload),
+    }
+
+
+def _authority_decisions(
+    decisions: dict[str, Any],
+    authority_scope: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    raw = decisions.get("authority_decisions", [])
+    if not isinstance(raw, list):
+        raw = []
+    by_ref = {
+        str(row.get("authority_ref") or ""): row
+        for row in raw
+        if isinstance(row, dict) and str(row.get("authority_ref") or "").strip()
+    }
+    reviews: list[dict[str, Any]] = []
+    findings: list[dict[str, Any]] = list(authority_findings)
+    required = []
+    for kind in ("contracts", "adrs"):
+        for item in authority_scope.get(kind, []):
+            if isinstance(item, dict) and str(item.get("ref") or "").strip():
+                required.append((kind[:-1] if kind.endswith("s") else kind, item))
+    for authority_type, item in required:
+        ref = str(item.get("ref") or "")
+        decision = by_ref.get(ref, {})
+        status = str(decision.get("status") or "").strip()
+        rationale = str(decision.get("rationale") or "").strip()
+        if status not in ALLOWED_AUTHORITY_STATUS or not rationale:
+            status = "needs_human_decision"
+        review = {
+            "authority_type": authority_type,
+            "authority_ref": ref,
+            "authority_sha256": item.get("sha256"),
+            "status": status,
+            "rationale": rationale,
+        }
+        reviews.append(review)
+        if status == "conflict":
+            findings.append({
+                "finding_type": "authority",
+                "status": "conflict_with_adr",
+                "authority_type": authority_type,
+                "authority_ref": ref,
+                "authority_sha256": item.get("sha256"),
+                "reason": rationale,
+                "action": "route_to_chapter5_or_source_owner",
+            })
+        elif status == "needs_human_decision":
+            findings.append({
+                "finding_type": "authority",
+                "status": "needs_human_decision",
+                "authority_type": authority_type,
+                "authority_ref": ref,
+                "authority_sha256": item.get("sha256"),
+                "reason": "authority compatibility has not been explicitly reviewed",
+                "action": "review_authority_compatibility",
+            })
+    return reviews, findings
+
+
 def reconcile(
     root: Path,
     *,
@@ -648,6 +748,7 @@ def reconcile(
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
     authority_scope, authority_errors = build_task_authority_scope(root, task)
+    authority_reconciliation, authority_findings = _authority_decisions(decisions, authority_scope)
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
 
@@ -694,7 +795,8 @@ def reconcile(
         score, best_rid = scored[-1]
         status = str(override.get("status") or "").strip()
         if status not in ALLOWED_MATCH_STATUS:
-            status = "equivalent" if score >= 0.25 else ("partial" if score >= 0.10 else "needs_human_decision")
+            # Lexical similarity is diagnostic only. It must never prove semantic equivalence.
+            status = "needs_human_decision"
         chosen = sorted(set(explicit_ids or [best_rid]))
         matched_requirements.update(chosen)
         obligation_to_requirements[oid] = chosen
@@ -1020,6 +1122,17 @@ def reconcile(
     readiness = "BLOCKED" if blocking else ("CONCERNS" if concerns else "READY")
     closure_allowed = readiness == "READY" or (readiness == "CONCERNS" and allow_concerns)
 
+    input_fingerprint = build_chapter5_input_fingerprint(
+        root,
+        manifest_path=root / DEFAULT_SOURCE_MANIFEST,
+        ledger_path=root / DEFAULT_SOURCE_LEDGER,
+        snapshot=snapshot,
+        semantics_path=semantics_path,
+        task=task,
+        authority_scope=authority_scope,
+        authority_reconciliation=authority_reconciliation,
+    )
+
     reconciliation = {
         "schema_version": RECONCILIATION_SCHEMA,
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -1032,6 +1145,8 @@ def reconcile(
         "source_scope": snapshot.get("source_scope", []),
         "authority_scope": authority_scope,
         "authority_scope_errors": authority_errors,
+        "authority_reconciliation": authority_reconciliation,
+        "input_fingerprint": input_fingerprint,
         "findings": all_findings,
         "dependency_corrections": dependency_corrections,
         "final_dependencies": sorted(final_dependencies),
@@ -1057,6 +1172,7 @@ def reconcile(
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "cache_key": snapshot.get("cache_key"),
         "reconciliation_sha256": "sha256:" + _canonical_sha(reconciliation),
+        "input_fingerprint": input_fingerprint,
         "readiness": readiness,
         "closure_allowed": closure_allowed,
         "allow_concerns": allow_concerns,
@@ -1172,6 +1288,28 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         return False, payload, "chapter5_readiness_source_identity_stale"
     if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         return False, payload, "chapter5_readiness_source_revision_stale"
+
+    semantics_path = root / DEFAULT_CH3_SEMANTICS
+    task_rows = _load_task_rows(root)
+    task = _task_bundle(task_rows, _canonical_task_id(task_id))
+    authority_scope, authority_errors = build_task_authority_scope(root, task)
+    if authority_errors:
+        return False, payload, "chapter5_current_authority_scope_invalid"
+    authority_reconciliation = reconciliation.get("authority_reconciliation", [])
+    current_fingerprint = build_chapter5_input_fingerprint(
+        root,
+        manifest_path=manifest_path,
+        ledger_path=ledger_path,
+        snapshot=snapshot,
+        semantics_path=semantics_path,
+        task=task,
+        authority_scope=authority_scope,
+        authority_reconciliation=authority_reconciliation if isinstance(authority_reconciliation, list) else [],
+    )
+    if reconciliation.get("input_fingerprint") != current_fingerprint:
+        return False, payload, "chapter5_reconciliation_input_fingerprint_stale"
+    if payload.get("input_fingerprint") != current_fingerprint:
+        return False, payload, "chapter5_readiness_input_fingerprint_stale"
     return True, payload, "ready"
 
 
