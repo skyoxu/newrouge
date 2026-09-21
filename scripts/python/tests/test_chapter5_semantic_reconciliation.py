@@ -180,7 +180,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 "acceptance_links": [{
                     "acceptance_index": 1,
                     "requirement_ids": ["INV-U1"],
-                    "authority_refs": ["ADR-ROUTE"],
+                    "authority_refs": ["core.route.selected"],
                     "test_refs": ["Game.Core.Tests/RouteTests.cs"],
                 }],
                 "allow_concerns": True,
@@ -250,6 +250,43 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn("out_of_task_scope", statuses)
             self.assertEqual("BLOCKED", gate["readiness"])
             self.assertFalse(gate["closure_allowed"])
+
+    def test_nonexistent_acceptance_authority_ref_blocks_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "authority_refs": ["ADR-99999"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(any(
+                row.get("status") == "untraceable_acceptance"
+                and row.get("authority_ref") == "ADR-99999"
+                for row in reconciliation["findings"]
+            ))
+            self.assertEqual("BLOCKED", gate["readiness"])
 
     def test_extraction_b_cache_reuses_same_identity_and_invalidates_on_source_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
