@@ -53,8 +53,8 @@ A `logs/ci/knowledge-context/**` bundle is optional shadow routing evidence only
 
 ## Idempotent Procedure
 
-1. Resolve the target business repo and verify Chapter 3 source manifest/Ledger A plus Chapter 4 overlay/contract backlinks.
-2. Run `chapter5_semantic_reconciliation.py prepare`. A cache hit is reusable only when `source_manifest_sha`, `source_block_ledger_sha`, `parser_revision`, and `extractor_revision` match exactly.
+1. Allocate a stable `<run-id>`, resolve the target business repo, and immediately write the run-start attempt with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`. This must happen before Extraction B/reconciliation work so an interrupted or failed run still leaves Workspace Last Attempt evidence.
+2. Verify Chapter 3 source manifest/Ledger A plus Chapter 4 overlay/contract backlinks, then run `chapter5_semantic_reconciliation.py prepare`. A cache hit is reusable only when `source_manifest_sha`, `source_block_ledger_sha`, `parser_revision`, and `extractor_revision` match exactly.
 3. Independently review every candidate `raw_source`; fill `delivery_potential`, obligations, or a valid disposition. Do not consult Task mappings to decide which blocks to omit.
 4. Run `chapter5_semantic_reconciliation.py compile`; an incomplete source scope or unreviewed block is blocking.
 5. Before task-local acceptance work, run `reconcile --task-id <id>` so global `missing_in_ch3` / `orphan_delivery_semantic` findings are visible even when no Task references the source semantic.
