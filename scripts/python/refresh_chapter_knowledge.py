@@ -442,21 +442,47 @@ def build_workspace_view(
         "closure_passed": closure_passed,
     }
     if source == "chapter5":
-        view["chapter_run"]["reconciliation_status"] = (
-            "available" if isinstance(reconciliation, dict) else "missing"
+        reconciliation_summary = (
+            reconciliation.get("summary", {})
+            if isinstance(reconciliation, dict)
+            and isinstance(reconciliation.get("summary"), dict)
+            else {}
         )
-        view["chapter_run"]["readiness"] = (
-            readiness.get("readiness") if isinstance(readiness, dict) else "UNKNOWN"
+        readiness_value = (
+            str(readiness.get("readiness") or "UNKNOWN")
+            if isinstance(readiness, dict)
+            else "UNKNOWN"
         )
+        if not isinstance(reconciliation, dict):
+            reconciliation_status = "missing"
+        elif int(reconciliation_summary.get("conflicts") or 0) > 0:
+            reconciliation_status = "conflict"
+        elif int(reconciliation_summary.get("invented") or 0) > 0:
+            reconciliation_status = "invented"
+        elif any(
+            int(reconciliation_summary.get(key) or 0) > 0
+            for key in ("missing", "partial", "orphan_delivery_semantic", "orphan_acceptance")
+        ):
+            reconciliation_status = "partial"
+        elif readiness_value in {"READY", "CONCERNS"} and bool(
+            readiness.get("closure_allowed") if isinstance(readiness, dict) else False
+        ):
+            reconciliation_status = "stabilized"
+        else:
+            reconciliation_status = "partial"
+        view["chapter_run"]["reconciliation_status"] = reconciliation_status
+        view["chapter_run"]["readiness"] = readiness_value
         view["chapter_run"]["extraction_b_snapshot_id"] = (
             reconciliation.get("extraction_b_snapshot_id") if isinstance(reconciliation, dict) else None
         )
+        view.setdefault("summary", {})["chapter5_reconciliation_status"] = reconciliation_status
+        view["summary"]["chapter5_readiness"] = readiness_value
         view["reconciliation"] = {
-            "summary": reconciliation.get("summary", {}) if isinstance(reconciliation, dict) else {},
+            "summary": reconciliation_summary,
             "findings": reconciliation.get("findings", []) if isinstance(reconciliation, dict) else [],
             "dependency_corrections": reconciliation.get("dependency_corrections", []) if isinstance(reconciliation, dict) else [],
             "overlap_reviews": reconciliation.get("overlap_reviews", []) if isinstance(reconciliation, dict) else [],
-            "readiness": readiness.get("readiness") if isinstance(readiness, dict) else "UNKNOWN",
+            "readiness": readiness_value,
             "closure_allowed": readiness.get("closure_allowed", False) if isinstance(readiness, dict) else False,
         }
     view["status"] = "passed" if closure_passed else "concern"
