@@ -517,7 +517,7 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
                 triplet_attestation_path=root / args.triplet_attestation,
                 reconciliation_path=root / args.reconciliation,
                 readiness_path=root / args.readiness,
-                chapter5_snapshot_path=root / args.chapter5_snapshot,
+                chapter5_snapshot_path=root / str(getattr(args, "chapter5_snapshot", "logs/ci/chapter5/extraction-b.snapshot.json")),
             )
     except ValueError as exc:
         print(json.dumps({
