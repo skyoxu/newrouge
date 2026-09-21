@@ -1135,12 +1135,13 @@ def reconcile(
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
         relation = str(decision.get("relation") or "").strip()
-        valid = action in {"keep", "remove"} and bool(reason)
-        if action == "keep":
+        effective_action = "keep" if action == "add" else action
+        valid = effective_action in {"keep", "remove"} and bool(reason)
+        if effective_action == "keep":
             valid = valid and relation in ALLOWED_DEPENDENCY_RELATIONS and bool(evidence)
         dependency_corrections.append({
             "dependency_id": dep,
-            "action": action if valid else "needs_human_decision",
+            "action": effective_action if valid else "needs_human_decision",
             "relation": relation,
             "dependency_reason": reason,
             "dependency_evidence": evidence,
@@ -1149,6 +1150,8 @@ def reconcile(
         if not isinstance(decision, dict) or str(decision.get("action") or "") != "add":
             continue
         dep = _canonical_task_id(decision.get("dependency_id"))
+        if dep in task["depends_on"]:
+            continue
         relation = str(decision.get("relation") or "").strip()
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
