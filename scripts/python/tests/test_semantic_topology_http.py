@@ -49,6 +49,22 @@ class SemanticTopologyHttpTests(unittest.TestCase):
         self.assertEqual("legacy_unmapped", payload["status"])
         self.assertEqual("main", payload["identity"]["kind"])
 
+    def test_workspace_stabilized_view_is_addressable(self):
+        write_json(base_dir(self.root) / "topology/workspace-latest-stabilized.json", {
+            "schema_version": "newrouge.semantic-topology-view.v1",
+            "available": True,
+            "fresh": True,
+            "identity": {"kind": "workspace", "revision": "workspace:chapter5", "trigger_run_id": "ch5"},
+            "status": "fresh",
+            "nodes": {"source_blocks": [], "requirements": [], "capabilities": [], "tasks": [], "acceptance": []},
+            "edges": [], "task_trace": {}, "summary": {}, "problems": [],
+        })
+        status, body = self.request("/api/knowledge/topology?mode=workspace&view=stabilized")
+        self.assertEqual(200, status)
+        payload = json.loads(body)
+        self.assertEqual("stabilized", payload["workspace_view"])
+        self.assertEqual("ch5", payload["identity"]["trigger_run_id"])
+
     def test_workspace_preview_is_separate_from_main(self):
         write_json(base_dir(self.root) / "topology/workspace-latest.json", {
             "schema_version": "newrouge.semantic-topology-view.v1",
