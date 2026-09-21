@@ -454,6 +454,34 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertEqual("stabilized", payload["chapter_run"]["reconciliation_status"])
             self.assertEqual("stabilized", payload["summary"]["chapter5_reconciliation_status"])
             self.assertTrue(payload["reconciliation"]["summary"])
+            first_bytes = stabilized.read_bytes()
+            first_stable_hash = payload["chapter_run"]["stable_input_hash"]
+
+            second = refresh_mod.run(
+                root,
+                source="chapter5",
+                trigger_run_id="ch5-test-repeat",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="unknown",
+                source_manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                semantics_path=semantics_path,
+                capabilities_path=capabilities,
+                edges_path=edges,
+                candidates_path=candidates,
+                report_path=root / "unused.json",
+                reconciliation_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            self.assertTrue(second["closure_passed"])
+            self.assertEqual("stable_reused", second["local_refresh_status"])
+            self.assertEqual(first_bytes, stabilized.read_bytes())
+            self.assertEqual(
+                first_stable_hash,
+                json.loads(stabilized.read_text(encoding="utf-8"))["chapter_run"]["stable_input_hash"],
+            )
 
 
     def test_reconciliation_blocks_when_chapter4_authority_is_stale(self) -> None:
