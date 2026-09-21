@@ -712,6 +712,10 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            stable_path = root / refresh_mod.CHAPTER5_STABLE_PATH
+            stable_path.parent.mkdir(parents=True, exist_ok=True)
+            stable_path.write_text('{"sentinel":"prior-stable"}\n', encoding="utf-8")
+            prior_stable = stable_path.read_bytes()
             rc, summary = guarded_ch5.run_guarded(
                 root,
                 trigger_run_id="ch5-interrupted",
@@ -724,7 +728,10 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertTrue(attempt_path.is_file())
             attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
             self.assertEqual("ch5-interrupted", attempt["chapter_run"]["trigger_run_id"])
+            self.assertEqual("failed", attempt["chapter_run"]["lifecycle_status"])
             self.assertFalse(attempt["chapter_run"]["closure_passed"])
+            self.assertEqual(prior_stable, stable_path.read_bytes())
+            self.assertEqual("producer_run_failed", summary["final_refresh"]["publication_reason"])
 
     def test_chapter6_readiness_becomes_stale_when_source_bytes_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
