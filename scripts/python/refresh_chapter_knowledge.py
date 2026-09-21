@@ -14,17 +14,26 @@ from typing import Any
 from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
 from audit_task_candidate_coverage import DEFAULT_TASK_VIEWS, audit as audit_task_coverage
 from validate_semantic_conservation import validate as validate_semantic_conservation
+from chapter5_semantic_reconciliation import (
+    DEFAULT_READINESS_DIR as CH5_READINESS_DIR,
+    DEFAULT_RECONCILIATION_DIR as CH5_RECONCILIATION_DIR,
+    READINESS_SCHEMA as CH5_READINESS_SCHEMA,
+    RECONCILIATION_SCHEMA as CH5_RECONCILIATION_SCHEMA,
+)
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
 ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-last-attempt.json"
 LEGACY_ATTEMPT_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest.json"
 STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-successful.json"
+CHAPTER5_STABLE_PATH = TOPOLOGY_RUNTIME_DIR / "workspace-latest-stabilized.json"
 REGISTERED_SOURCES = {"chapter3", "chapter5"}
 DEFAULT_COVERAGE_PATH = Path("logs/ci/task-generation/coverage-report.json")
 DEFAULT_LEGACY_REQUIREMENTS_PATH = Path("logs/ci/task-generation/requirements.index.json")
 DEFAULT_TRIPLET_ATTESTATION_PATH = Path(
     "logs/ci/task-generation/triplet-baseline-attestation.json"
 )
+DEFAULT_CH5_RECONCILIATION_PATH = CH5_RECONCILIATION_DIR / "latest.json"
+DEFAULT_CH5_READINESS_PATH = CH5_READINESS_DIR / "latest.json"
 TRIPLET_TASK_FILES = [
     ".taskmaster/tasks/tasks.json",
     ".taskmaster/tasks/tasks_back.json",
@@ -89,6 +98,71 @@ def _restore_file(path: Path, snapshot: bytes | None) -> None:
                 pass
 
 
+def _canonical_payload_sha(payload: Any) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def chapter5_closure_evidence(
+    source_manifest: dict[str, Any],
+    ledger: dict[str, Any],
+    reconciliation: dict[str, Any],
+    readiness: dict[str, Any],
+) -> tuple[dict[str, Any], bool, str]:
+    errors: list[str] = []
+    if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
+        errors.append("invalid_chapter5_reconciliation_schema")
+    if readiness.get("schema_version") != CH5_READINESS_SCHEMA:
+        errors.append("invalid_chapter5_readiness_schema")
+    source_revision = str(ledger.get("source_revision") or source_manifest.get("source_revision") or "")
+    if str(reconciliation.get("source_revision") or "") != source_revision:
+        errors.append("chapter5_reconciliation_source_revision_mismatch")
+    if str(readiness.get("source_revision") or "") != source_revision:
+        errors.append("chapter5_readiness_source_revision_mismatch")
+    if readiness.get("extraction_b_snapshot_id") != reconciliation.get("extraction_b_snapshot_id"):
+        errors.append("chapter5_snapshot_identity_mismatch")
+    if readiness.get("cache_key") != reconciliation.get("cache_key"):
+        errors.append("chapter5_cache_key_mismatch")
+    expected_reconciliation_sha = "sha256:" + _canonical_payload_sha(reconciliation)
+    if str(readiness.get("reconciliation_sha256") or "") != expected_reconciliation_sha:
+        errors.append("chapter5_readiness_reconciliation_hash_mismatch")
+    readiness_status = str(readiness.get("readiness") or "")
+    if readiness_status not in {"READY", "CONCERNS"}:
+        errors.append("chapter5_readiness_not_closable")
+    if readiness_status == "CONCERNS" and readiness.get("allow_concerns") is not True:
+        errors.append("chapter5_concerns_not_policy_allowed")
+    if readiness.get("closure_allowed") is not True:
+        errors.append("chapter5_closure_not_allowed")
+    if reconciliation.get("global_audit_completed") is not True:
+        errors.append("chapter5_global_audit_incomplete")
+    summary = reconciliation.get("summary") if isinstance(reconciliation.get("summary"), dict) else {}
+    if int(summary.get("blocking_count") or 0) != 0:
+        errors.append("chapter5_reconciliation_blocking_findings")
+
+    report = {
+        "schema_version": "chapter5.semantic-reconciliation-closure.v1",
+        "stage": "closure",
+        "source_revision": source_revision,
+        "status": "passed" if not errors else "blocked",
+        "blocking_counts": {
+            "chapter5_readiness": len(errors),
+            "missing": int(summary.get("missing") or 0),
+            "partial": int(summary.get("partial") or 0),
+            "invented": int(summary.get("invented") or 0),
+            "conflicts": int(summary.get("conflicts") or 0),
+            "orphan_delivery_semantic": int(summary.get("orphan_delivery_semantic") or 0),
+            "orphan_acceptance": int(summary.get("orphan_acceptance") or 0),
+        },
+        "details": {
+            "readiness": readiness_status,
+            "closure_allowed": bool(readiness.get("closure_allowed")),
+            "errors": errors,
+            "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+        },
+    }
+    return report, not errors, "verified_chapter5_readiness" if not errors else ",".join(errors)
+
+
 def closure_evidence(
     root: Path,
     source: str,
@@ -101,8 +175,7 @@ def closure_evidence(
 ) -> tuple[dict[str, Any], bool, str]:
     """Re-validate Chapter 3 closure and bind refresh to the exact current artifacts."""
     if source != "chapter3":
-        passed = persisted_report.get("status") == "passed"
-        return persisted_report, passed, "legacy_registered_source"
+        raise ValueError("Chapter 5 closure must use reconciliation/readiness evidence")
 
     recomputed, _edges = validate_semantic_conservation(
         root, ledger, semantics, "closure", candidates
@@ -250,12 +323,57 @@ def task_details_from_candidates(candidates: dict[str, Any]) -> list[dict[str, A
     return details
 
 
-def view_problems(report: dict[str, Any], triplet_status: str) -> list[dict[str, Any]]:
+def task_details_from_task_views(root: Path, candidates: dict[str, Any]) -> list[dict[str, Any]]:
+    candidate_by_id = {
+        str(row.get("id")): dict(row)
+        for row in candidates.get("candidates", [])
+        if isinstance(row, dict) and row.get("id") is not None
+    }
+    details: dict[str, dict[str, Any]] = {}
+    for view_path_value in DEFAULT_TASK_VIEWS:
+        view_path = Path(view_path_value)
+        payload = load_json(root / view_path, [])
+        if not isinstance(payload, list):
+            continue
+        view_name = view_path.stem
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
+            raw_id = row.get("taskmaster_id") if row.get("taskmaster_id") is not None else row.get("id")
+            if raw_id is None:
+                continue
+            task_id = str(raw_id)
+            if task_id.endswith(".0"):
+                task_id = task_id[:-2]
+            detail = details.setdefault(task_id, {
+                "task": {"id": task_id},
+                "mappings": {"tasks_back": [], "tasks_gameplay": []},
+                "godot": {"status": "unmapped", "scenes": []},
+            })
+            merged = detail["task"]
+            merged.update(candidate_by_id.get(task_id, {}))
+            for field in (
+                "title", "status", "semantic_refs", "requirement_ids", "capability_refs",
+                "overlay_refs", "contractRefs", "overlay_requirement_refs",
+                "contract_requirement_refs", "acceptance", "test_refs",
+            ):
+                if field in row and row.get(field) not in (None, [], {}, ""):
+                    merged[field] = row.get(field)
+            detail["mappings"].setdefault(view_name, []).append(row)
+    for task_id, candidate in candidate_by_id.items():
+        if task_id not in details:
+            task = dict(candidate)
+            task["id"] = task_id
+            details[task_id] = {"task": task, "mappings": {}, "godot": {"status": "unmapped", "scenes": []}}
+    return list(details.values())
+
+
+def view_problems(report: dict[str, Any], triplet_status: str, source: str) -> list[dict[str, Any]]:
     problems = []
     for family, count in report.get("blocking_counts", {}).items():
         if isinstance(count, int) and count > 0:
             problems.append({"kind": family, "count": count})
-    if triplet_status != "passed":
+    if source == "chapter3" and triplet_status != "passed":
         problems.append({"kind": "triplet_baseline_not_passed", "status": triplet_status})
     return problems
 
@@ -273,6 +391,9 @@ def build_workspace_view(
     triplet_status: str,
     view_kind: str,
     closure_passed_override: bool | None = None,
+    task_details_override: list[dict[str, Any]] | None = None,
+    reconciliation: dict[str, Any] | None = None,
+    readiness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source_revision = str(
         ledger.get("source_revision")
@@ -304,8 +425,8 @@ def build_workspace_view(
         semantics,
         capabilities,
         edges,
-        task_details_from_candidates(candidates),
-        view_problems(report, triplet_status),
+        task_details_override if task_details_override is not None else task_details_from_candidates(candidates),
+        view_problems(report, triplet_status, source),
     )
     report_passed = report.get("status") == "passed"
     closure_passed = (
@@ -321,6 +442,50 @@ def build_workspace_view(
         "triplet_status": triplet_status,
         "closure_passed": closure_passed,
     }
+    if source == "chapter5":
+        reconciliation_summary = (
+            reconciliation.get("summary", {})
+            if isinstance(reconciliation, dict)
+            and isinstance(reconciliation.get("summary"), dict)
+            else {}
+        )
+        readiness_value = (
+            str(readiness.get("readiness") or "UNKNOWN")
+            if isinstance(readiness, dict)
+            else "UNKNOWN"
+        )
+        if not isinstance(reconciliation, dict):
+            reconciliation_status = "missing"
+        elif int(reconciliation_summary.get("conflicts") or 0) > 0:
+            reconciliation_status = "conflict"
+        elif int(reconciliation_summary.get("invented") or 0) > 0:
+            reconciliation_status = "invented"
+        elif any(
+            int(reconciliation_summary.get(key) or 0) > 0
+            for key in ("missing", "partial", "orphan_delivery_semantic", "orphan_acceptance")
+        ):
+            reconciliation_status = "partial"
+        elif readiness_value in {"READY", "CONCERNS"} and bool(
+            readiness.get("closure_allowed") if isinstance(readiness, dict) else False
+        ):
+            reconciliation_status = "stabilized"
+        else:
+            reconciliation_status = "partial"
+        view["chapter_run"]["reconciliation_status"] = reconciliation_status
+        view["chapter_run"]["readiness"] = readiness_value
+        view["chapter_run"]["extraction_b_snapshot_id"] = (
+            reconciliation.get("extraction_b_snapshot_id") if isinstance(reconciliation, dict) else None
+        )
+        view.setdefault("summary", {})["chapter5_reconciliation_status"] = reconciliation_status
+        view["summary"]["chapter5_readiness"] = readiness_value
+        view["reconciliation"] = {
+            "summary": reconciliation_summary,
+            "findings": reconciliation.get("findings", []) if isinstance(reconciliation, dict) else [],
+            "dependency_corrections": reconciliation.get("dependency_corrections", []) if isinstance(reconciliation, dict) else [],
+            "overlap_reviews": reconciliation.get("overlap_reviews", []) if isinstance(reconciliation, dict) else [],
+            "readiness": readiness_value,
+            "closure_allowed": readiness.get("closure_allowed", False) if isinstance(readiness, dict) else False,
+        }
     view["status"] = "passed" if closure_passed else "concern"
     if not closure_passed:
         view["fresh"] = False
@@ -600,6 +765,8 @@ def run(
     report_path: Path,
     coverage_path: Path | None = None,
     triplet_attestation_path: Path | None = None,
+    reconciliation_path: Path | None = None,
+    readiness_path: Path | None = None,
 ) -> dict[str, Any]:
     if source not in REGISTERED_SOURCES:
         raise ValueError(f"unregistered closure producer: {source}")
@@ -607,14 +774,19 @@ def run(
     triplet_attestation_path = (
         triplet_attestation_path or (root / DEFAULT_TRIPLET_ATTESTATION_PATH)
     )
+    reconciliation_path = reconciliation_path or (root / DEFAULT_CH5_RECONCILIATION_PATH)
+    readiness_path = readiness_path or (root / DEFAULT_CH5_READINESS_PATH)
     required = [
         source_manifest_path, ledger_path, semantics_path, capabilities_path,
-        edges_path, candidates_path, report_path,
+        edges_path, candidates_path,
     ]
     if source == "chapter3":
+        required.append(report_path)
         required.append(coverage_path)
         if triplet_status == "passed":
             required.append(triplet_attestation_path)
+    else:
+        required.extend([reconciliation_path, readiness_path])
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -657,7 +829,9 @@ def run(
     edges = load_json(edges_path, {})
     candidates = load_json(candidates_path, {})
     coverage = load_json(coverage_path, {}) if source == "chapter3" else {}
-    persisted_report = load_json(report_path, {})
+    persisted_report = load_json(report_path, {}) if source == "chapter3" else {}
+    reconciliation = load_json(reconciliation_path, {}) if source == "chapter5" else {}
+    readiness = load_json(readiness_path, {}) if source == "chapter5" else {}
     triplet_attestation = (
         load_json(triplet_attestation_path, {})
         if source == "chapter3" and triplet_status == "passed"
@@ -668,19 +842,40 @@ def run(
         if source == "chapter3" and triplet_status == "passed"
         else (False, f"triplet_status_{triplet_status}")
     )
-    report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
-        root, source, source_manifest, ledger, semantics, candidates, coverage, persisted_report
-    )
-    semantic_triplet_closure_passed = (
-        closure_evidence_passed
-        and triplet_status == "passed"
-        and triplet_evidence_passed
-    )
+    if source == "chapter3":
+        report, closure_evidence_passed, closure_evidence_reason = closure_evidence(
+            root, source, source_manifest, ledger, semantics, candidates, coverage, persisted_report
+        )
+        semantic_triplet_closure_passed = (
+            closure_evidence_passed
+            and triplet_status == "passed"
+            and triplet_evidence_passed
+        )
+        task_details_override = None
+        effective_edges = edges
+    else:
+        report, closure_evidence_passed, closure_evidence_reason = chapter5_closure_evidence(
+            source_manifest, ledger, reconciliation, readiness
+        )
+        triplet_evidence_passed = True
+        triplet_evidence_reason = "not_applicable_chapter5"
+        semantic_triplet_closure_passed = closure_evidence_passed
+        task_details_override = task_details_from_task_views(root, candidates)
+        effective_edges = dict(edges)
+        merged_edges = list(edges.get("edges", [])) if isinstance(edges, dict) else []
+        merged_edges.extend(
+            row for row in reconciliation.get("topology_edges", [])
+            if isinstance(row, dict)
+        )
+        effective_edges["edges"] = merged_edges
 
     attempt = build_workspace_view(
         source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
-        edges, candidates, report, triplet_status, "last_attempt",
+        effective_edges, candidates, report, triplet_status, "last_attempt",
         closure_passed_override=semantic_triplet_closure_passed,
+        task_details_override=task_details_override,
+        reconciliation=reconciliation if source == "chapter5" else None,
+        readiness=readiness if source == "chapter5" else None,
     )
     attempt.setdefault("chapter_run", {})["closure_evidence_status"] = (
         "verified" if closure_evidence_passed else "blocked"
@@ -699,9 +894,21 @@ def run(
         attempt["status"] = "concern"
         attempt["fresh"] = False
         attempt["chapter_run"]["closure_passed"] = False
+    stable_input_hash = None
+    if source == "chapter5":
+        stable_input_hash = "sha256:" + _canonical_payload_sha({
+            "source_revision": reconciliation.get("source_revision"),
+            "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+            "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
+            "reconciliation_sha256": readiness.get("reconciliation_sha256"),
+            "readiness": readiness.get("readiness"),
+            "closure_allowed": readiness.get("closure_allowed"),
+        })
+        attempt.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
+    chapter5_stable_snapshot = _snapshot_file(root / CHAPTER5_STABLE_PATH)
     if refresh_local:
         try:
             write_json(root / ATTEMPT_PATH, attempt)
@@ -720,32 +927,62 @@ def run(
             )
         local_status = "attempt_refreshed"
         if semantic_triplet_closure_passed:
-            stable = build_workspace_view(
-                source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
-                edges, candidates, report, triplet_status, "latest_successful",
-                closure_passed_override=True,
+            previous_chapter5_stable = (
+                load_json(root / CHAPTER5_STABLE_PATH, {})
+                if source == "chapter5"
+                else {}
             )
-            try:
-                write_json(root / STABLE_PATH, stable)
-            except OSError as exc:
-                _mark_attempt_refresh_failure(
-                    root, attempt, "stable_refresh_failed", str(exc)
+            previous_stable_input_hash = (
+                ((previous_chapter5_stable.get("chapter_run") or {}).get("stable_input_hash"))
+                if isinstance(previous_chapter5_stable, dict)
+                else None
+            )
+            if (
+                source == "chapter5"
+                and stable_input_hash
+                and previous_stable_input_hash == stable_input_hash
+            ):
+                local_status = "stable_reused"
+            else:
+                stable = build_workspace_view(
+                    source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
+                    effective_edges, candidates, report, triplet_status, "latest_successful",
+                    closure_passed_override=True,
+                    task_details_override=task_details_override,
+                    reconciliation=reconciliation if source == "chapter5" else None,
+                    readiness=readiness if source == "chapter5" else None,
                 )
-                return _refresh_failure_summary(
-                    root,
-                    source=source,
-                    trigger_run_id=trigger_run_id,
-                    topology_revision=attempt.get("identity", {}).get("revision"),
-                    semantic_triplet_closure_passed=True,
-                    family="stable_refresh_failed",
-                    reason=str(exc),
-                    attempt_written=True,
-                )
-            local_status = "stable_refreshed"
+                if source == "chapter5" and stable_input_hash:
+                    stable.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
+                try:
+                    write_json(root / STABLE_PATH, stable)
+                    if source == "chapter5":
+                        write_json(root / CHAPTER5_STABLE_PATH, stable)
+                except OSError as exc:
+                    try:
+                        _restore_file(root / STABLE_PATH, stable_snapshot)
+                        if source == "chapter5":
+                            _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
+                    except OSError:
+                        pass
+                    _mark_attempt_refresh_failure(
+                        root, attempt, "stable_refresh_failed", str(exc)
+                    )
+                    return _refresh_failure_summary(
+                        root,
+                        source=source,
+                        trigger_run_id=trigger_run_id,
+                        topology_revision=attempt.get("identity", {}).get("revision"),
+                        semantic_triplet_closure_passed=True,
+                        family="stable_refresh_failed",
+                        reason=str(exc),
+                        attempt_written=True,
+                    )
+                local_status = "stable_refreshed"
 
-    stable_required = source == "chapter3" or write_planning or publish_if_eligible
+    stable_required = source in {"chapter3", "chapter5"} or write_planning or publish_if_eligible
     closure_passed = semantic_triplet_closure_passed and (
-        local_status == "stable_refreshed"
+        local_status in {"stable_refreshed", "stable_reused"}
         if refresh_local
         else not stable_required
     )
@@ -762,6 +999,8 @@ def run(
             except (OSError, ValueError) as exc:
                 try:
                     _restore_file(root / STABLE_PATH, stable_snapshot)
+                    if source == "chapter5":
+                        _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
                 except OSError:
                     pass
                 _mark_attempt_refresh_failure(
@@ -806,6 +1045,11 @@ def run(
         "current_generation_id": current_generation(root),
         "attempt_path": ATTEMPT_PATH.as_posix() if refresh_local else None,
         "stable_path": STABLE_PATH.as_posix() if refresh_local and closure_passed else None,
+        "stabilized_path": (
+            CHAPTER5_STABLE_PATH.as_posix()
+            if source == "chapter5" and refresh_local and closure_passed
+            else None
+        ),
     }
     return summary
 
@@ -831,6 +1075,8 @@ def main(argv: list[str] | None = None) -> int:
         "--triplet-attestation",
         default=DEFAULT_TRIPLET_ATTESTATION_PATH.as_posix(),
     )
+    parser.add_argument("--reconciliation", default=DEFAULT_CH5_RECONCILIATION_PATH.as_posix())
+    parser.add_argument("--readiness", default=DEFAULT_CH5_READINESS_PATH.as_posix())
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -851,6 +1097,8 @@ def main(argv: list[str] | None = None) -> int:
             report_path=root / args.report,
             coverage_path=root / args.coverage,
             triplet_attestation_path=root / args.triplet_attestation,
+            reconciliation_path=root / args.reconciliation,
+            readiness_path=root / args.readiness,
         )
     except ValueError as exc:
         print(json.dumps({

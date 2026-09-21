@@ -77,19 +77,21 @@ SKILLS = {
     },
     "workflow-chapter5-semantics-stabilization": {
         "title": "Workflow Chapter 5 Semantics Stabilization",
-        "desc": "Run the fixed Chapter 5 conditional semantics stabilization workflow from workflow.md. Use when a business repo needs task triplet semantics stabilization, lightweight semantic lanes, batch instability handling, acceptance extraction guardrails, or idempotent Chapter 5 recovery before Chapter 6.",
+        "desc": "Run the fixed Chapter 5 semantic reconciliation workflow from workflow.md. Use when a business repo needs Independent Extraction B, global orphan/omission audit, bidirectional Requirement/Acceptance validation, dependency/overlap stabilization, readiness gating, Knowledge refresh, or the legacy lightweight acceptance lane before Chapter 6.",
         "chapter": "5",
         "purpose": "stabilize task semantics before daily task execution enters the Chapter 6 loop",
-        "default": "Start with the lightweight single-task lane. Escalate to batch instability only when repeated semantic drift or extraction failure is proven by logs.",
-        "command": "Inspect task triplets, overlays, acceptance refs, and semantic review tier before paying for any batch lane.",
-        "evidence": "Chapter 5 evidence is usually sparse, so workflow.md remains the governing source and logs only tune failure-family recognition.",
+        "default": "Build or reuse one revision-bound Independent Extraction B snapshot for the complete authoritative source scope, then run task-scoped reconciliation. Keep the existing lightweight lane for acceptance authoring and only escalate batch instability when repeated failure evidence warrants it.",
+        "command": "py -3 scripts/python/chapter5_semantic_reconciliation.py prepare && <independent review of every block> && py -3 scripts/python/chapter5_semantic_reconciliation.py compile && py -3 scripts/python/chapter5_semantic_reconciliation.py reconcile --task-id <id> --decisions <decisions.json>",
+        "evidence": "Chapter 5 closure requires complete source scope, an independent Extraction B snapshot, global orphan/omission audit, task/acceptance reconciliation, dependency and overlap decisions, and READY or policy-allowed CONCERNS. Task refs may locate implementation context but never define the semantic audit scope.",
         "steps": [
-            "Resolve the target business repo as a sibling of the template repo.",
-            "Check task triplet validity before semantic stabilization work.",
-            "Run lightweight semantic checks before any batch lane.",
-            "Treat acceptance extraction failure as a stop-and-fix signal, not a reason to add more downstream review.",
-            "Escalate to batch instability only when the same failure family repeats across tasks.",
-            "Record durable rule feedback only when a repeated workflow rule gap is proven.",
+            "Resolve the target business repo and verify the Chapter 3 source manifest, Source Block Ledger, semantic projection, and Chapter 4 overlay/contract backlinks.",
+            "Prepare Independent Extraction B from the complete authoritative source scope. Reuse the snapshot only when source_manifest_sha, source_block_ledger_sha, parser_revision, and extractor_revision match exactly.",
+            "Review every Extraction B block directly from raw authority and compile the snapshot before any task-scoped acceptance stabilization.",
+            "Run global orphan/omission reconciliation before task-scoped checks; missing_in_ch3/orphan_delivery_semantic must not depend on task.semantic_refs.",
+            "Use the existing lightweight lane to stabilize acceptance, then bind every acceptance to Requirement/ADR/Contract plus test refs and rerun reconciliation.",
+            "Resolve provisional dependencies with producer/consumer/contract/schema/state/asset-scene evidence and record overlap decisions with rationale.",
+            "Require READY or policy-allowed CONCERNS before Chapter 6; BLOCKED must stop Chapter 6 and Review.",
+            "At Chapter 5 run end call the registered refresh-knowledge hook so Last Attempt always records findings and only closable readiness advances workspace-latest-stabilized.",
         ],
     },
     "workflow-chapter6-single-task-daily-loop": {
@@ -106,7 +108,7 @@ SKILLS = {
             "Use the TDD order 6.3, 6.4, 6.5, 6.6 before 6.7 unless recovery evidence says otherwise.",
             "Run 6.7 only when deterministic evidence is stale or required by changed implementation, tests, contracts, scripts, or runtime assets.",
             "Run 6.8 only when route evidence says Needs Fix cleanup is the right lane.",
-            "Run 6.9 repository validation before commit or PR closure.",
+            "Run 6.9 repository validation before commit or PR closure using run-local-hard-checks --skip-project-health so Chapter 6 never refreshes Project Health or global Knowledge as a side effect.",
         ],
     },
     "workflow-chapter7-ui-wiring-closure": {
@@ -132,7 +134,7 @@ KEYWORDS = {
     "chapter2": ["repository bootstrap", "project-health", "run-local-hard-checks", "serve-project-health", "openai-api", "template-bootstrap"],
     "chapter3": ["task triplet", "triplet", "task_links_validate", "check_tasks_all_refs", "validate_task_master_triplet", "build_taskmaster_tasks", "semantic_review_tier"],
     "chapter4": ["overlay", "overlays", "contract", "contracts", "llm_generate_overlays_batch", "llm_generate_overlays_from_prd", "sync_task_overlay_refs", "validate_overlay_execution", "validate_contracts", "check_domain_contracts"],
-    "chapter5": ["phase 3", "semantic", "semantics", "acceptance extract", "batch instability", "extract_family"],
+    "chapter5": ["phase 3", "semantic", "semantics", "independent extraction", "extraction b", "reconciliation", "readiness", "acceptance extract", "batch instability", "extract_family"],
     "chapter6": ["chapter6", "chapter 6", "6.7", "6.8", "run_review_pipeline", "llm_review_needs_fix", "chapter6-route", "artifact_integrity", "planned_only", "needs fix", "rerun_guard"],
     "chapter7": ["chapter7", "chapter 7", "ui wiring", "chapter7-profile", "run-chapter7-ui-wiring", "ui-gdd-flow", "artifact-manifest"],
 }
@@ -537,9 +539,11 @@ def workflow_chapter_summary(template: Path, chapter: str) -> str:
         "4.4": "4.4 Solidify contract baseline",
         "4.": "4. Phase 2: Overlays And Contracts Baseline",
         "5. Phase 3": "5. Phase 3: Conditional Semantics Stabilization",
+        "5.0": "5.0 Independent Extraction B / Global Reconciliation / Readiness Gate",
         "5.1": "5.1 Single-task lightweight lane",
         "5.2": "5.2 Batch instability lane",
         "6. Phase 4": "6. Phase 4: Single Task Daily Loop",
+        "6.0.1": "6.0.1 Chapter 6 Knowledge no-refresh hard boundary",
         "6.0": "6.0 Choose the Chapter 6 entrypoint first",
         "6.1": "6.1 Recover state first",
         "6.2": "6.2 Create recovery documents only when useful",
@@ -596,11 +600,42 @@ def skill_markdown(name: str, cfg: dict[str, Any]) -> str:
             "2. Inspect the target repository state directly; Chapter 2 does not use historical business-repo evidence.\n"
             "3. Refresh this skill with `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` when `workflow.md` changes."
         )
+    elif cfg["chapter"] in {"4", "5", "6"}:
+        required_reading = (
+            f"1. Read the relevant Chapter {cfg['chapter']} section in the template repo `workflow.md`.\n"
+            "2. Read `docs/workflows/knowledge-context-shadow.md` before using optional Knowledge routing/preflight.\n"
+            "3. Optionally read `references/business-repos/<repo>.md` only as empirical validation evidence when the target business repo has a generated reference.\n"
+            "4. If that optional evidence file is missing or stale, run `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` from the template repo."
+        )
     else:
         required_reading = (
             f"1. Read the relevant Chapter {cfg['chapter']} section in the template repo `workflow.md`.\n"
             "2. Optionally read `references/business-repos/<repo>.md` only as empirical validation evidence when the target business repo has a generated reference.\n"
             "3. If that optional evidence file is missing or stale, run `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` from the template repo."
+        )
+
+    operating_extra = ""
+    stop_loss_extra = ""
+    if cfg["chapter"] == "4":
+        operating_extra = (
+            "- During Knowledge Control Plane migration, Locator candidates are shadow-only and cannot satisfy architecture/semantic obligations without direct-source reread and consumer judgment.\n"
+        )
+    elif cfg["chapter"] == "5":
+        operating_extra = (
+            "- During Knowledge Control Plane migration, Locator candidates are shadow-only. Complete source scope comes from the authoritative manifest/Ledger A, never task refs.\n"
+            "- Chapter 5 is a registered closure producer: every run may update Last Attempt, but only READY or policy-allowed CONCERNS may advance Latest Stabilized.\n"
+        )
+        stop_loss_extra = (
+            "- A Locator candidate cannot be re-read/hash-verified from repository authority; reject it and use the direct-source path.\n"
+            "- Extraction B source scope is incomplete, stale, or task-selected; stop before task-local reconciliation.\n"
+        )
+    elif cfg["chapter"] == "6":
+        operating_extra = (
+            "- Chapter 6 may query bounded Knowledge only before RED; a frozen context must not silently widen during RED/GREEN/REFACTOR.\n"
+            "- Chapter 6 is not a global Knowledge producer. Execution, recovery, 6.7, 6.8, and 6.9 must not refresh Project Health, rebuild catalogs, or publish KCP as side effects.\n"
+        )
+        stop_loss_extra = (
+            "- A task scope change would require a new knowledge query after RED; stop and create a new explicit preflight/context revision instead of widening context invisibly.\n"
         )
     return f"""---
 name: {name}
@@ -621,7 +656,7 @@ Operate Chapter {cfg["chapter"]} from `workflow.md` idempotently for a business 
 - Keep generated code, scripts, tests, comments, and log messages in English.
 - Do not modify the business repo unless the user explicitly asks for that change.
 - Do not rerun expensive steps before reading existing recovery artifacts.
-
+{operating_extra}
 ## Repository Layout
 
 Template and business repositories are siblings under one parent directory, for example `<parent>/godotgame`, `<parent>/<business-repo-a>`, and `<parent>/<business-repo-b>`.
@@ -657,7 +692,7 @@ Use this skill to {cfg["purpose"]}.
 - Route evidence recommends inspect-first, record-residual, fix-deterministic, repo-noise-stop, or pause.
 - The same deterministic failure fingerprint appears repeatedly.
 - The next action would duplicate work already covered by task, overlay, candidate, or manifest evidence.
-
+{stop_loss_extra}
 ## Business Evidence References
 
 Generated evidence may live under `references/business-repos/<repo>.md`. These files are optional regression evidence from known business repositories; they must not define production generation rules.

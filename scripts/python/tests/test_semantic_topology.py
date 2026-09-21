@@ -12,6 +12,8 @@ from scripts.python._knowledge_catalog_builder import build_layers
 from scripts.python._knowledge_locator_core import locate
 from scripts.python._semantic_topology import (
     TOPOLOGY_ARTIFACTS,
+    WORKSPACE_TOPOLOGY_STABLE,
+    WORKSPACE_TOPOLOGY_STABILIZED,
     attach_scene_design_trace,
     load_topology_from_snapshot,
     load_workspace_topology,
@@ -227,6 +229,29 @@ class SemanticTopologyTests(unittest.TestCase):
         capability_node = capability_candidate["topology_node"]
         self.assertEqual(["7"], capability_node["related_task_ids"])
         self.assertEqual("docs/gdd/a.md", capability_node["authority_sources"][0]["path"])
+
+    def test_workspace_stabilized_view_is_distinct_from_latest_successful(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stable = root / WORKSPACE_TOPOLOGY_STABLE
+            stabilized = root / WORKSPACE_TOPOLOGY_STABILIZED
+            stable.parent.mkdir(parents=True, exist_ok=True)
+            base = {
+                "schema_version": "newrouge.semantic-topology-view.v1",
+                "available": True,
+                "fresh": True,
+                "identity": {"kind": "workspace", "revision": "workspace:test"},
+                "status": "fresh",
+                "nodes": {"source_blocks": [], "requirements": [], "capabilities": [], "tasks": [], "acceptance": []},
+                "edges": [], "task_trace": {}, "summary": {}, "problems": [],
+            }
+            stable.write_text(json.dumps({**base, "identity": {**base["identity"], "trigger_run_id": "chapter3-run"}}), encoding="utf-8")
+            stabilized.write_text(json.dumps({**base, "identity": {**base["identity"], "trigger_run_id": "chapter5-run"}}), encoding="utf-8")
+            latest = load_workspace_topology(root, "stable")
+            chapter5 = load_workspace_topology(root, "stabilized")
+            self.assertEqual("chapter3-run", latest["identity"]["trigger_run_id"])
+            self.assertEqual("chapter5-run", chapter5["identity"]["trigger_run_id"])
+            self.assertEqual("stabilized", chapter5["workspace_view"])
 
     def test_missing_artifacts_are_explicit_legacy_unmapped(self):
         view = load_topology_from_snapshot(FakeSnapshot({}), [])

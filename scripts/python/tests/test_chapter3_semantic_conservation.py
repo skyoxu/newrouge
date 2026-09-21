@@ -1647,6 +1647,8 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             report = "logs/ci/task-generation/semantic-conservation-report.json"
             coverage = "logs/ci/task-generation/coverage-report.json"
             triplet_attestation = "logs/ci/task-generation/triplet-baseline-attestation.json"
+            reconciliation = "logs/ci/chapter5/reconciliation/latest.json"
+            readiness = "logs/ci/chapter5/readiness/latest.json"
 
         failed = {
             "local_refresh_status": "failed",

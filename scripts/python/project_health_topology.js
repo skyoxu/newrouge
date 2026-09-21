@@ -227,7 +227,7 @@ async function load() {
   const requestedMode = params.get('mode');
   if (requestedMode === 'main' || requestedMode === 'workspace') byId('topology-identity').value = requestedMode;
   const requestedView = params.get('view');
-  if (requestedView === 'attempt' || requestedView === 'stable') byId('workspace-view').value = requestedView;
+  if (requestedView === 'attempt' || requestedView === 'stable' || requestedView === 'stabilized') byId('workspace-view').value = requestedView;
   syncWorkspaceControls();
   const mode = currentMode();
   const view = currentWorkspaceView();

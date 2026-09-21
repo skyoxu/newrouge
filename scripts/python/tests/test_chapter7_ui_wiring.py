@@ -77,6 +77,8 @@ class Chapter7UiWiringTests(unittest.TestCase):
                 "test_refs": ["Tests.Godot/tests/Scenes/Reward/test_reward_scene.gd"],
                 "acceptance": ["Reward has three choices. Refs: Tests.Godot/tests/Scenes/Reward/test_reward_scene.gd"],
                 "contractRefs": ["core.reward.offer.presented", "core.reward.offer.selected"],
+                "semantic_refs": ["REQ-REWARD"],
+                "capability_refs": ["CAP-REWARD"],
             },
         ]
         back = [
@@ -89,6 +91,8 @@ class Chapter7UiWiringTests(unittest.TestCase):
                 "test_refs": ["Game.Core.Tests/Tasks/Task0002Tests.cs"],
                 "acceptance": ["Reward is traceable. Refs: Game.Core.Tests/Tasks/Task0002Tests.cs"],
                 "contractRefs": ["core.reward.offer.presented"],
+                "semantic_refs": ["REQ-REWARD"],
+                "capability_refs": ["CAP-REWARD"],
             }
         ]
         (tasks_dir / "tasks_gameplay.json").write_text(json.dumps(gameplay, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -446,6 +450,8 @@ class Chapter7UiWiringTests(unittest.TestCase):
         self.assertEqual(["GM-0002"], reward["gameplay_view_ids"])
         self.assertEqual(["NG-0002"], reward["back_view_ids"])
         self.assertIn("Tests.Godot/tests/Scenes/Reward/test_reward_scene.gd", reward["test_refs"])
+        self.assertEqual(["REQ-REWARD"], reward["semantic_refs"])
+        self.assertEqual(["CAP-REWARD"], reward["capability_refs"])
 
     def test_validate_should_fail_when_done_task_is_missing_from_ui_gdd(self) -> None:
         validator = _load_module("validate_chapter7_ui_wiring_module", "scripts/python/validate_chapter7_ui_wiring.py")
@@ -1560,7 +1566,7 @@ class Chapter7UiWiringTests(unittest.TestCase):
         self.assertEqual(0, rc)
         self.assertIn("input_contract", payload)
         contract = payload["input_contract"]
-        self.assertTrue(contract["repo_root"].endswith(root.as_posix()))
+        self.assertEqual(root.resolve(), Path(contract["repo_root"]).resolve())
         self.assertTrue(contract["tasks_json_path"].endswith("/.taskmaster/tasks/tasks.json"))
         self.assertTrue(contract["tasks_back_path"].endswith("/.taskmaster/tasks/tasks_back.json"))
         self.assertTrue(contract["tasks_gameplay_path"].endswith("/.taskmaster/tasks/tasks_gameplay.json"))

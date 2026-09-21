@@ -30,7 +30,7 @@ Registered closure producers use the unified Chapter Knowledge refresh hook rath
 - Attempt/Stable write failures are explicit `knowledge_refresh_failed` concerns with a concrete failure family. A `stable_refresh_failed` result keeps Chapter closure in concern/failed state and canonical publication deferred even if semantic conservation and triplet validation already passed.
 - Workspace identity remains `workspace:<digest>` / run-bound and never advances main `latest.json`, runtime-verified main evidence, KCP `current`, or `last-known-good`.
 - `publication_deferred` is a normal result for non-main/dirty/non-publishable runs and does not by itself fail Chapter 3.
-- The topology page exposes the Workspace selector `Last attempt / Latest successful` so operators can compare the current failed attempt against the previous stable closure.
+- The topology page exposes Workspace `Last attempt / Latest successful / Latest Chapter 5 stabilized` views. `Latest successful` remains the cross-producer closure view, while `Latest Chapter 5 stabilized` preserves the last Chapter 5 reconciliation/readiness closure even if a later Chapter 3 run succeeds.
 - Canonical publication remains trusted-ref/main-only. Recovery, Chapter 6, Review and ordinary consumers must not use publication as an implicit repair action.
 
 Unified entrypoint:
@@ -159,23 +159,18 @@ py -3 scripts/python/project_health_knowledge.py task --task-id 115
 测试：`py -3 -m unittest discover -s scripts/sc/tests -p "test_project_health*.py"`；Impact 回归：`py -3 -m unittest discover -s scripts/python/tests -p "test_impact_analyzer.py"`。
 ### Chapter 6 resource knowledge
 
-Chapter 6 may generate project-owned resource associations with:
+Chapter 6 is a **read-only global Knowledge consumer**. Global Project Health scans, task-resource link generation, catalog rebuilds, and KCP publication are explicit maintainer operations outside the Chapter 6 execution/recovery path.
+
+The Chapter 6 capture command is task-local only:
 
 ```powershell
-py -3 scripts/python/dev_cli.py init-knowledge-catalog --validate
-py -3 scripts/python/dev_cli.py generate-knowledge-links --task-id 18
+py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18
 ```
 
-正式 Chapter 6 捕获阶段使用：
+It reads already-available Project Health/resource evidence when present and writes candidates under `logs/ci/chapter6-knowledge/task-18/`. It does **not** call `project-health-scan`, `generate-knowledge-links`, `init-knowledge-catalog`, `refresh-knowledge`, or `publish_knowledge_catalog.py`; it does not modify Taskmaster knowledge refs and does not advance KCP `current` / `last-known-good`.
 
-```powershell
-py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18 --write-task-refs
-```
-
-该阶段依次刷新项目扫描、生成任务资源关联并校验 catalog。失败状态为 `knowledge_capture_failed`，可从该阶段恢复，不会伪装成任务运行时测试失败或通过。
-
-The production catalog lives under `docs/knowledge/**`; `logs/**` remains evidence only. Resource entries are revision-bound and may be `confirmed`, `inferred`, `unverified`, or `removed`. Taskmaster views should keep only lightweight entry references. The existing `knowledge/` control plane remains the publication authority for global indexes; this catalog is its project-resource input, not a replacement.
+The legacy `--write-task-refs` flag is rejected. If a maintainer explicitly wants to rebuild resource links/catalog or publish global Knowledge, run those commands separately outside Chapter 6 and record that maintenance action as explicit/manual.
 
 ### Chapter 6 element capture
 
-`chapter6-knowledge` also writes `docs/knowledge/generated/chapter6-task-<id>-elements.json` and a matching `documentation-gaps.md`. The manifest records changed or linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene entries include discovered nodes, attached scripts, and published events when available. Gaps are severity-ranked (`P1` for unbound scenes/scripts, `P2` for missing semantic focus) and are non-blocking; they provide the next documentation follow-up without requiring 100% coverage.
+`chapter6-knowledge` writes `logs/ci/chapter6-knowledge/task-<id>/knowledge-capture-candidate.json` plus task-local `documentation-gaps.md`. The capture records changed or previously linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene/static evidence remains evidence only; it must not be promoted to Acceptance proof or global Knowledge automatically.

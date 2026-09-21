@@ -303,6 +303,7 @@ def cmd_run_local_hard_checks(args: argparse.Namespace) -> int:
         out_dir=args.out_dir,
         run_id=args.run_id,
         timeout_sec=args.timeout_sec,
+        skip_project_health=bool(args.skip_project_health),
         run_fn=run,
     )
 
@@ -516,6 +517,8 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
                 report_path=root / args.report,
                 coverage_path=root / args.coverage,
                 triplet_attestation_path=root / args.triplet_attestation,
+                reconciliation_path=root / args.reconciliation,
+                readiness_path=root / args.readiness,
             )
     except ValueError as exc:
         print(json.dumps({
@@ -583,6 +586,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_lh.add_argument("--out-dir", default="")
     p_lh.add_argument("--run-id", default="")
     p_lh.add_argument("--timeout-sec", type=int, default=5)
+    p_lh.add_argument(
+        "--skip-project-health",
+        action="store_true",
+        help="skip the repo-health prelude; required when local hard checks run as a Chapter 6 side effect",
+    )
     p_lh.set_defaults(func=cmd_run_local_hard_checks)
 
     # run-local-hard-checks-preflight
@@ -955,6 +963,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--triplet-attestation",
         default="logs/ci/task-generation/triplet-baseline-attestation.json",
     )
+    p_refresh.add_argument("--reconciliation", default="logs/ci/chapter5/reconciliation/latest.json")
+    p_refresh.add_argument("--readiness", default="logs/ci/chapter5/readiness/latest.json")
     p_refresh.set_defaults(func=cmd_refresh_knowledge)
 
     from run_mvg_acceptance import register_arguments, run as run_mvg

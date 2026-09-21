@@ -53,7 +53,9 @@
       "context_query_max_candidates": 4,
       "max_candidates": 24,
       "minimum_confidence": "medium",
-      "freeze_point": "before-overlay-write"
+      "freeze_point": "before-overlay-write",
+      "semantic_topology_visibility": "published-or-workspace-readonly",
+      "reconciliation_visibility": "none"
     },
     {
       "consumer": "chapter5",
@@ -84,7 +86,10 @@
       "context_query_max_candidates": 6,
       "max_candidates": 28,
       "minimum_confidence": "medium",
-      "freeze_point": "before-semantic-stabilization"
+      "freeze_point": "before-semantic-stabilization",
+      "semantic_topology_visibility": "published-plus-workspace",
+      "reconciliation_visibility": "run-local-producer-evidence",
+      "reconciliation_paths": ["logs/ci/chapter5/reconciliation/", "logs/ci/chapter5/readiness/"]
     },
     {
       "consumer": "chapter6",
@@ -115,7 +120,10 @@
       "context_query_max_candidates": 6,
       "max_candidates": 32,
       "minimum_confidence": "medium",
-      "freeze_point": "before-red"
+      "freeze_point": "before-red",
+      "semantic_topology_visibility": "frozen-or-published-readonly",
+      "reconciliation_visibility": "readiness-summary-only",
+      "context_refresh_policy": "forbidden-after-before-red-freeze"
     },
     {
       "consumer": "review",
@@ -153,7 +161,10 @@
       "context_query_max_candidates": 6,
       "max_candidates": 32,
       "minimum_confidence": "medium",
-      "freeze_point": "review-run-input"
+      "freeze_point": "review-run-input",
+      "semantic_topology_visibility": "published-plus-stabilized-workspace-readonly",
+      "reconciliation_visibility": "task-readiness-required-readonly",
+      "reconciliation_paths": ["logs/ci/chapter5/reconciliation/", "logs/ci/chapter5/readiness/"]
     }
   ]
 }
