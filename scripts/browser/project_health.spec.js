@@ -199,7 +199,7 @@ test.describe('project health semantic topology', () => {
     await expect(page.locator('#topology-status')).toContainText('workspace:test');
   });
 
-  test('switches workspace last attempt and latest successful independently', async ({ page }) => {
+  test('switches workspace attempt, latest successful, and Chapter 5 stabilized independently', async ({ page }) => {
     await page.route('**/api/knowledge/topology?mode=workspace&view=attempt', route => route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -228,6 +228,21 @@ test.describe('project health semantic topology', () => {
         edges: [], task_trace: {}, summary: {}, problems: []
       })
     }));
+    await page.route('**/api/knowledge/topology?mode=workspace&view=stabilized', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: 'newrouge.semantic-topology-view.v1',
+        available: true,
+        fresh: true,
+        identity: { kind: 'workspace', revision: 'workspace:chapter5', trigger_run_id: 'run-ch5' },
+        workspace_view: 'stabilized',
+        status: 'passed',
+        chapter_run: { source: 'chapter5', reconciliation_status: 'stabilized', readiness: 'READY' },
+        nodes: { source_blocks: [], requirements: [], capabilities: [], tasks: [], acceptance: [] },
+        edges: [], task_trace: {}, summary: { chapter5_reconciliation_status: 'stabilized', chapter5_readiness: 'READY' }, problems: []
+      })
+    }));
 
     await page.goto(base() + '/knowledge/topology?mode=workspace&view=attempt');
     await expect(page.locator('#workspace-view-label')).toBeVisible();
@@ -237,6 +252,10 @@ test.describe('project health semantic topology', () => {
     await page.locator('#workspace-view').selectOption('stable');
     await expect(page.locator('#topology-status')).toContainText('workspace:stable');
     await expect(page.locator('#topology-problems')).not.toContainText('orphan_delivery_requirements');
+
+    await page.locator('#workspace-view').selectOption('stabilized');
+    await expect(page.locator('#topology-status')).toContainText('workspace:chapter5');
+    await expect(page.locator('#topology-summary')).toContainText('chapter5_reconciliation_status: stabilized');
   });
 
   test('scene preview exposes design trace as navigation only', async ({ page }) => {
