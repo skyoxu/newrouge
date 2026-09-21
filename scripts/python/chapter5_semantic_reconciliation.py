@@ -1134,6 +1134,7 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         return False, payload, "chapter5_readiness_invalid"
     if payload.get("closure_allowed") is not True:
         return False, payload, "chapter5_concerns_not_allowed"
+
     reconciliation_path = reconciliation_path_for_task(root, task_id)
     reconciliation = _load_json(reconciliation_path, {})
     if reconciliation.get("schema_version") != RECONCILIATION_SCHEMA:
@@ -1143,6 +1144,34 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         return False, payload, "chapter5_readiness_reconciliation_stale"
     if payload.get("extraction_b_snapshot_id") != reconciliation.get("extraction_b_snapshot_id"):
         return False, payload, "chapter5_readiness_snapshot_mismatch"
+
+    manifest_path = root / DEFAULT_SOURCE_MANIFEST
+    ledger_path = root / DEFAULT_SOURCE_LEDGER
+    snapshot_path = root / DEFAULT_EXTRACTION_SNAPSHOT
+    if not manifest_path.is_file() or not ledger_path.is_file() or not snapshot_path.is_file():
+        return False, payload, "chapter5_current_source_evidence_missing"
+    manifest = _load_json(manifest_path, {})
+    ledger = _load_json(ledger_path, {})
+    snapshot = _load_json(snapshot_path, {})
+    _scope, _texts, source_errors = source_scope(root, manifest, ledger)
+    if source_errors:
+        return False, payload, "chapter5_current_source_scope_invalid"
+    current_cache_key = build_cache_key(
+        manifest_path,
+        ledger_path,
+        manifest,
+        parser_revision=PARSER_REVISION,
+        extractor_revision=EXTRACTOR_REVISION,
+    )
+    current_snapshot_id = "EXB-" + _canonical_sha(current_cache_key)[:20].upper()
+    if snapshot.get("schema_version") != SNAPSHOT_SCHEMA or snapshot.get("status") != "complete":
+        return False, payload, "chapter5_current_extraction_b_invalid"
+    if snapshot.get("cache_key") != current_cache_key or snapshot.get("extraction_b_snapshot_id") != current_snapshot_id:
+        return False, payload, "chapter5_current_extraction_b_stale"
+    if payload.get("cache_key") != current_cache_key or reconciliation.get("cache_key") != current_cache_key:
+        return False, payload, "chapter5_readiness_source_identity_stale"
+    if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        return False, payload, "chapter5_readiness_source_revision_stale"
     return True, payload, "ready"
 
 
