@@ -241,7 +241,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
-                root, statement="U1 route choice is reversible after selection."
+                root, statement="U1 route choice is reversible after selection.", priority="P2"
             )
             semantics_path = self._write_semantics(root, ledger, include=True)
             self._write_task(
@@ -252,6 +252,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             decisions = root / "decisions.json"
             payload = self._review_decisions(root)
             payload.pop("match_decisions")
+            payload["allow_concerns"] = True
             write_json(decisions, payload)
             reconciliation, gate = ch5.reconcile(
                 root,
@@ -679,7 +680,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertEqual("BLOCKED", gate["readiness"])
 
     def test_readiness_fingerprint_invalidates_semantics_task_and_authority_drift(self) -> None:
-        mutations = ("semantics", "acceptance", "contract")
+        mutations = ("semantics", "semantic_refs", "acceptance", "dependency", "overlay", "contract")
         for mutation in mutations:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
@@ -713,11 +714,19 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                     semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
                     semantics["requirements"][0]["statement"] = "U1 route choice may be reversed."
                     write_json(semantics_path, semantics)
-                elif mutation == "acceptance":
+                elif mutation in {"semantic_refs", "acceptance", "dependency"}:
                     tasks_path = root / ".taskmaster/tasks/tasks_gameplay.json"
                     tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
-                    tasks[0]["acceptance"] = ["Route may be changed. Refs: Game.Core.Tests/RouteTests.cs"]
+                    if mutation == "semantic_refs":
+                        tasks[0]["semantic_refs"] = ["INV-OTHER"]
+                    elif mutation == "acceptance":
+                        tasks[0]["acceptance"] = ["Route may be changed. Refs: Game.Core.Tests/RouteTests.cs"]
+                    else:
+                        tasks[0]["depends_on"] = [7]
                     write_json(tasks_path, tasks)
+                elif mutation == "overlay":
+                    overlay = root / "docs/architecture/overlays/PRD/08/_index.md"
+                    overlay.write_text("# Route overlay\n\nChanged architecture constraint.\n", encoding="utf-8")
                 else:
                     contract = root / "Game.Core/Contracts/RouteEvents.cs"
                     contract.write_text(
@@ -761,6 +770,46 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 )
                 self.assertFalse(summary["closure_passed"])
                 self.assertNotEqual("stable_refreshed", summary["local_refresh_status"])
+
+    def test_readiness_fingerprint_invalidates_declared_adr_byte_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            adr = root / "docs/adr/ADR-1234-route.md"
+            adr.parent.mkdir(parents=True, exist_ok=True)
+            adr.write_text("# ADR-1234\n\nRoute choice remains locked.\n", encoding="utf-8")
+            decisions = root / "decisions.json"
+            payload = self._review_decisions(root)
+            payload["acceptance_links"][0]["authority_refs"] = ["ADR-1234"]
+            payload["authority_decisions"].append({
+                "authority_ref": "ADR-1234",
+                "status": "compatible",
+                "rationale": "ADR preserves the irreversible route invariant.",
+            })
+            write_json(decisions, payload)
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+            adr.write_text("# ADR-1234\n\nRoute choice may be reversed.\n", encoding="utf-8")
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_reconciliation_input_fingerprint_stale", reason)
 
     def test_guarded_chapter5_failure_still_leaves_last_attempt(self) -> None:
         class Result:
