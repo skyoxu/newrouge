@@ -446,10 +446,13 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             )
             self.assertTrue(summary["closure_passed"])
             self.assertEqual("stable_refreshed", summary["local_refresh_status"])
+            self.assertEqual(refresh_mod.CHAPTER5_STABLE_PATH.as_posix(), summary["stabilized_path"])
             stabilized = root / refresh_mod.CHAPTER5_STABLE_PATH
             self.assertTrue(stabilized.is_file())
             payload = json.loads(stabilized.read_text(encoding="utf-8"))
             self.assertEqual("READY", payload["chapter_run"]["readiness"])
+            self.assertEqual("stabilized", payload["chapter_run"]["reconciliation_status"])
+            self.assertEqual("stabilized", payload["summary"]["chapter5_reconciliation_status"])
             self.assertTrue(payload["reconciliation"]["summary"])
 
 
