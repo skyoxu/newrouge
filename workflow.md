@@ -494,6 +494,45 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 - subtasks 覆盖不清晰
 - 重复的 `Needs Fix` 指向 semantics，而不是代码实现
 
+### 5.0 Independent Extraction B / Global Reconciliation / Readiness Gate
+
+Chapter 5 进入任何单 Task Acceptance 稳定化之前，先从 Chapter 3 的 authoritative source manifest + Source Block Ledger 独立确定完整审计范围。Task 的 `semantic_refs` / `capability_refs` 只能定位实现上下文，不能决定第二轮读取哪些 GDD/source blocks。
+
+先构建或复用全局 Extraction B：
+
+```powershell
+py -3 scripts/python/chapter5_semantic_reconciliation.py prepare
+# 独立审阅 logs/ci/chapter5/extraction-b.candidate.json 的每一个 raw_source block
+py -3 scripts/python/chapter5_semantic_reconciliation.py compile
+```
+
+缓存键固定包含 `source_manifest_sha`、`source_block_ledger_sha`、`parser_revision`、`extractor_revision`。同一键下多个 Task 共用同一 `extraction-b.snapshot.json`；任一 source/parser/extractor identity 变化都必须失效重建。
+
+随后先做全局 orphan/omission audit，再做目标 Task 的双向 reconciliation：
+
+```powershell
+py -3 scripts/python/chapter5_semantic_reconciliation.py reconcile --task-id <id> --decisions logs/ci/chapter5/task-<id>-decisions.json
+py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-id <id>
+```
+
+`decisions.json` 用于显式记录：
+
+- Extraction B obligation ↔ Chapter 3 Requirement 的 equivalent/partial/missing/invented/conflict 决策；
+- Acceptance ↔ Requirement/ADR/Contract + test refs；
+- dependency 的 keep/remove/add、relation、`dependency_reason`、`dependency_evidence`；
+- overlap 的 `keep_separate | merge_recommended | overlap_justified` + rationale；
+- 若允许非阻断 concerns，显式 `allow_concerns=true`。
+
+`BLOCKED` 禁止进入 Chapter 6；`CONCERNS` 只有显式 policy allowance 才可 closure。Chapter 6 的 `chapter6-route` 和 Review 都会重新验证 readiness/reconciliation hash，不接受陈旧 sidecar。
+
+Chapter 5 run 结束时统一刷新 Knowledge：
+
+```powershell
+py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation logs/ci/chapter5/reconciliation/task-<id>.json --readiness logs/ci/chapter5/readiness/task-<id>.json
+```
+
+BLOCKED/FAIL 只更新 Last Attempt；只有 READY 或 policy-allowed CONCERNS 才更新 `workspace-latest-stabilized.json`。正式 KCP publication 仍只允许 trusted clean main。
+
 ### 5.1 单任务轻量 lane
 
 第五章的顶层编排入口分两类：
@@ -704,6 +743,18 @@ Switch to manual step-by-step execution when:
 - You need to target a single step such as `6.4`, `6.7`, or `6.8`.
 - You intentionally want to override the default route with flags like `--allow-full-rerun` or `--allow-repeat-deterministic-failures`.
 - You are debugging the workflow itself and need every artifact in sequence.
+
+### 6.0.1 Chapter 6 Knowledge no-refresh hard boundary
+
+Chapter 6 只消费 Chapter 5 已稳定的语义和 RED 前已冻结/已发布的 Knowledge context。普通执行、恢复、6.7、6.8、6.9 均不得隐式调用 global Knowledge refresh、Project Health scan、catalog rebuild 或 publication。
+
+`chapter6-knowledge` 仅产 task-local staging/evidence：
+
+```powershell
+py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id <id>
+```
+
+输出位于 `logs/ci/chapter6-knowledge/task-<id>/`，不得改变 `knowledge/indexes/current.json`、`last-known-good.json` 或 Project Health main latest。旧 `--write-task-refs` 路径会被拒绝。若 maintainer 需要全局刷新，必须在 Chapter 6 之外显式运行独立 maintenance/publication 命令。
 
 ### 6.1 先恢复状态
 
