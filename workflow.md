@@ -496,7 +496,7 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 
 ### 5.0 Independent Extraction B / Global Reconciliation / Readiness Gate
 
-Chapter 5 进入任何单 Task Acceptance 稳定化之前，先从 Chapter 3 的 authoritative source manifest + Source Block Ledger 独立确定完整审计范围。Task 的 `semantic_refs` / `capability_refs` 只能定位实现上下文，不能决定第二轮读取哪些 GDD/source blocks。
+Chapter 5 进入任何单 Task Acceptance 稳定化之前，先分配 `trigger_run_id` 并记录 run-start Attempt。交互式流程运行 `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`；脚本化流程必须使用 `py -3 scripts/python/dev_cli.py run-chapter5-guarded --trigger-run-id <run-id> -- <command...>`。随后从 Chapter 3 的 authoritative source manifest + Source Block Ledger 独立确定完整审计范围。Task 的 `semantic_refs` / `capability_refs` 只能定位实现上下文，不能决定第二轮读取哪些 GDD/source blocks。
 
 先构建或复用全局 Extraction B：
 
@@ -517,15 +517,15 @@ py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-
 
 `decisions.json` 用于显式记录：
 
-- Extraction B obligation ↔ Chapter 3 Requirement 的 equivalent/partial/missing/invented/conflict 决策；
-- Acceptance ↔ Requirement/ADR/Contract + test refs；
+- Extraction B obligation ↔ Chapter 3 Requirement 的 equivalent/partial/missing/invented/conflict 决策；词面 similarity 只能做候选提示，不能自动证明 equivalent；所有显式 semantic verdict 必须带 rationale；
+- Acceptance ↔ Requirement/ADR/Contract + test refs；每个相关 ADR/Contract 还必须有 `authority_decisions`：`compatible | conflict | out_of_scope` + rationale；
 - dependency 的 keep/remove/add、relation、`dependency_reason`、`dependency_evidence`；
 - overlap 的 `keep_separate | merge_recommended | overlap_justified` + rationale；
 - 若允许非阻断 concerns，显式 `allow_concerns=true`。
 
 `BLOCKED` 禁止进入 Chapter 6；`CONCERNS` 只有显式 policy allowance 才可 closure。Chapter 6 的 `chapter6-route` 和 Review 都会重新验证 readiness/reconciliation hash，不接受陈旧 sidecar。
 
-Chapter 5 run 结束时统一刷新 Knowledge：
+Chapter 5 run 结束时统一刷新 Knowledge。refresh 会重新计算完整 `chapter5_input_fingerprint`，绑定 source manifest/Ledger、Extraction B、semantic requirements、Task semantic/Acceptance/dependency/overlap surface、Overlay/Contract/ADR bytes 与 authority review；任一输入漂移都阻断 stable promotion：
 
 ```powershell
 py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation logs/ci/chapter5/reconciliation/task-<id>.json --readiness logs/ci/chapter5/readiness/task-<id>.json
