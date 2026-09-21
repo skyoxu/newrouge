@@ -1566,7 +1566,7 @@ class Chapter7UiWiringTests(unittest.TestCase):
         self.assertEqual(0, rc)
         self.assertIn("input_contract", payload)
         contract = payload["input_contract"]
-        self.assertTrue(contract["repo_root"].endswith(root.as_posix()))
+        self.assertEqual(root.resolve(), Path(contract["repo_root"]).resolve())
         self.assertTrue(contract["tasks_json_path"].endswith("/.taskmaster/tasks/tasks.json"))
         self.assertTrue(contract["tasks_back_path"].endswith("/.taskmaster/tasks/tasks_back.json"))
         self.assertTrue(contract["tasks_gameplay_path"].endswith("/.taskmaster/tasks/tasks_gameplay.json"))
