@@ -157,6 +157,14 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("draft", policy["execution_plan_policy"])
         self.assertEqual("auto", policy["red_verify"])
 
+    def test_chapter6_69_command_is_no_project_health(self) -> None:
+        cmd = lane.build_local_hard_checks_cmd(
+            profile_policy=lane.resolve_profile_policy("fast-ship"),
+            godot_bin="",
+        )
+        self.assertIn("--skip-project-health", cmd)
+        self.assertNotIn("project-health-scan", cmd)
+
     def test_plan_should_run_full_lane_when_initial_route_has_no_real_recovery_bundle(self) -> None:
         initial_route = {
             "preferred_lane": "inspect-first",
