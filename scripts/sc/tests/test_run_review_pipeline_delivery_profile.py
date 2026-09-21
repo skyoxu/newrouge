@@ -24,6 +24,7 @@ sys.path.insert(0, str(SC_DIR))
 import run_review_pipeline as run_review_pipeline_module  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 from chapter5_semantic_reconciliation import (  # noqa: E402
+    DEFAULT_CH3_SEMANTICS,
     DEFAULT_EXTRACTION_SNAPSHOT,
     DEFAULT_READINESS_DIR,
     DEFAULT_RECONCILIATION_DIR,
@@ -35,7 +36,11 @@ from chapter5_semantic_reconciliation import (  # noqa: E402
     RECONCILIATION_SCHEMA,
     SNAPSHOT_SCHEMA,
     _canonical_sha,
+    _load_task_rows,
+    _task_bundle,
     build_cache_key,
+    build_chapter5_input_fingerprint,
+    build_task_authority_scope,
 )
 
 
@@ -122,14 +127,48 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             extractor_revision=EXTRACTOR_REVISION,
         )
         snapshot_id = "EXB-" + _canonical_sha(cache_key)[:20].upper()
-        self._write_fixture_json(REPO_ROOT / DEFAULT_EXTRACTION_SNAPSHOT, {
+        snapshot_payload = {
             "schema_version": SNAPSHOT_SCHEMA,
             "status": "complete",
             "source_revision": revision,
             "cache_key": cache_key,
             "extraction_b_snapshot_id": snapshot_id,
             "semantic_inventory": [],
+        }
+        self._write_fixture_json(REPO_ROOT / DEFAULT_EXTRACTION_SNAPSHOT, snapshot_payload)
+        semantics_path = REPO_ROOT / DEFAULT_CH3_SEMANTICS
+        self._write_fixture_json(semantics_path, {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "source_revision": revision,
+            "source_manifest_sha256": manifest["manifest_sha256"],
+            "source_accounting": [],
+            "requirements": [],
         })
+        task = _task_bundle(_load_task_rows(REPO_ROOT), str(task_id))
+        authority_scope, authority_errors = build_task_authority_scope(REPO_ROOT, task)
+        self.assertEqual([], authority_errors)
+        authority_reconciliation = [
+            {
+                "authority_type": kind[:-1] if kind.endswith("s") else kind,
+                "authority_ref": str(item.get("ref") or ""),
+                "authority_sha256": item.get("sha256"),
+                "status": "compatible",
+                "rationale": "Test fixture binds current repository authority bytes.",
+            }
+            for kind in ("contracts", "adrs")
+            for item in authority_scope.get(kind, [])
+            if isinstance(item, dict) and str(item.get("ref") or "").strip()
+        ]
+        input_fingerprint = build_chapter5_input_fingerprint(
+            REPO_ROOT,
+            manifest_path=manifest_path,
+            ledger_path=ledger_path,
+            snapshot=snapshot_payload,
+            semantics_path=semantics_path,
+            task=task,
+            authority_scope=authority_scope,
+            authority_reconciliation=authority_reconciliation,
+        )
         reconciliation = {
             "schema_version": RECONCILIATION_SCHEMA,
             "task_id": str(task_id),
@@ -137,6 +176,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             "cache_key": cache_key,
             "extraction_b_snapshot_id": snapshot_id,
             "global_audit_completed": True,
+            "authority_scope": authority_scope,
+            "authority_reconciliation": authority_reconciliation,
+            "input_fingerprint": input_fingerprint,
             "findings": [],
             "summary": {"blocking_count": 0, "concern_count": 0},
         }
@@ -149,6 +191,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             "cache_key": cache_key,
             "extraction_b_snapshot_id": snapshot_id,
             "reconciliation_sha256": "sha256:" + _canonical_sha(reconciliation),
+            "input_fingerprint": input_fingerprint,
             "readiness": "READY",
             "closure_allowed": True,
             "allow_concerns": False,

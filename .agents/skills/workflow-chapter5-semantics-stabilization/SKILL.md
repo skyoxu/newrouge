@@ -53,15 +53,15 @@ A `logs/ci/knowledge-context/**` bundle is optional shadow routing evidence only
 
 ## Idempotent Procedure
 
-1. Resolve the target business repo and verify Chapter 3 source manifest/Ledger A plus Chapter 4 overlay/contract backlinks.
+1. Resolve the target business repo, allocate a `trigger_run_id`, and immediately record `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`. Scripted automation must wrap its child workflow with `py -3 scripts/python/dev_cli.py run-chapter5-guarded --trigger-run-id <run-id> -- <command...>` so both start and final Attempt refresh are guaranteed. Then verify Chapter 3 source manifest/Ledger A plus Chapter 4 overlay/contract backlinks.
 2. Run `chapter5_semantic_reconciliation.py prepare`. A cache hit is reusable only when `source_manifest_sha`, `source_block_ledger_sha`, `parser_revision`, and `extractor_revision` match exactly.
 3. Independently review every candidate `raw_source`; fill `delivery_potential`, obligations, or a valid disposition. Do not consult Task mappings to decide which blocks to omit.
 4. Run `chapter5_semantic_reconciliation.py compile`; an incomplete source scope or unreviewed block is blocking.
-5. Before task-local acceptance work, run `reconcile --task-id <id>` so global `missing_in_ch3` / `orphan_delivery_semantic` findings are visible even when no Task references the source semantic.
-6. Use the existing lightweight lane to stabilize acceptance. Then provide `acceptance_links` that bind each Acceptance to Requirement/ADR/Contract authority and test refs, and rerun reconciliation.
+5. Before task-local acceptance work, run `reconcile --task-id <id>` so global `missing_in_ch3` / `orphan_delivery_semantic` findings are visible even when no Task references the source semantic. Lexical similarity is diagnostic only: every semantic match verdict must be explicit and include rationale; otherwise readiness is BLOCKED.
+6. Use the existing lightweight lane to stabilize acceptance. Then provide `acceptance_links` that bind each Acceptance to Requirement/ADR/Contract authority and test refs, plus explicit `authority_decisions` for every relevant ADR/Contract (`compatible | conflict | out_of_scope` with rationale), and rerun reconciliation.
 7. Resolve provisional dependencies with explicit relation/reason/evidence and record each overlap candidate as `keep_separate`, `merge_recommended`, or `overlap_justified` with rationale.
 8. Apply task corrections only when readiness is closable. `BLOCKED` must not enter Chapter 6; `CONCERNS` needs explicit policy allowance.
-9. End every Chapter 5 run with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation <path> --readiness <path>`. Last Attempt always updates; stable workspace topology advances only for allowed closure.
+9. End every interactive Chapter 5 run with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation <path> --readiness <path>`. Guarded scripted runs do this automatically. The refresh revalidates the same full input fingerprint (source, semantic requirements, Task/Acceptance/dependency surface, Overlay/Contract/ADR bytes and authority review) before stable promotion.
 10. Treat acceptance extraction failure as a stop-and-fix signal and escalate batch instability only when the same failure family repeats.
 
 ## Stop-Loss Signals

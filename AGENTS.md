@@ -99,6 +99,8 @@
   - `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
   - `py -3 scripts/python/validate_overlay_execution.py --prd-id <PRD-ID> --strict-refs`
 - Chapter 5 语义稳定化:
+  - interactive run start: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`
+  - scripted lifecycle guard: `py -3 scripts/python/dev_cli.py run-chapter5-guarded --trigger-run-id <run-id> -- <command...>`
   - `py -3 scripts/python/backfill_semantic_review_tier.py --mode conservative --write`
   - `py -3 scripts/python/validate_semantic_review_tier.py --mode conservative`
   - `py -3 scripts/python/preflight_acceptance_extract_guard.py --task-id <task-id>`

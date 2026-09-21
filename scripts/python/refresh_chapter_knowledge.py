@@ -19,6 +19,7 @@ from chapter5_semantic_reconciliation import (
     DEFAULT_RECONCILIATION_DIR as CH5_RECONCILIATION_DIR,
     READINESS_SCHEMA as CH5_READINESS_SCHEMA,
     RECONCILIATION_SCHEMA as CH5_RECONCILIATION_SCHEMA,
+    validate_chapter5_evidence_freshness,
 )
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
@@ -104,10 +105,15 @@ def _canonical_payload_sha(payload: Any) -> str:
 
 
 def chapter5_closure_evidence(
+    root: Path,
     source_manifest: dict[str, Any],
     ledger: dict[str, Any],
     reconciliation: dict[str, Any],
     readiness: dict[str, Any],
+    *,
+    source_manifest_path: Path,
+    ledger_path: Path,
+    semantics_path: Path,
 ) -> tuple[dict[str, Any], bool, str]:
     errors: list[str] = []
     if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
@@ -138,6 +144,18 @@ def chapter5_closure_evidence(
     summary = reconciliation.get("summary") if isinstance(reconciliation.get("summary"), dict) else {}
     if int(summary.get("blocking_count") or 0) != 0:
         errors.append("chapter5_reconciliation_blocking_findings")
+    task_id = str(readiness.get("task_id") or reconciliation.get("task_id") or "")
+    freshness_ok, freshness_reason = validate_chapter5_evidence_freshness(
+        root,
+        task_id=task_id,
+        reconciliation=reconciliation,
+        readiness=readiness,
+        manifest_path=source_manifest_path,
+        ledger_path=ledger_path,
+        semantics_path=semantics_path,
+    )
+    if not freshness_ok:
+        errors.append(freshness_reason)
 
     report = {
         "schema_version": "chapter5.semantic-reconciliation-closure.v1",
@@ -635,6 +653,49 @@ def partial_attempt(
     return payload
 
 
+def record_run_failure_attempt(
+    root: Path,
+    *,
+    source: str,
+    trigger_run_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Record a failed producer run without evaluating or promoting stale closure artifacts."""
+    if source not in REGISTERED_SOURCES:
+        raise ValueError(f"unregistered closure producer: {source}")
+    attempt = partial_attempt(source, trigger_run_id, reason, [])
+    attempt.setdefault("chapter_run", {})["lifecycle_status"] = "failed"
+    attempt["chapter_run"]["knowledge_refresh_status"] = "attempt_failed"
+    try:
+        write_json(root / ATTEMPT_PATH, attempt)
+        write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+    except OSError as exc:
+        return _refresh_failure_summary(
+            root,
+            source=source,
+            trigger_run_id=trigger_run_id,
+            topology_revision=attempt.get("identity", {}).get("revision"),
+            semantic_triplet_closure_passed=False,
+            family="attempt_refresh_failed",
+            reason=str(exc),
+            attempt_written=False,
+        )
+    return {
+        "schema_version": "chapter-knowledge-refresh-summary.v1",
+        "source": source,
+        "trigger_run_id": trigger_run_id,
+        "topology_revision": attempt.get("identity", {}).get("revision"),
+        "closure_passed": False,
+        "chapter_closure_status": "concern",
+        "local_refresh_status": "attempt_refreshed",
+        "local_refresh_failure_family": None,
+        "publication_status": "deferred",
+        "publication_reason": "producer_run_failed",
+        "attempt_path": ATTEMPT_PATH.as_posix(),
+        "stable_path": None,
+    }
+
+
 def begin_run_attempt(
     root: Path,
     *,
@@ -855,7 +916,14 @@ def run(
         effective_edges = edges
     else:
         report, closure_evidence_passed, closure_evidence_reason = chapter5_closure_evidence(
-            source_manifest, ledger, reconciliation, readiness
+            root,
+            source_manifest,
+            ledger,
+            reconciliation,
+            readiness,
+            source_manifest_path=source_manifest_path,
+            ledger_path=ledger_path,
+            semantics_path=semantics_path,
         )
         triplet_evidence_passed = True
         triplet_evidence_reason = "not_applicable_chapter5"
@@ -896,14 +964,20 @@ def run(
         attempt["chapter_run"]["closure_passed"] = False
     stable_input_hash = None
     if source == "chapter5":
-        stable_input_hash = "sha256:" + _canonical_payload_sha({
-            "source_revision": reconciliation.get("source_revision"),
-            "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
-            "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
-            "reconciliation_sha256": readiness.get("reconciliation_sha256"),
-            "readiness": readiness.get("readiness"),
-            "closure_allowed": readiness.get("closure_allowed"),
-        })
+        input_fingerprint = reconciliation.get("input_fingerprint")
+        stable_input_hash = (
+            str(input_fingerprint.get("sha256") or "")
+            if isinstance(input_fingerprint, dict)
+            else ""
+        )
+        if not stable_input_hash:
+            stable_input_hash = "sha256:" + _canonical_payload_sha({
+                "source_revision": reconciliation.get("source_revision"),
+                "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+                "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
+                "readiness": readiness.get("readiness"),
+                "closure_allowed": readiness.get("closure_allowed"),
+            })
         attempt.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
     local_status = "skipped"
     attempt_written = False

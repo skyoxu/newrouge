@@ -483,6 +483,33 @@ def cmd_run_chapter3_guarded(args: argparse.Namespace) -> int:
     return rc
 
 
+def cmd_run_chapter5_guarded(args: argparse.Namespace) -> int:
+    """Run one scripted Chapter 5 command inside the start/end attempt guard."""
+
+    from run_chapter5_guarded import run_guarded
+    command = list(args.command or [])
+    if command and command[0] == "--":
+        command = command[1:]
+    try:
+        rc, result = run_guarded(
+            Path(args.repo_root).resolve(),
+            trigger_run_id=args.trigger_run_id,
+            command=command,
+            write_planning=bool(args.write_planning_artifacts),
+            publish_if_eligible=bool(args.publish_if_eligible),
+        )
+    except ValueError as exc:
+        print(json.dumps({
+            "schema_version": "chapter5.guarded-run-summary.v1",
+            "status": "failed",
+            "trigger_run_id": args.trigger_run_id,
+            "reason": str(exc),
+        }, ensure_ascii=False))
+        return 2
+    print(json.dumps(result, ensure_ascii=False))
+    return rc
+
+
 def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     """Refresh a registered Chapter closure topology attempt/stable view."""
 
@@ -490,8 +517,6 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     root = Path(args.repo_root).resolve()
     try:
         if bool(args.begin_run):
-            if args.source != "chapter3":
-                raise ValueError("--begin-run is currently reserved for Chapter 3 run lifecycle")
             if args.write_planning_artifacts or args.publish_if_eligible:
                 raise ValueError("--begin-run cannot write planning artifacts or publish")
             result = begin_run_attempt(
@@ -935,6 +960,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch3_guard.add_argument("command", nargs=argparse.REMAINDER)
     p_ch3_guard.set_defaults(func=cmd_run_chapter3_guarded)
 
+    p_ch5_guard = sub.add_parser(
+        "run-chapter5-guarded",
+        help="run a scripted Chapter 5 command with guaranteed start/end Attempt Preview refresh",
+    )
+    p_ch5_guard.add_argument("--repo-root", default=".")
+    p_ch5_guard.add_argument("--trigger-run-id", required=True)
+    p_ch5_guard.add_argument("--write-planning-artifacts", action="store_true")
+    p_ch5_guard.add_argument("--publish-if-eligible", action="store_true")
+    p_ch5_guard.add_argument("command", nargs=argparse.REMAINDER)
+    p_ch5_guard.set_defaults(func=cmd_run_chapter5_guarded)
+
     p_refresh = sub.add_parser(
         "refresh-knowledge",
         help="refresh a registered Chapter 3/5 topology attempt and optional stable/publication state",
@@ -945,7 +981,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument(
         "--begin-run",
         action="store_true",
-        help="record a Chapter 3 run-start attempt before expensive/model-backed work",
+        help="record a Chapter 3/5 run-start attempt before expensive/model-backed work",
     )
     p_refresh.add_argument("--refresh-local", action="store_true")
     p_refresh.add_argument("--write-planning-artifacts", action="store_true")
