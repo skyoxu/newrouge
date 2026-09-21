@@ -206,10 +206,7 @@ def semantic_to_anchors(
         first = blocks.get(refs[0]) if refs else None
         source_path = str((first or {}).get("source_path") or "docs/gdd/unknown.md")
         line = int((first or {}).get("line_start") or 1)
-        caps = sorted(
-            cap_by_req.get(rid, []),
-            key=lambda row: str(row.get("capability_id") or ""),
-        )
+        caps = cap_by_req.get(rid, [])
         primary_cap = caps[0] if caps else None
         kind = str(requirement.get("kind") or "functional")
         anchors.append({
@@ -292,9 +289,12 @@ def anchor_capability_ids(anchor: dict[str, Any]) -> list[str]:
 
 
 def semantic_grouping_stem(anchor: dict[str, Any]) -> str:
+    primary_capability = str(anchor.get("capability_id") or "").strip()
+    if primary_capability:
+        # Preserve the pre-shadow primary Capability partition exactly.
+        return primary_capability
     capability_ids = anchor_capability_ids(anchor)
     if capability_ids:
-        # Keep the current primary-capability grouping behavior deterministic.
         return capability_ids[0]
     heading_path = [
         str(value).strip()
