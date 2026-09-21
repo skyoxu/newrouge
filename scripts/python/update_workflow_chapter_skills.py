@@ -108,7 +108,7 @@ SKILLS = {
             "Use the TDD order 6.3, 6.4, 6.5, 6.6 before 6.7 unless recovery evidence says otherwise.",
             "Run 6.7 only when deterministic evidence is stale or required by changed implementation, tests, contracts, scripts, or runtime assets.",
             "Run 6.8 only when route evidence says Needs Fix cleanup is the right lane.",
-            "Run 6.9 repository validation before commit or PR closure.",
+            "Run 6.9 repository validation before commit or PR closure using run-local-hard-checks --skip-project-health so Chapter 6 never refreshes Project Health or global Knowledge as a side effect.",
         ],
     },
     "workflow-chapter7-ui-wiring-closure": {
