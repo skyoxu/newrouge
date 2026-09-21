@@ -797,8 +797,10 @@ def reconcile(
         )
         score, best_rid = scored[-1]
         status = str(override.get("status") or "").strip()
-        if status not in ALLOWED_MATCH_STATUS:
-            # Lexical similarity is diagnostic only. It must never prove semantic equivalence.
+        rationale = str(override.get("rationale") or "").strip()
+        if status not in ALLOWED_MATCH_STATUS or (status != "needs_human_decision" and not rationale):
+            # Lexical similarity is diagnostic only. A semantic verdict must be explicit
+            # and carry review rationale; otherwise fail closed for independent review.
             status = "needs_human_decision"
         chosen = sorted(set(explicit_ids or [best_rid]))
         matched_requirements.update(chosen)
@@ -813,7 +815,7 @@ def reconcile(
             "similarity": round(score, 4),
             "priority": obligation.get("priority", "P2"),
             "action": str(override.get("action") or ("keep" if status == "equivalent" else "review")),
-            "rationale": str(override.get("rationale") or ""),
+            "rationale": rationale,
         })
 
     for rid, requirement in sorted(requirements.items()):
