@@ -30,7 +30,7 @@ Registered closure producers use the unified Chapter Knowledge refresh hook rath
 - Attempt/Stable write failures are explicit `knowledge_refresh_failed` concerns with a concrete failure family. A `stable_refresh_failed` result keeps Chapter closure in concern/failed state and canonical publication deferred even if semantic conservation and triplet validation already passed.
 - Workspace identity remains `workspace:<digest>` / run-bound and never advances main `latest.json`, runtime-verified main evidence, KCP `current`, or `last-known-good`.
 - `publication_deferred` is a normal result for non-main/dirty/non-publishable runs and does not by itself fail Chapter 3.
-- The topology page exposes the Workspace selector `Last attempt / Latest successful` so operators can compare the current failed attempt against the previous stable closure.
+- The topology page exposes Workspace `Last attempt / Latest successful / Latest Chapter 5 stabilized` views. `Latest successful` remains the cross-producer closure view, while `Latest Chapter 5 stabilized` preserves the last Chapter 5 reconciliation/readiness closure even if a later Chapter 3 run succeeds.
 - Canonical publication remains trusted-ref/main-only. Recovery, Chapter 6, Review and ordinary consumers must not use publication as an implicit repair action.
 
 Unified entrypoint:
