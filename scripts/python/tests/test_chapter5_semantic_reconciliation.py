@@ -114,6 +114,15 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
     def _write_task(self, root: Path, *, semantic_refs=None, acceptance=None, depends_on=None, overlap=None):
         semantic_refs = list(semantic_refs or [])
         acceptance = list(acceptance or [])
+        overlay = root / "docs/architecture/overlays/PRD/08/_index.md"
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text("# Route overlay\n", encoding="utf-8")
+        contract = root / "Game.Core/Contracts/RouteEvents.cs"
+        contract.parent.mkdir(parents=True, exist_ok=True)
+        contract.write_text(
+            'public static class RouteEvents { public const string Selected = "core.route.selected"; }\n',
+            encoding="utf-8",
+        )
         row = {
             "id": "GM-0001",
             "taskmaster_id": 1,
@@ -357,6 +366,40 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             payload = json.loads(stabilized.read_text(encoding="utf-8"))
             self.assertEqual("READY", payload["chapter_run"]["readiness"])
             self.assertTrue(payload["reconciliation"]["summary"])
+
+
+    def test_reconciliation_blocks_when_chapter4_authority_is_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            (root / "Game.Core/Contracts/RouteEvents.cs").unlink()
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertIn("contract_missing:core.route.selected", reconciliation["authority_scope_errors"])
+            self.assertEqual("BLOCKED", gate["readiness"])
 
     def test_chapter6_route_blocks_when_readiness_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
