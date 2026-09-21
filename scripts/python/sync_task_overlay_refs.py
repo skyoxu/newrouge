@@ -14,9 +14,14 @@ import argparse
 import datetime as dt
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+_PYTHON_DIR = Path(__file__).resolve().parent
+if str(_PYTHON_DIR) not in sys.path:
+    sys.path.insert(0, str(_PYTHON_DIR))
 
 from check_task_contract_refs import _load_allowed_events
 
