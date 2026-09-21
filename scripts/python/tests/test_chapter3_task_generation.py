@@ -389,6 +389,64 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
         self.assertIn("too_many_anchors", result["issue_counts"])
         self.assertIn("missing_traceability", result["issue_counts"])
 
+    def test_task_intent_quality_audit_should_not_merge_distinct_chinese_titles(self) -> None:
+        mod = _load_module("audit_task_intents_quality_cjk_distinct_test", "scripts/python/audit_task_intents_quality.py")
+        result = mod.audit(
+            {
+                "schema": "task-generation.task-intents.v1",
+                "intents": [
+                    {
+                        "id": "INT-CJK-0001",
+                        "title": "实现战斗节奏",
+                        "covered_anchor_count": 2,
+                        "requirement_ids": ["FR-COMBAT-1"],
+                        "source_refs": ["docs/gdd/game.md:10"],
+                    },
+                    {
+                        "id": "INT-CJK-0002",
+                        "title": "实现商店规则",
+                        "covered_anchor_count": 2,
+                        "requirement_ids": ["FR-SHOP-1"],
+                        "source_refs": ["docs/gdd/game.md:30"],
+                    },
+                ],
+            },
+            max_anchors_per_intent=8,
+        )
+
+        self.assertEqual("ok", result["status"])
+        self.assertEqual(0, result["issue_count"])
+        self.assertNotIn("near_duplicate_title_prefix", result["issue_counts"])
+
+    def test_task_intent_quality_audit_should_still_flag_duplicate_chinese_titles(self) -> None:
+        mod = _load_module("audit_task_intents_quality_cjk_duplicate_test", "scripts/python/audit_task_intents_quality.py")
+        result = mod.audit(
+            {
+                "schema": "task-generation.task-intents.v1",
+                "intents": [
+                    {
+                        "id": "INT-CJK-0001",
+                        "title": "实现战斗节奏",
+                        "covered_anchor_count": 1,
+                        "requirement_ids": ["FR-COMBAT-1"],
+                        "source_refs": ["docs/gdd/game.md:10"],
+                    },
+                    {
+                        "id": "INT-CJK-0002",
+                        "title": "实现战斗节奏",
+                        "covered_anchor_count": 1,
+                        "requirement_ids": ["FR-COMBAT-2"],
+                        "source_refs": ["docs/gdd/game.md:20"],
+                    },
+                ],
+            },
+            max_anchors_per_intent=8,
+        )
+
+        self.assertEqual("review", result["status"])
+        self.assertEqual(2, result["issue_count"])
+        self.assertEqual(2, result["issue_counts"]["near_duplicate_title_prefix"])
+
     def test_task_intent_quality_audit_should_treat_part_numbers_as_disambiguators(self) -> None:
         mod = _load_module("audit_task_intents_quality_part_key_test", "scripts/python/audit_task_intents_quality.py")
         result = mod.audit(
