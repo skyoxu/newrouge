@@ -31,6 +31,13 @@ Chapter 3 and Chapter 5 are the only workflow stages allowed to call the registe
     py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local
     py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local
 
+Both registered producers may also record a run-start attempt before expensive/model-backed work:
+
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --begin-run
+    py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run
+
+The canonical Chapter 5 `chapter5_semantic_reconciliation.py prepare --trigger-run-id <run-id>` invokes the Chapter 5 begin-run hook automatically, so an interrupted extraction/reconciliation run still leaves Last Attempt evidence.
+
 This is not a consumer recovery side effect. The rules are:
 
 - every registered Chapter run may update the run-scoped Workspace **last attempt** topology so failure/concern state is inspectable;
