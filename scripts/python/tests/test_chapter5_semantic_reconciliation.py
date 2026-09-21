@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PYTHON_DIR = REPO_ROOT / "scripts" / "python"
@@ -139,6 +140,24 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
         write_json(root / ".taskmaster/tasks/tasks_back.json", [])
         return row
 
+    def _ready_decisions(self, root: Path, *, requirement_id: str = "INV-U1") -> dict:
+        snapshot = json.loads((root / ch5.DEFAULT_EXTRACTION_SNAPSHOT).read_text(encoding="utf-8"))
+        obligation_id = snapshot["semantic_inventory"][0]["obligation_id"]
+        return {
+            "match_decisions": [{
+                "obligation_id": obligation_id,
+                "chapter3_requirement_ids": [requirement_id],
+                "status": "equivalent",
+                "rationale": "Independent Chapter 5 review confirms semantic equivalence.",
+            }],
+            "authority_decisions": [{
+                "authority_ref": "core.route.selected",
+                "status": "compatible",
+                "requirement_ids": [requirement_id],
+                "rationale": "The route contract is compatible with the stabilized invariant.",
+            }],
+        }
+
     def test_global_orphan_finds_missing_semantic_even_when_all_task_refs_are_removed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -176,23 +195,14 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
             )
             decisions = root / "decisions.json"
-            snapshot = json.loads((root / ch5.DEFAULT_EXTRACTION_SNAPSHOT).read_text(encoding="utf-8"))
-            obligation_id = snapshot["semantic_inventory"][0]["obligation_id"]
-            write_json(decisions, {
-                "match_decisions": [{
-                    "obligation_id": obligation_id,
-                    "chapter3_requirement_ids": ["INV-U1"],
-                    "status": "equivalent",
-                    "rationale": "Independent semantic review confirms the paraphrase preserves the irreversible-route invariant.",
-                }],
-                "acceptance_links": [{
-                    "acceptance_index": 1,
-                    "requirement_ids": ["INV-U1"],
-                    "authority_refs": ["core.route.selected"],
-                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
-                }],
-                "allow_concerns": True,
-            })
+            decision_payload = self._ready_decisions(root)
+            decision_payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "authority_refs": ["core.route.selected"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            write_json(decisions, decision_payload)
             reconciliation, gate = ch5.reconcile(
                 root,
                 task_id="1",
@@ -347,13 +357,13 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 task_id=5,
             )
             decisions = root / "decisions.json"
-            write_json(decisions, {
-                "acceptance_links": [{
-                    "acceptance_index": 1,
-                    "requirement_ids": ["INV-U1"],
-                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
-                }],
-                "dependency_decisions": [
+            decision_payload = self._ready_decisions(root)
+            decision_payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            decision_payload["dependency_decisions"] = [
                     {
                         "dependency_id": 2,
                         "action": "remove",
@@ -367,13 +377,13 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                         "dependency_reason": "Consumes route-selection contract.",
                         "dependency_evidence": ["core.route.selected"],
                     },
-                ],
-                "overlap_decisions": [{
-                    "other_task_id": 3,
-                    "status": "keep_separate",
-                    "rationale": "Shared scene surface but separate semantic ownership.",
-                }],
-            })
+                ]
+            decision_payload["overlap_decisions"] = [{
+                "other_task_id": 3,
+                "status": "keep_separate",
+                "rationale": "Shared scene surface but separate semantic ownership.",
+            }]
+            write_json(decisions, decision_payload)
             reconciliation, gate = ch5.reconcile(
                 root,
                 task_id="5",
@@ -402,13 +412,13 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
             )
             decisions = root / "decisions.json"
-            write_json(decisions, {
-                "acceptance_links": [{
-                    "acceptance_index": 1,
-                    "requirement_ids": ["INV-U1"],
-                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
-                }],
-            })
+            decision_payload = self._ready_decisions(root)
+            decision_payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            write_json(decisions, decision_payload)
             reconciliation_path = ch5.reconciliation_path_for_task(root, "1")
             readiness_path = ch5.readiness_path_for_task(root, "1")
             _reconciliation, gate = ch5.reconcile(
@@ -539,13 +549,13 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
             )
             decisions = root / "decisions.json"
-            write_json(decisions, {
-                "acceptance_links": [{
-                    "acceptance_index": 1,
-                    "requirement_ids": ["INV-U1"],
-                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
-                }],
-            })
+            decision_payload = self._ready_decisions(root)
+            decision_payload["acceptance_links"] = [{
+                "acceptance_index": 1,
+                "requirement_ids": ["INV-U1"],
+                "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+            }]
+            write_json(decisions, decision_payload)
             ch5.reconcile(
                 root,
                 task_id="1",
