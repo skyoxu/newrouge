@@ -132,7 +132,7 @@ def handler_factory(root: Path):
                         self.send(topology)
                     elif mode == 'workspace':
                         workspace_view = params.get('view', ['attempt'])[0]
-                        if workspace_view not in ('attempt', 'stable'):
+                        if workspace_view not in ('attempt', 'stable', 'stabilized'):
                             self.send({'reason': 'Unknown workspace topology view'}, 400)
                         else:
                             self.send(load_workspace_topology(root, workspace_view))
