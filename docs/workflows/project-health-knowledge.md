@@ -159,23 +159,18 @@ py -3 scripts/python/project_health_knowledge.py task --task-id 115
 测试：`py -3 -m unittest discover -s scripts/sc/tests -p "test_project_health*.py"`；Impact 回归：`py -3 -m unittest discover -s scripts/python/tests -p "test_impact_analyzer.py"`。
 ### Chapter 6 resource knowledge
 
-Chapter 6 may generate project-owned resource associations with:
+Chapter 6 is a **read-only global Knowledge consumer**. Global Project Health scans, task-resource link generation, catalog rebuilds, and KCP publication are explicit maintainer operations outside the Chapter 6 execution/recovery path.
 
-```powershell
-py -3 scripts/python/dev_cli.py init-knowledge-catalog --validate
-py -3 scripts/python/dev_cli.py generate-knowledge-links --task-id 18
-```
-
-正式 Chapter 6 捕获阶段使用：
+The Chapter 6 capture command is task-local only:
 
 ```powershell
 py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18
 ```
 
-该阶段依次刷新项目扫描、生成任务资源关联并校验 catalog。失败状态为 `knowledge_capture_failed`，可从该阶段恢复，不会伪装成任务运行时测试失败或通过。
+It reads already-available Project Health/resource evidence when present and writes candidates under `logs/ci/chapter6-knowledge/task-18/`. It does **not** call `project-health-scan`, `generate-knowledge-links`, `init-knowledge-catalog`, `refresh-knowledge`, or `publish_knowledge_catalog.py`; it does not modify Taskmaster knowledge refs and does not advance KCP `current` / `last-known-good`.
 
-The production catalog lives under `docs/knowledge/**`; `logs/**` remains evidence only. Resource entries are revision-bound and may be `confirmed`, `inferred`, `unverified`, or `removed`. Taskmaster views should keep only lightweight entry references. The existing `knowledge/` control plane remains the publication authority for global indexes; this catalog is its project-resource input, not a replacement.
+The legacy `--write-task-refs` flag is rejected. If a maintainer explicitly wants to rebuild resource links/catalog or publish global Knowledge, run those commands separately outside Chapter 6 and record that maintenance action as explicit/manual.
 
 ### Chapter 6 element capture
 
-`chapter6-knowledge` also writes `docs/knowledge/generated/chapter6-task-<id>-elements.json` and a matching `documentation-gaps.md`. The manifest records changed or linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene entries include discovered nodes, attached scripts, and published events when available. Gaps are severity-ranked (`P1` for unbound scenes/scripts, `P2` for missing semantic focus) and are non-blocking; they provide the next documentation follow-up without requiring 100% coverage.
+`chapter6-knowledge` writes `logs/ci/chapter6-knowledge/task-<id>/knowledge-capture-candidate.json` plus task-local `documentation-gaps.md`. The capture records changed or previously linked Godot scenes, scripts, configs, and assets with `verified`, `inferred`, or `unmapped` status. Scene/static evidence remains evidence only; it must not be promoted to Acceptance proof or global Knowledge automatically.
