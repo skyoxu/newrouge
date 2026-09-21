@@ -432,6 +432,13 @@ def sync_view(
             task_changed = True
 
         semantic_refs = _normalize_refs(task.get("semantic_refs") or task.get("requirement_ids"))
+        contract_refs = _normalize_refs(task.get("contractRefs"))
+        if contract_refs and allowed_contract_refs is not None:
+            stale_contracts = sorted(set(contract_refs) - allowed_contract_refs)
+            if stale_contracts:
+                raise ValueError(
+                    f"{view_path.name}: task {task_id or task.get('taskmaster_id')} has stale contract refs: {stale_contracts}"
+                )
         if semantic_refs:
             if active_requirement_ids is None:
                 raise ValueError(
@@ -446,14 +453,7 @@ def sync_view(
             if task.get("overlay_requirement_refs") != overlay_map:
                 task["overlay_requirement_refs"] = overlay_map
                 task_changed = True
-            contract_refs = _normalize_refs(task.get("contractRefs"))
             if contract_refs:
-                if allowed_contract_refs is not None:
-                    stale_contracts = sorted(set(contract_refs) - allowed_contract_refs)
-                    if stale_contracts:
-                        raise ValueError(
-                            f"{view_path.name}: task {task_id or task.get('taskmaster_id')} has stale contract refs: {stale_contracts}"
-                        )
                 contract_map = {ref: list(semantic_refs) for ref in contract_refs}
                 if task.get("contract_requirement_refs") != contract_map:
                     task["contract_requirement_refs"] = contract_map
