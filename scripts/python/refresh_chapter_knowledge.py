@@ -19,6 +19,7 @@ from chapter5_semantic_reconciliation import (
     DEFAULT_RECONCILIATION_DIR as CH5_RECONCILIATION_DIR,
     READINESS_SCHEMA as CH5_READINESS_SCHEMA,
     RECONCILIATION_SCHEMA as CH5_RECONCILIATION_SCHEMA,
+    verify_current_readiness_inputs as verify_chapter5_current_inputs,
 )
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
@@ -104,10 +105,15 @@ def _canonical_payload_sha(payload: Any) -> str:
 
 
 def chapter5_closure_evidence(
+    root: Path,
     source_manifest: dict[str, Any],
     ledger: dict[str, Any],
     reconciliation: dict[str, Any],
     readiness: dict[str, Any],
+    *,
+    source_manifest_path: Path,
+    ledger_path: Path,
+    semantics_path: Path,
 ) -> tuple[dict[str, Any], bool, str]:
     errors: list[str] = []
     if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
@@ -139,6 +145,17 @@ def chapter5_closure_evidence(
     if int(summary.get("blocking_count") or 0) != 0:
         errors.append("chapter5_reconciliation_blocking_findings")
 
+    current_inputs_ok, current_inputs_reason = verify_chapter5_current_inputs(
+        root,
+        reconciliation,
+        readiness,
+        manifest_path=source_manifest_path,
+        ledger_path=ledger_path,
+        semantics_path=semantics_path,
+    )
+    if not current_inputs_ok:
+        errors.append(current_inputs_reason)
+
     report = {
         "schema_version": "chapter5.semantic-reconciliation-closure.v1",
         "stage": "closure",
@@ -158,6 +175,7 @@ def chapter5_closure_evidence(
             "closure_allowed": bool(readiness.get("closure_allowed")),
             "errors": errors,
             "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+            "input_fingerprint_sha256": readiness.get("input_fingerprint_sha256"),
         },
     }
     return report, not errors, "verified_chapter5_readiness" if not errors else ",".join(errors)
@@ -855,7 +873,14 @@ def run(
         effective_edges = edges
     else:
         report, closure_evidence_passed, closure_evidence_reason = chapter5_closure_evidence(
-            source_manifest, ledger, reconciliation, readiness
+            root,
+            source_manifest,
+            ledger,
+            reconciliation,
+            readiness,
+            source_manifest_path=source_manifest_path,
+            ledger_path=ledger_path,
+            semantics_path=semantics_path,
         )
         triplet_evidence_passed = True
         triplet_evidence_reason = "not_applicable_chapter5"
@@ -901,6 +926,7 @@ def run(
             "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
             "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
             "reconciliation_sha256": readiness.get("reconciliation_sha256"),
+            "input_fingerprint_sha256": readiness.get("input_fingerprint_sha256"),
             "readiness": readiness.get("readiness"),
             "closure_allowed": readiness.get("closure_allowed"),
         })
