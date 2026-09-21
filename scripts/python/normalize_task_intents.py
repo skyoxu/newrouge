@@ -395,7 +395,11 @@ def title_phrase(anchors: list[dict[str, Any]], topic: str) -> str:
 
 
 def title_key(title: str) -> str:
-    return " ".join(re.findall(r"[A-Za-z]+|\d+", title.lower())[:6])
+    ascii_key = " ".join(re.findall(r"[A-Za-z]+|\d+", title.lower())[:6])
+    if ascii_key:
+        return ascii_key
+    unicode_parts = re.findall(r"[\w]+", title.casefold(), flags=re.UNICODE)
+    return " ".join(unicode_parts[:6])[:80]
 
 
 def collapse_repeated_words(text: str) -> str:
