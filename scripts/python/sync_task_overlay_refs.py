@@ -407,6 +407,7 @@ def sync_view(
     master_done_task_ids: set[str],
     active_requirement_ids: set[str] | None = None,
     allowed_contract_refs: set[str] | None = None,
+    repo_root: Path | None = None,
 ) -> tuple[list[dict[str, Any]], FileSyncResult]:
     tasks = _load_json(view_path)
     if not isinstance(tasks, list):
@@ -426,6 +427,15 @@ def sync_view(
                 continue
         task_id = str(task.get("id", "")).strip()
         current = _normalize_refs(task.get("overlay_refs"))
+        if repo_root is not None:
+            stale_overlay_refs = sorted(
+                ref for ref in current
+                if ref.startswith("docs/architecture/overlays/") and not (repo_root / ref).is_file()
+            )
+            if stale_overlay_refs:
+                raise ValueError(
+                    f"{view_path.name}: task {task_id or task.get('taskmaster_id')} has stale overlay refs: {stale_overlay_refs}"
+                )
         task_changed = False
         if current != expected:
             task["overlay_refs"] = expected
@@ -652,6 +662,7 @@ def main() -> int:
         master_done_task_ids=master_done_ids,
         active_requirement_ids=active_requirement_ids,
         allowed_contract_refs=allowed_contract_refs,
+        repo_root=root,
     )
     gameplay_payload, gameplay_result = sync_view(
         tasks_gameplay_path,
@@ -660,6 +671,7 @@ def main() -> int:
         master_done_task_ids=master_done_ids,
         active_requirement_ids=active_requirement_ids,
         allowed_contract_refs=allowed_contract_refs,
+        repo_root=root,
     )
     results = [master_result, back_result, gameplay_result]
     gap_report = build_chapter4_gap_report(back_payload, gameplay_payload)
