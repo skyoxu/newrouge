@@ -24,6 +24,7 @@ sys.path.insert(0, str(SC_DIR))
 import run_review_pipeline as run_review_pipeline_module  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 from chapter5_semantic_reconciliation import (  # noqa: E402
+    DEFAULT_CH3_SEMANTICS,
     DEFAULT_EXTRACTION_SNAPSHOT,
     DEFAULT_READINESS_DIR,
     DEFAULT_RECONCILIATION_DIR,
@@ -36,6 +37,7 @@ from chapter5_semantic_reconciliation import (  # noqa: E402
     SNAPSHOT_SCHEMA,
     _canonical_sha,
     build_cache_key,
+    build_chapter5_input_fingerprint,
 )
 
 
@@ -122,7 +124,8 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             extractor_revision=EXTRACTOR_REVISION,
         )
         snapshot_id = "EXB-" + _canonical_sha(cache_key)[:20].upper()
-        self._write_fixture_json(REPO_ROOT / DEFAULT_EXTRACTION_SNAPSHOT, {
+        snapshot_path = REPO_ROOT / DEFAULT_EXTRACTION_SNAPSHOT
+        self._write_fixture_json(snapshot_path, {
             "schema_version": SNAPSHOT_SCHEMA,
             "status": "complete",
             "source_revision": revision,
@@ -130,12 +133,30 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             "extraction_b_snapshot_id": snapshot_id,
             "semantic_inventory": [],
         })
+        semantics_path = REPO_ROOT / DEFAULT_CH3_SEMANTICS
+        self._write_fixture_json(semantics_path, {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "source_revision": revision,
+            "source_manifest_sha256": manifest["manifest_sha256"],
+            "requirements": [],
+            "source_accounting": [],
+        })
+        input_fingerprint, _components, fingerprint_errors = build_chapter5_input_fingerprint(
+            REPO_ROOT,
+            task_id,
+            manifest_path=manifest_path,
+            ledger_path=ledger_path,
+            snapshot_path=snapshot_path,
+            semantics_path=semantics_path,
+        )
+        self.assertEqual([], fingerprint_errors)
         reconciliation = {
             "schema_version": RECONCILIATION_SCHEMA,
             "task_id": str(task_id),
             "source_revision": revision,
             "cache_key": cache_key,
             "extraction_b_snapshot_id": snapshot_id,
+            "input_fingerprint": input_fingerprint,
             "global_audit_completed": True,
             "findings": [],
             "summary": {"blocking_count": 0, "concern_count": 0},
@@ -148,6 +169,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             "source_revision": revision,
             "cache_key": cache_key,
             "extraction_b_snapshot_id": snapshot_id,
+            "input_fingerprint": input_fingerprint,
             "reconciliation_sha256": "sha256:" + _canonical_sha(reconciliation),
             "readiness": "READY",
             "closure_allowed": True,
