@@ -19,6 +19,7 @@ from chapter5_semantic_reconciliation import (
     DEFAULT_RECONCILIATION_DIR as CH5_RECONCILIATION_DIR,
     READINESS_SCHEMA as CH5_READINESS_SCHEMA,
     RECONCILIATION_SCHEMA as CH5_RECONCILIATION_SCHEMA,
+    validate_chapter5_evidence_freshness,
 )
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
@@ -104,10 +105,15 @@ def _canonical_payload_sha(payload: Any) -> str:
 
 
 def chapter5_closure_evidence(
+    root: Path,
     source_manifest: dict[str, Any],
     ledger: dict[str, Any],
     reconciliation: dict[str, Any],
     readiness: dict[str, Any],
+    *,
+    source_manifest_path: Path,
+    ledger_path: Path,
+    semantics_path: Path,
 ) -> tuple[dict[str, Any], bool, str]:
     errors: list[str] = []
     if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
@@ -138,6 +144,18 @@ def chapter5_closure_evidence(
     summary = reconciliation.get("summary") if isinstance(reconciliation.get("summary"), dict) else {}
     if int(summary.get("blocking_count") or 0) != 0:
         errors.append("chapter5_reconciliation_blocking_findings")
+    task_id = str(readiness.get("task_id") or reconciliation.get("task_id") or "")
+    freshness_ok, freshness_reason = validate_chapter5_evidence_freshness(
+        root,
+        task_id=task_id,
+        reconciliation=reconciliation,
+        readiness=readiness,
+        manifest_path=source_manifest_path,
+        ledger_path=ledger_path,
+        semantics_path=semantics_path,
+    )
+    if not freshness_ok:
+        errors.append(freshness_reason)
 
     report = {
         "schema_version": "chapter5.semantic-reconciliation-closure.v1",
@@ -855,7 +873,14 @@ def run(
         effective_edges = edges
     else:
         report, closure_evidence_passed, closure_evidence_reason = chapter5_closure_evidence(
-            source_manifest, ledger, reconciliation, readiness
+            root,
+            source_manifest,
+            ledger,
+            reconciliation,
+            readiness,
+            source_manifest_path=source_manifest_path,
+            ledger_path=ledger_path,
+            semantics_path=semantics_path,
         )
         triplet_evidence_passed = True
         triplet_evidence_reason = "not_applicable_chapter5"
