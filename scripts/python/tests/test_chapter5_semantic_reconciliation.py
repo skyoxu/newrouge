@@ -553,6 +553,18 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             first_bytes = stabilized.read_bytes()
             first_stable_hash = payload["chapter_run"]["stable_input_hash"]
 
+            # Re-running reconciliation with identical guarded inputs may change
+            # generated_at/reconciliation hash, but must keep the same stable input identity.
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+
             second = refresh_mod.run(
                 root,
                 source="chapter5",
