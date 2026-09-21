@@ -421,6 +421,10 @@ def collapse_repeated_words(text: str) -> str:
 
 
 def intent_title(topic: str, focus: str, split_index: int = 0) -> str:
+    if topic not in TOPIC_TEMPLATES and CJK_RE.search(focus):
+        if split_index > 0:
+            focus = f"第{split_index}部分：{focus}".strip()
+        return collapse_repeated_words(f"实现{focus}".strip())
     template, _details = TOPIC_TEMPLATES.get(topic, ("Implement {focus}", "Implement the covered requirement slice."))
     if split_index > 0:
         focus = f"part {split_index} {focus}".strip()
