@@ -1427,6 +1427,18 @@ def main(argv: list[str] | None = None) -> int:
             changed_task_views = apply_task_corrections(
                 root, task_id, reconciliation, readiness, decisions_payload
             )
+            if changed_task_views:
+                # Task corrections change the guarded input surface. Reconcile again so
+                # readiness/fingerprint attest the post-correction Task state.
+                reconciliation, readiness = reconcile(
+                    root,
+                    task_id=task_id,
+                    snapshot_path=snapshot,
+                    semantics_path=semantics,
+                    decisions_path=decisions,
+                    out_path=out,
+                    readiness_path=readiness_out,
+                )
         print(json.dumps({
             "status": readiness["readiness"],
             "closure_allowed": readiness["closure_allowed"],
