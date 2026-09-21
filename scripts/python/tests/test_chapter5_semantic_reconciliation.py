@@ -203,6 +203,54 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn(gate["readiness"], {"READY", "CONCERNS"})
             self.assertTrue(gate["closure_allowed"])
 
+    def test_invented_chapter3_behavior_and_acceptance_scope_creep_block_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
+            block_id = semantics["requirements"][0]["source_block_ids"][0]
+            semantics["requirements"].append({
+                "requirement_id": "FR-INVENTED",
+                "kind": "functional",
+                "statement": "Grant a bonus reward not present in the source.",
+                "source_block_ids": [block_id],
+                "delivery_relevant": True,
+                "status": "active",
+                "priority": "P1",
+                "non_task_sinks": [],
+            })
+            write_json(semantics_path, semantics)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Bonus reward appears. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["FR-INVENTED"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            statuses = {row.get("status") for row in reconciliation["findings"]}
+            self.assertIn("invented_in_ch3", statuses)
+            self.assertIn("out_of_task_scope", statuses)
+            self.assertEqual("BLOCKED", gate["readiness"])
+            self.assertFalse(gate["closure_allowed"])
+
     def test_extraction_b_cache_reuses_same_identity_and_invalidates_on_source_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
