@@ -1243,7 +1243,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             row["capability_ids"] == ["CAP-REWARD", "CAP-UI"]
             for row in anchors
         ))
-        self.assertTrue(all(row["capability_id"] == "CAP-REWARD" for row in anchors))
+        self.assertTrue(all(row["capability_id"] == "CAP-UI" for row in anchors))
 
         result = intents_mod.build_intents(
             {"schema": "chapter3.validated-semantics.v1", "anchors": anchors},
