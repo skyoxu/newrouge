@@ -138,6 +138,12 @@ def chapter5_closure_evidence(
     if not task_id or str(readiness.get("task_id") or "") != task_id:
         errors.append("chapter5_task_identity_mismatch")
     else:
+        stored_components = reconciliation.get("input_fingerprint_components", {})
+        extra_authority_refs = (
+            list(stored_components.get("acceptance_authority_refs", []))
+            if isinstance(stored_components, dict)
+            else []
+        )
         current_fingerprint, _fingerprint_components, fingerprint_errors = build_chapter5_input_fingerprint(
             root,
             task_id,
@@ -145,6 +151,7 @@ def chapter5_closure_evidence(
             ledger_path=ledger_path,
             snapshot_path=snapshot_path,
             semantics_path=semantics_path,
+            extra_authority_refs=extra_authority_refs,
         )
         if fingerprint_errors:
             errors.extend(f"chapter5_current_input_invalid:{value}" for value in fingerprint_errors)
