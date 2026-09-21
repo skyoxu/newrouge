@@ -458,6 +458,31 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertEqual("chapter5_readiness", payload["blocked_by"])
             self.assertEqual("return_to_chapter5", payload["chapter6_next_action"])
 
+    def test_chapter6_and_review_paths_do_not_embed_global_knowledge_mutators(self) -> None:
+        forbidden = {
+            "refresh-knowledge",
+            "publish_knowledge_catalog.py",
+            "project-health-scan",
+            "generate-knowledge-links",
+            "init-knowledge-catalog",
+        }
+        paths = [
+            "scripts/python/run_single_task_chapter6_lane.py",
+            "scripts/python/resume_task.py",
+            "scripts/sc/run_review_pipeline.py",
+            "scripts/sc/llm_review_needs_fix_fast.py",
+            "scripts/python/chapter6_route.py",
+            "scripts/python/chapter6_knowledge.py",
+        ]
+        for relative in paths:
+            with self.subTest(path=relative):
+                text = (REPO_ROOT / relative).read_text(encoding="utf-8")
+                hits = sorted(token for token in forbidden if token in text)
+                self.assertEqual([], hits, f"{relative} embeds forbidden global mutators: {hits}")
+
+        lane_text = (REPO_ROOT / "scripts/python/run_single_task_chapter6_lane.py").read_text(encoding="utf-8")
+        self.assertIn("--skip-project-health", lane_text)
+
     def test_chapter6_capture_never_mutates_global_knowledge_or_project_health(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
