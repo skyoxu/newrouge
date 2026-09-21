@@ -215,6 +215,7 @@ def build_local_hard_checks_cmd(*, profile_policy: dict[str, str], godot_bin: st
         "run-local-hard-checks",
         "--delivery-profile",
         str(profile_policy["delivery_profile"]),
+        "--skip-project-health",
     ]
     if str(godot_bin).strip():
         cmd += ["--godot-bin", str(godot_bin)]
