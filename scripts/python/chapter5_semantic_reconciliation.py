@@ -493,7 +493,11 @@ def _line_for_token(text: str, token: str) -> int | None:
     return None
 
 
-def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def build_task_authority_scope(
+    root: Path,
+    task: dict[str, Any],
+    extra_authority_refs: list[str] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     """Bind Chapter 5 task reconciliation to real Chapter 4/ADR/Contract authority bytes."""
     errors: list[str] = []
     overlays: list[dict[str, Any]] = []
@@ -555,6 +559,64 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
             "sha256": "sha256:" + _sha_text(text),
         })
 
+    known = {
+        str(item.get("ref") or "") for item in contracts
+    } | {
+        str(item.get("path") or "") for item in contracts
+    } | set(adrs) | {
+        str(item.get("path") or "") for item in adrs.values()
+    }
+    for raw in sorted(set(str(value or "").strip().replace("\\", "/") for value in (extra_authority_refs or []) if str(value or "").strip())):
+        if raw in known:
+            continue
+        resolved = False
+        if re.fullmatch(r"ADR-\d{3,5}", raw, re.IGNORECASE):
+            canonical = raw.upper()
+            matches = sorted((root / "docs/adr").glob(canonical + "*.md"))
+            if matches:
+                adr_path = matches[0]
+                text = adr_path.read_text(encoding="utf-8")
+                adrs[canonical] = {
+                    "ref": canonical,
+                    "path": adr_path.relative_to(root).as_posix(),
+                    "sha256": "sha256:" + _sha_text(text),
+                }
+                known.update({canonical, adrs[canonical]["path"]})
+                resolved = True
+        elif raw.startswith("docs/adr/") and (root / raw).is_file():
+            path = root / raw
+            text = path.read_text(encoding="utf-8")
+            token = next(iter(re.findall(r"ADR-\d{3,5}", path.name, re.IGNORECASE)), raw).upper()
+            adrs[token] = {"ref": token, "path": raw, "sha256": "sha256:" + _sha_text(text)}
+            known.update({token, raw})
+            resolved = True
+        elif raw.startswith("Game.Core/Contracts/") and (root / raw).is_file():
+            path = root / raw
+            text = path.read_text(encoding="utf-8")
+            contracts.append({
+                "ref": raw,
+                "path": raw,
+                "line": None,
+                "sha256": "sha256:" + _sha_text(text),
+            })
+            known.add(raw)
+            resolved = True
+        else:
+            for path, text in contract_texts:
+                if raw in text:
+                    rel = path.relative_to(root).as_posix()
+                    contracts.append({
+                        "ref": raw,
+                        "path": rel,
+                        "line": _line_for_token(text, raw),
+                        "sha256": "sha256:" + _sha_text(text),
+                    })
+                    known.update({raw, rel})
+                    resolved = True
+                    break
+        if not resolved:
+            errors.append(f"authority_missing:{raw}")
+
     return {
         "overlays": overlays,
         "contracts": contracts,
@@ -572,6 +634,7 @@ def build_chapter5_input_fingerprint(
     ledger_path: Path | None = None,
     snapshot_path: Path | None = None,
     semantics_path: Path | None = None,
+    extra_authority_refs: list[str] | None = None,
 ) -> tuple[str, dict[str, Any], list[str]]:
     """Bind Chapter 5 readiness to every mutable semantic/authority input it validated."""
     manifest_path = manifest_path or (root / DEFAULT_SOURCE_MANIFEST)
@@ -614,7 +677,9 @@ def build_chapter5_input_fingerprint(
     task = _task_bundle(_load_task_rows(root), _canonical_task_id(task_id))
     if not task.get("views"):
         errors.append(f"task_missing:{_canonical_task_id(task_id)}")
-    authority_scope, authority_errors = build_task_authority_scope(root, task)
+    authority_scope, authority_errors = build_task_authority_scope(
+        root, task, extra_authority_refs=extra_authority_refs
+    )
     errors.extend(authority_errors)
 
     components = {
@@ -637,6 +702,7 @@ def build_chapter5_input_fingerprint(
             "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None
         ),
         "task_surface_sha256": "sha256:" + _canonical_sha(task),
+        "acceptance_authority_refs": sorted(set(extra_authority_refs or [])),
         "authority_scope_sha256": "sha256:" + _canonical_sha(authority_scope),
     }
     return "sha256:" + _canonical_sha(components), components, sorted(set(errors))
@@ -759,7 +825,19 @@ def reconcile(
 
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
-    authority_scope, authority_errors = build_task_authority_scope(root, task)
+    acceptance_links = decisions.get("acceptance_links", [])
+    if not isinstance(acceptance_links, list):
+        acceptance_links = []
+    acceptance_authority_refs = sorted({
+        str(value).strip()
+        for row in acceptance_links
+        if isinstance(row, dict)
+        for value in row.get("authority_refs", [])
+        if str(value).strip()
+    })
+    authority_scope, authority_errors = build_task_authority_scope(
+        root, task, extra_authority_refs=acceptance_authority_refs
+    )
     input_fingerprint, input_fingerprint_components, input_fingerprint_errors = build_chapter5_input_fingerprint(
         root,
         task_id,
@@ -767,6 +845,7 @@ def reconcile(
         ledger_path=ledger_path,
         snapshot_path=snapshot_path,
         semantics_path=semantics_path,
+        extra_authority_refs=acceptance_authority_refs,
     )
     source_errors.extend(input_fingerprint_errors)
     task_sinks = _all_task_sinks(task_rows)
@@ -927,9 +1006,6 @@ def reconcile(
                     "reason": "authority compatibility has not been explicitly reviewed",
                 })
 
-    acceptance_links = decisions.get("acceptance_links", [])
-    if not isinstance(acceptance_links, list):
-        acceptance_links = []
     links_by_index = {
         int(row.get("acceptance_index")): row
         for row in acceptance_links
@@ -1356,6 +1432,12 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
     if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         return False, payload, "chapter5_readiness_source_revision_stale"
 
+    stored_components = reconciliation.get("input_fingerprint_components", {})
+    extra_authority_refs = (
+        list(stored_components.get("acceptance_authority_refs", []))
+        if isinstance(stored_components, dict)
+        else []
+    )
     current_fingerprint, _components, fingerprint_errors = build_chapter5_input_fingerprint(
         root,
         task_id,
@@ -1363,6 +1445,7 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         ledger_path=ledger_path,
         snapshot_path=snapshot_path,
         semantics_path=root / DEFAULT_CH3_SEMANTICS,
+        extra_authority_refs=extra_authority_refs,
     )
     if fingerprint_errors:
         return False, payload, "chapter5_current_input_invalid:" + fingerprint_errors[0]
