@@ -735,6 +735,8 @@ def reconcile(
     snapshot_path: Path,
     semantics_path: Path,
     decisions_path: Path | None,
+    manifest_path: Path | None = None,
+    ledger_path: Path | None = None,
     out_path: Path,
     readiness_path: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -758,6 +760,15 @@ def reconcile(
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
     authority_scope, authority_errors = build_task_authority_scope(root, task)
+    input_fingerprint, input_fingerprint_components, input_fingerprint_errors = build_chapter5_input_fingerprint(
+        root,
+        task_id,
+        manifest_path=manifest_path,
+        ledger_path=ledger_path,
+        snapshot_path=snapshot_path,
+        semantics_path=semantics_path,
+    )
+    source_errors.extend(input_fingerprint_errors)
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
 
@@ -802,10 +813,17 @@ def reconcile(
             for rid in candidates
         )
         score, best_rid = scored[-1]
-        status = str(override.get("status") or "").strip()
-        if status not in ALLOWED_MATCH_STATUS:
-            status = "equivalent" if score >= 0.25 else ("partial" if score >= 0.10 else "needs_human_decision")
-        chosen = sorted(set(explicit_ids or [best_rid]))
+        requested_status = str(override.get("status") or "").strip()
+        rationale = str(override.get("rationale") or "").strip()
+        status = requested_status if requested_status in ALLOWED_MATCH_STATUS and rationale else "needs_human_decision"
+        if status == "missing_in_ch3":
+            chosen = []
+        elif explicit_ids:
+            chosen = sorted(set(explicit_ids))
+        else:
+            # Similarity may nominate a review candidate, but it never proves semantic equivalence.
+            chosen = [best_rid]
+            status = "needs_human_decision"
         matched_requirements.update(chosen)
         obligation_to_requirements[oid] = chosen
         findings.append({
@@ -818,7 +836,8 @@ def reconcile(
             "similarity": round(score, 4),
             "priority": obligation.get("priority", "P2"),
             "action": str(override.get("action") or ("keep" if status == "equivalent" else "review")),
-            "rationale": str(override.get("rationale") or ""),
+            "rationale": rationale,
+            "semantic_verdict_source": "explicit_decision" if status != "needs_human_decision" else "review_required",
         })
 
     for rid, requirement in sorted(requirements.items()):
@@ -859,6 +878,54 @@ def reconcile(
                 "chapter3_requirement_ids": [rid],
                 "action": "remove_or_reconcile_task_claim",
             })
+
+    authority_decisions = _decision_by_id(decisions, "authority_decisions", "authority_ref")
+    authority_reconciliation: list[dict[str, Any]] = []
+    for authority_type, rows in (
+        ("contract", authority_scope.get("contracts", [])),
+        ("adr", authority_scope.get("adrs", [])),
+    ):
+        for item in rows if isinstance(rows, list) else []:
+            authority_ref = str(item.get("ref") or "").strip()
+            decision = authority_decisions.get(authority_ref, {})
+            requested_status = str(decision.get("status") or "").strip()
+            rationale = str(decision.get("rationale") or "").strip()
+            requirement_ids = sorted({
+                str(value) for value in decision.get("requirement_ids", [])
+                if str(value) in task["semantic_refs"]
+            })
+            status = requested_status
+            if status not in ALLOWED_AUTHORITY_RECONCILIATION or not rationale:
+                status = "needs_human_decision"
+            if status in {"compatible", "conflict"} and not requirement_ids:
+                status = "needs_human_decision"
+            row = {
+                "authority_type": authority_type,
+                "authority_ref": authority_ref,
+                "authority_sha256": item.get("sha256"),
+                "requirement_ids": requirement_ids,
+                "status": status,
+                "rationale": rationale,
+            }
+            authority_reconciliation.append(row)
+            if status == "conflict":
+                findings.append({
+                    "finding_type": "authority",
+                    "status": "authority_conflict",
+                    "authority_type": authority_type,
+                    "authority_ref": authority_ref,
+                    "chapter3_requirement_ids": requirement_ids,
+                    "reason": rationale,
+                })
+            elif status == "needs_human_decision":
+                findings.append({
+                    "finding_type": "authority",
+                    "status": "authority_unresolved",
+                    "authority_type": authority_type,
+                    "authority_ref": authority_ref,
+                    "chapter3_requirement_ids": requirement_ids,
+                    "reason": "authority compatibility has not been explicitly reviewed",
+                })
 
     acceptance_links = decisions.get("acceptance_links", [])
     if not isinstance(acceptance_links, list):
@@ -1137,11 +1204,14 @@ def reconcile(
         "source_revision": snapshot.get("source_revision"),
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "cache_key": snapshot.get("cache_key"),
+        "input_fingerprint": input_fingerprint,
+        "input_fingerprint_components": input_fingerprint_components,
         "chapter3_topology_sha256": "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None,
         "global_audit_completed": snapshot.get("status") == "complete",
         "source_scope": snapshot.get("source_scope", []),
         "authority_scope": authority_scope,
         "authority_scope_errors": authority_errors,
+        "authority_reconciliation": authority_reconciliation,
         "findings": all_findings,
         "dependency_corrections": dependency_corrections,
         "final_dependencies": sorted(final_dependencies),
@@ -1152,7 +1222,7 @@ def reconcile(
             "missing": sum(1 for row in all_findings if row.get("status") == "missing_in_ch3"),
             "partial": sum(1 for row in all_findings if row.get("status") in {"partial", "partial_acceptance"}),
             "invented": sum(1 for row in all_findings if row.get("status") == "invented_in_ch3"),
-            "conflicts": sum(1 for row in all_findings if row.get("status") == "conflict_with_adr"),
+            "conflicts": sum(1 for row in all_findings if row.get("status") in {"conflict_with_adr", "authority_conflict"}),
             "orphan_delivery_semantic": sum(1 for row in all_findings if row.get("status") == "orphan_delivery_semantic" or row.get("global_gate") == "orphan_delivery_semantic"),
             "orphan_acceptance": sum(1 for row in all_findings if row.get("status") == "orphan_acceptance"),
             "blocking_count": len(blocking),
@@ -1166,6 +1236,7 @@ def reconcile(
         "source_revision": snapshot.get("source_revision"),
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "cache_key": snapshot.get("cache_key"),
+        "input_fingerprint": input_fingerprint,
         "reconciliation_sha256": "sha256:" + _canonical_sha(reconciliation),
         "readiness": readiness,
         "closure_allowed": closure_allowed,
