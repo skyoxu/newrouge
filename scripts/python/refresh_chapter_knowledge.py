@@ -330,7 +330,8 @@ def task_details_from_task_views(root: Path, candidates: dict[str, Any]) -> list
         if isinstance(row, dict) and row.get("id") is not None
     }
     details: dict[str, dict[str, Any]] = {}
-    for view_path in DEFAULT_TASK_VIEWS:
+    for view_path_value in DEFAULT_TASK_VIEWS:
+        view_path = Path(view_path_value)
         payload = load_json(root / view_path, [])
         if not isinstance(payload, list):
             continue
