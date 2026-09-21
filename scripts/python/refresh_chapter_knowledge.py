@@ -15,10 +15,12 @@ from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavaila
 from audit_task_candidate_coverage import DEFAULT_TASK_VIEWS, audit as audit_task_coverage
 from validate_semantic_conservation import validate as validate_semantic_conservation
 from chapter5_semantic_reconciliation import (
+    DEFAULT_EXTRACTION_SNAPSHOT as CH5_EXTRACTION_SNAPSHOT,
     DEFAULT_READINESS_DIR as CH5_READINESS_DIR,
     DEFAULT_RECONCILIATION_DIR as CH5_RECONCILIATION_DIR,
     READINESS_SCHEMA as CH5_READINESS_SCHEMA,
     RECONCILIATION_SCHEMA as CH5_RECONCILIATION_SCHEMA,
+    build_chapter5_input_fingerprint,
 )
 
 TOPOLOGY_RUNTIME_DIR = Path("logs/ci/project-health-knowledge/topology")
@@ -104,10 +106,16 @@ def _canonical_payload_sha(payload: Any) -> str:
 
 
 def chapter5_closure_evidence(
+    root: Path,
     source_manifest: dict[str, Any],
     ledger: dict[str, Any],
     reconciliation: dict[str, Any],
     readiness: dict[str, Any],
+    *,
+    source_manifest_path: Path,
+    ledger_path: Path,
+    semantics_path: Path,
+    snapshot_path: Path,
 ) -> tuple[dict[str, Any], bool, str]:
     errors: list[str] = []
     if reconciliation.get("schema_version") != CH5_RECONCILIATION_SCHEMA:
@@ -126,6 +134,24 @@ def chapter5_closure_evidence(
     expected_reconciliation_sha = "sha256:" + _canonical_payload_sha(reconciliation)
     if str(readiness.get("reconciliation_sha256") or "") != expected_reconciliation_sha:
         errors.append("chapter5_readiness_reconciliation_hash_mismatch")
+    task_id = str(reconciliation.get("task_id") or readiness.get("task_id") or "").strip()
+    if not task_id or str(readiness.get("task_id") or "") != task_id:
+        errors.append("chapter5_task_identity_mismatch")
+    else:
+        current_fingerprint, _fingerprint_components, fingerprint_errors = build_chapter5_input_fingerprint(
+            root,
+            task_id,
+            manifest_path=source_manifest_path,
+            ledger_path=ledger_path,
+            snapshot_path=snapshot_path,
+            semantics_path=semantics_path,
+        )
+        if fingerprint_errors:
+            errors.extend(f"chapter5_current_input_invalid:{value}" for value in fingerprint_errors)
+        if str(reconciliation.get("input_fingerprint") or "") != current_fingerprint:
+            errors.append("chapter5_reconciliation_input_fingerprint_stale")
+        if str(readiness.get("input_fingerprint") or "") != current_fingerprint:
+            errors.append("chapter5_readiness_input_fingerprint_stale")
     readiness_status = str(readiness.get("readiness") or "")
     if readiness_status not in {"READY", "CONCERNS"}:
         errors.append("chapter5_readiness_not_closable")
@@ -767,6 +793,7 @@ def run(
     triplet_attestation_path: Path | None = None,
     reconciliation_path: Path | None = None,
     readiness_path: Path | None = None,
+    chapter5_snapshot_path: Path | None = None,
 ) -> dict[str, Any]:
     if source not in REGISTERED_SOURCES:
         raise ValueError(f"unregistered closure producer: {source}")
@@ -776,6 +803,7 @@ def run(
     )
     reconciliation_path = reconciliation_path or (root / DEFAULT_CH5_RECONCILIATION_PATH)
     readiness_path = readiness_path or (root / DEFAULT_CH5_READINESS_PATH)
+    chapter5_snapshot_path = chapter5_snapshot_path or (root / CH5_EXTRACTION_SNAPSHOT)
     required = [
         source_manifest_path, ledger_path, semantics_path, capabilities_path,
         edges_path, candidates_path,
@@ -786,7 +814,7 @@ def run(
         if triplet_status == "passed":
             required.append(triplet_attestation_path)
     else:
-        required.extend([reconciliation_path, readiness_path])
+        required.extend([reconciliation_path, readiness_path, chapter5_snapshot_path])
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         reason = "partial Chapter closure: required refresh inputs are missing"
@@ -855,7 +883,15 @@ def run(
         effective_edges = edges
     else:
         report, closure_evidence_passed, closure_evidence_reason = chapter5_closure_evidence(
-            source_manifest, ledger, reconciliation, readiness
+            root,
+            source_manifest,
+            ledger,
+            reconciliation,
+            readiness,
+            source_manifest_path=source_manifest_path,
+            ledger_path=ledger_path,
+            semantics_path=semantics_path,
+            snapshot_path=chapter5_snapshot_path,
         )
         triplet_evidence_passed = True
         triplet_evidence_reason = "not_applicable_chapter5"
@@ -898,6 +934,7 @@ def run(
     if source == "chapter5":
         stable_input_hash = "sha256:" + _canonical_payload_sha({
             "source_revision": reconciliation.get("source_revision"),
+            "input_fingerprint": reconciliation.get("input_fingerprint"),
             "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
             "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
             "reconciliation_sha256": readiness.get("reconciliation_sha256"),
@@ -1077,6 +1114,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--reconciliation", default=DEFAULT_CH5_RECONCILIATION_PATH.as_posix())
     parser.add_argument("--readiness", default=DEFAULT_CH5_READINESS_PATH.as_posix())
+    parser.add_argument("--chapter5-snapshot", default=CH5_EXTRACTION_SNAPSHOT.as_posix())
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -1099,6 +1137,7 @@ def main(argv: list[str] | None = None) -> int:
             triplet_attestation_path=root / args.triplet_attestation,
             reconciliation_path=root / args.reconciliation,
             readiness_path=root / args.readiness,
+            chapter5_snapshot_path=root / args.chapter5_snapshot,
         )
     except ValueError as exc:
         print(json.dumps({
