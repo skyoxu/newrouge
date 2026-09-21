@@ -559,6 +559,69 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
 
 
 
+def _task_semantic_surface(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task_id": str(task.get("task_id") or ""),
+        "semantic_refs": list(task.get("semantic_refs") or []),
+        "capability_refs": list(task.get("capability_refs") or []),
+        "depends_on": list(task.get("depends_on") or []),
+        "acceptance": list(task.get("acceptance") or []),
+        "implementation_overlap_candidates": list(task.get("implementation_overlap_candidates") or []),
+        "overlay_refs": list(task.get("overlay_refs") or []),
+        "contract_refs": list(task.get("contract_refs") or []),
+    }
+
+
+def build_chapter5_input_fingerprint(
+    root: Path,
+    *,
+    task: dict[str, Any],
+    semantics_path: Path,
+    snapshot: dict[str, Any],
+    authority_scope: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        semantics_rel = semantics_path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        semantics_rel = str(semantics_path.resolve()).replace("\\", "/")
+    basis = {
+        "schema_version": "newrouge.chapter5-input-fingerprint.v1",
+        "source_revision": snapshot.get("source_revision"),
+        "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
+        "cache_key": snapshot.get("cache_key"),
+        "semantics_path": semantics_rel,
+        "semantic_requirements_sha256": (
+            "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None
+        ),
+        "task_semantic_surface": _task_semantic_surface(task),
+        "authority_scope": authority_scope,
+    }
+    return {
+        **basis,
+        "sha256": "sha256:" + _canonical_sha(basis),
+    }
+
+
+def current_chapter5_input_fingerprint(
+    root: Path,
+    *,
+    task_id: str,
+    semantics_path: Path,
+    snapshot: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    task_rows = _load_task_rows(root)
+    task = _task_bundle(task_rows, task_id)
+    authority_scope, authority_errors = build_task_authority_scope(root, task)
+    fingerprint = build_chapter5_input_fingerprint(
+        root,
+        task=task,
+        semantics_path=semantics_path,
+        snapshot=snapshot,
+        authority_scope=authority_scope,
+    )
+    return fingerprint, authority_errors
+
+
 def resolve_acceptance_authority_ref(
     root: Path,
     authority: str,
@@ -648,8 +711,16 @@ def reconcile(
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
     authority_scope, authority_errors = build_task_authority_scope(root, task)
+    input_fingerprint = build_chapter5_input_fingerprint(
+        root,
+        task=task,
+        semantics_path=semantics_path,
+        snapshot=snapshot,
+        authority_scope=authority_scope,
+    )
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
+    authority_decisions = _decision_by_id(decisions, "authority_decisions", "authority_ref")
 
     findings: list[dict[str, Any]] = []
     matched_requirements: set[str] = set()
@@ -692,9 +763,14 @@ def reconcile(
             for rid in candidates
         )
         score, best_rid = scored[-1]
-        status = str(override.get("status") or "").strip()
-        if status not in ALLOWED_MATCH_STATUS:
-            status = "equivalent" if score >= 0.25 else ("partial" if score >= 0.10 else "needs_human_decision")
+        requested_status = str(override.get("status") or "").strip()
+        rationale = str(override.get("rationale") or "").strip()
+        semantic_verdict_complete = (
+            requested_status in ALLOWED_MATCH_STATUS
+            and bool(rationale)
+            and bool(explicit_ids)
+        )
+        status = requested_status if semantic_verdict_complete else "needs_human_decision"
         chosen = sorted(set(explicit_ids or [best_rid]))
         matched_requirements.update(chosen)
         obligation_to_requirements[oid] = chosen
@@ -708,7 +784,8 @@ def reconcile(
             "similarity": round(score, 4),
             "priority": obligation.get("priority", "P2"),
             "action": str(override.get("action") or ("keep" if status == "equivalent" else "review")),
-            "rationale": str(override.get("rationale") or ""),
+            "rationale": rationale,
+            "semantic_verdict_explicit": semantic_verdict_complete,
         })
 
     for rid, requirement in sorted(requirements.items()):
@@ -749,6 +826,45 @@ def reconcile(
                 "chapter3_requirement_ids": [rid],
                 "action": "remove_or_reconcile_task_claim",
             })
+
+    authority_reconciliation: list[dict[str, Any]] = []
+    for authority_type, rows in (
+        ("contract", authority_scope.get("contracts", [])),
+        ("adr", authority_scope.get("adrs", [])),
+    ):
+        for authority in rows:
+            authority_ref = str(authority.get("ref") or "").strip()
+            decision = authority_decisions.get(authority_ref, {})
+            status = str(decision.get("status") or "").strip()
+            rationale = str(decision.get("rationale") or "").strip()
+            if status not in {"compatible", "conflict", "out_of_scope"} or not rationale:
+                status = "needs_human_decision"
+            authority_reconciliation.append({
+                "authority_type": authority_type,
+                "authority_ref": authority_ref,
+                "authority_sha256": authority.get("sha256"),
+                "status": status,
+                "rationale": rationale,
+            })
+            if status == "needs_human_decision":
+                findings.append({
+                    "finding_type": "authority",
+                    "status": "needs_human_decision",
+                    "priority": "P1",
+                    "authority_type": authority_type,
+                    "authority_ref": authority_ref,
+                    "action": "review_authority_compatibility",
+                })
+            elif status == "conflict":
+                findings.append({
+                    "finding_type": "authority",
+                    "status": "conflict_with_adr",
+                    "priority": "P1",
+                    "authority_type": authority_type,
+                    "authority_ref": authority_ref,
+                    "action": "route_to_chapter5_or_authority_owner",
+                    "rationale": rationale,
+                })
 
     acceptance_links = decisions.get("acceptance_links", [])
     if not isinstance(acceptance_links, list):
@@ -1032,6 +1148,9 @@ def reconcile(
         "source_scope": snapshot.get("source_scope", []),
         "authority_scope": authority_scope,
         "authority_scope_errors": authority_errors,
+        "authority_reconciliation": authority_reconciliation,
+        "semantics_path": input_fingerprint.get("semantics_path"),
+        "input_fingerprint": input_fingerprint,
         "findings": all_findings,
         "dependency_corrections": dependency_corrections,
         "final_dependencies": sorted(final_dependencies),
@@ -1057,6 +1176,8 @@ def reconcile(
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "cache_key": snapshot.get("cache_key"),
         "reconciliation_sha256": "sha256:" + _canonical_sha(reconciliation),
+        "input_fingerprint": input_fingerprint,
+        "input_fingerprint_sha256": input_fingerprint.get("sha256"),
         "readiness": readiness,
         "closure_allowed": closure_allowed,
         "allow_concerns": allow_concerns,
@@ -1119,6 +1240,74 @@ def reconciliation_path_for_task(root: Path, task_id: str) -> Path:
     return root / DEFAULT_RECONCILIATION_DIR / f"task-{_canonical_task_id(task_id)}.json"
 
 
+def verify_current_readiness_inputs(
+    root: Path,
+    reconciliation: dict[str, Any],
+    readiness: dict[str, Any],
+    *,
+    manifest_path: Path | None = None,
+    ledger_path: Path | None = None,
+    snapshot_path: Path | None = None,
+    semantics_path: Path | None = None,
+) -> tuple[bool, str]:
+    manifest_path = manifest_path or (root / DEFAULT_SOURCE_MANIFEST)
+    ledger_path = ledger_path or (root / DEFAULT_SOURCE_LEDGER)
+    snapshot_path = snapshot_path or (root / DEFAULT_EXTRACTION_SNAPSHOT)
+    semantics_raw = (
+        str(reconciliation.get("semantics_path") or "").strip()
+        or DEFAULT_CH3_SEMANTICS.as_posix()
+    )
+    if semantics_path is None:
+        candidate = Path(semantics_raw)
+        semantics_path = candidate if candidate.is_absolute() else (root / candidate)
+
+    if not manifest_path.is_file() or not ledger_path.is_file() or not snapshot_path.is_file():
+        return False, "chapter5_current_source_evidence_missing"
+    if not semantics_path.is_file():
+        return False, "chapter5_current_semantics_missing"
+    manifest = _load_json(manifest_path, {})
+    ledger = _load_json(ledger_path, {})
+    snapshot = _load_json(snapshot_path, {})
+    _scope, _texts, source_errors = source_scope(root, manifest, ledger)
+    if source_errors:
+        return False, "chapter5_current_source_scope_invalid"
+    current_cache_key = build_cache_key(
+        manifest_path,
+        ledger_path,
+        manifest,
+        parser_revision=PARSER_REVISION,
+        extractor_revision=EXTRACTOR_REVISION,
+    )
+    current_snapshot_id = "EXB-" + _canonical_sha(current_cache_key)[:20].upper()
+    if snapshot.get("schema_version") != SNAPSHOT_SCHEMA or snapshot.get("status") != "complete":
+        return False, "chapter5_current_extraction_b_invalid"
+    if snapshot.get("cache_key") != current_cache_key or snapshot.get("extraction_b_snapshot_id") != current_snapshot_id:
+        return False, "chapter5_current_extraction_b_stale"
+    if readiness.get("cache_key") != current_cache_key or reconciliation.get("cache_key") != current_cache_key:
+        return False, "chapter5_readiness_source_identity_stale"
+    if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
+        return False, "chapter5_readiness_source_revision_stale"
+
+    task_id = _canonical_task_id(readiness.get("task_id") or reconciliation.get("task_id"))
+    current_fingerprint, authority_errors = current_chapter5_input_fingerprint(
+        root,
+        task_id=task_id,
+        semantics_path=semantics_path,
+        snapshot=snapshot,
+    )
+    if authority_errors:
+        return False, "chapter5_current_authority_scope_invalid"
+    recorded = reconciliation.get("input_fingerprint")
+    readiness_recorded = readiness.get("input_fingerprint")
+    if not isinstance(recorded, dict) or not isinstance(readiness_recorded, dict):
+        return False, "chapter5_input_fingerprint_missing"
+    if recorded != current_fingerprint or readiness_recorded != current_fingerprint:
+        return False, "chapter5_input_fingerprint_stale"
+    if str(readiness.get("input_fingerprint_sha256") or "") != str(current_fingerprint.get("sha256") or ""):
+        return False, "chapter5_input_fingerprint_hash_mismatch"
+    return True, "current_inputs_verified"
+
+
 def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any], str]:
     path = readiness_path_for_task(root, task_id)
     payload = _load_json(path, {})
@@ -1145,33 +1334,13 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
     if payload.get("extraction_b_snapshot_id") != reconciliation.get("extraction_b_snapshot_id"):
         return False, payload, "chapter5_readiness_snapshot_mismatch"
 
-    manifest_path = root / DEFAULT_SOURCE_MANIFEST
-    ledger_path = root / DEFAULT_SOURCE_LEDGER
-    snapshot_path = root / DEFAULT_EXTRACTION_SNAPSHOT
-    if not manifest_path.is_file() or not ledger_path.is_file() or not snapshot_path.is_file():
-        return False, payload, "chapter5_current_source_evidence_missing"
-    manifest = _load_json(manifest_path, {})
-    ledger = _load_json(ledger_path, {})
-    snapshot = _load_json(snapshot_path, {})
-    _scope, _texts, source_errors = source_scope(root, manifest, ledger)
-    if source_errors:
-        return False, payload, "chapter5_current_source_scope_invalid"
-    current_cache_key = build_cache_key(
-        manifest_path,
-        ledger_path,
-        manifest,
-        parser_revision=PARSER_REVISION,
-        extractor_revision=EXTRACTOR_REVISION,
+    current_ok, current_reason = verify_current_readiness_inputs(
+        root,
+        reconciliation,
+        payload,
     )
-    current_snapshot_id = "EXB-" + _canonical_sha(current_cache_key)[:20].upper()
-    if snapshot.get("schema_version") != SNAPSHOT_SCHEMA or snapshot.get("status") != "complete":
-        return False, payload, "chapter5_current_extraction_b_invalid"
-    if snapshot.get("cache_key") != current_cache_key or snapshot.get("extraction_b_snapshot_id") != current_snapshot_id:
-        return False, payload, "chapter5_current_extraction_b_stale"
-    if payload.get("cache_key") != current_cache_key or reconciliation.get("cache_key") != current_cache_key:
-        return False, payload, "chapter5_readiness_source_identity_stale"
-    if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
-        return False, payload, "chapter5_readiness_source_revision_stale"
+    if not current_ok:
+        return False, payload, current_reason
     return True, payload, "ready"
 
 
@@ -1267,6 +1436,16 @@ def main(argv: list[str] | None = None) -> int:
             changed_task_views = apply_task_corrections(
                 root, task_id, reconciliation, readiness, decisions_payload
             )
+            if changed_task_views:
+                reconciliation, readiness = reconcile(
+                    root,
+                    task_id=task_id,
+                    snapshot_path=snapshot,
+                    semantics_path=semantics,
+                    decisions_path=decisions,
+                    out_path=out,
+                    readiness_path=readiness_out,
+                )
         print(json.dumps({
             "status": readiness["readiness"],
             "closure_allowed": readiness["closure_allowed"],
