@@ -206,7 +206,10 @@ def semantic_to_anchors(
         first = blocks.get(refs[0]) if refs else None
         source_path = str((first or {}).get("source_path") or "docs/gdd/unknown.md")
         line = int((first or {}).get("line_start") or 1)
-        caps = cap_by_req.get(rid, [])
+        caps = sorted(
+            cap_by_req.get(rid, []),
+            key=lambda row: str(row.get("capability_id") or ""),
+        )
         primary_cap = caps[0] if caps else None
         kind = str(requirement.get("kind") or "functional")
         anchors.append({
@@ -218,8 +221,22 @@ def semantic_to_anchors(
             "text": str(requirement.get("statement") or ""),
             "refs": [],
             "source_block_ids": refs,
+            "heading_path": [
+                str(value) for value in (first or {}).get("heading_path", [])
+                if str(value).strip()
+            ],
             "capability_id": str((primary_cap or {}).get("capability_id") or ""),
             "capability_title": str((primary_cap or {}).get("title") or ""),
+            "capability_ids": sorted({
+                str(row.get("capability_id"))
+                for row in caps
+                if str(row.get("capability_id") or "").strip()
+            }),
+            "capability_titles": sorted({
+                str(row.get("title"))
+                for row in caps
+                if str(row.get("title") or "").strip()
+            }),
             "layer_hint": str(requirement.get("layer_hint") or SEMANTIC_LAYER.get(kind, "core")),
             "owner_hint": str(requirement.get("owner_hint") or SEMANTIC_OWNER.get(kind, "gameplay")),
             "semantic": True,
@@ -257,6 +274,46 @@ def anchor_words(anchor: dict[str, Any]) -> set[str]:
 def source_stem(anchor: dict[str, Any]) -> str:
     source = str(anchor.get("source_path", "unknown")).replace("\\", "/")
     return source.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
+
+
+CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+
+
+def anchor_capability_ids(anchor: dict[str, Any]) -> list[str]:
+    values = anchor.get("capability_ids")
+    if isinstance(values, list):
+        result = sorted({
+            str(value).strip() for value in values if str(value).strip()
+        })
+        if result:
+            return result
+    legacy = str(anchor.get("capability_id") or "").strip()
+    return [legacy] if legacy else []
+
+
+def semantic_grouping_stem(anchor: dict[str, Any]) -> str:
+    capability_ids = anchor_capability_ids(anchor)
+    if capability_ids:
+        # Keep the current primary-capability grouping behavior deterministic.
+        return capability_ids[0]
+    heading_path = [
+        str(value).strip()
+        for value in anchor.get("heading_path", [])
+        if str(value).strip()
+    ]
+    if heading_path:
+        return f"{source_stem(anchor)}::{' > '.join(heading_path).casefold()}"
+    return source_stem(anchor)
+
+
+def compact_cjk_focus(text: str, limit: int = 28) -> str:
+    value = re.sub(r"^[\s#>*+\-\d.)、]+", "", str(text or "")).strip()
+    value = re.sub(r"\s+", " ", value)
+    if not value:
+        return ""
+    first_clause = re.split(r"[。！？；;!?\n]", value, maxsplit=1)[0].strip()
+    candidate = first_clause or value
+    return candidate if len(candidate) <= limit else candidate[:limit].rstrip() + "…"
 
 
 def source_focus(anchors: list[dict[str, Any]], topic: str, limit: int = 5) -> list[str]:
@@ -304,6 +361,24 @@ def choose_topic(anchor: dict[str, Any]) -> tuple[str, str, str]:
 
 
 def title_phrase(anchors: list[dict[str, Any]], topic: str) -> str:
+    headings = [
+        str(anchor.get("heading_path", [])[-1]).strip()
+        for anchor in anchors
+        if isinstance(anchor.get("heading_path"), list)
+        and anchor.get("heading_path")
+        and str(anchor.get("heading_path", [])[-1]).strip()
+    ]
+    if headings:
+        heading, _count = Counter(headings).most_common(1)[0]
+        return heading
+
+    for anchor in anchors:
+        text = str(anchor.get("text", ""))
+        if CJK_RE.search(text):
+            focus = compact_cjk_focus(text)
+            if focus:
+                return focus
+
     counts: Counter[str] = Counter()
     for anchor in anchors:
         text = str(anchor.get("text", ""))
@@ -469,6 +544,48 @@ def chunk_size_for_group(
     return max(1, min(max_anchors_per_intent, size, 7))
 
 
+def build_joint_capability_shadow(anchors: list[dict[str, Any]]) -> dict[str, Any]:
+    grouped: dict[tuple[str, str, str, tuple[str, ...]], list[dict[str, Any]]] = defaultdict(list)
+    for anchor in anchors:
+        capability_ids = anchor_capability_ids(anchor)
+        if len(capability_ids) < 2:
+            continue
+        _topic, layer, owner = choose_topic(anchor)
+        key = (
+            str(anchor.get("kind", "requirement")),
+            layer,
+            owner,
+            tuple(capability_ids),
+        )
+        grouped[key].append(anchor)
+
+    candidates = []
+    for (kind, layer, owner, capability_ids), rows in sorted(grouped.items(), key=lambda item: item[0]):
+        requirement_ids = sorted({
+            str(row.get("requirement_id"))
+            for row in rows
+            if str(row.get("requirement_id") or "").strip()
+        })
+        if len(requirement_ids) < 2:
+            continue
+        candidates.append({
+            "kind": kind,
+            "layer": layer,
+            "owner": owner,
+            "capability_refs": list(capability_ids),
+            "requirement_ids": requirement_ids,
+            "requirement_count": len(requirement_ids),
+            "suggested_action": "consider_joint_slice",
+            "advisory_only": True,
+        })
+    return {
+        "mode": "advisory",
+        "affects_default_grouping": False,
+        "candidate_group_count": len(candidates),
+        "candidates": candidates,
+    }
+
+
 def build_intents(
     index: dict[str, Any],
     mode: str,
@@ -479,7 +596,7 @@ def build_intents(
     grouped: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for anchor in index.get("anchors", []):
         topic, layer, owner = choose_topic(anchor)
-        grouping_stem = str(anchor.get("capability_id") or "") or source_stem(anchor)
+        grouping_stem = semantic_grouping_stem(anchor)
         key = (str(anchor.get("kind", "requirement")), layer, owner, topic, grouping_stem)
         grouped[key].append(anchor)
 
@@ -533,9 +650,11 @@ def build_intents(
                     "source_refs": source_refs,
                     "requirement_ids": requirement_ids,
                     "semantic_refs": requirement_ids,
-                    "capability_refs": sorted(set(
-                        str(a.get("capability_id")) for a in group if a.get("capability_id")
-                    )),
+                    "capability_refs": sorted({
+                        capability_id
+                        for anchor in group
+                        for capability_id in anchor_capability_ids(anchor)
+                    }),
                     "complexity_score": max(1, len(group)),
                     "complexity_split_applied": len(anchors) > len(group),
                     "covered_anchor_count": len(group),
@@ -555,6 +674,7 @@ def build_intents(
         "max_anchors_per_intent": max_anchors_per_intent,
         "split_profile": split_profile,
         "source_anchor_count": len(index.get("anchors", [])),
+        "joint_capability_shadow": build_joint_capability_shadow(index.get("anchors", [])),
         "intents": intents,
     }
 
