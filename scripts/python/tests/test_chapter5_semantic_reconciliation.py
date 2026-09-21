@@ -622,6 +622,35 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 json.loads(stabilized.read_text(encoding="utf-8"))["chapter_run"]["stable_input_hash"],
             )
 
+            task_path = root / ".taskmaster/tasks/tasks_gameplay.json"
+            task_payload = json.loads(task_path.read_text(encoding="utf-8"))
+            task_payload[0]["acceptance"] = [
+                "Route may be changed after selection. Refs: Game.Core.Tests/RouteTests.cs"
+            ]
+            write_json(task_path, task_payload)
+            stale = refresh_mod.run(
+                root,
+                source="chapter5",
+                trigger_run_id="ch5-test-stale-input",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="unknown",
+                source_manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                semantics_path=semantics_path,
+                capabilities_path=capabilities,
+                edges_path=edges,
+                candidates_path=candidates,
+                report_path=root / "unused.json",
+                reconciliation_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            self.assertFalse(stale["closure_passed"])
+            self.assertEqual("attempt_refreshed", stale["local_refresh_status"])
+            self.assertIn("input_fingerprint", stale["closure_evidence_reason"])
+            self.assertEqual(first_bytes, stabilized.read_bytes())
+
 
     def test_reconciliation_blocks_when_chapter4_authority_is_stale(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
