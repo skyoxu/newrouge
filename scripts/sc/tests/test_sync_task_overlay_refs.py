@@ -126,6 +126,39 @@ class SyncTaskOverlayRefsTests(unittest.TestCase):
                     allowed_contract_refs={"core.valid.event"},
                 )
 
+    def test_stale_contract_ref_blocks_even_without_semantic_refs(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            view = root / "tasks_gameplay.json"
+            view.write_text(
+                json.dumps([{
+                    "taskmaster_id": 9,
+                    "semantic_refs": [],
+                    "contractRefs": ["core.missing.event"],
+                }], ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            paths = sync_overlay_refs.OverlayPaths(
+                prd_id="PRD-X",
+                base="docs/architecture/overlays/PRD-X/08",
+                manifest=None,
+                index="docs/architecture/overlays/PRD-X/08/_index.md",
+                feature=None,
+                contracts=None,
+                testing=None,
+                observability=None,
+                acceptance="docs/architecture/overlays/PRD-X/08/ACCEPTANCE_CHECKLIST.md",
+            )
+            with self.assertRaisesRegex(ValueError, "stale contract refs"):
+                sync_overlay_refs.sync_view(
+                    view,
+                    paths,
+                    skip_done=False,
+                    master_done_task_ids=set(),
+                    active_requirement_ids=set(),
+                    allowed_contract_refs={"core.valid.event"},
+                )
+
     def test_chapter4_gap_report_is_machine_readable_and_blocks_missing_backlinks(self) -> None:
         report = sync_overlay_refs.build_chapter4_gap_report(
             [{
