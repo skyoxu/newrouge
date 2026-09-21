@@ -560,6 +560,76 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
 
 
 
+def augment_authority_scope_from_acceptance_links(
+    root: Path,
+    authority_scope: dict[str, Any],
+    decisions: dict[str, Any],
+) -> dict[str, Any]:
+    scope = {
+        "overlays": list(authority_scope.get("overlays", [])),
+        "contracts": list(authority_scope.get("contracts", [])),
+        "adrs": list(authority_scope.get("adrs", [])),
+    }
+    existing = {
+        str(item.get("ref") or "")
+        for kind in ("contracts", "adrs")
+        for item in scope.get(kind, [])
+        if isinstance(item, dict)
+    }
+    refs: set[str] = set()
+    for row in decisions.get("acceptance_links", []) if isinstance(decisions.get("acceptance_links"), list) else []:
+        if isinstance(row, dict):
+            refs.update(str(value).strip().replace("\\", "/") for value in row.get("authority_refs", []) if str(value).strip())
+
+    contract_files = sorted((root / "Game.Core/Contracts").rglob("*.cs"))
+    for value in sorted(refs - existing):
+        if re.fullmatch(r"ADR-\d{3,5}", value, re.IGNORECASE):
+            matches = sorted((root / "docs/adr").glob(value.upper() + "*.md"))
+            if matches:
+                path = matches[0]
+                text = path.read_text(encoding="utf-8")
+                scope["adrs"].append({
+                    "ref": value.upper(),
+                    "path": path.relative_to(root).as_posix(),
+                    "sha256": "sha256:" + _sha_text(text),
+                })
+            continue
+        direct = root / value
+        if value.startswith("docs/adr/") and direct.is_file():
+            text = direct.read_text(encoding="utf-8")
+            scope["adrs"].append({
+                "ref": value,
+                "path": value,
+                "sha256": "sha256:" + _sha_text(text),
+            })
+            continue
+        if value.startswith("Game.Core/Contracts/") and direct.is_file():
+            text = direct.read_text(encoding="utf-8")
+            scope["contracts"].append({
+                "ref": value,
+                "path": value,
+                "line": None,
+                "sha256": "sha256:" + _sha_text(text),
+            })
+            continue
+        for path in contract_files:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            if value in text:
+                scope["contracts"].append({
+                    "ref": value,
+                    "path": path.relative_to(root).as_posix(),
+                    "line": _line_for_token(text, value),
+                    "sha256": "sha256:" + _sha_text(text),
+                })
+                break
+    scope["contracts"] = sorted(scope["contracts"], key=lambda row: (str(row.get("ref") or ""), str(row.get("path") or "")))
+    scope["adrs"] = sorted(scope["adrs"], key=lambda row: (str(row.get("ref") or ""), str(row.get("path") or "")))
+    return scope
+
+
 def resolve_acceptance_authority_ref(
     root: Path,
     authority: str,
@@ -751,6 +821,7 @@ def reconcile(
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
     authority_scope, authority_errors = build_task_authority_scope(root, task)
+    authority_scope = augment_authority_scope_from_acceptance_links(root, authority_scope, decisions)
     authority_reconciliation, authority_findings = _authority_decisions(decisions, authority_scope)
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
