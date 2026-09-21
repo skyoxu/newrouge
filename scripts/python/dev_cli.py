@@ -303,6 +303,7 @@ def cmd_run_local_hard_checks(args: argparse.Namespace) -> int:
         out_dir=args.out_dir,
         run_id=args.run_id,
         timeout_sec=args.timeout_sec,
+        skip_project_health=bool(args.skip_project_health),
         run_fn=run,
     )
 
@@ -585,6 +586,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_lh.add_argument("--out-dir", default="")
     p_lh.add_argument("--run-id", default="")
     p_lh.add_argument("--timeout-sec", type=int, default=5)
+    p_lh.add_argument(
+        "--skip-project-health",
+        action="store_true",
+        help="skip the repo-health prelude; required when local hard checks run as a Chapter 6 side effect",
+    )
     p_lh.set_defaults(func=cmd_run_local_hard_checks)
 
     # run-local-hard-checks-preflight
