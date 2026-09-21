@@ -558,6 +558,35 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
     }, sorted(set(errors))
 
 
+
+def resolve_acceptance_authority_ref(
+    root: Path,
+    authority: str,
+    authority_scope: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    value = str(authority or "").strip().replace("\\", "/")
+    if not value:
+        return None, None
+    for item in authority_scope.get("contracts", []):
+        if value in {str(item.get("ref") or ""), str(item.get("path") or "")}:
+            return "contract", str(item.get("ref") or value)
+    for item in authority_scope.get("adrs", []):
+        if value in {str(item.get("ref") or ""), str(item.get("path") or "")}:
+            return "adr", str(item.get("ref") or value)
+
+    direct = root / value
+    if direct.is_file() and value.startswith("docs/adr/"):
+        return "adr", value
+    if direct.is_file() and value.startswith("Game.Core/Contracts/"):
+        return "contract", value
+
+    if re.fullmatch(r"ADR-\d{3,5}", value, re.IGNORECASE):
+        matches = sorted((root / "docs/adr").glob(value.upper() + "*.md"))
+        if matches:
+            return "adr", value.upper()
+    return None, None
+
+
 def _all_task_sinks(rows: list[dict[str, Any]]) -> dict[str, set[str]]:
     sinks: dict[str, set[str]] = {}
     for item in rows:
@@ -798,10 +827,23 @@ def reconcile(
                 "relation": "accepted_by",
             })
         for authority in authority_refs:
-            authority_type = "contract" if "contract" in authority.casefold() else "adr"
+            authority_type, authority_id = resolve_acceptance_authority_ref(
+                root, authority, authority_scope
+            )
+            if authority_type is None or authority_id is None:
+                acceptance_findings.append({
+                    "finding_type": "acceptance",
+                    "status": "untraceable_acceptance",
+                    "task_id": task_id,
+                    "acceptance_index": index,
+                    "acceptance": text,
+                    "authority_ref": authority,
+                    "reason": "authority_ref_missing_or_unbound",
+                })
+                continue
             topology_edges.append({
                 "source_type": "acceptance", "source_id": acc_id,
-                "target_type": authority_type, "target_id": authority,
+                "target_type": authority_type, "target_id": authority_id,
                 "relation": "authorized_by",
             })
 
