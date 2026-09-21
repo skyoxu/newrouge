@@ -728,6 +728,8 @@ def reconcile(
     decisions_path: Path | None,
     out_path: Path,
     readiness_path: Path,
+    manifest_path: Path | None = None,
+    ledger_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     snapshot = _load_json(snapshot_path, {})
     semantics = _load_json(semantics_path, {})
@@ -1125,8 +1127,8 @@ def reconcile(
 
     input_fingerprint = build_chapter5_input_fingerprint(
         root,
-        manifest_path=root / DEFAULT_SOURCE_MANIFEST,
-        ledger_path=root / DEFAULT_SOURCE_LEDGER,
+        manifest_path=manifest_path or (root / DEFAULT_SOURCE_MANIFEST),
+        ledger_path=ledger_path or (root / DEFAULT_SOURCE_LEDGER),
         snapshot=snapshot,
         semantics_path=semantics_path,
         task=task,
@@ -1421,6 +1423,8 @@ def main(argv: list[str] | None = None) -> int:
             decisions_path=decisions,
             out_path=out,
             readiness_path=readiness_out,
+            manifest_path=manifest,
+            ledger_path=ledger,
         )
         changed_task_views: list[str] = []
         if args.apply_task_corrections:
@@ -1439,6 +1443,8 @@ def main(argv: list[str] | None = None) -> int:
                     decisions_path=decisions,
                     out_path=out,
                     readiness_path=readiness_out,
+                    manifest_path=manifest,
+                    ledger_path=ledger,
                 )
         print(json.dumps({
             "status": readiness["readiness"],
