@@ -169,7 +169,7 @@ py -3 scripts/python/dev_cli.py generate-knowledge-links --task-id 18
 正式 Chapter 6 捕获阶段使用：
 
 ```powershell
-py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18 --write-task-refs
+py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id 18
 ```
 
 该阶段依次刷新项目扫描、生成任务资源关联并校验 catalog。失败状态为 `knowledge_capture_failed`，可从该阶段恢复，不会伪装成任务运行时测试失败或通过。
