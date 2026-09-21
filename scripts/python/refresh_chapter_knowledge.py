@@ -653,6 +653,49 @@ def partial_attempt(
     return payload
 
 
+def record_run_failure_attempt(
+    root: Path,
+    *,
+    source: str,
+    trigger_run_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Record a failed producer run without evaluating or promoting stale closure artifacts."""
+    if source not in REGISTERED_SOURCES:
+        raise ValueError(f"unregistered closure producer: {source}")
+    attempt = partial_attempt(source, trigger_run_id, reason, [])
+    attempt.setdefault("chapter_run", {})["lifecycle_status"] = "failed"
+    attempt["chapter_run"]["knowledge_refresh_status"] = "attempt_failed"
+    try:
+        write_json(root / ATTEMPT_PATH, attempt)
+        write_json(root / LEGACY_ATTEMPT_PATH, attempt)
+    except OSError as exc:
+        return _refresh_failure_summary(
+            root,
+            source=source,
+            trigger_run_id=trigger_run_id,
+            topology_revision=attempt.get("identity", {}).get("revision"),
+            semantic_triplet_closure_passed=False,
+            family="attempt_refresh_failed",
+            reason=str(exc),
+            attempt_written=False,
+        )
+    return {
+        "schema_version": "chapter-knowledge-refresh-summary.v1",
+        "source": source,
+        "trigger_run_id": trigger_run_id,
+        "topology_revision": attempt.get("identity", {}).get("revision"),
+        "closure_passed": False,
+        "chapter_closure_status": "concern",
+        "local_refresh_status": "attempt_refreshed",
+        "local_refresh_failure_family": None,
+        "publication_status": "deferred",
+        "publication_reason": "producer_run_failed",
+        "attempt_path": ATTEMPT_PATH.as_posix(),
+        "stable_path": None,
+    }
+
+
 def begin_run_attempt(
     root: Path,
     *,
