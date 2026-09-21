@@ -481,6 +481,83 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
     }
 
 
+
+def _line_for_token(text: str, token: str) -> int | None:
+    for index, line in enumerate(text.splitlines(), 1):
+        if token in line:
+            return index
+    return None
+
+
+def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Bind Chapter 5 task reconciliation to real Chapter 4/ADR/Contract authority bytes."""
+    errors: list[str] = []
+    overlays: list[dict[str, Any]] = []
+    contracts: list[dict[str, Any]] = []
+    adrs: dict[str, dict[str, Any]] = {}
+
+    for value in task.get("overlay_refs", []):
+        rel = str(value or "").replace("\\", "/").strip()
+        if not rel:
+            continue
+        path = root / rel
+        if not path.is_file():
+            errors.append(f"overlay_missing:{rel}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        overlays.append({
+            "ref": rel,
+            "sha256": "sha256:" + _sha_text(text),
+        })
+        for token in sorted(set(re.findall(r"\bADR-\d{3,5}\b", text, re.IGNORECASE))):
+            canonical = token.upper()
+            matches = sorted((root / "docs/adr").glob(canonical + "*.md"))
+            if not matches:
+                errors.append(f"adr_missing:{canonical}")
+                continue
+            adr_path = matches[0]
+            adr_text = adr_path.read_text(encoding="utf-8")
+            rel_adr = adr_path.relative_to(root).as_posix()
+            adrs[canonical] = {
+                "ref": canonical,
+                "path": rel_adr,
+                "sha256": "sha256:" + _sha_text(adr_text),
+            }
+
+    contract_files = sorted((root / "Game.Core/Contracts").rglob("*.cs"))
+    contract_texts: list[tuple[Path, str]] = []
+    for path in contract_files:
+        try:
+            contract_texts.append((path, path.read_text(encoding="utf-8")))
+        except UnicodeDecodeError:
+            continue
+    for contract_ref in task.get("contract_refs", []):
+        token = str(contract_ref or "").strip()
+        if not token:
+            continue
+        found = None
+        for path, text in contract_texts:
+            if token in text:
+                found = (path, text)
+                break
+        if found is None:
+            errors.append(f"contract_missing:{token}")
+            continue
+        path, text = found
+        contracts.append({
+            "ref": token,
+            "path": path.relative_to(root).as_posix(),
+            "line": _line_for_token(text, token),
+            "sha256": "sha256:" + _sha_text(text),
+        })
+
+    return {
+        "overlays": overlays,
+        "contracts": contracts,
+        "adrs": [adrs[key] for key in sorted(adrs)],
+    }, sorted(set(errors))
+
+
 def _all_task_sinks(rows: list[dict[str, Any]]) -> dict[str, set[str]]:
     sinks: dict[str, set[str]] = {}
     for item in rows:
@@ -541,6 +618,7 @@ def reconcile(
 
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, task_id)
+    authority_scope, authority_errors = build_task_authority_scope(root, task)
     task_sinks = _all_task_sinks(task_rows)
     match_decisions = _decision_by_id(decisions, "match_decisions", "obligation_id")
 
@@ -890,6 +968,11 @@ def reconcile(
             concerns.append({"finding_type": "overlap", **row})
     if source_errors:
         blocking.extend({"finding_type": "source_scope", "status": value} for value in source_errors)
+    if authority_errors:
+        blocking.extend(
+            {"finding_type": "authority_scope", "status": value}
+            for value in authority_errors
+        )
 
     allow_concerns = bool(decisions.get("allow_concerns", False))
     readiness = "BLOCKED" if blocking else ("CONCERNS" if concerns else "READY")
@@ -905,6 +988,8 @@ def reconcile(
         "chapter3_topology_sha256": "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None,
         "global_audit_completed": snapshot.get("status") == "complete",
         "source_scope": snapshot.get("source_scope", []),
+        "authority_scope": authority_scope,
+        "authority_scope_errors": authority_errors,
         "findings": all_findings,
         "dependency_corrections": dependency_corrections,
         "final_dependencies": sorted(final_dependencies),
