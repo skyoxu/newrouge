@@ -489,6 +489,51 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn("contract_missing:core.route.selected", reconciliation["authority_scope_errors"])
             self.assertEqual("BLOCKED", gate["readiness"])
 
+    def test_chapter6_readiness_becomes_stale_when_source_bytes_change(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, {
+                "acceptance_links": [{
+                    "acceptance_index": 1,
+                    "requirement_ids": ["INV-U1"],
+                    "test_refs": ["Game.Core.Tests/RouteTests.cs"],
+                }],
+            })
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            (root / "docs/gdd/a.md").write_text(
+                "# Rules\n\nU1 route choice can be reversed after confirmation.\n",
+                encoding="utf-8",
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_current_source_scope_invalid", reason)
+
+            rc, route = chapter6_route.route_chapter6(repo_root=root, task_id="1")
+            self.assertEqual(3, rc)
+            self.assertEqual("chapter5_readiness", route["blocked_by"])
+            self.assertEqual("chapter5_current_source_scope_invalid", route["latest_reason"])
+
     def test_chapter6_route_blocks_when_readiness_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             rc, payload = chapter6_route.route_chapter6(
