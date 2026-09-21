@@ -744,7 +744,7 @@ def _authority_decisions(
         if isinstance(row, dict) and str(row.get("authority_ref") or "").strip()
     }
     reviews: list[dict[str, Any]] = []
-    findings: list[dict[str, Any]] = list(authority_findings)
+    findings: list[dict[str, Any]] = []
     required = []
     for kind in ("contracts", "adrs"):
         for item in authority_scope.get(kind, []):
