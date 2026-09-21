@@ -126,6 +126,41 @@ class SyncTaskOverlayRefsTests(unittest.TestCase):
                     allowed_contract_refs={"core.valid.event"},
                 )
 
+    def test_nonexistent_overlay_ref_fails_fast_before_sync(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            view = root / "tasks_back.json"
+            view.write_text(
+                json.dumps([{
+                    "taskmaster_id": 10,
+                    "overlay_refs": ["docs/architecture/overlays/OLD/08/missing.md"],
+                    "semantic_refs": [],
+                    "contractRefs": [],
+                }], ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            paths = sync_overlay_refs.OverlayPaths(
+                prd_id="PRD-X",
+                base="docs/architecture/overlays/PRD-X/08",
+                manifest=None,
+                index="docs/architecture/overlays/PRD-X/08/_index.md",
+                feature=None,
+                contracts=None,
+                testing=None,
+                observability=None,
+                acceptance="docs/architecture/overlays/PRD-X/08/ACCEPTANCE_CHECKLIST.md",
+            )
+            with self.assertRaisesRegex(ValueError, "stale overlay refs"):
+                sync_overlay_refs.sync_view(
+                    view,
+                    paths,
+                    skip_done=False,
+                    master_done_task_ids=set(),
+                    active_requirement_ids=set(),
+                    allowed_contract_refs=set(),
+                    repo_root=root,
+                )
+
     def test_stale_contract_ref_blocks_even_without_semantic_refs(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
