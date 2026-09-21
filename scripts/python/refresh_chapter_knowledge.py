@@ -870,6 +870,7 @@ def run(
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
+    chapter5_stable_snapshot = _snapshot_file(root / CHAPTER5_STABLE_PATH)
     if refresh_local:
         try:
             write_json(root / ATTEMPT_PATH, attempt)
@@ -901,6 +902,12 @@ def run(
                 if source == "chapter5":
                     write_json(root / CHAPTER5_STABLE_PATH, stable)
             except OSError as exc:
+                try:
+                    _restore_file(root / STABLE_PATH, stable_snapshot)
+                    if source == "chapter5":
+                        _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
+                except OSError:
+                    pass
                 _mark_attempt_refresh_failure(
                     root, attempt, "stable_refresh_failed", str(exc)
                 )
@@ -935,6 +942,8 @@ def run(
             except (OSError, ValueError) as exc:
                 try:
                     _restore_file(root / STABLE_PATH, stable_snapshot)
+                    if source == "chapter5":
+                        _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
                 except OSError:
                     pass
                 _mark_attempt_refresh_failure(
@@ -979,6 +988,11 @@ def run(
         "current_generation_id": current_generation(root),
         "attempt_path": ATTEMPT_PATH.as_posix() if refresh_local else None,
         "stable_path": STABLE_PATH.as_posix() if refresh_local and closure_passed else None,
+        "stabilized_path": (
+            CHAPTER5_STABLE_PATH.as_posix()
+            if source == "chapter5" and refresh_local and closure_passed
+            else None
+        ),
     }
     return summary
 
