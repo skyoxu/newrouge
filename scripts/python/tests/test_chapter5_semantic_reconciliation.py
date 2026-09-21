@@ -236,6 +236,96 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertIn(gate["readiness"], {"READY", "CONCERNS"})
             self.assertTrue(gate["closure_allowed"])
 
+    def test_lexically_similar_opposite_semantics_require_explicit_verdict(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="Route choice must be reversible after selection."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            payload = self._base_decisions(root)
+            payload.pop("match_decisions", None)
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            semantic = next(
+                row for row in reconciliation["findings"]
+                if row.get("finding_type") == "source_semantic"
+                and row.get("chapter5_obligation")
+            )
+            self.assertGreater(semantic["similarity"], 0.25)
+            self.assertEqual("needs_human_decision", semantic["status"])
+            self.assertFalse(semantic["semantic_verdict_explicit"])
+            self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_authority_compatibility_requires_explicit_review_and_conflict_blocks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            payload = self._base_decisions(root)
+            payload.pop("authority_decisions", None)
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(any(
+                row.get("finding_type") == "authority"
+                and row.get("status") == "needs_human_decision"
+                for row in reconciliation["findings"]
+            ))
+            self.assertEqual("BLOCKED", gate["readiness"])
+
+            payload = self._base_decisions(root)
+            payload["authority_decisions"][0] = {
+                "authority_ref": "core.route.selected",
+                "status": "conflict",
+                "rationale": "Contract permits a transition forbidden by the stabilized requirement.",
+            }
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(any(
+                row.get("status") == "conflict_with_adr"
+                and row.get("authority_ref") == "core.route.selected"
+                for row in reconciliation["findings"]
+            ))
+            self.assertEqual("BLOCKED", gate["readiness"])
+
     def test_invented_chapter3_behavior_and_acceptance_scope_creep_block_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -384,7 +474,6 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                         "dependency_reason": "Consumes route-selection contract.",
                         "dependency_evidence": ["core.route.selected"],
                     },
-                ],
             ]
             payload["overlap_decisions"] = [{
                 "other_task_id": 3,
@@ -531,6 +620,134 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             )
             self.assertIn("contract_missing:core.route.selected", reconciliation["authority_scope_errors"])
             self.assertEqual("BLOCKED", gate["readiness"])
+
+    def test_readiness_fingerprint_invalidates_semantics_task_and_authority_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, self._base_decisions(root))
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            semantics = json.loads(semantics_path.read_text(encoding="utf-8"))
+            semantics["requirements"][0]["statement"] = "U1 route choice is reversible."
+            write_json(semantics_path, semantics)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
+
+            self._write_semantics(root, ledger, include=True)
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            tasks = json.loads((root / ".taskmaster/tasks/tasks_gameplay.json").read_text(encoding="utf-8"))
+            tasks[0]["acceptance"] = ["Changed acceptance. Refs: Game.Core.Tests/RouteTests.cs"]
+            write_json(root / ".taskmaster/tasks/tasks_gameplay.json", tasks)
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
+
+            tasks[0]["acceptance"] = ["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"]
+            write_json(root / ".taskmaster/tasks/tasks_gameplay.json", tasks)
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            contract = root / "Game.Core/Contracts/RouteEvents.cs"
+            contract.write_text(
+                contract.read_text(encoding="utf-8") + "// semantic drift\n",
+                encoding="utf-8",
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual("chapter5_input_fingerprint_stale", reason)
+
+    def test_knowledge_refresh_refuses_stale_chapter5_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, self._base_decisions(root))
+            reconciliation_path = ch5.reconciliation_path_for_task(root, "1")
+            readiness_path = ch5.readiness_path_for_task(root, "1")
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            capabilities = root / "logs/ci/task-generation/capabilities.v1.json"
+            edges = root / "logs/ci/task-generation/topology-edges.v1.json"
+            candidates = root / "logs/ci/task-generation/task-candidates.enriched.json"
+            write_json(capabilities, {"schema_version": "newrouge.capabilities.v1", "capabilities": []})
+            write_json(edges, {"schema_version": "newrouge.topology-edges.v1", "edges": []})
+            write_json(candidates, {"candidates": [{"id": "1", "semantic_refs": ["INV-U1"]}]})
+
+            tasks = json.loads((root / ".taskmaster/tasks/tasks_gameplay.json").read_text(encoding="utf-8"))
+            tasks[0]["semantic_refs"] = []
+            write_json(root / ".taskmaster/tasks/tasks_gameplay.json", tasks)
+            summary = refresh_mod.run(
+                root,
+                source="chapter5",
+                trigger_run_id="ch5-stale",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="unknown",
+                source_manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                semantics_path=semantics_path,
+                capabilities_path=capabilities,
+                edges_path=edges,
+                candidates_path=candidates,
+                report_path=root / "unused.json",
+                reconciliation_path=reconciliation_path,
+                readiness_path=readiness_path,
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("attempt_refreshed", summary["local_refresh_status"])
+            self.assertIn("chapter5_input_fingerprint_stale", summary["closure_evidence_reason"])
+            self.assertFalse((root / refresh_mod.CHAPTER5_STABLE_PATH).exists())
 
     def test_chapter6_readiness_becomes_stale_when_source_bytes_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
