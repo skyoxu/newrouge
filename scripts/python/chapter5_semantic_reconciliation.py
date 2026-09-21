@@ -735,10 +735,10 @@ def reconcile(
     snapshot_path: Path,
     semantics_path: Path,
     decisions_path: Path | None,
-    manifest_path: Path | None = None,
-    ledger_path: Path | None = None,
     out_path: Path,
     readiness_path: Path,
+    manifest_path: Path | None = None,
+    ledger_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     snapshot = _load_json(snapshot_path, {})
     semantics = _load_json(semantics_path, {})
@@ -1325,6 +1325,8 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         return False, payload, "chapter5_readiness_reconciliation_stale"
     if payload.get("extraction_b_snapshot_id") != reconciliation.get("extraction_b_snapshot_id"):
         return False, payload, "chapter5_readiness_snapshot_mismatch"
+    if payload.get("input_fingerprint") != reconciliation.get("input_fingerprint"):
+        return False, payload, "chapter5_readiness_input_fingerprint_mismatch"
 
     manifest_path = root / DEFAULT_SOURCE_MANIFEST
     ledger_path = root / DEFAULT_SOURCE_LEDGER
@@ -1353,6 +1355,21 @@ def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any],
         return False, payload, "chapter5_readiness_source_identity_stale"
     if str(reconciliation.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         return False, payload, "chapter5_readiness_source_revision_stale"
+
+    current_fingerprint, _components, fingerprint_errors = build_chapter5_input_fingerprint(
+        root,
+        task_id,
+        manifest_path=manifest_path,
+        ledger_path=ledger_path,
+        snapshot_path=snapshot_path,
+        semantics_path=root / DEFAULT_CH3_SEMANTICS,
+    )
+    if fingerprint_errors:
+        return False, payload, "chapter5_current_input_invalid:" + fingerprint_errors[0]
+    if payload.get("input_fingerprint") != current_fingerprint:
+        return False, payload, "chapter5_input_fingerprint_stale"
+    if reconciliation.get("input_fingerprint") != current_fingerprint:
+        return False, payload, "chapter5_reconciliation_input_fingerprint_stale"
     return True, payload, "ready"
 
 
@@ -1380,6 +1397,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prepare = sub.add_parser("prepare", help="prepare independent Extraction B from the complete authoritative source scope")
     add_source_args(prepare)
+    prepare.add_argument("--trigger-run-id", required=True, help="Chapter 5 run identity; prepare records Last Attempt before any extraction work")
 
     compile_cmd = sub.add_parser("compile", help="validate a reviewed Extraction B candidate and write the revision-bound snapshot")
     add_source_args(compile_cmd)
@@ -1405,6 +1423,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in {"prepare", "compile", "reconcile"}:
         manifest, ledger, candidate, snapshot, semantics = _paths(root, args)
     if args.command == "prepare":
+        _begin_chapter5_attempt(root, args.trigger_run_id)
         result = prepare_extraction_b(
             root,
             manifest_path=manifest,
@@ -1441,6 +1460,8 @@ def main(argv: list[str] | None = None) -> int:
             decisions_path=decisions,
             out_path=out,
             readiness_path=readiness_out,
+            manifest_path=manifest,
+            ledger_path=ledger,
         )
         changed_task_views: list[str] = []
         if args.apply_task_corrections:
@@ -1448,6 +1469,18 @@ def main(argv: list[str] | None = None) -> int:
             changed_task_views = apply_task_corrections(
                 root, task_id, reconciliation, readiness, decisions_payload
             )
+            if changed_task_views:
+                reconciliation, readiness = reconcile(
+                    root,
+                    task_id=task_id,
+                    snapshot_path=snapshot,
+                    semantics_path=semantics,
+                    decisions_path=decisions,
+                    out_path=out,
+                    readiness_path=readiness_out,
+                    manifest_path=manifest,
+                    ledger_path=ledger,
+                )
         print(json.dumps({
             "status": readiness["readiness"],
             "closure_allowed": readiness["closure_allowed"],
