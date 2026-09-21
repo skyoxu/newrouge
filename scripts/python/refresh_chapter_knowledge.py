@@ -893,6 +893,17 @@ def run(
         attempt["status"] = "concern"
         attempt["fresh"] = False
         attempt["chapter_run"]["closure_passed"] = False
+    stable_input_hash = None
+    if source == "chapter5":
+        stable_input_hash = "sha256:" + _canonical_payload_sha({
+            "source_revision": reconciliation.get("source_revision"),
+            "extraction_b_snapshot_id": reconciliation.get("extraction_b_snapshot_id"),
+            "chapter3_topology_sha256": reconciliation.get("chapter3_topology_sha256"),
+            "reconciliation_sha256": readiness.get("reconciliation_sha256"),
+            "readiness": readiness.get("readiness"),
+            "closure_allowed": readiness.get("closure_allowed"),
+        })
+        attempt.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
     local_status = "skipped"
     attempt_written = False
     stable_snapshot = _snapshot_file(root / STABLE_PATH)
@@ -915,43 +926,62 @@ def run(
             )
         local_status = "attempt_refreshed"
         if semantic_triplet_closure_passed:
-            stable = build_workspace_view(
-                source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
-                effective_edges, candidates, report, triplet_status, "latest_successful",
-                closure_passed_override=True,
-                task_details_override=task_details_override,
-                reconciliation=reconciliation if source == "chapter5" else None,
-                readiness=readiness if source == "chapter5" else None,
+            previous_chapter5_stable = (
+                load_json(root / CHAPTER5_STABLE_PATH, {})
+                if source == "chapter5"
+                else {}
             )
-            try:
-                write_json(root / STABLE_PATH, stable)
-                if source == "chapter5":
-                    write_json(root / CHAPTER5_STABLE_PATH, stable)
-            except OSError as exc:
+            previous_stable_input_hash = (
+                ((previous_chapter5_stable.get("chapter_run") or {}).get("stable_input_hash"))
+                if isinstance(previous_chapter5_stable, dict)
+                else None
+            )
+            if (
+                source == "chapter5"
+                and stable_input_hash
+                and previous_stable_input_hash == stable_input_hash
+            ):
+                local_status = "stable_reused"
+            else:
+                stable = build_workspace_view(
+                    source, trigger_run_id, source_manifest, ledger, semantics, capabilities,
+                    effective_edges, candidates, report, triplet_status, "latest_successful",
+                    closure_passed_override=True,
+                    task_details_override=task_details_override,
+                    reconciliation=reconciliation if source == "chapter5" else None,
+                    readiness=readiness if source == "chapter5" else None,
+                )
+                if source == "chapter5" and stable_input_hash:
+                    stable.setdefault("chapter_run", {})["stable_input_hash"] = stable_input_hash
                 try:
-                    _restore_file(root / STABLE_PATH, stable_snapshot)
+                    write_json(root / STABLE_PATH, stable)
                     if source == "chapter5":
-                        _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
-                except OSError:
-                    pass
-                _mark_attempt_refresh_failure(
-                    root, attempt, "stable_refresh_failed", str(exc)
-                )
-                return _refresh_failure_summary(
-                    root,
-                    source=source,
-                    trigger_run_id=trigger_run_id,
-                    topology_revision=attempt.get("identity", {}).get("revision"),
-                    semantic_triplet_closure_passed=True,
-                    family="stable_refresh_failed",
-                    reason=str(exc),
-                    attempt_written=True,
-                )
-            local_status = "stable_refreshed"
+                        write_json(root / CHAPTER5_STABLE_PATH, stable)
+                except OSError as exc:
+                    try:
+                        _restore_file(root / STABLE_PATH, stable_snapshot)
+                        if source == "chapter5":
+                            _restore_file(root / CHAPTER5_STABLE_PATH, chapter5_stable_snapshot)
+                    except OSError:
+                        pass
+                    _mark_attempt_refresh_failure(
+                        root, attempt, "stable_refresh_failed", str(exc)
+                    )
+                    return _refresh_failure_summary(
+                        root,
+                        source=source,
+                        trigger_run_id=trigger_run_id,
+                        topology_revision=attempt.get("identity", {}).get("revision"),
+                        semantic_triplet_closure_passed=True,
+                        family="stable_refresh_failed",
+                        reason=str(exc),
+                        attempt_written=True,
+                    )
+                local_status = "stable_refreshed"
 
     stable_required = source in {"chapter3", "chapter5"} or write_planning or publish_if_eligible
     closure_passed = semantic_triplet_closure_passed and (
-        local_status == "stable_refreshed"
+        local_status in {"stable_refreshed", "stable_reused"}
         if refresh_local
         else not stable_required
     )
