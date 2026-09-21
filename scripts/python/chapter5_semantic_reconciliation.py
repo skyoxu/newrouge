@@ -8,6 +8,8 @@ import datetime as dt
 import hashlib
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -42,10 +44,12 @@ ALLOWED_OVERLAP_DECISIONS = {
 ALLOWED_DEPENDENCY_RELATIONS = {
     "producer_consumer", "contract", "schema", "state", "asset_scene_availability",
 }
+ALLOWED_AUTHORITY_RECONCILIATION = {"compatible", "conflict", "out_of_scope"}
 BLOCKING_FINDINGS = {
     "invented_in_ch3", "conflict_with_adr", "unsupported_task_claim",
     "orphan_acceptance", "partial_acceptance", "untraceable_acceptance",
-    "out_of_task_scope", "invalid_dependency",
+    "out_of_task_scope", "invalid_dependency", "needs_human_decision",
+    "authority_unresolved", "authority_conflict",
 }
 REFS_RE = re.compile(r"\bRefs:\s*([^\n]+)$", re.IGNORECASE)
 
@@ -557,6 +561,112 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
         "adrs": [adrs[key] for key in sorted(adrs)],
     }, sorted(set(errors))
 
+
+
+
+def build_chapter5_input_fingerprint(
+    root: Path,
+    task_id: str,
+    *,
+    manifest_path: Path | None = None,
+    ledger_path: Path | None = None,
+    snapshot_path: Path | None = None,
+    semantics_path: Path | None = None,
+) -> tuple[str, dict[str, Any], list[str]]:
+    """Bind Chapter 5 readiness to every mutable semantic/authority input it validated."""
+    manifest_path = manifest_path or (root / DEFAULT_SOURCE_MANIFEST)
+    ledger_path = ledger_path or (root / DEFAULT_SOURCE_LEDGER)
+    snapshot_path = snapshot_path or (root / DEFAULT_EXTRACTION_SNAPSHOT)
+    semantics_path = semantics_path or (root / DEFAULT_CH3_SEMANTICS)
+    errors: list[str] = []
+    for label, path in (
+        ("source_manifest", manifest_path),
+        ("source_ledger", ledger_path),
+        ("extraction_b_snapshot", snapshot_path),
+        ("semantic_requirements", semantics_path),
+    ):
+        if not path.is_file():
+            errors.append(f"missing_{label}:{path.as_posix()}")
+
+    manifest = _load_json(manifest_path, {}) if manifest_path.is_file() else {}
+    ledger = _load_json(ledger_path, {}) if ledger_path.is_file() else {}
+    snapshot = _load_json(snapshot_path, {}) if snapshot_path.is_file() else {}
+    scope, _texts, source_errors = source_scope(root, manifest, ledger) if manifest and ledger else ([], {}, [])
+    errors.extend(source_errors)
+
+    cache_key: dict[str, str] = {}
+    if manifest_path.is_file() and ledger_path.is_file():
+        cache_key = build_cache_key(
+            manifest_path,
+            ledger_path,
+            manifest,
+            parser_revision=PARSER_REVISION,
+            extractor_revision=EXTRACTOR_REVISION,
+        )
+        expected_snapshot_id = "EXB-" + _canonical_sha(cache_key)[:20].upper()
+        if snapshot.get("schema_version") != SNAPSHOT_SCHEMA or snapshot.get("status") != "complete":
+            errors.append("extraction_b_snapshot_invalid")
+        if snapshot.get("cache_key") != cache_key:
+            errors.append("extraction_b_cache_key_stale")
+        if snapshot.get("extraction_b_snapshot_id") != expected_snapshot_id:
+            errors.append("extraction_b_snapshot_id_stale")
+
+    task = _task_bundle(_load_task_rows(root), _canonical_task_id(task_id))
+    if not task.get("views"):
+        errors.append(f"task_missing:{_canonical_task_id(task_id)}")
+    authority_scope, authority_errors = build_task_authority_scope(root, task)
+    errors.extend(authority_errors)
+
+    components = {
+        "schema_version": "newrouge.chapter5-input-fingerprint.v1",
+        "task_id": _canonical_task_id(task_id),
+        "source_revision": ledger.get("source_revision"),
+        "source_manifest_file_sha256": (
+            "sha256:" + _sha_file(manifest_path) if manifest_path.is_file() else None
+        ),
+        "source_block_ledger_sha256": (
+            "sha256:" + _sha_file(ledger_path) if ledger_path.is_file() else None
+        ),
+        "source_scope_sha256": "sha256:" + _canonical_sha(scope),
+        "cache_key": cache_key,
+        "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
+        "extraction_b_snapshot_sha256": (
+            "sha256:" + _sha_file(snapshot_path) if snapshot_path.is_file() else None
+        ),
+        "semantic_requirements_sha256": (
+            "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None
+        ),
+        "task_surface_sha256": "sha256:" + _canonical_sha(task),
+        "authority_scope_sha256": "sha256:" + _canonical_sha(authority_scope),
+    }
+    return "sha256:" + _canonical_sha(components), components, sorted(set(errors))
+
+
+def _begin_chapter5_attempt(root: Path, trigger_run_id: str) -> None:
+    """Canonical Chapter 5 prepare starts the run-scoped Knowledge attempt first."""
+    command = [
+        sys.executable,
+        "scripts/python/dev_cli.py",
+        "refresh-knowledge",
+        "--repo-root",
+        str(root),
+        "--source",
+        "chapter5",
+        "--trigger-run-id",
+        str(trigger_run_id),
+        "--begin-run",
+    ]
+    result = subprocess.run(
+        command,
+        cwd=root,
+        text=True,
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "chapter5 begin-run failed").strip()
+        raise ValueError(f"chapter5_begin_run_failed:{detail[-800:]}")
 
 
 def resolve_acceptance_authority_ref(
