@@ -394,6 +394,65 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             ))
             self.assertEqual("BLOCKED", gate["readiness"])
 
+    def test_acceptance_declared_adr_enters_authority_review_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _manifest, _ledger_path, ledger, _snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            adr = root / "docs/adr/ADR-1234-route.md"
+            adr.parent.mkdir(parents=True, exist_ok=True)
+            adr.write_text("# ADR-1234\n\nRoute choice is locked after selection.\n", encoding="utf-8")
+            decisions = root / "decisions.json"
+            payload = self._review_decisions(root)
+            payload["acceptance_links"][0]["authority_refs"] = ["ADR-1234"]
+            write_json(decisions, payload)
+
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertEqual("BLOCKED", gate["readiness"])
+            self.assertTrue(any(
+                row.get("authority_ref") == "ADR-1234"
+                and row.get("status") == "needs_human_decision"
+                for row in reconciliation["findings"]
+            ))
+
+            payload["authority_decisions"].append({
+                "authority_ref": "ADR-1234",
+                "status": "compatible",
+                "rationale": "ADR explicitly preserves the irreversible route-choice invariant.",
+            })
+            write_json(decisions, payload)
+            reconciliation, gate = ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            self.assertTrue(gate["closure_allowed"])
+            self.assertTrue(any(
+                row.get("ref") == "ADR-1234"
+                for row in reconciliation["authority_scope"]["adrs"]
+            ))
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
     def test_extraction_b_cache_reuses_same_identity_and_invalidates_on_source_change(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
