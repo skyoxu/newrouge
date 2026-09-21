@@ -34,7 +34,7 @@ Build or reuse one revision-bound Independent Extraction B snapshot from the com
 
 ## Primary Command Or Action
 
-`py -3 scripts/python/chapter5_semantic_reconciliation.py prepare && <independent review of every block> && py -3 scripts/python/chapter5_semantic_reconciliation.py compile && py -3 scripts/python/chapter5_semantic_reconciliation.py reconcile --task-id <id> --decisions <decisions.json>`
+`py -3 scripts/python/chapter5_semantic_reconciliation.py prepare --trigger-run-id <run-id> && <independent review of every block> && py -3 scripts/python/chapter5_semantic_reconciliation.py compile && py -3 scripts/python/chapter5_semantic_reconciliation.py reconcile --task-id <id> --decisions <decisions.json>`
 
 The audit scope comes from the Chapter 3 source manifest and Source Block Ledger, never from `task.semantic_refs` or `capability_refs`.
 
@@ -54,14 +54,14 @@ A `logs/ci/knowledge-context/**` bundle is optional shadow routing evidence only
 ## Idempotent Procedure
 
 1. Resolve the target business repo and verify Chapter 3 source manifest/Ledger A plus Chapter 4 overlay/contract backlinks.
-2. Run `chapter5_semantic_reconciliation.py prepare`. A cache hit is reusable only when `source_manifest_sha`, `source_block_ledger_sha`, `parser_revision`, and `extractor_revision` match exactly.
+2. Start the run with `chapter5_semantic_reconciliation.py prepare --trigger-run-id <run-id>`. Prepare records the Chapter 5 run-start Last Attempt before any expensive/model-backed extraction, so interruption still leaves evidence. A cache hit is reusable only when `source_manifest_sha`, `source_block_ledger_sha`, `parser_revision`, and `extractor_revision` match exactly.
 3. Independently review every candidate `raw_source`; fill `delivery_potential`, obligations, or a valid disposition. Do not consult Task mappings to decide which blocks to omit.
 4. Run `chapter5_semantic_reconciliation.py compile`; an incomplete source scope or unreviewed block is blocking.
-5. Before task-local acceptance work, run `reconcile --task-id <id>` so global `missing_in_ch3` / `orphan_delivery_semantic` findings are visible even when no Task references the source semantic.
-6. Use the existing lightweight lane to stabilize acceptance. Then provide `acceptance_links` that bind each Acceptance to Requirement/ADR/Contract authority and test refs, and rerun reconciliation.
+5. Before task-local acceptance work, run `reconcile --task-id <id>` so global `missing_in_ch3` / `orphan_delivery_semantic` findings are visible even when no Task references the source semantic. Similarity is candidate-ranking evidence only: each obligation match must have an explicit semantic verdict and rationale or it remains `needs_human_decision`.
+6. Use the existing lightweight lane to stabilize acceptance. Then provide `acceptance_links` that bind each Acceptance to Requirement/ADR/Contract authority and test refs. Provide `authority_decisions` for every in-scope ADR/Contract with `compatible | conflict | out_of_scope`, requirement refs where applicable, and rationale.
 7. Resolve provisional dependencies with explicit relation/reason/evidence and record each overlap candidate as `keep_separate`, `merge_recommended`, or `overlap_justified` with rationale.
-8. Apply task corrections only when readiness is closable. `BLOCKED` must not enter Chapter 6; `CONCERNS` needs explicit policy allowance.
-9. End every Chapter 5 run with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation <path> --readiness <path>`. Last Attempt always updates; stable workspace topology advances only for allowed closure.
+8. Apply task corrections only when readiness is closable. Any Task write is followed by a new reconciliation so the final readiness fingerprint reflects the post-write Task surface. `BLOCKED` must not enter Chapter 6; `CONCERNS` needs explicit policy allowance.
+9. End every Chapter 5 run with `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --refresh-local --reconciliation <path> --readiness <path>`. Readiness and Knowledge stable promotion both recompute the same input fingerprint over source/Ledger/Extraction B/semantic requirements/Task Acceptance+dependency+overlap/Overlay+Contract+ADR bytes. Last Attempt always updates; stale evidence never advances stable workspace topology.
 10. Treat acceptance extraction failure as a stop-and-fix signal and escalate batch instability only when the same failure family repeats.
 
 ## Stop-Loss Signals
