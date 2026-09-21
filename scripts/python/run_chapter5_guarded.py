@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from refresh_chapter_knowledge import begin_run_attempt, run as refresh_knowledge
+from refresh_chapter_knowledge import begin_run_attempt, record_run_failure_attempt, run as refresh_knowledge
 
 DEFAULT_PATHS = {
     "source_manifest": "logs/ci/task-generation/source-manifest.v1.json",
@@ -66,26 +66,34 @@ def run_guarded(
         child_error = str(exc)
 
     try:
-        final_summary = refresh_knowledge(
-            root,
-            source="chapter5",
-            trigger_run_id=trigger_run_id,
-            refresh_local=True,
-            write_planning=write_planning,
-            publish_if_eligible=publish_if_eligible,
-            triplet_status="unknown",
-            source_manifest_path=root / DEFAULT_PATHS["source_manifest"],
-            ledger_path=root / DEFAULT_PATHS["ledger"],
-            semantics_path=root / DEFAULT_PATHS["semantics"],
-            capabilities_path=root / DEFAULT_PATHS["capabilities"],
-            edges_path=root / DEFAULT_PATHS["edges"],
-            candidates_path=root / DEFAULT_PATHS["candidates"],
-            report_path=root / DEFAULT_PATHS["report"],
-            coverage_path=root / DEFAULT_PATHS["coverage"],
-            triplet_attestation_path=root / DEFAULT_PATHS["triplet_attestation"],
-            reconciliation_path=root / DEFAULT_PATHS["reconciliation"],
-            readiness_path=root / DEFAULT_PATHS["readiness"],
-        )
+        if child_rc != 0:
+            final_summary = record_run_failure_attempt(
+                root,
+                source="chapter5",
+                trigger_run_id=trigger_run_id,
+                reason=child_error or f"guarded Chapter 5 child failed with rc={child_rc}",
+            )
+        else:
+            final_summary = refresh_knowledge(
+                root,
+                source="chapter5",
+                trigger_run_id=trigger_run_id,
+                refresh_local=True,
+                write_planning=write_planning,
+                publish_if_eligible=publish_if_eligible,
+                triplet_status="unknown",
+                source_manifest_path=root / DEFAULT_PATHS["source_manifest"],
+                ledger_path=root / DEFAULT_PATHS["ledger"],
+                semantics_path=root / DEFAULT_PATHS["semantics"],
+                capabilities_path=root / DEFAULT_PATHS["capabilities"],
+                edges_path=root / DEFAULT_PATHS["edges"],
+                candidates_path=root / DEFAULT_PATHS["candidates"],
+                report_path=root / DEFAULT_PATHS["report"],
+                coverage_path=root / DEFAULT_PATHS["coverage"],
+                triplet_attestation_path=root / DEFAULT_PATHS["triplet_attestation"],
+                reconciliation_path=root / DEFAULT_PATHS["reconciliation"],
+                readiness_path=root / DEFAULT_PATHS["readiness"],
+            )
     except Exception as exc:
         final_summary = {
             "schema_version": "chapter-knowledge-refresh-summary.v1",
