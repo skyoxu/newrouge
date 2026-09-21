@@ -64,6 +64,7 @@ def run_local_hard_checks(
     out_dir: str = "",
     run_id: str = "",
     timeout_sec: int = 5,
+    skip_project_health: bool = False,
     run_fn: Callable[[list[str]], int] | None = None,
 ) -> int:
     resolved_solution = resolve_test_solution_arg(solution)
@@ -125,6 +126,7 @@ def run_local_hard_checks(
         configuration=configuration,
         godot_bin=godot_bin,
         timeout_sec=timeout_sec,
+        include_project_health=not skip_project_health,
     ):
         name = str(step["name"])
         cmd = [str(x) for x in step["cmd"]]
@@ -200,6 +202,7 @@ def run_local_hard_checks(
         status=str(summary["status"]),
         failed_step=str(summary["failed_step"]),
         godot_bin=godot_bin,
+        skip_project_health=skip_project_health,
     )
 
     if not persist_sidecars(
