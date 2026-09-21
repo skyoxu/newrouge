@@ -141,6 +141,18 @@ Get-Content request.json | py -3 scripts/python/knowledge_locator.py
 
 For canonical inputs, the Locator requires a valid `current.json` publication and fails closed with `status=blocked` when publication, snapshot, policy, projection, trusted-ref, or source-hash bindings are stale.
 
+## Producer-triggered workspace topology
+
+Chapter 3 and Chapter 5 are the only registered closure producers.
+
+- Every producer run may update Workspace **Last Attempt** using a run/workspace identity.
+- Chapter 3 advances Workspace **Latest Successful** only after verified semantic conservation, task coverage, and triplet baseline.
+- Chapter 5 advances Workspace **Latest Stabilized** only after verified reconciliation/readiness is `READY` or explicitly policy-allowed `CONCERNS`.
+- `BLOCKED` / failed Chapter 5 runs keep their findings visible in Last Attempt and never overwrite the previous stabilized topology.
+- Canonical KCP publication remains trusted-ref/main-only. A workspace result that is not publishable returns `publication_deferred`; it never advances `current` / `last-known-good`.
+- Reconciliation sidecars under `logs/ci/chapter5/**` are run-local evidence, not global KCP source modules. Their validated summary is projected into the workspace topology by the registered Chapter 5 refresh hook.
+- Chapter 6 is never a registered refresh producer. It may read frozen/published context before RED and may write task-local capture under `logs/ci/chapter6-knowledge/**`, but it must not rebuild or publish global Knowledge as an execution/recovery side effect.
+
 ## Shadow Consumer Context
 
 Chapter 4/5/6 and review integration is currently observe-only. See:
