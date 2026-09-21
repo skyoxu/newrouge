@@ -490,8 +490,8 @@ def cmd_refresh_knowledge(args: argparse.Namespace) -> int:
     root = Path(args.repo_root).resolve()
     try:
         if bool(args.begin_run):
-            if args.source != "chapter3":
-                raise ValueError("--begin-run is currently reserved for Chapter 3 run lifecycle")
+            if args.source not in {"chapter3", "chapter5"}:
+                raise ValueError("--begin-run requires a registered Chapter closure producer")
             if args.write_planning_artifacts or args.publish_if_eligible:
                 raise ValueError("--begin-run cannot write planning artifacts or publish")
             result = begin_run_attempt(
