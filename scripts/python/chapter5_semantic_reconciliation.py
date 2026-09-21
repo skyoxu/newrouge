@@ -1354,6 +1354,19 @@ def validate_chapter5_evidence_freshness(
     task_rows = _load_task_rows(root)
     task = _task_bundle(task_rows, _canonical_task_id(task_id))
     authority_scope, authority_errors = build_task_authority_scope(root, task)
+    stored_scope = reconciliation.get("authority_scope", {})
+    stored_refs = []
+    if isinstance(stored_scope, dict):
+        for kind in ("contracts", "adrs"):
+            for item in stored_scope.get(kind, []):
+                if isinstance(item, dict) and str(item.get("ref") or "").strip():
+                    stored_refs.append(str(item.get("ref") or "").strip())
+    if stored_refs:
+        authority_scope = augment_authority_scope_from_acceptance_links(
+            root,
+            authority_scope,
+            {"acceptance_links": [{"authority_refs": sorted(set(stored_refs))}]},
+        )
     if authority_errors:
         return False, "chapter5_current_authority_scope_invalid"
     authority_reconciliation = reconciliation.get("authority_reconciliation", [])
