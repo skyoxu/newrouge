@@ -23,6 +23,7 @@ TOPOLOGY_ARTIFACTS = {
 WORKSPACE_TOPOLOGY = Path("logs/ci/project-health-knowledge/topology/workspace-latest.json")
 WORKSPACE_TOPOLOGY_ATTEMPT = Path("logs/ci/project-health-knowledge/topology/workspace-last-attempt.json")
 WORKSPACE_TOPOLOGY_STABLE = Path("logs/ci/project-health-knowledge/topology/workspace-latest-successful.json")
+WORKSPACE_TOPOLOGY_STABILIZED = Path("logs/ci/project-health-knowledge/topology/workspace-latest-stabilized.json")
 
 
 def _sha256(data: bytes) -> str:
@@ -633,11 +634,14 @@ def load_topology_from_snapshot(snapshot: Any,
 
 
 def load_workspace_topology(root: Path, view: str = "attempt") -> dict[str, Any]:
-    if view not in {"attempt", "stable"}:
+    if view not in {"attempt", "stable", "stabilized"}:
         return unavailable_topology(
             "workspace", None, f"unknown workspace topology view: {view}"
         )
-    if view == "stable":
+    if view == "stabilized":
+        path = root / WORKSPACE_TOPOLOGY_STABILIZED
+        label = "latest Chapter 5 stabilized"
+    elif view == "stable":
         path = root / WORKSPACE_TOPOLOGY_STABLE
         label = "latest successful"
     else:
