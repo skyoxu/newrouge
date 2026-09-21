@@ -111,7 +111,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
         write_json(path, payload)
         return path
 
-    def _write_task(self, root: Path, *, semantic_refs=None, acceptance=None, depends_on=None, overlap=None):
+    def _write_task(self, root: Path, *, semantic_refs=None, acceptance=None, depends_on=None, overlap=None, task_id: int = 1):
         semantic_refs = list(semantic_refs or [])
         acceptance = list(acceptance or [])
         overlay = root / "docs/architecture/overlays/PRD/08/_index.md"
@@ -124,8 +124,8 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             encoding="utf-8",
         )
         row = {
-            "id": "GM-0001",
-            "taskmaster_id": 1,
+            "id": f"GM-{task_id:04d}",
+            "taskmaster_id": task_id,
             "title": "Route choice",
             "status": "pending",
             "semantic_refs": semantic_refs,
@@ -176,7 +176,15 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
             )
             decisions = root / "decisions.json"
+            snapshot = json.loads((root / ch5.DEFAULT_EXTRACTION_SNAPSHOT).read_text(encoding="utf-8"))
+            obligation_id = snapshot["semantic_inventory"][0]["obligation_id"]
             write_json(decisions, {
+                "match_decisions": [{
+                    "obligation_id": obligation_id,
+                    "chapter3_requirement_ids": ["INV-U1"],
+                    "status": "equivalent",
+                    "rationale": "Independent semantic review confirms the paraphrase preserves the irreversible-route invariant.",
+                }],
                 "acceptance_links": [{
                     "acceptance_index": 1,
                     "requirement_ids": ["INV-U1"],
@@ -336,6 +344,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 acceptance=["Route selection remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
                 depends_on=[2],
                 overlap=[3],
+                task_id=5,
             )
             decisions = root / "decisions.json"
             write_json(decisions, {
@@ -367,12 +376,12 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             })
             reconciliation, gate = ch5.reconcile(
                 root,
-                task_id="1",
+                task_id="5",
                 snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
                 semantics_path=semantics_path,
                 decisions_path=decisions,
-                out_path=ch5.reconciliation_path_for_task(root, "1"),
-                readiness_path=ch5.readiness_path_for_task(root, "1"),
+                out_path=ch5.reconciliation_path_for_task(root, "5"),
+                readiness_path=ch5.readiness_path_for_task(root, "5"),
             )
             actions = {(row["dependency_id"], row["action"]) for row in reconciliation["dependency_corrections"]}
             self.assertIn(("2", "remove"), actions)
