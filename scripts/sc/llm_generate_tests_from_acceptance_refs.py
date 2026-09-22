@@ -72,13 +72,14 @@ def _validate_generated_test_content(*, ref: str, content: str):
     return _quality_helpers.validate_generated_test_content(ref=ref, content=content)
 
 
-def _evaluate_red_verification(*, out_dir: Path, verify_mode: str, test_step, verify_log_text: str):
+def _evaluate_red_verification(*, out_dir: Path, verify_mode: str, test_step, verify_log_text: str, expected_test_refs: list[str]):
     return _red_helpers.evaluate_red_verification(
         repo_root=repo_root(),
         out_dir=out_dir,
         verify_mode=verify_mode,
         test_step=test_step,
         verify_log_text=verify_log_text,
+        expected_test_refs=expected_test_refs,
     )
 
 
@@ -396,6 +397,7 @@ def main() -> int:
             verify_mode=verify_mode,
             test_step=test_step,
             verify_log_text=verify_out,
+            expected_test_refs=[result.ref for result in results if result.status == "ok"],
         )
         summary["red_verify"] = red_verify
     write_json(out_dir / f"summary-{task_id}.json", summary)
