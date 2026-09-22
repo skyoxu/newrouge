@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,29 @@ def _identity_tokens(refs: list[str]) -> list[str]:
 def _contains_expected_identity(text: str, refs: list[str]) -> bool:
     haystack = str(text or "").casefold()
     return any(token in haystack for token in _identity_tokens(refs))
+
+
+def _failed_trx_results(path: Path) -> list[dict[str, str]]:
+    if not path.is_file():
+        return []
+    try:
+        root = ET.parse(path).getroot()
+    except Exception:
+        return []
+    failed: list[dict[str, str]] = []
+    for elem in root.iter():
+        if not elem.tag.endswith("UnitTestResult"):
+            continue
+        if str(elem.attrib.get("outcome") or "").strip().casefold() != "failed":
+            continue
+        name = str(elem.attrib.get("testName") or "").strip()
+        messages = [
+            str(child.text or "").strip()
+            for child in elem.iter()
+            if child.tag.endswith("Message") and str(child.text or "").strip()
+        ]
+        failed.append({"test_name": name, "message": "\n".join(messages)})
+    return failed
 
 
 def _contains_compile_error(*, verify_log_text: str, unit_summary: dict[str, Any]) -> bool:
@@ -154,15 +178,14 @@ def evaluate_red_verification(
     if unit_status == "tests_failed":
         cs_expected = [ref for ref in expected_refs if ref.casefold().endswith(".cs")]
         unit_filter = str(unit_summary.get("filter") or "")
+        trx_failed = _failed_trx_results(unit_dir / "tests.trx")
         report["unit_filter"] = unit_filter
+        report["unit_failed_tests"] = [item["test_name"] for item in trx_failed if item.get("test_name")]
         if not current_run_id or unit_run_id != current_run_id:
             report["reason"] = "unit_run_identity_mismatch"
             return report
         if not cs_expected or not _contains_expected_identity(unit_filter, cs_expected):
             report["reason"] = "unit_target_not_selected"
-            return report
-        if not _contains_expected_identity("\n".join(failure_lines), cs_expected):
-            report["reason"] = "unit_failure_not_target"
             return report
         assertion_tokens = (
             "expected:",
@@ -171,6 +194,27 @@ def evaluate_red_verification(
             "assert.",
             "assertion",
         )
+        if trx_failed:
+            target_rows = [
+                item for item in trx_failed
+                if _contains_expected_identity(str(item.get("test_name") or ""), cs_expected)
+            ]
+            if not target_rows:
+                report["reason"] = "unit_failure_not_target"
+                return report
+            target_failure_text = "\n".join(
+                str(item.get("message") or "") for item in target_rows
+            ).casefold()
+            if any(token in target_failure_text for token in assertion_tokens):
+                report["status"] = "ok"
+                report["reason"] = "unit_behavior_red"
+                return report
+            report["reason"] = "unit_failure_not_causal"
+            return report
+
+        if not _contains_expected_identity("\n".join(failure_lines), cs_expected):
+            report["reason"] = "unit_failure_not_target"
+            return report
         if failure_lines and any(token in combined_failure for token in assertion_tokens):
             report["status"] = "ok"
             report["reason"] = "unit_behavior_red"
