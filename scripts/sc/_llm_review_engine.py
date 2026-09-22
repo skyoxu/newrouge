@@ -21,15 +21,17 @@ from _llm_review_cli import (
     summary_base,
     validate_args,
 )
-from _llm_review_exec import auto_resolve_commit_for_task, build_diff_context, run_codex_exec
+from _llm_review_exec import auto_resolve_commit_for_task, build_changed_paths, build_diff_context, run_codex_exec
 from _llm_review_models import ReviewResult
 from _llm_review_prompting import (
     agent_prompt,
     build_task_context,
     build_threat_model_context,
+    derive_surface_focus,
     normalize_host_safe_needs_fix,
     parse_review_contract,
     parse_verdict,
+    render_surface_focus_prompt,
     resolve_claude_agents_root,
     resolve_threat_model,
 )
@@ -314,6 +316,9 @@ def main() -> int:
             return 1
 
     acceptance_semantic_cache: dict[str, tuple[str, dict[str, Any] | None]] = {}
+    changed_paths = build_changed_paths(args)
+    surface_focus = derive_surface_focus(changed_paths)
+    surface_focus_prompt = render_surface_focus_prompt(surface_focus)
     diff_ctx = build_diff_context(args)
     diff_ctx_summary: str | None = None
 
@@ -394,7 +399,10 @@ def main() -> int:
             f"- fix-through: {fix_through}\n"
             f"- Findings at {fix_through} or higher severity are must-fix and cannot use disposition.action=defer.\n"
         )
-        blocks = [base_prompt, _REVIEW_LENSES_PROMPT, fix_through_prompt]
+        blocks = [base_prompt, _REVIEW_LENSES_PROMPT]
+        if surface_focus_prompt:
+            blocks.append(surface_focus_prompt)
+        blocks.append(fix_through_prompt)
         if review_template:
             blocks.append("## Structured Review Template\n" + review_template.strip() + "\n")
         if ctx:
@@ -524,7 +532,7 @@ def main() -> int:
                 cmd=cmd,
                 prompt_path=str(prompt_path.relative_to(repo_root())).replace("\\", "/"),
                 output_path=str(output_path.relative_to(repo_root())).replace("\\", "/"),
-                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "verdict": verdict, "verdict_normalization": verdict_normalization, "review_contract": review_contract, "review_contract_errors": review_contract_errors, "note": "This step is best-effort. Use --strict to make it a hard gate."},
+                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "surface_focus": surface_focus, "verdict": verdict, "verdict_normalization": verdict_normalization, "review_contract": review_contract, "review_contract_errors": review_contract_errors, "note": "This step is best-effort. Use --strict to make it a hard gate."},
             )
         )
 
@@ -549,6 +557,8 @@ def main() -> int:
             "review_method": {
                 "reviewer_mode": "single-reviewer",
                 "required_lenses": list(_REQUIRED_REVIEW_LENSES),
+                "surface_focus": surface_focus,
+                "changed_paths": changed_paths,
                 "fix_through": str(getattr(args, "fix_through", "P1") or "P1"),
             },
             "completion_status": (
