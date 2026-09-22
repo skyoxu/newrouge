@@ -194,6 +194,22 @@ class SyncTaskOverlayRefsTests(unittest.TestCase):
                     allowed_contract_refs={"core.valid.event"},
                 )
 
+    def test_chapter4_gap_report_keeps_legacy_unmapped_tasks_nonblocking(self) -> None:
+        report = sync_overlay_refs.build_chapter4_gap_report(
+            [{
+                "taskmaster_id": 9,
+                "semantic_refs": [],
+                "overlay_refs": ["docs/architecture/overlays/X/08/_index.md"],
+                "contractRefs": ["core.valid.event"],
+            }],
+            [],
+        )
+        self.assertEqual("passed", report["status"])
+        self.assertEqual(0, report["gap_count"])
+        self.assertEqual(1, report["legacy_unmapped_task_count"])
+        self.assertEqual("legacy_unmapped_present", report["migration_status"])
+        self.assertEqual("9", report["legacy_unmapped_tasks"][0]["task_id"])
+
     def test_chapter4_gap_report_is_machine_readable_and_blocks_missing_backlinks(self) -> None:
         report = sync_overlay_refs.build_chapter4_gap_report(
             [{
