@@ -52,8 +52,8 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 15. If the latest two `6.7` runs stopped at the same `sc-test` failure fingerprint, fix the root cause before retrying; only override this with `--allow-repeat-deterministic-failures`.
 16. Fresh `6.7` runs inherit the latest same-task `delivery/security profile` lock; only switch profiles with explicit `--reselect-profile`.
 17. If `sc-test` fails twice in the same run, stop resuming and fix the root cause before starting a new run.
-18. Use targeted reviewers in `6.8`: code -> `code-reviewer`, semantics / acceptance / overlay -> `semantic-equivalence-auditor`, security -> `security-auditor`.
-19. If two `6.8` rounds return the same `Needs Fix` category, severity, and anchors, stop and record instead of paying for a third similar rerun.
+18. Chapter 6 model review uses one `code-reviewer` with mandatory Spec Compliance / Edge Case / Verification Gap lenses; 6.8 narrows by finding/changed surface, not by switching reviewer personas.
+19. If two `6.8` rounds return the same stable finding identity/claim/anchor and required action, stop and record instead of paying for a third similar rerun; different findings from the same reviewer are not repeats.
 20. Treat `status=ok` as clean only when the child `sc-llm-review` summary has no `Needs Fix`, no `Unknown`, and no timeout; if a round shows `failure_kind = timeout-no-summary`, treat it as observation gap, not clean.
 
 ## Chapter 7 Fast-Ship Card
@@ -106,7 +106,7 @@ Use this after Chapter 6 has closed the current completed backlog slice and you 
 ## Repository State Files
 - `execution-plans/` stores current execution intent and checkpoints.
 - `decision-logs/` stores decisions that changed architecture, workflow, or guardrails.
-- Unresolved `Needs Fix` must be recorded in `decision-logs/` first, then linked from `execution-plans/` with concrete next-step commands and evidence paths.
+- Deferrable review findings go to `docs/technical-debt.md`; Decision Logs are for architecture/workflow/authority/policy decisions, and Execution Plans are for durable recovery or ordered coordination needs.
 - `logs/ci/active-tasks/task-<id>.active.md` is the shortest task-scoped recovery pointer.
 - `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` is the preferred full recovery entry because it summarizes the latest run plus matching `execution-plans/` and `decision-logs/`.
 - `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` points to the latest local pipeline artifacts, including `summary.json`, `execution-context.json`, `repair-guide.*`, and `agent-review.*` when generated.
