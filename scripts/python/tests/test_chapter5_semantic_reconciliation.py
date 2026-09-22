@@ -489,6 +489,89 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertEqual("review_required", miss["status"])
             self.assertNotEqual(snapshot["extraction_b_snapshot_id"], miss["extraction_b_snapshot_id"])
 
+    def test_same_source_recompiled_extraction_b_invalidates_old_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path, ledger_path, ledger, original_snapshot = self._compile_snapshot(
+                root, statement="U1 route choice is irreversible."
+            )
+            semantics_path = self._write_semantics(root, ledger, include=True)
+            self._write_task(
+                root,
+                semantic_refs=["INV-U1"],
+                acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
+            )
+            decisions = root / "decisions.json"
+            write_json(decisions, self._review_decisions(root))
+            ch5.reconcile(
+                root,
+                task_id="1",
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                semantics_path=semantics_path,
+                decisions_path=decisions,
+                out_path=ch5.reconciliation_path_for_task(root, "1"),
+                readiness_path=ch5.readiness_path_for_task(root, "1"),
+            )
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertTrue(ok, reason)
+
+            candidate_path = root / ch5.DEFAULT_EXTRACTION_CANDIDATE
+            candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+            changed = False
+            for row in candidate["block_results"]:
+                obligations = row.get("obligations") if isinstance(row, dict) else None
+                if isinstance(obligations, list) and obligations:
+                    obligations[0]["statement"] = (
+                        "U1 route choice remains irreversible after explicit confirmation."
+                    )
+                    changed = True
+                    break
+            self.assertTrue(changed)
+            write_json(candidate_path, candidate)
+            recompiled = ch5.compile_extraction_b(
+                root,
+                manifest_path=manifest_path,
+                ledger_path=ledger_path,
+                candidate_path=candidate_path,
+                snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+            )
+            self.assertEqual("complete", recompiled["status"])
+            self.assertEqual(
+                original_snapshot["extraction_b_snapshot_id"],
+                recompiled["extraction_b_snapshot_id"],
+            )
+            self.assertNotEqual(
+                ch5._extraction_b_content_sha(original_snapshot),
+                ch5._extraction_b_content_sha(recompiled),
+            )
+
+            ok, _payload, reason = ch5.load_task_readiness(root, "1")
+            self.assertFalse(ok)
+            self.assertEqual(
+                "chapter5_reconciliation_input_fingerprint_stale",
+                reason,
+            )
+
+    def test_extraction_b_content_hash_ignores_generation_time_only(self) -> None:
+        snapshot = {
+            "schema_version": ch5.SNAPSHOT_SCHEMA,
+            "status": "complete",
+            "generated_at_utc": "2026-09-22T00:00:00Z",
+            "source_accounting": [{"block_id": "SB-1", "delivery_potential": True}],
+            "semantic_inventory": [{"obligation_id": "OB-1", "statement": "A"}],
+        }
+        later = json.loads(json.dumps(snapshot))
+        later["generated_at_utc"] = "2026-09-22T00:01:00Z"
+        self.assertEqual(
+            ch5._extraction_b_content_sha(snapshot),
+            ch5._extraction_b_content_sha(later),
+        )
+        later["semantic_inventory"][0]["statement"] = "B"
+        self.assertNotEqual(
+            ch5._extraction_b_content_sha(snapshot),
+            ch5._extraction_b_content_sha(later),
+        )
+
     def test_dependency_and_overlap_decisions_are_machine_readable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
