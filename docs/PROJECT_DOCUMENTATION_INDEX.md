@@ -4,20 +4,13 @@ This file is the top-level navigation for project docs.
 
 ## Start Order After Context Reset
 
-1. `README.md`
-2. `docs/agents/00-index.md`
-3. `docs/agents/01-session-recovery.md`
-4. `docs/PROJECT_DOCUMENTATION_INDEX.md`
-5. `docs/agents/13-rag-sources-and-session-ssot.md`
-6. `DELIVERY_PROFILE.md`
-7. `docs/testing-framework.md`
-8. `docs/agents/16-directory-responsibilities.md`
-9. `docs/workflows/prototype-lane.md`
-10. `docs/workflows/prototype-lane-playbook.md`
-11. `docs/workflows/prototype-tdd.md`
-12. Newest file in `execution-plans/`
-13. Newest file in `decision-logs/`
-14. If available: `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
+Use `AGENTS.md` as the router, not as a signal to preload this index.
+
+1. Read the owning workflow/document for the explicit task scope.
+2. For task recovery, run `resume-task --recommendation-only`; for Chapter 6 also run `chapter6-route --recommendation-only`.
+3. Read direct authoritative sources required by that task.
+4. Open this index only when you need to locate a document family that the root route table does not already identify.
+5. Do not choose the newest file in `execution-plans/` or `decision-logs/` unless the current task/recovery evidence explicitly binds it.
 
 ## Authoritative Sources
 
