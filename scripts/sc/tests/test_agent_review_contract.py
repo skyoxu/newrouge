@@ -67,6 +67,7 @@ class AgentReviewContractTests(unittest.TestCase):
         rendered = render_review_markdown(payload)
         self.assertIn("review_verdict: block", rendered)
         self.assertIn("sc-test-failed", rendered)
+        self.assertEqual("P1", payload["findings"][0]["severity"])
 
     def test_render_review_markdown_should_include_approval_section(self) -> None:
         payload = make_review_payload(
