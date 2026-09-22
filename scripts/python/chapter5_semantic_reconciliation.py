@@ -703,6 +703,16 @@ def _task_semantic_surface(task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extraction_b_content_sha(snapshot: dict[str, Any]) -> str:
+    """Hash semantic Extraction B content while ignoring generation-time metadata."""
+    semantic_payload = {
+        key: value
+        for key, value in snapshot.items()
+        if key not in {"generated_at_utc"}
+    }
+    return "sha256:" + _canonical_sha(semantic_payload)
+
+
 def build_chapter5_input_fingerprint(
     root: Path,
     *,
@@ -719,6 +729,7 @@ def build_chapter5_input_fingerprint(
         "source_block_ledger_sha": "sha256:" + _sha_file(ledger_path) if ledger_path.is_file() else None,
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "extraction_b_cache_key": snapshot.get("cache_key"),
+        "extraction_b_content_sha": _extraction_b_content_sha(snapshot),
         "semantic_requirements_sha": "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None,
         "task_semantic_surface": _task_semantic_surface(task),
         "authority_scope": authority_scope,
