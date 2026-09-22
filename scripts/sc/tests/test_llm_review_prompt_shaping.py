@@ -14,7 +14,7 @@ if str(SC_DIR) not in sys.path:
 
 from _llm_review_acceptance import build_acceptance_semantic_context  # noqa: E402
 from _llm_review_engine import _REVIEW_LENSES_PROMPT, _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
-from _llm_review_prompting import build_task_context  # noqa: E402
+from _llm_review_prompting import build_task_context, parse_review_contract  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
 
@@ -91,6 +91,39 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         self.assertFalse(bool(execution_plan["semantic_deferred"]))
         self.assertEqual(["code-reviewer"], execution_plan["primary_llm_agents"])
         self.assertEqual(["Spec Compliance", "Edge Case", "Verification Gap"], execution_plan["review_lenses"])
+
+    def test_review_contract_should_apply_active_fix_through_to_defer(self) -> None:
+        payload = {
+            "completion_status": "completed",
+            "lenses": [
+                {"name": "Spec Compliance", "status": "completed", "notes": "checked"},
+                {"name": "Edge Case", "status": "completed", "notes": "checked"},
+                {"name": "Verification Gap", "status": "completed", "notes": "checked"},
+            ],
+            "findings": [
+                {
+                    "finding_id": "F-P2",
+                    "claim": "P2 finding",
+                    "severity": "P2",
+                    "authority_refs": ["ACC:T56.1"],
+                    "evidence": ["Game.Core.Tests/Tasks/Task1EnvironmentEvidencePersistenceTests.cs"],
+                    "failure_scenario": "Behavior regresses.",
+                    "expected_protection": "Bound regression test fails.",
+                    "observed_protection": "Current regression test exists.",
+                    "required_action": "Fix or defer only when below active threshold.",
+                    "verification": "Run the bound regression test.",
+                    "disposition": {"action": "defer", "rationale": "Allowed only below the active threshold."},
+                }
+            ],
+            "uncertainty": [],
+        }
+        text = "Review Contract JSON:\n" + __import__("json").dumps(payload)
+
+        _parsed, p1_errors = parse_review_contract(text, fix_through="P1")
+        self.assertNotIn("findings[0]_must_fix_cannot_defer", p1_errors)
+
+        _parsed, p2_errors = parse_review_contract(text, fix_through="P2")
+        self.assertIn("findings[0]_must_fix_cannot_defer", p2_errors)
 
     def test_required_review_prompt_should_request_machine_readable_completion_contract(self) -> None:
         self.assertIn("Review Contract JSON:", _REVIEW_LENSES_PROMPT)
