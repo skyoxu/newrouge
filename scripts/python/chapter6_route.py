@@ -18,7 +18,7 @@ for candidate in (PYTHON_DIR, SC_DIR):
         sys.path.insert(0, str(candidate))
 
 from _change_scope import classify_change_scope_between_snapshots  # noqa: E402
-from _recovery_doc_scaffold import record_chapter6_residual_followup  # noqa: E402
+from _technical_debt import update_technical_debt_register  # noqa: E402
 from llm_review_needs_fix_fast import _changed_paths_hit_reviewer_anchors, current_git_fingerprint  # noqa: E402
 from resume_task import build_resume_payload  # noqa: E402
 
@@ -116,13 +116,19 @@ def _load_low_priority_findings(root: Path, payload: dict[str, Any]) -> list[dic
         message = str(item.get("message") or "").strip()
         agent = str(item.get("agent") or "").strip() or "unknown-agent"
         source_path = str(item.get("source_path") or "").strip()
-        if severity and message:
+        finding_id = str(item.get("finding_id") or "").strip()
+        source_run = str(item.get("source_run") or "").strip()
+        authority = str(item.get("authority") or "").strip()
+        if severity and message and finding_id:
             out.append(
                 {
+                    "finding_id": finding_id,
                     "severity": severity,
                     "message": message,
                     "agent": agent,
+                    "authority": authority,
                     "source_path": source_path,
+                    "source_run": source_run,
                 }
             )
     return out
@@ -218,25 +224,34 @@ def _record_residual_docs(
 ) -> dict[str, Any]:
     task_id = str(payload.get("task_id") or "").strip()
     run_id = str(payload.get("run_id") or "").strip()
-    inspection = payload.get("inspection") if isinstance(payload.get("inspection"), dict) else {}
-    paths = inspection.get("paths") if isinstance(inspection.get("paths"), dict) else {}
-    latest_rel = str(paths.get("latest") or "").strip()
-    findings_summary = _summarize_low_priority_findings(low_priority_findings)
-    recorded = record_chapter6_residual_followup(
-        root=root,
+    if not low_priority_findings:
+        raise RuntimeError("residual registration requires validated low-priority review findings")
+    finding_ids = {
+        str(item.get("finding_id") or "").strip()
+        for item in low_priority_findings
+        if str(item.get("finding_id") or "").strip()
+    }
+    if len(finding_ids) != len(low_priority_findings):
+        raise RuntimeError("residual registration requires stable finding_id for every finding")
+
+    register_path = root / "docs" / "technical-debt.md"
+    result = update_technical_debt_register(
+        doc_path=register_path,
         task_id=task_id,
         run_id=run_id,
-        latest_json=latest_rel,
-        findings_summary=findings_summary,
-        recommended_command=str(payload.get("recommended_command") or "").strip(),
+        findings=low_priority_findings,
+        delivery_profile=str(payload.get("delivery_profile") or "fast-ship"),
+        reviewed_finding_ids=finding_ids,
     )
+    if str(result.get("status") or "") not in {"updated", "noop"}:
+        raise RuntimeError(f"technical debt registration failed: {result}")
 
     return {
         "eligible": True,
         "reason": "recorded",
         "performed": True,
-        "decision_log_path": str(recorded.get("decision_log_path") or "").strip(),
-        "execution_plan_path": str(recorded.get("execution_plan_path") or "").strip(),
+        "technical_debt_path": str(register_path.relative_to(root)).replace("\\", "/"),
+        "registered_finding_ids": sorted(finding_ids),
     }
 
 
@@ -316,8 +331,8 @@ def route_chapter6(
         "eligible": residual_eligible,
         "reason": residual_reason,
         "performed": False,
-        "decision_log_path": "",
-        "execution_plan_path": "",
+        "technical_debt_path": "",
+        "registered_finding_ids": [],
     }
 
     preferred_lane = "inspect-first"
@@ -386,7 +401,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-id", default="", help="Taskmaster task id.")
     parser.add_argument("--run-id", default="", help="Optional run id filter.")
     parser.add_argument("--latest", default="", help="Optional latest.json path.")
-    parser.add_argument("--record-residual", action="store_true", help="Write decision-log/execution-plan scaffolds when only low-priority findings remain.")
+    parser.add_argument("--record-residual", action="store_true", help="Register validated deferrable findings in docs/technical-debt.md.")
     parser.add_argument("--out-json", default="", help="Optional output JSON path.")
     parser.add_argument("--out-md", default="", help="Optional output Markdown path.")
     parser.add_argument("--recommendation-only", action="store_true", help="Print a compact route summary.")
@@ -414,10 +429,8 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         f"- Residual eligible: {'yes' if bool(residual.get('eligible')) else 'no'}",
         f"- Residual performed: {'yes' if bool(residual.get('performed')) else 'no'}",
     ]
-    if residual.get("decision_log_path"):
-        lines.append(f"- Decision log: `{residual.get('decision_log_path')}`")
-    if residual.get("execution_plan_path"):
-        lines.append(f"- Execution plan: `{residual.get('execution_plan_path')}`")
+    if residual.get("technical_debt_path"):
+        lines.append(f"- Technical debt: `{residual.get('technical_debt_path')}`")
     return "\n".join(lines) + "\n"
 
 
