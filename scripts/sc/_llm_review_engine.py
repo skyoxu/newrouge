@@ -388,7 +388,13 @@ def main() -> int:
                     acceptance_semantic_cache[acceptance_semantic_profile] = ("", {"status": "error", "profile": acceptance_semantic_profile})
             acceptance_semantic_ctx, acceptance_semantic_meta = acceptance_semantic_cache[acceptance_semantic_profile]
         task_requirements_blob = "\n".join([ctx, acceptance_ctx, acceptance_semantic_ctx, review_template])
-        blocks = [base_prompt, _REVIEW_LENSES_PROMPT]
+        fix_through = str(getattr(args, "fix_through", "P1") or "P1").strip().upper()
+        fix_through_prompt = (
+            "## Active must-fix threshold\n"
+            f"- fix-through: {fix_through}\n"
+            f"- Findings at {fix_through} or higher severity are must-fix and cannot use disposition.action=defer.\n"
+        )
+        blocks = [base_prompt, _REVIEW_LENSES_PROMPT, fix_through_prompt]
         if review_template:
             blocks.append("## Structured Review Template\n" + review_template.strip() + "\n")
         if ctx:
@@ -484,7 +490,10 @@ def main() -> int:
             if normalized_verdict:
                 verdict = normalized_verdict
 
-        review_contract, review_contract_errors = parse_review_contract(last_msg)
+        review_contract, review_contract_errors = parse_review_contract(
+            last_msg,
+            fix_through=str(getattr(args, "fix_through", "P1") or "P1"),
+        )
         if review_contract_errors:
             review_incomplete = True
             had_warnings = True
@@ -540,6 +549,7 @@ def main() -> int:
             "review_method": {
                 "reviewer_mode": "single-reviewer",
                 "required_lenses": list(_REQUIRED_REVIEW_LENSES),
+                "fix_through": str(getattr(args, "fix_through", "P1") or "P1"),
             },
             "completion_status": (
                 "failed" if review_failed
