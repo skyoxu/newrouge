@@ -35,10 +35,10 @@ class LlmReviewBackendCliTests(unittest.TestCase):
 
         self.assertEqual(["code-reviewer", "security-auditor"], agents)
 
-    def test_resolve_agents_should_add_semantic_reviewer_when_using_profile_defaults(self) -> None:
+    def test_resolve_agents_should_use_single_reviewer_when_using_profile_defaults(self) -> None:
         agents = review_cli.resolve_agents("", "warn")
 
-        self.assertIn("semantic-equivalence-auditor", agents)
+        self.assertEqual(["code-reviewer"], agents)
 
     def test_apply_delivery_profile_defaults_should_resolve_llm_backend(self) -> None:
         args = Namespace(
@@ -114,7 +114,7 @@ class LlmReviewBackendCliTests(unittest.TestCase):
 
         self.assertEqual([], errors)
 
-    def test_validate_args_should_fail_when_semantic_gate_require_omits_semantic_reviewer_from_explicit_agents(self) -> None:
+    def test_validate_args_should_allow_semantic_require_with_single_reviewer(self) -> None:
         args = Namespace(
             uncommitted=False,
             commit=None,
@@ -127,22 +127,19 @@ class LlmReviewBackendCliTests(unittest.TestCase):
             dry_run_plan=False,
             prompts_only=False,
             llm_backend="codex-cli",
-            agents="code-reviewer,security-auditor",
+            agents="code-reviewer",
             semantic_gate="require",
             _agents_explicit=True,
         )
         with mock.patch.object(
             review_cli,
             "inspect_llm_backend",
-            return_value={
-                "backend": "codex-cli",
-                "available": True,
-                "blocking_errors": [],
-            },
+            return_value={"backend": "codex-cli", "available": True, "blocking_errors": []},
         ):
             errors = review_cli.validate_args(args)
 
-        self.assertTrue(any("semantic-equivalence-auditor" in item for item in errors))
+        self.assertEqual([], errors)
+
 
     def test_summary_base_should_include_backend_readiness(self) -> None:
         args = Namespace(
