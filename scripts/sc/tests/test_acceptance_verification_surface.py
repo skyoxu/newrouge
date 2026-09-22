@@ -130,6 +130,75 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                 self.assertEqual("fail", report["status"])
                 self.assertTrue(report["errors"])
 
+    def test_mixed_anchor_tracks_each_obligation_and_preserves_parent_anchor(self) -> None:
+        triplet = self._triplet({
+            "ACC:T15.1": {
+                "obligations": [
+                    {
+                        "obligation_id": "core",
+                        "verification_surface": "core-behavior",
+                        "primary_evidence": ["Game.Core.Tests/Combat/RewardTests.cs"],
+                        "secondary_evidence": [],
+                        "human_evidence_required": False,
+                    },
+                    {
+                        "obligation_id": "scene",
+                        "verification_surface": "godot-scene",
+                        "primary_evidence": ["Tests.Godot/tests/Scenes/test_reward_scene.gd"],
+                        "secondary_evidence": [],
+                        "human_evidence_required": False,
+                    },
+                ]
+            }
+        })
+        report = validate_acceptance_verification(triplet=triplet)
+        self.assertEqual("ok", report["status"])
+        self.assertEqual(["ACC:T15.1"], report["passed_anchors"])
+        self.assertEqual(
+            ["core-behavior", "godot-scene"],
+            report["surfaces"]["ACC:T15.1"],
+        )
+        self.assertEqual(
+            {"core", "scene"},
+            {item["obligation_id"] for item in report["obligations"]["ACC:T15.1"]},
+        )
+        self.assertTrue(all(
+            item["source_anchor"] == "ACC:T15.1"
+            for item in report["obligations"]["ACC:T15.1"]
+        ))
+        refs = collect_task_refs(triplet)
+        self.assertIn("Game.Core.Tests/Combat/RewardTests.cs", refs)
+        self.assertIn("Tests.Godot/tests/Scenes/test_reward_scene.gd", refs)
+
+    def test_mixed_anchor_fails_when_one_obligation_is_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            triplet = self._triplet({
+                "ACC:T15.1": {
+                    "obligations": [
+                        {
+                            "obligation_id": "core",
+                            "verification_surface": "core-behavior",
+                            "primary_evidence": ["Game.Core.Tests/Combat/RewardTests.cs"],
+                            "secondary_evidence": [],
+                            "human_evidence_required": False,
+                        },
+                        {
+                            "obligation_id": "feel",
+                            "verification_surface": "human-experience",
+                            "primary_evidence": ["logs/manual/task-15-playtest.md"],
+                            "secondary_evidence": [],
+                            "human_evidence_required": True,
+                            "human_evidence_status": "pending",
+                        },
+                    ]
+                }
+            })
+            report = validate_acceptance_verification(triplet=triplet, root=root)
+            self.assertEqual("fail", report["status"])
+            self.assertEqual(["ACC:T15.1"], report["pending_anchors"])
+            self.assertNotIn("ACC:T15.1", report["passed_anchors"])
+
     def test_player_journey_can_bind_mixed_existing_evidence(self) -> None:
         triplet = self._triplet({
             "ACC:T15.1": {
