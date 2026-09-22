@@ -6,9 +6,30 @@ from _util import today_str
 
 
 REVIEW_VERDICTS = {"pass", "needs-fix", "block"}
-FINDING_SEVERITIES = {"low", "medium", "high"}
+FINDING_SEVERITIES = {"P0", "P1", "P2", "P3", "P4"}
+LEGACY_SEVERITY_MAP = {"high": "P1", "medium": "P2", "low": "P3"}
 RECOMMENDED_ACTIONS = {"none", "resume", "refresh", "fork"}
 APPROVAL_STATUSES = {"not-needed", "pending", "approved", "denied", "invalid", "mismatched"}
+
+
+
+def normalize_finding_severity(value: Any) -> str:
+    raw = str(value or "").strip()
+    upper = raw.upper()
+    if upper in FINDING_SEVERITIES:
+        return upper
+    return LEGACY_SEVERITY_MAP.get(raw.lower(), raw)
+
+
+def normalize_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        item = dict(finding)
+        item["severity"] = normalize_finding_severity(item.get("severity"))
+        normalized.append(item)
+    return normalized
 
 
 def _default_explain() -> dict[str, Any]:
@@ -69,7 +90,7 @@ def make_review_payload(
         "review_verdict": str(review_verdict or "").strip(),
         "explain": merged_explain,
         "approval": merged_approval,
-        "findings": findings,
+        "findings": normalize_findings(findings),
     }
 
 
@@ -193,7 +214,7 @@ def validate_review_payload(payload: dict[str, Any]) -> list[str]:
                 errors.append(f"{base}.{key}: unexpected property")
         if not str(finding.get("finding_id") or "").strip():
             errors.append(f"{base}.finding_id: must be non-empty string")
-        if str(finding.get("severity") or "").strip() not in FINDING_SEVERITIES:
+        if normalize_finding_severity(finding.get("severity")) not in FINDING_SEVERITIES:
             errors.append(f"{base}.severity: must be one of {sorted(FINDING_SEVERITIES)}")
         for key in ("category", "owner_step", "evidence_path", "message", "suggested_fix"):
             if not str(finding.get(key) or "").strip():
