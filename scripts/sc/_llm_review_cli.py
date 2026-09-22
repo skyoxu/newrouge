@@ -55,6 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--model-reasoning-effort", default="low", choices=["low", "medium", "high"], help="Codex config override.")
     ap.add_argument("--threat-model", default=None, help="singleplayer|modded|networked")
     ap.add_argument("--security-profile", default=None, choices=["strict", "host-safe"], help="Security review profile hint.")
+    ap.add_argument(
+        "--fix-through",
+        default="P1",
+        choices=["P1", "P2", "P3"],
+        help="Active must-fix severity threshold used by the structured review contract.",
+    )
     ap.add_argument("--claude-agents-root", default=None, help="Claude agents root path.")
     ap.add_argument("--skip-agent-prompts", action="store_true", help="Skip loading external agent prompt files.")
     ap.add_argument("--prompt-max-chars", type=int, default=32000, help="Max prompt chars per agent before truncation.")
