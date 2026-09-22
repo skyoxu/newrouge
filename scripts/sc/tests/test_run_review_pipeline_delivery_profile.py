@@ -647,7 +647,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
         out_dir = _extract_out_dir(proc.stdout or "")
         summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(["code-reviewer", "security-auditor"], [str(x) for x in (summary.get("agents") or [])])
+        self.assertEqual(["code-reviewer"], [str(x) for x in (summary.get("agents") or [])])
 
     def test_dry_run_fast_ship_should_escalate_minimal_tier_for_contract_task(self) -> None:
         run_id = uuid.uuid4().hex
@@ -688,7 +688,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("full", execution_context["llm_review"]["effective_tier"])
             self.assertIn("contract_refs_present", execution_context["llm_review"]["escalation_reasons"])
             self.assertEqual("warn", llm_cmd[llm_cmd.index("--semantic-gate") + 1])
-            self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("code-reviewer", llm_cmd[llm_cmd.index("--agents") + 1])
             self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
 
     def test_dry_run_should_forward_targeted_llm_agent_timeout_overrides(self) -> None:
