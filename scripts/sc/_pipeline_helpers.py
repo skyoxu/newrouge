@@ -25,6 +25,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--delivery-profile", default=None, choices=["playable-ea", "fast-ship", "standard"], help="Delivery profile (default: env DELIVERY_PROFILE or fast-ship).")
     parser.add_argument("--security-profile", default=None, choices=["strict", "host-safe"])
     parser.add_argument(
+        "--fix-through",
+        default=None,
+        choices=["P1", "P2", "P3"],
+        help="Must-fix severity threshold. Fresh runs default to P1; resume/fork inherits the source run unless explicitly matched.",
+    )
+    parser.add_argument(
         "--reselect-profile",
         action="store_true",
         help="Allow a fresh run to switch away from the latest task-scoped delivery/security profile lock.",
