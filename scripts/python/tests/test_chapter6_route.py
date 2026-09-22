@@ -311,6 +311,7 @@ class Chapter6RouteTests(unittest.TestCase):
                     "item_count": 1,
                     "findings": [
                         {
+                            "finding_id": "llm-semantic-1",
                             "severity": "P2",
                             "agent": "semantic-equivalence-auditor",
                             "message": "Evidence wording is still too weak.",
@@ -355,6 +356,14 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertTrue(record["performed"])
             self.assertEqual("docs/technical-debt.md", record["register_path"])
             self.assertTrue((root / record["register_path"]).exists())
+            first_register = (root / record["register_path"]).read_text(encoding="utf-8")
+            with (
+                mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+                mock.patch.object(chapter6_route, "_derive_change_scope", return_value={"changed_paths": ["README.md"]}),
+            ):
+                _, second_route = chapter6_route.route_chapter6(repo_root=root, task_id="15", record_residual=True)
+            self.assertEqual("unchanged", second_route["residual_recording"]["register_status"])
+            self.assertEqual(first_register, (root / record["register_path"]).read_text(encoding="utf-8"))
             self.assertFalse((root / "decision-logs").exists())
             self.assertFalse((root / "execution-plans").exists())
 

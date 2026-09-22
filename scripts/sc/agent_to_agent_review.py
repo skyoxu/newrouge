@@ -180,6 +180,26 @@ def _build_llm_findings(llm_summary: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         details = result.get("details") or {}
         verdict = str(details.get("verdict") or "").strip()
+        review_contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else None
+        structured_findings = review_contract.get("findings") if isinstance(review_contract, dict) else None
+        if isinstance(structured_findings, list):
+            for raw in structured_findings:
+                if not isinstance(raw, dict):
+                    continue
+                evidence = [str(item).strip() for item in raw.get("evidence", []) if str(item).strip()] if isinstance(raw.get("evidence"), list) else []
+                findings.append(
+                    _build_finding(
+                        finding_id=str(raw.get("finding_id") or "").strip(),
+                        severity=str(raw.get("severity") or "").strip().upper(),
+                        category="llm-review",
+                        owner_step="sc-llm-review",
+                        evidence_path=evidence[0] if evidence else str(result.get("output_path") or details.get("trace") or ""),
+                        message=str(raw.get("claim") or "").strip(),
+                        suggested_fix=str(raw.get("required_action") or "").strip(),
+                        commands=[],
+                    )
+                )
+            continue
         if verdict in {"", "OK"}:
             continue
         agent = str(result.get("agent") or "unknown-agent")
@@ -295,6 +315,20 @@ def build_agent_review(*, out_dir: Path, reviewer: str) -> tuple[dict[str, Any],
         try:
             llm_summary = _load_json(llm_summary_path)
             findings.extend(_build_llm_findings(llm_summary))
+            completion_status = str(llm_summary.get("completion_status") or "").strip().lower()
+            if completion_status != "completed":
+                findings.append(
+                    _build_finding(
+                        finding_id="llm-review-incomplete",
+                        severity="high",
+                        category="artifact-integrity",
+                        owner_step="sc-llm-review",
+                        evidence_path=str(llm_summary_path),
+                        message=f"The model review completion state is `{completion_status or 'missing'}`.",
+                        suggested_fix="Run the single reviewer again and require a valid completed Review Contract.",
+                        commands=[],
+                    )
+                )
         except Exception as exc:  # noqa: BLE001
             findings.append(
                 _build_finding(

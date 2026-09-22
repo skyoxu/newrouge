@@ -28,6 +28,9 @@ def build_acceptance_command(
         "--security-profile",
         security_profile,
     ]
+    revision = str(getattr(args, "revision", None) or "").strip()
+    if revision:
+        acceptance_cmd += ["--candidate-revision", revision]
     if bool(acceptance_defaults.get("strict_adr_status", False)):
         acceptance_cmd.append("--strict-adr-status")
     if bool(acceptance_defaults.get("strict_test_quality", False)):

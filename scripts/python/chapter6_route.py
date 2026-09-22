@@ -117,9 +117,11 @@ def _load_low_priority_findings(root: Path, payload: dict[str, Any]) -> list[dic
         message = str(item.get("message") or "").strip()
         agent = str(item.get("agent") or "").strip() or "unknown-agent"
         source_path = str(item.get("source_path") or "").strip()
+        finding_id = str(item.get("finding_id") or "").strip()
         if severity and message:
             out.append(
                 {
+                    "finding_id": finding_id,
                     "severity": severity,
                     "message": message,
                     "agent": agent,

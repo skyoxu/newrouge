@@ -37,6 +37,34 @@ def _write_json(path: Path, payload) -> None:
 
 
 class AcceptanceTestgenRedTests(unittest.TestCase):
+    def test_direct_dotnet_red_should_require_target_assertion_in_trx(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            trx = Path(tmpdir) / "direct-red.trx"
+            trx.write_text(
+                """<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Results>
+<UnitTestResult testName="Game.Core.Tests.Tasks.Task14RedTests.RequiredBehavior" outcome="Failed">
+<Output><ErrorInfo><Message>Assert.Equal() Failure: Expected: 2 Actual: 1</Message></ErrorInfo></Output>
+</UnitTestResult></Results></TestRun>""",
+                encoding="utf-8",
+            )
+            report = red.evaluate_direct_dotnet_red(
+                test_step={"rc": 1, "trx_path": str(trx)},
+                verify_log_text="Test run failed.",
+                expected_test_refs=["Game.Core.Tests/Tasks/Task14RedTests.cs"],
+            )
+        self.assertEqual("ok", report["status"])
+        self.assertEqual("unit_behavior_red", report["reason"])
+
+    def test_direct_dotnet_red_should_reject_timeout_even_with_nonzero_rc(self) -> None:
+        report = red.evaluate_direct_dotnet_red(
+            test_step={"rc": 124, "trx_path": "missing.trx"},
+            verify_log_text="process timed out",
+            expected_test_refs=["Game.Core.Tests/Tasks/Task14RedTests.cs"],
+        )
+        self.assertEqual("fail", report["status"])
+        self.assertEqual("verification_timeout", report["reason"])
+
     def test_evaluate_red_verification_should_fail_on_unexpected_green(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -241,6 +269,29 @@ class AcceptanceTestgenRedTests(unittest.TestCase):
 
         self.assertEqual("ok", report["status"])
         self.assertEqual("gdunit_behavior_red", report["reason"])
+
+    def test_evaluate_red_verification_should_reject_timeout_before_gdunit_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            _write_json(
+                root / "logs" / "e2e" / "2026-03-20" / "sc-test" / "gdunit-hard" / "run-summary.json",
+                {"added": ["tests/test_reward.gd"], "results": {"tests": 1, "failures": 1, "errors": 0, "failed_tests": ["test_reward"]}},
+            )
+            (root / "logs" / "ci" / "2026-03-20" / "sc-test").mkdir(parents=True, exist_ok=True)
+            (root / "logs" / "ci" / "2026-03-20" / "sc-test" / "run_id.txt").write_text("run-red\n", encoding="utf-8")
+            gd_dir = root / "logs" / "e2e" / "2026-03-20" / "sc-test" / "gdunit-hard"
+            (gd_dir / "run_id.txt").write_text("run-red\n", encoding="utf-8")
+            report = red.evaluate_red_verification(
+                repo_root=root,
+                out_dir=out_dir,
+                verify_mode="all",
+                test_step={"status": "fail", "rc": 124},
+                verify_log_text="process timed out",
+                expected_test_refs=["tests/test_reward.gd"],
+            )
+        self.assertEqual("fail", report["status"])
+        self.assertEqual("verification_timeout", report["reason"])
 
 
     def test_evaluate_red_verification_should_reject_unrelated_unit_failure(self) -> None:

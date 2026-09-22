@@ -127,6 +127,7 @@ def resolve_latest_pipeline_payload(task_id: str) -> dict[str, Any]:
 def parse_llm_verdicts(summary_path: Path) -> dict[str, str]:
     payload = read_json(summary_path)
     out: dict[str, str] = {}
+    review_completed = str(payload.get("completion_status") or "").strip().lower() == "completed"
     for row in payload.get("results", []):
         if not isinstance(row, dict):
             continue
@@ -134,7 +135,14 @@ def parse_llm_verdicts(summary_path: Path) -> dict[str, str]:
         if not agent:
             continue
         details = row.get("details") if isinstance(row.get("details"), dict) else {}
-        verdict = normalize_verdict(str(details.get("verdict") or ""))
+        contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else {}
+        contract_completed = str(contract.get("completion_status") or "").strip().lower() == "completed"
+        contract_errors = details.get("review_contract_errors") if isinstance(details.get("review_contract_errors"), list) else []
+        verdict = (
+            normalize_verdict(str(details.get("verdict") or ""))
+            if review_completed and contract_completed and not contract_errors
+            else "Unknown"
+        )
         out[agent] = verdict
     return out
 
@@ -703,6 +711,13 @@ def derive_needs_fix_fast_agent_timeout_overrides(
     if llm_summary_path is None or not llm_summary_path.exists():
         return {}, {}
     llm_summary = read_json(llm_summary_path)
+    review_method = llm_summary.get("review_method") if isinstance(llm_summary.get("review_method"), dict) else {}
+    required_lenses = review_method.get("required_lenses") if isinstance(review_method.get("required_lenses"), list) else []
+    if (
+        str(review_method.get("reviewer_mode") or "").strip() != "single-reviewer"
+        or required_lenses != ["Spec Compliance", "Edge Case", "Verification Gap"]
+    ):
+        return {}, {}
     code_reviewer_row = next(
         (
             row
@@ -1216,6 +1231,22 @@ def _round_needs_fix_signature(round_result: dict[str, Any]) -> list[dict[str, s
                 continue
             details = result.get("details") if isinstance(result.get("details"), dict) else {}
             if normalize_verdict(str(details.get("verdict") or "")) != "Needs Fix":
+                continue
+            contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else {}
+            structured_findings = contract.get("findings") if isinstance(contract.get("findings"), list) else []
+            for finding in structured_findings:
+                if not isinstance(finding, dict):
+                    continue
+                authority_refs = finding.get("authority_refs") if isinstance(finding.get("authority_refs"), list) else []
+                signature.append(
+                    {
+                        "finding_id": _normalize_signature_text(finding.get("finding_id")),
+                        "claim": _normalize_signature_text(finding.get("claim")),
+                        "anchor": _normalize_signature_text("|".join(str(item) for item in authority_refs)),
+                        "required_action": _normalize_signature_text(finding.get("required_action")),
+                    }
+                )
+            if structured_findings:
                 continue
             output_path = str(result.get("output_path") or "").strip()
             if not output_path:

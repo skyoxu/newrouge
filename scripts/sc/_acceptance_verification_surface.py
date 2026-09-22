@@ -145,7 +145,14 @@ def _resolve_evidence_path(value: str, *, root: Path) -> Path:
     return path if path.is_absolute() else (root / path)
 
 
-def _human_evidence_confirms_pass(path: Path, *, revision: str) -> bool:
+def _human_evidence_confirms_pass(
+    path: Path,
+    *,
+    revision: str,
+    task_id: str,
+    anchor: str,
+    obligation_id: str,
+) -> bool:
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
@@ -175,16 +182,28 @@ def _human_evidence_confirms_pass(path: Path, *, revision: str) -> bool:
                 or payload.get("conclusion")
                 or ""
             ).strip().lower()
-            if evidence_revision == revision_value and conclusion == "passed":
+            evidence_task_id = str(payload.get("task_id") or "").strip()
+            evidence_anchor = str(payload.get("acceptance_anchor") or payload.get("anchor") or "").strip()
+            evidence_obligation = str(payload.get("obligation_id") or "").strip()
+            if (
+                evidence_revision == revision_value
+                and evidence_task_id == task_id
+                and evidence_anchor == anchor
+                and evidence_obligation == obligation_id
+                and conclusion == "passed"
+            ):
                 return True
 
-    if revision_value.casefold() not in text.casefold():
-        return False
-    return bool(
-        re.search(
-            r"(?im)^\s*(?:result|status|verdict|conclusion)\s*:\s*passed\s*$",
-            text,
-        )
+    def field(name: str) -> str:
+        match = re.search(rf"(?im)^[ \t]*{re.escape(name)}[ \t]*:[ \t]*([^\r\n]*)[ \t]*$", text)
+        return str(match.group(1)).strip() if match else ""
+
+    return (
+        field("revision") == revision_value
+        and field("task_id") == task_id
+        and field("acceptance_anchor") == anchor
+        and field("obligation_id") == obligation_id
+        and field("result").casefold() == "passed"
     )
 
 
@@ -195,6 +214,8 @@ def _validate_human_evidence(
     primary: list[str],
     root: Path,
     errors: list[str],
+    task_id: str,
+    expected_revision: str,
 ) -> str:
     status = str(row.get("human_evidence_status") or "pending").strip().lower()
     if status not in HUMAN_STATUSES:
@@ -204,13 +225,30 @@ def _validate_human_evidence(
         revision = str(row.get("human_evidence_revision") or "").strip()
         if not revision:
             errors.append(f"{label}: passed human evidence requires human_evidence_revision")
+        if not expected_revision:
+            errors.append(f"{label}: current candidate revision is unavailable; pass --candidate-revision or use a clean Git revision")
+        elif revision and revision != expected_revision:
+            errors.append(
+                f"{label}: human_evidence_revision={revision} does not match current candidate revision={expected_revision}"
+            )
+        anchor, _, obligation_id = label.partition("#")
         paths = [(item, _resolve_evidence_path(item, root=root)) for item in primary]
         missing = [item for item, path in paths if not path.is_file()]
         if missing:
             errors.append(f"{label}: passed human evidence files do not exist: {missing}")
-        elif revision and not any(_human_evidence_confirms_pass(path, revision=revision) for _item, path in paths):
+        elif revision and expected_revision and revision == expected_revision and not any(
+            _human_evidence_confirms_pass(
+                path,
+                revision=revision,
+                task_id=task_id,
+                anchor=anchor,
+                obligation_id=obligation_id,
+            )
+            for _item, path in paths
+        ):
             errors.append(
-                f"{label}: passed human evidence must explicitly bind revision={revision} and a passed conclusion"
+                f"{label}: passed human evidence must explicitly bind task_id={task_id}, "
+                f"acceptance_anchor={anchor}, obligation_id={obligation_id!r}, revision={revision}, and result=passed"
             )
     return status
 
@@ -247,6 +285,8 @@ def _validate_row(
     root: Path,
     require_evidence_files: bool,
     errors: list[str],
+    task_id: str,
+    expected_revision: str,
 ) -> tuple[str, str]:
     surface = str(row.get("verification_surface") or "").strip()
     if surface not in VERIFICATION_SURFACES:
@@ -315,6 +355,8 @@ def _validate_row(
             primary=primary,
             root=root,
             errors=errors,
+            task_id=task_id,
+            expected_revision=expected_revision,
         ), surface
 
     if human_required:
@@ -324,11 +366,18 @@ def _validate_row(
             primary=primary,
             root=root,
             errors=errors,
+            task_id=task_id,
+            expected_revision=expected_revision,
         ), surface
     return "passed", surface
 
 
-def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) -> dict[str, Any]:
+def validate_acceptance_verification(
+    *,
+    triplet: Any,
+    root: Path | None = None,
+    expected_revision: str = "",
+) -> dict[str, Any]:
     task_id = str(getattr(triplet, "task_id", "") or "").strip()
     root_dir = Path(root) if root is not None else Path.cwd()
     mapping = collect_acceptance_verification(triplet)
@@ -360,6 +409,8 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
                 root=root_dir,
                 require_evidence_files=root is not None,
                 errors=errors,
+                task_id=task_id,
+                expected_revision=str(expected_revision or "").strip(),
             )
             states.append(state)
             surface_values.append(surface)
@@ -400,4 +451,5 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
         "failed_anchors": failed,
         "surfaces": surfaces,
         "obligations": obligations,
+        "expected_revision": str(expected_revision or "").strip(),
     }

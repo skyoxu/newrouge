@@ -58,7 +58,7 @@ class LlmReviewBackendCliTests(unittest.TestCase):
 
         self.assertEqual("codex-cli", updated.llm_backend)
 
-    def test_validate_args_should_fail_when_openai_backend_missing_requirements(self) -> None:
+    def test_validate_args_should_allow_self_check_without_openai_requirements(self) -> None:
         args = Namespace(
             uncommitted=False,
             commit=None,
@@ -83,8 +83,7 @@ class LlmReviewBackendCliTests(unittest.TestCase):
         ):
             errors = review_cli.validate_args(args)
 
-        self.assertIn("python package 'openai' is not installed", errors)
-        self.assertIn("OPENAI_API_KEY is not set", errors)
+        self.assertEqual([], errors)
         self.assertEqual("openai-api", args._llm_backend_info["backend"])
 
     def test_validate_args_should_allow_prompts_only_even_when_backend_not_ready(self) -> None:
