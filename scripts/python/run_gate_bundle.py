@@ -350,6 +350,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.python.tests.test_chapter6_recovery_common",
                 "scripts.python.tests.test_impact_analysis_handoff",
                 "scripts.python.tests.test_resume_task",
+                "scripts.python.tests.test_agent_context_routing",
                 "scripts.python.tests.test_knowledge_control_plane",
                 "scripts.python.tests.test_mvg_acceptance",
                 "scripts.python.tests.test_cross_repo_migration",
