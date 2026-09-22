@@ -30,6 +30,19 @@ ACTIVE_PLAN_STATUSES = {"active", "paused", "blocked"}
 FIELD_LINE_RE = re.compile(r"^- ([^:]+):\s*(.*)$")
 TASK_ID_RE = re.compile(r"\b\d+\b")
 TEST_ROOT_PREFIXES = ("Game.Core.Tests/", "Tests.Godot/tests/", "Tests/")
+REQUIRED_PLAN_SIGNALS = {
+    "cross-session",
+    "ordered-behavior-slices",
+    "partial-resume",
+    "authority-migration",
+    "large-refactor",
+    "mvg-integration",
+    "workflow-control-plane",
+}
+RECOMMENDED_PLAN_SIGNALS = {
+    "boundary-investigation",
+    "cross-session-risk",
+}
 
 
 @dataclass(frozen=True)
@@ -44,6 +57,8 @@ class ExecutionPlanAssessment:
     test_roots: list[str]
     signals: list[dict[str, Any]]
     threshold_hit: bool
+    need_level: str
+    reason_codes: list[str]
 
 
 def _parse_fields(path: Path) -> dict[str, str]:
@@ -91,6 +106,21 @@ def _test_root_for_ref(ref: str) -> str:
     return normalized.split("/", 1)[0] if normalized else ""
 
 
+def _declared_plan_signals(triplet: Any) -> set[str]:
+    signals: set[str] = set()
+    for row in (getattr(triplet, "master", None), getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
+        if not isinstance(row, dict):
+            continue
+        raw = row.get("execution_plan_signals")
+        if isinstance(raw, list):
+            signals.update(str(item).strip().lower() for item in raw if str(item).strip())
+        plan_meta = row.get("execution_plan") if isinstance(row.get("execution_plan"), dict) else {}
+        raw_meta = plan_meta.get("signals")
+        if isinstance(raw_meta, list):
+            signals.update(str(item).strip().lower() for item in raw_meta if str(item).strip())
+    return signals
+
+
 def assess_execution_plan_need(
     *,
     repo_root: Path,
@@ -98,23 +128,49 @@ def assess_execution_plan_need(
     task_id: str,
     tdd_stage: str,
     verify: str,
+    plan_signals: list[str] | None = None,
+    plan_reason: str = "",
 ) -> ExecutionPlanAssessment:
     by_ref = _iter_allowed_refs(triplet=triplet, task_id=task_id)
     allowed_refs = sorted(by_ref.keys())
     missing_refs = [ref for ref in allowed_refs if not (repo_root / ref).exists()]
     anchor_count = sum(len(by_ref.get(ref, [])) for ref in allowed_refs)
     test_roots = sorted({_test_root_for_ref(ref) for ref in missing_refs if _test_root_for_ref(ref)})
-    missing_suffixes = {Path(ref).suffix.lower() for ref in missing_refs}
-    signal_specs = [
-        ("missing_refs_ge_3", len(missing_refs) >= 3, f"missing_refs_count={len(missing_refs)} threshold=3"),
-        ("mixed_cs_and_gd", ".cs" in missing_suffixes and ".gd" in missing_suffixes, f"suffixes={','.join(sorted(missing_suffixes)) or 'none'}"),
-        ("red_first_stage", str(tdd_stage) == "red-first", f"tdd_stage={tdd_stage}"),
-        ("verify_auto_or_all", str(verify) in {"auto", "all"}, f"verify={verify}"),
-        ("anchors_ge_4", anchor_count >= 4, f"anchor_count={anchor_count} threshold=4"),
-        ("multiple_test_roots", len(test_roots) >= 2, f"test_roots={','.join(test_roots) or 'none'}"),
+
+    declared = _declared_plan_signals(triplet)
+    declared.update(str(item).strip().lower() for item in (plan_signals or []) if str(item).strip())
+    unknown = sorted(declared - REQUIRED_PLAN_SIGNALS - RECOMMENDED_PLAN_SIGNALS)
+    required = sorted(declared & REQUIRED_PLAN_SIGNALS)
+    recommended = sorted(declared & RECOMMENDED_PLAN_SIGNALS)
+    if required:
+        need_level = "required"
+        reason_codes = required
+    elif recommended:
+        need_level = "recommended"
+        reason_codes = recommended
+    else:
+        need_level = "none"
+        reason_codes = []
+
+    signals = [
+        {
+            "id": signal_id,
+            "active": signal_id in declared,
+            "level": "required" if signal_id in REQUIRED_PLAN_SIGNALS else "recommended",
+            "detail": str(plan_reason or "").strip() if signal_id in declared and str(plan_reason or "").strip() else "declared persistent coordination signal",
+        }
+        for signal_id in sorted(REQUIRED_PLAN_SIGNALS | RECOMMENDED_PLAN_SIGNALS)
     ]
-    signals = [{"id": signal_id, "active": active, "detail": detail} for signal_id, active, detail in signal_specs]
-    threshold_hit = sum(1 for item in signals if item["active"]) >= 2
+    signals.extend(
+        {
+            "id": f"unknown:{signal_id}",
+            "active": True,
+            "level": "unknown",
+            "detail": "unknown signals never create a required plan",
+        }
+        for signal_id in unknown
+    )
+
     return ExecutionPlanAssessment(
         task_id=str(task_id),
         title=str((triplet.master or {}).get("title") or "").strip(),
@@ -125,7 +181,9 @@ def assess_execution_plan_need(
         anchor_count=anchor_count,
         test_roots=test_roots,
         signals=signals,
-        threshold_hit=threshold_hit,
+        threshold_hit=need_level == "required",
+        need_level=need_level,
+        reason_codes=reason_codes,
     )
 
 
@@ -167,15 +225,15 @@ def create_execution_plan_draft(
         root=repo_root,
         title=title_text,
         status="active",
-        goal=f"Control acceptance-driven test generation complexity for task {task_id}.",
+        goal=f"Preserve resumable ordered execution for task {task_id}.",
         scope=(
-            f"{assessment.missing_refs_count} missing refs across {len(assessment.test_roots)} test roots; "
-            f"seed refs: {scope_refs}"
+            f"Persistent coordination reasons: {', '.join(assessment.reason_codes) or 'none'}; "
+            f"acceptance refs remain evidence only ({assessment.refs_total} refs, {assessment.missing_refs_count} currently missing)."
         ),
-        current_step="Review missing acceptance refs and choose the first safe red step.",
-        stop_loss="Do not start Codex test generation until the ref mix and verify mode are explicit.",
-        next_action="Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.",
-        exit_criteria="The next acceptance-driven test generation step is explicit and low-ambiguity.",
+        current_step="Execute the first ordered behavior slice while recording verified checkpoints.",
+        stop_loss="Stop on authority migration ambiguity, unrecoverable partial state, or a failed required verification boundary.",
+        next_action="Continue the ordered task work from the latest verified checkpoint.",
+        exit_criteria="All required ordered/migration checkpoints are complete and resumable evidence is current.",
         related_adrs=[],
         related_decision_logs=[],
         links=infer_recovery_links(root=repo_root, task_id=task_id, latest_json=latest_json),
