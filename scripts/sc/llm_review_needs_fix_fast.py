@@ -1024,6 +1024,8 @@ def _build_deterministic_cmd(*, py: str, args: argparse.Namespace) -> list[str]:
         str(args.delivery_profile),
         "--security-profile",
         str(args.security_profile),
+        "--fix-through",
+        str(args.fix_through),
         "--skip-llm-review",
         "--llm-base",
         str(args.base),
@@ -1040,6 +1042,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--task-id", required=True, help="Task id (for task-scoped runs).")
     ap.add_argument("--delivery-profile", default=None, choices=DELIVERY_PROFILE_CHOICES, help="Delivery profile (default: env DELIVERY_PROFILE or fast-ship).")
     ap.add_argument("--security-profile", default=None, help="Security profile (default follows delivery profile).")
+    ap.add_argument(
+        "--fix-through",
+        default="P1",
+        choices=["P1", "P2", "P3"],
+        help="Active must-fix severity threshold; findings at or above it cannot be parked as residual debt.",
+    )
     ap.add_argument(
         "--agents",
         default=None,
@@ -1255,7 +1263,7 @@ def _derive_final_status(*, final_verdicts: dict[str, str], rounds: list[dict[st
     return "ok", "llm_review_clean"
 
 
-def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path) -> dict[str, Any]:
+def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path, fix_through: str = "P1") -> dict[str, Any]:
     latest_payload = resolve_latest_pipeline_payload(task_id)
     latest_out_dir_raw = str(latest_payload.get("latest_out_dir") or "").strip()
     if not latest_out_dir_raw:
@@ -1275,6 +1283,7 @@ def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path) -> dict[str, A
         repo_root=repo_root(),
         task_id=str(task_id),
         record_residual=True,
+        fix_through=str(fix_through or "P1"),
     )
     if not isinstance(payload, dict):
         return {}
@@ -1505,7 +1514,11 @@ def main() -> int:
             _write_summary(out_dir, summary)
             print(f"SC_NEEDS_FIX_FAST status=indeterminate out={out_dir}")
             return 1
-        route_payload = _run_chapter6_route_preflight(task_id=str(args.task_id), out_dir=out_dir)
+        route_payload = _run_chapter6_route_preflight(
+            task_id=str(args.task_id),
+            out_dir=out_dir,
+            fix_through=str(args.fix_through),
+        )
         if route_payload:
             route_preflight_step = _build_chapter6_route_step(
                 payload=route_payload,
@@ -1776,6 +1789,8 @@ def main() -> int:
             str(args.delivery_profile),
             "--security-profile",
             str(args.security_profile),
+            "--fix-through",
+            str(args.fix_through),
             "--skip-test",
             "--skip-acceptance",
             "--review-template",
