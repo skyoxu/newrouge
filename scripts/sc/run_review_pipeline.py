@@ -194,6 +194,7 @@ DIRTY_WORKTREE_CHANGED_PATHS_CEILING = 20
 DIRTY_WORKTREE_UNSAFE_PATHS_CEILING = 8
 PROFILE_DRIFT_CHANGED_PATHS_CEILING = 8
 PROFILE_DRIFT_UNSAFE_PATHS_CEILING = 1
+TECHNICAL_DEBT_SYNC_ERROR_RC = 13
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -2596,8 +2597,15 @@ def main() -> int:
             delivery_profile=delivery_profile,
         )
     except Exception as exc:
-        write_text(out_dir / "technical-debt-sync.log", f"technical debt sync skipped: {exc}\n")
-        print(f"[sc-review-pipeline] WARN: technical debt sync skipped: {exc}")
+        write_text(
+            out_dir / "technical-debt-sync.log",
+            f"technical debt sync failed: {exc}\n"
+            "Recovery: repair the register/write condition and rerun the debt sync; "
+            "do not reinterpret the existing Review verdict.\n",
+        )
+        print(f"[sc-review-pipeline] ERROR: technical debt sync failed: {exc}")
+        print(f"SC_REVIEW_PIPELINE status=fail task={task_id} stop=technical-debt-sync out={out_dir}")
+        return TECHNICAL_DEBT_SYNC_ERROR_RC
     print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
     return final_rc
 
