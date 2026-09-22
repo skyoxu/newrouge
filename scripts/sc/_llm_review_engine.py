@@ -37,8 +37,21 @@ from _taskmaster import resolve_triplet
 from _util import ci_dir, repo_rel, repo_root, write_json, write_text
 
 
-_SEMANTIC_AGENT = "semantic-equivalence-auditor"
-_DEFERRED_REASON_CODE = "deferred_until_prior_reviewers_clean"
+_REQUIRED_REVIEW_LENSES = ("Spec Compliance", "Edge Case", "Verification Gap")
+_REVIEW_LENSES_PROMPT = """## Required Review Lenses
+You are the single Chapter 6 model reviewer. Complete every applicable lens before declaring the review complete.
+
+### Spec Compliance
+Compare the changed behavior with the bound Requirement/Acceptance and authority constraints. Identify missing, partial, conflicting, or unsupported success claims.
+
+### Edge Case
+Inspect the changed surface plus relevant callers/state/contracts for missing/empty input, re-entry, partial failure, compatibility, state transitions, and real safety boundaries.
+
+### Verification Gap
+For each required behavior, identify the expected protection, the observed protection, the concrete executable verification, and why the protection would fail if the behavior regressed. Human-experience obligations require explicit human evidence and must remain pending when absent.
+
+If required input for any lens is unavailable, state that limitation and return an incomplete review instead of an empty/OK result.
+"""
 
 
 def _prompt_shape_for_agent(
@@ -48,21 +61,8 @@ def _prompt_shape_for_agent(
     resolved_agents: list[str] | None = None,
     semantic_gate: str | None = None,
 ) -> dict[str, str]:
-    if agent == "semantic-equivalence-auditor":
-        return {
-            "task_context_mode": "semantic",
-            "acceptance_semantic_profile": "semantic",
-            "diff_position": "tail",
-        }
-    normalized_profile = str(delivery_profile or "").strip().lower()
-    normalized_gate = str(semantic_gate or "").strip().lower()
-    reviewer_set = {str(item).strip() for item in (resolved_agents or []) if str(item).strip()}
-    if normalized_profile in {"playable-ea", "fast-ship"} and "semantic-equivalence-auditor" not in reviewer_set and normalized_gate in {"skip", "warn"}:
-        return {
-            "task_context_mode": "compact",
-            "acceptance_semantic_profile": "none",
-            "diff_position": "before_acceptance_semantic",
-        }
+    # Required semantics are reviewer input, not a persona-specific privilege.
+    # Compact mode may reduce prose but never removes Acceptance semantics.
     return {
         "task_context_mode": "compact",
         "acceptance_semantic_profile": "compact",
@@ -153,28 +153,14 @@ def _review_result_is_clean(result: ReviewResult | dict[str, Any]) -> bool:
 def _build_agent_execution_plan(agents: list[str]) -> dict[str, Any]:
     ordered_agents = [str(agent).strip() for agent in agents if str(agent).strip()]
     llm_agents = [agent for agent in ordered_agents if agent not in DETERMINISTIC_AGENTS]
-    if _SEMANTIC_AGENT not in llm_agents or len(llm_agents) <= 1:
-        return {
-            "ordered_agents": ordered_agents,
-            "primary_agents": ordered_agents,
-            "deferred_agents": [],
-            "primary_llm_agents": llm_agents,
-            "stages": {agent: "primary" for agent in ordered_agents},
-            "semantic_deferred": False,
-        }
-
-    primary_agents = [agent for agent in ordered_agents if agent != _SEMANTIC_AGENT]
-    deferred_agents = [agent for agent in ordered_agents if agent == _SEMANTIC_AGENT]
     return {
-        "ordered_agents": [*primary_agents, *deferred_agents],
-        "primary_agents": primary_agents,
-        "deferred_agents": deferred_agents,
-        "primary_llm_agents": [agent for agent in primary_agents if agent not in DETERMINISTIC_AGENTS],
-        "stages": {
-            agent: ("deferred" if agent == _SEMANTIC_AGENT else "primary")
-            for agent in ordered_agents
-        },
-        "semantic_deferred": True,
+        "ordered_agents": ordered_agents,
+        "primary_agents": ordered_agents,
+        "deferred_agents": [],
+        "primary_llm_agents": llm_agents,
+        "stages": {agent: "primary" for agent in ordered_agents},
+        "semantic_deferred": False,
+        "review_lenses": list(_REQUIRED_REVIEW_LENSES),
     }
 
 
@@ -401,7 +387,7 @@ def main() -> int:
                     acceptance_semantic_cache[acceptance_semantic_profile] = ("", {"status": "error", "profile": acceptance_semantic_profile})
             acceptance_semantic_ctx, acceptance_semantic_meta = acceptance_semantic_cache[acceptance_semantic_profile]
         task_requirements_blob = "\n".join([ctx, acceptance_ctx, acceptance_semantic_ctx, review_template])
-        blocks = [base_prompt]
+        blocks = [base_prompt, _REVIEW_LENSES_PROMPT]
         if review_template:
             blocks.append("## Structured Review Template\n" + review_template.strip() + "\n")
         if ctx:
@@ -423,15 +409,13 @@ def main() -> int:
             acceptance_semantic_ctx=acceptance_semantic_ctx,
             diff_position=prompt_shape["diff_position"],
             max_chars=int(args.prompt_max_chars),
-            allow_drop_acceptance_semantic=(agent != "semantic-equivalence-auditor"),
+            allow_drop_acceptance_semantic=False,
         )
         prompt_used, budget_meta = apply_prompt_budget(prompt, max_chars=int(args.prompt_max_chars))
         if bool(budget_meta.get("truncated")):
             prompt_truncated_agents.append(agent)
-            if str(args.prompt_budget_gate) in {"warn", "require"}:
-                had_warnings = True
-            if str(args.prompt_budget_gate) == "require":
-                hard_fail = True
+            had_warnings = True
+            hard_fail = True
 
         prompt_path = out_dir / f"prompt-{agent}.md"
         output_path = out_dir / f"review-{agent}.md"
@@ -480,10 +464,9 @@ def main() -> int:
             hard_fail = True
 
         semantic_gate = str(args.semantic_gate or "skip").strip().lower()
-        semantic_agent = _SEMANTIC_AGENT
         verdict = parse_verdict(last_msg)
         verdict_normalization: dict[str, Any] | None = None
-        if last_msg and agent != semantic_agent:
+        if last_msg:
             normalized_msg, normalized_verdict, verdict_normalization = normalize_host_safe_needs_fix(
                 agent=agent,
                 text=last_msg,
@@ -495,12 +478,11 @@ def main() -> int:
                 write_text(output_path, last_msg)
             if normalized_verdict:
                 verdict = normalized_verdict
-        if agent == semantic_agent:
-            if semantic_gate == "warn" and verdict != "OK":
-                had_warnings = True
-            if semantic_gate == "require" and verdict != "OK":
-                had_warnings = True
-                hard_fail = True
+        if semantic_gate == "warn" and verdict != "OK":
+            had_warnings = True
+        if semantic_gate == "require" and verdict != "OK":
+            had_warnings = True
+            hard_fail = True
 
         results.append(
             ReviewResult(
@@ -532,6 +514,15 @@ def main() -> int:
             "acceptance_semantic_meta": acceptance_semantic_meta,
             "requested_agents": requested_agents,
             "execution_plan": execution_plan,
+            "review_method": {
+                "reviewer_mode": "single-reviewer",
+                "required_lenses": list(_REQUIRED_REVIEW_LENSES),
+            },
+            "completion_status": (
+                "failed" if hard_fail
+                else "incomplete" if had_warnings
+                else "completed"
+            ),
             "results": [r.__dict__ for r in results],
             "prompt_budget": {
                 "max_chars": int(args.prompt_max_chars),
