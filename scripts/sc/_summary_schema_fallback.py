@@ -435,13 +435,16 @@ def validate_sc_acceptance_without_jsonschema(payload: dict[str, Any]) -> list[s
             errors.append("$.task_requirements: must be object when present")
         else:
             required_req = {"has_gd_refs", "requires_env_evidence_preflight"}
+            allowed_req = required_req | {"verification_surface"}
             for key in required_req:
                 if key not in req:
                     errors.append(f"$.task_requirements.{key}: missing required property")
                 elif not isinstance(req.get(key), bool):
                     errors.append(f"$.task_requirements.{key}: must be boolean")
+            if "verification_surface" in req and not isinstance(req.get("verification_surface"), dict):
+                errors.append("$.task_requirements.verification_surface: must be object")
             for key in req.keys():
-                if key not in required_req:
+                if key not in allowed_req:
                     errors.append(f"$.task_requirements.{key}: unexpected property")
 
     if "step_plan" in payload:
