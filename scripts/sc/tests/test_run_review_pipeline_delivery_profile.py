@@ -210,6 +210,44 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(original)
 
+    def test_abort_does_not_require_current_chapter5_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "existing-run"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            summary = {
+                "run_id": "abort-run",
+                "requested_run_id": "abort-run",
+                "status": "fail",
+                "steps": [],
+            }
+            state = {
+                "schema_version": "1.0.0",
+                "task_id": "1",
+                "run_id": "abort-run",
+                "requested_run_id": "abort-run",
+                "status": "fail",
+                "resume_count": 1,
+                "steps": {},
+            }
+            argv = [str(SCRIPT), "--task-id", "1", "--run-id", "abort-run", "--abort"]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(run_review_pipeline_module, "load_task_readiness", side_effect=AssertionError("abort must not query readiness")),
+                mock.patch.object(run_review_pipeline_module, "_load_source_run", return_value=(out_dir, summary, state)),
+                mock.patch.object(run_review_pipeline_module, "_read_execution_context", return_value={"delivery_profile": "standard", "security_profile": "default"}),
+                mock.patch.object(run_review_pipeline_module, "append_run_event") as append_event,
+                mock.patch.object(run_review_pipeline_module, "save_marathon_state") as save_state,
+                mock.patch.object(run_review_pipeline_module, "_write_latest_index") as write_latest,
+                mock.patch.object(run_review_pipeline_module, "_write_active_task_sidecar") as write_active,
+            ):
+                rc = run_review_pipeline_module.main()
+
+        self.assertEqual(0, rc)
+        self.assertEqual("run_aborted", append_event.call_args.kwargs["event"])
+        self.assertEqual("aborted", save_state.call_args.args[1]["status"])
+        self.assertEqual("aborted", write_latest.call_args.kwargs["status"])
+        self.assertEqual("aborted", write_active.call_args.kwargs["status"])
+
     def test_review_blocks_when_chapter5_readiness_is_blocked(self) -> None:
         readiness_path = REPO_ROOT / DEFAULT_READINESS_DIR / "task-1.json"
         payload = json.loads(readiness_path.read_text(encoding="utf-8"))
