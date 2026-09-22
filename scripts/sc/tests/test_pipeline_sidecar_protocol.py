@@ -441,7 +441,12 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
             ]
             with mock.patch.dict(os.environ, _stable_env(), clear=False), \
                 mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path):
+                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path), \
+                mock.patch.object(
+                    run_review_pipeline_module,
+                    "load_task_readiness",
+                    return_value=(False, {}, "chapter5_readiness_missing"),
+                ):
                 rc = run_review_pipeline_module.main()
 
             self.assertEqual(0, rc)
@@ -452,6 +457,10 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
             ]
             self.assertEqual("run_aborted", events[-1]["event"])
             self.assertEqual("aborted", events[-1]["status"])
+            self.assertEqual(
+                "chapter5_readiness_missing",
+                events[-1]["details"]["chapter5_readiness"],
+            )
 
     def test_write_latest_index_should_backfill_reason_and_reuse_mode_from_legacy_summary(self) -> None:
         run_id = uuid.uuid4().hex
