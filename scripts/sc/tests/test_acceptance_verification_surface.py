@@ -46,6 +46,20 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
         self.assertEqual(["core-behavior"], row["candidate_surfaces"])
         self.assertNotIn("acceptance_verification", triplet.back)
 
+    def test_legacy_generic_tests_cs_ref_is_a_core_candidate(self) -> None:
+        triplet = SimpleNamespace(
+            task_id="15",
+            back={
+                "acceptance": [
+                    "Pure deterministic behavior remains covered. Refs: Tests/LegacyRewardTests.cs",
+                ],
+            },
+            gameplay=None,
+        )
+        row = infer_legacy_verification_candidates(triplet)["ACC:T15.1"]
+        self.assertEqual("candidate", row["status"])
+        self.assertEqual("core-behavior", row["suggested_surface"])
+
     def test_legacy_gdunit_scene_ref_yields_scene_candidate(self) -> None:
         triplet = SimpleNamespace(
             task_id="15",
