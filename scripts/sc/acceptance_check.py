@@ -303,7 +303,7 @@ def main() -> int:
     only_steps = parse_only_steps(args.only)
     subtasks_mode = normalize_subtasks_mode(args.subtasks_coverage)
 
-    verification_surface_report = validate_acceptance_verification(triplet=triplet)
+    verification_surface_report = validate_acceptance_verification(triplet=triplet, root=repo_root())
     force_headless_for_task1 = bool(args.require_headless_e2e) and int(triplet.task_id) == 1
     has_gd_refs = task_requires_headless_e2e(triplet) or force_headless_for_task1
     needs_env_preflight = task_requires_env_evidence_preflight(triplet)
