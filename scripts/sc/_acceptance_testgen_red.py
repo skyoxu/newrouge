@@ -170,8 +170,6 @@ def evaluate_red_verification(
             "but was:",
             "assert.",
             "assertion",
-            "failed ",
-            "[fail]",
         )
         if failure_lines and any(token in combined_failure for token in assertion_tokens):
             report["status"] = "ok"
