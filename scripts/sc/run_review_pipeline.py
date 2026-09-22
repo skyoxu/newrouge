@@ -2012,7 +2012,21 @@ def main() -> int:
                 "chapter5_readiness": readiness_reason,
             },
         )
-        save_marathon_state(out_dir, mark_aborted(marathon_state, reason="operator_requested"))
+        abort_state = marathon_state
+        if not isinstance(abort_state, dict):
+            abort_state = build_initial_state(
+                task_id=task_id,
+                run_id=run_id,
+                requested_run_id=requested_run_id,
+                max_step_retries=0,
+                max_wall_time_sec=int(args.max_wall_time_sec or 0),
+                summary=summary,
+                resume_count=1,
+            )
+        save_marathon_state(
+            out_dir,
+            mark_aborted(abort_state, reason="operator_requested"),
+        )
         _write_latest_index(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
         _write_active_task_sidecar(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
         print(f"SC_REVIEW_PIPELINE status=aborted out={out_dir}")
