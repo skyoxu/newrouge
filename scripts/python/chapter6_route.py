@@ -249,17 +249,23 @@ def route_chapter6(
     record_residual: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
-    resume_rc, payload = build_resume_payload(
-        repo_root=root,
-        task_id=str(task_id or "").strip(),
-        latest=str(latest or "").strip(),
-        run_id=str(run_id or "").strip(),
-    )
     readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
-    has_existing_run = bool(
-        isinstance(payload, dict)
-        and (str(payload.get("run_id") or "").strip() or isinstance(payload.get("inspection"), dict))
-    )
+    payload: dict[str, Any] = {}
+    has_existing_run = False
+    try:
+        _resume_rc, payload = build_resume_payload(
+            repo_root=root,
+            task_id=str(task_id or "").strip(),
+            latest=str(latest or "").strip(),
+            run_id=str(run_id or "").strip(),
+        )
+        has_existing_run = bool(
+            isinstance(payload, dict)
+            and (str(payload.get("run_id") or "").strip() or isinstance(payload.get("inspection"), dict))
+        )
+    except FileNotFoundError:
+        if readiness_ok:
+            raise
     if not readiness_ok and not has_existing_run:
         return 3, {
             "task_id": str(task_id or "").strip(),
