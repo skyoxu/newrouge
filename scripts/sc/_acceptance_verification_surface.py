@@ -163,18 +163,29 @@ def _validate_row(
         errors.append(f"{label}: human_evidence_required must be boolean")
         return "invalid", surface
 
-    if surface == "core-behavior" and primary and not any(item.lower().endswith(".cs") for item in primary):
-        errors.append(f"{label}: core-behavior primary_evidence must include an xUnit .cs identity")
-    if surface == "godot-scene" and primary and not any(item.lower().endswith(".gd") for item in primary):
-        errors.append(f"{label}: godot-scene primary_evidence must include a GdUnit .gd identity")
+    def is_core_test_identity(value: str) -> bool:
+        normalized = str(value or "").replace("\\", "/")
+        return normalized.startswith("Game.Core.Tests/") and normalized.lower().endswith(".cs")
+
+    def is_godot_test_identity(value: str) -> bool:
+        normalized = str(value or "").replace("\\", "/")
+        return (
+            normalized.startswith("Tests.Godot/")
+            or normalized.startswith("tests/")
+        ) and normalized.lower().endswith(".gd")
+
+    if surface == "core-behavior" and primary and not any(is_core_test_identity(item) for item in primary):
+        errors.append(f"{label}: core-behavior primary_evidence must include a Game.Core.Tests xUnit .cs identity")
+    if surface == "godot-scene" and primary and not any(is_godot_test_identity(item) for item in primary):
+        errors.append(f"{label}: godot-scene primary_evidence must include a Tests.Godot GdUnit .gd identity")
 
     if surface == "player-journey" and primary and not any(
-        item.lower().endswith((".cs", ".gd"))
+        is_core_test_identity(item) or is_godot_test_identity(item)
         for item in primary
     ):
         errors.append(
-            f"{label}: player-journey primary_evidence must include an executable .cs or .gd test identity; "
-            "integration MVG manifests remain separate integration evidence"
+            f"{label}: player-journey primary_evidence must include an executable Game.Core.Tests .cs "
+            "or Tests.Godot .gd test identity; integration MVG remains separate integration evidence"
         )
 
     if surface == "human-experience":
