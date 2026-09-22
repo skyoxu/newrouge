@@ -126,6 +126,23 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             cmd[-6:],
         )
 
+    def test_review_and_needs_fix_commands_should_propagate_fix_through(self) -> None:
+        policy = lane.resolve_profile_policy("standard", fix_through="P2")
+        review_cmd = lane.build_review_pipeline_cmd(
+            "15",
+            profile_policy=policy,
+            godot_bin="",
+        )
+        needs_fix_cmd = lane.build_needs_fix_fast_cmd(
+            "15",
+            profile_policy=policy,
+        )
+
+        self.assertIn("--fix-through", review_cmd)
+        self.assertEqual("P2", review_cmd[review_cmd.index("--fix-through") + 1])
+        self.assertIn("--fix-through", needs_fix_cmd)
+        self.assertEqual("P2", needs_fix_cmd[needs_fix_cmd.index("--fix-through") + 1])
+
     def test_partial_handoff_is_rejected_fail_closed(self) -> None:
         result = lane.validate_handoff(
             "logs/ci/context.frozen.json",
