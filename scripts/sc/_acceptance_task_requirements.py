@@ -61,10 +61,15 @@ def collect_task_refs(triplet: Any) -> list[str]:
             for item in verification.values():
                 if not isinstance(item, dict):
                     continue
-                for key in ("primary_evidence", "secondary_evidence"):
-                    values = item.get(key)
-                    if isinstance(values, list):
-                        refs.extend(str(value).replace("\\", "/").strip() for value in values if str(value).strip())
+                verification_rows = item.get("obligations")
+                rows = verification_rows if isinstance(verification_rows, list) else [item]
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    for key in ("primary_evidence", "secondary_evidence"):
+                        values = row.get(key)
+                        if isinstance(values, list):
+                            refs.extend(str(value).replace("\\", "/").strip() for value in values if str(value).strip())
     # Deduplicate while preserving order.
     seen: set[str] = set()
     out: list[str] = []
