@@ -4,31 +4,20 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 
 ## Read Order After Context Reset
 
-1. [01-session-recovery.md](01-session-recovery.md)
-2. [13-rag-sources-and-session-ssot.md](13-rag-sources-and-session-ssot.md)
-3. [02-repo-map.md](02-repo-map.md)
-4. [14-startup-stack-and-template-structure.md](14-startup-stack-and-template-structure.md)
-5. [03-persistent-harness.md](03-persistent-harness.md)
-6. [../workflows/run-protocol.md](../workflows/run-protocol.md)
-7. [07-agent-to-agent-review.md](07-agent-to-agent-review.md)
-8. First run `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` for the canonical recovery summary
-9. If a task-scoped run already exists and the summary still needs a shorter human pointer, read `logs/ci/active-tasks/task-<id>.active.md`
-10. Newest files in `execution-plans/` and `decision-logs/`
-11. `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` only when the recovery summary still needs deeper inspection
+Do not preload the whole documentation stack. Route from the current task.
+
+1. Read root `AGENTS.md` for global invariants and the task router.
+2. If the task is recovery, run `resume-task --recommendation-only` first; for Chapter 6 add `chapter6-route --recommendation-only`.
+3. If the task is not recovery, open only the owning workflow/doc listed in the root route table.
+4. Read direct authoritative sources required by that task: Task/Requirement/Acceptance, related ADR/Overlay/Contract, or an explicitly bound plan/decision.
+5. Expand run sidecars only when the compact recovery fields do not support the next decision. Read `run-events.jsonl` only for event/turn ordering.
+6. Never select the newest Execution Plan or Decision Log merely because it is newest.
 
 Recovery shortcut:
-- `resume-task` and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` now expose `latest_summary_signals` and `chapter6_hints`; use those fields before deciding whether to reopen `6.7` or narrow to `6.8`.
-- `inspect-run --recommendation-only` now also surfaces the latest turn summary (`latest_turn`, `turn_count`) plus the approval route (`approval_recommended_action`, `approval_allowed_actions`, `approval_blocked_actions`), so the shortest CLI view can still tell you whether the task is paused, fork-ready, or resume-ready.
-- `resume-task --recommendation-only` now uses the same compact field set as `inspect-run --recommendation-only`; if the two disagree, treat that as a bug instead of normal drift.
-- `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only` is the cheapest Chapter 6 go/no-go router: it consumes recovery artifacts first, then tells you whether to reopen `6.7`, narrow to `6.8`, stop for repo noise, or record residual P2/P3 findings.
-- Recovery decisions now require reading `reason`, `run_type`, `reuse_mode`, and `artifact_integrity` together before trusting the newest pointer.
-- `active-task` now also classifies `Chapter6 blocked by` for `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, and `artifact_integrity`, but it should be read after `resume-task`, not before the canonical recovery summary.
-- If recovery shows `run_type = planned-only`, `reason = planned_only_incomplete`, or `Chapter6 blocked by = artifact_integrity`, treat that bundle as evidence only; do not reopen `6.7` or `6.8` from it.
-- `run_review_pipeline.py --dry-run` no longer publishes `latest.json` or `active-task` sidecars, and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` automatically skips dry-run-only latest candidates when resolving the next real recovery pointer.
-- `active-task` now follows the real bundle pointed to by `latest.json`; when `out_dir` and `latest.json` disagree, trust `latest.json` first.
-- `active-task` and project-health now also surface the latest `run-events` turn summary (`turn_id`, reviewer/sidecar/approval activity) plus the resolved approval contract (`recommended_action`, `allowed_actions`, `blocked_actions`), so you can distinguish `pause` vs `fork` vs `resume` before reopening Chapter 6.
-- `active-task` and project-health also compare the latest two `run-events` turns (`previous_turn`, `turn_family_delta`, `new_reviewers`, `new_sidecars`, `approval_changed`), so stop-loss decisions can tell whether a rerun actually produced new reviewer/sidecar/approval movement instead of repeating the same turn shape.
-- If recovery also exposes `recommended_action_why`, read it before choosing between reopen, narrow closure, or stop-loss; `recommended_action = needs-fix-fast` means targeted closure is cheaper than another full rerun.
+- `resume-task --recommendation-only` and `inspect-run --recommendation-only` should expose the same canonical compact recovery semantics; disagreement is a bug.
+- `chapter6-route --recommendation-only` is the cheapest Chapter 6 go/no-go router.
+- `planned-only`, `artifact_integrity`, stale readiness, or damaged/unknown sidecars are fail-closed.
+- Knowledge shadow is optional. On `fallback_required`, read direct authority instead of refreshing global Knowledge.
 
 ## Chapter 6 Fast-Ship Card
 
