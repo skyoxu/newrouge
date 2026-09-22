@@ -269,8 +269,14 @@ def update_technical_debt_register(
     }
     for item in findings:
         finding_id = str(item.get("finding_id") or "").strip()
-        if finding_id:
-            merged[finding_id] = item
+        if not finding_id:
+            finding_id = _stable_finding_id(
+                agent=str(item.get("agent") or "single-reviewer"),
+                severity=str(item.get("severity") or ""),
+                message=str(item.get("message") or ""),
+            )
+            item = {**item, "finding_id": finding_id}
+        merged[finding_id] = item
     for finding_id, disposition in (dispositions or {}).items():
         if str(disposition or "").strip().lower() in {"resolved", "rejected", "closed"}:
             merged.pop(str(finding_id), None)
