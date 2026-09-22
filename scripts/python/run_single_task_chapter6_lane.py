@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from impact_analysis_handoff import validate_handoff
+from _chapter6_recovery_common import route_execution_policy
 
 
 def _repo_root() -> Path:
@@ -264,16 +265,7 @@ def _route_blocked_by(route_payload: dict[str, Any] | None) -> str:
 
 
 def _route_execution_allowed(route_payload: dict[str, Any] | None) -> bool:
-    route = route_payload if isinstance(route_payload, dict) else {}
-    value = route.get("execution_allowed")
-    if isinstance(value, bool):
-        return value
-    normalized = str(value or "").strip().lower()
-    if normalized in {"false", "0", "no", "off"}:
-        return False
-    if normalized in {"true", "1", "yes", "on"}:
-        return True
-    return _route_blocked_by(route) != "chapter5_readiness"
+    return bool(route_execution_policy(route_payload).get("execution_allowed"))
 
 
 def _route_next_action(route_payload: dict[str, Any] | None) -> str:
