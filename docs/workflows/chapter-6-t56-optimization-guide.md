@@ -457,7 +457,7 @@ Chapter 6 的正确升级单位是：
 - 但 task semantics 变更不算真正的 docs-only clean reuse；这类改动默认最多只复用 `sc-test`，仍要重跑 `acceptance_check`，避免假绿。
 - 一旦改动命中 `Game.Core/**`、`Game.Godot/**`、`Game.Core/Contracts/**`、测试文件、`scripts/**`、`project.godot`、`*.cs`、`*.gd`、`*.tscn`、`*.tres`、`*.csproj`、`*.sln`，就不要再走窄路径，直接回到完整 deterministic。
 - 6.8 只有在本轮改动直接命中上一轮 reviewer 锚点时才值得立刻重跑；如果 deterministic 已经稳定通过，剩余只是 P2/P3 证据强度问题，默认记录并止损，不再重复支付 LLM 成本。
-- 6.8 reviewer 默认要按问题类别定向收缩：代码问题优先 `code-reviewer`，语义 / acceptance / overlay / task-view 问题优先 `semantic-equivalence-auditor`，安全问题才补 `security-auditor`。
+- 6.8 始终保持一个模型 `code-reviewer`；按当前 finding、changed surface 和相关 authority 缩小输入，并在同一 reviewer 内完成 `Spec Compliance`、`Edge Case`、`Verification Gap` 三个 lenses。语义、安全、UI/Scene、Save/Load、Contract/EventBus、性能等只作为相关 surface focus，不再切换或追加模型 persona；deterministic security/ADR/contract gates 仍独立执行。
 - 如果连续两轮 6.8 都落在同类 `Needs Fix`，且严重度、锚点和建议动作基本不变，默认直接止损并记录，不再开第三轮同口径 reviewer 重跑。
 - If a previous 6.8 run only timed out, produced no new actionable finding, and `final_needs_fix_agents` is still empty, inspect and record instead of reusing the same parameters blindly. If `Forbidden commands` already list full rerun / resume, that stop-loss is deliberate and should not be bypassed.
 - 如果上一轮只剩 `Unknown/timeout`，而本轮没有命中 reviewer 锚点文件，默认直接止损，不再继续支付同一轮 6.8。
