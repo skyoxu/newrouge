@@ -393,6 +393,27 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
                     return 0, "sync ok\n"
                 if cmd[:4] == ["py", "-3", "scripts/sc/test.py", "--type"]:
                     seen_test_cmds.append(cmd)
+                    run_id = "red-run-11"
+                    sc_dir = root / "logs" / "ci" / "2026-03-20" / "sc-test"
+                    unit_dir = root / "logs" / "unit" / "2026-03-20"
+                    sc_dir.mkdir(parents=True, exist_ok=True)
+                    unit_dir.mkdir(parents=True, exist_ok=True)
+                    (sc_dir / "run_id.txt").write_text(run_id + "\n", encoding="utf-8")
+                    (unit_dir / "run_id.txt").write_text(run_id + "\n", encoding="utf-8")
+                    (unit_dir / "summary.json").write_text(
+                        json.dumps(
+                            {
+                                "status": "tests_failed",
+                                "filter": "FullyQualifiedName~FooTests",
+                                "failure_excerpt": [
+                                    "Failed FooTests.ShouldPublishJoinEvent_WhenMemberJoinsGuild",
+                                    "Expected: 2",
+                                    "Actual: 1",
+                                ],
+                            }
+                        ),
+                        encoding="utf-8",
+                    )
                     return 1, "SC_TEST status=fail out=logs/ci/2026-03-20/sc-test\n"
                 raise AssertionError(f"unexpected command: {cmd}")
 
