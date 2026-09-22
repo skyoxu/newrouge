@@ -13,6 +13,27 @@ def _read_json(path: Path) -> dict[str, Any]:
     return obj if isinstance(obj, dict) else {}
 
 
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
+
+def _identity_tokens(refs: list[str]) -> list[str]:
+    tokens: list[str] = []
+    for raw in refs:
+        stem = Path(str(raw or "").replace("\\", "/")).stem.strip().casefold()
+        if stem and stem not in tokens:
+            tokens.append(stem)
+    return tokens
+
+
+def _contains_expected_identity(text: str, refs: list[str]) -> bool:
+    haystack = str(text or "").casefold()
+    return any(token in haystack for token in _identity_tokens(refs))
+
+
 def _contains_compile_error(*, verify_log_text: str, unit_summary: dict[str, Any]) -> bool:
     haystacks = [verify_log_text]
     excerpt = unit_summary.get("failure_excerpt")
@@ -32,13 +53,19 @@ def evaluate_red_verification(
     verify_mode: str,
     test_step: dict[str, Any] | None,
     verify_log_text: str,
+    expected_test_refs: list[str],
 ) -> dict[str, Any]:
     date = out_dir.parent.name
+    expected_refs = [str(item).replace("\\", "/") for item in expected_test_refs if str(item).strip()]
     report: dict[str, Any] = {
         "verify_mode": verify_mode,
         "status": "fail",
         "reason": "unknown",
+        "expected_test_refs": expected_refs,
     }
+    if not expected_refs:
+        report["reason"] = "target_test_identity_missing"
+        return report
     if verify_mode == "none":
         report["reason"] = "verify_disabled"
         return report
@@ -51,8 +78,17 @@ def evaluate_red_verification(
         report["reason"] = "unexpected_green"
         return report
 
-    unit_summary = _read_json(repo_root / "logs" / "unit" / date / "summary.json")
-    gdunit_summary = _read_json(repo_root / "logs" / "e2e" / date / "sc-test" / "gdunit-hard" / "run-summary.json")
+    sc_test_dir = repo_root / "logs" / "ci" / date / "sc-test"
+    unit_dir = repo_root / "logs" / "unit" / date
+    gdunit_dir = repo_root / "logs" / "e2e" / date / "sc-test" / "gdunit-hard"
+    unit_summary = _read_json(unit_dir / "summary.json")
+    gdunit_summary = _read_json(gdunit_dir / "run-summary.json")
+    current_run_id = _read_text(sc_test_dir / "run_id.txt")
+    unit_run_id = _read_text(unit_dir / "run_id.txt")
+    gdunit_run_id = _read_text(gdunit_dir / "run_id.txt")
+    report["sc_test_run_id"] = current_run_id
+    report["unit_run_id"] = unit_run_id
+    report["gdunit_run_id"] = gdunit_run_id
     report["unit_summary_status"] = unit_summary.get("status")
     report["gdunit_failures"] = ((gdunit_summary.get("results") or {}).get("failures") if gdunit_summary else None)
     report["gdunit_errors"] = ((gdunit_summary.get("results") or {}).get("errors") if gdunit_summary else None)
@@ -64,9 +100,29 @@ def evaluate_red_verification(
     results = gdunit_summary.get("results") if isinstance(gdunit_summary, dict) else {}
     failures = int((results or {}).get("failures") or 0)
     errors = int((results or {}).get("errors") or 0)
+    gdunit_tests = int((results or {}).get("tests") or 0)
+    failed_gdunit_tests = [str(item) for item in (results or {}).get("failed_tests", []) if str(item).strip()]
+    report["gdunit_tests"] = gdunit_tests
+    report["gdunit_failed_tests"] = failed_gdunit_tests
+    gd_expected = [ref for ref in expected_refs if ref.casefold().endswith(".gd")]
     if failures > 0 and errors == 0:
+        if not current_run_id or gdunit_run_id != current_run_id:
+            report["reason"] = "gdunit_run_identity_mismatch"
+            return report
+        if gdunit_tests <= 0:
+            report["reason"] = "gdunit_zero_tests"
+            return report
+        added = [str(item).replace("\\", "/") for item in gdunit_summary.get("added", []) if str(item).strip()]
+        added_text = "\n".join(added)
+        failed_text = "\n".join(failed_gdunit_tests)
+        if not gd_expected or not _contains_expected_identity(added_text, gd_expected):
+            report["reason"] = "gdunit_target_not_selected"
+            return report
+        if not failed_gdunit_tests or not _contains_expected_identity(failed_text, gd_expected):
+            report["reason"] = "gdunit_failure_not_target"
+            return report
         report["status"] = "ok"
-        report["reason"] = "gdunit_red"
+        report["reason"] = "gdunit_behavior_red"
         return report
     if errors > 0:
         report["reason"] = "gdunit_errors"
@@ -96,6 +152,18 @@ def evaluate_red_verification(
         return report
 
     if unit_status == "tests_failed":
+        cs_expected = [ref for ref in expected_refs if ref.casefold().endswith(".cs")]
+        unit_filter = str(unit_summary.get("filter") or "")
+        report["unit_filter"] = unit_filter
+        if not current_run_id or unit_run_id != current_run_id:
+            report["reason"] = "unit_run_identity_mismatch"
+            return report
+        if not cs_expected or not _contains_expected_identity(unit_filter, cs_expected):
+            report["reason"] = "unit_target_not_selected"
+            return report
+        if not _contains_expected_identity("\n".join(failure_lines), cs_expected):
+            report["reason"] = "unit_failure_not_target"
+            return report
         assertion_tokens = (
             "expected:",
             "actual:",
