@@ -73,5 +73,23 @@ class Chapter6RecoveryCommonTests(unittest.TestCase):
 
 
 
+    def test_route_execution_policy_should_fail_closed_on_chapter5_readiness(self) -> None:
+        policy = recovery_common.route_execution_policy({
+            "execution_allowed": False,
+            "blocked_by": "chapter5_readiness",
+            "preferred_lane": "run-6.8",
+        })
+        self.assertFalse(policy["execution_allowed"])
+        self.assertEqual("chapter5_readiness", policy["stop_reason"])
+
+    def test_route_execution_policy_should_allow_normal_route_without_explicit_flag(self) -> None:
+        policy = recovery_common.route_execution_policy({
+            "blocked_by": "",
+            "preferred_lane": "run-6.8",
+        })
+        self.assertTrue(policy["execution_allowed"])
+        self.assertEqual("", policy["stop_reason"])
+
+
 if __name__ == "__main__":
     unittest.main()
