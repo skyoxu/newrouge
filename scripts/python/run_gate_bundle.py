@@ -331,6 +331,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.sc.tests.test_sync_task_overlay_refs",
                 "scripts.sc.tests.test_local_hard_checks_harness",
                 "scripts.sc.tests.test_run_review_pipeline_delivery_profile",
+                "scripts.sc.tests.test_pipeline_sidecar_protocol",
                 "scripts.python.tests.test_impact_analysis_index",
                 "scripts.python.tests.test_impact_analysis_index_repository_smoke",
                 "scripts.python.tests.test_analyze_impact_cli",
