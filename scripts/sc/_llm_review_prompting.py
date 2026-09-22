@@ -132,7 +132,7 @@ def default_agent_prompt(agent: str) -> str:
             "Secondary evidence: deterministic gates (acceptance_check/test/coverage/perf) and the diff.",
             "",
             "Output a concise Markdown report with:",
-            "- P0/P1/P2/P3 findings (if any)",
+            "- P0/P1/P2/P3/P4 findings (if any)",
             "- specific file paths + what to change",
             "- call out weak tests (anchors present but no meaningful assertions)",
             "- call out missing negative/error-path tests when acceptance implies them",
