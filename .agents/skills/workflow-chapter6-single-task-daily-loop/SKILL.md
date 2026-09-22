@@ -38,7 +38,7 @@ Use the top-level Chapter 6 orchestrator unless active-task or chapter6-route al
 
 ## Evidence Rule
 
-Chapter 6 has dense business-repo logs. Always read active-task, latest.json, summary.json, repair-guide, agent-review, and run-events before paying for another 6.7 or 6.8.
+Start recovery with the compact `resume-task --recommendation-only` and `chapter6-route --recommendation-only` projections. Expand only the artifacts needed for the selected decision: open summary/repair/review sidecars when their fields are insufficient, and read `run-events.jsonl` only when event ordering or turn history matters. Historical logs are evidence, not current instructions.
 
 A `logs/ci/knowledge-context/**` file is a separate shadow routing artifact. It is not part of `summary.json`, `execution-context.json`, `latest.json`, or the review sidecar protocol.
 
