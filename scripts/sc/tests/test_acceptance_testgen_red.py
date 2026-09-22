@@ -85,6 +85,51 @@ class AcceptanceTestgenRedTests(unittest.TestCase):
         self.assertEqual("ok", report["status"])
         self.assertEqual("unit_behavior_red", report["reason"])
 
+    def test_evaluate_red_verification_should_accept_target_assertion_from_current_trx(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            _write_json(
+                root / "logs" / "unit" / "2026-03-20" / "summary.json",
+                {
+                    "status": "tests_failed",
+                    "filter": "FullyQualifiedName~RewardTests",
+                    "failure_excerpt": ["Failed Game.Core.Tests.Combat.RewardTests.ShouldAward"],
+                },
+            )
+            trx = root / "logs" / "unit" / "2026-03-20" / "tests.trx"
+            trx.write_text(
+                """<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Results>
+    <UnitTestResult testName="Game.Core.Tests.Combat.RewardTests.ShouldAward" outcome="Failed">
+      <Output><ErrorInfo><Message>Assert.Equal() Failure: Values differ</Message></ErrorInfo></Output>
+    </UnitTestResult>
+  </Results>
+</TestRun>
+""",
+                encoding="utf-8",
+            )
+            (root / "logs" / "ci" / "2026-03-20" / "sc-test").mkdir(parents=True, exist_ok=True)
+            (root / "logs" / "ci" / "2026-03-20" / "sc-test" / "run_id.txt").write_text("run-red\n", encoding="utf-8")
+            (root / "logs" / "unit" / "2026-03-20" / "run_id.txt").write_text("run-red\n", encoding="utf-8")
+
+            report = red.evaluate_red_verification(
+                repo_root=root,
+                out_dir=out_dir,
+                verify_mode="unit",
+                test_step={"status": "fail", "rc": 1, "cmd": ["py", "-3", "scripts/sc/test.py"]},
+                verify_log_text="SC_TEST status=fail\n",
+                expected_test_refs=["Game.Core.Tests/Combat/RewardTests.cs"],
+            )
+
+        self.assertEqual("ok", report["status"])
+        self.assertEqual("unit_behavior_red", report["reason"])
+        self.assertEqual(
+            ["Game.Core.Tests.Combat.RewardTests.ShouldAward"],
+            report["unit_failed_tests"],
+        )
+
     def test_evaluate_red_verification_should_reject_timeout_without_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
