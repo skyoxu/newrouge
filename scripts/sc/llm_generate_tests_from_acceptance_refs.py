@@ -150,11 +150,16 @@ def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str
     created = 0
     any_gd = any(Path(ref).suffix.lower() == ".gd" for ref in refs)
     primary_ref = None
+    missing_refs = [
+        ref
+        for ref in refs
+        if not (repo_root() / str(ref).replace("\\", "/")).exists()
+    ]
     context_excerpt = _load_optional_prd_excerpt(
         include_prd_context=bool(args.include_prd_context),
         prd_context_path=str(args.prd_context_path),
     )
-    if str(args.tdd_stage) == "red-first":
+    if str(args.tdd_stage) == "red-first" and missing_refs:
         primary_ref, primary_meta = _select_primary_ref_with_llm(
             task_id=task_id,
             title=title,
