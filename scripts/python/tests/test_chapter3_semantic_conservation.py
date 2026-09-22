@@ -1370,9 +1370,31 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         })
         write_json(paths["candidates"], candidates)
         tasks_dir = root / ".taskmaster/tasks"
-        write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
-        write_json(tasks_dir / "tasks_back.json", [])
-        write_json(tasks_dir / "tasks_gameplay.json", [])
+        if status == "passed":
+            write_json(tasks_dir / "tasks.json", {
+                "master": {
+                    "tasks": [{
+                        "id": 1,
+                        "title": "Shop rule",
+                        "status": "pending",
+                        "dependencies": [],
+                    }]
+                }
+            })
+            write_json(tasks_dir / "tasks_back.json", [])
+            write_json(tasks_dir / "tasks_gameplay.json", [{
+                "id": "GM-0001",
+                "taskmaster_id": 1,
+                "title": "Shop rule",
+                "status": "pending",
+                "semantic_refs": ["FR-1"],
+                "capability_refs": [],
+                "depends_on": [],
+            }])
+        else:
+            write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
+            write_json(tasks_dir / "tasks_back.json", [])
+            write_json(tasks_dir / "tasks_gameplay.json", [])
         task_files = {}
         for value in refresh_mod.TRIPLET_TASK_FILES:
             task_path = root / value
@@ -1405,6 +1427,49 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 "edges": task_edges,
             })
         return paths
+
+    def test_chapter3_stable_promotion_blocks_when_candidate_mapping_is_not_persisted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+
+            gameplay_path = root / ".taskmaster/tasks/tasks_gameplay.json"
+            gameplay = json.loads(gameplay_path.read_text(encoding="utf-8"))
+            gameplay[0]["semantic_refs"] = []
+            write_json(gameplay_path, gameplay)
+
+            attestation = json.loads(paths["triplet_attestation"].read_text(encoding="utf-8"))
+            for value in refresh_mod.TRIPLET_TASK_FILES:
+                task_path = root / value
+                attestation["task_files"][value] = {
+                    "sha256": "sha256:" + refresh_mod.sha256_bytes(task_path.read_bytes()),
+                    "size": task_path.stat().st_size,
+                }
+            write_json(paths["triplet_attestation"], attestation)
+
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="candidate-only-not-persisted",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("blocked", summary["closure_evidence_status"])
+            self.assertIn(
+                "persisted_task_semantic_coverage_not_passed",
+                summary["closure_evidence_reason"],
+            )
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
 
     def test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
