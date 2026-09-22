@@ -35,7 +35,7 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 2. Before paying for another `6.7` or `6.8`, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 3. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
 4. `6.4 -> 6.5 -> 6.6` in order, keeping the first red run as light as possible
-5. `6.5` hard-requires the latest clean `6.4 red-first` summary, and `6.6` hard-requires the latest clean `6.5 green` summary.
+5. `6.5` hard-requires the latest clean `6.4 red-first` summary whenever any automated verification obligation remains. A fully classified pure `human-experience` task may enter implementation from explicit manual preflight/pending evidence instead; mixed or partially classified Acceptance never waives machine RED. `6.6` still hard-requires the latest clean `6.5 green` summary.
 6. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
 7. Before rerunning `6.7` or `6.8`, read `summary.json`, `latest.json`, `repair-guide.md`, `run-events.jsonl`, and the child step summaries first
 8. Check `reason`, `run_type`, `reuse_mode`, `artifact_integrity`, and `diagnostics` in `latest.json` or `summary.json` first; pay attention to `rerun_guard`, `reuse_decision`, `acceptance_preflight`, `llm_timeout_memory`, and stop-loss signals.
