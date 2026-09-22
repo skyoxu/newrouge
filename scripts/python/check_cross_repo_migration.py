@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -368,6 +369,20 @@ def verify_target_open_pr(doc: dict[str, Any], *, event_path: str, repository: s
     return errors
 
 
+def _fetch_github_blob_sha(repo: str, merge_commit: str, source_path: str, token: str = "") -> str:
+    encoded = urllib.parse.quote(source_path, safe="/")
+    payload = _github_json(
+        f"https://api.github.com/repos/{repo}/contents/{encoded}?ref={merge_commit}",
+        token,
+    )
+    if not isinstance(payload, dict):
+        raise ValueError(f"source blob response is invalid for {source_path}")
+    sha = str(payload.get("sha") or "")
+    if not HEX40_RE.fullmatch(sha):
+        raise ValueError(f"source blob sha is invalid for {source_path}")
+    return sha
+
+
 def verify_source_github(doc: dict[str, Any], token: str = "") -> list[str]:
     source = doc.get("source")
     if not isinstance(source, dict):
@@ -385,6 +400,25 @@ def verify_source_github(doc: dict[str, Any], token: str = "") -> list[str]:
         missing = sorted(set(remote_files) - set(manifest_files))
         extra = sorted(set(manifest_files) - set(remote_files))
         errors.append(f"source changed-file inventory mismatch missing={missing} extra={extra}")
+
+    repo = str(source.get("repo") or "")
+    merge_commit = str(remote.get("merge_commit") or "")
+    for entry in doc.get("files", []):
+        if not isinstance(entry, dict) or str(entry.get("classification") or "") != "copy_exact":
+            continue
+        source_path = str(entry.get("source_path") or "")
+        expected = str(entry.get("source_blob_sha") or "")
+        if not source_path or not HEX40_RE.fullmatch(expected):
+            continue
+        try:
+            actual = _fetch_github_blob_sha(repo, merge_commit, source_path, token)
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+        if actual != expected:
+            errors.append(
+                f"{source_path}: source_blob_sha mismatch remote={actual} manifest={expected}"
+            )
     return errors
 
 
