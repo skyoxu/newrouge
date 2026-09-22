@@ -732,9 +732,10 @@ py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-
 ```
 
 Default convergence by delivery profile:
-- `playable-ea`: enforce `P0` only by default; record or defer `P1/P2/P3`.
-- `fast-ship`: enforce `P0/P1` by default; record or defer `P2/P3`.
-- `standard`: also enforce `P0/P1` by default; only add `--fix-through P2` for an explicit pre-release final convergence pass.
+- `playable-ea`, `fast-ship`, and `standard` all enforce the repository `P1` must-fix floor by default.
+- Eligible `P2/P3/P4` findings may be recorded in `docs/technical-debt.md` when the route explicitly allows residual deferral.
+- `--fix-through P2|P3` is stricter and makes that severity must-fix for the current run.
+- `--fix-through P0` is rejected because it would weaken the repository P1 floor.
 
 Prefer the top-level orchestrator when:
 - You want one stable path that includes `resume-task`, `chapter6-route`, `6.3`, `6.7`, `6.8`, and `6.9`.
@@ -841,82 +842,21 @@ py -3 scripts/python/dev_cli.py new-decision-log --title "<topic>" --task-id <id
 py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft
 ```
 
-#### 6.3.1 复杂任务判断标准
+#### 6.3.1 Execution Plan 触发规则
 
-把 `check_tdd_execution_plan.py` 当作第一个轻量判断器，而不是手工凭感觉判断。
+把 `check_tdd_execution_plan.py` 当作 durable coordination 判断器，而不是文件数量复杂度评分器。
 
-满足任意 2 条，默认按“复杂任务”处理：
+- `required`: 已知跨 session、多个有序 behavior slices、必须恢复的部分完成、Contract/ADR/存档迁移阶段切换、需分阶段证据的大范围重构/MVG 整合、workflow/harness/control-plane 改造。优先复用同 task/scope 的 active plan；没有才创建。
+- `recommended`: 边界仍在调查或跨 session 风险较高，但当前没有持久协调义务。记录理由即可，不形成额外 TDD 硬阻断。
+- `none`: 单任务、验收和边界明确，没有迁移或分段恢复需要。不创建 plan。
 
-- 缺失测试文件数 `>= 3`
-- 同时涉及 `.cs` 和 `.gd`
-- `--verify auto|all`
-- acceptance anchors 总数 `>= 4`
-- 涉及多个测试根目录
-- 任务包含明显的契约 / 事件 / 重构 / 跨模块边界变化
+`required` 优先于 `recommended/none`。缺失测试文件数量、`.cs + .gd`、anchor 数量、多个测试目录和 `verify=auto|all` 都不能单独或累计触发 required。已有 run sidecars 足够表达的恢复状态不要复制进 plan。
 
-复杂任务的默认后续动作：
+#### 6.3.2 Serena / taskdoc 仍按代码理解需要触发
 
-1. 先创建或补充 `execution-plan`
-2. 再判断是否需要 Serena MCP 语义检索
-3. 只有在 Serena 检索结果会影响实现边界时，才把摘要写入 `taskdoc/<id>.md`
+Execution Plan 判断的是持久恢复/协调，不代表必须做语义检索。只有当实现边界确实取决于现有 symbols、Contracts、事件/DTO 约定、rename/refactor 引用链或前一轮明确的重复定义/边界漂移 finding 时，才使用 Serena（或等价符号检索）。
 
-#### 6.3.2 什么时候触发 Serena MCP
-
-`check_tdd_execution_plan.py` 只能判断“是否需要更多准备”，不能替代 Serena 语义查询。
-
-只有当复杂度来自“代码语义不清”，才触发 Serena。满足任意 1 条即可：
-
-- 你要扩展现有功能，但不确定是否已有同名 / 近似类、接口、服务或管理器
-- 你要对齐事件契约、DTO、接口命名，担心违反现有 ADR / Contracts 约定
-- 你要做 rename / refactor，需要知道跨文件引用位置
-- 你要理解某个模块边界、依赖链、谁在调用谁
-- 前一轮 `Needs Fix` 明确指出重复定义、边界误判、契约漂移或遗漏现有实现
-
-以下情况通常不需要 Serena：
-
-- 只是测试文件较多
-- 只是 `.cs` + `.gd` 混合，但模块边界已经很清楚
-- 只是 `verify=auto|all` 导致执行更重，而不是理解更难
-- 只是需要补测试，不涉及现有实现复用、契约对齐或引用追踪
-
-#### 6.3.3 Serena 执行动作与提示词模板
-
-如果触发 Serena，按以下顺序执行。优先用符号级查询，不要先用全文扫描替代：
-
-1. `find_symbol`：查相关 symbols，确认现有类 / 接口 / 服务是否已经存在
-2. `search_for_pattern`：查接口定义或关键契约模式，了解现有约定
-3. `find_symbol`：查事件契约 / DTO / contract constants，确认事件系统口径
-4. `find_referencing_symbols`：查依赖引用，确认现有模块如何使用该符号
-
-建议给 Codex / Serena 的执行提示词：
-
-```text
-当前任务先执行 Serena MCP 语义检索，再继续实现。
-
-触发原因：这是复杂任务，且复杂度来自代码语义而不是单纯测试规模。
-
-按以下顺序执行：
-1. find_symbol 查找相关 symbols
-2. search_for_pattern 查找接口定义或关键契约模式
-3. find_symbol 查找事件契约 / DTO / contract constants
-4. find_referencing_symbols 查找依赖引用链
-
-输出要求：
-- 只保留与当前任务直接相关的上下文
-- 总结“已有实现 / 应复用内容 / 契约约束 / 主要引用方”
-- 如果这些信息会影响实现边界，再使用 Python + UTF-8 写入 `taskdoc/<id>.md`
-- 如果 Serena MCP 不可用，不要阻塞任务；直接继续第 6 章流程，并在 execution-plan 或 decision-log 里记一条 `Serena skipped`
-```
-
-#### 6.3.4 taskdoc 使用口径
-
-`taskdoc/<id>.md` 现在是可选的本地上下文材料，不是第 6 章日常必产物。
-
-只有在以下情况下才值得写：
-
-- Serena 查询结果明显影响实现边界
-- 你需要把“已有实现 / 契约口径 / 依赖链”固化给后续 red / green / review 使用
-- 任务会跨会话，且仅靠 sidecars 不足以快速恢复语义上下文
+测试文件较多、`.cs + .gd` 混合、验证较重本身都不是 Serena 或 taskdoc 的触发器。只有检索结果会影响后续实现边界、且 run sidecars 不能充分恢复这部分语义时，才将最小摘要写入 `taskdoc/<id>.md`。
 
 ### 6.4 Red stage
 
@@ -940,9 +880,9 @@ py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd
 
 说明：
 
-- 新建测试文件较多时，首轮 red 要优先走最便宜的验证口径；不要因为“反正后面还要 green/refactor/review”就第一轮直接上重验证。
-- 如果本轮新建 `.gd` 测试文件 `>= 2`，或任务明显属于 UI / scene flow / Godot 交互路径，默认先用 `--verify unit`；只有当你明确需要 Godot-aware red 证据时，才升级到 `--verify auto`。
-- 不要把 `--verify all` 当作首轮 red 默认值。它只适用于：你已经有稳定的 task-scoped `.gd` refs，且前一轮 red 已经证明最小验证口径不够。
+- RED 验证口径按 Acceptance 的 `verification_surface` 选，不按新建测试文件数量选：`core-behavior` 用 task-scoped xUnit；`godot-scene` 必须取得真实 GdUnit causal RED；`player-journey` 按本任务负责的链路证据执行；`human-experience` 记录 manual preflight/pending，不能伪造机器 RED。
+- 混合 anchor 按义务分别验证；存在 scene 义务时不能因为 unit 更便宜而省略引擎 RED。
+- 有效自动化 RED 必须绑定当前验证 run、目标测试身份和预期行为断言失败；timeout、编译/环境故障、零测试、无关测试失败或缺报告都属于 unverified/blocked，不是行为 RED。
 - 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
 - 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
 - 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
@@ -1277,12 +1217,9 @@ py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-
 
 Notes:
 - The orchestrator runs `resume-task` and `chapter6-route` first, then decides whether to enter `6.3 -> 6.9` and whether `6.8` is worth paying for.
-- Default enforcement:
-  - `playable-ea`: `P0`
-  - `fast-ship`: `P0/P1`
-  - `standard`: `P0/P1`
-- `P2/P3` are record-and-stop-loss by default.
-- Only add `--fix-through P2` for an explicit pre-release final convergence pass.
+- Default enforcement for `playable-ea`, `fast-ship`, and `standard` is the same P1 must-fix floor.
+- Eligible `P2/P3/P4` findings are deferrable only when residual policy allows and Technical Debt registration succeeds.
+- `--fix-through P2|P3` tightens the must-fix threshold; `--fix-through P0` is rejected.
 - Use self-check first if you only want to verify routing, profile resolution, planned steps, and output wiring:
 
 ```powershell
