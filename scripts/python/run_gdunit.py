@@ -48,9 +48,32 @@ def _parse_results_xml(path: str):
         failures = int(root.attrib.get("failures", "0"))
         tests = int(root.attrib.get("tests", "0"))
         errors = 0
-        for ts in root.findall("testsuite"):
-            errors += int(ts.attrib.get("errors", "0"))
-        return {"path": path, "tests": tests, "failures": failures, "errors": errors}
+        test_names = []
+        failed_tests = []
+        for ts in root.iter():
+            if str(ts.tag).split("}")[-1] == "testsuite":
+                errors += int(ts.attrib.get("errors", "0") or "0")
+            if str(ts.tag).split("}")[-1] != "testcase":
+                continue
+            name = str(ts.attrib.get("name") or "").strip()
+            classname = str(ts.attrib.get("classname") or ts.attrib.get("class") or "").strip()
+            identity = "::".join(part for part in (classname, name) if part)
+            if identity:
+                test_names.append(identity)
+            has_failure = any(
+                str(child.tag).split("}")[-1] in {"failure", "error"}
+                for child in list(ts)
+            )
+            if has_failure and identity:
+                failed_tests.append(identity)
+        return {
+            "path": path,
+            "tests": tests,
+            "failures": failures,
+            "errors": errors,
+            "test_names": list(dict.fromkeys(test_names)),
+            "failed_tests": list(dict.fromkeys(failed_tests)),
+        }
     except Exception as ex:
         return {"path": path, "error": f"parse_failed:{type(ex).__name__}"}
 

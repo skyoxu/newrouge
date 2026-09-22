@@ -81,6 +81,60 @@ class MvgAcceptanceTests(unittest.TestCase):
         errors = validate_manifest(self.root, doc, executable=True)
         self.assertTrue(any('blocked by non-done tasks [2]' in item for item in errors))
 
+    def test_full_scope_does_not_require_dedicated_owner_only_integration_task_done(self):
+        tasks_path = self.root / '.taskmaster/tasks/tasks.json'
+        tasks_path.write_text(json.dumps({'master': {'tasks': [
+            {'id': 1, 'status': 'done'},
+            {'id': 2, 'status': 'done'},
+            {'id': 3, 'status': 'pending'},
+        ]}}))
+        doc = copy.deepcopy(self.manifest)
+        doc['coverage'] = {
+            'mode': 'full',
+            'scope_id': 'm1-player-loop',
+            'required_flow_ids': ['claim', 'resume', 'combat'],
+            'blocking_task_ids': [],
+            'excluded_claims': ['Human gameplay approval remains separate.'],
+        }
+        doc['flows'] = [
+            doc['flows'][0],
+            {**copy.deepcopy(doc['flows'][0]), 'id': 'resume'},
+            {**copy.deepcopy(doc['flows'][0]), 'id': 'combat'},
+        ]
+        for flow in doc['flows']:
+            flow['task_ids'] = [1, 2, 3]
+            flow['handoffs'][0].update(producer_task=1, consumer_task=2, owner_task=3)
+
+        self.assertEqual([], validate_manifest(self.root, doc, executable=True))
+
+    def test_owner_task_that_is_also_flow_participant_remains_a_done_blocker(self):
+        tasks_path = self.root / '.taskmaster/tasks/tasks.json'
+        tasks_path.write_text(json.dumps({'master': {'tasks': [
+            {'id': 1, 'status': 'done'},
+            {'id': 2, 'status': 'done'},
+            {'id': 3, 'status': 'pending'},
+        ]}}))
+        doc = copy.deepcopy(self.manifest)
+        doc['coverage'] = {
+            'mode': 'full',
+            'scope_id': 'm1-player-loop',
+            'required_flow_ids': ['claim', 'resume', 'combat'],
+            'blocking_task_ids': [3],
+            'excluded_claims': ['Human gameplay approval remains separate.'],
+        }
+        doc['flows'] = [
+            doc['flows'][0],
+            {**copy.deepcopy(doc['flows'][0]), 'id': 'resume'},
+            {**copy.deepcopy(doc['flows'][0]), 'id': 'combat'},
+        ]
+        for flow in doc['flows']:
+            flow['task_ids'] = [1, 2, 3]
+            flow['handoffs'][0].update(producer_task=1, consumer_task=3, owner_task=3)
+
+        self.assertEqual([], validate_manifest(self.root, doc, executable=False))
+        errors = validate_manifest(self.root, doc, executable=True)
+        self.assertTrue(any('blocked by non-done tasks [3]' in item for item in errors))
+
     def test_critical_scope_requires_multiple_done_flows(self):
         doc = copy.deepcopy(self.manifest)
         doc['coverage'].update(mode='critical', scope_id='m1-critical')

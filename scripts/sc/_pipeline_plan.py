@@ -110,6 +110,8 @@ def build_pipeline_steps(
         task_id,
         "--security-profile",
         security_profile,
+        "--fix-through",
+        str(getattr(args, "fix_through", None) or "P1"),
         "--review-profile",
         "bmad-godot",
         "--review-template",

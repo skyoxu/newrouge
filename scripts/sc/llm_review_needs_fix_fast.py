@@ -9,6 +9,7 @@ Windows usage example:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -25,9 +26,10 @@ from _delivery_profile import (
     resolve_delivery_profile,
 )
 from _llm_review_cli import resolve_agents as resolve_llm_review_agents
+from _deterministic_review import DETERMINISTIC_AGENTS
 from _llm_backend import KNOWN_LLM_BACKENDS, resolve_llm_backend
 from _change_scope import classify_change_scope_between_snapshots
-from _risk_profile_floor import derive_delivery_profile_floor, requires_security_auditor_for_change_scope
+from _risk_profile_floor import derive_delivery_profile_floor
 from _util import ci_dir, repo_root, run_cmd, split_csv, write_json, write_text
 
 
@@ -50,27 +52,6 @@ REVIEWER_ANCHOR_EXACT = {
     "scripts/sc/llm_review_needs_fix_fast.py",
     "scripts/sc/run_review_pipeline.py",
 }
-SEMANTIC_TARGET_PREFIXES = (
-    ".taskmaster/",
-    "examples/taskmaster/",
-    "docs/architecture/",
-    "docs/adr/",
-    "docs/prd/",
-    "execution-plans/",
-    "decision-logs/",
-)
-CODE_TARGET_PREFIXES = (
-    "game.core/",
-    "game.godot/",
-    "game.core.tests/",
-    "tests.godot/",
-    "scripts/sc/",
-    "scripts/python/",
-)
-CODE_TARGET_SUFFIXES = (".cs", ".gd", ".tscn", ".tres", ".csproj", ".sln")
-SECURITY_TARGET_TOKENS = ("security", "audit", "whitelist", "tamper")
-
-
 def normalize_verdict(value: str | None) -> str:
     raw = (value or "").strip().lower()
     if raw in {"ok", "pass", "passed"}:
@@ -81,7 +62,21 @@ def normalize_verdict(value: str | None) -> str:
 
 
 def resolve_configured_agents(raw_agents: str) -> list[str]:
-    return [str(agent).strip() for agent in resolve_llm_review_agents(str(raw_agents or "").strip(), "warn") if str(agent).strip()]
+    """Resolve 6.8 execution to deterministic reviewers plus one model reviewer.
+
+    Historical/explicit model persona names remain accepted as CLI compatibility
+    input, but Chapter 6 model execution is normalized to code-reviewer. Finding
+    identity and changed surface narrow context, not reviewer persona.
+    """
+    resolved = [
+        str(agent).strip()
+        for agent in resolve_llm_review_agents(str(raw_agents or "").strip(), "warn")
+        if str(agent).strip()
+    ]
+    deterministic = [agent for agent in resolved if agent in DETERMINISTIC_AGENTS]
+    if any(agent not in DETERMINISTIC_AGENTS for agent in resolved) or not deterministic:
+        deterministic.append("code-reviewer")
+    return list(dict.fromkeys(deterministic))
 
 
 def parse_out_dir(stdout: str) -> Path | None:
@@ -244,31 +239,18 @@ def prefer_targeted_agents_by_change_scope(
     current_source: str,
     change_scope: dict[str, Any] | None,
 ) -> tuple[list[str], str]:
+    """Narrow 6.8 by surface without switching model reviewer identity."""
     if str(current_source or "").strip() != "configured-defaults":
         return list(current_agents), current_source
     scope = change_scope if isinstance(change_scope, dict) else {}
-    changed_paths = [str(item or "").strip().replace("\\", "/").lower() for item in list(scope.get("changed_paths") or []) if str(item or "").strip()]
+    changed_paths = [
+        str(item or "").strip().replace("\\", "/").lower()
+        for item in list(scope.get("changed_paths") or [])
+        if str(item or "").strip()
+    ]
     if not changed_paths:
         return list(current_agents), current_source
-
-    candidate_agents: set[str] = set()
-    if any(any(path.startswith(prefix) for prefix in SEMANTIC_TARGET_PREFIXES) for path in changed_paths):
-        candidate_agents.add("semantic-equivalence-auditor")
-    if any(
-        any(path.startswith(prefix) for prefix in CODE_TARGET_PREFIXES)
-        or path == "project.godot"
-        or path.endswith(CODE_TARGET_SUFFIXES)
-        for path in changed_paths
-    ):
-        candidate_agents.add("code-reviewer")
-    if any(any(token in path for token in SECURITY_TARGET_TOKENS) for path in changed_paths) or requires_security_auditor_for_change_scope(scope):
-        candidate_agents.add("security-auditor")
-
-    targeted_agents = _ordered_agent_subset(configured_agents, candidate_agents)
-    if not targeted_agents:
-        return list(current_agents), current_source
-    return targeted_agents, "change-scope-targeted"
-
+    return list(current_agents), "change-scope-targeted"
 
 def _extract_agents_from_agent_review(agent_review_payload: dict[str, Any], configured_agents: list[str]) -> list[str]:
     candidate_agents: set[str] = set()
@@ -962,7 +944,7 @@ def apply_delivery_profile_defaults(args: argparse.Namespace) -> argparse.Namesp
     if not str(getattr(args, "security_profile", "") or "").strip():
         args.security_profile = default_security_profile_for_delivery(delivery_profile)
     if not str(getattr(args, "agents", "") or "").strip():
-        args.agents = str(defaults.get("agents") or "code-reviewer,security-auditor,semantic-equivalence-auditor")
+        args.agents = str(defaults.get("agents") or "code-reviewer")
     if not str(getattr(args, "diff_mode", "") or "").strip():
         args.diff_mode = str(defaults.get("diff_mode") or "summary")
     if args.max_rounds is None:
@@ -1042,6 +1024,8 @@ def _build_deterministic_cmd(*, py: str, args: argparse.Namespace) -> list[str]:
         str(args.delivery_profile),
         "--security-profile",
         str(args.security_profile),
+        "--fix-through",
+        str(args.fix_through),
         "--skip-llm-review",
         "--llm-base",
         str(args.base),
@@ -1058,6 +1042,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--task-id", required=True, help="Task id (for task-scoped runs).")
     ap.add_argument("--delivery-profile", default=None, choices=DELIVERY_PROFILE_CHOICES, help="Delivery profile (default: env DELIVERY_PROFILE or fast-ship).")
     ap.add_argument("--security-profile", default=None, help="Security profile (default follows delivery profile).")
+    ap.add_argument(
+        "--fix-through",
+        default="P1",
+        choices=["P1", "P2", "P3"],
+        help="Active must-fix severity threshold; findings at or above it cannot be parked as residual debt.",
+    )
     ap.add_argument(
         "--agents",
         default=None,
@@ -1092,7 +1082,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--agent-timeout-sec", type=int, default=None, help="llm_review --agent-timeout-sec. Default follows delivery profile.")
     ap.add_argument("--step-timeout-sec", type=int, default=None, help="Outer timeout for each subprocess step. Default follows delivery profile.")
     ap.add_argument("--min-llm-budget-min", type=int, default=None, help="Fail fast when remaining budget is below this floor before a new LLM round. Default follows delivery profile.")
-    ap.add_argument("--final-pass", action="store_true", help="Force a full closure pass: no deterministic shortcuts, no reviewer auto-shrink, full reviewer set.")
+    ap.add_argument("--final-pass", action="store_true", help="Force full deterministic closure and complete applicable lenses/surfaces with the single model reviewer; disable narrow reuse shortcuts.")
     ap.add_argument("--skip-sc-test", action="store_true", help="Skip sc-test in deterministic pipeline stage.")
     ap.add_argument("--python", default="py", help="Python launcher command (Windows default: py).")
     return ap
@@ -1166,15 +1156,90 @@ def majority_verdict(votes: list[str]) -> str:
     return "Unknown"
 
 
+def _normalize_signature_text(value: Any) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _review_output_finding_signature(output_path: Path) -> list[dict[str, str]]:
+    if not output_path.exists():
+        return []
+    try:
+        lines = output_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return []
+    findings: list[dict[str, str]] = []
+    current_claim = ""
+    required_action = ""
+    anchor = ""
+    for raw in lines:
+        line = str(raw or "").strip()
+        lower = line.lower()
+        if not line:
+            continue
+        if re.match(r"^(?:[-*]\s*)?p[0-4]\b", line, flags=re.IGNORECASE):
+            current_claim = _normalize_signature_text(line)
+        elif lower.startswith(("claim:", "- claim:", "message:", "- message:")):
+            current_claim = _normalize_signature_text(line.split(":", 1)[1] if ":" in line else line)
+        elif lower.startswith(("required action:", "- required action:", "suggested fix:", "- suggested fix:")):
+            required_action = _normalize_signature_text(line.split(":", 1)[1] if ":" in line else line)
+        if "acc:t" in lower or "requirement" in lower or "adr-" in lower:
+            anchor = _normalize_signature_text(line)
+        if current_claim and (required_action or anchor):
+            raw_id = "\n".join([current_claim, anchor, required_action])
+            findings.append({
+                "finding_id": "finding-" + hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16],
+                "claim": current_claim,
+                "anchor": anchor,
+                "required_action": required_action,
+            })
+            current_claim = ""
+            required_action = ""
+            anchor = ""
+    if current_claim:
+        raw_id = current_claim
+        findings.append({
+            "finding_id": "finding-" + hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16],
+            "claim": current_claim,
+            "anchor": anchor,
+            "required_action": required_action,
+        })
+    return findings
+
+
 def _round_needs_fix_signature(round_result: dict[str, Any]) -> list[dict[str, str]]:
+    summary_file = str(round_result.get("summary_file") or "").strip()
+    if summary_file:
+        summary = read_json(Path(summary_file))
+        signature: list[dict[str, str]] = []
+        for result in summary.get("results") or []:
+            if not isinstance(result, dict):
+                continue
+            details = result.get("details") if isinstance(result.get("details"), dict) else {}
+            if normalize_verdict(str(details.get("verdict") or "")) != "Needs Fix":
+                continue
+            output_path = str(result.get("output_path") or "").strip()
+            if not output_path:
+                continue
+            path = Path(output_path)
+            if not path.is_absolute():
+                path = repo_root() / path
+            signature.extend(_review_output_finding_signature(path))
+        if signature:
+            return sorted(signature, key=lambda item: (item["finding_id"], item["claim"], item["required_action"]))
+
+    # Legacy fallback: old runs may not have structured/finding-bearing outputs.
     verdicts = round_result.get("verdicts") if isinstance(round_result.get("verdicts"), dict) else {}
-    signature: list[dict[str, str]] = []
+    fallback: list[dict[str, str]] = []
     for agent in sorted(verdicts.keys()):
         verdict = normalize_verdict(verdicts.get(agent))
-        if verdict != "Needs Fix":
-            continue
-        signature.append({"agent": agent, "verdict": verdict})
-    return signature
+        if verdict == "Needs Fix":
+            fallback.append({
+                "finding_id": f"legacy-{agent}-needs-fix",
+                "claim": agent,
+                "anchor": "",
+                "required_action": "needs-fix",
+            })
+    return fallback
 
 
 def _round_verdict(verdicts: dict[str, str], *, rc: int) -> str:
@@ -1198,7 +1263,7 @@ def _derive_final_status(*, final_verdicts: dict[str, str], rounds: list[dict[st
     return "ok", "llm_review_clean"
 
 
-def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path) -> dict[str, Any]:
+def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path, fix_through: str = "P1") -> dict[str, Any]:
     latest_payload = resolve_latest_pipeline_payload(task_id)
     latest_out_dir_raw = str(latest_payload.get("latest_out_dir") or "").strip()
     if not latest_out_dir_raw:
@@ -1218,6 +1283,7 @@ def _run_chapter6_route_preflight(*, task_id: str, out_dir: Path) -> dict[str, A
         repo_root=repo_root(),
         task_id=str(task_id),
         record_residual=True,
+        fix_through=str(fix_through or "P1"),
     )
     if not isinstance(payload, dict):
         return {}
@@ -1448,7 +1514,11 @@ def main() -> int:
             _write_summary(out_dir, summary)
             print(f"SC_NEEDS_FIX_FAST status=indeterminate out={out_dir}")
             return 1
-        route_payload = _run_chapter6_route_preflight(task_id=str(args.task_id), out_dir=out_dir)
+        route_payload = _run_chapter6_route_preflight(
+            task_id=str(args.task_id),
+            out_dir=out_dir,
+            fix_through=str(args.fix_through),
+        )
         if route_payload:
             route_preflight_step = _build_chapter6_route_step(
                 payload=route_payload,
@@ -1719,6 +1789,8 @@ def main() -> int:
             str(args.delivery_profile),
             "--security-profile",
             str(args.security_profile),
+            "--fix-through",
+            str(args.fix_through),
             "--skip-test",
             "--skip-acceptance",
             "--review-template",

@@ -998,7 +998,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Declared args: `--repo-root`, `--task-id`, `--run-id`, `--latest`, `--record-residual`, `--out-json`, `--out-md`, `--recommendation-only`, `--recommendation-format`
 - Behavior notes: reads recovery artifacts first, then routes Chapter 6 to `run-6.7`, `run-6.8`, `fix-deterministic`, `repo-noise-stop`, `record-residual`, or `inspect-first`.
 - Behavior notes: `6.8` is only recommended when current edits hit the previous reviewer anchors.
-- Behavior notes: `--record-residual` writes `decision-logs/**` and `execution-plans/**` when only low-priority findings remain.
+- Behavior notes: explicit `--record-residual` writes only eligible deferred findings to `docs/technical-debt.md`; it does not auto-create Decision Log or Execution Plan.
 - Behavior notes: residual recording applies a deterministic P1 floor for acceptance refs, artifact integrity, planned-only, security-boundary, and false-green categories.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
@@ -1011,7 +1011,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Subcommands: None.
 - Declared args: `--task-id`, `--godot-bin`, `--delivery-profile`, `--security-profile`, `--fix-through`, `--out-dir`, `--self-check`
 - Behavior notes: starts from `resume-task` and `chapter6-route`, then routes to either the full `6.3 -> 6.9` path or the narrower `6.8` closure path based on recovery artifacts.
-- Behavior notes: default policy is `playable-ea -> fix-through P0`, `fast-ship -> fix-through P1`, `standard -> fix-through P1`; residual `P2/P3` findings are recorded by default instead of being auto-reopened.
+- Behavior notes: `playable-ea`, `fast-ship`, and `standard` all enforce a P1 must-fix floor. Explicit `--fix-through P0` is rejected; `P2` or `P3` is stricter and makes that severity must-fix.
 - Behavior notes: `--self-check` writes the resolved command plan without executing the Chapter 6 tools.
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
@@ -1371,10 +1371,10 @@ Notes:
   - Model-backed steps require the repo's LLM runtime/CLI; deterministic-only or skip modes can reduce that requirement, but do not assume zero-model execution unless the script explicitly supports it.
   - First round reviewer selection can auto-shrink from the previous task run's `agent-review.json` or `sc-llm-review` summary when those artifacts exist and are stable.
   - Deterministic reuse can scan recent same-task pipeline artifacts across dates; git snapshot or security-profile mismatch still disables reuse.
-  - `--final-pass` disables deterministic shortcuts and reviewer auto-shrink, forces a full reviewer set, and is intended for the last closure run before handoff/PR.
+  - `--final-pass` disables deterministic shortcuts and narrow finding-only reuse, then reruns the single reviewer across all applicable Spec Compliance / Edge Case / Verification Gap lenses; it does not restore the historical multi-persona roster.
 - Behavior notes: round summaries now record `timeout_agents`; when `rc=124` and no child summary was produced, `failure_kind` becomes `timeout-no-summary` so timeout-only rounds are not misread as clean.
 - Behavior notes: `--llm-backend codex-cli|openai-api` now passes through to the nested `run_review_pipeline.py -> llm_review.py` call chain, so transport piloting does not require a custom wrapper.
-- Behavior notes: before paying for deterministic / LLM work, the script now consumes `chapter6-route` when a recoverable prior run already has `agent-review.json`; only `preferred_lane = run-6.8` may continue, while `inspect-first` / `repo-noise-stop` / `fix-deterministic` / `run-6.7` become controlled stop-loss exits and `record-residual` can auto-write follow-up docs.
+- Behavior notes: before paying for deterministic / LLM work, the script consumes `chapter6-route` when a recoverable prior run already has review evidence; only `preferred_lane = run-6.8` may continue, while `inspect-first` / `repo-noise-stop` / `fix-deterministic` / `run-6.7` become controlled stop-loss exits and `record-residual` records eligible debt in `docs/technical-debt.md`.
 
 #### `scripts/sc/run_review_pipeline.py`
 

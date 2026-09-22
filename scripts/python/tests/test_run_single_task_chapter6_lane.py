@@ -126,6 +126,23 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
             cmd[-6:],
         )
 
+    def test_review_and_needs_fix_commands_should_propagate_fix_through(self) -> None:
+        policy = lane.resolve_profile_policy("standard", fix_through="P2")
+        review_cmd = lane.build_review_pipeline_cmd(
+            "15",
+            profile_policy=policy,
+            godot_bin="",
+        )
+        needs_fix_cmd = lane.build_needs_fix_fast_cmd(
+            "15",
+            profile_policy=policy,
+        )
+
+        self.assertIn("--fix-through", review_cmd)
+        self.assertEqual("P2", review_cmd[review_cmd.index("--fix-through") + 1])
+        self.assertIn("--fix-through", needs_fix_cmd)
+        self.assertEqual("P2", needs_fix_cmd[needs_fix_cmd.index("--fix-through") + 1])
+
     def test_partial_handoff_is_rejected_fail_closed(self) -> None:
         result = lane.validate_handoff(
             "logs/ci/context.frozen.json",
@@ -140,14 +157,18 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("invalid_kcp_binding", result.code)
         self.assertEqual(11, result.exit_code)
 
-    def test_resolve_profile_policy_should_default_to_p0_for_playable_ea(self) -> None:
+    def test_resolve_profile_policy_should_default_to_p1_for_playable_ea(self) -> None:
         policy = lane.resolve_profile_policy("playable-ea")
 
         self.assertEqual("playable-ea", policy["delivery_profile"])
         self.assertEqual("host-safe", policy["security_profile"])
-        self.assertEqual("P0", policy["fix_through"])
+        self.assertEqual("P1", policy["fix_through"])
         self.assertEqual("warn", policy["execution_plan_policy"])
         self.assertEqual("unit", policy["red_verify"])
+
+    def test_resolve_profile_policy_should_reject_explicit_p0_below_floor(self) -> None:
+        with self.assertRaisesRegex(ValueError, "P1 must-fix floor"):
+            lane.resolve_profile_policy("fast-ship", fix_through="P0")
 
     def test_resolve_profile_policy_should_default_to_p1_for_standard(self) -> None:
         policy = lane.resolve_profile_policy("standard")

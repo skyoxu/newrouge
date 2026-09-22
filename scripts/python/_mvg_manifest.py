@@ -27,6 +27,29 @@ def read_manifest(root: Path, path: str) -> dict:
     return json.loads(safe_path(root, path).read_text(encoding='utf-8-sig'))
 
 
+def _dedicated_integration_owner_task_ids(flows: list[dict]) -> set[int]:
+    owners: set[int] = set()
+    participants: set[int] = set()
+    scoped: set[int] = set()
+    for flow in flows:
+        for task_id in flow.get('task_ids', []):
+            if type(task_id) is int:
+                scoped.add(task_id)
+        for edge in flow.get('handoffs', []):
+            if not isinstance(edge, dict):
+                continue
+            owner = edge.get('owner_task')
+            producer = edge.get('producer_task')
+            consumer = edge.get('consumer_task')
+            if type(owner) is int:
+                owners.add(owner)
+            if type(producer) is int:
+                participants.add(producer)
+            if type(consumer) is int:
+                participants.add(consumer)
+    return (owners - participants) & scoped
+
+
 def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[str]:
     errors = []
     try:
@@ -62,8 +85,13 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
 
             referenced_tasks = sorted({task_id for flow in flows for task_id in flow.get('task_ids', [])
                                        if isinstance(task_id, int) and task_id in task_rows})
-            non_done = sorted(task_id for task_id in referenced_tasks
-                              if str(task_rows[task_id].get('status', '')).lower() != 'done')
+            dedicated_integration_owners = _dedicated_integration_owner_task_ids(flows)
+            non_done = sorted(
+                task_id
+                for task_id in referenced_tasks
+                if task_id not in dedicated_integration_owners
+                and str(task_rows[task_id].get('status', '')).lower() != 'done'
+            )
             declared_blockers = coverage.get('blocking_task_ids', [])
             if (not isinstance(declared_blockers, list)
                     or any(type(task_id) is not int for task_id in declared_blockers)

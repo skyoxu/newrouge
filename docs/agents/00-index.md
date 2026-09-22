@@ -4,17 +4,13 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 
 ## Read Order After Context Reset
 
-1. [01-session-recovery.md](01-session-recovery.md)
-2. [13-rag-sources-and-session-ssot.md](13-rag-sources-and-session-ssot.md)
-3. [02-repo-map.md](02-repo-map.md)
-4. [14-startup-stack-and-template-structure.md](14-startup-stack-and-template-structure.md)
-5. [03-persistent-harness.md](03-persistent-harness.md)
-6. [../workflows/run-protocol.md](../workflows/run-protocol.md)
-7. [07-agent-to-agent-review.md](07-agent-to-agent-review.md)
-8. First run `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` for the canonical recovery summary
-9. If a task-scoped run already exists and the summary still needs a shorter human pointer, read `logs/ci/active-tasks/task-<id>.active.md`
-10. Newest files in `execution-plans/` and `decision-logs/`
-11. `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` only when the recovery summary still needs deeper inspection
+Start with [AGENTS.md](../../AGENTS.md) and use its task-route table. Do not preload this index as a fixed document stack, and do not choose the newest plan/decision file by timestamp.
+
+- Chapter 6 recovery: first run `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`.
+- If a go/no-go decision is still needed, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`.
+- Expand `active-task`, `inspect-run`, run sidecars/events, an Execution Plan, or a Decision Log only when the compact result or an explicit task/user binding points to them.
+- New Chapter 6 work, Chapters 3/4/5/7, Prototype, Architecture/Contract, Testing/MVG, and harness maintenance follow the corresponding AGENTS route and read only the required direct authority plus named supplements.
+- Historical logs and old plans are evidence, not current instructions. A missing source that affects a boundary decision is a blocking evidence gap; do not substitute a nearby summary.
 
 Recovery shortcut:
 - `resume-task` and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` now expose `latest_summary_signals` and `chapter6_hints`; use those fields before deciding whether to reopen `6.7` or narrow to `6.8`.
@@ -39,7 +35,7 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 2. Before paying for another `6.7` or `6.8`, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 3. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
 4. `6.4 -> 6.5 -> 6.6` in order, keeping the first red run as light as possible
-5. `6.5` hard-requires the latest clean `6.4 red-first` summary, and `6.6` hard-requires the latest clean `6.5 green` summary.
+5. `6.5` hard-requires the latest clean `6.4 red-first` summary whenever any automated verification obligation remains. A fully classified pure `human-experience` task may enter implementation from explicit manual preflight/pending evidence instead; mixed or partially classified Acceptance never waives machine RED. `6.6` still hard-requires the latest clean `6.5 green` summary.
 6. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
 7. Before rerunning `6.7` or `6.8`, read `summary.json`, `latest.json`, `repair-guide.md`, `run-events.jsonl`, and the child step summaries first
 8. Check `reason`, `run_type`, `reuse_mode`, `artifact_integrity`, and `diagnostics` in `latest.json` or `summary.json` first; pay attention to `rerun_guard`, `reuse_decision`, `acceptance_preflight`, `llm_timeout_memory`, and stop-loss signals.
@@ -52,8 +48,8 @@ Use this when you need the cheapest safe daily loop for a single task. Full deta
 15. If the latest two `6.7` runs stopped at the same `sc-test` failure fingerprint, fix the root cause before retrying; only override this with `--allow-repeat-deterministic-failures`.
 16. Fresh `6.7` runs inherit the latest same-task `delivery/security profile` lock; only switch profiles with explicit `--reselect-profile`.
 17. If `sc-test` fails twice in the same run, stop resuming and fix the root cause before starting a new run.
-18. Use targeted reviewers in `6.8`: code -> `code-reviewer`, semantics / acceptance / overlay -> `semantic-equivalence-auditor`, security -> `security-auditor`.
-19. If two `6.8` rounds return the same `Needs Fix` category, severity, and anchors, stop and record instead of paying for a third similar rerun.
+18. Chapter 6 model review uses one `code-reviewer` with mandatory Spec Compliance / Edge Case / Verification Gap lenses; 6.8 narrows by finding/changed surface, not by switching reviewer personas.
+19. If two `6.8` rounds return the same stable finding identity/claim/anchor and required action, stop and record instead of paying for a third similar rerun; different findings from the same reviewer are not repeats.
 20. Treat `status=ok` as clean only when the child `sc-llm-review` summary has no `Needs Fix`, no `Unknown`, and no timeout; if a round shows `failure_kind = timeout-no-summary`, treat it as observation gap, not clean.
 
 ## Chapter 7 Fast-Ship Card
@@ -106,7 +102,7 @@ Use this after Chapter 6 has closed the current completed backlog slice and you 
 ## Repository State Files
 - `execution-plans/` stores current execution intent and checkpoints.
 - `decision-logs/` stores decisions that changed architecture, workflow, or guardrails.
-- Unresolved `Needs Fix` must be recorded in `decision-logs/` first, then linked from `execution-plans/` with concrete next-step commands and evidence paths.
+- Deferrable review findings go to `docs/technical-debt.md`; Decision Logs are for architecture/workflow/authority/policy decisions, and Execution Plans are for durable recovery or ordered coordination needs.
 - `logs/ci/active-tasks/task-<id>.active.md` is the shortest task-scoped recovery pointer.
 - `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` is the preferred full recovery entry because it summarizes the latest run plus matching `execution-plans/` and `decision-logs/`.
 - `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` points to the latest local pipeline artifacts, including `summary.json`, `execution-context.json`, `repair-guide.*`, and `agent-review.*` when generated.

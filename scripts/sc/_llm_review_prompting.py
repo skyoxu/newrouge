@@ -5,6 +5,7 @@ Prompt and verdict helpers for llm_review.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -13,6 +14,53 @@ from typing import Any
 from _llm_review_acceptance import read_text, truncate
 from _taskmaster import TaskmasterTriplet
 from _util import repo_root
+
+
+_SURFACE_FOCUS_GUIDANCE = {
+    "Save/Load": "Check reload, persistence identity, serialization compatibility, and idempotent restore behavior.",
+    "Contract/EventBus": "Check producer/consumer compatibility, event identity, ordering assumptions, and contract evolution.",
+    "UI/Scene": "Check input wiring, scene lifecycle, signal connections, visibility/state synchronization, and adapter boundaries.",
+    "State Machine": "Check legal transitions, re-entry, partial transition failure, and state recovery.",
+    "Security": "Check the real trust/safety boundary, input validation, path/process access, and fail-closed behavior.",
+    "Performance": "Check hot loops, repeated allocations/work, bounded resource use, and performance evidence.",
+}
+
+
+def derive_surface_focus(changed_paths: list[str], *, limit: int = 3) -> list[dict[str, str]]:
+    normalized = [str(path or "").strip().replace("\\", "/").casefold() for path in changed_paths if str(path or "").strip()]
+    selectors = [
+        ("Save/Load", ("save", "load", "snapshot", "serializ", "persist", "checkpoint")),
+        ("Contract/EventBus", ("/contracts/", "contract", "/events/", "eventbus", "event_bus")),
+        ("UI/Scene", ("game.godot/", "tests.godot/", ".tscn", "/ui/", "/scene", "scene/")),
+        ("State Machine", ("state", "transition", "fsm", "state_machine", "statemachine")),
+        ("Security", ("security", "permission", "sandbox", "trusted", "auth", "crypto", "pathguard", "path_guard")),
+        ("Performance", ("performance", "benchmark", "workerthread", "worker_thread", "hotloop", "hot_loop")),
+    ]
+    selected: list[dict[str, str]] = []
+    for name, tokens in selectors:
+        matched = sorted({path for path in normalized if any(token in path for token in tokens)})
+        if not matched:
+            continue
+        selected.append({
+            "name": name,
+            "reason": f"changed surface: {', '.join(matched[:3])}",
+            "guidance": _SURFACE_FOCUS_GUIDANCE[name],
+        })
+        if len(selected) >= max(0, int(limit)):
+            break
+    return selected
+
+
+def render_surface_focus_prompt(surface_focus: list[dict[str, str]]) -> str:
+    if not surface_focus:
+        return ""
+    lines = [
+        "## Selected Surface Focus",
+        "Apply these focus checks in addition to the three required lenses; they are methods, not extra reviewer personas.",
+    ]
+    for item in surface_focus:
+        lines.append(f"- {item['name']}: {item['guidance']} ({item['reason']})")
+    return "\n".join(lines)
 
 
 def build_task_context(triplet: TaskmasterTriplet | None, *, mode: str = "full") -> str:
@@ -131,7 +179,7 @@ def default_agent_prompt(agent: str) -> str:
             "Secondary evidence: deterministic gates (acceptance_check/test/coverage/perf) and the diff.",
             "",
             "Output a concise Markdown report with:",
-            "- P0/P1/P2/P3 findings (if any)",
+            "- P0/P1/P2/P3/P4 findings (if any)",
             "- specific file paths + what to change",
             "- call out weak tests (anchors present but no meaningful assertions)",
             "- call out missing negative/error-path tests when acceptance implies them",
@@ -191,6 +239,143 @@ def parse_verdict(text: str) -> str | None:
     if not m:
         return None
     return str(m.group(1)).strip()
+
+
+_REVIEW_CONTRACT_MARKER = "Review Contract JSON:"
+_REVIEW_CONTRACT_LENSES = ("Spec Compliance", "Edge Case", "Verification Gap")
+_REVIEW_COMPLETION = {"completed", "incomplete", "failed"}
+_LENS_STATUS = {"completed", "incomplete", "not-applicable"}
+_UNCERTAINTY_KINDS = {"Question", "Limitation", "Declined to Judge"}
+_FINDING_SEVERITIES = {"P0", "P1", "P2", "P3", "P4"}
+_DISPOSITION_ACTIONS = {"retain", "fix", "reject", "defer"}
+
+
+def parse_review_contract(
+    text: str,
+    *,
+    fix_through: str = "P1",
+) -> tuple[dict[str, Any] | None, list[str]]:
+    raw = str(text or "")
+    marker_index = raw.find(_REVIEW_CONTRACT_MARKER)
+    if marker_index < 0:
+        return None, ["review_contract_missing"]
+    tail = raw[marker_index + len(_REVIEW_CONTRACT_MARKER):]
+    json_start = tail.find("{")
+    if json_start < 0:
+        return None, ["review_contract_json_missing"]
+    try:
+        payload, _ = json.JSONDecoder().raw_decode(tail[json_start:])
+    except json.JSONDecodeError as exc:
+        return None, [f"review_contract_json_invalid:{exc.msg}"]
+    if not isinstance(payload, dict):
+        return None, ["review_contract_must_be_object"]
+
+    errors: list[str] = []
+    threshold = str(fix_through or "P1").strip().upper()
+    threshold_rank = {"P1": 1, "P2": 2, "P3": 3}.get(threshold, 1)
+    completion = str(payload.get("completion_status") or "").strip()
+    if completion not in _REVIEW_COMPLETION:
+        errors.append("completion_status_invalid")
+
+    lenses = payload.get("lenses")
+    seen_lenses: set[str] = set()
+    if not isinstance(lenses, list):
+        errors.append("lenses_must_be_array")
+        lenses = []
+    for index, lens in enumerate(lenses):
+        if not isinstance(lens, dict):
+            errors.append(f"lenses[{index}]_must_be_object")
+            continue
+        name = str(lens.get("name") or "").strip()
+        status = str(lens.get("status") or "").strip()
+        notes = str(lens.get("notes") or "").strip()
+        if name not in _REVIEW_CONTRACT_LENSES:
+            errors.append(f"lenses[{index}]_name_invalid")
+        elif name in seen_lenses:
+            errors.append(f"lenses[{index}]_duplicate")
+        else:
+            seen_lenses.add(name)
+        if status not in _LENS_STATUS:
+            errors.append(f"lenses[{index}]_status_invalid")
+        if not notes:
+            errors.append(f"lenses[{index}]_notes_missing")
+    for required in _REVIEW_CONTRACT_LENSES:
+        if required not in seen_lenses:
+            errors.append(f"required_lens_missing:{required}")
+    if completion == "completed":
+        for lens in lenses:
+            if isinstance(lens, dict) and str(lens.get("status") or "").strip() == "incomplete":
+                errors.append("completed_review_has_incomplete_lens")
+
+    findings = payload.get("findings")
+    if not isinstance(findings, list):
+        errors.append("findings_must_be_array")
+        findings = []
+    required_finding_fields = (
+        "finding_id",
+        "claim",
+        "severity",
+        "authority_refs",
+        "evidence",
+        "failure_scenario",
+        "expected_protection",
+        "observed_protection",
+        "required_action",
+        "verification",
+        "disposition",
+    )
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            errors.append(f"findings[{index}]_must_be_object")
+            continue
+        for field in required_finding_fields:
+            if field not in finding:
+                errors.append(f"findings[{index}]_{field}_missing")
+        if not str(finding.get("finding_id") or "").strip():
+            errors.append(f"findings[{index}]_finding_id_empty")
+        if not str(finding.get("claim") or "").strip():
+            errors.append(f"findings[{index}]_claim_empty")
+        severity = str(finding.get("severity") or "").strip().upper()
+        if severity not in _FINDING_SEVERITIES:
+            errors.append(f"findings[{index}]_severity_invalid")
+        for field in ("authority_refs", "evidence"):
+            value = finding.get(field)
+            if not isinstance(value, list) or any(not str(item or "").strip() for item in value):
+                errors.append(f"findings[{index}]_{field}_invalid")
+        for field in ("failure_scenario", "expected_protection", "observed_protection", "required_action", "verification"):
+            if not str(finding.get(field) or "").strip():
+                errors.append(f"findings[{index}]_{field}_empty")
+        disposition = finding.get("disposition")
+        if not isinstance(disposition, dict):
+            errors.append(f"findings[{index}]_disposition_invalid")
+        else:
+            action = str(disposition.get("action") or "").strip()
+            rationale = str(disposition.get("rationale") or "").strip()
+            if action not in _DISPOSITION_ACTIONS:
+                errors.append(f"findings[{index}]_disposition_action_invalid")
+            if not rationale:
+                errors.append(f"findings[{index}]_disposition_rationale_missing")
+            if (
+                severity in _FINDING_SEVERITIES
+                and int(severity[1]) <= threshold_rank
+                and action == "defer"
+            ):
+                errors.append(f"findings[{index}]_must_fix_cannot_defer")
+
+    uncertainty = payload.get("uncertainty")
+    if not isinstance(uncertainty, list):
+        errors.append("uncertainty_must_be_array")
+        uncertainty = []
+    for index, item in enumerate(uncertainty):
+        if not isinstance(item, dict):
+            errors.append(f"uncertainty[{index}]_must_be_object")
+            continue
+        if str(item.get("kind") or "").strip() not in _UNCERTAINTY_KINDS:
+            errors.append(f"uncertainty[{index}]_kind_invalid")
+        if not str(item.get("statement") or "").strip():
+            errors.append(f"uncertainty[{index}]_statement_missing")
+
+    return payload, sorted(set(errors))
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:

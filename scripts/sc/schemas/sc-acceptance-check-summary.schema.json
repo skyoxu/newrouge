@@ -121,6 +121,9 @@
         },
         "requires_env_evidence_preflight": {
           "type": "boolean"
+        },
+        "verification_surface": {
+          "type": "object"
         }
       }
     },

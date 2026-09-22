@@ -194,6 +194,7 @@ DIRTY_WORKTREE_CHANGED_PATHS_CEILING = 20
 DIRTY_WORKTREE_UNSAFE_PATHS_CEILING = 8
 PROFILE_DRIFT_CHANGED_PATHS_CEILING = 8
 PROFILE_DRIFT_UNSAFE_PATHS_CEILING = 1
+TECHNICAL_DEBT_SYNC_ERROR_RC = 13
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -2116,6 +2117,30 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"[sc-review-pipeline] ERROR: {exc}")
         return 2
+
+    requested_fix_through = str(args.fix_through or "").strip().upper()
+    source_llm_context = (
+        source_execution_context.get("llm_review")
+        if isinstance(source_execution_context, dict)
+        and isinstance(source_execution_context.get("llm_review"), dict)
+        else {}
+    )
+    source_fix_through = str((source_llm_context or {}).get("fix_through") or "").strip().upper()
+    if bool(args.resume or args.fork) and source_fix_through:
+        if requested_fix_through and requested_fix_through != source_fix_through:
+            print(
+                "[sc-review-pipeline] ERROR: fix-through mismatch for resume/fork "
+                f"source={source_fix_through} requested={requested_fix_through}"
+            )
+            return 2
+        fix_through = source_fix_through
+    else:
+        fix_through = requested_fix_through or "P1"
+    if fix_through not in {"P1", "P2", "P3"}:
+        print(f"[sc-review-pipeline] ERROR: invalid fix-through={fix_through}")
+        return 2
+    args.fix_through = fix_through
+
     current_git = current_git_fingerprint()
     profile_floor_decision: dict[str, Any] | None = None
     change_scope_for_floor: dict[str, Any] = {}
@@ -2177,6 +2202,7 @@ def main() -> int:
         "task_id": task_id,
         "chapter5_semantic_evidence_path": str(chapter5_evidence_path).replace("\\", "/"),
         "chapter5_readiness": readiness_payload.get("readiness"),
+        "fix_through": fix_through,
     }
     if bool(llm_reviewer_subset.get("applied")):
         llm_execution_context["derived_reviewer_subset"] = dict(llm_reviewer_subset)
@@ -2594,10 +2620,18 @@ def main() -> int:
             task_id=task_id,
             run_id=run_id,
             delivery_profile=delivery_profile,
+            fix_through=fix_through,
         )
     except Exception as exc:
-        write_text(out_dir / "technical-debt-sync.log", f"technical debt sync skipped: {exc}\n")
-        print(f"[sc-review-pipeline] WARN: technical debt sync skipped: {exc}")
+        write_text(
+            out_dir / "technical-debt-sync.log",
+            f"technical debt sync failed: {exc}\n"
+            "Recovery: repair the register/write condition and rerun the debt sync; "
+            "do not reinterpret the existing Review verdict.\n",
+        )
+        print(f"[sc-review-pipeline] ERROR: technical debt sync failed: {exc}")
+        print(f"SC_REVIEW_PIPELINE status=fail task={task_id} stop=technical-debt-sync out={out_dir}")
+        return TECHNICAL_DEBT_SYNC_ERROR_RC
     print(f"SC_REVIEW_PIPELINE status={session.summary['status']} out={out_dir}")
     return final_rc
 

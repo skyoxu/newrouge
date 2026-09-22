@@ -241,6 +241,58 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
             filtered = json.loads((out_dir / "refs-filtered.11.json").read_text(encoding="utf-8"))
             self.assertEqual(["logs/ci/evidence.json"], filtered["skipped_non_test_refs"])
 
+    def test_red_first_reuses_existing_green_regression_without_manufacturing_red(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            analyze_dir = root / "logs" / "ci" / "2026-03-20" / "sc-analyze"
+            analyze_dir.mkdir(parents=True, exist_ok=True)
+            (analyze_dir / "task_context.11.json").write_text(
+                json.dumps({"taskdoc_markdown": "Task context markdown"}, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            existing = root / "Game.Core.Tests" / "FooTests.cs"
+            existing.parent.mkdir(parents=True, exist_ok=True)
+            existing.write_text("// existing passing regression\n", encoding="utf-8")
+            argv = [
+                "llm_generate_tests_from_acceptance_refs.py",
+                "--task-id",
+                "11",
+                "--tdd-stage",
+                "red-first",
+                "--verify",
+                "unit",
+            ]
+
+            def fake_run_cmd(cmd: list[str], cwd: Path, timeout_sec: int):  # noqa: ARG001
+                cmd_text = " ".join(cmd)
+                if "validate_acceptance_refs.py" in cmd_text:
+                    return 0, "acceptance refs ok\n"
+                if "scripts/sc/analyze.py" in cmd_text:
+                    return 0, "analyze ok\n"
+                if "update_task_test_refs_from_acceptance_refs.py" in cmd_text:
+                    return 0, "sync ok\n"
+                if cmd[:4] == ["py", "-3", "scripts/sc/test.py", "--type"]:
+                    return 0, "SC_TEST status=ok out=logs/ci/2026-03-20/sc-test\n"
+                raise AssertionError(f"unexpected command: {cmd}")
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(gen_script, "repo_root", return_value=root), \
+                mock.patch.object(gen_script, "ci_dir", return_value=out_dir), \
+                mock.patch.object(gen_script, "resolve_triplet", return_value=_FakeTriplet()), \
+                mock.patch.object(gen_script, "run_cmd", side_effect=fake_run_cmd), \
+                mock.patch.object(gen_script, "_run_codex_exec") as llm_mock:
+                rc = gen_script.main()
+
+            self.assertEqual(0, rc)
+            llm_mock.assert_not_called()
+            self.assertEqual("// existing passing regression\n", existing.read_text(encoding="utf-8"))
+            summary = json.loads((out_dir / "summary-11.json").read_text(encoding="utf-8"))
+            self.assertEqual(0, summary["created"])
+            self.assertNotIn("red_verify", summary)
+            self.assertEqual("skipped", summary["results"][0]["status"])
+            self.assertEqual(0, summary["test_step"]["rc"])
+
     def test_main_should_fail_red_first_when_verify_returns_unexpected_green_for_new_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -341,6 +393,27 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
                     return 0, "sync ok\n"
                 if cmd[:4] == ["py", "-3", "scripts/sc/test.py", "--type"]:
                     seen_test_cmds.append(cmd)
+                    run_id = "red-run-11"
+                    sc_dir = root / "logs" / "ci" / "2026-03-20" / "sc-test"
+                    unit_dir = root / "logs" / "unit" / "2026-03-20"
+                    sc_dir.mkdir(parents=True, exist_ok=True)
+                    unit_dir.mkdir(parents=True, exist_ok=True)
+                    (sc_dir / "run_id.txt").write_text(run_id + "\n", encoding="utf-8")
+                    (unit_dir / "run_id.txt").write_text(run_id + "\n", encoding="utf-8")
+                    (unit_dir / "summary.json").write_text(
+                        json.dumps(
+                            {
+                                "status": "tests_failed",
+                                "filter": "FullyQualifiedName~FooTests",
+                                "failure_excerpt": [
+                                    "Failed FooTests.ShouldPublishJoinEvent_WhenMemberJoinsGuild",
+                                    "Expected: 2",
+                                    "Actual: 1",
+                                ],
+                            }
+                        ),
+                        encoding="utf-8",
+                    )
                     return 1, "SC_TEST status=fail out=logs/ci/2026-03-20/sc-test\n"
                 raise AssertionError(f"unexpected command: {cmd}")
 

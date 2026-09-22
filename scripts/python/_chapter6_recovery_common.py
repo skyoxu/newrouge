@@ -34,6 +34,29 @@ def _normalize_action(value: str | None) -> str:
     return str(value or "").strip().lower().replace("_", "-")
 
 
+def route_execution_policy(route_payload: dict[str, Any] | None) -> dict[str, Any]:
+    route = route_payload if isinstance(route_payload, dict) else {}
+    blocked_by = str(route.get("blocked_by") or "").strip().lower()
+    raw_allowed = route.get("execution_allowed")
+    if isinstance(raw_allowed, bool):
+        allowed = raw_allowed
+    else:
+        normalized = str(raw_allowed or "").strip().lower()
+        if normalized in {"false", "0", "no", "off"}:
+            allowed = False
+        elif normalized in {"true", "1", "yes", "on"}:
+            allowed = True
+        else:
+            allowed = blocked_by != "chapter5_readiness"
+    if blocked_by == "chapter5_readiness":
+        allowed = False
+    return {
+        "execution_allowed": bool(allowed),
+        "blocked_by": blocked_by,
+        "stop_reason": "chapter5_readiness" if not allowed and blocked_by == "chapter5_readiness" else "",
+    }
+
+
 def _approval_action_policy(approval: dict[str, Any] | None) -> tuple[str, set[str], set[str]]:
     payload = approval if isinstance(approval, dict) else {}
     required_action = _normalize_action(str(payload.get("required_action") or ""))

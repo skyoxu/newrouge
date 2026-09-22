@@ -21,14 +21,17 @@ from _llm_review_cli import (
     summary_base,
     validate_args,
 )
-from _llm_review_exec import auto_resolve_commit_for_task, build_diff_context, run_codex_exec
+from _llm_review_exec import auto_resolve_commit_for_task, build_changed_paths, build_diff_context, run_codex_exec
 from _llm_review_models import ReviewResult
 from _llm_review_prompting import (
     agent_prompt,
     build_task_context,
     build_threat_model_context,
+    derive_surface_focus,
     normalize_host_safe_needs_fix,
+    parse_review_contract,
     parse_verdict,
+    render_surface_focus_prompt,
     resolve_claude_agents_root,
     resolve_threat_model,
 )
@@ -37,8 +40,33 @@ from _taskmaster import resolve_triplet
 from _util import ci_dir, repo_rel, repo_root, write_json, write_text
 
 
-_SEMANTIC_AGENT = "semantic-equivalence-auditor"
-_DEFERRED_REASON_CODE = "deferred_until_prior_reviewers_clean"
+_REQUIRED_REVIEW_LENSES = ("Spec Compliance", "Edge Case", "Verification Gap")
+_REVIEW_LENSES_PROMPT = """## Required Review Lenses
+You are the single Chapter 6 model reviewer. Complete every applicable lens before declaring the review complete.
+
+### Spec Compliance
+Compare the changed behavior with the bound Requirement/Acceptance and authority constraints. Identify missing, partial, conflicting, or unsupported success claims.
+
+### Edge Case
+Inspect the changed surface plus relevant callers/state/contracts for missing/empty input, re-entry, partial failure, compatibility, state transitions, and real safety boundaries.
+
+### Verification Gap
+For each required behavior, identify the expected protection, the observed protection, the concrete executable verification, and why the protection would fail if the behavior regressed. Human-experience obligations require explicit human evidence and must remain pending when absent.
+
+If required input for any lens is unavailable, state that limitation and return an incomplete review instead of an empty/OK result.
+
+## Machine-readable completion contract
+After the human-readable lens sections, emit exactly one block beginning with:
+Review Contract JSON:
+
+The next value must be one JSON object with:
+- completion_status: completed | incomplete | failed
+- lenses: one entry for each required lens with name, status (completed | incomplete | not-applicable), and non-empty notes
+- findings: an array. Every finding must include finding_id, claim, severity (P0-P4), authority_refs, evidence, failure_scenario, expected_protection, observed_protection, required_action, verification, and disposition {action, rationale}
+- uncertainty: an array of {kind, statement}, where kind is Question | Limitation | Declined to Judge
+
+Use completion_status=completed only when every applicable lens had sufficient required input. P0/P1 findings cannot use disposition.action=defer.
+"""
 
 
 def _prompt_shape_for_agent(
@@ -48,21 +76,8 @@ def _prompt_shape_for_agent(
     resolved_agents: list[str] | None = None,
     semantic_gate: str | None = None,
 ) -> dict[str, str]:
-    if agent == "semantic-equivalence-auditor":
-        return {
-            "task_context_mode": "semantic",
-            "acceptance_semantic_profile": "semantic",
-            "diff_position": "tail",
-        }
-    normalized_profile = str(delivery_profile or "").strip().lower()
-    normalized_gate = str(semantic_gate or "").strip().lower()
-    reviewer_set = {str(item).strip() for item in (resolved_agents or []) if str(item).strip()}
-    if normalized_profile in {"playable-ea", "fast-ship"} and "semantic-equivalence-auditor" not in reviewer_set and normalized_gate in {"skip", "warn"}:
-        return {
-            "task_context_mode": "compact",
-            "acceptance_semantic_profile": "none",
-            "diff_position": "before_acceptance_semantic",
-        }
+    # Required semantics are reviewer input, not a persona-specific privilege.
+    # Compact mode may reduce prose but never removes Acceptance semantics.
     return {
         "task_context_mode": "compact",
         "acceptance_semantic_profile": "compact",
@@ -153,28 +168,14 @@ def _review_result_is_clean(result: ReviewResult | dict[str, Any]) -> bool:
 def _build_agent_execution_plan(agents: list[str]) -> dict[str, Any]:
     ordered_agents = [str(agent).strip() for agent in agents if str(agent).strip()]
     llm_agents = [agent for agent in ordered_agents if agent not in DETERMINISTIC_AGENTS]
-    if _SEMANTIC_AGENT not in llm_agents or len(llm_agents) <= 1:
-        return {
-            "ordered_agents": ordered_agents,
-            "primary_agents": ordered_agents,
-            "deferred_agents": [],
-            "primary_llm_agents": llm_agents,
-            "stages": {agent: "primary" for agent in ordered_agents},
-            "semantic_deferred": False,
-        }
-
-    primary_agents = [agent for agent in ordered_agents if agent != _SEMANTIC_AGENT]
-    deferred_agents = [agent for agent in ordered_agents if agent == _SEMANTIC_AGENT]
     return {
-        "ordered_agents": [*primary_agents, *deferred_agents],
-        "primary_agents": primary_agents,
-        "deferred_agents": deferred_agents,
-        "primary_llm_agents": [agent for agent in primary_agents if agent not in DETERMINISTIC_AGENTS],
-        "stages": {
-            agent: ("deferred" if agent == _SEMANTIC_AGENT else "primary")
-            for agent in ordered_agents
-        },
-        "semantic_deferred": True,
+        "ordered_agents": ordered_agents,
+        "primary_agents": ordered_agents,
+        "deferred_agents": [],
+        "primary_llm_agents": llm_agents,
+        "stages": {agent: "primary" for agent in ordered_agents},
+        "semantic_deferred": False,
+        "review_lenses": list(_REQUIRED_REVIEW_LENSES),
     }
 
 
@@ -315,6 +316,9 @@ def main() -> int:
             return 1
 
     acceptance_semantic_cache: dict[str, tuple[str, dict[str, Any] | None]] = {}
+    changed_paths = build_changed_paths(args)
+    surface_focus = derive_surface_focus(changed_paths)
+    surface_focus_prompt = render_surface_focus_prompt(surface_focus)
     diff_ctx = build_diff_context(args)
     diff_ctx_summary: str | None = None
 
@@ -322,30 +326,18 @@ def main() -> int:
     hard_fail = False
     had_warnings = False
     prompt_truncated_agents: list[str] = []
+    review_incomplete = False
+    review_failed = False
     deadline_ts = time.monotonic() + total_timeout_sec
 
     for agent in agents:
         execution_stage = str(execution_plan["stages"].get(agent) or "primary")
-        if execution_stage == "deferred":
-            blocked_by_agents = [result.agent for result in results if not _review_result_is_clean(result)]
-            if blocked_by_agents:
-                results.append(
-                    ReviewResult(
-                        agent=agent,
-                        status="skipped",
-                        rc=0,
-                        details={
-                            "execution_stage": execution_stage,
-                            "reason_code": _DEFERRED_REASON_CODE,
-                            "blocked_by_agents": blocked_by_agents,
-                            "note": "Deferred reviewer skipped because prior reviewers are not yet clean.",
-                        },
-                    )
-                )
-                continue
         remaining = int(deadline_ts - time.monotonic())
         if remaining <= 0:
             status = "fail" if args.strict else "skipped"
+            review_incomplete = True
+            if status == "fail":
+                review_failed = True
             had_warnings = True
             if status == "fail":
                 hard_fail = True
@@ -383,7 +375,7 @@ def main() -> int:
         prompt_shape = _prompt_shape_for_agent(
             agent,
             delivery_profile=str(getattr(args, "delivery_profile", "") or ""),
-            resolved_agents=list(execution_plan["primary_llm_agents"]) if execution_stage == "primary" and bool(execution_plan["semantic_deferred"]) else agents,
+            resolved_agents=list(execution_plan["primary_llm_agents"]),
             semantic_gate=str(args.semantic_gate or "skip").strip().lower(),
         )
         ctx = build_task_context(triplet, mode=prompt_shape["task_context_mode"])
@@ -401,7 +393,16 @@ def main() -> int:
                     acceptance_semantic_cache[acceptance_semantic_profile] = ("", {"status": "error", "profile": acceptance_semantic_profile})
             acceptance_semantic_ctx, acceptance_semantic_meta = acceptance_semantic_cache[acceptance_semantic_profile]
         task_requirements_blob = "\n".join([ctx, acceptance_ctx, acceptance_semantic_ctx, review_template])
-        blocks = [base_prompt]
+        fix_through = str(getattr(args, "fix_through", "P1") or "P1").strip().upper()
+        fix_through_prompt = (
+            "## Active must-fix threshold\n"
+            f"- fix-through: {fix_through}\n"
+            f"- Findings at {fix_through} or higher severity are must-fix and cannot use disposition.action=defer.\n"
+        )
+        blocks = [base_prompt, _REVIEW_LENSES_PROMPT]
+        if surface_focus_prompt:
+            blocks.append(surface_focus_prompt)
+        blocks.append(fix_through_prompt)
         if review_template:
             blocks.append("## Structured Review Template\n" + review_template.strip() + "\n")
         if ctx:
@@ -423,15 +424,14 @@ def main() -> int:
             acceptance_semantic_ctx=acceptance_semantic_ctx,
             diff_position=prompt_shape["diff_position"],
             max_chars=int(args.prompt_max_chars),
-            allow_drop_acceptance_semantic=(agent != "semantic-equivalence-auditor"),
+            allow_drop_acceptance_semantic=False,
         )
         prompt_used, budget_meta = apply_prompt_budget(prompt, max_chars=int(args.prompt_max_chars))
         if bool(budget_meta.get("truncated")):
             prompt_truncated_agents.append(agent)
-            if str(args.prompt_budget_gate) in {"warn", "require"}:
-                had_warnings = True
-            if str(args.prompt_budget_gate) == "require":
-                hard_fail = True
+            review_incomplete = True
+            had_warnings = True
+            hard_fail = True
 
         prompt_path = out_dir / f"prompt-{agent}.md"
         output_path = out_dir / f"review-{agent}.md"
@@ -444,6 +444,7 @@ def main() -> int:
                 pass
 
         if bool(args.prompts_only):
+            review_incomplete = True
             had_warnings = True
             results.append(
                 ReviewResult(
@@ -475,15 +476,16 @@ def main() -> int:
 
         status = "ok" if (rc == 0 and last_msg.strip()) else ("fail" if args.strict else "skipped")
         if status != "ok":
+            review_incomplete = True
             had_warnings = True
         if status == "fail":
+            review_failed = True
             hard_fail = True
 
         semantic_gate = str(args.semantic_gate or "skip").strip().lower()
-        semantic_agent = _SEMANTIC_AGENT
         verdict = parse_verdict(last_msg)
         verdict_normalization: dict[str, Any] | None = None
-        if last_msg and agent != semantic_agent:
+        if last_msg:
             normalized_msg, normalized_verdict, verdict_normalization = normalize_host_safe_needs_fix(
                 agent=agent,
                 text=last_msg,
@@ -495,12 +497,32 @@ def main() -> int:
                 write_text(output_path, last_msg)
             if normalized_verdict:
                 verdict = normalized_verdict
-        if agent == semantic_agent:
-            if semantic_gate == "warn" and verdict != "OK":
-                had_warnings = True
-            if semantic_gate == "require" and verdict != "OK":
-                had_warnings = True
+
+        review_contract, review_contract_errors = parse_review_contract(
+            last_msg,
+            fix_through=str(getattr(args, "fix_through", "P1") or "P1"),
+        )
+        if review_contract_errors:
+            review_incomplete = True
+            had_warnings = True
+            if bool(args.strict):
                 hard_fail = True
+        elif isinstance(review_contract, dict):
+            contract_completion = str(review_contract.get("completion_status") or "").strip()
+            if contract_completion == "failed":
+                review_failed = True
+                hard_fail = True
+                had_warnings = True
+            elif contract_completion != "completed":
+                review_incomplete = True
+                had_warnings = True
+                if bool(args.strict):
+                    hard_fail = True
+        if semantic_gate == "warn" and verdict != "OK":
+            had_warnings = True
+        if semantic_gate == "require" and verdict != "OK":
+            had_warnings = True
+            hard_fail = True
 
         results.append(
             ReviewResult(
@@ -510,7 +532,7 @@ def main() -> int:
                 cmd=cmd,
                 prompt_path=str(prompt_path.relative_to(repo_root())).replace("\\", "/"),
                 output_path=str(output_path.relative_to(repo_root())).replace("\\", "/"),
-                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "verdict": verdict, "verdict_normalization": verdict_normalization, "note": "This step is best-effort. Use --strict to make it a hard gate."},
+                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "surface_focus": surface_focus, "verdict": verdict, "verdict_normalization": verdict_normalization, "review_contract": review_contract, "review_contract_errors": review_contract_errors, "note": "This step is best-effort. Use --strict to make it a hard gate."},
             )
         )
 
@@ -532,6 +554,18 @@ def main() -> int:
             "acceptance_semantic_meta": acceptance_semantic_meta,
             "requested_agents": requested_agents,
             "execution_plan": execution_plan,
+            "review_method": {
+                "reviewer_mode": "single-reviewer",
+                "required_lenses": list(_REQUIRED_REVIEW_LENSES),
+                "surface_focus": surface_focus,
+                "changed_paths": changed_paths,
+                "fix_through": str(getattr(args, "fix_through", "P1") or "P1"),
+            },
+            "completion_status": (
+                "failed" if review_failed
+                else "incomplete" if review_incomplete
+                else "completed"
+            ),
             "results": [r.__dict__ for r in results],
             "prompt_budget": {
                 "max_chars": int(args.prompt_max_chars),

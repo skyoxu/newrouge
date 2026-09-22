@@ -262,7 +262,7 @@ Additional rules:
 
 - explicit CLI `--llm-*` arguments still win over task-tier defaults
 - the final effective tier and escalation reasons are written to `execution-context.json`
-- `fast-ship` low-risk `minimal` / `targeted` tiers narrow the default reviewer set to `code-reviewer,security-auditor`; `semantic-equivalence-auditor` is added back automatically when the tier escalates to `full`, or when you explicitly override reviewers from CLI
+- Chapter 6 model review defaults to one `code-reviewer` at every tier; `minimal/targeted/full` change context/diff/budget/strictness while the fixed Spec Compliance / Edge Case / Verification Gap lenses preserve review semantics
 - when the previous run already proved deterministic green and only reviewer/semantic-scope files changed, `playable-ea` / `fast-ship` can also narrow a later `6.7` rerun to the recent non-OK reviewers automatically; explicit `--llm-agents` disables that narrowing
 
 ## 8.3 `Needs Fix` and the Unified Technical Debt Register
@@ -271,12 +271,13 @@ Additional rules:
 
 Fixed policy:
 
-- `P0/P1`: must-fix, never parked in the debt register
-- `P2/P3/P4`: written to `docs/technical-debt.md`
+- `playable-ea / fast-ship / standard` default to a P1 must-fix floor; explicit P0 is rejected
+- a stricter explicit `--fix-through P2|P3` also makes that severity must-fix
+- only findings below the active must-fix threshold may be written to `docs/technical-debt.md`
 
 Behavior:
 
 - the register is grouped by task id
-- when the same task completes `sc-llm-review` again, the task section is replaced instead of duplicated
+- findings use stable identities; a narrow re-review updates covered findings while unrelated existing debt remains until explicit verified disposition
 - `dry-run`, `skip-llm-review`, failed `llm-review`, or runs without low-priority findings do not overwrite the existing register entry
 - per-run sidecar: `logs/ci/<date>/sc-review-pipeline-task-<id>-<run_id>/llm-review-low-priority-findings.json`

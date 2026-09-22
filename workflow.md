@@ -19,8 +19,8 @@
 
 按以下顺序恢复：
 
-1. 先读 `AGENTS.md` 和 `docs/agents/00-index.md`
-2. 先执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+1. Context Reset 后只先读 `AGENTS.md`，按其任务路由选择当前工作的首要入口；不要把 `docs/agents/00-index.md` 作为固定预加载文件。
+2. 只有当前工作确实是任务恢复时，先执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 3. 如果需要判断“是否值得继续付 6.7 / 6.8 成本”，先执行 `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 4. 如果 recovery summary 仍然不够，再读 `logs/ci/active-tasks/task-<id>.active.md`
 5. 只有当 `resume-task`、`chapter6-route` 与 `active-task` 仍不足以判断时，再执行 `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>`
@@ -30,7 +30,7 @@
 - `resume-task` also surfaces `recommended_action_why`; if it already says `recommended_action = needs-fix-fast`, prefer targeted closure before any full rerun.
 - `--recommendation-only` prints only the compact recovery recommendation (`task_id`, `run_id`, `recommended_action`, `recommended_command`, `forbidden_commands`, `latest_reason`, `chapter6_next_action`) and skips default JSON/Markdown writes unless you explicitly pass `--out-json` / `--out-md`; use it when you only need a fast go/no-go decision before 6.3 / 6.7 / 6.8. For script consumption, add `--recommendation-format json`.
 - `dev_cli.py inspect-run --kind pipeline` also exports the same `latest_summary_signals` / `chapter6_hints`, and directly exposes `recommended_action` / `candidate_commands` / `recommended_command` / `forbidden_commands` so you can decide whether to continue `6.7`, move to `6.8`, or fix the deterministic root cause first.
-- `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only` consumes the same recovery artifacts first, then classifies `repo-noise` vs `task-issue`, tells you whether `6.8` is worth paying for this round, and can write residual `decision-logs/**` + `execution-plans/**` when only low-priority findings remain.
+- `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only` consumes the same recovery artifacts first, then classifies `repo-noise` vs `task-issue` and tells you whether `6.8` is worth paying for this round. Explicit `--record-residual` writes only eligible deferred findings to `docs/technical-debt.md`; it does not auto-create Decision Log or Execution Plan.
 - `dev_cli.py inspect-run --recommendation-only` prints a compact block (`task_id`, `run_id`, `failure_code`, `recommended_action`, `recommended_command`, `forbidden_commands`, `latest_reason`, `chapter6_next_action`, `blocked_by`) when you only need a stop-loss / next-step decision and do not want the full JSON dumped to the console. Add `--recommendation-format json` when another script should consume the result directly.
 - `run_review_pipeline.py --dry-run` still writes `summary/execution-context/repair-guide` under the current `out_dir`, but it no longer publishes `latest.json` or `active-task` sidecars; do not treat dry-run output as a recovery pointer. Real runs now also mirror `recommended_action` / `candidate_commands` / `recommended_command` / `forbidden_commands` into `execution-context.json` for downstream consumers.
 - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>` 在解析自动恢复指针时，会跳过只来自 dry-run 的更新候选，回退到最近一轮真实可恢复 run。
@@ -732,9 +732,10 @@ py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-
 ```
 
 Default convergence by delivery profile:
-- `playable-ea`: enforce `P0` only by default; record or defer `P1/P2/P3`.
-- `fast-ship`: enforce `P0/P1` by default; record or defer `P2/P3`.
-- `standard`: also enforce `P0/P1` by default; only add `--fix-through P2` for an explicit pre-release final convergence pass.
+- `playable-ea`, `fast-ship`, and `standard` all enforce the repository `P1` must-fix floor by default.
+- Eligible `P2/P3/P4` findings may be recorded in `docs/technical-debt.md` when the route explicitly allows residual deferral.
+- `--fix-through P2|P3` is stricter and makes that severity must-fix for the current run.
+- `--fix-through P0` is rejected because it would weaken the repository P1 floor.
 
 Prefer the top-level orchestrator when:
 - You want one stable path that includes `resume-task`, `chapter6-route`, `6.3`, `6.7`, `6.8`, and `6.9`.
@@ -841,82 +842,21 @@ py -3 scripts/python/dev_cli.py new-decision-log --title "<topic>" --task-id <id
 py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft
 ```
 
-#### 6.3.1 复杂任务判断标准
+#### 6.3.1 Execution Plan 触发规则
 
-把 `check_tdd_execution_plan.py` 当作第一个轻量判断器，而不是手工凭感觉判断。
+把 `check_tdd_execution_plan.py` 当作 durable coordination 判断器，而不是文件数量复杂度评分器。
 
-满足任意 2 条，默认按“复杂任务”处理：
+- `required`: 已知跨 session、多个有序 behavior slices、必须恢复的部分完成、Contract/ADR/存档迁移阶段切换、需分阶段证据的大范围重构/MVG 整合、workflow/harness/control-plane 改造。优先复用同 task/scope 的 active plan；没有才创建。
+- `recommended`: 边界仍在调查或跨 session 风险较高，但当前没有持久协调义务。记录理由即可，不形成额外 TDD 硬阻断。
+- `none`: 单任务、验收和边界明确，没有迁移或分段恢复需要。不创建 plan。
 
-- 缺失测试文件数 `>= 3`
-- 同时涉及 `.cs` 和 `.gd`
-- `--verify auto|all`
-- acceptance anchors 总数 `>= 4`
-- 涉及多个测试根目录
-- 任务包含明显的契约 / 事件 / 重构 / 跨模块边界变化
+`required` 优先于 `recommended/none`。缺失测试文件数量、`.cs + .gd`、anchor 数量、多个测试目录和 `verify=auto|all` 都不能单独或累计触发 required。已有 run sidecars 足够表达的恢复状态不要复制进 plan。
 
-复杂任务的默认后续动作：
+#### 6.3.2 Serena / taskdoc 仍按代码理解需要触发
 
-1. 先创建或补充 `execution-plan`
-2. 再判断是否需要 Serena MCP 语义检索
-3. 只有在 Serena 检索结果会影响实现边界时，才把摘要写入 `taskdoc/<id>.md`
+Execution Plan 判断的是持久恢复/协调，不代表必须做语义检索。只有当实现边界确实取决于现有 symbols、Contracts、事件/DTO 约定、rename/refactor 引用链或前一轮明确的重复定义/边界漂移 finding 时，才使用 Serena（或等价符号检索）。
 
-#### 6.3.2 什么时候触发 Serena MCP
-
-`check_tdd_execution_plan.py` 只能判断“是否需要更多准备”，不能替代 Serena 语义查询。
-
-只有当复杂度来自“代码语义不清”，才触发 Serena。满足任意 1 条即可：
-
-- 你要扩展现有功能，但不确定是否已有同名 / 近似类、接口、服务或管理器
-- 你要对齐事件契约、DTO、接口命名，担心违反现有 ADR / Contracts 约定
-- 你要做 rename / refactor，需要知道跨文件引用位置
-- 你要理解某个模块边界、依赖链、谁在调用谁
-- 前一轮 `Needs Fix` 明确指出重复定义、边界误判、契约漂移或遗漏现有实现
-
-以下情况通常不需要 Serena：
-
-- 只是测试文件较多
-- 只是 `.cs` + `.gd` 混合，但模块边界已经很清楚
-- 只是 `verify=auto|all` 导致执行更重，而不是理解更难
-- 只是需要补测试，不涉及现有实现复用、契约对齐或引用追踪
-
-#### 6.3.3 Serena 执行动作与提示词模板
-
-如果触发 Serena，按以下顺序执行。优先用符号级查询，不要先用全文扫描替代：
-
-1. `find_symbol`：查相关 symbols，确认现有类 / 接口 / 服务是否已经存在
-2. `search_for_pattern`：查接口定义或关键契约模式，了解现有约定
-3. `find_symbol`：查事件契约 / DTO / contract constants，确认事件系统口径
-4. `find_referencing_symbols`：查依赖引用，确认现有模块如何使用该符号
-
-建议给 Codex / Serena 的执行提示词：
-
-```text
-当前任务先执行 Serena MCP 语义检索，再继续实现。
-
-触发原因：这是复杂任务，且复杂度来自代码语义而不是单纯测试规模。
-
-按以下顺序执行：
-1. find_symbol 查找相关 symbols
-2. search_for_pattern 查找接口定义或关键契约模式
-3. find_symbol 查找事件契约 / DTO / contract constants
-4. find_referencing_symbols 查找依赖引用链
-
-输出要求：
-- 只保留与当前任务直接相关的上下文
-- 总结“已有实现 / 应复用内容 / 契约约束 / 主要引用方”
-- 如果这些信息会影响实现边界，再使用 Python + UTF-8 写入 `taskdoc/<id>.md`
-- 如果 Serena MCP 不可用，不要阻塞任务；直接继续第 6 章流程，并在 execution-plan 或 decision-log 里记一条 `Serena skipped`
-```
-
-#### 6.3.4 taskdoc 使用口径
-
-`taskdoc/<id>.md` 现在是可选的本地上下文材料，不是第 6 章日常必产物。
-
-只有在以下情况下才值得写：
-
-- Serena 查询结果明显影响实现边界
-- 你需要把“已有实现 / 契约口径 / 依赖链”固化给后续 red / green / review 使用
-- 任务会跨会话，且仅靠 sidecars 不足以快速恢复语义上下文
+测试文件较多、`.cs + .gd` 混合、验证较重本身都不是 Serena 或 taskdoc 的触发器。只有检索结果会影响后续实现边界、且 run sidecars 不能充分恢复这部分语义时，才将最小摘要写入 `taskdoc/<id>.md`。
 
 ### 6.4 Red stage
 
@@ -940,12 +880,12 @@ py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd
 
 说明：
 
-- 新建测试文件较多时，首轮 red 要优先走最便宜的验证口径；不要因为“反正后面还要 green/refactor/review”就第一轮直接上重验证。
-- 如果本轮新建 `.gd` 测试文件 `>= 2`，或任务明显属于 UI / scene flow / Godot 交互路径，默认先用 `--verify unit`；只有当你明确需要 Godot-aware red 证据时，才升级到 `--verify auto`。
-- 不要把 `--verify all` 当作首轮 red 默认值。它只适用于：你已经有稳定的 task-scoped `.gd` refs，且前一轮 red 已经证明最小验证口径不够。
-- 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
-- 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
-- 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
+- RED 验证口径按 Acceptance 的 `verification_surface` 选，不按新建测试文件数量选：`core-behavior` 用 task-scoped xUnit；`godot-scene` 必须取得真实 GdUnit causal RED；`player-journey` 按本任务负责的链路证据执行；`human-experience` 记录 manual preflight/pending，不能伪造机器 RED。
+- 混合 anchor 按义务分别验证；存在 scene 义务时不能因为 unit 更便宜而省略引擎 RED。
+- 有效自动化 RED 必须绑定当前验证 run、目标测试身份和预期行为断言失败；timeout、编译/环境故障、零测试、无关测试失败或缺报告都属于 unverified/blocked，不是行为 RED。
+- 6.5 green 会按 Acceptance obligation 的验证类型检查前置：只要存在 `core-behavior` / `godot-scene` / `player-journey` 自动化义务，就强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`，要求来自 `red-first` 且不存在失败 ref；若 6.4 创建了新测试文件，还要求 `red_verify.status = ok`。
+- 纯 `human-experience` 任务不强造机器 RED；进入实现前必须已有绑定 evidence identity、`human_evidence_required=true` 与显式 `pending|failed|passed` manual preflight 状态。该状态只允许进入实现，不代表最终人工验收通过。
+- mixed anchor/任务逐义务处理：只要仍有自动化义务，manual pending 不能豁免机器 RED；`acceptance_verification` 只覆盖部分 Acceptance anchor 时也不能用已分类的 manual 项绕过未分类义务。
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
 - 如果首轮 6.4 出现 `unexpected_green`、大批量新建 GdUnit 同时失败，或外层直接超时，不要原命令重跑；先缩小验证范围，再重新生成干净 red 证据。
 
@@ -1020,16 +960,16 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 重跑前先读最近一轮 `summary.json` 和 `latest.json` 里的 `reason`、`reuse_mode` 与 `diagnostics`；这些字段会明确标出 `rerun_guard`、`reuse_decision`、`acceptance_preflight`、`llm_timeout_memory`。
 - When the same run already proved `sc-test` / `sc-acceptance-check` green and the first long `sc-llm-review` wait timed out, the pipeline now stops inside that run and writes evidence to `diagnostics.llm_retry_stop_loss`. Even a manual reviewer-only rerun (`--skip-test --skip-acceptance`) is blocked when recent reviewer-only attempts keep repeating the same Needs Fix family; switch to `needs-fix-fast` or record the residual findings instead of reopening 6.7.
 - `active-task` 的 `Chapter6 blocked by` 现在会区分 `rerun_guard`、`llm_retry_stop_loss`、`sc_test_retry_stop_loss`、`waste_signals`：前者表示不要再重复付 deterministic 成本，第二项表示优先走 llm-only follow-up，第三项表示同 run 的 unit 重试已经止损，最后一项表示先停掉无效 engine lane 成本并修 unit/root-cause。
-- reviewer 超时扩时现在会继承最近同任务 / 同 profile 的 agent 级超时历史；继续 timeout 时只定向放大该 reviewer，而不是整体抬高全部 reviewer。
+- 模型审查超时扩时只针对当前单一 `code-reviewer` 的有效新 run 预算；历史多 persona 的 per-agent timeout memory 不直接套到新 reviewer。deterministic reviewers 继续使用各自机器门禁预算。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
-  - `fast-ship`：默认 `max_step_retries = 1`。低风险任务的 `minimal / targeted` tier 首轮 review 聚焦 `code-reviewer + security-auditor`；只有升到 `full` 或显式覆写 reviewer 时，才默认带上 `semantic-equivalence-auditor`。
+  - `fast-ship`：默认 `max_step_retries = 1`。模型审查默认使用单 `code-reviewer`，通过固定 `Spec Compliance / Edge Case / Verification Gap` lenses 覆盖代码、语义与验证；tier 只调整 diff/预算/严格度，不通过增加 persona 补语义。
   - `standard`：默认 `max_step_retries = 0`，保留更重的收口姿态，不自动帮你放宽执行节奏。
-- 当最近一轮已经是 `sc-test = ok + sc-acceptance-check = ok + sc-llm-review != clean`，且这轮改动只落在 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`execution-plans/**`、`decision-logs/**`、`workflow*.md`、`scripts/sc/templates/llm_review/**` 这类 reviewer/语义侧文件时，6.7 现在会自动把 reviewer 缩窄到“上一轮真正非 OK 的 agents”；显式传了 `--llm-agents` 时不启用这条自动收窄。
+- 当 deterministic 已绿且只剩 review 问题时，6.8 按稳定 finding/claim/anchor/required action 与 changed surface 窄化复审范围；单 reviewer 身份本身不再作为“问题相同”或“问题不同”的依据。
 - 新开 `6.7` 时，默认会继承最近同任务成功解析出来的 `delivery/security profile` 组合；如果你明确要切换 profile，必须显式传 `--reselect-profile`，否则会因 task 级 profile lock 失败。
-- 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
+- 如果上一次同任务 `sc-llm-review` 的单 `code-reviewer` 发生 `rc=124` timeout，6.7 只调整该 reviewer 的预算；不会通过恢复旧模型 persona roster 来解决超时。
 - `--llm-base` 的默认值现在是 `origin/main`；除非你明确需要对比别的基线，否则不要手工改回 `main`。
-- 只有当最近两轮 6.7 都出现总超时，或大部分 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
+- 只有当最近两轮 6.7 的单 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
 - 不要把大超时当作默认配置；首选仍然是“先按默认预算跑，再对命中过 timeout 的 reviewer 定向补时”。
 - 如果最近一轮已经写出 `diagnostics.llm_retry_stop_loss`、`diagnostics.sc_test_retry_stop_loss`，或 `Chapter6 blocked by` 明确要求止损，不要试图靠加预算绕过 stop-loss；先修 deterministic 根因，或切到 6.8 / residual。
 - 如果失败主因是 `artifact_integrity`、`planned_only_incomplete`、重复 deterministic failure family、repo noise、锁进程，这些都不是“再加 300 秒”能解决的问题；直接止损，先处理根因。
@@ -1141,20 +1081,20 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
 - `llm_review_needs_fix_fast.py` 会按 `DELIVERY_PROFILE` 自动落默认值，不建议每轮手工传 reviewer / diff / timeout。
 - profile 默认值：
-  - `playable-ea`：`agents=code-reviewer,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=1`，`time_budget_min=20`。
-  - `fast-ship`：`agents=code-reviewer,security-auditor,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=2`，`time_budget_min=30`。
-  - `standard`：`agents=all`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
-- 注意区分 6.7 和 6.8：上面的 `fast-ship` 三 reviewer 是 `llm_review_needs_fix_fast.py` 的默认闭环集合；而 6.7 `run_review_pipeline.py` 在低风险 `minimal / targeted` tier 下会先收窄为 `code-reviewer + security-auditor`，只有升级到 `full` 或你显式传 reviewer 时，才会默认补 `semantic-equivalence-auditor`。
+  - `playable-ea`：`agents=code-reviewer`，`diff_mode=summary`，`max_rounds=1`，`time_budget_min=20`。
+  - `fast-ship`：`agents=code-reviewer`，`diff_mode=summary`，`max_rounds=2`，`time_budget_min=30`。
+  - `standard`：`agents=code-reviewer`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
+- 注意区分 6.7 和 6.8：两者都默认使用同一个模型 reviewer；6.7 是完整适用 lenses 的审查，6.8 按未关闭 findings/相关 changed surface 做窄复审。deterministic reviewers 仍是独立机器能力，不等同新增模型 persona。
 - 快速清理脚本会把 `--delivery-profile` 继续透传给内部 `run_review_pipeline.py`，避免第 6.8 里外 profile 漂移。
-- 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
+- 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只复审上轮未关闭 findings 与相关 changed surface，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
 - 只有当本轮改动直接命中了上一轮 reviewer 给出的锚点问题时，才值得立刻再跑 6.8。没有新修复内容时，重复跑 6.8 只是重复支付 LLM 成本。
 - 这一步也应优先由 `chapter6-route --recommendation-only` 来判断：只有它给出 `preferred_lane = run-6.8` 时，才继续付 6.8 的 LLM 成本；如果输出是 `record-residual` 或 `inspect-first`，先记录或止损。
-- `llm_review_needs_fix_fast.py` now runs the same route preflight before deterministic / LLM spend. When the latest recoverable run already has `agent-review.json`, any lane other than `run-6.8` becomes a controlled stop, and `record-residual` auto-writes `decision-logs/**` plus `execution-plans/**`.
+- `llm_review_needs_fix_fast.py` runs the same route preflight before deterministic / LLM spend. When the latest recoverable run already has `agent-review.json`, any lane other than `run-6.8` becomes a controlled stop; `record-residual` records only eligible deferred findings in `docs/technical-debt.md` and does not auto-create Decision Log or Execution Plan.
 - If the previous 6.8 round exited on timeout, produced no new actionable finding, and `final_needs_fix_agents` is still empty, stop and inspect the artifacts instead of repeating the same parameters. Prefer the `Recommended command` from `resume-task` / active-task, and treat `Forbidden commands` as explicit stop-loss boundaries.
 - 如果上一轮只剩 `Unknown/timeout`，而本轮改动没有命中 reviewer 相关锚点（代码、测试、contracts、tasks/overlays/ADR、review 模板），默认直接止损，不再重复支付 6.8。
 - 6.8 的 round 摘要现在会额外记录 `timeout_agents` 与 `failure_kind`；当出现 `timeout-no-summary` 时，优先把它当“观测不足”，而不是把 `status=ok` 误判为 clean。
-- 首轮 reviewer 会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，自动收缩到真正命中的 reviewer；拿不到稳定信号时才回退到 profile 默认 reviewer 集合。
+- 首轮会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，按未关闭 finding identity 与相关 changed surface 收缩输入；模型 reviewer 身份仍是单一 `code-reviewer`，拿不到稳定信号时回到完整适用 lenses，而不是切回旧 persona roster。
 - deterministic 复用不再只看“当天 latest.json”，会跨日查找最近可复用的同任务 pipeline 产物。
 - 如果当前变化只是非任务语义文档，例如 `README.md`、`AGENTS.md`、`docs/agents/**`，`playable-ea` / `fast-ship` 才会直接复用上一轮 deterministic 结果，不再重跑整条链路。
 - 如果当前变化只落在 task semantics 文档，例如 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`workflow*.md`、`execution-plans/**`、`decision-logs/**`，不要把它当成真正的 docs-only clean reuse；`playable-ea` / `fast-ship` 默认最多只复用 `sc-test`，仍要重跑 `acceptance_check`，并切到最小 acceptance 子集，只重跑 `adr,links,overlay`，必要时再补 `subtasks`。
@@ -1163,8 +1103,8 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 新增预算守门：如果 deterministic 之后剩余预算低于 profile 下限，就直接 fail-fast，不再白白开启一轮新的 LLM 回合。
 - `--skip-sc-test` 仍然只建议用于“本轮只修 review / acceptance 文本，没有改实现和测试”的场景；不要把它当作常规默认。
 - 如果 deterministic 已经稳定 `ok`，剩余 `Needs Fix` 主要是证据强度、文案粒度、ADR/overlay 回链这类 P2/P3 问题，`fast-ship` 下一般只跑一轮 6.8；第二轮仍然是同主题命中时，默认转为记录和后续跟踪，而不是继续循环。
-- 6.8 的 reviewer 默认要按问题类别定向收缩，而不是整套重开：代码实现类优先 `code-reviewer`，语义 / acceptance / task-view / overlay 类优先 `semantic-equivalence-auditor`，安全边界类才补 `security-auditor`。只有无法稳定归类时，才回退到 profile 默认 reviewer 集合。
-- 如果连续两轮 6.8 都给出同类 `Needs Fix`，且严重度、命中锚点、建议动作基本不变，默认直接止损并记录，不要再开第三轮同口径 reviewer 重跑。
+- 6.8 按 finding identity、claim/anchor、required action 与相关 changed surface 定向收缩；仍由单 reviewer 使用适用 lenses 复审，不再按问题类别切换 reviewer persona。
+- 如果连续两轮 6.8 的稳定 finding identity（至少包含 claim/anchor 与 required action）相同，默认直接止损并记录；同 reviewer 的不同 finding 不得误判为重复。
 - 如果剩余问题属于 P1 且会影响任务可交付判断，再决定是否补第二轮 6.8 或升级到 `standard --final-pass`；不要用重复快跑替代问题分级。
 - 纯 `.cs` 任务默认保持 unit 路径；只有当 task views 明确声明 `.gd` test refs，或本轮显式走 `verify=all|e2e`，才把它拉入 Godot / GdUnit 重路径。
 
@@ -1176,7 +1116,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
    If recovery summary or active-task already points `Recommended command` to this lane and `Forbidden commands` block full rerun / resume, do not manually reopen 6.7.
 
-- 如果你怀疑上一轮 reviewer 收缩过度，想强制回到 profile 默认 reviewer 集合，但仍然只想做一轮快速验证，可改成：
+- 如果你怀疑上一轮 finding/surface 收缩过度，想强制回到完整适用 lenses 与本轮 changed surface，但仍然只想做一轮快速验证，可改成：
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --no-rerun-failing-only --max-rounds 1
@@ -1211,7 +1151,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile standard --final-pass
 ```
 
-- `--final-pass` 会强制完整 deterministic、完整 reviewer 集合，并关闭 reviewer 自动收缩与最小 acceptance 快捷路径。
+- `--final-pass` 会强制完整 deterministic、单 reviewer 的完整适用 lenses/changed-surface 审查，并关闭 finding/surface 自动收缩与最小 acceptance 快捷路径；它不会恢复旧模型 persona roster。
 - 推荐默认：把 `6.8 --delivery-profile standard --final-pass` 视为“最后一次任务级收口”。它适合已经完成主要实现，只剩最终 Needs Fix 清理的场景。
 - 如果最后一轮改动已经超出 Needs Fix 修补范围，例如重新改了实现、测试、contracts、Godot 资源或 review sidecars 已明显过期，就不要只跑 `--final-pass`；应回到完整 `6.7 standard`，必要时再补一轮 6.8。
 - 实用顺序：中间回合多用 6.8 快路径，最后收口在“`6.8 --final-pass`”和“完整 `6.7 standard`”之间二选一；然后统一进入 6.9 仓库级硬检查。
@@ -1277,12 +1217,9 @@ py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-
 
 Notes:
 - The orchestrator runs `resume-task` and `chapter6-route` first, then decides whether to enter `6.3 -> 6.9` and whether `6.8` is worth paying for.
-- Default enforcement:
-  - `playable-ea`: `P0`
-  - `fast-ship`: `P0/P1`
-  - `standard`: `P0/P1`
-- `P2/P3` are record-and-stop-loss by default.
-- Only add `--fix-through P2` for an explicit pre-release final convergence pass.
+- Default enforcement for `playable-ea`, `fast-ship`, and `standard` is the same P1 must-fix floor.
+- Eligible `P2/P3/P4` findings are deferrable only when residual policy allows and Technical Debt registration succeeds.
+- `--fix-through P2|P3` tightens the must-fix threshold; `--fix-through P0` is rejected.
 - Use self-check first if you only want to verify routing, profile resolution, planned steps, and output wiring:
 
 ```powershell
@@ -1647,3 +1584,14 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 7. `run_review_pipeline.py --delivery-profile fast-ship`
 8. 只有当 pipeline 产出明确的 `Needs Fix` 时，再执行 `llm_review_needs_fix_fast.py`
 9. commit 或 PR 前执行 `run-local-hard-checks`
+
+
+### 6.x Workflow optimization v2 guardrails
+
+- Root/session recovery uses task-scoped routing: compact recommendation first, then only the directly relevant authority/evidence. Do not preload unrelated plan/decision/log directories.
+- Chapter 6 model review defaults to one reviewer with mandatory `Spec Compliance`, `Edge Case`, and `Verification Gap` lenses. Required Acceptance semantics may be compacted but not silently dropped; missing required input/lens makes the review incomplete/failed, not clean.
+- `playable-ea`, `fast-ship`, and `standard` share a P1 must-fix floor. Explicit `P0` fix-through is rejected. A stricter `--fix-through P2|P3` makes that level must-fix as well.
+- `record-residual` writes eligible findings to `docs/technical-debt.md`; Decision Log and Execution Plan are created only for real policy/authority/irreversible decisions or durable recovery/ordered-coordination needs.
+- Execution Plan requirement is driven by explicit durable coordination signals (cross-session recovery, ordered behavior slices, partial-work recovery, authority migration, staged large refactor, workflow/control-plane change). Test-file count, mixed `.cs/.gd`, anchor count, or `verify=auto/all` do not create a plan by themselves.
+- Optional task-view `acceptance_verification` metadata binds existing Acceptance anchors to `core-behavior`, `godot-scene`, `player-journey`, or `human-experience` evidence. A mixed anchor may use `obligations[]` with stable `obligation_id` values; every obligation retains the parent Acceptance anchor and is gated independently. Human pending/failed does not pass Acceptance; `passed` human evidence requires both a real evidence file and `human_evidence_revision` binding. Old tasks without this field remain compatible.
+- Automated RED must be causal: timeout, missing report, compile/environment failure, zero/unrelated failure, or generic non-zero exit is unverified—not a valid behavior RED. Existing targeted MVG mutation remains the falsifiability tool for selected high-risk behavior; it is not a default full-repo gate.

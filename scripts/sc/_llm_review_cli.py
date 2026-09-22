@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=KNOWN_LLM_BACKENDS,
         help="LLM transport backend. Default: env SC_LLM_BACKEND or codex-cli.",
     )
-    ap.add_argument("--agents", default="", help="Comma-separated agent list. Empty=default 3. Special: all|full.")
+    ap.add_argument("--agents", default="", help="Comma-separated compatibility list. Empty=single code-reviewer; all|full adds deterministic reviewers but keeps one model reviewer.")
     ap.add_argument("--diff-mode", default="full", choices=["full", "summary", "none"], help="How much diff to include in prompts.")
     ap.add_argument("--base", default="main", help="Base branch for diff review.")
     ap.add_argument("--uncommitted", action="store_true", help="Review staged/unstaged/untracked changes.")
@@ -55,6 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--model-reasoning-effort", default="low", choices=["low", "medium", "high"], help="Codex config override.")
     ap.add_argument("--threat-model", default=None, help="singleplayer|modded|networked")
     ap.add_argument("--security-profile", default=None, choices=["strict", "host-safe"], help="Security review profile hint.")
+    ap.add_argument(
+        "--fix-through",
+        default="P1",
+        choices=["P1", "P2", "P3"],
+        help="Active must-fix severity threshold used by the structured review contract.",
+    )
     ap.add_argument("--claude-agents-root", default=None, help="Claude agents root path.")
     ap.add_argument("--skip-agent-prompts", action="store_true", help="Skip loading external agent prompt files.")
     ap.add_argument("--prompt-max-chars", type=int, default=32000, help="Max prompt chars per agent before truncation.")
@@ -114,16 +120,13 @@ def parse_agent_timeout_overrides(raw: str) -> dict[str, int]:
 
 
 def resolve_agents(raw: str, semantic_gate: str) -> list[str]:
-    default_agents = ["architect-reviewer", "code-reviewer", "security-auditor"]
-    all_agents = [*DETERMINISTIC_AGENTS, "architect-reviewer", "code-reviewer", "security-auditor", "test-automator"]
+    # Chapter 6 model review defaults to one reviewer. Deterministic reviewers remain
+    # separate capabilities and may still be requested through "all".
+    default_agents = ["code-reviewer"]
+    all_agents = [*DETERMINISTIC_AGENTS, "code-reviewer"]
     raw_text = str(raw or "").strip()
     agents_raw = raw_text.lower()
-    explicit_agents = bool(raw_text) and agents_raw not in {"all", "full", "6"}
-    agents = all_agents if agents_raw in {"all", "full", "6"} else (split_csv(raw_text) or default_agents)
-    semantic_agent = "semantic-equivalence-auditor"
-    if semantic_gate != "skip" and semantic_agent not in agents and not explicit_agents:
-        agents = [*agents, semantic_agent]
-    return agents
+    return all_agents if agents_raw in {"all", "full", "6"} else (split_csv(raw_text) or default_agents)
 
 
 def validate_args(args: argparse.Namespace) -> list[str]:
@@ -140,11 +143,6 @@ def validate_args(args: argparse.Namespace) -> list[str]:
         errors.append("--agent-timeout-sec must be > 0.")
     if int(args.prompt_max_chars) <= 0:
         errors.append("--prompt-max-chars must be > 0.")
-    explicit_agents = bool(getattr(args, "_agents_explicit", False))
-    if str(getattr(args, "semantic_gate", "") or "").strip().lower() == "require" and explicit_agents:
-        resolved_agents = resolve_agents(str(getattr(args, "agents", "") or ""), "skip")
-        if "semantic-equivalence-auditor" not in resolved_agents:
-            errors.append("--semantic-gate require needs semantic-equivalence-auditor in explicit --agents.")
     requires_backend_ready = not any(
         (
             bool(getattr(args, "self_check", False)),

@@ -62,8 +62,8 @@ class Chapter6RouteTests(unittest.TestCase):
                 "eligible": False,
                 "reason": "no_low_priority_findings",
                 "performed": False,
-                "decision_log_path": "",
-                "execution_plan_path": "",
+                "register_path": "",
+                "register_status": "",
             },
         }
 
@@ -353,8 +353,28 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertEqual("record-residual", route["preferred_lane"])
             self.assertTrue(record["eligible"])
             self.assertTrue(record["performed"])
-            self.assertTrue((root / record["decision_log_path"]).exists())
-            self.assertTrue((root / record["execution_plan_path"]).exists())
+            self.assertEqual("docs/technical-debt.md", record["register_path"])
+            self.assertTrue((root / record["register_path"]).exists())
+            self.assertFalse((root / "decision-logs").exists())
+            self.assertFalse((root / "execution-plans").exists())
+
+    def test_p2_fix_through_should_keep_p2_finding_in_must_fix_path(self) -> None:
+        eligible, reason = chapter6_route._residual_reason_from_agent_review(
+            {
+                "findings": [
+                    {
+                        "finding_id": "p2-review-gap",
+                        "severity": "P2",
+                        "category": "llm-review",
+                        "owner_step": "sc-llm-review",
+                        "message": "Verification gap remains.",
+                    }
+                ]
+            },
+            fix_through="P2",
+        )
+        self.assertFalse(eligible)
+        self.assertEqual("must_fix_severity_finding_present", reason)
 
     def test_should_not_record_residual_docs_when_high_severity_finding_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

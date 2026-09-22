@@ -156,34 +156,19 @@ py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
 
 Ordering Constraints:
 
-- 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
-- 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
-- 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
+- 6.5 green 按 verification obligation 检查前置：存在任一自动化义务时必须读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`，要求来自 `red-first` 且没有失败 ref；若 6.4 创建了新测试文件，还要求 `red_verify.status = ok`。
+- 纯 `human-experience` 任务可用显式 manual preflight/pending 进入实现，不强造机器 RED；这不代表人工验收已通过。
+- mixed 或部分分类的 Acceptance 仍按义务执行机器门禁，manual pending 不能替代自动化 RED。
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
 
 
-如果 `check_tdd_execution_plan.py` 已经明显提示这是复杂任务，不要立刻手工加重所有步骤；先做两件事：
+先读 `check_tdd_execution_plan.py` 的 `required | recommended | none` 结果：
 
-1. 先补一个最小 `execution-plan`
-2. 再判断是否真的需要 Serena MCP
+- `required`：复用同 task/scope 的 active plan；没有则先建立最小可恢复 Execution Plan。
+- `recommended`：记录调查/跨 session 风险理由即可，不形成额外硬阻断。
+- `none`：直接继续 TDD，不创建 plan。
 
-只有当复杂度来自“代码语义不清”时，才触发 Serena，例如：
-
-- 不确定现有类 / 接口 / 服务是否已经存在
-- 不确定事件契约 / DTO / Contracts 命名是否已有约定
-- 需要 rename / refactor，并且担心跨文件引用影响
-- 需要快速理解依赖链和模块边界
-
-此时可以让 Codex / Serena 先做一轮最小语义检索：
-
-```text
-当前任务先执行 Serena MCP 语义检索，再继续实现。
-只保留与当前任务直接相关的 symbols / contracts / references。
-如果这些信息会影响实现边界，再写入 taskdoc/<id>.md；否则不要额外产出本地文档。
-如果 Serena MCP 不可用，不要阻塞任务，继续 Day 4 流程。
-```
-
-如果复杂度只是“测试文件多、`.cs` + `.gd` 混合、verify 更重”，通常不需要 Serena，直接继续 TDD 即可。
+测试文件多、`.cs + .gd`、anchors 多或 verify 更重都不是 plan trigger。只有代码语义边界确实不清时才使用 Serena（例如现有 symbols、Contracts/DTO/event 约定、rename/refactor 引用链）；只有这些检索结果会影响后续实现且 sidecars 不足以恢复时才写 `taskdoc/<id>.md`。
 统一 review pipeline：
 
 ```powershell
@@ -198,7 +183,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
 说明：
 
-- 6.7 会按 profile 自动选择默认 reviewer 集合；如果上一轮只有个别 reviewer timeout，当前轮只会定向放大这些 reviewer 的超时预算。
+- 6.7 的模型审查默认始终使用单 `code-reviewer` + 固定 lenses；如果上一轮该 reviewer timeout，只定向调整它的预算，不恢复旧模型 persona roster。
 - 如果同一轮已经证明 deterministic 绿色，而 `sc-llm-review` 首次长等待就超时，pipeline 会直接止损，不再在同一轮继续第二次长等待。
 - 新开 6.7 默认继承最近同任务的 `delivery/security profile`；只有你明确要换 profile 时，才加 `--reselect-profile`。
 - `--llm-base` 默认是 `origin/main`；除非你明确要看别的比较基线，不要手工改回 `main`。
@@ -214,8 +199,8 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 如果你只想先验证 wiring、latest pointer 和 planned steps 是否正常，可先做：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --dry-run --skip-test --skip-acceptance --skip-agent-review`
 - 单轮 6.7 明显可能拖太久时，可加 `--max-wall-time-sec 7200` 做墙钟止损
 - 外部中断后优先 `--resume`；要保留旧 run 再分叉试另一套修法时用 `--fork`；确认旧 run 不该再继续时用 `--abort`
-- 6.8 首轮会优先读取上一轮 `agent-review.json` / `sc-llm-review summary.json`，自动收缩 reviewer；如果没有稳定历史信号，再回退到 profile 默认集合。
-- 中间回合把 6.8 当作 failing-only 快路径即可：优先修命中的 reviewer，不要反复重跑完整 6.7。
+- 6.8 首轮会优先读取上一轮 `agent-review.json` / `sc-llm-review summary.json`，按未关闭 findings/相关 changed surface 收缩输入；没有稳定历史信号时回到完整适用 lenses，reviewer 身份仍是单 `code-reviewer`。
+- 中间回合把 6.8 当作 failing-only 快路径即可：优先修并复审命中的 finding/surface，不要反复重跑完整 6.7。
 - 6.8 对 task semantics 文本改动会切到最小 acceptance 子集；如果 change fingerprint 没变，会优先复用上一次已经成功的最小 acceptance 结果。
 - 6.8 的 round 摘要现在会写 `timeout_agents` / `failure_kind`；如果看到 `timeout-no-summary`，先看工件完整性，不要直接当 clean。
 - 如果恢复链已经显示 `run_type = planned-only`、`reason = planned_only_incomplete`，或 `Chapter6 blocked by = artifact_integrity`，不要直接进 6.8；先回到真实 deterministic bundle 再决定是否收敛 Needs Fix。
@@ -226,7 +211,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 这里通常保持默认 `refactor` 即可；只有你明确在 red/green 阶段单独查 wording 时，才改 `--stage`。
 - 如果最近一次完整 6.7 已经 clean，且本轮只改了非任务语义文档，6.8 会直接 no-op 退出。
 - `fast-ship` 小 diff 中间回合默认已会只给 `code-reviewer` 做定向补时；只有它仍然 timeout 时，再试 `--step-timeout-sec 900 --min-llm-budget-min 8`
-- 最后一轮正式收口时，直接用 `--final-pass` 强制完整 deterministic 和完整 reviewer 集合。
+- 最后一轮正式收口时，直接用 `--final-pass` 强制完整 deterministic 和单 reviewer 的完整适用 lenses/changed-surface 审查；不会恢复旧 persona roster。
 - 如果最后一轮已经重新改了实现、测试、contracts 或运行时资源，就不要只跑 `--final-pass`；回到完整 `6.7 standard` 更稳。
 
 如果只是快速验证可玩性：

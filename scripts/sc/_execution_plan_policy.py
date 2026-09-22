@@ -31,6 +31,19 @@ FIELD_LINE_RE = re.compile(r"^- ([^:]+):\s*(.*)$")
 TASK_ID_RE = re.compile(r"\b\d+\b")
 TEST_ROOT_PREFIXES = ("Game.Core.Tests/", "Tests.Godot/tests/", "Tests/")
 
+REQUIRED_COORDINATION_SIGNALS = {
+    "known_cross_session",
+    "ordered_behavior_slices",
+    "partial_work_recovery",
+    "authority_migration",
+    "staged_large_refactor",
+    "workflow_control_plane",
+}
+RECOMMENDED_COORDINATION_SIGNALS = {
+    "boundary_investigation",
+    "cross_session_risk",
+}
+
 
 @dataclass(frozen=True)
 class ExecutionPlanAssessment:
@@ -44,15 +57,15 @@ class ExecutionPlanAssessment:
     test_roots: list[str]
     signals: list[dict[str, Any]]
     threshold_hit: bool
+    decision: str
 
 
 def _parse_fields(path: Path) -> dict[str, str]:
     fields: dict[str, str] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         match = FIELD_LINE_RE.match(raw_line.strip())
-        if not match:
-            continue
-        fields[match.group(1).strip()] = match.group(2).strip()
+        if match:
+            fields[match.group(1).strip()] = match.group(2).strip()
     return fields
 
 
@@ -73,13 +86,11 @@ def _iter_allowed_refs(*, triplet: Any, task_id: str) -> dict[str, list[dict[str
             for entry in entries:
                 if not isinstance(entry, dict):
                     continue
-                anchor = str(entry.get("anchor") or "").strip()
-                text = str(entry.get("text") or "").strip()
-                key = (anchor, text)
+                key = (str(entry.get("anchor") or "").strip(), str(entry.get("text") or "").strip())
                 if key in seen:
                     continue
                 seen.add(key)
-                existing.append({"anchor": anchor, "text": text})
+                existing.append({"anchor": key[0], "text": key[1]})
     return by_ref
 
 
@@ -98,23 +109,47 @@ def assess_execution_plan_need(
     task_id: str,
     tdd_stage: str,
     verify: str,
+    coordination_signals: list[str] | None = None,
 ) -> ExecutionPlanAssessment:
     by_ref = _iter_allowed_refs(triplet=triplet, task_id=task_id)
     allowed_refs = sorted(by_ref.keys())
     missing_refs = [ref for ref in allowed_refs if not (repo_root / ref).exists()]
     anchor_count = sum(len(by_ref.get(ref, [])) for ref in allowed_refs)
     test_roots = sorted({_test_root_for_ref(ref) for ref in missing_refs if _test_root_for_ref(ref)})
-    missing_suffixes = {Path(ref).suffix.lower() for ref in missing_refs}
-    signal_specs = [
-        ("missing_refs_ge_3", len(missing_refs) >= 3, f"missing_refs_count={len(missing_refs)} threshold=3"),
-        ("mixed_cs_and_gd", ".cs" in missing_suffixes and ".gd" in missing_suffixes, f"suffixes={','.join(sorted(missing_suffixes)) or 'none'}"),
-        ("red_first_stage", str(tdd_stage) == "red-first", f"tdd_stage={tdd_stage}"),
-        ("verify_auto_or_all", str(verify) in {"auto", "all"}, f"verify={verify}"),
-        ("anchors_ge_4", anchor_count >= 4, f"anchor_count={anchor_count} threshold=4"),
-        ("multiple_test_roots", len(test_roots) >= 2, f"test_roots={','.join(test_roots) or 'none'}"),
-    ]
-    signals = [{"id": signal_id, "active": active, "detail": detail} for signal_id, active, detail in signal_specs]
-    threshold_hit = sum(1 for item in signals if item["active"]) >= 2
+
+    normalized = {
+        str(item or "").strip().lower().replace("-", "_")
+        for item in (coordination_signals or [])
+        if str(item or "").strip()
+    }
+    unknown = sorted(normalized - REQUIRED_COORDINATION_SIGNALS - RECOMMENDED_COORDINATION_SIGNALS)
+    required = sorted(normalized & REQUIRED_COORDINATION_SIGNALS)
+    recommended = sorted(normalized & RECOMMENDED_COORDINATION_SIGNALS)
+
+    signals: list[dict[str, Any]] = []
+    for signal_id in sorted(REQUIRED_COORDINATION_SIGNALS):
+        signals.append({
+            "id": signal_id,
+            "active": signal_id in normalized,
+            "level": "required",
+            "detail": "explicit durable recovery/coordination requirement",
+        })
+    for signal_id in sorted(RECOMMENDED_COORDINATION_SIGNALS):
+        signals.append({
+            "id": signal_id,
+            "active": signal_id in normalized,
+            "level": "recommended",
+            "detail": "explicit investigation/cross-session risk",
+        })
+    for signal_id in unknown:
+        signals.append({
+            "id": signal_id,
+            "active": True,
+            "level": "unknown",
+            "detail": "unknown coordination signal; operator must resolve before escalation",
+        })
+
+    decision = "required" if required else "recommended" if recommended or unknown else "none"
     return ExecutionPlanAssessment(
         task_id=str(task_id),
         title=str((triplet.master or {}).get("title") or "").strip(),
@@ -125,7 +160,8 @@ def assess_execution_plan_need(
         anchor_count=anchor_count,
         test_roots=test_roots,
         signals=signals,
-        threshold_hit=threshold_hit,
+        threshold_hit=decision in {"required", "recommended"},
+        decision=decision,
     )
 
 
@@ -135,15 +171,12 @@ def find_active_execution_plans(root: Path, *, task_id: str) -> list[str]:
         return []
     matches: list[str] = []
     for path in sorted(plan_dir.glob("*.md")):
-        upper = path.name.upper()
-        if upper in {"README.MD", "TEMPLATE.MD"}:
+        if path.name.upper() in {"README.MD", "TEMPLATE.MD"}:
             continue
         fields = _parse_fields(path)
-        status = str(fields.get("Status") or "").strip().lower()
-        if status not in ACTIVE_PLAN_STATUSES:
+        if str(fields.get("Status") or "").strip().lower() not in ACTIVE_PLAN_STATUSES:
             continue
-        task_ids = _extract_task_ids(fields.get("Related task id(s)", ""))
-        if str(task_id) not in task_ids:
+        if str(task_id) not in _extract_task_ids(fields.get("Related task id(s)", "")):
             continue
         matches.append(format_repo_path(root, path))
     return matches
@@ -157,25 +190,20 @@ def create_execution_plan_draft(
     assessment: ExecutionPlanAssessment,
     latest_json: str = "",
 ) -> str:
-    title_text = f"Task {task_id} acceptance-test generation plan"
+    title_text = f"Task {task_id} durable execution plan"
     if title:
-        title_text = f"Task {task_id} {title} acceptance-test generation plan"
-    scope_refs = ", ".join(assessment.missing_refs[:3]) if assessment.missing_refs else "no missing refs detected"
-    if len(assessment.missing_refs) > 3:
-        scope_refs += ", ..."
+        title_text = f"Task {task_id} {title} durable execution plan"
+    active = [item["id"] for item in assessment.signals if item.get("active")]
     content = build_execution_plan_markdown(
         root=repo_root,
         title=title_text,
         status="active",
-        goal=f"Control acceptance-driven test generation complexity for task {task_id}.",
-        scope=(
-            f"{assessment.missing_refs_count} missing refs across {len(assessment.test_roots)} test roots; "
-            f"seed refs: {scope_refs}"
-        ),
-        current_step="Review missing acceptance refs and choose the first safe red step.",
-        stop_loss="Do not start Codex test generation until the ref mix and verify mode are explicit.",
-        next_action="Run llm_generate_tests_from_acceptance_refs.py after confirming the sequence for missing refs.",
-        exit_criteria="The next acceptance-driven test generation step is explicit and low-ambiguity.",
+        goal=f"Preserve durable recovery and ordered coordination for task {task_id}.",
+        scope=f"Execution-plan decision={assessment.decision}; coordination signals={', '.join(active) or 'none'}.",
+        current_step="Record the current durable stage and the next ordered behavior slice.",
+        stop_loss="Do not duplicate information already represented by run sidecars; update this plan only for durable cross-step recovery.",
+        next_action="Continue from the first incomplete durable stage using the bound task/run evidence.",
+        exit_criteria="All required ordered stages are complete and recovery no longer depends on cross-session coordination.",
         related_adrs=[],
         related_decision_logs=[],
         links=infer_recovery_links(root=repo_root, task_id=task_id, latest_json=latest_json),

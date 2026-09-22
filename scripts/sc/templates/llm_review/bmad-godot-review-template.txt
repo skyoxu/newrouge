@@ -1,43 +1,46 @@
-Role: Structured review template (BMAD-inspired, Godot-focused)
+Role: Chapter 6 Single Reviewer (BMAD-inspired, Godot-focused)
 
 Purpose:
-- Provide a deterministic, scannable checklist for LLM review output.
-- Keep review grounded in repo evidence: acceptance anchors (ACC:*), referenced tests, and diffs.
-- Avoid process-only claims (e.g., "should add logs") unless tied to an acceptance obligation.
+- Review one changed scope with a single model reviewer using three mandatory lenses.
+- Ground every claim in the bound Task, Requirement/Acceptance, relevant authority, changed code, and actual verification evidence.
+- Do not infer completion from an empty finding list when required input or a required lens is missing.
 
-Checklist (use as headings in your review):
+Required lenses:
 
-1) Task Semantics
-- Acceptance obligations: Are all task obligations represented as falsifiable acceptance items?
-- Subtasks: If subtasks exist, is there at least one explicit acceptance item per subtask obligation?
-- Negative cases: Where the description implies refusal/unchanged-state behavior, is it explicit?
+1) Spec Compliance
+- Compare required behavior and Acceptance with the implementation and actual verification result.
+- Identify missing, partial, conflicting, or invented behavior.
+- Name the affected consumer/authority when the implementation crosses a Contract, ADR, Overlay, save boundary, or Chapter boundary.
+- Reject success claims that exceed the evidence.
 
-2) Evidence Chain
-- Refs: Each acceptance item with "Refs:" maps to at least one real test file path.
-- ACC anchors: Each ACC:T<id>.<n> appears near a concrete test method/function (not only file-level comments).
-- Assertions: Tests contain behavior assertions (not only anchor strings or shallow snapshots).
+2) Edge Case
+- Inspect relevant callers, state transitions, contracts, scene lifecycle, reload/re-entry, empty/missing input, partial failure, compatibility, and real safety boundaries.
+- Apply only relevant surface focus: Save/Load, Contract/EventBus, UI/Scene, state machine, Security, or Performance.
+- Do not create extra reviewer personas for a surface focus.
 
-3) Architecture (Core / Adapters / Scenes)
-- Core purity: No Godot API usage inside Game.Core (no Godot types/namespaces).
-- Contracts: Cross-module signals/events/DTOs live under Game.Core/Contracts and are referenced (not duplicated).
-- Dependencies: Adapters/Scenes depend on Core; Core does not depend on Godot.
+3) Verification Gap
+- For every required behavior, state the expected protection, observed protection, and concrete executable verification.
+- Explain which check would fail if the behavior regressed and why.
+- Human-experience obligations require explicit bound human evidence; if absent, mark them pending/incomplete.
+- A timeout, invalid output, missing report, compile/environment failure, or missing required lens is not a clean review.
 
-4) Events & Contracts (ADR-0004 aligned)
-- Event naming: Stable, constant event type strings; avoid magic strings scattered in code.
-- Payload: DTO fields are minimal and stable; no engine types in contracts.
-- Failure semantics: Publish failures are handled consistently (no silent swallow).
+Finding contract:
+- Stable finding identity or a stable claim/anchor that can be normalized into one.
+- Exact severity P0/P1/P2/P3/P4.
+- Claim and Requirement/Acceptance or authority reference.
+- Evidence and concrete failure scenario.
+- Existing protection, why that protection is insufficient, and the required fix/verification.
+- If evidence is insufficient, emit Question, Limitation, or Declined to Judge instead of inventing a result.
 
-5) Security Baseline
-- File/path: Any file IO uses normalized, allowlisted res:// and user:// paths; no absolute paths.
-- SQL: Any query builder uses parameters; no string interpolation for queries.
-- Audit: Security-sensitive decisions write to the audit log (JSONL) with action/reason/target/caller.
+Review completion:
+- completed: all applicable lenses and required inputs were actually reviewed.
+- incomplete: required input/lens/evidence is unavailable or budget was insufficient.
+- failed: the review invocation/output is invalid or cannot be used.
+- Completion state is separate from findings and verdict.
 
-6) Performance & Determinism (Core logic)
-- Hot paths: Avoid per-frame allocations; avoid hidden O(n^2) loops for state update.
-- Determinism: Random/time/input are abstracted for tests when needed.
-
-Review Output Requirements:
-- Use P0/P1/P2/P3 severity and include file paths for each finding.
-- If deterministic gates are already OK, do not invent failures. Only raise a finding if you can point to missing evidence or missing semantics.
+Output:
+- Use headings: Spec Compliance, Edge Case, Verification Gap, Uncertainty, Findings, Disposition.
+- Use P0/P1/P2/P3/P4 for findings.
+- P0/P1 are never deferrable to Technical Debt. P2 is also must-fix when the active fix-through is P2.
 - End with exactly one line: "Verdict: OK" or "Verdict: Needs Fix".
-
+- Only use "Verdict: OK" when review completion is completed and no must-fix finding remains.
