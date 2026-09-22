@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from _acceptance_testgen_refs import extract_acceptance_refs_with_anchors
+from _acceptance_testgen_refs import extract_acceptance_refs_with_anchors, is_allowed_test_path
 
 
 VERIFICATION_SURFACES = {
@@ -82,12 +82,9 @@ def infer_legacy_verification_candidates(triplet: Any) -> dict[str, dict[str, An
     for anchor, raw in sorted(anchors.items()):
         refs = sorted(str(item) for item in raw["refs"] if str(item))
         text = "\n".join(sorted(str(item) for item in raw["texts"] if str(item))).casefold()
-        cs_refs = [ref for ref in refs if ref.startswith("Game.Core.Tests/") and ref.casefold().endswith(".cs")]
-        gd_refs = [
-            ref for ref in refs
-            if (ref.startswith("Tests.Godot/") or ref.startswith("tests/"))
-            and ref.casefold().endswith(".gd")
-        ]
+        allowed_test_refs = [ref for ref in refs if is_allowed_test_path(ref)]
+        cs_refs = [ref for ref in allowed_test_refs if ref.casefold().endswith(".cs")]
+        gd_refs = [ref for ref in allowed_test_refs if ref.casefold().endswith(".gd")]
         human_semantics = any(token.casefold() in text for token in human_tokens)
         scene_semantics = any(token.casefold() in text for token in scene_tokens)
         journey_semantics = any(token.casefold() in text for token in journey_tokens)
