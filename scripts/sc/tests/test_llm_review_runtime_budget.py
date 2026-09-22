@@ -112,7 +112,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
         self.assertIn("total timeout budget exhausted", str((summary["results"][2].get("details") or {}).get("note") or "").lower())
         self.assertEqual(30, int((summary["results"][1].get("details") or {}).get("remaining_before_sec") or 0))
 
-    def test_main_should_defer_semantic_reviewer_until_other_reviewers_finish_clean(self) -> None:
+    def test_explicit_legacy_model_list_should_run_without_deferred_persona_stage(self) -> None:
         observed_agents: list[str] = []
         monotonic_iter = iter([0.0, 0.0, 10.0, 20.0])
 
@@ -159,69 +159,23 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(0, rc)
             self.assertEqual(
-                ["code-reviewer", "security-auditor", "semantic-equivalence-auditor"],
+                ["code-reviewer", "semantic-equivalence-auditor", "security-auditor"],
                 observed_agents,
             )
             self.assertEqual(
-                ["primary", "primary", "deferred"],
+                ["primary", "primary", "primary"],
                 [str((item.get("details") or {}).get("execution_stage") or "") for item in summary["results"]],
             )
 
-    def test_main_should_skip_deferred_semantic_when_primary_reviewer_is_not_clean(self) -> None:
-        observed_agents: list[str] = []
-        monotonic_iter = iter([0.0, 0.0, 10.0])
-
-        with tempfile.TemporaryDirectory(dir=str(REPO_ROOT)) as td:
-            temp_root = Path(td)
-            out_dir = temp_root / "logs" / "ci" / "sc-llm-review"
-            out_dir.mkdir(parents=True, exist_ok=True)
-
-            def fake_run_codex_exec(*, backend: str, prompt: str, output_last_message: Path, timeout_sec: int, codex_configs=None):  # noqa: ANN001
-                agent = output_last_message.stem.replace("review-", "")
-                observed_agents.append(agent)
-                output_last_message.parent.mkdir(parents=True, exist_ok=True)
-                output_last_message.write_text("", encoding="utf-8")
-                return 124, "trace timeout\n", [str(backend), "fake-model"]
-
-            argv = [
-                "llm_review.py",
-                "--agents",
-                "code-reviewer,semantic-equivalence-auditor",
-                "--timeout-sec",
-                "200",
-                "--agent-timeout-sec",
-                "180",
-                "--llm-backend",
-                "codex-cli",
-                "--diff-mode",
-                "summary",
-            ]
-
-            with mock.patch.object(sys, "argv", argv), \
-                mock.patch.object(review_engine, "apply_delivery_profile_defaults", side_effect=lambda args: args), \
-                mock.patch.object(review_engine, "validate_args", return_value=[]), \
-                mock.patch.object(review_engine, "ci_dir", return_value=out_dir), \
-                mock.patch.object(review_engine, "repo_root", return_value=temp_root), \
-                mock.patch.object(review_engine, "build_diff_context", return_value="## Diff\nshort\n"), \
-                mock.patch.object(review_engine, "resolve_threat_model", return_value="singleplayer"), \
-                mock.patch.object(review_engine, "build_threat_model_context", return_value=""), \
-                mock.patch.object(review_engine, "build_security_profile_context", return_value=""), \
-                mock.patch.object(review_engine, "agent_prompt", return_value=("Role prompt", {"agent_prompt_source": "inline"})), \
-                mock.patch.object(review_engine, "run_codex_exec", side_effect=fake_run_codex_exec), \
-                mock.patch.object(review_engine.time, "monotonic", side_effect=lambda: next(monotonic_iter)):
-                rc = review_engine.main()
-
-            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
-            semantic = summary["results"][1]
-            self.assertEqual(0, rc)
-            self.assertEqual(["code-reviewer"], observed_agents)
-            self.assertEqual("skipped", semantic["status"])
-            self.assertEqual("deferred", (semantic.get("details") or {}).get("execution_stage"))
-            self.assertEqual(
-                "deferred_until_prior_reviewers_clean",
-                (semantic.get("details") or {}).get("reason_code"),
-            )
-            self.assertEqual(["code-reviewer"], (semantic.get("details") or {}).get("blocked_by_agents"))
+    def test_default_execution_plan_should_have_one_model_reviewer_and_three_lenses(self) -> None:
+        plan = review_engine._build_agent_execution_plan(["code-reviewer"])
+        self.assertEqual(["code-reviewer"], plan["primary_llm_agents"])
+        self.assertEqual([], plan["deferred_agents"])
+        self.assertFalse(plan["semantic_deferred"])
+        self.assertEqual(
+            ["Spec Compliance", "Edge Case", "Verification Gap"],
+            plan["review_lenses"],
+        )
 
 
 if __name__ == "__main__":
