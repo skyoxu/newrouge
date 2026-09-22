@@ -5,6 +5,7 @@ Prompt and verdict helpers for llm_review.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -191,6 +192,133 @@ def parse_verdict(text: str) -> str | None:
     if not m:
         return None
     return str(m.group(1)).strip()
+
+
+_REVIEW_CONTRACT_MARKER = "Review Contract JSON:"
+_REVIEW_CONTRACT_LENSES = ("Spec Compliance", "Edge Case", "Verification Gap")
+_REVIEW_COMPLETION = {"completed", "incomplete", "failed"}
+_LENS_STATUS = {"completed", "incomplete", "not-applicable"}
+_UNCERTAINTY_KINDS = {"Question", "Limitation", "Declined to Judge"}
+_FINDING_SEVERITIES = {"P0", "P1", "P2", "P3", "P4"}
+_DISPOSITION_ACTIONS = {"retain", "fix", "reject", "defer"}
+
+
+def parse_review_contract(text: str) -> tuple[dict[str, Any] | None, list[str]]:
+    raw = str(text or "")
+    marker_index = raw.find(_REVIEW_CONTRACT_MARKER)
+    if marker_index < 0:
+        return None, ["review_contract_missing"]
+    tail = raw[marker_index + len(_REVIEW_CONTRACT_MARKER):]
+    json_start = tail.find("{")
+    if json_start < 0:
+        return None, ["review_contract_json_missing"]
+    try:
+        payload, _ = json.JSONDecoder().raw_decode(tail[json_start:])
+    except json.JSONDecodeError as exc:
+        return None, [f"review_contract_json_invalid:{exc.msg}"]
+    if not isinstance(payload, dict):
+        return None, ["review_contract_must_be_object"]
+
+    errors: list[str] = []
+    completion = str(payload.get("completion_status") or "").strip()
+    if completion not in _REVIEW_COMPLETION:
+        errors.append("completion_status_invalid")
+
+    lenses = payload.get("lenses")
+    seen_lenses: set[str] = set()
+    if not isinstance(lenses, list):
+        errors.append("lenses_must_be_array")
+        lenses = []
+    for index, lens in enumerate(lenses):
+        if not isinstance(lens, dict):
+            errors.append(f"lenses[{index}]_must_be_object")
+            continue
+        name = str(lens.get("name") or "").strip()
+        status = str(lens.get("status") or "").strip()
+        notes = str(lens.get("notes") or "").strip()
+        if name not in _REVIEW_CONTRACT_LENSES:
+            errors.append(f"lenses[{index}]_name_invalid")
+        elif name in seen_lenses:
+            errors.append(f"lenses[{index}]_duplicate")
+        else:
+            seen_lenses.add(name)
+        if status not in _LENS_STATUS:
+            errors.append(f"lenses[{index}]_status_invalid")
+        if not notes:
+            errors.append(f"lenses[{index}]_notes_missing")
+    for required in _REVIEW_CONTRACT_LENSES:
+        if required not in seen_lenses:
+            errors.append(f"required_lens_missing:{required}")
+    if completion == "completed":
+        for lens in lenses:
+            if isinstance(lens, dict) and str(lens.get("status") or "").strip() == "incomplete":
+                errors.append("completed_review_has_incomplete_lens")
+
+    findings = payload.get("findings")
+    if not isinstance(findings, list):
+        errors.append("findings_must_be_array")
+        findings = []
+    required_finding_fields = (
+        "finding_id",
+        "claim",
+        "severity",
+        "authority_refs",
+        "evidence",
+        "failure_scenario",
+        "expected_protection",
+        "observed_protection",
+        "required_action",
+        "verification",
+        "disposition",
+    )
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            errors.append(f"findings[{index}]_must_be_object")
+            continue
+        for field in required_finding_fields:
+            if field not in finding:
+                errors.append(f"findings[{index}]_{field}_missing")
+        if not str(finding.get("finding_id") or "").strip():
+            errors.append(f"findings[{index}]_finding_id_empty")
+        if not str(finding.get("claim") or "").strip():
+            errors.append(f"findings[{index}]_claim_empty")
+        severity = str(finding.get("severity") or "").strip().upper()
+        if severity not in _FINDING_SEVERITIES:
+            errors.append(f"findings[{index}]_severity_invalid")
+        for field in ("authority_refs", "evidence"):
+            value = finding.get(field)
+            if not isinstance(value, list) or any(not str(item or "").strip() for item in value):
+                errors.append(f"findings[{index}]_{field}_invalid")
+        for field in ("failure_scenario", "expected_protection", "observed_protection", "required_action", "verification"):
+            if not str(finding.get(field) or "").strip():
+                errors.append(f"findings[{index}]_{field}_empty")
+        disposition = finding.get("disposition")
+        if not isinstance(disposition, dict):
+            errors.append(f"findings[{index}]_disposition_invalid")
+        else:
+            action = str(disposition.get("action") or "").strip()
+            rationale = str(disposition.get("rationale") or "").strip()
+            if action not in _DISPOSITION_ACTIONS:
+                errors.append(f"findings[{index}]_disposition_action_invalid")
+            if not rationale:
+                errors.append(f"findings[{index}]_disposition_rationale_missing")
+            if severity in {"P0", "P1"} and action == "defer":
+                errors.append(f"findings[{index}]_must_fix_cannot_defer")
+
+    uncertainty = payload.get("uncertainty")
+    if not isinstance(uncertainty, list):
+        errors.append("uncertainty_must_be_array")
+        uncertainty = []
+    for index, item in enumerate(uncertainty):
+        if not isinstance(item, dict):
+            errors.append(f"uncertainty[{index}]_must_be_object")
+            continue
+        if str(item.get("kind") or "").strip() not in _UNCERTAINTY_KINDS:
+            errors.append(f"uncertainty[{index}]_kind_invalid")
+        if not str(item.get("statement") or "").strip():
+            errors.append(f"uncertainty[{index}]_statement_missing")
+
+    return payload, sorted(set(errors))
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
