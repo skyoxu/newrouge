@@ -1284,7 +1284,13 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             self.assertTrue(by_id["T1"]["implementation_overlap_candidates"])
             self.assertEqual("medium", by_id["T2"]["file_churn_signal"])
 
-    def _refresh_fixture(self, root: Path, status: str) -> dict[str, Path]:
+    def _refresh_fixture(
+        self,
+        root: Path,
+        status: str,
+        *,
+        materialize_triplet: bool = True,
+    ) -> dict[str, Path]:
         source = root / "docs/gdd/a.md"
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text("Shop cannot upgrade cards.\n", encoding="utf-8")
@@ -1370,9 +1376,32 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
         })
         write_json(paths["candidates"], candidates)
         tasks_dir = root / ".taskmaster/tasks"
-        write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
-        write_json(tasks_dir / "tasks_back.json", [])
-        write_json(tasks_dir / "tasks_gameplay.json", [])
+        if status == "passed" and materialize_triplet:
+            write_json(tasks_dir / "tasks.json", {
+                "master": {
+                    "tasks": [{
+                        "id": 1,
+                        "title": "Shop rule",
+                        "status": "pending",
+                        "dependencies": [],
+                    }]
+                }
+            })
+            write_json(tasks_dir / "tasks_back.json", [{
+                "id": "T1",
+                "taskmaster_id": 1,
+                "title": "Shop rule",
+                "status": "pending",
+                "semantic_refs": ["FR-1"],
+                "requirement_ids": ["FR-1"],
+                "capability_refs": [],
+                "taskmaster_exported": True,
+            }])
+            write_json(tasks_dir / "tasks_gameplay.json", [])
+        else:
+            write_json(tasks_dir / "tasks.json", {"master": {"tasks": []}})
+            write_json(tasks_dir / "tasks_back.json", [])
+            write_json(tasks_dir / "tasks_gameplay.json", [])
         task_files = {}
         for value in refresh_mod.TRIPLET_TASK_FILES:
             task_path = root / value
@@ -1405,6 +1434,80 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
                 "edges": task_edges,
             })
         return paths
+
+    def test_candidate_coverage_without_materialized_triplet_cannot_promote_stable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(
+                root,
+                "passed",
+                materialize_triplet=False,
+            )
+            summary = refresh_mod.run(
+                root,
+                source="chapter3",
+                trigger_run_id="run-candidate-only",
+                refresh_local=True,
+                write_planning=False,
+                publish_if_eligible=False,
+                triplet_status="passed",
+                source_manifest_path=paths["manifest"],
+                ledger_path=paths["ledger"],
+                semantics_path=paths["semantics"],
+                capabilities_path=paths["capabilities"],
+                edges_path=paths["edges"],
+                candidates_path=paths["candidates"],
+                report_path=paths["report"],
+            )
+            self.assertFalse(summary["closure_passed"])
+            self.assertEqual("verified", summary["triplet_evidence_status"])
+            self.assertEqual("blocked", summary["closure_evidence_status"])
+            self.assertIn(
+                "final_triplet_semantic_sink_not_materialized",
+                summary["closure_evidence_reason"],
+            )
+            self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
+
+    def test_final_triplet_sink_requires_candidate_refs_and_master_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = self._refresh_fixture(root, "passed")
+            semantics = json.loads(paths["semantics"].read_text(encoding="utf-8"))
+            candidates = json.loads(paths["candidates"].read_text(encoding="utf-8"))
+            tasks_back = root / ".taskmaster/tasks/tasks_back.json"
+
+            missing_ref_row = json.loads(tasks_back.read_text(encoding="utf-8"))
+            missing_ref_row[0]["semantic_refs"] = []
+            missing_ref_row[0]["requirement_ids"] = []
+            write_json(tasks_back, missing_ref_row)
+            evidence = refresh_mod.final_triplet_semantic_sink_evidence(
+                root, semantics, candidates
+            )
+            self.assertEqual("blocked", evidence["status"])
+            self.assertTrue(any(
+                row.get("reason") == "candidate_semantic_refs_mismatch"
+                for row in evidence["errors"]
+            ))
+
+            missing_ref_row[0]["semantic_refs"] = ["FR-1"]
+            missing_ref_row[0]["requirement_ids"] = ["FR-1"]
+            missing_ref_row[0]["taskmaster_id"] = 99
+            write_json(tasks_back, missing_ref_row)
+            evidence = refresh_mod.final_triplet_semantic_sink_evidence(
+                root, semantics, candidates
+            )
+            self.assertEqual("blocked", evidence["status"])
+            self.assertTrue(any(
+                row.get("reason") == "candidate_not_exported_to_master"
+                for row in evidence["errors"]
+            ))
+
+            missing_ref_row[0]["taskmaster_id"] = 1
+            write_json(tasks_back, missing_ref_row)
+            evidence = refresh_mod.final_triplet_semantic_sink_evidence(
+                root, semantics, candidates
+            )
+            self.assertEqual("passed", evidence["status"])
 
     def test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
