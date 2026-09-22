@@ -297,9 +297,8 @@ class NeedsFixFastDeterministicReuseTests(unittest.TestCase):
             assert step is not None
             self.assertEqual("reused", step["status"])
             self.assertEqual(0, int(step["rc"]))
-            self.assertEqual(
-                Path(out_dir).resolve(),
-                Path(str(step["reported_out_dir"])).resolve(),
+            self.assertTrue(
+                out_dir.samefile(Path(str(step["reported_out_dir"]))),
             )
             self.assertEqual("run-a", step["reused_run_id"])
 
