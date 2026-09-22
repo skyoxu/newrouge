@@ -36,6 +36,21 @@ class AgentContextRoutingContractTests(unittest.TestCase):
         self.assertIn("Chapter 6 新任务", rows)
         self.assertIn("Task/Acceptance", rows["Chapter 6 新任务"])
 
+    def test_workflow_does_not_reintroduce_global_agent_index_preload(self) -> None:
+        text = _read("workflow.md")
+        self.assertIn(
+            "不要把 `docs/agents/00-index.md` 作为固定预加载文件",
+            text,
+        )
+        self.assertNotIn(
+            "先读 `AGENTS.md` 和 `docs/agents/00-index.md`",
+            text,
+        )
+        self.assertIn(
+            "resume-task --task-id <id> --recommendation-only",
+            text,
+        )
+
     def test_recovery_is_compact_first_and_expands_events_only_when_needed(self) -> None:
         text = _read("docs/agents/01-session-recovery.md")
         self.assertIn("resume-task --task-id <id> --recommendation-only", text)
