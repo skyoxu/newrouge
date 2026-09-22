@@ -79,7 +79,14 @@ def main() -> int:
     message = "No execution-plan escalation is required."
     signal_count = sum(1 for item in assessment.signals if item["active"])
 
-    if assessment.decision == "required" and not active_plans:
+    if assessment.decision == "recommended" and not active_plans:
+        if str(args.execution_plan_policy) == "off":
+            decision = "skip"
+            message = "Execution-plan coordination is recommended, but policy=off leaves the choice to the operator."
+        else:
+            decision = "warn"
+            message = "Execution-plan coordination is recommended for the current boundary/recovery risk; this is advisory and does not block TDD."
+    elif assessment.decision == "required" and not active_plans:
         if str(args.execution_plan_policy) == "off":
             decision = "skip"
             message = "Complexity threshold hit, but policy=off leaves execution-plan handling to the operator."
