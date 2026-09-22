@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=KNOWN_LLM_BACKENDS,
         help="LLM transport backend. Default: env SC_LLM_BACKEND or codex-cli.",
     )
-    ap.add_argument("--agents", default="", help="Comma-separated agent list. Empty=default 3. Special: all|full.")
+    ap.add_argument("--agents", default="", help="Comma-separated compatibility list. Empty=single code-reviewer; all|full adds deterministic reviewers but keeps one model reviewer.")
     ap.add_argument("--diff-mode", default="full", choices=["full", "summary", "none"], help="How much diff to include in prompts.")
     ap.add_argument("--base", default="main", help="Base branch for diff review.")
     ap.add_argument("--uncommitted", action="store_true", help="Review staged/unstaged/untracked changes.")
