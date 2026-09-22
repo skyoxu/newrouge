@@ -312,23 +312,6 @@ def main() -> int:
 
     for agent in agents:
         execution_stage = str(execution_plan["stages"].get(agent) or "primary")
-        if execution_stage == "deferred":
-            blocked_by_agents = [result.agent for result in results if not _review_result_is_clean(result)]
-            if blocked_by_agents:
-                results.append(
-                    ReviewResult(
-                        agent=agent,
-                        status="skipped",
-                        rc=0,
-                        details={
-                            "execution_stage": execution_stage,
-                            "reason_code": _DEFERRED_REASON_CODE,
-                            "blocked_by_agents": blocked_by_agents,
-                            "note": "Deferred reviewer skipped because prior reviewers are not yet clean.",
-                        },
-                    )
-                )
-                continue
         remaining = int(deadline_ts - time.monotonic())
         if remaining <= 0:
             status = "fail" if args.strict else "skipped"
@@ -369,7 +352,7 @@ def main() -> int:
         prompt_shape = _prompt_shape_for_agent(
             agent,
             delivery_profile=str(getattr(args, "delivery_profile", "") or ""),
-            resolved_agents=list(execution_plan["primary_llm_agents"]) if execution_stage == "primary" and bool(execution_plan["semantic_deferred"]) else agents,
+            resolved_agents=list(execution_plan["primary_llm_agents"]),
             semantic_gate=str(args.semantic_gate or "skip").strip().lower(),
         )
         ctx = build_task_context(triplet, mode=prompt_shape["task_context_mode"])
