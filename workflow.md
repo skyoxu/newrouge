@@ -19,8 +19,8 @@
 
 按以下顺序恢复：
 
-1. 先读 `AGENTS.md` 和 `docs/agents/00-index.md`
-2. 先执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+1. Context Reset 后只先读 `AGENTS.md`，按其任务路由选择当前工作的首要入口；不要把 `docs/agents/00-index.md` 作为固定预加载文件。
+2. 只有当前工作确实是任务恢复时，先执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 3. 如果需要判断“是否值得继续付 6.7 / 6.8 成本”，先执行 `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 4. 如果 recovery summary 仍然不够，再读 `logs/ci/active-tasks/task-<id>.active.md`
 5. 只有当 `resume-task`、`chapter6-route` 与 `active-task` 仍不足以判断时，再执行 `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>`
