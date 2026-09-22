@@ -38,6 +38,31 @@ def auto_resolve_commit_for_task(task_id: str) -> str | None:
     return None
 
 
+def build_changed_paths(args: argparse.Namespace) -> list[str]:
+    def _capture(cmd: list[str], *, timeout_sec: int = 60) -> list[str]:
+        rc, out = git_capture(cmd, timeout_sec=timeout_sec)
+        if rc != 0:
+            return []
+        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
+
+    paths: list[str] = []
+    if bool(getattr(args, "uncommitted", False)):
+        paths.extend(_capture(["git", "diff", "--name-only", "--staged"]))
+        paths.extend(_capture(["git", "diff", "--name-only"]))
+        paths.extend(_capture(["git", "ls-files", "--others", "--exclude-standard"], timeout_sec=30))
+    elif str(getattr(args, "commit", "") or "").strip():
+        paths.extend(_capture(["git", "show", "--name-only", "--pretty=format:", str(args.commit)]))
+    else:
+        base = str(getattr(args, "base", "origin/main") or "origin/main")
+        paths.extend(_capture(["git", "diff", "--name-only", f"{base}...HEAD"]))
+
+    unique: list[str] = []
+    for path in paths:
+        if path and path not in unique:
+            unique.append(path)
+    return unique
+
+
 def build_diff_context(args: argparse.Namespace) -> str:
     mode = str(getattr(args, "diff_mode", "full") or "full").strip().lower()
     if mode not in {"full", "summary", "none"}:
