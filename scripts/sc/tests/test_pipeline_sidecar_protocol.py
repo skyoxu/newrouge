@@ -368,7 +368,7 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
                 "closure_allowed": True,
                 "source_revision": "test-source",
                 "extraction_b_snapshot_id": "EXB-TEST",
-                "reconciliation_sha256": "sha256:test",
+                "reconciliation_sha256": "sha256:" + ("a" * 64),
             }
             with mock.patch.dict(os.environ, _stable_env(), clear=False), \
                 mock.patch.object(sys, "argv", argv), \
