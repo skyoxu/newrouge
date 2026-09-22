@@ -62,8 +62,8 @@ class Chapter6RouteTests(unittest.TestCase):
                 "eligible": False,
                 "reason": "no_low_priority_findings",
                 "performed": False,
-                "decision_log_path": "",
-                "execution_plan_path": "",
+                "register_path": "",
+                "register_status": "",
             },
         }
 
@@ -353,8 +353,10 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertEqual("record-residual", route["preferred_lane"])
             self.assertTrue(record["eligible"])
             self.assertTrue(record["performed"])
-            self.assertTrue((root / record["decision_log_path"]).exists())
-            self.assertTrue((root / record["execution_plan_path"]).exists())
+            self.assertEqual("docs/technical-debt.md", record["register_path"])
+            self.assertTrue((root / record["register_path"]).exists())
+            self.assertFalse((root / "decision-logs").exists())
+            self.assertFalse((root / "execution-plans").exists())
 
     def test_should_not_record_residual_docs_when_high_severity_finding_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
