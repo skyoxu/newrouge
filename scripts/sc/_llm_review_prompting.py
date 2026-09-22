@@ -16,6 +16,53 @@ from _taskmaster import TaskmasterTriplet
 from _util import repo_root
 
 
+_SURFACE_FOCUS_GUIDANCE = {
+    "Save/Load": "Check reload, persistence identity, serialization compatibility, and idempotent restore behavior.",
+    "Contract/EventBus": "Check producer/consumer compatibility, event identity, ordering assumptions, and contract evolution.",
+    "UI/Scene": "Check input wiring, scene lifecycle, signal connections, visibility/state synchronization, and adapter boundaries.",
+    "State Machine": "Check legal transitions, re-entry, partial transition failure, and state recovery.",
+    "Security": "Check the real trust/safety boundary, input validation, path/process access, and fail-closed behavior.",
+    "Performance": "Check hot loops, repeated allocations/work, bounded resource use, and performance evidence.",
+}
+
+
+def derive_surface_focus(changed_paths: list[str], *, limit: int = 3) -> list[dict[str, str]]:
+    normalized = [str(path or "").strip().replace("\\", "/").casefold() for path in changed_paths if str(path or "").strip()]
+    selectors = [
+        ("Save/Load", ("save", "load", "snapshot", "serializ", "persist", "checkpoint")),
+        ("Contract/EventBus", ("/contracts/", "contract", "/events/", "eventbus", "event_bus")),
+        ("UI/Scene", ("game.godot/", "tests.godot/", ".tscn", "/ui/", "/scene", "scene/")),
+        ("State Machine", ("state", "transition", "fsm", "state_machine", "statemachine")),
+        ("Security", ("security", "permission", "sandbox", "trusted", "auth", "crypto", "pathguard", "path_guard")),
+        ("Performance", ("performance", "benchmark", "workerthread", "worker_thread", "hotloop", "hot_loop")),
+    ]
+    selected: list[dict[str, str]] = []
+    for name, tokens in selectors:
+        matched = sorted({path for path in normalized if any(token in path for token in tokens)})
+        if not matched:
+            continue
+        selected.append({
+            "name": name,
+            "reason": f"changed surface: {', '.join(matched[:3])}",
+            "guidance": _SURFACE_FOCUS_GUIDANCE[name],
+        })
+        if len(selected) >= max(0, int(limit)):
+            break
+    return selected
+
+
+def render_surface_focus_prompt(surface_focus: list[dict[str, str]]) -> str:
+    if not surface_focus:
+        return ""
+    lines = [
+        "## Selected Surface Focus",
+        "Apply these focus checks in addition to the three required lenses; they are methods, not extra reviewer personas.",
+    ]
+    for item in surface_focus:
+        lines.append(f"- {item['name']}: {item['guidance']} ({item['reason']})")
+    return "\n".join(lines)
+
+
 def build_task_context(triplet: TaskmasterTriplet | None, *, mode: str = "full") -> str:
     if not triplet:
         return ""
