@@ -140,14 +140,18 @@ class RunSingleTaskChapter6LaneTests(unittest.TestCase):
         self.assertEqual("invalid_kcp_binding", result.code)
         self.assertEqual(11, result.exit_code)
 
-    def test_resolve_profile_policy_should_default_to_p0_for_playable_ea(self) -> None:
+    def test_resolve_profile_policy_should_default_to_p1_for_playable_ea(self) -> None:
         policy = lane.resolve_profile_policy("playable-ea")
 
         self.assertEqual("playable-ea", policy["delivery_profile"])
         self.assertEqual("host-safe", policy["security_profile"])
-        self.assertEqual("P0", policy["fix_through"])
+        self.assertEqual("P1", policy["fix_through"])
         self.assertEqual("warn", policy["execution_plan_policy"])
         self.assertEqual("unit", policy["red_verify"])
+
+    def test_resolve_profile_policy_should_reject_explicit_p0_below_floor(self) -> None:
+        with self.assertRaisesRegex(ValueError, "P1 must-fix floor"):
+            lane.resolve_profile_policy("fast-ship", fix_through="P0")
 
     def test_resolve_profile_policy_should_default_to_p1_for_standard(self) -> None:
         policy = lane.resolve_profile_policy("standard")
