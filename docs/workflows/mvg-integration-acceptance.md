@@ -27,6 +27,7 @@
 扩展时复制其结构，替换 mvg_id、coverage、flows 和 tests，并逐条核对范围：
 
 - flow：可观察 outcome、真实 task_ids、显式 source_paths、handoffs、test_ids。
+- critical/full 执行仍要求真实 producer/consumer 功能任务先 done；若某任务仅作为 handoff `owner_task` 承担本次整合验证、从不作为 producer/consumer，则它是专用整合 owner，不以“自身先 done”阻断同一次 MVG，避免形成自依赖。
 - handoff：producer_task / consumer_task / owner_task、contract_ref、behavior、test_ids。
 - test：唯一 id、kind（dotnet/gdunit）、state（planned/implemented）、仓库相对 path、evidence_level、min_tests；dotnet 还需测试类 selector。
 - planned 允许测试文件暂不存在；run 必须全部 implemented 且文件存在。implemented 只表示实现已存在，不表示通过。
