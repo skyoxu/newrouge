@@ -14,6 +14,43 @@ def normalize_task_root_id(task_id: str | None) -> str | None:
     return raw.split(".", 1)[0].strip()
 
 
+def _iter_bound_test_refs(item: dict) -> list[str]:
+    refs: list[str] = []
+    test_refs = item.get("test_refs")
+    if isinstance(test_refs, list):
+        refs.extend(str(value).replace("\\", "/").strip() for value in test_refs if isinstance(value, str) and value.strip())
+
+    verification = item.get("acceptance_verification")
+    if isinstance(verification, dict):
+        for raw in verification.values():
+            if not isinstance(raw, dict):
+                continue
+            obligations = raw.get("obligations")
+            rows = obligations if isinstance(obligations, list) else [raw]
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                for key in ("primary_evidence", "secondary_evidence"):
+                    values = row.get(key)
+                    if not isinstance(values, list):
+                        continue
+                    refs.extend(
+                        str(value).replace("\\", "/").strip()
+                        for value in values
+                        if isinstance(value, str) and value.strip()
+                    )
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for ref in refs:
+        key = ref.casefold()
+        if not ref or key in seen:
+            continue
+        seen.add(key)
+        ordered.append(ref)
+    return ordered
+
+
 def task_scoped_gdunit_refs(*, task_id: str | None, tests_project: Path) -> list[str]:
     task_root_id = normalize_task_root_id(task_id)
     if not task_root_id:
@@ -37,13 +74,7 @@ def task_scoped_gdunit_refs(*, task_id: str | None, tests_project: Path) -> list
                 continue
             if str(item.get("taskmaster_id")).strip() != task_root_id:
                 continue
-            test_refs = item.get("test_refs")
-            if not isinstance(test_refs, list):
-                continue
-            for raw_ref in test_refs:
-                if not isinstance(raw_ref, str):
-                    continue
-                ref = raw_ref.replace("\\", "/").strip()
+            for ref in _iter_bound_test_refs(item):
                 if not ref.lower().endswith(".gd"):
                     continue
                 rel: str | None = None
@@ -81,13 +112,7 @@ def task_scoped_cs_refs(*, task_id: str | None) -> list[str]:
                 continue
             if str(item.get("taskmaster_id")).strip() != task_root_id:
                 continue
-            test_refs = item.get("test_refs")
-            if not isinstance(test_refs, list):
-                continue
-            for raw_ref in test_refs:
-                if not isinstance(raw_ref, str):
-                    continue
-                ref = raw_ref.replace("\\", "/").strip()
+            for ref in _iter_bound_test_refs(item):
                 if not ref.lower().endswith(".cs"):
                     continue
                 if not ref.startswith("Game.Core.Tests/"):
