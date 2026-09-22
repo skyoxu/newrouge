@@ -52,10 +52,12 @@ def resolve_profile_policy(
     if resolved_security not in {"host-safe", "strict"}:
         resolved_security = "host-safe"
 
-    default_fix_through = "P0" if resolved_profile == "playable-ea" else "P1"
+    default_fix_through = "P1"
     resolved_fix_through = str(fix_through or default_fix_through).strip().upper() or default_fix_through
     if resolved_fix_through not in {"P0", "P1", "P2", "P3"}:
         resolved_fix_through = default_fix_through
+    if resolved_fix_through == "P0":
+        raise ValueError("fix-through P0 is below the repository P1 must-fix floor")
 
     return {
         "delivery_profile": resolved_profile,
@@ -64,7 +66,7 @@ def resolve_profile_policy(
         "execution_plan_policy": "warn" if resolved_profile == "playable-ea" else "draft",
         "red_verify": "auto" if resolved_profile == "standard" else "unit",
         "needs_fix_max_rounds": "1",
-        "record_residual": "true" if resolved_fix_through in {"P0", "P1"} else "false",
+        "record_residual": "true",
     }
 
 
@@ -106,8 +108,13 @@ def build_chapter6_route_cmd(task_id: str, *, record_residual: bool, frozen_cont
     return cmd
 
 
-def build_check_tdd_plan_cmd(task_id: str, *, profile_policy: dict[str, str]) -> list[str]:
-    return [
+def build_check_tdd_plan_cmd(
+    task_id: str,
+    *,
+    profile_policy: dict[str, str],
+    coordination_signals: list[str] | None = None,
+) -> list[str]:
+    cmd = [
         "py",
         "-3",
         "scripts/sc/check_tdd_execution_plan.py",
@@ -120,6 +127,10 @@ def build_check_tdd_plan_cmd(task_id: str, *, profile_policy: dict[str, str]) ->
         "--execution-plan-policy",
         str(profile_policy["execution_plan_policy"]),
     ]
+    for signal in coordination_signals or []:
+        if str(signal or "").strip():
+            cmd.extend(["--coordination-signal", str(signal).strip()])
+    return cmd
 
 
 def build_red_first_cmd(task_id: str, *, profile_policy: dict[str, str], godot_bin: str) -> list[str]:
@@ -852,6 +863,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--impact-report", default="")
     parser.add_argument("--revision", default="")
     parser.add_argument("--binding-evidence", default="")
+    parser.add_argument("--execution-plan-signal", action="append", default=[], help="Explicit durable coordination signal for 6.3 plan policy.")
     return parser
 
 
@@ -860,11 +872,25 @@ def main() -> int:
     task_id = str(args.task_id).strip()
     out_dir = Path(str(args.out_dir).strip()) if str(args.out_dir).strip() else _default_out_dir(task_id)
     out_dir.mkdir(parents=True, exist_ok=True)
-    profile_policy = resolve_profile_policy(
-        str(args.delivery_profile),
-        security_profile=str(args.security_profile),
-        fix_through=str(args.fix_through),
-    )
+    try:
+        profile_policy = resolve_profile_policy(
+            str(args.delivery_profile),
+            security_profile=str(args.security_profile),
+            fix_through=str(args.fix_through),
+        )
+    except ValueError as exc:
+        payload = {
+            "cmd": "run-single-task-chapter6",
+            "task_id": task_id,
+            "status": "fail",
+            "stop_reason": "invalid_fix_through",
+            "message": str(exc),
+            "steps": [],
+            "out_dir": str(out_dir).replace("\\", "/"),
+        }
+        _write_json(out_dir / "summary.json", payload)
+        print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=invalid_fix_through")
+        return 2
 
     handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id, binding_evidence=args.binding_evidence)
     if not handoff.ok:
@@ -1102,7 +1128,7 @@ def main() -> int:
                 return 1
     else:
         full_path_steps = [
-            ("check-tdd-plan", build_check_tdd_plan_cmd(task_id, profile_policy=profile_policy)),
+            ("check-tdd-plan", build_check_tdd_plan_cmd(task_id, profile_policy=profile_policy, coordination_signals=list(args.execution_plan_signal or []))),
             ("red-first", build_red_first_cmd(task_id, profile_policy=profile_policy, godot_bin=str(args.godot_bin))),
             ("green", build_build_tdd_cmd(task_id, stage="green", profile_policy=profile_policy)),
             ("refactor", build_build_tdd_cmd(task_id, stage="refactor", profile_policy=profile_policy)),
