@@ -156,9 +156,9 @@ py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
 
 Ordering Constraints:
 
-- 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
-- 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
-- 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
+- 6.5 green 按 verification obligation 检查前置：存在任一自动化义务时必须读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`，要求来自 `red-first` 且没有失败 ref；若 6.4 创建了新测试文件，还要求 `red_verify.status = ok`。
+- 纯 `human-experience` 任务可用显式 manual preflight/pending 进入实现，不强造机器 RED；这不代表人工验收已通过。
+- mixed 或部分分类的 Acceptance 仍按义务执行机器门禁，manual pending 不能替代自动化 RED。
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
 
 
