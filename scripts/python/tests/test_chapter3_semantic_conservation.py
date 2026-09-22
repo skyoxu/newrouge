@@ -1471,6 +1471,81 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             )
             self.assertFalse((root / refresh_mod.STABLE_PATH).exists())
 
+    def test_persisted_semantic_coverage_blocks_missing_partial_and_missing_ref_mappings(self) -> None:
+        semantics = {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "requirements": [
+                {
+                    "requirement_id": "FR-1",
+                    "status": "active",
+                    "delivery_relevant": True,
+                    "non_task_sinks": [],
+                },
+                {
+                    "requirement_id": "FR-2",
+                    "status": "active",
+                    "delivery_relevant": True,
+                    "non_task_sinks": [],
+                },
+            ],
+        }
+        candidates = {
+            "candidates": [
+                {"id": "T1", "semantic_refs": ["FR-1"]},
+                {"id": "T2", "semantic_refs": ["FR-2"]},
+            ]
+        }
+        cases = [
+            (
+                "missing_all",
+                [],
+                "blocked",
+                {"candidate_task_not_persisted"},
+            ),
+            (
+                "partial_write",
+                [{"id": "T1", "taskmaster_id": 1, "semantic_refs": ["FR-1"]}],
+                "blocked",
+                {"candidate_task_not_persisted"},
+            ),
+            (
+                "missing_semantic_refs",
+                [
+                    {"id": "T1", "taskmaster_id": 1, "semantic_refs": ["FR-1"]},
+                    {"id": "T2", "taskmaster_id": 2, "semantic_refs": []},
+                ],
+                "blocked",
+                {"candidate_semantic_refs_not_persisted"},
+            ),
+            (
+                "complete",
+                [
+                    {"id": "T1", "taskmaster_id": 1, "semantic_refs": ["FR-1"]},
+                    {"id": "T2", "taskmaster_id": 2, "semantic_refs": ["FR-2"]},
+                ],
+                "ok",
+                set(),
+            ),
+        ]
+
+        for name, existing_tasks, expected_status, expected_reasons in cases:
+            with self.subTest(name=name):
+                result = coverage_mod.audit_persisted_semantic_coverage(
+                    semantics,
+                    existing_tasks,
+                    candidates,
+                )
+                self.assertEqual(expected_status, result["status"])
+                reasons = {
+                    str(row.get("reason") or "")
+                    for row in result["unpersisted_candidate_mappings"]
+                }
+                self.assertTrue(expected_reasons.issubset(reasons))
+                if expected_status == "ok":
+                    self.assertEqual([], result["missing"])
+                    self.assertEqual([], result["invalid_task_semantic_refs"])
+                    self.assertEqual([], result["unpersisted_candidate_mappings"])
+
     def test_guarded_chapter3_run_refreshes_attempt_even_when_child_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
