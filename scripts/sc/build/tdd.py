@@ -31,6 +31,7 @@ def _bootstrap_imports() -> None:
 
 _bootstrap_imports()
 
+from _acceptance_verification_surface import collect_acceptance_verification  # noqa: E402
 from _delivery_profile import (  # noqa: E402
     default_security_profile_for_delivery,
     known_delivery_profiles,
@@ -283,36 +284,129 @@ def _find_latest_green_summary(task_id: str) -> tuple[Path | None, dict[str, Any
     return None, {}
 
 
-def validate_green_red_prerequisite(*, task_id: str, out_dir: Path) -> dict[str, Any]:
-    summary_path, payload = _find_latest_red_first_summary(task_id)
+def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
+    if triplet is None:
+        return {
+            "metadata_present": False,
+            "manual_only": False,
+            "automated_obligations": [],
+            "human_obligations": [],
+            "unclassified_anchors": [],
+            "errors": [],
+        }
+
+    mapping = collect_acceptance_verification(triplet)
+    if not mapping:
+        return {
+            "metadata_present": False,
+            "manual_only": False,
+            "automated_obligations": [],
+            "human_obligations": [],
+            "unclassified_anchors": [],
+            "errors": [],
+        }
+
+    task_id = str(getattr(triplet, "task_id", "") or "").strip()
+    acceptance_anchors: set[str] = set()
+    for view in (getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
+        if not isinstance(view, dict):
+            continue
+        acceptance = view.get("acceptance")
+        if not isinstance(acceptance, list):
+            continue
+        for index, _item in enumerate(acceptance, start=1):
+            acceptance_anchors.add(f"ACC:T{task_id}.{index}")
+
+    automated: list[str] = []
+    human: list[str] = []
     errors: list[str] = []
+    for anchor, row in sorted(mapping.items()):
+        obligations = row.get("obligations") if isinstance(row, dict) else None
+        rows = obligations if isinstance(obligations, list) and obligations else [row]
+        for index, obligation in enumerate(rows, start=1):
+            if not isinstance(obligation, dict):
+                errors.append(f"{anchor}: verification obligation #{index} must be an object")
+                continue
+            label = anchor
+            if isinstance(obligations, list):
+                obligation_id = str(obligation.get("obligation_id") or "").strip()
+                label = f"{anchor}#{obligation_id or index}"
+            surface = str(obligation.get("verification_surface") or "").strip()
+            if surface == "human-experience":
+                human.append(label)
+                primary = obligation.get("primary_evidence")
+                if (
+                    obligation.get("human_evidence_required") is not True
+                    or not isinstance(primary, list)
+                    or not primary
+                    or any(not str(item or "").strip() for item in primary)
+                ):
+                    errors.append(f"{label}: human manual preflight requires bound primary_evidence and human_evidence_required=true")
+                status = str(obligation.get("human_evidence_status") or "").strip().lower()
+                if status not in {"pending", "failed", "passed"}:
+                    errors.append(f"{label}: human manual preflight requires explicit pending/failed/passed status")
+                if status == "passed" and not str(obligation.get("human_evidence_revision") or "").strip():
+                    errors.append(f"{label}: passed human evidence requires human_evidence_revision")
+            elif surface in {"core-behavior", "godot-scene", "player-journey"}:
+                automated.append(label)
+            else:
+                errors.append(f"{label}: invalid or missing verification_surface")
+
+    unclassified = sorted(anchor for anchor in acceptance_anchors if anchor not in mapping)
+    manual_only = bool(mapping) and bool(human) and not automated and not unclassified and not errors
+    return {
+        "metadata_present": True,
+        "manual_only": manual_only,
+        "automated_obligations": automated,
+        "human_obligations": human,
+        "unclassified_anchors": unclassified,
+        "errors": errors,
+    }
+
+
+def validate_green_red_prerequisite(*, task_id: str, out_dir: Path, triplet: Any | None = None) -> dict[str, Any]:
+    surface_state = _green_prerequisite_surface_state(triplet)
+    errors: list[str] = list(surface_state.get("errors") or [])
     failed_refs: list[str] = []
-    if summary_path is None:
-        errors.append("missing red-first summary: run workflow chapter 6.4 first")
-    else:
-        if str(payload.get("tdd_stage") or "").strip().lower() != "red-first":
-            errors.append("latest acceptance test summary is not red-first")
-        results = payload.get("results")
-        if isinstance(results, list):
-            for item in results:
-                if not isinstance(item, dict):
-                    continue
-                if str(item.get("status") or "").strip().lower() == "fail":
-                    failed_refs.append(str(item.get("ref") or "").strip())
-        if failed_refs:
-            errors.append(f"red-first summary contains failed refs: {len(failed_refs)}")
-        created = int(payload.get("created") or 0)
-        if created > 0:
-            red_verify = payload.get("red_verify")
-            red_status = str(red_verify.get("status") or "").strip().lower() if isinstance(red_verify, dict) else ""
-            if red_status != "ok":
-                errors.append("red-first created new tests but red_verify.status is not ok")
+    summary_path: Path | None = None
+    payload: dict[str, Any] = {}
+    if surface_state.get("unclassified_anchors"):
+        errors.append(
+            "verification surface metadata is partial; unclassified anchors cannot waive RED: "
+            + ", ".join(surface_state["unclassified_anchors"])
+        )
+
+    if not surface_state.get("manual_only"):
+        summary_path, payload = _find_latest_red_first_summary(task_id)
+        if summary_path is None:
+            errors.append("missing red-first summary: run workflow chapter 6.4 first")
+        else:
+            if str(payload.get("tdd_stage") or "").strip().lower() != "red-first":
+                errors.append("latest acceptance test summary is not red-first")
+            results = payload.get("results")
+            if isinstance(results, list):
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
+                    if str(item.get("status") or "").strip().lower() == "fail":
+                        failed_refs.append(str(item.get("ref") or "").strip())
+            if failed_refs:
+                errors.append(f"red-first summary contains failed refs: {len(failed_refs)}")
+            created = int(payload.get("created") or 0)
+            if created > 0:
+                red_verify = payload.get("red_verify")
+                red_status = str(red_verify.get("status") or "").strip().lower() if isinstance(red_verify, dict) else ""
+                if red_status != "ok":
+                    errors.append("red-first created new tests but red_verify.status is not ok")
 
     log_path = out_dir / "validate_green_red_prerequisite.log"
     lines = [
         f"task_id={task_id}",
         f"summary_path={summary_path if summary_path is not None else ''}",
         f"errors={len(errors)}",
+        f"manual_only={bool(surface_state.get('manual_only'))}",
+        f"automated_obligations={len(surface_state.get('automated_obligations') or [])}",
+        f"human_obligations={len(surface_state.get('human_obligations') or [])}",
     ]
     for ref in failed_refs[:30]:
         lines.append(f"FAILED_REF: {ref}")
@@ -326,6 +420,10 @@ def validate_green_red_prerequisite(*, task_id: str, out_dir: Path) -> dict[str,
         "log": str(log_path),
         "status": "ok" if not errors else "fail",
         "summary_path": str(summary_path) if summary_path is not None else "",
+        "manual_only": bool(surface_state.get("manual_only")),
+        "automated_obligations": list(surface_state.get("automated_obligations") or []),
+        "human_obligations": list(surface_state.get("human_obligations") or []),
+        "unclassified_anchors": list(surface_state.get("unclassified_anchors") or []),
         "errors": errors,
     }
 
@@ -705,7 +803,7 @@ def main() -> int:
         return 0 if summary["status"] == "ok" else 1
 
     if args.stage == "green":
-        prereq_step = validate_green_red_prerequisite(task_id=triplet.task_id, out_dir=out_dir)
+        prereq_step = validate_green_red_prerequisite(task_id=triplet.task_id, out_dir=out_dir, triplet=triplet)
         summary["steps"].append(prereq_step)
         if prereq_step["rc"] != 0:
             write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
