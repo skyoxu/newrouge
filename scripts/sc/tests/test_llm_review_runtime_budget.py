@@ -37,6 +37,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
         *,
         agents: str,
         monotonic_values: list[float],
+        review_text: str = "VERDICT: OK\n",
     ) -> tuple[int, list[int], dict]:
         observed_timeouts: list[int] = []
         monotonic_iter = iter(monotonic_values)
@@ -49,7 +50,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             def fake_run_codex_exec(*, backend: str, prompt: str, output_last_message: Path, timeout_sec: int, codex_configs=None):  # noqa: ANN001
                 observed_timeouts.append(int(timeout_sec))
                 output_last_message.parent.mkdir(parents=True, exist_ok=True)
-                output_last_message.write_text("VERDICT: OK\n", encoding="utf-8")
+                output_last_message.write_text(review_text, encoding="utf-8")
                 return 0, "trace ok\n", [str(backend), "fake-model"]
 
             argv = [
@@ -97,6 +98,21 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             [str(item.get("agent") or "") for item in summary["results"]],
         )
         self.assertEqual(30, int((summary["results"][1].get("details") or {}).get("remaining_before_sec") or 0))
+
+    def test_completed_needs_fix_should_remain_completed_not_incomplete(self) -> None:
+        rc, _timeouts, summary = self._run_main_with_time_budget(
+            agents="code-reviewer",
+            monotonic_values=[0.0, 0.0],
+            review_text=(
+                "## Spec Compliance\nP1 required behavior is missing\n"
+                "## Edge Case\nNo additional edge case.\n"
+                "## Verification Gap\nRequired Action: add causal regression\n"
+                "Verdict: Needs Fix\n"
+            ),
+        )
+        self.assertEqual(0, rc)
+        self.assertEqual("warn", summary["status"])
+        self.assertEqual("completed", summary["completion_status"])
 
     def test_main_should_skip_only_reviewers_not_yet_started_after_total_budget_is_exhausted(self) -> None:
         rc, observed_timeouts, summary = self._run_main_with_time_budget(
