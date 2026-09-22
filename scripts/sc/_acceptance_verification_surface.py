@@ -43,7 +43,7 @@ def _resolve_evidence_path(value: str, *, root: Path) -> Path:
 
 def _validate_human_evidence(
     *,
-    anchor: str,
+    label: str,
     row: dict[str, Any],
     primary: list[str],
     root: Path,
@@ -51,16 +51,94 @@ def _validate_human_evidence(
 ) -> str:
     status = str(row.get("human_evidence_status") or "pending").strip().lower()
     if status not in HUMAN_STATUSES:
-        errors.append(f"{anchor}: invalid human_evidence_status={status}")
+        errors.append(f"{label}: invalid human_evidence_status={status}")
         return "invalid"
     if status == "passed":
         revision = str(row.get("human_evidence_revision") or "").strip()
         if not revision:
-            errors.append(f"{anchor}: passed human evidence requires human_evidence_revision")
+            errors.append(f"{label}: passed human evidence requires human_evidence_revision")
         missing = [item for item in primary if not _resolve_evidence_path(item, root=root).is_file()]
         if missing:
-            errors.append(f"{anchor}: passed human evidence files do not exist: {missing}")
+            errors.append(f"{label}: passed human evidence files do not exist: {missing}")
     return status
+
+
+def _verification_rows(anchor: str, row: dict[str, Any], errors: list[str]) -> list[tuple[str, dict[str, Any]]]:
+    raw_obligations = row.get("obligations")
+    if raw_obligations is None:
+        return [(anchor, row)]
+    if not isinstance(raw_obligations, list) or not raw_obligations:
+        errors.append(f"{anchor}: obligations must be a non-empty array when present")
+        return []
+    rows: list[tuple[str, dict[str, Any]]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(raw_obligations, start=1):
+        if not isinstance(raw, dict):
+            errors.append(f"{anchor}: obligation #{index} must be an object")
+            continue
+        obligation_id = str(raw.get("obligation_id") or "").strip()
+        if not obligation_id:
+            errors.append(f"{anchor}: obligation #{index} requires obligation_id")
+            continue
+        if obligation_id in seen:
+            errors.append(f"{anchor}: duplicate obligation_id={obligation_id}")
+            continue
+        seen.add(obligation_id)
+        rows.append((f"{anchor}#{obligation_id}", dict(raw)))
+    return rows
+
+
+def _validate_row(
+    *,
+    label: str,
+    row: dict[str, Any],
+    root: Path,
+    errors: list[str],
+) -> tuple[str, str]:
+    surface = str(row.get("verification_surface") or "").strip()
+    if surface not in VERIFICATION_SURFACES:
+        errors.append(f"{label}: invalid verification_surface={surface or '<missing>'}")
+        return "invalid", surface
+
+    primary = _list_of_strings(row.get("primary_evidence"))
+    secondary_raw = row.get("secondary_evidence")
+    secondary = [] if secondary_raw in (None, []) else _list_of_strings(secondary_raw)
+    if not primary:
+        errors.append(f"{label}: primary_evidence must contain at least one bound evidence identity")
+    if secondary_raw not in (None, []) and not secondary:
+        errors.append(f"{label}: secondary_evidence must be an array of non-empty strings")
+
+    human_required = row.get("human_evidence_required")
+    if not isinstance(human_required, bool):
+        errors.append(f"{label}: human_evidence_required must be boolean")
+        return "invalid", surface
+
+    if surface == "core-behavior" and primary and not any(item.lower().endswith(".cs") for item in primary):
+        errors.append(f"{label}: core-behavior primary_evidence must include an xUnit .cs identity")
+    if surface == "godot-scene" and primary and not any(item.lower().endswith(".gd") for item in primary):
+        errors.append(f"{label}: godot-scene primary_evidence must include a GdUnit .gd identity")
+
+    if surface == "human-experience":
+        if human_required is not True:
+            errors.append(f"{label}: human-experience requires human_evidence_required=true")
+            return "invalid", surface
+        return _validate_human_evidence(
+            label=label,
+            row=row,
+            primary=primary,
+            root=root,
+            errors=errors,
+        ), surface
+
+    if human_required:
+        return _validate_human_evidence(
+            label=label,
+            row=row,
+            primary=primary,
+            root=root,
+            errors=errors,
+        ), surface
+    return "passed", surface
 
 
 def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) -> dict[str, Any]:
@@ -71,6 +149,8 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
     pending: list[str] = []
     failed: list[str] = []
     passed: list[str] = []
+    obligations: dict[str, list[dict[str, str]]] = {}
+    surfaces: dict[str, Any] = {}
 
     for anchor, row in sorted(mapping.items()):
         prefix = f"ACC:T{task_id}."
@@ -80,62 +160,44 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
         if row.get("_conflict"):
             errors.append(f"{anchor}: verification metadata differs across task views")
             continue
-        surface = str(row.get("verification_surface") or "").strip()
-        if surface not in VERIFICATION_SURFACES:
-            errors.append(f"{anchor}: invalid verification_surface={surface or '<missing>'}")
-            continue
-        primary = _list_of_strings(row.get("primary_evidence"))
-        secondary_raw = row.get("secondary_evidence")
-        secondary = [] if secondary_raw in (None, []) else _list_of_strings(secondary_raw)
-        if not primary:
-            errors.append(f"{anchor}: primary_evidence must contain at least one bound evidence identity")
-        if secondary_raw not in (None, []) and not secondary:
-            errors.append(f"{anchor}: secondary_evidence must be an array of non-empty strings")
-        human_required = row.get("human_evidence_required")
-        if not isinstance(human_required, bool):
-            errors.append(f"{anchor}: human_evidence_required must be boolean")
-            continue
 
-        if surface == "human-experience":
-            if human_required is not True:
-                errors.append(f"{anchor}: human-experience requires human_evidence_required=true")
-                continue
-            human_status = _validate_human_evidence(
-                anchor=anchor,
-                row=row,
-                primary=primary,
+        rows = _verification_rows(anchor, row, errors)
+        states: list[str] = []
+        surface_values: list[str] = []
+        obligation_rows: list[dict[str, str]] = []
+        for label, obligation in rows:
+            state, surface = _validate_row(
+                label=label,
+                row=obligation,
                 root=root_dir,
                 errors=errors,
             )
-            if human_status == "passed":
-                passed.append(anchor)
-            elif human_status == "failed":
-                failed.append(anchor)
-            elif human_status == "pending":
-                pending.append(anchor)
-            continue
-
-        if human_required:
-            human_status = _validate_human_evidence(
-                anchor=anchor,
-                row=row,
-                primary=primary,
-                root=root_dir,
-                errors=errors,
+            states.append(state)
+            surface_values.append(surface)
+            obligation_rows.append(
+                {
+                    "obligation_id": label.split("#", 1)[1] if "#" in label else "",
+                    "verification_surface": surface,
+                    "status": state,
+                    "source_anchor": anchor,
+                }
             )
-            if human_status == "passed":
-                passed.append(anchor)
-            elif human_status == "failed":
-                failed.append(anchor)
-            elif human_status == "pending":
-                pending.append(anchor)
-        else:
+        if obligation_rows:
+            obligations[anchor] = obligation_rows
+
+        if len(surface_values) == 1:
+            surfaces[anchor] = surface_values[0]
+        elif surface_values:
+            surfaces[anchor] = surface_values
+
+        if not states or "invalid" in states:
+            continue
+        if "failed" in states:
+            failed.append(anchor)
+        elif "pending" in states:
+            pending.append(anchor)
+        elif all(state == "passed" for state in states):
             passed.append(anchor)
-
-        if surface == "core-behavior" and primary and not any(item.lower().endswith(".cs") for item in primary):
-            errors.append(f"{anchor}: core-behavior primary_evidence must include an xUnit .cs identity")
-        if surface == "godot-scene" and primary and not any(item.lower().endswith(".gd") for item in primary):
-            errors.append(f"{anchor}: godot-scene primary_evidence must include a GdUnit .gd identity")
 
     status = "fail" if errors or failed or pending else "ok"
     return {
@@ -145,9 +207,6 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
         "passed_anchors": passed,
         "pending_anchors": pending,
         "failed_anchors": failed,
-        "surfaces": {
-            anchor: str(row.get("verification_surface") or "")
-            for anchor, row in sorted(mapping.items())
-            if not row.get("_conflict")
-        },
+        "surfaces": surfaces,
+        "obligations": obligations,
     }
