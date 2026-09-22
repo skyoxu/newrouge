@@ -56,5 +56,61 @@ class ScTestRefsTests(unittest.TestCase):
         self.assertEqual(["Game.Core.Tests/Tasks/Task11FeatureTests.cs"], actual)
 
 
+    def test_task_scoped_refs_should_include_acceptance_verification_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cs_ref = "Game.Core.Tests/Tasks/Task11VerificationTests.cs"
+            gd_ref = "Tests.Godot/tests/Scenes/test_task11_verification.gd"
+            cs_file = root / cs_ref
+            gd_file = root / gd_ref
+            cs_file.parent.mkdir(parents=True, exist_ok=True)
+            gd_file.parent.mkdir(parents=True, exist_ok=True)
+            cs_file.write_text("public sealed class Task11VerificationTests {}\n", encoding="utf-8")
+            gd_file.write_text("func test_task11_verification():\n    pass\n", encoding="utf-8")
+            verification = {
+                "ACC:T11.1": {
+                    "obligations": [
+                        {
+                            "obligation_id": "core",
+                            "verification_surface": "core-behavior",
+                            "primary_evidence": [cs_ref],
+                            "secondary_evidence": [],
+                            "human_evidence_required": False,
+                        },
+                        {
+                            "obligation_id": "scene",
+                            "verification_surface": "godot-scene",
+                            "primary_evidence": [gd_ref],
+                            "secondary_evidence": [cs_ref],
+                            "human_evidence_required": False,
+                        },
+                    ]
+                }
+            }
+            _write_json(
+                root / "examples" / "taskmaster" / "tasks_back.json",
+                [{"taskmaster_id": 11, "acceptance_verification": verification}],
+            )
+            _write_json(root / "examples" / "taskmaster" / "tasks_gameplay.json", [])
+            _write_json(
+                root / "examples" / "taskmaster" / "tasks.json",
+                {"master": {"tasks": [{"id": 11, "status": "in-progress"}]}},
+            )
+
+            original_repo_root = refs.repo_root
+            try:
+                refs.repo_root = lambda: root
+                cs_actual = refs.task_scoped_cs_refs(task_id="11")
+                gd_actual = refs.task_scoped_gdunit_refs(
+                    task_id="11",
+                    tests_project=root / "Tests.Godot",
+                )
+            finally:
+                refs.repo_root = original_repo_root
+
+        self.assertEqual([cs_ref], cs_actual)
+        self.assertEqual(["tests/Scenes/test_task11_verification.gd"], gd_actual)
+
+
 if __name__ == "__main__":
     unittest.main()
