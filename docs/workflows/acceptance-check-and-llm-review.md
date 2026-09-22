@@ -9,6 +9,8 @@
 
 ---
 
+Verification surfaces are carried on the existing task-view Acceptance authority through optional `acceptance_verification` metadata. Mixed Acceptance anchors use `obligations[]` with stable `obligation_id` entries rather than inventing a second Acceptance source. A human-experience obligation remains non-passing while pending or failed; a passed obligation must point to a real evidence file and record `human_evidence_revision` for the reviewed build/revision.
+
 ## 1. 背景与动机（为什么要做）
 
 ### 1.1 现实问题
