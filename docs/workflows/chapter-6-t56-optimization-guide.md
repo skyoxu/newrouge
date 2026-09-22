@@ -167,52 +167,31 @@
 - 不再出现“跑了十几分钟后才发现下游不接受某个参数”的浪费。
 - 不再把 summary schema 错误拖到收尾阶段才报。
 
-### 4.4 `fast-ship` 的默认 `llm_review` 变轻了，但不是降质量
+### 4.4 `fast-ship` 的默认模型审查现在是 Single Reviewer + Lenses
 
-当前 `fast-ship` 默认只跑：
+Chapter 6 的模型审查默认只使用一个 `code-reviewer`。审查方法由固定的三类 lenses 保持完整，而不是通过增加 persona 保持完整：
 
-- `code-reviewer`
-- `security-auditor`
+- `Spec Compliance`：当前 Requirement / Acceptance、约束、candidate 与实际验证结果是否一致。
+- `Edge Case`：changed surface 的边界、缺失输入、重入、部分失败、兼容与状态转换。
+- `Verification Gap`：实际哪个检查会在行为回归时失败，以及人工/整合证据是否真实存在。
 
-但这里要分两层理解：
+`minimal / targeted / full` 只调整 diff、预算、严格度和适用上下文深度，不自动增加第二个模型 reviewer。Acceptance semantic context 是 reviewer 的必需输入，不依赖 `semantic-equivalence-auditor` 之类的 persona 名称；预算不足导致必需输入或 lens 缺失时，结果必须是 incomplete/failed，而不是空 findings 的 clean。
 
-- `run_review_pipeline.py` 在低风险 `minimal / targeted` tier 下，默认先收窄到 `code-reviewer + security-auditor`
-- `semantic-equivalence-auditor` 会在高风险任务、`contractRefs` 命中、P0/P1 升级、或 tier 升到 `full` 时自动补回
-- `llm_review_needs_fix_fast.py` remains the targeted 6.8 closure entrypoint; it can still rerun `semantic-equivalence-auditor` by issue family or by profile defaults.
-- Even when semantic reviewer is added back, `sc-llm-review` now runs primary reviewers first; semantic enters a second stage only after they are clean. This avoids paying the largest semantic prompt cost when code/security is already red.
-- If semantic is defer-skipped because an earlier reviewer is not clean yet, that row is ignored by the 6.7 reviewer auto-shrink logic instead of being treated as a fresh semantic failure signal.
-- If the latest deterministic pass is already green and this round only changes reviewer/semantic-side files, `run_review_pipeline.py` can still auto-narrow 6.7 to the reviewers that were truly non-OK last time; passing explicit `--llm-agents` disables that auto-shrink.
-è¥ semantic reviewer å åç½® reviewer æª clean èè¢« defer-skipï¼è¿æ¡è®°å½ä¸ä¼åè¢« 6.7 ç reviewer auto-shrink è¯¯å½ææ°ç semantic å¤±è´¥ä¿¡å·ã
-- `llm_review_needs_fix_fast.py` 作为第 6.8 定向收口脚本，仍可按问题类别或 profile 默认值补跑 `semantic-equivalence-auditor`
-- 如果最近一轮已经证明 deterministic 绿，只剩 reviewer 问题，且你这轮只改 reviewer/语义侧文件，`run_review_pipeline.py` 还会进一步把 6.7 自动收窄到“上一轮真正非 OK 的 reviewers”；只有显式传 `--llm-agents` 时才关闭这条自动缩窄
+安全、ADR、契约、静态扫描等 deterministic reviewer / gate 仍作为独立机器能力保留。Surface focus（如 Save/Load、Contract/EventBus、UI/Scene、状态机、安全边界、性能循环）只是同一 reviewer 的关注面，不是新的 persona。
 
-默认 `diff_mode`：
-
-- `summary`
-
-这不是偷工减料，而是把“第六章日常循环”聚焦到最有价值的三类风险：
-
-- 代码正确性
-- 安全边界
-- 语义等价
-
-其他更重的角色，留给：
-
-- `standard`
-- 需要时的定向 `llm_review`
-- `Needs Fix` 专项清理
+默认 `diff_mode` 仍优先使用 `summary` 作为导航，但具体 finding 需要判断源代码、调用方或验证证据时必须展开对应来源，不能用 summary 代替证据。
 
 ### 4.5 `6.8` 已经不必总是从零起跑
 
 `llm_review_needs_fix_fast.py` 现在的定位是：
 
 - 先尽量复用最近一次成功 deterministic 结果
-- 再只针对失败 reviewer 做最小回合清理
+- 再按未关闭 finding identity 与相关 changed surface 做最小回合清理
 
 因此第六章当前的正确心智模型是：
 
 - `6.7` 负责生成“完整事实面”
-- `6.8` 负责在“事实面稳定后”做小范围收敛
+- `6.8` 负责在“事实面稳定后”由同一 reviewer 对未关闭 findings / changed surface 做小范围收敛
 - `6.8` 的 round 摘要如果出现 `timeout_agents` / `failure_kind = timeout-no-summary`，应先判定为“观测不足”而不是“事实已 clean”
 
 ### 4.6 现在新增了 rerun stop-loss 与更明确的窄路径信号
