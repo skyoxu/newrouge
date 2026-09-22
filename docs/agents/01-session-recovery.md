@@ -5,21 +5,15 @@ Use this file after a context reset.
 Preferred command: `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`. For a quick next-step read, prefer `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only` first.
 
 ## Recovery Order
-1. Read `AGENTS.md`.
-2. Read [00-index.md](00-index.md).
-3. Read [02-repo-map.md](02-repo-map.md).
-4. Read the newest files in `execution-plans/` and `decision-logs/`.
-5. Read `git log --oneline --decorate -n 10`.
-6. If a local review pipeline was running, open `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json`.
-7. Read `reason`, `run_type`, `reuse_mode`, and `diagnostics` in `latest.json` first; pay special attention to `artifact_integrity`, `rerun_guard`, `reuse_decision`, `acceptance_preflight`, `llm_timeout_memory`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, and repeated-failure signals surfaced later as `recent_failure_summary`.
-8. Treat `logs/ci/active-tasks/task-<id>.active.md` as the shortest recovery pointer when it exists; it now summarizes `Chapter6 blocked by` for `artifact_integrity`, `rerun_guard`, `llm_retry_stop_loss`, `sc_test_retry_stop_loss`, `waste_signals`, and `recent_failure_summary`.
-9. If `active-task`, `resume-task`, or the project-health dashboard also exposes `recommended_action_why` / `Chapter6 stop-loss note`, read that before choosing between reopen, narrow closure, or stop-loss.
-10. From that latest index, open `summary.json`, `execution-context.json`, and `repair-guide.md`.
-11. If `agent_review_json_path` or `agent_review_md_path` exists in `latest.json`, read that next before rerunning anything.
-12. Do not use `run_review_pipeline.py --dry-run` as a recovery pointer producer: dry-run still writes local artifacts in its own `out_dir`, but it no longer publishes `latest.json` or `active-task` sidecars.
-13. If `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>` resolves a newer dry-run pointer, it now skips that candidate automatically and falls back to the newest real recoverable run.
-14. If `active-task` and `latest.json` disagree about the active bundle, trust `latest.json` first; `active-task` now follows that bundle on the next refresh.
-15. If `active-task` or `inspect_run` surfaces `artifact_integrity`, do not pay for another blind rerun until you confirm whether the producer bundle is stale, incomplete, missing `run_completed`, or only a `planned-only` terminal bundle.
+1. Read `AGENTS.md` and identify the current task scope.
+2. For a task recovery, run `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only` before opening detailed artifacts.
+3. If Chapter 6 routing is relevant, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`.
+4. Read the specific Task/Acceptance/ADR/Contract or explicit plan/decision bound to the current work. Do not choose a plan or decision merely because it is newest in its directory.
+5. Expand the selected run only when the compact recommendation cannot answer the next-step question. Prefer `latest.json` → `summary.json` / `execution-context.json` / `repair-guide.md`; read append-only events only when event ordering or turn history is needed.
+6. Treat `logs/ci/active-tasks/task-<id>.active.md` as a compact pointer, not higher authority than the producer bundle.
+7. If `active-task` and `latest.json` disagree, trust the validated producer `latest.json`; if artifact integrity is broken, inspect or fall back to the previous real producer bundle rather than continuing from a damaged sidecar.
+8. Do not use `run_review_pipeline.py --dry-run` as a recovery pointer producer; dry-run artifacts are local evidence and do not publish the canonical latest/active-task pointer.
+9. If required direct authority cannot be located, stop the affected operation rather than filling the gap from a summary or unrelated historical file.
 
 ## What To Trust First
 - `decision-logs/`: architecture and workflow decisions already made.
