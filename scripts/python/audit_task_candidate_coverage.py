@@ -252,6 +252,7 @@ def audit_semantic(
 def audit_persisted_semantic_coverage(
     semantics: dict[str, Any],
     existing_tasks: list[dict[str, Any]],
+    candidates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     requirements = {
         str(row.get("requirement_id")): row
@@ -283,6 +284,45 @@ def audit_persisted_semantic_coverage(
                 continue
             by_req.setdefault(rid, []).append(task_id)
 
+    real_by_view_id = {
+        str(task.get("id")): task
+        for task in existing_tasks
+        if isinstance(task, dict) and str(task.get("id") or "").strip()
+    }
+    unpersisted_candidate_mappings: list[dict[str, Any]] = []
+    for candidate in (candidates or {}).get("candidates", []):
+        if not isinstance(candidate, dict):
+            continue
+        candidate_id = str(candidate.get("id") or "").strip()
+        candidate_refs = {
+            str(value)
+            for value in candidate.get("semantic_refs", candidate.get("requirement_ids", []))
+            if str(value).strip()
+        }
+        if not candidate_id or not candidate_refs:
+            continue
+        persisted = real_by_view_id.get(candidate_id)
+        if not isinstance(persisted, dict):
+            unpersisted_candidate_mappings.append({
+                "candidate_id": candidate_id,
+                "semantic_refs": sorted(candidate_refs),
+                "reason": "candidate_task_not_persisted",
+            })
+            continue
+        persisted_refs = {
+            str(value)
+            for value in persisted.get("semantic_refs", persisted.get("requirement_ids", []))
+            if str(value).strip()
+        }
+        missing_refs = sorted(candidate_refs - persisted_refs)
+        if missing_refs:
+            unpersisted_candidate_mappings.append({
+                "candidate_id": candidate_id,
+                "semantic_refs": sorted(candidate_refs),
+                "missing_semantic_refs": missing_refs,
+                "reason": "candidate_semantic_refs_not_persisted",
+            })
+
     missing: list[dict[str, Any]] = []
     coverage: list[dict[str, Any]] = []
     for rid, requirement in sorted(requirements.items()):
@@ -306,12 +346,13 @@ def audit_persisted_semantic_coverage(
         coverage.append(row)
         if row["coverage_status"] == "missing":
             missing.append(row)
-    blocked = bool(missing or invalid_refs)
+    blocked = bool(missing or invalid_refs or unpersisted_candidate_mappings)
     return {
         "schema": "task-generation.persisted-semantic-coverage.v1",
         "status": "blocked" if blocked else "ok",
         "missing": missing,
         "invalid_task_semantic_refs": invalid_refs,
+        "unpersisted_candidate_mappings": unpersisted_candidate_mappings,
         "coverage": coverage,
     }
 
