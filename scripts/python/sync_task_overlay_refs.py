@@ -487,6 +487,7 @@ def build_chapter4_gap_report(
 ) -> dict[str, Any]:
     """Emit machine-readable Chapter 4 semantic/architecture gaps without rewriting source authority."""
     gaps: list[dict[str, Any]] = []
+    legacy_unmapped: list[dict[str, Any]] = []
     for view_name, rows in (("tasks_back", back_payload), ("tasks_gameplay", gameplay_payload)):
         for task in rows:
             if not isinstance(task, dict):
@@ -499,6 +500,15 @@ def build_chapter4_gap_report(
             overlay_map = task.get("overlay_requirement_refs")
             contract_refs = _normalize_refs(task.get("contractRefs"))
             contract_map = task.get("contract_requirement_refs")
+            if not semantic_refs:
+                legacy_unmapped.append({
+                    "task_id": task_id,
+                    "view": view_name,
+                    "overlay_refs": overlay_refs,
+                    "contract_refs": contract_refs,
+                    "migration_status": "legacy_unmapped",
+                    "reason": "task has not entered the Chapter 3 semantic mapping flow yet",
+                })
             if semantic_refs and (
                 not overlay_refs
                 or not isinstance(overlay_map, dict)
@@ -515,7 +525,7 @@ def build_chapter4_gap_report(
                     "reason": "semantic requirements are not fully backlink-bound to Chapter 4 overlay scope",
                     "action": "route_to_chapter4_author_or_source_owner",
                 })
-            if contract_refs and (
+            if semantic_refs and contract_refs and (
                 not isinstance(contract_map, dict)
                 or any(
                     not set(semantic_refs).issubset(set(_normalize_refs(contract_map.get(ref))))
@@ -536,6 +546,9 @@ def build_chapter4_gap_report(
         "status": "blocked" if gaps else "passed",
         "gap_count": len(gaps),
         "gaps": gaps,
+        "legacy_unmapped_task_count": len(legacy_unmapped),
+        "legacy_unmapped_tasks": legacy_unmapped,
+        "migration_status": "legacy_unmapped_present" if legacy_unmapped else "fully_semantic_mapped",
     }
 
 
