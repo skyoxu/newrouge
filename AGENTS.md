@@ -22,22 +22,26 @@
 - 不保留无用兼容层，过期路径应清理。
 - 若存在未修复 `Needs Fix`，必须先记录到 `decision-logs/**`，并在 `execution-plans/**` 写明后续修复入口与证据路径。
 
-## Context Reset 后的启动顺序
+## Context Reset 与按任务读取
 
-1. `README.md`
-2. `docs/agents/00-index.md`
-3. `docs/agents/01-session-recovery.md`
-4. `docs/PROJECT_DOCUMENTATION_INDEX.md`
-5. `docs/agents/13-rag-sources-and-session-ssot.md`
-6. `DELIVERY_PROFILE.md`
-7. `docs/testing-framework.md`
-8. `docs/agents/16-directory-responsibilities.md`
-9. `docs/workflows/prototype-lane.md`
-10. `docs/workflows/prototype-lane-playbook.md`
-11. `docs/workflows/prototype-tdd.md`
-12. `execution-plans/` 最新文件
-13. `decision-logs/` 最新文件
-14. 若已有审查流水线结果，读取 `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
+Context Reset 后先读取本文件，再按当前任务范围选择首要入口；不要固定预加载一组无关文档，也不要用“目录中最新 plan/decision”猜测当前任务。跨领域任务取必要路由的并集。
+
+| 任务范围 | 首要入口 | 按需补充 |
+| --- | --- | --- |
+| 项目身份/状态 | `README.md` | 当前任务三联或用户明确指定的状态文件 |
+| Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
+| Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
+| Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |
+| Chapter 6 新任务 | `workflow.md` 6.0、6.3；`run-single-task-chapter6` | `.agents/skills/workflow-chapter6-single-task-daily-loop/SKILL.md`；当前 Task/Acceptance 与相关权威 |
+| Chapter 6 恢复 | `resume-task --recommendation-only` | `chapter6-route --recommendation-only`；仅在决策需要时展开该 run 的 sidecars/events |
+| Chapter 7 | `workflow.md` 第 7 章；`docs/gdd/ui-gdd-flow.md` | Chapter 7 Skill、profile guide 与当前 backlog/capability |
+| Prototype | `docs/workflows/prototype-lane.md` | 同目录 playbook、prototype-tdd |
+| Architecture/Contract | `docs/architecture/ADR_INDEX_GODOT.md` | 相关 ADR、Base/Overlay、`Game.Core/Contracts/**` |
+| Testing/MVG | `docs/testing-framework.md` | `docs/workflows/mvg-integration-acceptance.md`、选定 manifest |
+| Harness/工作流维护 | `docs/workflows/run-protocol.md` | 当前涉及入口脚本、schema、`docs/workflows/local-hard-checks.md` |
+| 显式 plan/decision 工作 | 用户或当前任务绑定的具体文件 | 该文件引用的来源；不按目录时间戳猜测 |
+
+历史日志是证据而不是当前指令。被当前 Task、ADR、冻结来源、恢复对象或显式 plan/decision 引用时再展开；source 缺失且影响边界判断时 fail closed，不用摘要猜测替代。
 
 ## 权威来源
 
