@@ -775,6 +775,8 @@ def _task_semantic_surface(task: dict[str, Any]) -> dict[str, Any]:
         "semantic_refs": list(task.get("semantic_refs") or []),
         "capability_refs": list(task.get("capability_refs") or []),
         "depends_on": list(task.get("depends_on") or []),
+        "unresolved_dependencies": list(task.get("unresolved_dependencies") or []),
+        "dependency_identity_errors": list(task.get("dependency_identity_errors") or []),
         "acceptance": list(task.get("acceptance") or []),
         "implementation_overlap_candidates": list(task.get("implementation_overlap_candidates") or []),
         "overlay_refs": list(task.get("overlay_refs") or []),
