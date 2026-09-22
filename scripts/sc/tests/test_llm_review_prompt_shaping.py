@@ -14,7 +14,7 @@ if str(SC_DIR) not in sys.path:
 
 from _llm_review_acceptance import build_acceptance_semantic_context  # noqa: E402
 from _llm_review_engine import _REVIEW_LENSES_PROMPT, _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
-from _llm_review_prompting import build_task_context, parse_review_contract  # noqa: E402
+from _llm_review_prompting import build_task_context, default_agent_prompt, parse_review_contract  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
 
@@ -124,6 +124,10 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
 
         _parsed, p2_errors = parse_review_contract(text, fix_through="P2")
         self.assertIn("findings[0]_must_fix_cannot_defer", p2_errors)
+
+    def test_default_single_reviewer_prompt_should_allow_p4_findings(self) -> None:
+        prompt = default_agent_prompt("code-reviewer")
+        self.assertIn("P0/P1/P2/P3/P4", prompt)
 
     def test_required_review_prompt_should_request_machine_readable_completion_contract(self) -> None:
         self.assertIn("Review Contract JSON:", _REVIEW_LENSES_PROMPT)
