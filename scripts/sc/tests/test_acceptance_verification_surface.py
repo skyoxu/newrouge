@@ -95,6 +95,42 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
         self.assertIn("Tests.Godot/tests/Scenes/test_reward_scene.gd", refs)
         self.assertIn("Game.Core.Tests/Combat/RewardTests.cs", refs)
 
+    def test_automated_surface_fails_final_acceptance_when_primary_test_file_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            triplet = self._triplet({
+                "ACC:T15.1": {
+                    "verification_surface": "core-behavior",
+                    "primary_evidence": ["Game.Core.Tests/Combat/RewardTests.cs"],
+                    "secondary_evidence": [],
+                    "human_evidence_required": False,
+                }
+            })
+
+            report = validate_acceptance_verification(triplet=triplet, root=root)
+
+            self.assertEqual("fail", report["status"])
+            self.assertTrue(any("automated primary_evidence files do not exist" in item for item in report["errors"]))
+
+    def test_automated_surface_accepts_existing_bound_primary_test_file(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence = root / "Game.Core.Tests/Combat/RewardTests.cs"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text("public sealed class RewardTests {}\n", encoding="utf-8")
+            triplet = self._triplet({
+                "ACC:T15.1": {
+                    "verification_surface": "core-behavior",
+                    "primary_evidence": ["Game.Core.Tests/Combat/RewardTests.cs"],
+                    "secondary_evidence": [],
+                    "human_evidence_required": False,
+                }
+            })
+
+            report = validate_acceptance_verification(triplet=triplet, root=root)
+
+            self.assertEqual("ok", report["status"])
+
     def test_human_experience_pending_and_failed_do_not_pass(self) -> None:
         for status in ("pending", "failed"):
             with self.subTest(status=status), tempfile.TemporaryDirectory() as td:
