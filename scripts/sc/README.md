@@ -69,7 +69,7 @@
 `scripts/sc/llm_generate_tests_from_acceptance_refs.py` generates missing test files from task acceptance `Refs:` entries and only allows repo-relative `.cs` / `.gd` test paths.
 
 - Every generated file must include the matching `ACC:T<id>.<n>` anchors.
-- Before long or mixed-surface generation, run `scripts/sc/check_tdd_execution_plan.py` first. It scores complexity from missing refs, mixed `.cs` / `.gd` targets, `red-first`, `verify auto|all`, anchor count, and test-root spread; `--execution-plan-policy draft` can auto-create a minimal `execution-plan`.
+- Run `scripts/sc/check_tdd_execution_plan.py` when durable recovery or ordered coordination may be needed. Plan need is driven by explicit coordination signals such as cross-session recovery, ordered behavior slices, authority migration, staged large refactors, or workflow-control-plane work. Test count, mixed `.cs`/`.gd`, anchor count, `red-first`, and `verify auto|all` do not by themselves require a plan; `boundary_investigation` / `cross_session_risk` are advisory only.
 - C# anchors must appear within 5 lines above `[Fact]` / `[Theory]`; GDScript anchors must appear within 5 lines above `func test_...`.
 - `--tdd-stage red-first` is a strict red mode.
   - If the run creates any new `.cs` tests, it forces task-scoped unit verification.
@@ -89,11 +89,11 @@
 Examples:
 
 ```powershell
-# Pre-check whether this task should create or require an execution plan first
-py -3 scripts/sc/check_tdd_execution_plan.py --task-id 11 --tdd-stage red-first --verify auto --execution-plan-policy warn
+# Advisory boundary/cross-session risk: record the recommendation without a hard block
+py -3 scripts/sc/check_tdd_execution_plan.py --task-id 11 --tdd-stage red-first --verify auto --execution-plan-policy warn --coordination-signal boundary_investigation
 
-# Auto-draft an execution plan when the complexity threshold is hit
-py -3 scripts/sc/check_tdd_execution_plan.py --task-id 11 --tdd-stage red-first --verify auto --execution-plan-policy draft
+# Durable workflow/control-plane coordination: draft a recoverable plan when no matching active plan exists
+py -3 scripts/sc/check_tdd_execution_plan.py --task-id 11 --tdd-stage red-first --verify auto --execution-plan-policy draft --coordination-signal workflow_control_plane
 
 # Normal scaffold generation
 py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id 11 --verify unit
@@ -281,7 +281,7 @@ Optional `acceptance_verification` metadata lives on existing task views and is 
 
 - `core-behavior` primary evidence includes xUnit `.cs`.
 - `godot-scene` primary evidence includes GdUnit `.gd` and is routed through the existing headless/GdUnit path.
-- `player-journey` may bind mixed existing evidence/MVG identities.
-- `human-experience` requires explicit human evidence; `pending` or `failed` never passes Acceptance.
+- `player-journey` primary evidence binds a task-local executable `Game.Core.Tests/**.cs` or `Tests.Godot/**.gd` identity. Critical/full MVG remains separate integration evidence and keeps its existing manifest/runtime rules.
+- `human-experience` requires explicit human evidence; `pending` or `failed` never passes Acceptance, and `passed` must bind the reviewed revision plus an explicit passed conclusion in the evidence.
 
 RED verification is causal. Timeout, missing reports, compile/environment failure, or generic non-zero exits are unverified and cannot satisfy RED. Use the existing targeted MVG mutation probe for selected high-risk falsifiability checks; it is not a default all-task gate.
