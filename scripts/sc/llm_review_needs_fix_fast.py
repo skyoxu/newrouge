@@ -9,6 +9,7 @@ Windows usage example:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -962,7 +963,7 @@ def apply_delivery_profile_defaults(args: argparse.Namespace) -> argparse.Namesp
     if not str(getattr(args, "security_profile", "") or "").strip():
         args.security_profile = default_security_profile_for_delivery(delivery_profile)
     if not str(getattr(args, "agents", "") or "").strip():
-        args.agents = str(defaults.get("agents") or "code-reviewer,security-auditor,semantic-equivalence-auditor")
+        args.agents = str(defaults.get("agents") or "code-reviewer")
     if not str(getattr(args, "diff_mode", "") or "").strip():
         args.diff_mode = str(defaults.get("diff_mode") or "summary")
     if args.max_rounds is None:
@@ -1166,15 +1167,90 @@ def majority_verdict(votes: list[str]) -> str:
     return "Unknown"
 
 
+def _normalize_signature_text(value: Any) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _review_output_finding_signature(output_path: Path) -> list[dict[str, str]]:
+    if not output_path.exists():
+        return []
+    try:
+        lines = output_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return []
+    findings: list[dict[str, str]] = []
+    current_claim = ""
+    required_action = ""
+    anchor = ""
+    for raw in lines:
+        line = str(raw or "").strip()
+        lower = line.lower()
+        if not line:
+            continue
+        if re.match(r"^(?:[-*]\s*)?p[0-4]\b", line, flags=re.IGNORECASE):
+            current_claim = _normalize_signature_text(line)
+        elif lower.startswith(("claim:", "- claim:", "message:", "- message:")):
+            current_claim = _normalize_signature_text(line.split(":", 1)[1] if ":" in line else line)
+        elif lower.startswith(("required action:", "- required action:", "suggested fix:", "- suggested fix:")):
+            required_action = _normalize_signature_text(line.split(":", 1)[1] if ":" in line else line)
+        if "acc:t" in lower or "requirement" in lower or "adr-" in lower:
+            anchor = _normalize_signature_text(line)
+        if current_claim and (required_action or anchor):
+            raw_id = "\n".join([current_claim, anchor, required_action])
+            findings.append({
+                "finding_id": "finding-" + hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16],
+                "claim": current_claim,
+                "anchor": anchor,
+                "required_action": required_action,
+            })
+            current_claim = ""
+            required_action = ""
+            anchor = ""
+    if current_claim:
+        raw_id = current_claim
+        findings.append({
+            "finding_id": "finding-" + hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16],
+            "claim": current_claim,
+            "anchor": anchor,
+            "required_action": required_action,
+        })
+    return findings
+
+
 def _round_needs_fix_signature(round_result: dict[str, Any]) -> list[dict[str, str]]:
+    summary_file = str(round_result.get("summary_file") or "").strip()
+    if summary_file:
+        summary = read_json(Path(summary_file))
+        signature: list[dict[str, str]] = []
+        for result in summary.get("results") or []:
+            if not isinstance(result, dict):
+                continue
+            details = result.get("details") if isinstance(result.get("details"), dict) else {}
+            if normalize_verdict(str(details.get("verdict") or "")) != "Needs Fix":
+                continue
+            output_path = str(result.get("output_path") or "").strip()
+            if not output_path:
+                continue
+            path = Path(output_path)
+            if not path.is_absolute():
+                path = repo_root() / path
+            signature.extend(_review_output_finding_signature(path))
+        if signature:
+            return sorted(signature, key=lambda item: (item["finding_id"], item["claim"], item["required_action"]))
+
+    # Legacy fallback: old runs may not have structured/finding-bearing outputs.
     verdicts = round_result.get("verdicts") if isinstance(round_result.get("verdicts"), dict) else {}
-    signature: list[dict[str, str]] = []
+    fallback: list[dict[str, str]] = []
     for agent in sorted(verdicts.keys()):
         verdict = normalize_verdict(verdicts.get(agent))
-        if verdict != "Needs Fix":
-            continue
-        signature.append({"agent": agent, "verdict": verdict})
-    return signature
+        if verdict == "Needs Fix":
+            fallback.append({
+                "finding_id": f"legacy-{agent}-needs-fix",
+                "claim": agent,
+                "anchor": "",
+                "required_action": "needs-fix",
+            })
+    return fallback
 
 
 def _round_verdict(verdicts: dict[str, str], *, rc: int) -> str:
