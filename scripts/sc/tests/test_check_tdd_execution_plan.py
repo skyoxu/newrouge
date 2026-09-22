@@ -48,32 +48,39 @@ class _FakeTriplet:
 
 
 class ExecutionPlanPolicyTests(unittest.TestCase):
-    def test_assess_plan_need_should_flag_threshold_when_two_or_more_signals_hit(self) -> None:
+    def test_assess_plan_need_should_ignore_test_count_complexity_without_coordination_signal(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             existing = root / "Game.Core.Tests" / "ExistingTests.cs"
             existing.parent.mkdir(parents=True, exist_ok=True)
             existing.write_text("// existing\n", encoding="utf-8")
-            triplet = _FakeTriplet()
-
             assessment = policy_module.assess_execution_plan_need(
                 repo_root=root,
-                triplet=triplet,
+                triplet=_FakeTriplet(),
                 task_id="11",
                 tdd_stage="red-first",
                 verify="auto",
             )
-
         self.assertEqual(3, assessment.missing_refs_count)
         self.assertEqual(4, assessment.anchor_count)
+        self.assertEqual("none", assessment.decision)
+        self.assertFalse(assessment.threshold_hit)
+
+    def test_assess_plan_need_should_require_explicit_durable_coordination(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            assessment = policy_module.assess_execution_plan_need(
+                repo_root=root,
+                triplet=_FakeTriplet(),
+                task_id="11",
+                tdd_stage="red-first",
+                verify="unit",
+                coordination_signals=["workflow_control_plane"],
+            )
+        self.assertEqual("required", assessment.decision)
         self.assertTrue(assessment.threshold_hit)
         active_ids = {item["id"] for item in assessment.signals if item["active"]}
-        self.assertIn("missing_refs_ge_3", active_ids)
-        self.assertIn("mixed_cs_and_gd", active_ids)
-        self.assertIn("red_first_stage", active_ids)
-        self.assertIn("verify_auto_or_all", active_ids)
-        self.assertIn("anchors_ge_4", active_ids)
-        self.assertIn("multiple_test_roots", active_ids)
+        self.assertEqual({"workflow_control_plane"}, active_ids)
 
     def test_find_active_execution_plans_should_only_return_non_done_matches(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -135,6 +142,8 @@ class CheckTddExecutionPlanMainTests(unittest.TestCase):
                 "auto",
                 "--execution-plan-policy",
                 "warn",
+                "--coordination-signal",
+                "boundary_investigation",
             ]
 
             rc = self._invoke_main(root=root, out_dir=out_dir, argv=argv, triplet=_FakeTriplet())
@@ -161,6 +170,8 @@ class CheckTddExecutionPlanMainTests(unittest.TestCase):
                 "auto",
                 "--execution-plan-policy",
                 "draft",
+                "--coordination-signal",
+                "workflow_control_plane",
             ]
 
             rc = self._invoke_main(root=root, out_dir=out_dir, argv=argv, triplet=_FakeTriplet())
@@ -189,6 +200,8 @@ class CheckTddExecutionPlanMainTests(unittest.TestCase):
                 "auto",
                 "--execution-plan-policy",
                 "require",
+                "--coordination-signal",
+                "workflow_control_plane",
             ]
 
             rc = self._invoke_main(root=root, out_dir=out_dir, argv=argv, triplet=_FakeTriplet())
