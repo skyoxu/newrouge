@@ -20,7 +20,7 @@
 - 日志、审计和证据统一放在 `logs/**`。
 - 非 trivial 任务必须显式分步并持续更新进度。
 - 不保留无用兼容层，过期路径应清理。
-- 若存在未修复 `Needs Fix`，必须先记录到 `decision-logs/**`，并在 `execution-plans/**` 写明后续修复入口与证据路径。
+- Review `Needs Fix` 按当前 fix-through 与 P1 floor 处理：必修项先修；允许延期的 findings 进入 `docs/technical-debt.md`。只有真实政策/权威/不可逆决定才写 Decision Log，只有跨 session、顺序协调、迁移或分阶段恢复需要才写 Execution Plan。
 
 ## Context Reset 与按任务读取
 
