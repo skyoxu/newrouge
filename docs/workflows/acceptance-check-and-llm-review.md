@@ -13,6 +13,8 @@ Verification surfaces are carried on the existing task-view Acceptance authority
 
 Legacy Acceptance rows without `acceptance_verification` remain valid. Their existing `.cs/.gd` refs are exposed only as migration candidates in the verification-surface report: clear xUnit-only or explicit scene/journey semantics may suggest one surface, while mixed, subjective, or ambiguous rows remain `needs-confirmation`. Candidate inference never writes task authority.
 
+For TDD sequencing, a valid pure `human-experience` manual preflight may enter GREEN implementation without manufacturing a machine RED. Mixed or automated obligations still require the normal bound causal RED, and partial verification metadata cannot waive RED for unclassified Acceptance anchors. Manual preflight is implementation eligibility only; final human Acceptance still requires revision-bound passed evidence.
+
 ## 1. 背景与动机（为什么要做）
 
 ### 1.1 现实问题
