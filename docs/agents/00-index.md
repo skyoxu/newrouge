@@ -4,17 +4,13 @@ Purpose: keep [AGENTS.md](../../AGENTS.md) short and move durable guidance here.
 
 ## Read Order After Context Reset
 
-1. [01-session-recovery.md](01-session-recovery.md)
-2. [13-rag-sources-and-session-ssot.md](13-rag-sources-and-session-ssot.md)
-3. [02-repo-map.md](02-repo-map.md)
-4. [14-startup-stack-and-template-structure.md](14-startup-stack-and-template-structure.md)
-5. [03-persistent-harness.md](03-persistent-harness.md)
-6. [../workflows/run-protocol.md](../workflows/run-protocol.md)
-7. [07-agent-to-agent-review.md](07-agent-to-agent-review.md)
-8. First run `py -3 scripts/python/dev_cli.py resume-task --task-id <id>` for the canonical recovery summary
-9. If a task-scoped run already exists and the summary still needs a shorter human pointer, read `logs/ci/active-tasks/task-<id>.active.md`
-10. Newest files in `execution-plans/` and `decision-logs/`
-11. `logs/ci/<date>/sc-review-pipeline-task-<task>/latest.json` only when the recovery summary still needs deeper inspection
+Start with [AGENTS.md](../../AGENTS.md) and use its task-route table. Do not preload this index as a fixed document stack, and do not choose the newest plan/decision file by timestamp.
+
+- Chapter 6 recovery: first run `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`.
+- If a go/no-go decision is still needed, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`.
+- Expand `active-task`, `inspect-run`, run sidecars/events, an Execution Plan, or a Decision Log only when the compact result or an explicit task/user binding points to them.
+- New Chapter 6 work, Chapters 3/4/5/7, Prototype, Architecture/Contract, Testing/MVG, and harness maintenance follow the corresponding AGENTS route and read only the required direct authority plus named supplements.
+- Historical logs and old plans are evidence, not current instructions. A missing source that affects a boundary decision is a blocking evidence gap; do not substitute a nearby summary.
 
 Recovery shortcut:
 - `resume-task` and `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline` now expose `latest_summary_signals` and `chapter6_hints`; use those fields before deciding whether to reopen `6.7` or narrow to `6.8`.
