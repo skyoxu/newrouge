@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 
@@ -35,8 +36,36 @@ def collect_acceptance_verification(triplet: Any) -> dict[str, dict[str, Any]]:
     return merged
 
 
-def validate_acceptance_verification(*, triplet: Any) -> dict[str, Any]:
+def _resolve_evidence_path(value: str, *, root: Path) -> Path:
+    path = Path(str(value or "").strip())
+    return path if path.is_absolute() else (root / path)
+
+
+def _validate_human_evidence(
+    *,
+    anchor: str,
+    row: dict[str, Any],
+    primary: list[str],
+    root: Path,
+    errors: list[str],
+) -> str:
+    status = str(row.get("human_evidence_status") or "pending").strip().lower()
+    if status not in HUMAN_STATUSES:
+        errors.append(f"{anchor}: invalid human_evidence_status={status}")
+        return "invalid"
+    if status == "passed":
+        revision = str(row.get("human_evidence_revision") or "").strip()
+        if not revision:
+            errors.append(f"{anchor}: passed human evidence requires human_evidence_revision")
+        missing = [item for item in primary if not _resolve_evidence_path(item, root=root).is_file()]
+        if missing:
+            errors.append(f"{anchor}: passed human evidence files do not exist: {missing}")
+    return status
+
+
+def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) -> dict[str, Any]:
     task_id = str(getattr(triplet, "task_id", "") or "").strip()
+    root_dir = Path(root) if root is not None else Path.cwd()
     mapping = collect_acceptance_verification(triplet)
     errors: list[str] = []
     pending: list[str] = []
@@ -71,25 +100,34 @@ def validate_acceptance_verification(*, triplet: Any) -> dict[str, Any]:
             if human_required is not True:
                 errors.append(f"{anchor}: human-experience requires human_evidence_required=true")
                 continue
-            human_status = str(row.get("human_evidence_status") or "pending").strip().lower()
-            if human_status not in HUMAN_STATUSES:
-                errors.append(f"{anchor}: invalid human_evidence_status={human_status}")
-                continue
+            human_status = _validate_human_evidence(
+                anchor=anchor,
+                row=row,
+                primary=primary,
+                root=root_dir,
+                errors=errors,
+            )
             if human_status == "passed":
                 passed.append(anchor)
             elif human_status == "failed":
                 failed.append(anchor)
-            else:
+            elif human_status == "pending":
                 pending.append(anchor)
             continue
 
         if human_required:
-            human_status = str(row.get("human_evidence_status") or "pending").strip().lower()
+            human_status = _validate_human_evidence(
+                anchor=anchor,
+                row=row,
+                primary=primary,
+                root=root_dir,
+                errors=errors,
+            )
             if human_status == "passed":
                 passed.append(anchor)
             elif human_status == "failed":
                 failed.append(anchor)
-            else:
+            elif human_status == "pending":
                 pending.append(anchor)
         else:
             passed.append(anchor)
