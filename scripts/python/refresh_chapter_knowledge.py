@@ -213,7 +213,9 @@ def closure_evidence(
     recomputed_coverage = audit_task_coverage(
         semantics, candidates, legacy_requirements, existing_tasks
     )
-    persisted_coverage = audit_persisted_semantic_coverage(semantics, existing_tasks)
+    persisted_coverage = audit_persisted_semantic_coverage(
+        semantics, existing_tasks, candidates
+    )
     errors: list[str] = []
     if persisted_coverage.get("status") != "ok":
         errors.append("persisted_task_semantic_coverage_not_passed")
