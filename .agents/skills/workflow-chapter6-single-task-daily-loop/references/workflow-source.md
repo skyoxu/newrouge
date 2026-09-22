@@ -72,4 +72,4 @@ Generated from the template repo `workflow.md` by `scripts/python/update_workflo
 - `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship`
 - `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile standard`
 - ``llm_review_needs_fix_fast.py`  `DELIVERY_PROFILE`  reviewer / diff / timeout`
-- `6.7  6.8 `fast-ship`  reviewer  `llm_review_needs_fix_fast.py`  6.7 `run_review_pipeline.py`  `minimal / targeted` tier  `code-reviewer + security-auditor` `full`  reviewer  `semantic-equivalence-auditor``
+- `6.7  6.8 `fast-ship`  reviewer  `llm_review_needs_fix_fast.py`  6.7 `run_review_pipeline.py`  `minimal / targeted` tier  `code-reviewer`  `Spec Compliance / Edge Case / Verification Gap` lenses`
