@@ -52,10 +52,12 @@ def resolve_profile_policy(
     if resolved_security not in {"host-safe", "strict"}:
         resolved_security = "host-safe"
 
-    default_fix_through = "P0" if resolved_profile == "playable-ea" else "P1"
+    default_fix_through = "P1"
     resolved_fix_through = str(fix_through or default_fix_through).strip().upper() or default_fix_through
-    if resolved_fix_through not in {"P0", "P1", "P2", "P3"}:
-        resolved_fix_through = default_fix_through
+    if resolved_fix_through == "P0":
+        raise ValueError("fix-through P0 is below the Chapter 6 P1 must-fix floor")
+    if resolved_fix_through not in {"P1", "P2", "P3", "P4"}:
+        raise ValueError(f"unsupported fix-through threshold: {resolved_fix_through}")
 
     return {
         "delivery_profile": resolved_profile,
@@ -64,7 +66,7 @@ def resolve_profile_policy(
         "execution_plan_policy": "warn" if resolved_profile == "playable-ea" else "draft",
         "red_verify": "auto" if resolved_profile == "standard" else "unit",
         "needs_fix_max_rounds": "1",
-        "record_residual": "true" if resolved_fix_through in {"P0", "P1"} else "false",
+        "record_residual": "true" if resolved_fix_through in {"P1", "P2", "P3"} else "false",
     }
 
 
@@ -860,11 +862,25 @@ def main() -> int:
     task_id = str(args.task_id).strip()
     out_dir = Path(str(args.out_dir).strip()) if str(args.out_dir).strip() else _default_out_dir(task_id)
     out_dir.mkdir(parents=True, exist_ok=True)
-    profile_policy = resolve_profile_policy(
-        str(args.delivery_profile),
-        security_profile=str(args.security_profile),
-        fix_through=str(args.fix_through),
-    )
+    try:
+        profile_policy = resolve_profile_policy(
+            str(args.delivery_profile),
+            security_profile=str(args.security_profile),
+            fix_through=str(args.fix_through),
+        )
+    except ValueError as exc:
+        payload = {
+            "cmd": "run-single-task-chapter6",
+            "task_id": task_id,
+            "status": "fail",
+            "stop_reason": "invalid_fix_through",
+            "error": str(exc),
+            "steps": [],
+            "out_dir": str(out_dir).replace("\\", "/"),
+        }
+        _write_json(out_dir / "summary.json", payload)
+        print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=invalid_fix_through")
+        return 2
 
     handoff = validate_handoff(args.frozen_context, args.impact_report, args.revision, repo_root=_repo_root(), consumer="chapter6", task_id=task_id, binding_evidence=args.binding_evidence)
     if not handoff.ok:
