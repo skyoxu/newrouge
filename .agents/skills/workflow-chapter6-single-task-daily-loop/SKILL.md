@@ -38,21 +38,21 @@ Use the top-level Chapter 6 orchestrator unless active-task or chapter6-route al
 
 ## Evidence Rule
 
-Chapter 6 has dense business-repo logs. Always read active-task, latest.json, summary.json, repair-guide, agent-review, and run-events before paying for another 6.7 or 6.8.
+Chapter 6 has dense business-repo logs. Start with `resume-task --recommendation-only` and `chapter6-route --recommendation-only`. Expand only the artifact needed for the next decision. Read `run-events.jsonl` only when event/turn ordering or incremental movement is relevant.
 
 A `logs/ci/knowledge-context/**` file is a separate shadow routing artifact. It is not part of `summary.json`, `execution-context.json`, `latest.json`, or the review sidecar protocol.
 
 ## Required Reading
 
-1. Read the relevant Chapter 6 section in the template repo `workflow.md`.
-2. Read `docs/workflows/knowledge-context-shadow.md` before using the optional pre-RED knowledge preflight.
-3. Optionally read `references/business-repos/<repo>.md` only as empirical validation evidence when the target business repo has a generated reference.
-4. If that optional evidence file is missing or stale, run `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` from the template repo.
+1. Read the relevant Chapter 6 section in `workflow.md`.
+2. Read current Task/Acceptance and only the related direct authority required by the changed surface.
+3. Read `docs/workflows/knowledge-context-shadow.md` only when using the optional pre-RED Knowledge preflight.
+4. Optionally read `references/business-repos/<repo>.md` as empirical evidence; it never defines production policy.
 
 ## Idempotent Procedure
 
-1. Read active-task first when a task id exists.
-2. Run resume-task and chapter6-route recommendation-only before expensive reruns.
+1. Run resume-task and chapter6-route recommendation-only before expensive reruns.
+2. Read active-task/latest/summary only when those compact recommendations need supporting producer evidence.
 3. After route recovery and before RED, optionally run the Chapter 6 shadow knowledge preflight from `docs/workflows/knowledge-context-shadow.md`. If it returns `fallback_required`, continue from direct authoritative sources. Do not issue another semantic Locator query during the same RED/GREEN/REFACTOR sequence.
 4. Use the TDD order 6.3, 6.4, 6.5, 6.6 before 6.7 unless recovery evidence says otherwise.
 5. Run 6.7 only when deterministic evidence is stale or required by changed implementation, tests, contracts, scripts, or runtime assets.
