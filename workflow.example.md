@@ -162,28 +162,13 @@ Ordering Constraints:
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
 
 
-如果 `check_tdd_execution_plan.py` 已经明显提示这是复杂任务，不要立刻手工加重所有步骤；先做两件事：
+先读 `check_tdd_execution_plan.py` 的 `required | recommended | none` 结果：
 
-1. 先补一个最小 `execution-plan`
-2. 再判断是否真的需要 Serena MCP
+- `required`：复用同 task/scope 的 active plan；没有则先建立最小可恢复 Execution Plan。
+- `recommended`：记录调查/跨 session 风险理由即可，不形成额外硬阻断。
+- `none`：直接继续 TDD，不创建 plan。
 
-只有当复杂度来自“代码语义不清”时，才触发 Serena，例如：
-
-- 不确定现有类 / 接口 / 服务是否已经存在
-- 不确定事件契约 / DTO / Contracts 命名是否已有约定
-- 需要 rename / refactor，并且担心跨文件引用影响
-- 需要快速理解依赖链和模块边界
-
-此时可以让 Codex / Serena 先做一轮最小语义检索：
-
-```text
-当前任务先执行 Serena MCP 语义检索，再继续实现。
-只保留与当前任务直接相关的 symbols / contracts / references。
-如果这些信息会影响实现边界，再写入 taskdoc/<id>.md；否则不要额外产出本地文档。
-如果 Serena MCP 不可用，不要阻塞任务，继续 Day 4 流程。
-```
-
-如果复杂度只是“测试文件多、`.cs` + `.gd` 混合、verify 更重”，通常不需要 Serena，直接继续 TDD 即可。
+测试文件多、`.cs + .gd`、anchors 多或 verify 更重都不是 plan trigger。只有代码语义边界确实不清时才使用 Serena（例如现有 symbols、Contracts/DTO/event 约定、rename/refactor 引用链）；只有这些检索结果会影响后续实现且 sidecars 不足以恢复时才写 `taskdoc/<id>.md`。
 统一 review pipeline：
 
 ```powershell
