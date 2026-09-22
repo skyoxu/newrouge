@@ -3,7 +3,7 @@
 - Title: Workflow optimization v2 execution plan
 - Status: active
 - Branch: feat/workflow-optimization-v2-impl
-- Git Head: implementation freeze `b419b08bf089a0ea61810a62ef675e7983e02acd` (this plan update is evidence-only and advances the branch head).
+- Git Head: n/a — this evidence-only plan update advances the branch head; implementation freeze is `b419b08bf089a0ea61810a62ef675e7983e02acd`.
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
 - Current step: Final Windows Quality/Smoke/MVG validation for the implementation freeze; authenticated live-model reviewer integration remains required when a runnable backend is available.
