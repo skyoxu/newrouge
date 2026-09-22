@@ -28,6 +28,7 @@ from _llm_review_prompting import (
     build_task_context,
     build_threat_model_context,
     normalize_host_safe_needs_fix,
+    parse_review_contract,
     parse_verdict,
     resolve_claude_agents_root,
     resolve_threat_model,
@@ -470,6 +471,24 @@ def main() -> int:
                 write_text(output_path, last_msg)
             if normalized_verdict:
                 verdict = normalized_verdict
+
+        review_contract, review_contract_errors = parse_review_contract(last_msg)
+        if review_contract_errors:
+            review_incomplete = True
+            had_warnings = True
+            if bool(args.strict):
+                hard_fail = True
+        elif isinstance(review_contract, dict):
+            contract_completion = str(review_contract.get("completion_status") or "").strip()
+            if contract_completion == "failed":
+                review_failed = True
+                hard_fail = True
+                had_warnings = True
+            elif contract_completion != "completed":
+                review_incomplete = True
+                had_warnings = True
+                if bool(args.strict):
+                    hard_fail = True
         if semantic_gate == "warn" and verdict != "OK":
             had_warnings = True
         if semantic_gate == "require" and verdict != "OK":
@@ -484,7 +503,7 @@ def main() -> int:
                 cmd=cmd,
                 prompt_path=str(prompt_path.relative_to(repo_root())).replace("\\", "/"),
                 output_path=str(output_path.relative_to(repo_root())).replace("\\", "/"),
-                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "verdict": verdict, "verdict_normalization": verdict_normalization, "note": "This step is best-effort. Use --strict to make it a hard gate."},
+                details={"execution_stage": execution_stage, "trace": str(trace_path.relative_to(repo_root())).replace("\\", "/"), "claude_agents_root": str(claude_agents_root), "agent_prompt_source": prompt_meta.get("agent_prompt_source"), "security_profile": security_profile_payload(security_profile), "total_timeout_sec": total_timeout_sec, "agent_timeout_sec": effective_timeout, "remaining_before_sec": remaining_before_sec, "prompt_budget": budget_meta, "prompt_shape": {**prompt_shape, **prompt_fit_meta}, "acceptance_semantic_meta": acceptance_semantic_meta, "verdict": verdict, "verdict_normalization": verdict_normalization, "review_contract": review_contract, "review_contract_errors": review_contract_errors, "note": "This step is best-effort. Use --strict to make it a hard gate."},
             )
         )
 
