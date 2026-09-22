@@ -48,8 +48,8 @@
 - 若出现 `llm_retry_stop_loss`，优先走窄路径收敛 LLM 结果，不要再付一整轮 deterministic 成本。
 - 若出现 `sc_test_retry_stop_loss`，说明同 run 的 unit 根因已被证明，先修根因，不要重复同参重跑。
 - 若 `recommended_action = needs-fix-fast`，优先做定向 closure，不要再盲目开整轮 `6.7`。
-- `sc-llm-review` now defers `semantic-equivalence-auditor` to a second stage: primary reviewers run first, and semantic only runs after they are clean.
-- If earlier reviewers already failed, timed out, or were skipped, semantic is recorded as a `deferred` skip instead of spending more tokens; `run_review_pipeline.py` also ignores this defer-skip when deriving reviewer subset reruns.
+- `sc-llm-review` defaults to one model reviewer and always applies `Spec Compliance / Edge Case / Verification Gap` lenses. Acceptance semantic context is required reviewer input rather than a persona-specific stage.
+- If required review input/lenses are missing or the prompt budget truncates required context, the review is incomplete/failed rather than an empty clean result.
 - If `active-task`, `resume-task`, or project-health already exposes `recommended_action_why`, use it to choose between `inspect`, `resume`, and `needs-fix-fast` before paying for another rerun.
 
 ## TDD 门禁编排（重要说明）
@@ -210,7 +210,7 @@ py -3 scripts/sc/run_review_pipeline.py --task-id 10 --godot-bin "$env:GODOT_BIN
 py -3 scripts/sc/run_review_pipeline.py --task-id 10 --godot-bin "$env:GODOT_BIN" --delivery-profile standard
 
 # Final closure pass for remaining Needs Fix items:
-# force full deterministic checks + full reviewer set and disable fast-path shortcuts
+# force full deterministic checks + full applicable lenses and disable fast-path shortcuts
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id 10 --delivery-profile standard --final-pass
 
 # Optional: explicit security override when you intentionally break the default mapping
@@ -273,3 +273,15 @@ py -3 scripts/sc/git.py commit --smart-commit --task-ref "#10.1"
 - If any summary field/structure or sidecar protocol changes under `scripts/sc`, update the matching schema in `scripts/sc/schemas/*.schema.json` in the same change set.
 - After this type of change, run at least once: `py -3 scripts/sc/run_review_pipeline.py --task-id 1 --dry-run --skip-llm-review`.
 - Do not commit summary-contract or sidecar-contract changes if this minimal self-check fails.
+
+
+## Verification Surfaces And Causal RED
+
+Optional `acceptance_verification` metadata lives on existing task views and is keyed by the existing `ACC:T<task>.<n>` anchor. Supported surfaces are `core-behavior`, `godot-scene`, `player-journey`, and `human-experience`. Old tasks without the field remain compatible.
+
+- `core-behavior` primary evidence includes xUnit `.cs`.
+- `godot-scene` primary evidence includes GdUnit `.gd` and is routed through the existing headless/GdUnit path.
+- `player-journey` may bind mixed existing evidence/MVG identities.
+- `human-experience` requires explicit human evidence; `pending` or `failed` never passes Acceptance.
+
+RED verification is causal. Timeout, missing reports, compile/environment failure, or generic non-zero exits are unverified and cannot satisfy RED. Use the existing targeted MVG mutation probe for selected high-risk falsifiability checks; it is not a default all-task gate.
