@@ -13,7 +13,7 @@ if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
 from _llm_review_acceptance import build_acceptance_semantic_context  # noqa: E402
-from _llm_review_engine import _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
+from _llm_review_engine import _REVIEW_LENSES_PROMPT, _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
 from _llm_review_prompting import build_task_context  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
@@ -91,6 +91,15 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         self.assertFalse(bool(execution_plan["semantic_deferred"]))
         self.assertEqual(["code-reviewer"], execution_plan["primary_llm_agents"])
         self.assertEqual(["Spec Compliance", "Edge Case", "Verification Gap"], execution_plan["review_lenses"])
+
+    def test_required_review_prompt_should_request_machine_readable_completion_contract(self) -> None:
+        self.assertIn("Review Contract JSON:", _REVIEW_LENSES_PROMPT)
+        self.assertIn("completion_status", _REVIEW_LENSES_PROMPT)
+        self.assertIn("Spec Compliance", _REVIEW_LENSES_PROMPT)
+        self.assertIn("Edge Case", _REVIEW_LENSES_PROMPT)
+        self.assertIn("Verification Gap", _REVIEW_LENSES_PROMPT)
+        self.assertIn("expected_protection", _REVIEW_LENSES_PROMPT)
+        self.assertIn("observed_protection", _REVIEW_LENSES_PROMPT)
 
     def test_fit_prompt_context_should_fallback_to_summary_diff_before_budget_truncation(self) -> None:
         prompt, meta = _fit_prompt_context(
