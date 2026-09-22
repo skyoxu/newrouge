@@ -308,6 +308,8 @@ def main() -> int:
     hard_fail = False
     had_warnings = False
     prompt_truncated_agents: list[str] = []
+    review_incomplete = False
+    review_failed = False
     deadline_ts = time.monotonic() + total_timeout_sec
 
     for agent in agents:
@@ -315,6 +317,9 @@ def main() -> int:
         remaining = int(deadline_ts - time.monotonic())
         if remaining <= 0:
             status = "fail" if args.strict else "skipped"
+            review_incomplete = True
+            if status == "fail":
+                review_failed = True
             had_warnings = True
             if status == "fail":
                 hard_fail = True
@@ -397,6 +402,7 @@ def main() -> int:
         prompt_used, budget_meta = apply_prompt_budget(prompt, max_chars=int(args.prompt_max_chars))
         if bool(budget_meta.get("truncated")):
             prompt_truncated_agents.append(agent)
+            review_incomplete = True
             had_warnings = True
             hard_fail = True
 
@@ -411,6 +417,7 @@ def main() -> int:
                 pass
 
         if bool(args.prompts_only):
+            review_incomplete = True
             had_warnings = True
             results.append(
                 ReviewResult(
@@ -442,8 +449,10 @@ def main() -> int:
 
         status = "ok" if (rc == 0 and last_msg.strip()) else ("fail" if args.strict else "skipped")
         if status != "ok":
+            review_incomplete = True
             had_warnings = True
         if status == "fail":
+            review_failed = True
             hard_fail = True
 
         semantic_gate = str(args.semantic_gate or "skip").strip().lower()
@@ -502,8 +511,8 @@ def main() -> int:
                 "required_lenses": list(_REQUIRED_REVIEW_LENSES),
             },
             "completion_status": (
-                "failed" if hard_fail
-                else "incomplete" if had_warnings
+                "failed" if review_failed
+                else "incomplete" if review_incomplete
                 else "completed"
             ),
             "results": [r.__dict__ for r in results],
