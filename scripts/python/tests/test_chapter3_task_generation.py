@@ -447,6 +447,27 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
         self.assertEqual(2, result["issue_count"])
         self.assertEqual(2, result["issue_counts"]["near_duplicate_title_prefix"])
 
+    def test_task_title_keys_preserve_mixed_unicode_and_chinese_part_focus(self) -> None:
+        normalize = _load_module("normalize_task_intents_mixed_unicode_key_test", "scripts/python/normalize_task_intents.py")
+        audit = _load_module("audit_task_intents_quality_mixed_unicode_key_test", "scripts/python/audit_task_intents_quality.py")
+
+        self.assertNotEqual(
+            normalize.title_key("实现UI战斗界面"),
+            normalize.title_key("实现UI商店界面"),
+        )
+        self.assertNotEqual(
+            normalize.title_key("实现第1部分：战斗规则"),
+            normalize.title_key("实现第1部分：商店规则"),
+        )
+        self.assertNotEqual(
+            audit.title_key("实现UI战斗界面"),
+            audit.title_key("实现UI商店界面"),
+        )
+        self.assertNotEqual(
+            audit.title_key("实现第1部分：战斗规则"),
+            audit.title_key("实现第1部分：商店规则"),
+        )
+
     def test_task_intent_quality_audit_should_treat_part_numbers_as_disambiguators(self) -> None:
         mod = _load_module("audit_task_intents_quality_part_key_test", "scripts/python/audit_task_intents_quality.py")
         result = mod.audit(
