@@ -67,6 +67,35 @@ class Chapter6RouteTests(unittest.TestCase):
             },
         }
 
+    def test_readiness_block_should_preserve_existing_run_diagnosis(self) -> None:
+        payload = {
+            "task_id": "15",
+            "run_id": "run-15",
+            "recommended_action": "inspect",
+            "recommended_command": "py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id 15",
+            "forbidden_commands": [],
+            "candidate_commands": {},
+            "latest_summary_signals": {"reason": "step_failed:sc-test"},
+            "chapter6_hints": {"next_action": "inspect", "blocked_by": "waste_signals"},
+            "inspection": {
+                "failure": {"code": "step-failed", "message": "deterministic test failed"},
+                "paths": {"latest": "logs/ci/example/latest.json"},
+            },
+        }
+        with (
+            mock.patch.object(chapter6_route, "build_resume_payload", return_value=(1, payload)),
+            mock.patch.object(chapter6_route, "load_task_readiness", return_value=(False, {}, "missing_chapter5_readiness")),
+        ):
+            rc, route = chapter6_route.route_chapter6(repo_root=REPO_ROOT, task_id="15")
+
+        self.assertEqual(3, rc)
+        self.assertEqual("fix-deterministic", route["preferred_lane"])
+        self.assertEqual("chapter5_readiness", route["blocked_by"])
+        self.assertEqual("return_to_chapter5", route["chapter6_next_action"])
+        self.assertFalse(route["execution_allowed"])
+        self.assertIn("inspect-run", route["diagnostic_recommended_command"])
+        self.assertIn("check-readiness", route["recommended_command"])
+
     def test_should_route_to_68_when_reviewer_anchor_fix_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
