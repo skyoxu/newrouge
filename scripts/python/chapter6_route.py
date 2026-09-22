@@ -170,7 +170,11 @@ def _classify_repo_noise(payload: dict[str, Any]) -> tuple[str, str]:
     return "task-issue", ""
 
 
-def _residual_reason_from_agent_review(agent_review: dict[str, Any]) -> tuple[bool, str]:
+def _residual_reason_from_agent_review(
+    agent_review: dict[str, Any],
+    *,
+    fix_through: str = "P1",
+) -> tuple[bool, str]:
     findings = agent_review.get("findings")
     if not isinstance(findings, list) or not findings:
         return False, "no_agent_review_findings"
@@ -179,7 +183,13 @@ def _residual_reason_from_agent_review(agent_review: dict[str, Any]) -> tuple[bo
         for item in findings
         if isinstance(item, dict)
     }
-    if severities & {"P0", "P1"}:
+    threshold = str(fix_through or "P1").strip().upper()
+    threshold_rank = {"P1": 1, "P2": 2, "P3": 3}.get(threshold, 1)
+    if any(
+        severity in {"P0", "P1", "P2", "P3", "P4"}
+        and int(severity[1]) <= threshold_rank
+        for severity in severities
+    ):
         return False, "must_fix_severity_finding_present"
     for item in findings:
         if not isinstance(item, dict):
@@ -191,7 +201,10 @@ def _residual_reason_from_agent_review(agent_review: dict[str, Any]) -> tuple[bo
             return False, "p1_floor_finding_present"
         if "artifact_integrity" in message or "planned-only" in message or "acceptance refs" in message:
             return False, "p1_floor_finding_present"
-    if severities & {"P2", "P3", "P4"}:
+    if any(
+        severity in {"P2", "P3", "P4"} and int(severity[1]) > threshold_rank
+        for severity in severities
+    ):
         return True, "only_deferrable_findings_remain"
     return False, "no_low_priority_findings"
 
@@ -246,6 +259,7 @@ def route_chapter6(
     latest: str = "",
     run_id: str = "",
     record_residual: bool = False,
+    fix_through: str = "P1",
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
     readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
@@ -310,7 +324,10 @@ def route_chapter6(
         and str(latest_summary_signals.get("reason") or "").strip().lower() != "planned_only_incomplete"
     )
 
-    residual_eligible, residual_reason = _residual_reason_from_agent_review(agent_review)
+    residual_eligible, residual_reason = _residual_reason_from_agent_review(
+        agent_review,
+        fix_through=fix_through,
+    )
     residual_recording: dict[str, Any] = {
         "eligible": residual_eligible,
         "reason": residual_reason,
@@ -385,7 +402,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-id", default="", help="Taskmaster task id.")
     parser.add_argument("--run-id", default="", help="Optional run id filter.")
     parser.add_argument("--latest", default="", help="Optional latest.json path.")
-    parser.add_argument("--record-residual", action="store_true", help="Write decision-log/execution-plan scaffolds when only low-priority findings remain.")
+    parser.add_argument("--record-residual", action="store_true", help="Record deferrable findings in docs/technical-debt.md.")
+    parser.add_argument("--fix-through", default="P1", choices=["P1", "P2", "P3"], help="Must-fix severity floor used by residual eligibility.")
     parser.add_argument("--out-json", default="", help="Optional output JSON path.")
     parser.add_argument("--out-md", default="", help="Optional output Markdown path.")
     parser.add_argument("--recommendation-only", action="store_true", help="Print a compact route summary.")
@@ -452,6 +470,7 @@ def main(argv: list[str] | None = None) -> int:
             latest=latest,
             run_id=str(args.run_id or "").strip(),
             record_residual=bool(args.record_residual),
+            fix_through=str(args.fix_through),
         )
     except Exception as exc:
         print(f"ERROR: failed to route chapter6 recovery: {exc}", file=sys.stderr)
