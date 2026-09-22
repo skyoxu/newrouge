@@ -209,6 +209,18 @@ class CrossRepoMigrationReconciliationTests(unittest.TestCase):
         self.assertTrue(any("changed-file inventory mismatch" in item for item in errors))
         self.assertIn("missed.py", errors[0])
 
+    def test_remote_source_verification_rejects_copy_exact_blob_identity_drift(self):
+        remote = {
+            "merge_commit": "a" * 40,
+            "changed_files": list(self.manifest["source"]["changed_files"]),
+        }
+        with (
+            mock.patch.object(migration, "fetch_github_source_inventory", return_value=remote),
+            mock.patch.object(migration, "_fetch_github_blob_sha", return_value="b" * 40),
+        ):
+            errors = migration.verify_source_github(self.manifest)
+        self.assertTrue(any("source_blob_sha mismatch" in item for item in errors))
+
     def test_remote_source_verification_rejects_merge_commit_drift(self):
         remote = {
             "merge_commit": "b" * 40,

@@ -1847,7 +1847,7 @@ def main() -> int:
         print("[sc-review-pipeline] ERROR: invalid --task-id")
         return 2
     readiness_ok, readiness_payload, readiness_reason = load_task_readiness(repo_root(), task_id)
-    if not readiness_ok:
+    if not readiness_ok and not args.abort:
         print(
             "[sc-review-pipeline] ERROR: chapter5_readiness: "
             + readiness_reason
@@ -1861,17 +1861,19 @@ def main() -> int:
         print("[sc-review-pipeline] ERROR: --resume, --abort, and --fork are mutually exclusive.")
         return 2
 
-    handoff = validate_handoff(
-        args.frozen_context,
-        args.impact_report,
-        args.revision,
-        repo_root=repo_root(),
-        consumer="review",
-        binding_evidence=args.binding_evidence,
-    )
-    if not handoff.ok:
-        print(f"[sc-review-pipeline] ERROR: {handoff.code}: {handoff.reason}")
-        return handoff.exit_code
+    handoff = None
+    if not args.abort:
+        handoff = validate_handoff(
+            args.frozen_context,
+            args.impact_report,
+            args.revision,
+            repo_root=repo_root(),
+            consumer="review",
+            binding_evidence=args.binding_evidence,
+        )
+        if not handoff.ok:
+            print(f"[sc-review-pipeline] ERROR: {handoff.code}: {handoff.reason}")
+            return handoff.exit_code
 
     requested_run_id = str(args.run_id or "").strip() or uuid.uuid4().hex
     run_id = requested_run_id
@@ -1981,6 +1983,41 @@ def main() -> int:
         print("[sc-review-pipeline] ERROR: no existing pipeline run found for resume/abort/fork.")
         return 2
 
+    if args.abort:
+        try:
+            delivery_profile, security_profile = _resolve_pipeline_profiles(
+                requested_delivery_profile=args.delivery_profile,
+                requested_security_profile=args.security_profile,
+                source_execution_context=source_execution_context,
+                inherit_from_source=True,
+                allow_profile_reselect=False,
+            )
+        except RuntimeError as exc:
+            print(f"[sc-review-pipeline] ERROR: {exc}")
+            return 2
+        current_turn_seq = max(1, int((marathon_state or {}).get("resume_count") or 1))
+        current_turn_id = build_turn_id(run_id=run_id, turn_seq=current_turn_seq)
+        append_run_event(
+            out_dir=out_dir,
+            event="run_aborted",
+            task_id=task_id,
+            run_id=run_id,
+            turn_id=current_turn_id,
+            turn_seq=current_turn_seq,
+            delivery_profile=delivery_profile,
+            security_profile=security_profile,
+            status="aborted",
+            details={
+                "reason": "operator_requested",
+                "chapter5_readiness": readiness_reason,
+            },
+        )
+        save_marathon_state(out_dir, mark_aborted(marathon_state, reason="operator_requested"))
+        _write_latest_index(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
+        _write_active_task_sidecar(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
+        print(f"SC_REVIEW_PIPELINE status=aborted out={out_dir}")
+        return 0
+
     reconciliation_path = reconciliation_path_for_task(repo_root(), task_id)
     try:
         reconciliation_payload = json.loads(reconciliation_path.read_text(encoding="utf-8"))
@@ -2033,7 +2070,7 @@ def main() -> int:
         "reconciliation_sha256": readiness_payload.get("reconciliation_sha256"),
     }
 
-    if handoff.ok and handoff.identity is not None:
+    if handoff is not None and handoff.ok and handoff.identity is not None:
         if source_handoff_identity is not None and source_handoff_identity != handoff.identity:
             print("[sc-review-pipeline] ERROR: invalid_kcp_binding: resume/fork handoff identity mismatch")
             return 11

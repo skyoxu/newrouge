@@ -250,7 +250,23 @@ def route_chapter6(
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
     readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
-    if not readiness_ok:
+    payload: dict[str, Any] = {}
+    has_existing_run = False
+    try:
+        _resume_rc, payload = build_resume_payload(
+            repo_root=root,
+            task_id=str(task_id or "").strip(),
+            latest=str(latest or "").strip(),
+            run_id=str(run_id or "").strip(),
+        )
+        has_existing_run = bool(
+            isinstance(payload, dict)
+            and (str(payload.get("run_id") or "").strip() or isinstance(payload.get("inspection"), dict))
+        )
+    except FileNotFoundError:
+        if readiness_ok:
+            raise
+    if not readiness_ok and not has_existing_run:
         return 3, {
             "task_id": str(task_id or "").strip(),
             "run_id": str(run_id or "").strip(),
@@ -273,12 +289,6 @@ def route_chapter6(
             "chapter5_readiness": readiness,
             "residual_recording": {"eligible": False, "performed": False},
         }
-    _, payload = build_resume_payload(
-        repo_root=root,
-        task_id=str(task_id or "").strip(),
-        latest=str(latest or "").strip(),
-        run_id=str(run_id or "").strip(),
-    )
     execution_context = _load_execution_context(root, payload)
     change_scope = _derive_change_scope(execution_context)
     changed_paths = [str(item or "").strip().replace("\\", "/") for item in list(change_scope.get("changed_paths") or []) if str(item or "").strip()]
@@ -352,9 +362,21 @@ def route_chapter6(
         "recommended_action_why": str(payload.get("recommended_action_why") or "").strip(),
         "latest_reason": str(latest_summary_signals.get("reason") or "").strip(),
         "chapter6_next_action": str(chapter6_hints.get("next_action") or "").strip(),
-        "blocked_by": str(chapter6_hints.get("blocked_by") or "").strip(),
+        "blocked_by": (
+            "chapter5_readiness"
+            if not readiness_ok
+            else str(chapter6_hints.get("blocked_by") or "").strip()
+        ),
+        "diagnostic_blocked_by": str(chapter6_hints.get("blocked_by") or "").strip(),
+        "chapter5_readiness": readiness,
+        "chapter5_readiness_reason": readiness_reason,
+        "execution_allowed": bool(readiness_ok),
         "residual_recording": residual_recording,
     }
+    if not readiness_ok:
+        route_payload["forbidden_commands"] = sorted(set(
+            route_payload["forbidden_commands"] + ["Chapter 6 RED/GREEN/REFACTOR", "new Review run"]
+        ))
     return 0, route_payload
 
 

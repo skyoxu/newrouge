@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from _semantic_topology import TOPOLOGY_ARTIFACTS, build_topology_view, unavailable_topology
-from audit_task_candidate_coverage import DEFAULT_TASK_VIEWS, audit as audit_task_coverage
+from audit_task_candidate_coverage import (
+    DEFAULT_TASK_VIEWS,
+    audit as audit_task_coverage,
+    audit_persisted_semantic_coverage,
+)
 from validate_semantic_conservation import validate as validate_semantic_conservation
 from chapter5_semantic_reconciliation import (
     DEFAULT_READINESS_DIR as CH5_READINESS_DIR,
@@ -209,7 +213,12 @@ def closure_evidence(
     recomputed_coverage = audit_task_coverage(
         semantics, candidates, legacy_requirements, existing_tasks
     )
+    persisted_coverage = audit_persisted_semantic_coverage(
+        semantics, existing_tasks, candidates
+    )
     errors: list[str] = []
+    if persisted_coverage.get("status") != "ok":
+        errors.append("persisted_task_semantic_coverage_not_passed")
     if str(source_manifest.get("source_revision") or "") != str(ledger.get("source_revision") or ""):
         errors.append("source_manifest_revision_mismatch")
     if str(source_manifest.get("manifest_sha256") or "") != str(ledger.get("source_manifest_sha256") or ""):
