@@ -67,7 +67,7 @@ def resolve_profile_policy(
         "execution_plan_policy": "warn" if resolved_profile == "playable-ea" else "draft",
         "red_verify": "auto" if resolved_profile == "standard" else "unit",
         "needs_fix_max_rounds": "1",
-        "record_residual": "true",
+        "record_residual": "true" if resolved_fix_through == "P1" else "false",
     }
 
 
@@ -92,7 +92,15 @@ def build_resume_task_cmd(task_id: str, *, frozen_context: str = "", impact_repo
     ]
 
 
-def build_chapter6_route_cmd(task_id: str, *, record_residual: bool, frozen_context: str = "", impact_report: str = "", revision: str = "") -> list[str]:
+def build_chapter6_route_cmd(
+    task_id: str,
+    *,
+    record_residual: bool,
+    fix_through: str = "P1",
+    frozen_context: str = "",
+    impact_report: str = "",
+    revision: str = "",
+) -> list[str]:
     cmd = [
         "py",
         "-3",
@@ -106,6 +114,7 @@ def build_chapter6_route_cmd(task_id: str, *, record_residual: bool, frozen_cont
     ]
     if record_residual:
         cmd.append("--record-residual")
+    cmd.extend(["--fix-through", str(fix_through or "P1")])
     return cmd
 
 
@@ -599,7 +608,7 @@ def build_execution_plan(
     )
     steps: list[dict[str, Any]] = [
         _build_step("resume-task", build_resume_task_cmd(task_id)),
-        _build_step("chapter6-route-initial", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+        _build_step("chapter6-route-initial", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
     ]
     if decision["initial_phase"]["action"] == "blocked":
         return {
@@ -628,14 +637,14 @@ def build_execution_plan(
                         revision=revision,
                     ),
                 ),
-                _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+                _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
             ]
         )
         if decision["post_review_phase"]["action"] == "needs-fix-fast":
             steps.extend(
                 [
                     _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
-                    _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+                    _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
                 ]
             )
             if decision["final_phase"]["action"] == "blocked":
@@ -668,7 +677,7 @@ def build_execution_plan(
         steps.extend(
             [
                 _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
-                _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+                _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
             ]
         )
         if decision["final_phase"]["action"] == "continue":
@@ -702,7 +711,7 @@ def build_execution_plan(
                     revision=revision,
                 ),
             ),
-            _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+            _build_step("chapter6-route-post-review", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
         ]
     )
 
@@ -710,7 +719,7 @@ def build_execution_plan(
         steps.extend(
             [
                 _build_step("needs-fix-fast", build_needs_fix_fast_cmd(task_id, profile_policy=profile_policy)),
-                _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual)),
+                _build_step("chapter6-route-post-needs-fix", build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"]))),
             ]
         )
         if decision["final_phase"]["action"] == "blocked":
@@ -961,7 +970,7 @@ def main() -> int:
     initial_route_step, initial_route = _run_json_step(
         out_dir,
         name="chapter6-route-initial",
-        cmd=build_chapter6_route_cmd(task_id, record_residual=record_residual),
+        cmd=build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"])),
     )
     summary["steps"].append(initial_route_step)
     summary["initial_route"] = initial_route
@@ -1043,7 +1052,7 @@ def main() -> int:
         step, payload = _run_json_step(
             out_dir,
             name=name,
-            cmd=build_chapter6_route_cmd(task_id, record_residual=record_residual),
+            cmd=build_chapter6_route_cmd(task_id, record_residual=record_residual, fix_through=str(profile_policy["fix_through"])),
         )
         summary["steps"].append(step)
         summary[name.replace("-", "_")] = payload
