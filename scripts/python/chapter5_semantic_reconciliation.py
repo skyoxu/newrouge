@@ -703,6 +703,23 @@ def _task_semantic_surface(task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extraction_b_content_digest(snapshot: dict[str, Any]) -> str:
+    """Hash the semantic Extraction B content while ignoring generation timestamp noise."""
+    payload = {
+        "schema_version": snapshot.get("schema_version"),
+        "status": snapshot.get("status"),
+        "source_revision": snapshot.get("source_revision"),
+        "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
+        "cache_key": snapshot.get("cache_key"),
+        "source_scope": snapshot.get("source_scope", []),
+        "source_scope_errors": snapshot.get("source_scope_errors", []),
+        "source_accounting": snapshot.get("source_accounting", []),
+        "semantic_inventory": snapshot.get("semantic_inventory", []),
+        "errors": snapshot.get("errors", []),
+    }
+    return "sha256:" + _canonical_sha(payload)
+
+
 def build_chapter5_input_fingerprint(
     root: Path,
     *,
@@ -719,6 +736,7 @@ def build_chapter5_input_fingerprint(
         "source_block_ledger_sha": "sha256:" + _sha_file(ledger_path) if ledger_path.is_file() else None,
         "extraction_b_snapshot_id": snapshot.get("extraction_b_snapshot_id"),
         "extraction_b_cache_key": snapshot.get("cache_key"),
+        "extraction_b_content_sha256": _extraction_b_content_digest(snapshot),
         "semantic_requirements_sha": "sha256:" + _sha_file(semantics_path) if semantics_path.is_file() else None,
         "task_semantic_surface": _task_semantic_surface(task),
         "authority_scope": authority_scope,
@@ -1060,12 +1078,13 @@ def reconcile(
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
         relation = str(decision.get("relation") or "").strip()
-        valid = action in {"keep", "remove"} and bool(reason)
-        if action == "keep":
+        effective_action = "keep" if action == "add" else action
+        valid = effective_action in {"keep", "remove"} and bool(reason)
+        if effective_action == "keep":
             valid = valid and relation in ALLOWED_DEPENDENCY_RELATIONS and bool(evidence)
         dependency_corrections.append({
             "dependency_id": dep,
-            "action": action if valid else "needs_human_decision",
+            "action": effective_action if valid else "needs_human_decision",
             "relation": relation,
             "dependency_reason": reason,
             "dependency_evidence": evidence,
@@ -1074,6 +1093,8 @@ def reconcile(
         if not isinstance(decision, dict) or str(decision.get("action") or "") != "add":
             continue
         dep = _canonical_task_id(decision.get("dependency_id"))
+        if dep in task["depends_on"]:
+            continue
         relation = str(decision.get("relation") or "").strip()
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
