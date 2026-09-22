@@ -1839,6 +1839,52 @@ def _run_acceptance_preflight(
     return session.finish()
 
 
+
+def _abort_existing_run_without_execution_gate(*, task_id: str, selector_run_id: str | None) -> int:
+    """Abort an already-created Review run without re-proving execution eligibility."""
+    try:
+        out_dir, summary, marathon_state = _load_source_run(task_id, selector_run_id)
+    except RuntimeError as exc:
+        print(f"[sc-review-pipeline] ERROR: {exc}")
+        return 2
+    except FileNotFoundError:
+        print("[sc-review-pipeline] ERROR: no existing pipeline run found for abort.")
+        return 2
+
+    run_id = str(summary.get("run_id") or selector_run_id or "").strip()
+    requested_run_id = str(summary.get("requested_run_id") or run_id).strip() or run_id
+    source_execution_context = _read_execution_context(out_dir)
+    delivery_profile = str(source_execution_context.get("delivery_profile") or "standard").strip() or "standard"
+    security_profile = str(source_execution_context.get("security_profile") or "standard").strip() or "standard"
+
+    marathon_state = marathon_state or load_marathon_state(out_dir) or build_initial_state(
+        task_id=task_id,
+        run_id=run_id,
+        requested_run_id=requested_run_id,
+        max_step_retries=0,
+        max_wall_time_sec=0,
+        summary=summary,
+    )
+    current_turn_seq = max(1, int((marathon_state or {}).get("resume_count") or 1))
+    current_turn_id = build_turn_id(run_id=run_id, turn_seq=current_turn_seq)
+    append_run_event(
+        out_dir=out_dir,
+        event="run_aborted",
+        task_id=task_id,
+        run_id=run_id,
+        turn_id=current_turn_id,
+        turn_seq=current_turn_seq,
+        delivery_profile=delivery_profile,
+        security_profile=security_profile,
+        status="aborted",
+        details={"reason": "operator_requested"},
+    )
+    save_marathon_state(out_dir, mark_aborted(marathon_state, reason="operator_requested"))
+    _write_latest_index(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
+    _write_active_task_sidecar(task_id=task_id, run_id=run_id, out_dir=out_dir, status="aborted")
+    print(f"SC_REVIEW_PIPELINE status=aborted out={out_dir}")
+    return 0
+
 def main() -> int:
     script_start_monotonic = time.monotonic()
     args = build_parser().parse_args()
@@ -1846,6 +1892,18 @@ def main() -> int:
     if not task_id:
         print("[sc-review-pipeline] ERROR: invalid --task-id")
         return 2
+    if bool(args.allow_overwrite) and bool(args.force_new_run_id):
+        print("[sc-review-pipeline] ERROR: --allow-overwrite and --force-new-run-id are mutually exclusive.")
+        return 2
+    if sum(bool(x) for x in (args.resume, args.abort, args.fork)) > 1:
+        print("[sc-review-pipeline] ERROR: --resume, --abort, and --fork are mutually exclusive.")
+        return 2
+    if args.abort:
+        return _abort_existing_run_without_execution_gate(
+            task_id=task_id,
+            selector_run_id=(str(args.run_id or "").strip() or None),
+        )
+
     readiness_ok, readiness_payload, readiness_reason = load_task_readiness(repo_root(), task_id)
     if not readiness_ok:
         print(
@@ -1854,12 +1912,6 @@ def main() -> int:
             + "; return to Chapter 5 before Review."
         )
         return 12
-    if bool(args.allow_overwrite) and bool(args.force_new_run_id):
-        print("[sc-review-pipeline] ERROR: --allow-overwrite and --force-new-run-id are mutually exclusive.")
-        return 2
-    if sum(bool(x) for x in (args.resume, args.abort, args.fork)) > 1:
-        print("[sc-review-pipeline] ERROR: --resume, --abort, and --fork are mutually exclusive.")
-        return 2
 
     handoff = validate_handoff(
         args.frozen_context,
