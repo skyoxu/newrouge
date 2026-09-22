@@ -444,8 +444,72 @@ def _load_task_rows(root: Path) -> list[dict[str, Any]]:
             task_id = _canonical_task_id(row.get("taskmaster_id") if row.get("taskmaster_id") is not None else row.get("id"))
             if not task_id:
                 continue
-            rows.append({"task_id": task_id, "view": view, "row": row})
+            rows.append({
+                "task_id": task_id,
+                "view": view,
+                "view_id": str(row.get("id") or "").strip(),
+                "row": row,
+            })
     return rows
+
+
+def _task_dependency_maps(
+    rows: list[dict[str, Any]],
+) -> tuple[dict[tuple[str, str], str], dict[str, str], dict[tuple[str, str], str], set[str], list[str]]:
+    scoped: dict[tuple[str, str], str] = {}
+    global_candidates: dict[str, set[str]] = {}
+    master_to_view: dict[tuple[str, str], str] = {}
+    master_ids: set[str] = set()
+    errors: list[str] = []
+    for item in rows:
+        master = str(item.get("task_id") or "").strip()
+        view = str(item.get("view") or "").strip()
+        view_id = str(item.get("view_id") or "").strip()
+        if not master:
+            continue
+        master_ids.add(master)
+        if not view_id:
+            continue
+        key = (view, view_id)
+        prior = scoped.get(key)
+        if prior and prior != master:
+            errors.append(f"ambiguous_view_task_id:{view}:{view_id}")
+        scoped[key] = master
+        global_candidates.setdefault(view_id, set()).add(master)
+        reverse = (view, master)
+        prior_view = master_to_view.get(reverse)
+        if prior_view and prior_view != view_id:
+            errors.append(f"ambiguous_taskmaster_view_id:{view}:{master}")
+        master_to_view[reverse] = view_id
+    global_unique = {
+        view_id: next(iter(values))
+        for view_id, values in global_candidates.items()
+        if len(values) == 1
+    }
+    errors.extend(
+        f"ambiguous_dependency_id:{view_id}"
+        for view_id, values in global_candidates.items()
+        if len(values) > 1
+    )
+    return scoped, global_unique, master_to_view, master_ids, sorted(set(errors))
+
+
+def _resolve_dependency_id(
+    value: Any,
+    *,
+    source_view: str | None,
+    scoped: dict[tuple[str, str], str],
+    global_unique: dict[str, str],
+    master_ids: set[str],
+) -> str | None:
+    raw = _canonical_task_id(value)
+    if not raw:
+        return None
+    if raw in master_ids:
+        return raw
+    if source_view and (source_view, raw) in scoped:
+        return scoped[(source_view, raw)]
+    return global_unique.get(raw)
 
 
 def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
@@ -453,6 +517,8 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
     semantic_refs: set[str] = set()
     capability_refs: set[str] = set()
     dependencies: set[str] = set()
+    unresolved_dependencies: set[str] = set()
+    scoped_ids, global_ids, _master_to_view, master_ids, identity_errors = _task_dependency_maps(rows)
     acceptance: list[str] = []
     overlap: set[str] = set()
     overlays: set[str] = set()
@@ -461,7 +527,18 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
         row = item["row"]
         semantic_refs.update(str(x) for x in row.get("semantic_refs", row.get("requirement_ids", [])) if str(x).strip())
         capability_refs.update(str(x) for x in row.get("capability_refs", []) if str(x).strip())
-        dependencies.update(_canonical_task_id(x) for x in row.get("depends_on", []) if _canonical_task_id(x))
+        for raw_dependency in row.get("depends_on", []):
+            resolved = _resolve_dependency_id(
+                raw_dependency,
+                source_view=str(item.get("view") or ""),
+                scoped=scoped_ids,
+                global_unique=global_ids,
+                master_ids=master_ids,
+            )
+            if resolved:
+                dependencies.add(resolved)
+            else:
+                unresolved_dependencies.add(str(raw_dependency))
         for value in row.get("acceptance", []):
             text = str(value or "").strip()
             if text and text not in acceptance:
@@ -474,6 +551,8 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
         "semantic_refs": sorted(semantic_refs),
         "capability_refs": sorted(capability_refs),
         "depends_on": sorted(dependencies),
+        "unresolved_dependencies": sorted(unresolved_dependencies),
+        "dependency_identity_errors": identity_errors,
         "acceptance": acceptance,
         "implementation_overlap_candidates": sorted(overlap),
         "overlay_refs": sorted(overlays),
@@ -1058,10 +1137,33 @@ def reconcile(
     dependency_decisions = decisions.get("dependency_decisions", [])
     if not isinstance(dependency_decisions, list):
         dependency_decisions = []
+    scoped_ids, global_ids, master_to_view, master_ids, identity_errors = _task_dependency_maps(task_rows)
+    selected_views = [str(item.get("view") or "") for item in task_rows if item.get("task_id") == str(task_id)]
+
+    def decision_dependency_id(value: Any) -> str:
+        raw = _canonical_task_id(value)
+        if raw in master_ids:
+            return raw
+        matches = {
+            resolved
+            for view in selected_views
+            for resolved in [
+                _resolve_dependency_id(
+                    raw,
+                    source_view=view,
+                    scoped=scoped_ids,
+                    global_unique=global_ids,
+                    master_ids=master_ids,
+                )
+            ]
+            if resolved
+        }
+        return next(iter(matches)) if len(matches) == 1 else ""
+
     dep_by_id = {
-        _canonical_task_id(row.get("dependency_id")): row
+        decision_dependency_id(row.get("dependency_id")): row
         for row in dependency_decisions
-        if isinstance(row, dict) and _canonical_task_id(row.get("dependency_id"))
+        if isinstance(row, dict) and decision_dependency_id(row.get("dependency_id"))
     }
     dependency_corrections: list[dict[str, Any]] = []
     for dep in task["depends_on"]:
@@ -1092,7 +1194,7 @@ def reconcile(
     for decision in dependency_decisions:
         if not isinstance(decision, dict) or str(decision.get("action") or "") != "add":
             continue
-        dep = _canonical_task_id(decision.get("dependency_id"))
+        dep = decision_dependency_id(decision.get("dependency_id"))
         if dep in task["depends_on"]:
             continue
         relation = str(decision.get("relation") or "").strip()
@@ -1108,7 +1210,7 @@ def reconcile(
 
     final_dependencies = set(task["depends_on"])
     for row in dependency_corrections:
-        dep = _canonical_task_id(row.get("dependency_id"))
+        dep = decision_dependency_id(row.get("dependency_id")) or _canonical_task_id(row.get("dependency_id"))
         if not dep:
             continue
         if row.get("action") == "remove":
@@ -1127,13 +1229,40 @@ def reconcile(
             })
 
     graph: dict[str, set[str]] = {}
+    unresolved_graph_dependencies: list[dict[str, str]] = []
     for item in task_rows:
         row = item["row"]
-        graph.setdefault(item["task_id"], set()).update(
-            _canonical_task_id(x) for x in row.get("depends_on", [])
-            if _canonical_task_id(x)
-        )
+        source = str(item["task_id"])
+        graph.setdefault(source, set())
+        for raw_dependency in row.get("depends_on", []):
+            resolved = _resolve_dependency_id(
+                raw_dependency,
+                source_view=str(item.get("view") or ""),
+                scoped=scoped_ids,
+                global_unique=global_ids,
+                master_ids=master_ids,
+            )
+            if resolved:
+                graph[source].add(resolved)
+            else:
+                unresolved_graph_dependencies.append({
+                    "task_id": source,
+                    "dependency_id": str(raw_dependency),
+                })
     graph[str(task_id)] = set(final_dependencies)
+    for row in unresolved_graph_dependencies:
+        findings.append({
+            "finding_type": "dependency",
+            "status": "invalid_dependency",
+            **row,
+            "reason": "dependency id cannot be resolved to a unique Taskmaster id",
+        })
+    for value in task.get("dependency_identity_errors", []) + identity_errors:
+        findings.append({
+            "finding_type": "dependency",
+            "status": "invalid_dependency",
+            "reason": value,
+        })
 
     def reaches(start: str, target: str, visiting: set[str]) -> bool:
         if start == target:
@@ -1297,14 +1426,24 @@ def apply_task_corrections(
         raise ValueError("cannot apply Chapter 5 task corrections while readiness is blocked")
     changed: list[str] = []
     final_dependencies = [
-        int(value) if str(value).isdigit() else str(value)
+        _canonical_task_id(value)
         for value in reconciliation.get("final_dependencies", [])
+        if _canonical_task_id(value)
     ]
+    task_rows = _load_task_rows(root)
+    _scoped, _global, master_to_view, master_ids, identity_errors = _task_dependency_maps(task_rows)
+    if identity_errors:
+        raise ValueError("cannot apply dependency corrections with ambiguous task identity: " + ",".join(identity_errors))
+    for dep in final_dependencies:
+        if dep not in master_ids:
+            raise ValueError(f"cannot apply unknown dependency Taskmaster id: {dep}")
+
     for view_path in DEFAULT_TASK_VIEWS:
         path = root / view_path
         payload = _load_json(path, [])
         if not isinstance(payload, list):
             continue
+        view = view_path.stem
         dirty = False
         for row in payload:
             if not isinstance(row, dict):
@@ -1314,7 +1453,15 @@ def apply_task_corrections(
             )
             if row_id != str(task_id):
                 continue
-            row["depends_on"] = final_dependencies
+            rendered_dependencies: list[str] = []
+            for dep in final_dependencies:
+                rendered = master_to_view.get((view, dep))
+                if not rendered:
+                    raise ValueError(
+                        f"cannot render dependency {dep} in {view}; cross-view dependency is unsupported"
+                    )
+                rendered_dependencies.append(rendered)
+            row["depends_on"] = rendered_dependencies
             row["dependency_status"] = "chapter5_stabilized"
             row["dependency_decisions"] = reconciliation.get("dependency_corrections", [])
             row["overlap_reviews"] = reconciliation.get("overlap_reviews", [])
@@ -1324,6 +1471,25 @@ def apply_task_corrections(
         if dirty:
             _write_json(path, payload)
             changed.append(view_path.as_posix())
+    master_path = root / ".taskmaster/tasks/tasks.json"
+    master_payload = _load_json(master_path, {})
+    master_tasks: list[dict[str, Any]] = []
+    if isinstance(master_payload, dict):
+        if isinstance(master_payload.get("master"), dict) and isinstance(master_payload["master"].get("tasks"), list):
+            master_tasks = master_payload["master"]["tasks"]
+        elif isinstance(master_payload.get("tasks"), list):
+            master_tasks = master_payload["tasks"]
+    elif isinstance(master_payload, list):
+        master_tasks = master_payload
+    master_dirty = False
+    for row in master_tasks:
+        if not isinstance(row, dict) or _canonical_task_id(row.get("id")) != str(task_id):
+            continue
+        row["dependencies"] = [int(dep) if dep.isdigit() else dep for dep in final_dependencies]
+        master_dirty = True
+    if master_dirty:
+        _write_json(master_path, master_payload)
+        changed.append(".taskmaster/tasks/tasks.json")
     return changed
 
 
