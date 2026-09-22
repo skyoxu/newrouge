@@ -57,7 +57,7 @@ class LlmReviewTierPlanTests(unittest.TestCase):
 
         self.assertEqual("auto", plan["requested_tier"])
         self.assertEqual("minimal", plan["effective_tier"])
-        self.assertEqual("architect-reviewer,code-reviewer", plan["agents"])
+        self.assertEqual("code-reviewer", plan["agents"])
         self.assertEqual("skip", plan["semantic_gate"])
         self.assertFalse(bool(plan["strict"]))
         self.assertEqual([], plan["escalation_reasons"])
@@ -103,7 +103,7 @@ class LlmReviewTierPlanTests(unittest.TestCase):
         )
 
         self.assertEqual("minimal", plan["effective_tier"])
-        self.assertEqual("code-reviewer,security-auditor", plan["agents"])
+        self.assertEqual("code-reviewer", plan["agents"])
         self.assertEqual("skip", plan["semantic_gate"])
         self.assertEqual([], plan["escalation_reasons"])
 
@@ -124,7 +124,7 @@ class LlmReviewTierPlanTests(unittest.TestCase):
         )
 
         self.assertEqual("targeted", plan["effective_tier"])
-        self.assertEqual("code-reviewer,security-auditor", plan["agents"])
+        self.assertEqual("code-reviewer", plan["agents"])
         self.assertEqual("warn", plan["semantic_gate"])
         self.assertEqual([], plan["escalation_reasons"])
 
