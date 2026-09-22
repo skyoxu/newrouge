@@ -403,7 +403,7 @@ def verify_source_github(doc: dict[str, Any], token: str = "") -> list[str]:
 
     repo = str(source.get("repo") or "")
     merge_commit = str(remote.get("merge_commit") or "")
-    for entry in doc.get("files", []):
+    for entry in doc.get("entries", []):
         if not isinstance(entry, dict) or str(entry.get("classification") or "") != "copy_exact":
             continue
         source_path = str(entry.get("source_path") or "")
