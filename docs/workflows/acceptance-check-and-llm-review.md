@@ -3,7 +3,7 @@
 本文件记录两个脚本的动机、演进与使用方式：
 
 - `scripts/sc/acceptance_check.py`：确定性“验收门禁”（目标对齐 Claude Code 的 `/acceptance-check`）
-- `scripts/sc/llm_review.py`：可选的“LLM 口头审查”（用于模拟 6 个 subagent 的审查视角，但默认不阻断）
+- `scripts/sc/llm_review.py`：Chapter 6 的模型审查入口；默认 Single Reviewer + `Spec Compliance / Edge Case / Verification Gap` lenses
 
 > 约束：Windows-only；所有输出统一落盘到 `logs/`（便于取证与排障）；脚本与文档均使用 UTF-8。
 
@@ -105,69 +105,51 @@ CI 集成说明（Windows Quality Gate）：
 
 ---
 
-## 3. `llm_review.py` 做什么（可选 LLM 口头审查）
+## 3. `llm_review.py` 做什么（Single Reviewer + Lenses）
 
 ### 3.1 目标与定位
 
-`scripts/sc/llm_review.py` 用来模拟“6 个 subagent 口头审查”的体验：
+Chapter 6 默认由一个 `code-reviewer` 完成模型审查。完整性来自固定审查方法，而不是 persona 数量：
 
-- 为每个角色生成一份审查输出，并落盘
-- 默认 **soft**：即使 LLM 失败/空输出，也不会阻断（返回 `warn`），避免被网络/限流卡死
+- `Spec Compliance`
+- `Edge Case`
+- `Verification Gap`
 
-它不替代 `acceptance_check.py`，只补充“建议性意见与留痕”。
+deterministic ADR/security/contract/test gates 仍是独立机器能力，不被模型 reviewer 替代。历史 multi-reviewer artifacts 保留为只读证据，但不能直接证明新的三-lens 审查已经完成。
 
-### 3.2 Prompt 来源（关键：读取你的 Claude agents）
+### 3.2 必需输入与预算
 
-脚本会加载以下 prompt（按优先级）：
+Reviewer 必须能获得当前 Task、Requirement/Acceptance、changed surface、相关架构权威和实际验证证据，或得到可解析的明确指针。Acceptance semantic context 不再绑定某个旧 reviewer 名称。
 
-1) 仓库内 `.claude/agents/*.md`（项目特定）
-   - `adr-compliance-checker`
-   - `performance-slo-validator`
-2) 用户目录的 lst97 四件套（社区 subagent）
-   - 默认路径：`%USERPROFILE%\\.claude\\agents\\lst97\\*.md`
-   - 可覆盖：`--claude-agents-root "C:\\Users\\weiruan\\.claude\\agents"` 或环境变量 `CLAUDE_AGENTS_ROOT`
+`diff summary` 和 compact context 只能导航。若某个 finding 需要源代码、调用方或验证证据，必须展开相应来源。预算截断导致 required input 或 lens 不完整时，review 状态应为 `incomplete` / `failed`，不能用空 findings 宣称 clean。
 
-在输出的 `summary.json` 中会记录 `agent_prompt_source`，你可以核对是否真的读到了预期文件。
+### 3.3 结果与完成状态
 
-### 3.3 输入、输出与状态
+输出继续落在既有 `logs/ci/<date>/sc-llm-review[-task-<id>]/` artifact 体系中。Findings 与 review completion 是两套语义：
 
-输入（选择一种 diff 视角）：
+- `completed`：适用 lenses 与必需输入已审查完成；仍可包含 Needs Fix findings。
+- `incomplete`：超时、必需输入缺失、lens 未完成或输出不足。
+- `failed`：调用/验证无法形成有效审查结果。
 
-- 对比某个 base：`--base main`（默认）
-- 审查未提交改动：`--uncommitted`
-- 审查某个提交：`--commit <sha>`
-
-输出目录：`logs/ci/<YYYY-MM-DD>/sc-llm-review/`
-
-- `review-<agent>.md`：每个角色的最终输出（`codex exec --output-last-message`）
-- `prompt-<agent>.md`：实际送入 LLM 的提示词（含 diff，做了截断）
-- `trace-<agent>.log`：执行痕迹（便于排障）
-- `summary.json`：汇总（`ok|warn|fail`）
-
-默认状态语义：
-
-- `ok`：LLM 调用成功且输出非空
-- `skipped`：调用失败/超时/空输出（默认不阻断）
-- `fail`：仅在 `--strict` 时出现（会阻断）
+finding severity 使用 P0/P1/P2/P3/P4。旧 high/medium/low 只通过统一 adapter 兼容，不用模糊标签猜 P0/P4。
 
 ### 3.4 用法示例（Windows）
 
 ```powershell
-# 1) 对比当前分支 vs main（最常用）
+# 默认 Chapter 6 模型 reviewer
 py -3 scripts/sc/llm_review.py --task-id 10 --base main
 
-# 2) 审查未提交改动
+# 审查未提交改动
 py -3 scripts/sc/llm_review.py --task-id 10 --uncommitted
 
-# 3) 指定只跑部分角色
-py -3 scripts/sc/llm_review.py --task-id 10 --base main --agents adr-compliance-checker,security-auditor
+# 兼容/诊断时可显式指定 reviewer；显式列表按原样保留
+py -3 scripts/sc/llm_review.py --task-id 10 --base main --agents code-reviewer
 
-# 4) 覆盖 Claude agents 根目录（可选）
-py -3 scripts/sc/llm_review.py --task-id 10 --base main --claude-agents-root "C:\Users\weiruan\.claude\agents"
-
-# 5) 强制硬门禁（不建议：会被网络/空输出误伤）
-py -3 scripts/sc/llm_review.py --task-id 10 --base main --strict
+# 只生成执行计划，不调用 live model
+py -3 scripts/sc/llm_review.py --task-id 10 --dry-run-plan
 ```
+
+6.8 使用 `llm_review_needs_fix_fast.py`，按未关闭 finding identity 与相关 changed surface 收缩；不同 findings 即使来自同一 reviewer 也不是重复问题。
 
 ---
 
