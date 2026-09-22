@@ -112,6 +112,74 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
             persisted = json.loads(json.dumps(payload, ensure_ascii=False))
             self.assertEqual("11", persisted["task_id"])
 
+    def test_structured_review_contract_should_drive_debt_and_respect_fix_through(self) -> None:
+        summary = {
+            "results": [
+                {
+                    "agent": "code-reviewer",
+                    "status": "ok",
+                    "output_path": "logs/review-code-reviewer.md",
+                    "details": {
+                        "review_contract": {
+                            "completion_status": "completed",
+                            "lenses": [],
+                            "findings": [
+                                {
+                                    "finding_id": "F-P2",
+                                    "claim": "P2 deferred polish",
+                                    "severity": "P2",
+                                    "disposition": {"action": "defer", "rationale": "allowed below P1 floor"},
+                                },
+                                {
+                                    "finding_id": "F-P3",
+                                    "claim": "P3 deferred cleanup",
+                                    "severity": "P3",
+                                    "disposition": {"action": "defer", "rationale": "allowed"},
+                                },
+                                {
+                                    "finding_id": "F-P4-FIX",
+                                    "claim": "P4 chosen for immediate fix",
+                                    "severity": "P4",
+                                    "disposition": {"action": "fix", "rationale": "do now"},
+                                },
+                            ],
+                        }
+                    },
+                }
+            ]
+        }
+
+        p1 = collect_low_priority_review_findings(summary=summary, fix_through="P1")
+        self.assertEqual(["F-P2", "F-P3"], [item["finding_id"] for item in p1])
+        p2 = collect_low_priority_review_findings(summary=summary, fix_through="P2")
+        self.assertEqual(["F-P3"], [item["finding_id"] for item in p2])
+        self.assertNotIn("F-P4-FIX", [item["finding_id"] for item in p1 + p2])
+
+    def test_structured_contract_should_not_fall_back_to_markdown_findings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            review_md = root / "review-code-reviewer.md"
+            review_md.write_text("## P2\n- stale markdown-only finding\n", encoding="utf-8")
+            summary = {
+                "results": [
+                    {
+                        "agent": "code-reviewer",
+                        "status": "ok",
+                        "output_path": str(review_md),
+                        "details": {
+                            "review_contract": {
+                                "completion_status": "completed",
+                                "lenses": [],
+                                "findings": [],
+                            }
+                        },
+                    }
+                ]
+            }
+
+            findings = collect_low_priority_review_findings(summary=summary, root=root)
+            self.assertEqual([], findings)
+
     def test_pipeline_adapter_should_read_real_llm_child_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
