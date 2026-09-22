@@ -181,6 +181,125 @@ def chapter5_closure_evidence(
     return report, not errors, "verified_chapter5_readiness" if not errors else ",".join(errors)
 
 
+def final_triplet_semantic_sink_evidence(
+    root: Path,
+    semantics: dict[str, Any],
+    candidates: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove Chapter 3 candidate sinks are materialized in the authoritative task triplet."""
+    view_rows: list[dict[str, Any]] = []
+    view_by_id: dict[str, dict[str, Any]] = {}
+    duplicate_view_ids: set[str] = set()
+    for value in DEFAULT_TASK_VIEWS:
+        payload = load_json(root / value, [])
+        if not isinstance(payload, list):
+            continue
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
+            view_rows.append(row)
+            view_id = str(row.get("id") or "").strip()
+            if view_id:
+                if view_id in view_by_id:
+                    duplicate_view_ids.add(view_id)
+                view_by_id[view_id] = row
+
+    master_payload = load_json(root / ".taskmaster/tasks/tasks.json", {})
+    master_ids: set[int] = set()
+    if isinstance(master_payload, dict):
+        for tag in master_payload.values():
+            tasks = tag.get("tasks", []) if isinstance(tag, dict) else []
+            for row in tasks if isinstance(tasks, list) else []:
+                if isinstance(row, dict) and isinstance(row.get("id"), int):
+                    master_ids.add(int(row["id"]))
+
+    errors: list[dict[str, Any]] = []
+    if duplicate_view_ids:
+        errors.append({
+            "reason": "duplicate_task_view_id",
+            "task_ids": sorted(duplicate_view_ids),
+        })
+
+    for candidate in candidates.get("candidates", []):
+        if not isinstance(candidate, dict):
+            continue
+        candidate_id = str(candidate.get("id") or "").strip()
+        expected_refs = sorted({
+            str(value) for value in candidate.get("semantic_refs", candidate.get("requirement_ids", []))
+            if str(value).strip()
+        })
+        row = view_by_id.get(candidate_id)
+        if row is None:
+            errors.append({
+                "reason": "candidate_not_materialized",
+                "candidate_id": candidate_id,
+                "expected_semantic_refs": expected_refs,
+            })
+            continue
+        actual_refs = sorted({
+            str(value) for value in row.get("semantic_refs", row.get("requirement_ids", []))
+            if str(value).strip()
+        })
+        if actual_refs != expected_refs:
+            errors.append({
+                "reason": "candidate_semantic_refs_mismatch",
+                "candidate_id": candidate_id,
+                "expected_semantic_refs": expected_refs,
+                "actual_semantic_refs": actual_refs,
+            })
+        taskmaster_id = row.get("taskmaster_id")
+        if not isinstance(taskmaster_id, int) or taskmaster_id not in master_ids:
+            errors.append({
+                "reason": "candidate_not_exported_to_master",
+                "candidate_id": candidate_id,
+                "taskmaster_id": taskmaster_id,
+            })
+
+    actual_by_requirement: dict[str, set[str]] = {}
+    for row in view_rows:
+        view_id = str(row.get("id") or row.get("taskmaster_id") or "").strip()
+        refs = row.get("semantic_refs", row.get("requirement_ids", []))
+        if not isinstance(refs, list):
+            continue
+        for rid in refs:
+            if str(rid).strip():
+                actual_by_requirement.setdefault(str(rid), set()).add(view_id)
+
+    missing_delivery_sinks: list[str] = []
+    for requirement in semantics.get("requirements", []):
+        if not isinstance(requirement, dict):
+            continue
+        if str(requirement.get("status", "active")).casefold() != "active":
+            continue
+        if requirement.get("delivery_relevant") is not True:
+            continue
+        rid = str(requirement.get("requirement_id") or "").strip()
+        non_task_sinks = [
+            sink for sink in requirement.get("non_task_sinks", [])
+            if isinstance(sink, dict)
+            and str(sink.get("type") or "") in {"global_constraint", "quality_gate", "adr", "adr_owned", "deferred", "exclusion"}
+            and str(sink.get("id") or "").strip()
+        ]
+        if rid and not actual_by_requirement.get(rid) and not non_task_sinks:
+            missing_delivery_sinks.append(rid)
+    if missing_delivery_sinks:
+        errors.append({
+            "reason": "active_delivery_requirement_missing_from_triplet",
+            "requirement_ids": sorted(missing_delivery_sinks),
+        })
+
+    return {
+        "schema_version": "chapter3.final-triplet-semantic-sink-evidence.v1",
+        "status": "passed" if not errors else "blocked",
+        "candidate_count": len([
+            row for row in candidates.get("candidates", []) if isinstance(row, dict)
+        ]),
+        "materialized_view_count": len(view_rows),
+        "master_task_count": len(master_ids),
+        "errors": errors,
+    }
+
+
 def closure_evidence(
     root: Path,
     source: str,
@@ -247,11 +366,19 @@ def closure_evidence(
     if persisted_report.get("blocking_counts", {}) != recomputed.get("blocking_counts", {}):
         errors.append("report_blocking_counts_mismatch")
 
-    passed = not errors and recomputed.get("status") == "passed"
-    if passed:
-        return recomputed, True, "verified_closure"
+    final_triplet = final_triplet_semantic_sink_evidence(root, semantics, candidates)
+    if final_triplet.get("status") != "passed":
+        errors.append("final_triplet_semantic_sink_not_materialized")
 
     effective = dict(recomputed)
+    effective_details = dict(effective.get("details", {}))
+    effective_details["final_triplet_semantic_sink"] = final_triplet
+    effective["details"] = effective_details
+
+    passed = not errors and recomputed.get("status") == "passed"
+    if passed:
+        return effective, True, "verified_closure"
+
     blocking = dict(effective.get("blocking_counts", {}))
     blocking["closure_evidence_invalid"] = 1
     effective["blocking_counts"] = blocking
