@@ -143,6 +143,7 @@ def _validate_row(
     label: str,
     row: dict[str, Any],
     root: Path,
+    require_evidence_files: bool,
     errors: list[str],
 ) -> tuple[str, str]:
     surface = str(row.get("verification_surface") or "").strip()
@@ -187,6 +188,20 @@ def _validate_row(
             f"{label}: player-journey primary_evidence must include an executable Game.Core.Tests .cs "
             "or Tests.Godot .gd test identity; integration MVG remains separate integration evidence"
         )
+
+    if require_evidence_files and surface in {"core-behavior", "godot-scene", "player-journey"}:
+        automated_primary = [
+            item
+            for item in primary
+            if is_core_test_identity(item) or is_godot_test_identity(item)
+        ]
+        missing = [
+            item
+            for item in automated_primary
+            if not _resolve_evidence_path(item, root=root).is_file()
+        ]
+        if missing:
+            errors.append(f"{label}: automated primary_evidence files do not exist: {missing}")
 
     if surface == "human-experience":
         if human_required is not True:
@@ -240,6 +255,7 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
                 label=label,
                 row=obligation,
                 root=root_dir,
+                require_evidence_files=root is not None,
                 errors=errors,
             )
             states.append(state)
