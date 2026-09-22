@@ -54,6 +54,7 @@ def main() -> int:
     ap.add_argument("--verify", choices=["none", "unit", "all", "auto"], default="auto")
     ap.add_argument("--execution-plan-policy", choices=["off", "warn", "draft", "require"], default="warn")
     ap.add_argument("--latest-json", default="", help="Optional latest.json path for execution-plan linkage.")
+    ap.add_argument("--coordination-signal", action="append", default=[], help="Explicit durable coordination signal; repeat as needed.")
     args = ap.parse_args()
 
     task_id = str(args.task_id).split(".", 1)[0].strip()
@@ -70,6 +71,7 @@ def main() -> int:
         task_id=task_id,
         tdd_stage=str(args.tdd_stage),
         verify=str(args.verify),
+        coordination_signals=list(args.coordination_signal or []),
     )
     active_plans = _policy.find_active_execution_plans(root, task_id=task_id)
     created_execution_plan = ""
@@ -77,7 +79,7 @@ def main() -> int:
     message = "No execution-plan escalation is required."
     signal_count = sum(1 for item in assessment.signals if item["active"])
 
-    if assessment.threshold_hit and not active_plans:
+    if assessment.decision == "required" and not active_plans:
         if str(args.execution_plan_policy) == "off":
             decision = "skip"
             message = "Complexity threshold hit, but policy=off leaves execution-plan handling to the operator."
@@ -99,6 +101,7 @@ def main() -> int:
             message = "Complexity threshold hit without an active execution plan and policy=require."
 
     payload = {
+        "plan_need": assessment.decision,
         "cmd": "sc-check-tdd-execution-plan",
         "task_id": task_id,
         "title": assessment.title,
@@ -128,7 +131,7 @@ def main() -> int:
         "SC_TDD_EXECUTION_PLAN "
         f"status={'fail' if failed else 'ok'} "
         f"policy={args.execution_plan_policy} "
-        f"threshold_hit={'true' if assessment.threshold_hit else 'false'} "
+        f"plan_need={assessment.decision} "
         f"signal_count={signal_count} "
         f"active_plans={len(active_plans)} "
         f"out={out_dir}"
