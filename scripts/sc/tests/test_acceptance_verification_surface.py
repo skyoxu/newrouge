@@ -130,6 +130,33 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                 self.assertEqual("fail", report["status"])
                 self.assertTrue(report["errors"])
 
+    def test_human_experience_pass_rejects_revision_or_conclusion_mismatch(self) -> None:
+        cases = (
+            ("revision_mismatch", "# playtest\n\nRevision: other\nResult: passed\n"),
+            ("missing_passed_conclusion", "# playtest\n\nRevision: abc123\nResult: pending\n"),
+        )
+        for case, content in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                evidence = root / "logs/manual/task-15-playtest.md"
+                evidence.parent.mkdir(parents=True, exist_ok=True)
+                evidence.write_text(content, encoding="utf-8")
+                triplet = self._triplet({
+                    "ACC:T15.1": {
+                        "verification_surface": "human-experience",
+                        "primary_evidence": ["logs/manual/task-15-playtest.md"],
+                        "secondary_evidence": [],
+                        "human_evidence_required": True,
+                        "human_evidence_status": "passed",
+                        "human_evidence_revision": "abc123",
+                    }
+                })
+
+                report = validate_acceptance_verification(triplet=triplet, root=root)
+
+                self.assertEqual("fail", report["status"])
+                self.assertTrue(any("passed human evidence must explicitly bind" in item for item in report["errors"]))
+
     def test_mixed_anchor_tracks_each_obligation_and_preserves_parent_anchor(self) -> None:
         triplet = self._triplet({
             "ACC:T15.1": {
@@ -198,6 +225,21 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
             self.assertEqual("fail", report["status"])
             self.assertEqual(["ACC:T15.1"], report["pending_anchors"])
             self.assertNotIn("ACC:T15.1", report["passed_anchors"])
+
+    def test_player_journey_rejects_document_only_primary_evidence(self) -> None:
+        triplet = self._triplet({
+            "ACC:T15.1": {
+                "verification_surface": "player-journey",
+                "primary_evidence": ["docs/testing/mvg/m1-critical.json"],
+                "secondary_evidence": [],
+                "human_evidence_required": False,
+            }
+        })
+
+        report = validate_acceptance_verification(triplet=triplet)
+
+        self.assertEqual("fail", report["status"])
+        self.assertTrue(any("executable .cs or .gd test identity" in item for item in report["errors"]))
 
     def test_player_journey_can_bind_mixed_existing_evidence(self) -> None:
         triplet = self._triplet({
