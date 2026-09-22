@@ -31,8 +31,10 @@ def _build_report_markdown(*, payload: dict) -> str:
         "",
         f"- Policy: {payload.get('policy', '')}",
         f"- Decision: {payload.get('decision', '')}",
+        f"- Need level: {payload.get('need_level', 'none')}",
         f"- Threshold hit: {payload.get('threshold_hit', False)}",
         f"- Signal count: {payload.get('signal_count', 0)}",
+        f"- Reasons: {', '.join(payload.get('reason_codes', [])) or 'none'}",
         f"- Missing refs: {payload.get('missing_refs_count', 0)}",
         f"- Anchor count: {payload.get('anchor_count', 0)}",
         f"- Active execution plans: {', '.join(payload.get('active_execution_plans', [])) or 'none'}",
@@ -54,6 +56,14 @@ def main() -> int:
     ap.add_argument("--verify", choices=["none", "unit", "all", "auto"], default="auto")
     ap.add_argument("--execution-plan-policy", choices=["off", "warn", "draft", "require"], default="warn")
     ap.add_argument("--latest-json", default="", help="Optional latest.json path for execution-plan linkage.")
+    ap.add_argument(
+        "--plan-signal",
+        action="append",
+        default=[],
+        choices=sorted(_policy.REQUIRED_PLAN_SIGNALS | _policy.RECOMMENDED_PLAN_SIGNALS),
+        help="Persistent coordination/recovery signal. May be repeated.",
+    )
+    ap.add_argument("--plan-reason", default="", help="Short observable reason for the declared plan signal.")
     args = ap.parse_args()
 
     task_id = str(args.task_id).split(".", 1)[0].strip()
@@ -70,6 +80,8 @@ def main() -> int:
         task_id=task_id,
         tdd_stage=str(args.tdd_stage),
         verify=str(args.verify),
+        plan_signals=list(args.plan_signal or []),
+        plan_reason=str(args.plan_reason or ""),
     )
     active_plans = _policy.find_active_execution_plans(root, task_id=task_id)
     created_execution_plan = ""
@@ -77,13 +89,13 @@ def main() -> int:
     message = "No execution-plan escalation is required."
     signal_count = sum(1 for item in assessment.signals if item["active"])
 
-    if assessment.threshold_hit and not active_plans:
+    if assessment.need_level == "required" and not active_plans:
         if str(args.execution_plan_policy) == "off":
             decision = "skip"
-            message = "Complexity threshold hit, but policy=off leaves execution-plan handling to the operator."
+            message = "A durable plan is required by persistent coordination signals, but policy=off leaves enforcement to the operator."
         elif str(args.execution_plan_policy) == "warn":
             decision = "warn"
-            message = "Complexity threshold hit without an active execution plan. Create one before starting long test-generation work."
+            message = "A durable plan is required by persistent coordination signals; create or bind one before staged writes."
         elif str(args.execution_plan_policy) == "draft":
             created_execution_plan = _policy.create_execution_plan_draft(
                 repo_root=root,
@@ -93,10 +105,13 @@ def main() -> int:
                 latest_json=str(args.latest_json),
             )
             decision = "draft"
-            message = f"Complexity threshold hit; created execution plan draft at {created_execution_plan}."
+            message = f"Persistent coordination requires a durable plan; created draft at {created_execution_plan}."
         else:
             decision = "require_failed"
-            message = "Complexity threshold hit without an active execution plan and policy=require."
+            message = "Persistent coordination requires an active execution plan and policy=require."
+    elif assessment.need_level == "recommended" and not active_plans:
+        decision = "recommended"
+        message = "A durable plan is recommended for the declared risk, but it is not an execution gate."
 
     payload = {
         "cmd": "sc-check-tdd-execution-plan",
@@ -106,6 +121,8 @@ def main() -> int:
         "tdd_stage": str(args.tdd_stage),
         "verify": str(args.verify),
         "threshold_hit": assessment.threshold_hit,
+        "need_level": assessment.need_level,
+        "reason_codes": assessment.reason_codes,
         "signal_count": signal_count,
         "signals": assessment.signals,
         "refs_total": assessment.refs_total,
@@ -128,6 +145,7 @@ def main() -> int:
         "SC_TDD_EXECUTION_PLAN "
         f"status={'fail' if failed else 'ok'} "
         f"policy={args.execution_plan_policy} "
+        f"need_level={assessment.need_level} "
         f"threshold_hit={'true' if assessment.threshold_hit else 'false'} "
         f"signal_count={signal_count} "
         f"active_plans={len(active_plans)} "
