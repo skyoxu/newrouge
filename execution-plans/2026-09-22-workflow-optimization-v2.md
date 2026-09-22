@@ -3,13 +3,13 @@
 - Title: Workflow optimization v2 execution plan
 - Status: active
 - Branch: feat/workflow-optimization-v2-impl
-- Git Head: bd016396db2c70fa22c6374bd2bb34ab923fb455
+- Git Head: implementation freeze `a5e974945ce8291ed435a8572262009490f6fd56` (this plan update is evidence-only and advances the branch head).
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
-- Current step: Formal Windows CI remediation and acceptance-matrix closure.
-- Last completed step: Phases A-E implementation landed; Windows Smoke #806 passed; first Windows Quality #806 exposed only recovery-plan metadata and stale Single Reviewer test-contract expectations.
+- Current step: Validate the implementation freeze with latest Windows Quality/Smoke/MVG evidence and perform the required live-model reviewer integration when an authenticated backend is available.
+- Last completed step: Phases A-E implementation and hard-regression closure landed through `a5e974945ce8291ed435a8572262009490f6fd56`; the previously validated checkpoint `9eead8913aebb1c4907941352acbf6412a9394db` passed Windows Quality #872, Windows Smoke #872, and MVG Integration #70 before the final closure deltas below.
 - Stop-loss: Do not alter Chapter 3→4→5→6→7 authority order, Taskmaster status ownership, Contract SSoT, Chapter 5 readiness execution ban, persistent harness recovery protocol, or global Knowledge publication boundaries. Record out-of-scope defects instead of widening the initiative.
-- Next action: Re-run Windows Quality/Smoke after CI-contract fixes; then audit A1-E4 evidence coverage and record representative-path/live-model/human limitations without inferring unexecuted evidence.
+- Next action: Require latest-head Windows Quality/Smoke/MVG success. Then run one authenticated live-model code-reviewer input/output integration check against the Single Reviewer + lenses contract; if no backend is available, keep that item explicitly unverified and do not mark this plan done.
 - Recovery command: py -3 -m unittest scripts.sc.tests.test_review_technical_debt scripts.sc.tests.test_check_tdd_execution_plan scripts.python.tests.test_chapter6_route
 - Open questions: Internal schema layout for verification_surface metadata will be selected during Phase D against actual task/acceptance structures; no second Acceptance authority may be introduced.
 - Exit criteria: All required scenarios A1-A4, K1-K3, B1-B5, C1-C5, D1-D7, E1-E4 are covered by targeted regression/integration evidence; required Windows Quality/Smoke are green; no P0/P1 or explicit fix-through must-fix finding remains; unverified live-model/human evidence is called out rather than inferred.
@@ -98,3 +98,63 @@
   - Current workflow/profile/SC/Agent/Skill docs are being synchronized; historical multi-reviewer artifacts remain read-only.
 
 Formal Windows CI, representative real task paths, and a real live-model reviewer invocation remain pending and must not be inferred from mock/unit coverage.
+
+## Phase A-E closure record
+
+### Phase A — context routing
+
+- `AGENTS.md` is a route table rather than a fixed preload stack; cross-domain work composes the required routes.
+- `docs/agents/01-session-recovery.md` is compact recommendation-first and expands events/sidecars only when the decision requires them.
+- `scripts/python/tests/test_agent_context_routing.py` hardens A2/A3/K3: Chapters 3/4/5/7 do not inherit Chapter 6 recovery preload, cross-domain Architecture/Contract + Testing/MVG sources remain composable, and bounded Knowledge cannot silently widen after RED.
+- Fresh Chapter 6 tasks continue through the existing no-latest preflight path; recovery keeps recommendation-only read semantics.
+
+### Phase B — residual / debt / plan policy
+
+- `_technical_debt.py` adapts the real `sc-llm-review` child `summary_file`, preserves unreviewed findings, and updates by stable finding identity.
+- Residual recording writes the existing `docs/technical-debt.md`; it no longer auto-creates Decision Log + Execution Plan pairs.
+- P1 is the delivery floor for playable-ea/fast-ship/standard; explicit weaker P0 is rejected and stricter P2/P3 fix-through remains binding.
+- `_execution_plan_policy.py` now uses durable recovery/coordination signals. `recommended` is advisory/non-blocking; test-file count, mixed file types and verify weight do not mechanically require a plan.
+
+### Phase C — Single Reviewer + lenses
+
+- Chapter 6 model review defaults to one `code-reviewer` with Spec Compliance / Edge Case / Verification Gap.
+- Required Acceptance semantic input is reviewer-independent and cannot be silently dropped to manufacture a clean result.
+- Findings use stable identity/claim/anchor/required-action signatures; two different findings from the same reviewer are not repeat stop-loss.
+- Deterministic changed-path surface focus selects at most three relevant methods (Save/Load, Contract/EventBus, UI/Scene, State Machine, Security, Performance). These are methods, not personas, and are recorded in reviewer artifacts.
+- `--final-pass` means complete deterministic evidence plus the single reviewer’s complete applicable lenses/changed-surface review; it does not restore the historical model persona roster.
+
+### Phase D — verification surfaces / causal RED
+
+- Existing task-view Acceptance authority carries optional `acceptance_verification`; mixed anchors use obligation-level entries and preserve the parent anchor.
+- `core-behavior`, `godot-scene`, `player-journey`, and `human-experience` have distinct evidence rules. Human pending/failed is non-passing; passed human evidence is revision-bound.
+- Legacy `.cs/.gd` Acceptance refs produce read-only migration candidates using the existing allowed-test-path policy. Mixed, subjective, or ambiguous rows remain `needs-confirmation`; candidate inference never writes task authority.
+- Causal RED requires the current `sc-test` run identity, the selected target test identity, and a target assertion failure. Timeout, compile/environment failure, missing reports, zero tests, and unrelated unit/GdUnit failures are rejected.
+- Existing correct tests are reused as regressions: when all bound test files already exist, red-first does not call the primary-ref LLM selector or manufacture a RED.
+- GREEN prerequisite is obligation-aware: pure human-experience may start implementation from explicit manual preflight/pending evidence; any automated or unclassified obligation still requires the machine RED chain.
+- MVG critical/full keeps producer/consumer tasks as done prerequisites, while a dedicated owner-only integration task does not require itself to be done for the same MVG run. Existing m1-critical/m1-full/reward-pilot blocker sets are unchanged.
+
+### Phase E — recovery convergence
+
+- `_chapter6_recovery_common.py` remains the common execution-permission and compact recovery projection layer; Chapter 5 readiness fails closed before execution.
+- Resume/inspect compact projection has a hard parity regression for action/blocked/approval/forbidden fields.
+- Approval, planned-only terminal bundles, artifact integrity, rerun guard, deterministic reuse invalidation and code/task-semantics invalidation keep their existing producer-authority semantics.
+- 6.9 remains `run-local-hard-checks --skip-project-health`; target-test success cannot override a later repository/hard-check regression failure.
+
+## Acceptance matrix snapshot
+
+| IDs | Evidence status |
+| --- | --- |
+| A1-A4 | Covered by existing fresh-task/recovery tests plus hard context-routing contract. Recommendation-only remains read-only by default. |
+| K1-K3 | Knowledge fallback and handoff tests remain hard-gated; new routing regression forbids mid-TDD semantic Locator widening. |
+| B1-B5 | Covered by Technical Debt adapter/preservation/error tests, P1/fix-through tests, and required/recommended/none plan-policy tests. |
+| C1-C5 | Covered by prompt-shaping, review-contract, finding-signature, timeout/incomplete, single-reviewer normalization, surface-focus and final-pass tests. |
+| D1-D7 | Covered by target-bound RED tests, generator existing-regression test, verification-surface/mixed/human tests, MVG scope/runtime tests, and owner-only integration-task regression. |
+| E1-E4 | Covered by compact recovery parity, readiness/approval/artifact-integrity tests, snapshot/change invalidation tests, and hard-check fail-fast behavior. |
+
+## Formal validation evidence and limits
+
+- Confirmed earlier implementation checkpoint `9eead8913aebb1c4907941352acbf6412a9394db`: Windows Quality Gate #872 success, Windows Smoke #872 success, MVG Integration #70 success.
+- The final closure deltas after that checkpoint are intentionally not inferred from the earlier green run. Latest-head Windows Quality/Smoke/MVG must be green before this plan can move past formal CI validation.
+- Windows Smoke is the authoritative dedicated Godot/GdUnit/headless smoke signal. Soft-gate warnings in Quality remain non-authoritative for gameplay runtime completion.
+- No authenticated live-model reviewer input/output integration run is recorded yet for the final Single Reviewer contract. Unit/mock prompt tests do not satisfy that requirement.
+- This workflow-maintenance initiative does not create human gameplay approval on behalf of a product task. Human-experience semantics are validated through the evidence contract and isolated fixtures; a real feature still requires its own bound human evidence when applicable.
