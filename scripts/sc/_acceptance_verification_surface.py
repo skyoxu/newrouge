@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +43,49 @@ def _resolve_evidence_path(value: str, *, root: Path) -> Path:
     return path if path.is_absolute() else (root / path)
 
 
+def _human_evidence_confirms_pass(path: Path, *, revision: str) -> bool:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return False
+
+    revision_value = str(revision or "").strip()
+    if not revision_value:
+        return False
+
+    if path.suffix.lower() == ".json":
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            evidence_revision = str(
+                payload.get("revision")
+                or payload.get("git_revision")
+                or payload.get("commit")
+                or payload.get("version")
+                or ""
+            ).strip()
+            conclusion = str(
+                payload.get("result")
+                or payload.get("status")
+                or payload.get("verdict")
+                or payload.get("conclusion")
+                or ""
+            ).strip().lower()
+            if evidence_revision == revision_value and conclusion == "passed":
+                return True
+
+    if revision_value.casefold() not in text.casefold():
+        return False
+    return bool(
+        re.search(
+            r"(?im)^\s*(?:result|status|verdict|conclusion)\s*:\s*passed\s*$",
+            text,
+        )
+    )
+
+
 def _validate_human_evidence(
     *,
     label: str,
@@ -57,9 +102,14 @@ def _validate_human_evidence(
         revision = str(row.get("human_evidence_revision") or "").strip()
         if not revision:
             errors.append(f"{label}: passed human evidence requires human_evidence_revision")
-        missing = [item for item in primary if not _resolve_evidence_path(item, root=root).is_file()]
+        paths = [(item, _resolve_evidence_path(item, root=root)) for item in primary]
+        missing = [item for item, path in paths if not path.is_file()]
         if missing:
             errors.append(f"{label}: passed human evidence files do not exist: {missing}")
+        elif revision and not any(_human_evidence_confirms_pass(path, revision=revision) for _item, path in paths):
+            errors.append(
+                f"{label}: passed human evidence must explicitly bind revision={revision} and a passed conclusion"
+            )
     return status
 
 
@@ -117,6 +167,15 @@ def _validate_row(
         errors.append(f"{label}: core-behavior primary_evidence must include an xUnit .cs identity")
     if surface == "godot-scene" and primary and not any(item.lower().endswith(".gd") for item in primary):
         errors.append(f"{label}: godot-scene primary_evidence must include a GdUnit .gd identity")
+
+    if surface == "player-journey" and primary and not any(
+        item.lower().endswith((".cs", ".gd"))
+        for item in primary
+    ):
+        errors.append(
+            f"{label}: player-journey primary_evidence must include an executable .cs or .gd test identity; "
+            "integration MVG manifests remain separate integration evidence"
+        )
 
     if surface == "human-experience":
         if human_required is not True:
