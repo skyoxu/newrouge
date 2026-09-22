@@ -960,16 +960,16 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - 重跑前先读最近一轮 `summary.json` 和 `latest.json` 里的 `reason`、`reuse_mode` 与 `diagnostics`；这些字段会明确标出 `rerun_guard`、`reuse_decision`、`acceptance_preflight`、`llm_timeout_memory`。
 - When the same run already proved `sc-test` / `sc-acceptance-check` green and the first long `sc-llm-review` wait timed out, the pipeline now stops inside that run and writes evidence to `diagnostics.llm_retry_stop_loss`. Even a manual reviewer-only rerun (`--skip-test --skip-acceptance`) is blocked when recent reviewer-only attempts keep repeating the same Needs Fix family; switch to `needs-fix-fast` or record the residual findings instead of reopening 6.7.
 - `active-task` 的 `Chapter6 blocked by` 现在会区分 `rerun_guard`、`llm_retry_stop_loss`、`sc_test_retry_stop_loss`、`waste_signals`：前者表示不要再重复付 deterministic 成本，第二项表示优先走 llm-only follow-up，第三项表示同 run 的 unit 重试已经止损，最后一项表示先停掉无效 engine lane 成本并修 unit/root-cause。
-- reviewer 超时扩时现在会继承最近同任务 / 同 profile 的 agent 级超时历史；继续 timeout 时只定向放大该 reviewer，而不是整体抬高全部 reviewer。
+- 模型审查超时扩时只针对当前单一 `code-reviewer` 的有效新 run 预算；历史多 persona 的 per-agent timeout memory 不直接套到新 reviewer。deterministic reviewers 继续使用各自机器门禁预算。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
   - `fast-ship`：默认 `max_step_retries = 1`。模型审查默认使用单 `code-reviewer`，通过固定 `Spec Compliance / Edge Case / Verification Gap` lenses 覆盖代码、语义与验证；tier 只调整 diff/预算/严格度，不通过增加 persona 补语义。
   - `standard`：默认 `max_step_retries = 0`，保留更重的收口姿态，不自动帮你放宽执行节奏。
 - 当 deterministic 已绿且只剩 review 问题时，6.8 按稳定 finding/claim/anchor/required action 与 changed surface 窄化复审范围；单 reviewer 身份本身不再作为“问题相同”或“问题不同”的依据。
 - 新开 `6.7` 时，默认会继承最近同任务成功解析出来的 `delivery/security profile` 组合；如果你明确要切换 profile，必须显式传 `--reselect-profile`，否则会因 task 级 profile lock 失败。
-- 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
+- 如果上一次同任务 `sc-llm-review` 的单 `code-reviewer` 发生 `rc=124` timeout，6.7 只调整该 reviewer 的预算；不会通过恢复旧模型 persona roster 来解决超时。
 - `--llm-base` 的默认值现在是 `origin/main`；除非你明确需要对比别的基线，否则不要手工改回 `main`。
-- 只有当最近两轮 6.7 都出现总超时，或大部分 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
+- 只有当最近两轮 6.7 的单 reviewer 持续 `rc=124`，且定向扩时仍然不够时，才手工加大总超时，例如：`py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship --llm-timeout-sec 900`。
 - 不要把大超时当作默认配置；首选仍然是“先按默认预算跑，再对命中过 timeout 的 reviewer 定向补时”。
 - 如果最近一轮已经写出 `diagnostics.llm_retry_stop_loss`、`diagnostics.sc_test_retry_stop_loss`，或 `Chapter6 blocked by` 明确要求止损，不要试图靠加预算绕过 stop-loss；先修 deterministic 根因，或切到 6.8 / residual。
 - 如果失败主因是 `artifact_integrity`、`planned_only_incomplete`、重复 deterministic failure family、repo noise、锁进程，这些都不是“再加 300 秒”能解决的问题；直接止损，先处理根因。
@@ -1086,7 +1086,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
   - `standard`：`agents=code-reviewer`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
 - 注意区分 6.7 和 6.8：两者都默认使用同一个模型 reviewer；6.7 是完整适用 lenses 的审查，6.8 按未关闭 findings/相关 changed surface 做窄复审。deterministic reviewers 仍是独立机器能力，不等同新增模型 persona。
 - 快速清理脚本会把 `--delivery-profile` 继续透传给内部 `run_review_pipeline.py`，避免第 6.8 里外 profile 漂移。
-- 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
+- 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只复审上轮未关闭 findings 与相关 changed surface，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
 - 只有当本轮改动直接命中了上一轮 reviewer 给出的锚点问题时，才值得立刻再跑 6.8。没有新修复内容时，重复跑 6.8 只是重复支付 LLM 成本。
 - 这一步也应优先由 `chapter6-route --recommendation-only` 来判断：只有它给出 `preferred_lane = run-6.8` 时，才继续付 6.8 的 LLM 成本；如果输出是 `record-residual` 或 `inspect-first`，先记录或止损。
@@ -1094,7 +1094,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - If the previous 6.8 round exited on timeout, produced no new actionable finding, and `final_needs_fix_agents` is still empty, stop and inspect the artifacts instead of repeating the same parameters. Prefer the `Recommended command` from `resume-task` / active-task, and treat `Forbidden commands` as explicit stop-loss boundaries.
 - 如果上一轮只剩 `Unknown/timeout`，而本轮改动没有命中 reviewer 相关锚点（代码、测试、contracts、tasks/overlays/ADR、review 模板），默认直接止损，不再重复支付 6.8。
 - 6.8 的 round 摘要现在会额外记录 `timeout_agents` 与 `failure_kind`；当出现 `timeout-no-summary` 时，优先把它当“观测不足”，而不是把 `status=ok` 误判为 clean。
-- 首轮 reviewer 会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，自动收缩到真正命中的 reviewer；拿不到稳定信号时才回退到 profile 默认 reviewer 集合。
+- 首轮会优先读取上一轮同任务 `agent-review.json` 或 `sc-llm-review summary.json`，按未关闭 finding identity 与相关 changed surface 收缩输入；模型 reviewer 身份仍是单一 `code-reviewer`，拿不到稳定信号时回到完整适用 lenses，而不是切回旧 persona roster。
 - deterministic 复用不再只看“当天 latest.json”，会跨日查找最近可复用的同任务 pipeline 产物。
 - 如果当前变化只是非任务语义文档，例如 `README.md`、`AGENTS.md`、`docs/agents/**`，`playable-ea` / `fast-ship` 才会直接复用上一轮 deterministic 结果，不再重跑整条链路。
 - 如果当前变化只落在 task semantics 文档，例如 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`workflow*.md`、`execution-plans/**`、`decision-logs/**`，不要把它当成真正的 docs-only clean reuse；`playable-ea` / `fast-ship` 默认最多只复用 `sc-test`，仍要重跑 `acceptance_check`，并切到最小 acceptance 子集，只重跑 `adr,links,overlay`，必要时再补 `subtasks`。
@@ -1116,7 +1116,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
    If recovery summary or active-task already points `Recommended command` to this lane and `Forbidden commands` block full rerun / resume, do not manually reopen 6.7.
 
-- 如果你怀疑上一轮 reviewer 收缩过度，想强制回到 profile 默认 reviewer 集合，但仍然只想做一轮快速验证，可改成：
+- 如果你怀疑上一轮 finding/surface 收缩过度，想强制回到完整适用 lenses 与本轮 changed surface，但仍然只想做一轮快速验证，可改成：
 
 ```powershell
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --no-rerun-failing-only --max-rounds 1
@@ -1151,7 +1151,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile standard --final-pass
 ```
 
-- `--final-pass` 会强制完整 deterministic、完整 reviewer 集合，并关闭 reviewer 自动收缩与最小 acceptance 快捷路径。
+- `--final-pass` 会强制完整 deterministic、单 reviewer 的完整适用 lenses/changed-surface 审查，并关闭 finding/surface 自动收缩与最小 acceptance 快捷路径；它不会恢复旧模型 persona roster。
 - 推荐默认：把 `6.8 --delivery-profile standard --final-pass` 视为“最后一次任务级收口”。它适合已经完成主要实现，只剩最终 Needs Fix 清理的场景。
 - 如果最后一轮改动已经超出 Needs Fix 修补范围，例如重新改了实现、测试、contracts、Godot 资源或 review sidecars 已明显过期，就不要只跑 `--final-pass`；应回到完整 `6.7 standard`，必要时再补一轮 6.8。
 - 实用顺序：中间回合多用 6.8 快路径，最后收口在“`6.8 --final-pass`”和“完整 `6.7 standard`”之间二选一；然后统一进入 6.9 仓库级硬检查。
