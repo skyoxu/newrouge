@@ -67,7 +67,7 @@ class NeedsFixFastDeliveryProfileTests(unittest.TestCase):
         self.assertEqual("fast-ship", args.delivery_profile)
         self.assertEqual("codex-cli", args.llm_backend)
         self.assertEqual("host-safe", args.security_profile)
-        self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", args.agents)
+        self.assertEqual("code-reviewer", args.agents)
         self.assertEqual("summary", args.diff_mode)
         self.assertEqual(2, args.max_rounds)
         self.assertTrue(args.rerun_failing_only)
@@ -110,7 +110,7 @@ class NeedsFixFastDeliveryProfileTests(unittest.TestCase):
         self.assertEqual("standard", args.delivery_profile)
         self.assertEqual("codex-cli", args.llm_backend)
         self.assertEqual("strict", args.security_profile)
-        self.assertEqual("all", args.agents)
+        self.assertEqual("code-reviewer", args.agents)
         self.assertEqual("full", args.diff_mode)
         self.assertEqual(45, args.time_budget_min)
         self.assertEqual(12, args.min_llm_budget_min)
@@ -161,12 +161,63 @@ class NeedsFixFastDeliveryProfileTests(unittest.TestCase):
         self.assertTrue(decision["applied"])
         self.assertEqual("fast-ship", args.delivery_profile)
         self.assertEqual("host-safe", args.security_profile)
-        self.assertEqual("code-reviewer,security-auditor,semantic-equivalence-auditor", args.agents)
+        self.assertEqual("code-reviewer", args.agents)
         self.assertEqual("summary", args.diff_mode)
         self.assertEqual(2, args.max_rounds)
         self.assertTrue(args.rerun_failing_only)
         self.assertEqual(30, args.time_budget_min)
         self.assertEqual(10, args.min_llm_budget_min)
+
+
+class NeedsFixFastFindingSignatureTests(unittest.TestCase):
+    def _round(self, root: Path, name: str, finding_line: str, action_line: str) -> dict[str, object]:
+        out = root / f"{name}.md"
+        out.write_text(
+            "\n".join([
+                "## Findings",
+                finding_line,
+                "ACC:T56.1",
+                action_line,
+                "Verdict: Needs Fix",
+            ]) + "\n",
+            encoding="utf-8",
+        )
+        summary = root / f"{name}.summary.json"
+        summary.write_text(
+            json.dumps({
+                "results": [{
+                    "agent": "code-reviewer",
+                    "status": "ok",
+                    "output_path": str(out),
+                    "details": {"verdict": "Needs Fix"},
+                }]
+            }),
+            encoding="utf-8",
+        )
+        return {
+            "summary_file": str(summary),
+            "verdicts": {"code-reviewer": "Needs Fix"},
+        }
+
+    def test_signature_should_distinguish_different_findings_from_same_reviewer(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            first = self._round(root, "a", "P1 save reload loses reward lock", "Required Action: persist reward lock")
+            second = self._round(root, "b", "P1 event replay duplicates reward", "Required Action: deduplicate replay event")
+            self.assertNotEqual(
+                needs_fix_fast._round_needs_fix_signature(first),
+                needs_fix_fast._round_needs_fix_signature(second),
+            )
+
+    def test_signature_should_match_same_finding_and_required_action(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            first = self._round(root, "a", "P1 save reload loses reward lock", "Required Action: persist reward lock")
+            second = self._round(root, "b", "P1 save reload loses reward lock", "Required Action: persist reward lock")
+            self.assertEqual(
+                needs_fix_fast._round_needs_fix_signature(first),
+                needs_fix_fast._round_needs_fix_signature(second),
+            )
 
 
 class NeedsFixFastDeterministicReuseTests(unittest.TestCase):
