@@ -6,18 +6,18 @@
 - Git Head: bd016396db2c70fa22c6374bd2bb34ab923fb455
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
-- Current step: Phase E compatibility/documentation closure; formal CI pending.
-- Last completed step: Phases A-D implemented on this branch; Phase E shared execution-permission projection and current documentation sync implemented.
+- Current step: Formal Windows CI remediation and acceptance-matrix closure.
+- Last completed step: Phases A-E implementation landed; Windows Smoke #806 passed; first Windows Quality #806 exposed only recovery-plan metadata and stale Single Reviewer test-contract expectations.
 - Stop-loss: Do not alter Chapter 3→4→5→6→7 authority order, Taskmaster status ownership, Contract SSoT, Chapter 5 readiness execution ban, persistent harness recovery protocol, or global Knowledge publication boundaries. Record out-of-scope defects instead of widening the initiative.
-- Next action: Open the implementation PR, run Windows Quality/Smoke, fix any hard-regression failures, then record final evidence and remaining live-model/human limitations.
+- Next action: Re-run Windows Quality/Smoke after CI-contract fixes; then audit A1-E4 evidence coverage and record representative-path/live-model/human limitations without inferring unexecuted evidence.
 - Recovery command: py -3 -m unittest scripts.sc.tests.test_review_technical_debt scripts.sc.tests.test_check_tdd_execution_plan scripts.python.tests.test_chapter6_route
 - Open questions: Internal schema layout for verification_surface metadata will be selected during Phase D against actual task/acceptance structures; no second Acceptance authority may be introduced.
 - Exit criteria: All required scenarios A1-A4, K1-K3, B1-B5, C1-C5, D1-D7, E1-E4 are covered by targeted regression/integration evidence; required Windows Quality/Smoke are green; no P0/P1 or explicit fix-through must-fix finding remains; unverified live-model/human evidence is called out rather than inferred.
 - Related ADRs: Existing ADRs only unless a policy/authority/irreversible contract change requires a new or superseding ADR.
 - Related decision logs: None required at start; create only for actual workflow/authority/policy decisions.
 - Related task id(s): Workflow/harness maintenance initiative (no gameplay Taskmaster ownership transfer).
-- Related run id: n/a
-- Related latest.json: n/a
+- Related run id: n/a — this is a repository workflow/harness maintenance initiative, not a gameplay Task pipeline run; formal evidence is attached to PR/CI runs instead.
+- Related latest.json: n/a — no Task-scoped producer run owns this maintenance initiative, so there is no canonical pipeline latest pointer to resume.
 - Related pipeline artifacts: Targeted unittest logs and GitHub Actions runs for this branch.
 
 ## Phase 0 baseline
