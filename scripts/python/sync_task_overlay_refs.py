@@ -515,7 +515,7 @@ def build_chapter4_gap_report(
                     "reason": "semantic requirements are not fully backlink-bound to Chapter 4 overlay scope",
                     "action": "route_to_chapter4_author_or_source_owner",
                 })
-            if contract_refs and (
+            if semantic_refs and contract_refs and (
                 not isinstance(contract_map, dict)
                 or any(
                     not set(semantic_refs).issubset(set(_normalize_refs(contract_map.get(ref))))
