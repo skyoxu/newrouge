@@ -146,6 +146,32 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         _parsed, p2_errors = parse_review_contract(text, fix_through="P2")
         self.assertIn("findings[0]_must_fix_cannot_defer", p2_errors)
 
+    def test_review_contract_should_reject_missing_required_lens(self) -> None:
+        payload = {
+            "completion_status": "completed",
+            "lenses": [
+                {"name": "Spec Compliance", "status": "completed", "notes": "checked"},
+                {"name": "Edge Case", "status": "completed", "notes": "checked"},
+            ],
+            "findings": [],
+            "uncertainty": [],
+        }
+        text = "Review Contract JSON:\n" + __import__("json").dumps(payload)
+
+        parsed, errors = parse_review_contract(text, fix_through="P1")
+
+        self.assertIsNotNone(parsed)
+        self.assertIn("required_lens_missing:Verification Gap", errors)
+
+    def test_review_contract_should_reject_invalid_machine_output(self) -> None:
+        parsed, errors = parse_review_contract(
+            "Verdict: OK\nReview Contract JSON:\n{not-valid-json",
+            fix_through="P1",
+        )
+
+        self.assertIsNone(parsed)
+        self.assertTrue(any(item.startswith("review_contract_json_invalid:") for item in errors))
+
     def test_default_single_reviewer_prompt_should_allow_p4_findings(self) -> None:
         prompt = default_agent_prompt("code-reviewer")
         self.assertIn("P0/P1/P2/P3/P4", prompt)
