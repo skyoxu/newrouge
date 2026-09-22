@@ -73,14 +73,52 @@ def evaluate_red_verification(
         return report
 
     unit_status = str(unit_summary.get("status") or "").strip()
-    if unit_status == "tests_failed":
-        report["status"] = "ok"
-        report["reason"] = "unit_red"
+    failure_excerpt = unit_summary.get("failure_excerpt")
+    failure_lines = [str(item) for item in failure_excerpt] if isinstance(failure_excerpt, list) else []
+    combined_failure = "\n".join([verify_log_text, *failure_lines]).lower()
+
+    if int(rc or 0) == 124 or "timed out" in combined_failure or "timeout" in combined_failure:
+        report["reason"] = "verification_timeout"
         return report
+
+    environment_tokens = (
+        "permission denied",
+        "access is denied",
+        "connection reset",
+        "network path",
+        "file is locked",
+        "being used by another process",
+        "could not find godot",
+        "dotnet was not found",
+    )
+    if any(token in combined_failure for token in environment_tokens):
+        report["reason"] = "verification_environment_failure"
+        return report
+
+    if unit_status == "tests_failed":
+        assertion_tokens = (
+            "expected:",
+            "actual:",
+            "but was:",
+            "assert.",
+            "assertion",
+            "failed ",
+            "[fail]",
+        )
+        if failure_lines and any(token in combined_failure for token in assertion_tokens):
+            report["status"] = "ok"
+            report["reason"] = "unit_behavior_red"
+            return report
+        report["reason"] = "unit_failure_not_causal"
+        return report
+
     if unit_status in {"ok", "coverage_failed"}:
         report["reason"] = "unexpected_green"
         return report
 
-    report["status"] = "ok"
-    report["reason"] = "non_zero_without_compile_error"
+    if not unit_summary and not gdunit_summary:
+        report["reason"] = "verification_report_missing"
+        return report
+
+    report["reason"] = "verification_failure_unclassified"
     return report
