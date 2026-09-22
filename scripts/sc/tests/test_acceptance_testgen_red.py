@@ -79,7 +79,7 @@ class AcceptanceTestgenRedTests(unittest.TestCase):
                 verify_mode="unit",
                 test_step={"status": "fail", "rc": 1, "cmd": ["py", "-3", "scripts/sc/test.py"]},
                 verify_log_text="SC_TEST status=fail\n",
-                expected_test_refs=["Tests.Godot/tests/Scenes/test_reward_scene.gd"],
+                expected_test_refs=["Game.Core.Tests/Combat/RewardTests.cs"],
             )
 
         self.assertEqual("ok", report["status"])
