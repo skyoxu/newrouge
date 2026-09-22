@@ -350,10 +350,40 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
                 "--skip-test",
                 "--skip-agent-review",
             ]
+            reconciliation_path = tmp_root / "chapter5-reconciliation-task-1.json"
+            reconciliation_path.write_text(
+                json.dumps(
+                    {
+                        "summary": {},
+                        "acceptance_coverage": {},
+                        "findings": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ) + "\n",
+                encoding="utf-8",
+            )
+            readiness_payload = {
+                "readiness": "READY",
+                "closure_allowed": True,
+                "source_revision": "test-source",
+                "extraction_b_snapshot_id": "EXB-TEST",
+                "reconciliation_sha256": "sha256:test",
+            }
             with mock.patch.dict(os.environ, _stable_env(), clear=False), \
                 mock.patch.object(sys, "argv", argv), \
                 mock.patch.object(run_review_pipeline_module, "_pipeline_run_dir", return_value=out_dir), \
-                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path):
+                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path), \
+                mock.patch.object(
+                    run_review_pipeline_module,
+                    "load_task_readiness",
+                    return_value=(True, readiness_payload, "ready"),
+                ), \
+                mock.patch.object(
+                    run_review_pipeline_module,
+                    "reconciliation_path_for_task",
+                    return_value=reconciliation_path,
+                ):
                 rc = run_review_pipeline_module.main()
 
             self.assertEqual(0, rc)
@@ -461,6 +491,11 @@ class PipelineSidecarProtocolTests(unittest.TestCase):
                 "chapter5_readiness_missing",
                 events[-1]["details"]["chapter5_readiness"],
             )
+            marathon = json.loads(
+                (out_dir / "marathon-state.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("aborted", marathon["status"])
+            self.assertEqual("operator_requested", marathon["aborted_reason"])
 
     def test_write_latest_index_should_backfill_reason_and_reuse_mode_from_legacy_summary(self) -> None:
         run_id = uuid.uuid4().hex
