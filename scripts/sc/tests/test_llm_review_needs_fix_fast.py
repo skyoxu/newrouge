@@ -297,7 +297,10 @@ class NeedsFixFastDeterministicReuseTests(unittest.TestCase):
             assert step is not None
             self.assertEqual("reused", step["status"])
             self.assertEqual(0, int(step["rc"]))
-            self.assertEqual(str(out_dir), step["reported_out_dir"])
+            self.assertEqual(
+                Path(out_dir).resolve(),
+                Path(str(step["reported_out_dir"])).resolve(),
+            )
             self.assertEqual("run-a", step["reused_run_id"])
 
     def test_try_reuse_latest_deterministic_step_should_reject_git_snapshot_mismatch(self) -> None:
@@ -1817,7 +1820,7 @@ class NeedsFixFastTargetedReviewerSelectionTests(unittest.TestCase):
                     out_dir,
                     name,
                     results=[
-                        {"agent": "semantic-equivalence-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
+                        {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
                     ],
                 )
                 return {
