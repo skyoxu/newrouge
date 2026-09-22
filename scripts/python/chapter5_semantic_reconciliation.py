@@ -444,15 +444,81 @@ def _load_task_rows(root: Path) -> list[dict[str, Any]]:
             task_id = _canonical_task_id(row.get("taskmaster_id") if row.get("taskmaster_id") is not None else row.get("id"))
             if not task_id:
                 continue
-            rows.append({"task_id": task_id, "view": view, "row": row})
+            rows.append({
+                "task_id": task_id,
+                "view_id": str(row.get("id") or "").strip(),
+                "view": view,
+                "row": row,
+            })
     return rows
+
+
+def _task_identity_maps(
+    rows: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, list[str]], list[str]]:
+    view_to_task: dict[str, str] = {}
+    task_to_views: dict[str, list[str]] = {}
+    errors: list[str] = []
+    known_task_ids = {str(item.get("task_id") or "") for item in rows}
+    for item in rows:
+        task_id = str(item.get("task_id") or "").strip()
+        view_id = str(item.get("view_id") or "").strip()
+        if not task_id:
+            continue
+        if view_id:
+            prior = view_to_task.get(view_id)
+            if prior and prior != task_id:
+                errors.append(f"ambiguous_view_task_id:{view_id}:{prior}:{task_id}")
+            else:
+                view_to_task[view_id] = task_id
+            task_to_views.setdefault(task_id, [])
+            if view_id not in task_to_views[task_id]:
+                task_to_views[task_id].append(view_id)
+    for task_id, view_ids in task_to_views.items():
+        if len(view_ids) > 1:
+            errors.append(
+                f"ambiguous_taskmaster_view_id:{task_id}:{','.join(sorted(view_ids))}"
+            )
+    # Numeric Taskmaster ids may be used by decisions/internal graph edges.
+    for task_id in known_task_ids:
+        view_to_task.setdefault(task_id, task_id)
+    return view_to_task, task_to_views, sorted(set(errors))
+
+
+def _resolve_dependency_ref(
+    value: Any,
+    *,
+    view_to_task: dict[str, str],
+) -> tuple[str, str | None]:
+    raw = _canonical_task_id(value)
+    if not raw:
+        return "", "empty_dependency_ref"
+    resolved = view_to_task.get(raw)
+    if not resolved:
+        return "", f"unknown_dependency_ref:{raw}"
+    return resolved, None
+
+
+def _dependency_ref_for_view(
+    task_id: str,
+    *,
+    task_to_views: dict[str, list[str]],
+) -> str:
+    refs = sorted(set(task_to_views.get(str(task_id), [])))
+    if len(refs) != 1:
+        raise ValueError(
+            f"dependency target {task_id} does not have exactly one Task view id"
+        )
+    return refs[0]
 
 
 def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
     selected = [item for item in rows if item["task_id"] == str(task_id)]
+    view_to_task, task_to_views, identity_errors = _task_identity_maps(rows)
     semantic_refs: set[str] = set()
     capability_refs: set[str] = set()
     dependencies: set[str] = set()
+    dependency_errors: list[str] = list(identity_errors)
     acceptance: list[str] = []
     overlap: set[str] = set()
     overlays: set[str] = set()
@@ -461,7 +527,15 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
         row = item["row"]
         semantic_refs.update(str(x) for x in row.get("semantic_refs", row.get("requirement_ids", [])) if str(x).strip())
         capability_refs.update(str(x) for x in row.get("capability_refs", []) if str(x).strip())
-        dependencies.update(_canonical_task_id(x) for x in row.get("depends_on", []) if _canonical_task_id(x))
+        for raw_dependency in row.get("depends_on", []):
+            resolved_dependency, dependency_error = _resolve_dependency_ref(
+                raw_dependency,
+                view_to_task=view_to_task,
+            )
+            if dependency_error:
+                dependency_errors.append(dependency_error)
+            elif resolved_dependency:
+                dependencies.add(resolved_dependency)
         for value in row.get("acceptance", []):
             text = str(value or "").strip()
             if text and text not in acceptance:
@@ -479,6 +553,14 @@ def _task_bundle(rows: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
         "overlay_refs": sorted(overlays),
         "contract_refs": sorted(contracts),
         "views": [item["view"] for item in selected],
+        "view_ids": sorted({
+            str(item.get("view_id") or "")
+            for item in selected
+            if str(item.get("view_id") or "").strip()
+        }),
+        "dependency_identity_errors": sorted(set(dependency_errors)),
+        "view_to_task_id": view_to_task,
+        "task_id_to_view_ids": task_to_views,
     }
 
 
@@ -1051,11 +1133,26 @@ def reconcile(
     dependency_decisions = decisions.get("dependency_decisions", [])
     if not isinstance(dependency_decisions, list):
         dependency_decisions = []
-    dep_by_id = {
-        _canonical_task_id(row.get("dependency_id")): row
-        for row in dependency_decisions
-        if isinstance(row, dict) and _canonical_task_id(row.get("dependency_id"))
-    }
+    view_to_task_id = task.get("view_to_task_id", {})
+    dep_by_id: dict[str, dict[str, Any]] = {}
+    dependency_identity_errors = list(task.get("dependency_identity_errors", []))
+    for row in dependency_decisions:
+        if not isinstance(row, dict):
+            continue
+        dep, dep_error = _resolve_dependency_ref(
+            row.get("dependency_id"),
+            view_to_task=view_to_task_id if isinstance(view_to_task_id, dict) else {},
+        )
+        if dep_error:
+            dependency_identity_errors.append(dep_error)
+            continue
+        dep_by_id[dep] = row
+    for dependency_error in sorted(set(dependency_identity_errors)):
+        findings.append({
+            "finding_type": "dependency",
+            "status": "invalid_dependency",
+            "reason": dependency_error,
+        })
     dependency_corrections: list[dict[str, Any]] = []
     for dep in task["depends_on"]:
         decision = dep_by_id.get(dep)
@@ -1071,12 +1168,14 @@ def reconcile(
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
         relation = str(decision.get("relation") or "").strip()
-        valid = action in {"keep", "remove"} and bool(reason)
-        if action == "keep":
+        # Replaying an already-applied add is semantically a keep.
+        effective_action = "keep" if action == "add" else action
+        valid = effective_action in {"keep", "remove"} and bool(reason)
+        if effective_action == "keep":
             valid = valid and relation in ALLOWED_DEPENDENCY_RELATIONS and bool(evidence)
         dependency_corrections.append({
             "dependency_id": dep,
-            "action": action if valid else "needs_human_decision",
+            "action": effective_action if valid else "needs_human_decision",
             "relation": relation,
             "dependency_reason": reason,
             "dependency_evidence": evidence,
@@ -1084,7 +1183,26 @@ def reconcile(
     for decision in dependency_decisions:
         if not isinstance(decision, dict) or str(decision.get("action") or "") != "add":
             continue
-        dep = _canonical_task_id(decision.get("dependency_id"))
+        dep, dep_error = _resolve_dependency_ref(
+            decision.get("dependency_id"),
+            view_to_task=view_to_task_id if isinstance(view_to_task_id, dict) else {},
+        )
+        if dep_error:
+            if not any(
+                row.get("dependency_id") == _canonical_task_id(decision.get("dependency_id"))
+                and row.get("action") == "needs_human_decision"
+                for row in dependency_corrections
+            ):
+                dependency_corrections.append({
+                    "dependency_id": _canonical_task_id(decision.get("dependency_id")),
+                    "action": "needs_human_decision",
+                    "relation": str(decision.get("relation") or "").strip(),
+                    "dependency_reason": str(decision.get("dependency_reason") or decision.get("reason") or "").strip(),
+                    "dependency_evidence": [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()],
+                })
+            continue
+        if dep in task["depends_on"]:
+            continue
         relation = str(decision.get("relation") or "").strip()
         reason = str(decision.get("dependency_reason") or decision.get("reason") or "").strip()
         evidence = [str(x) for x in decision.get("dependency_evidence", decision.get("evidence", [])) if str(x).strip()]
@@ -1117,12 +1235,32 @@ def reconcile(
             })
 
     graph: dict[str, set[str]] = {}
+    identity_map, _task_to_views, graph_identity_errors = _task_identity_maps(task_rows)
+    for graph_error in graph_identity_errors:
+        findings.append({
+            "finding_type": "dependency",
+            "status": "invalid_dependency",
+            "reason": graph_error,
+        })
     for item in task_rows:
         row = item["row"]
-        graph.setdefault(item["task_id"], set()).update(
-            _canonical_task_id(x) for x in row.get("depends_on", [])
-            if _canonical_task_id(x)
-        )
+        resolved_edges: set[str] = set()
+        for raw_dependency in row.get("depends_on", []):
+            resolved_dependency, dependency_error = _resolve_dependency_ref(
+                raw_dependency,
+                view_to_task=identity_map,
+            )
+            if dependency_error:
+                findings.append({
+                    "finding_type": "dependency",
+                    "status": "invalid_dependency",
+                    "task_id": item["task_id"],
+                    "reason": dependency_error,
+                })
+                continue
+            if resolved_dependency:
+                resolved_edges.add(resolved_dependency)
+        graph.setdefault(item["task_id"], set()).update(resolved_edges)
     graph[str(task_id)] = set(final_dependencies)
 
     def reaches(start: str, target: str, visiting: set[str]) -> bool:
@@ -1286,8 +1424,12 @@ def apply_task_corrections(
     if readiness.get("closure_allowed") is not True:
         raise ValueError("cannot apply Chapter 5 task corrections while readiness is blocked")
     changed: list[str] = []
+    task_rows = _load_task_rows(root)
+    _view_to_task, task_to_views, identity_errors = _task_identity_maps(task_rows)
+    if identity_errors:
+        raise ValueError("cannot write dependency corrections with ambiguous task identity: " + identity_errors[0])
     final_dependencies = [
-        int(value) if str(value).isdigit() else str(value)
+        _dependency_ref_for_view(str(value), task_to_views=task_to_views)
         for value in reconciliation.get("final_dependencies", [])
     ]
     for view_path in DEFAULT_TASK_VIEWS:
