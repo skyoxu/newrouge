@@ -1023,9 +1023,9 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 - reviewer 超时扩时现在会继承最近同任务 / 同 profile 的 agent 级超时历史；继续 timeout 时只定向放大该 reviewer，而不是整体抬高全部 reviewer。
 - `run_review_pipeline.py` 会按 `DELIVERY_PROFILE` 自动决定第六章的默认强度：
   - `playable-ea`：默认 `max_step_retries = 1`，首轮 review 更轻，适合先验证可玩性。
-  - `fast-ship`：默认 `max_step_retries = 1`。低风险任务的 `minimal / targeted` tier 首轮 review 聚焦 `code-reviewer + security-auditor`；只有升到 `full` 或显式覆写 reviewer 时，才默认带上 `semantic-equivalence-auditor`。
+  - `fast-ship`：默认 `max_step_retries = 1`。模型审查默认使用单 `code-reviewer`，通过固定 `Spec Compliance / Edge Case / Verification Gap` lenses 覆盖代码、语义与验证；tier 只调整 diff/预算/严格度，不通过增加 persona 补语义。
   - `standard`：默认 `max_step_retries = 0`，保留更重的收口姿态，不自动帮你放宽执行节奏。
-- 当最近一轮已经是 `sc-test = ok + sc-acceptance-check = ok + sc-llm-review != clean`，且这轮改动只落在 `.taskmaster/**`、`examples/taskmaster/**`、`docs/architecture/**`、`docs/adr/**`、`docs/prd/**`、`execution-plans/**`、`decision-logs/**`、`workflow*.md`、`scripts/sc/templates/llm_review/**` 这类 reviewer/语义侧文件时，6.7 现在会自动把 reviewer 缩窄到“上一轮真正非 OK 的 agents”；显式传了 `--llm-agents` 时不启用这条自动收窄。
+- 当 deterministic 已绿且只剩 review 问题时，6.8 按稳定 finding/claim/anchor/required action 与 changed surface 窄化复审范围；单 reviewer 身份本身不再作为“问题相同”或“问题不同”的依据。
 - 新开 `6.7` 时，默认会继承最近同任务成功解析出来的 `delivery/security profile` 组合；如果你明确要切换 profile，必须显式传 `--reselect-profile`，否则会因 task 级 profile lock 失败。
 - 如果上一次同任务 `sc-llm-review` 里只有少数 reviewer 发生 `rc=124` timeout，6.7 会只对这些 reviewer 增加 `--agent-timeouts`，不会把全部 reviewer 一起扩时。
 - `--llm-base` 的默认值现在是 `origin/main`；除非你明确需要对比别的基线，否则不要手工改回 `main`。
@@ -1141,16 +1141,16 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
 - `llm_review_needs_fix_fast.py` 会按 `DELIVERY_PROFILE` 自动落默认值，不建议每轮手工传 reviewer / diff / timeout。
 - profile 默认值：
-  - `playable-ea`：`agents=code-reviewer,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=1`，`time_budget_min=20`。
-  - `fast-ship`：`agents=code-reviewer,security-auditor,semantic-equivalence-auditor`，`diff_mode=summary`，`max_rounds=2`，`time_budget_min=30`。
-  - `standard`：`agents=all`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
-- 注意区分 6.7 和 6.8：上面的 `fast-ship` 三 reviewer 是 `llm_review_needs_fix_fast.py` 的默认闭环集合；而 6.7 `run_review_pipeline.py` 在低风险 `minimal / targeted` tier 下会先收窄为 `code-reviewer + security-auditor`，只有升级到 `full` 或你显式传 reviewer 时，才会默认补 `semantic-equivalence-auditor`。
+  - `playable-ea`：`agents=code-reviewer`，`diff_mode=summary`，`max_rounds=1`，`time_budget_min=20`。
+  - `fast-ship`：`agents=code-reviewer`，`diff_mode=summary`，`max_rounds=2`，`time_budget_min=30`。
+  - `standard`：`agents=code-reviewer`，`diff_mode=full`，`max_rounds=2`，`time_budget_min=45`。
+- 注意区分 6.7 和 6.8：两者都默认使用同一个模型 reviewer；6.7 是完整适用 lenses 的审查，6.8 按未关闭 findings/相关 changed surface 做窄复审。deterministic reviewers 仍是独立机器能力，不等同新增模型 persona。
 - 快速清理脚本会把 `--delivery-profile` 继续透传给内部 `run_review_pipeline.py`，避免第 6.8 里外 profile 漂移。
 - 中间回合默认把 6.8 当作 `rerun-failing-only` 快路径：优先只重跑上轮命中的 reviewer，适合“修 Needs Fix、补 wording、补 refs、补局部测试断言”这类收敛回合。
 - 只要这一轮没有改实现、测试、contracts 或运行时资源，就不要急着回头重跑完整 6.7；先用 6.8 把命中的问题清干净。
 - 只有当本轮改动直接命中了上一轮 reviewer 给出的锚点问题时，才值得立刻再跑 6.8。没有新修复内容时，重复跑 6.8 只是重复支付 LLM 成本。
 - 这一步也应优先由 `chapter6-route --recommendation-only` 来判断：只有它给出 `preferred_lane = run-6.8` 时，才继续付 6.8 的 LLM 成本；如果输出是 `record-residual` 或 `inspect-first`，先记录或止损。
-- `llm_review_needs_fix_fast.py` now runs the same route preflight before deterministic / LLM spend. When the latest recoverable run already has `agent-review.json`, any lane other than `run-6.8` becomes a controlled stop, and `record-residual` auto-writes `decision-logs/**` plus `execution-plans/**`.
+- `llm_review_needs_fix_fast.py` runs the same route preflight before deterministic / LLM spend. When the latest recoverable run already has `agent-review.json`, any lane other than `run-6.8` becomes a controlled stop; `record-residual` records only eligible deferred findings in `docs/technical-debt.md` and does not auto-create Decision Log or Execution Plan.
 - If the previous 6.8 round exited on timeout, produced no new actionable finding, and `final_needs_fix_agents` is still empty, stop and inspect the artifacts instead of repeating the same parameters. Prefer the `Recommended command` from `resume-task` / active-task, and treat `Forbidden commands` as explicit stop-loss boundaries.
 - 如果上一轮只剩 `Unknown/timeout`，而本轮改动没有命中 reviewer 相关锚点（代码、测试、contracts、tasks/overlays/ADR、review 模板），默认直接止损，不再重复支付 6.8。
 - 6.8 的 round 摘要现在会额外记录 `timeout_agents` 与 `failure_kind`；当出现 `timeout-no-summary` 时，优先把它当“观测不足”，而不是把 `status=ok` 误判为 clean。
@@ -1163,8 +1163,8 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 - 新增预算守门：如果 deterministic 之后剩余预算低于 profile 下限，就直接 fail-fast，不再白白开启一轮新的 LLM 回合。
 - `--skip-sc-test` 仍然只建议用于“本轮只修 review / acceptance 文本，没有改实现和测试”的场景；不要把它当作常规默认。
 - 如果 deterministic 已经稳定 `ok`，剩余 `Needs Fix` 主要是证据强度、文案粒度、ADR/overlay 回链这类 P2/P3 问题，`fast-ship` 下一般只跑一轮 6.8；第二轮仍然是同主题命中时，默认转为记录和后续跟踪，而不是继续循环。
-- 6.8 的 reviewer 默认要按问题类别定向收缩，而不是整套重开：代码实现类优先 `code-reviewer`，语义 / acceptance / task-view / overlay 类优先 `semantic-equivalence-auditor`，安全边界类才补 `security-auditor`。只有无法稳定归类时，才回退到 profile 默认 reviewer 集合。
-- 如果连续两轮 6.8 都给出同类 `Needs Fix`，且严重度、命中锚点、建议动作基本不变，默认直接止损并记录，不要再开第三轮同口径 reviewer 重跑。
+- 6.8 按 finding identity、claim/anchor、required action 与相关 changed surface 定向收缩；仍由单 reviewer 使用适用 lenses 复审，不再按问题类别切换 reviewer persona。
+- 如果连续两轮 6.8 的稳定 finding identity（至少包含 claim/anchor 与 required action）相同，默认直接止损并记录；同 reviewer 的不同 finding 不得误判为重复。
 - 如果剩余问题属于 P1 且会影响任务可交付判断，再决定是否补第二轮 6.8 或升级到 `standard --final-pass`；不要用重复快跑替代问题分级。
 - 纯 `.cs` 任务默认保持 unit 路径；只有当 task views 明确声明 `.gd` test refs，或本轮显式走 `verify=all|e2e`，才把它拉入 Godot / GdUnit 重路径。
 
@@ -1647,3 +1647,14 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 7. `run_review_pipeline.py --delivery-profile fast-ship`
 8. 只有当 pipeline 产出明确的 `Needs Fix` 时，再执行 `llm_review_needs_fix_fast.py`
 9. commit 或 PR 前执行 `run-local-hard-checks`
+
+
+### 6.x Workflow optimization v2 guardrails
+
+- Root/session recovery uses task-scoped routing: compact recommendation first, then only the directly relevant authority/evidence. Do not preload unrelated plan/decision/log directories.
+- Chapter 6 model review defaults to one reviewer with mandatory `Spec Compliance`, `Edge Case`, and `Verification Gap` lenses. Required Acceptance semantics may be compacted but not silently dropped; missing required input/lens makes the review incomplete/failed, not clean.
+- `playable-ea`, `fast-ship`, and `standard` share a P1 must-fix floor. Explicit `P0` fix-through is rejected. A stricter `--fix-through P2|P3` makes that level must-fix as well.
+- `record-residual` writes eligible findings to `docs/technical-debt.md`; Decision Log and Execution Plan are created only for real policy/authority/irreversible decisions or durable recovery/ordered-coordination needs.
+- Execution Plan requirement is driven by explicit durable coordination signals (cross-session recovery, ordered behavior slices, partial-work recovery, authority migration, staged large refactor, workflow/control-plane change). Test-file count, mixed `.cs/.gd`, anchor count, or `verify=auto/all` do not create a plan by themselves.
+- Optional task-view `acceptance_verification` metadata binds existing Acceptance anchors to `core-behavior`, `godot-scene`, `player-journey`, or `human-experience` evidence. Human pending/failed does not pass Acceptance; old tasks without this field remain compatible.
+- Automated RED must be causal: timeout, missing report, compile/environment failure, zero/unrelated failure, or generic non-zero exit is unverified—not a valid behavior RED. Existing targeted MVG mutation remains the falsifiability tool for selected high-risk behavior; it is not a default full-repo gate.
