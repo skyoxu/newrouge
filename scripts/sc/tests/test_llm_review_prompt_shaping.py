@@ -14,7 +14,7 @@ if str(SC_DIR) not in sys.path:
 
 from _llm_review_acceptance import build_acceptance_semantic_context  # noqa: E402
 from _llm_review_engine import _REVIEW_LENSES_PROMPT, _build_agent_execution_plan, _fit_prompt_context, _prompt_shape_for_agent  # noqa: E402
-from _llm_review_prompting import build_task_context, default_agent_prompt, parse_review_contract  # noqa: E402
+from _llm_review_prompting import build_task_context, default_agent_prompt, derive_surface_focus, parse_review_contract, render_surface_focus_prompt  # noqa: E402
 from _taskmaster import TaskmasterTriplet  # noqa: E402
 
 
@@ -91,6 +91,27 @@ class LlmReviewPromptShapingTests(unittest.TestCase):
         self.assertFalse(bool(execution_plan["semantic_deferred"]))
         self.assertEqual(["code-reviewer"], execution_plan["primary_llm_agents"])
         self.assertEqual(["Spec Compliance", "Edge Case", "Verification Gap"], execution_plan["review_lenses"])
+
+    def test_surface_focus_should_select_only_relevant_changed_surfaces(self) -> None:
+        focus = derive_surface_focus(
+            [
+                "Game.Core/Contracts/Events/RewardOfferPresentedEvent.cs",
+                "Game.Godot/UI/Reward/RewardScene.cs",
+                "Game.Core/Run/RunStateTransition.cs",
+                "docs/workflows/run-protocol.md",
+            ]
+        )
+        names = [item["name"] for item in focus]
+        self.assertEqual(["Contract/EventBus", "UI/Scene", "State Machine"], names)
+        prompt = render_surface_focus_prompt(focus)
+        self.assertIn("methods, not extra reviewer personas", prompt)
+        self.assertIn("Contract/EventBus", prompt)
+        self.assertIn("UI/Scene", prompt)
+
+    def test_surface_focus_should_not_invent_focus_for_unrelated_docs(self) -> None:
+        focus = derive_surface_focus(["docs/workflows/run-protocol.md", "README.md"])
+        self.assertEqual([], focus)
+        self.assertEqual("", render_surface_focus_prompt(focus))
 
     def test_review_contract_should_apply_active_fix_through_to_defer(self) -> None:
         payload = {
