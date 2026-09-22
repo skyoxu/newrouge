@@ -18,7 +18,7 @@ for candidate in (PYTHON_DIR, SC_DIR):
         sys.path.insert(0, str(candidate))
 
 from _change_scope import classify_change_scope_between_snapshots  # noqa: E402
-from _recovery_doc_scaffold import record_chapter6_residual_followup  # noqa: E402
+from _technical_debt import update_technical_debt_register  # noqa: E402
 from llm_review_needs_fix_fast import _changed_paths_hit_reviewer_anchors, current_git_fingerprint  # noqa: E402
 from resume_task import build_resume_payload  # noqa: E402
 
@@ -218,25 +218,19 @@ def _record_residual_docs(
 ) -> dict[str, Any]:
     task_id = str(payload.get("task_id") or "").strip()
     run_id = str(payload.get("run_id") or "").strip()
-    inspection = payload.get("inspection") if isinstance(payload.get("inspection"), dict) else {}
-    paths = inspection.get("paths") if isinstance(inspection.get("paths"), dict) else {}
-    latest_rel = str(paths.get("latest") or "").strip()
-    findings_summary = _summarize_low_priority_findings(low_priority_findings)
-    recorded = record_chapter6_residual_followup(
-        root=root,
+    result = update_technical_debt_register(
+        doc_path=root / "docs" / "technical-debt.md",
         task_id=task_id,
         run_id=run_id,
-        latest_json=latest_rel,
-        findings_summary=findings_summary,
-        recommended_command=str(payload.get("recommended_command") or "").strip(),
+        findings=low_priority_findings,
+        delivery_profile=str(payload.get("delivery_profile") or "fast-ship"),
     )
-
     return {
         "eligible": True,
         "reason": "recorded",
         "performed": True,
-        "decision_log_path": str(recorded.get("decision_log_path") or "").strip(),
-        "execution_plan_path": str(recorded.get("execution_plan_path") or "").strip(),
+        "register_path": "docs/technical-debt.md",
+        "register_status": str(result.get("status") or ""),
     }
 
 
@@ -316,8 +310,8 @@ def route_chapter6(
         "eligible": residual_eligible,
         "reason": residual_reason,
         "performed": False,
-        "decision_log_path": "",
-        "execution_plan_path": "",
+        "register_path": "",
+        "register_status": "",
     }
 
     preferred_lane = "inspect-first"
