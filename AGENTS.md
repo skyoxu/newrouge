@@ -1,154 +1,91 @@
 # Repository Guide
 
-本文件是 `newrouge` 的路由层，不承载大段细节。稳定规则放到 `docs/agents/**`、`docs/workflows/**`、`docs/adr/**`、`docs/architecture/**`。
+本文件是 `newrouge` 的全局约束与任务路由层。不要把它扩展成完整命令手册，也不要在会话启动时预加载所有工作流文档。
 
-## 项目标识
+## 项目标识与全局不变量
 
 - Repository: `newrouge`
 - Product: Windows-only Godot 4.5.1 + C# 单机项目
 - 默认交付姿态: `fast-ship`
 - 默认安全姿态: `host-safe`
-- 升级对齐基线: `docs/workflows/business-repo-upgrade-guide.md`
+- 与用户沟通使用中文；代码、脚本、测试、注释、打印文本使用英文。
+- Windows 为目标环境；Python 命令使用 `py -3`；文档读写 UTF-8；不使用 Emoji。
+- 日志、审计和运行证据写入 `logs/**`。
+- 非 trivial 工作需要显式步骤和可恢复进度；跨 session、阶段迁移、工作流/harness 控制面改造使用 `execution-plans/**`。
+- 不保留无用兼容层；旧格式兼容只能服务真实历史数据，不得成为第二套权威。
 
-## 不可协商规则
+## 权威与保护边界
 
-- 与用户沟通统一使用中文。
-- 默认环境是 Windows，命令必须可在 Windows 执行。
-- 文档读写统一 UTF-8。
-- 不使用 Emoji。
-- 代码、脚本、测试、注释、打印文本统一英文。
-- 日志、审计和证据统一放在 `logs/**`。
-- 非 trivial 任务必须显式分步并持续更新进度。
-- 不保留无用兼容层，过期路径应清理。
-- 若存在未修复 `Needs Fix`，必须先记录到 `decision-logs/**`，并在 `execution-plans/**` 写明后续修复入口与证据路径。
-
-## Context Reset 后的启动顺序
-
-1. `README.md`
-2. `docs/agents/00-index.md`
-3. `docs/agents/01-session-recovery.md`
-4. `docs/PROJECT_DOCUMENTATION_INDEX.md`
-5. `docs/agents/13-rag-sources-and-session-ssot.md`
-6. `DELIVERY_PROFILE.md`
-7. `docs/testing-framework.md`
-8. `docs/agents/16-directory-responsibilities.md`
-9. `docs/workflows/prototype-lane.md`
-10. `docs/workflows/prototype-lane-playbook.md`
-11. `docs/workflows/prototype-tdd.md`
-12. `execution-plans/` 最新文件
-13. `decision-logs/` 最新文件
-14. 若已有审查流水线结果，读取 `logs/ci/<date>/sc-review-pipeline-task-<task-id>/latest.json`
-
-## 权威来源
-
-优先使用以下来源，不要随意重建索引。
-
+- Chapter 顺序保持 Chapter 3 → 4 → 5（按需）→ 6 → 7；Chapter 5 `BLOCKED` 阻断 Chapter 6。
+- Taskmaster 三联继续拥有任务状态；Review、MVG、Technical Debt、Knowledge 不能自行写 Task done。
 - Taskmaster 三联:
   - `.taskmaster/tasks/tasks.json`
   - `.taskmaster/tasks/tasks_back.json`
   - `.taskmaster/tasks/tasks_gameplay.json`
-- PRD:
-  - `.taskmaster/docs/prd.txt`
-  - `docs/prd/**`
-- ADR:
-  - `docs/adr/ADR-*.md`
-  - `docs/architecture/ADR_INDEX_GODOT.md`
-- Base 架构:
-  - `docs/architecture/base/**`
-- Overlay:
-  - `docs/architecture/overlays/<PRD-ID>/08/**`
-- 测试规则:
-  - `docs/testing-framework.md`
-- 交付与执行协议:
-  - `DELIVERY_PROFILE.md`
-  - `docs/workflows/run-protocol.md`
-  - `docs/workflows/local-hard-checks.md`
-- Chapter 7:
-  - `docs/gdd/ui-gdd-flow.md`
-  - `docs/workflows/chapter7-profile.json`
-  - `docs/workflows/chapter7-profile-guide.md`
-  - `docs/workflows/templates/chapter7-profile.template.json`
-  - `docs/workflows/templates/chapter7-profile.minimal.example.json`
+- PRD: `.taskmaster/docs/prd.txt`、`docs/prd/**`
+- ADR: `docs/adr/ADR-*.md`、`docs/architecture/ADR_INDEX_GODOT.md`
+- Base architecture: `docs/architecture/base/**`
+- Overlay: `docs/architecture/overlays/<PRD-ID>/08/**`
+- Contract SSoT: `Game.Core/Contracts/**`；必须 BCL-only，不引用 `Godot.*`。
+- Domain logic: `Game.Core/**`；Godot adapter: `Game.Godot/**` 与 adapter 层。
+- Testing authority: `docs/testing-framework.md`
+- Run/recovery protocol: `docs/workflows/run-protocol.md`
+- Chapter 6 hard checks 必须使用 `--skip-project-health`；该参数不跳过 gate bundle、dotnet、GdUnit/smoke。
+- 不隐式刷新 Project Health、全局 Knowledge catalog 或 publication。
+- Knowledge shadow/handoff 是可选读取与冻结基础设施，不替代直接权威来源。
+- Persistent Harness、run/turn、append-only events、artifact integrity、resume/fork/abort、profile lock、approval、rerun guard、deterministic reuse 与 stop-loss 均为保留协议。
 
-## 核心入口
+## 按任务读取路由
 
-- 本地硬检查:
-  - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin <godot-bin>`
-- 任务恢复（规范入口）:
-  - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
-- 第六章重跑路由（先读工件再决定 6.7/6.8/止损）:
-  - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`
-- 任务级统一评审流水线:
-  - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin <godot-bin>`
-- 恢复文档校验:
-  - `py -3 scripts/python/validate_recovery_docs.py --dir all`
-- 门禁聚合:
-  - `py -3 scripts/python/run_gate_bundle.py --mode hard --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
-- Chapter 3 任务三联初始化:
-  - interactive run start: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --begin-run`
-  - scripted top-level guard: `py -3 scripts/python/dev_cli.py run-chapter3-guarded --trigger-run-id <run-id> --triplet-status-on-success <passed|blocked|unknown> -- <command...>`
-  - `py -3 scripts/python/build_source_ledger.py --mode <init|add> --prd-path <path> --gdd-path <path> --epics-path <path> --stories-path <path>`
-  - `py -3 scripts/python/project_semantics_from_sources.py prepare --max-blocks-per-batch 40 --max-chars-per-batch 24000` → approved Chapter 3 model/Skill explicitly reviews every batch/block
-  - `py -3 scripts/python/project_semantics_from_sources.py compile && py -3 scripts/python/validate_semantic_conservation.py --stage projection`
-  - `py -3 scripts/python/normalize_task_intents.py --mode <init|add> && py -3 scripts/python/generate_task_candidates_from_sources.py --mode <init|add> && py -3 scripts/python/enrich_task_candidates.py`
-  - `py -3 scripts/python/audit_task_candidate_coverage.py && py -3 scripts/python/validate_semantic_conservation.py --stage closure`
-  - `py -3 scripts/python/compile_task_triplet.py --mode <init|add>`
-  - after triplet rebuild + semantic tier backfill: `py -3 scripts/python/attest_chapter3_triplet_baseline.py`
-  - run end: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --refresh-local --triplet-status <passed|blocked|unknown>`
-- Chapter 4 Overlay 与契约基线:
-  - `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
-  - `py -3 scripts/python/validate_overlay_execution.py --prd-id <PRD-ID> --strict-refs`
-- Chapter 5 语义稳定化:
-  - interactive run start: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`
-  - scripted lifecycle guard: `py -3 scripts/python/dev_cli.py run-chapter5-guarded --trigger-run-id <run-id> -- <command...>`
-  - `py -3 scripts/python/backfill_semantic_review_tier.py --mode conservative --write`
-  - `py -3 scripts/python/validate_semantic_review_tier.py --mode conservative`
-  - `py -3 scripts/python/preflight_acceptance_extract_guard.py --task-id <task-id>`
-  - `py -3 scripts/python/run_single_task_light_lane.py --task-id <task-id> --godot-bin <godot-bin>`
-- Chapter 7 UI Wiring Closure:
-  - `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --self-check`
-  - `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --write-doc`
-  - `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --write-doc --create-tasks`
-  - `py -3 scripts/python/dev_cli.py run-chapter7-backlog-gap --design-doc-path <doc> --epics-doc-path <doc> --duplicate-audit-path <doc>`
-  - `py -3 scripts/python/dev_cli.py apply-chapter7-status-patch --patch logs/ci/<date>/chapter7-ui-wiring/task-status-patch.json --dry-run`
-- Prototype lane（实验入口）:
-  - `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage <red|green|refactor> --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>`
-  - 细节与边界规则见：`docs/workflows/prototype-lane.md`、`docs/workflows/prototype-lane-playbook.md`、`docs/workflows/prototype-tdd.md`
+先读与当前任务匹配的入口，再读取该入口要求的直接来源。跨领域任务取必要路由的并集，不限制只能选一行。不要按目录时间戳猜“当前任务”，也不要把最新 plan/decision 默认当成当前工作。
 
-## Recovery Stop-Loss Signals
+| 任务范围 | 首要入口 | 按需补充 |
+| --- | --- | --- |
+| 项目身份/状态 | `README.md` | 当前任务三联或用户明确指定状态文件 |
+| Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
+| Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
+| Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |
+| Chapter 6 新任务 | `workflow.md` 6.0、6.3；`run-single-task-chapter6` | `.agents/skills/workflow-chapter6-single-task-daily-loop/SKILL.md`；当前 Task/Acceptance 和相关权威 |
+| Chapter 6 恢复 | `resume-task --recommendation-only` | `chapter6-route --recommendation-only`；仅按需要展开该 run 的 sidecars/events |
+| Chapter 7 | `workflow.md` 第 7 章、`docs/gdd/ui-gdd-flow.md` | Chapter 7 Skill、profile guide |
+| Prototype | `docs/workflows/prototype-lane.md` | 同目录 playbook、prototype-tdd |
+| Architecture/Contract | `docs/architecture/ADR_INDEX_GODOT.md` | 相关 ADR、Base/Overlay、`Game.Core/Contracts/**` |
+| Testing/MVG | `docs/testing-framework.md` | `docs/workflows/mvg-integration-acceptance.md`、选定 manifest |
+| Harness/工作流维护 | `docs/workflows/run-protocol.md` | 当前涉及入口脚本、schema、`docs/workflows/local-hard-checks.md` |
+| 显式 plan/decision 工作 | 用户或当前任务绑定的具体文件 | 该文件引用的当前来源 |
 
-- `rerun_guard`: 确定性路径已经给出停止信号，不要盲目重开 `6.7`。
-- `llm_retry_stop_loss`: 确定性已绿，且首轮长时 LLM 已超时；优先走窄化收敛而非全量重跑。
-- `sc_test_retry_stop_loss`: 同一运行内重复单测重试已证明无效；先修单测根因再继续。
-- `waste_signals`: 在已知单测/根因失败后仍发生引擎链路消耗；应先止损再执行后续步骤。
+## Chapter 6 快速入口
 
-## 架构与契约规则
+- 新任务：
+  - `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
+- 恢复：
+  - `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
+  - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
+- 只有 compact recovery 无法支持当前决定时，才展开 `latest.json`、summary、repair guide、agent review 或 run-events。
+- 无历史 run 时走现有新任务逻辑，不伪造 latest。
+- 用户指定多个任务或没有唯一 task id 时，只用明确指令和真实任务三联定位；无法唯一定位再请求澄清。
 
-- 契约 SSoT 在 `Game.Core/Contracts/**`。
-- 契约代码必须 BCL-only，不得引用 `Godot.*`。
-- 领域逻辑在 `Game.Core/**`。
-- Godot 适配在 `Game.Godot/**` 与 adapter 层。
-- 功能纵切仅放在 `docs/architecture/overlays/<PRD-ID>/08/**`。
-- 若阈值、契约、安全口径、发布策略改变，必须新增或 supersede ADR。
+## Knowledge 与 Review 上下文
 
-## 测试规则
+- 直接权威来源路径始终可用：当前 Task、Requirement、Acceptance、相关 ADR/Overlay/Contract。
+- 可选 Knowledge shadow/handoff 继续遵守 `docs/workflows/knowledge-context-shadow.md` 与 `docs/workflows/knowledge-context-freeze.md`。
+- `shadow_ready`、排名或 handoff 校验通过不等于语义完备。
+- Chapter 6 只可在 RED 前做 bounded Knowledge 查询；RED/GREEN/REFACTOR 中发生实质范围变化时停止本序列并建立新的显式 preflight/context revision。
+- Review handoff 使用独立 `consumer=review` 上下文；不得修改旧 frozen consumer 来绕过边界。
 
-- 领域逻辑: xUnit（`Game.Core.Tests/**`）。
-- 场景与引擎胶水: GdUnit4（`Tests.Godot/**`）。
-- 禁止通过关闭测试拿绿灯。
-- acceptance 条目必须有 `Refs:`，并与 tasks 视图与 overlay 回链一致。
+## 测试与完成规则
 
-## 任务视图规则
+- 领域逻辑使用 xUnit（`Game.Core.Tests/**`）。
+- 场景与引擎胶水使用 GdUnit4（`Tests.Godot/**`）。
+- Acceptance 必须引用真实行为证据；机器错误、timeout、缺报告不能冒充行为 RED 或通过。
+- 人工体验证据不能由模型代签。
+- 不通过关闭测试、缩小已承诺范围或写字符串存在性测试取得假绿。
+- 6.8 final-pass 与 6.9 hard checks 保留；局部验证不能替代最终适用范围检查。
+- 任何 Task done 仍通过既有 Taskmaster 完成路径，不由 Review、Technical Debt、MVG 或 Knowledge 直接写入。
 
-- 真实任务文件在 `.taskmaster/tasks/**`。
-- 跨文件映射固定:
-  - `tasks.json.master.tasks[].id`
-  - `tasks_back.json[].taskmaster_id`
-  - `tasks_gameplay.json[].taskmaster_id`
-- `semantic_review_tier` 必须写入真实视图文件，不仅是示例文件。
+## 文档与维护
 
-## 文档规则
-
-- 保持仓库标识为 `newrouge`，清理过期模板名与无效示例。
-- 不在 overlay 复制 Base/ADR 的阈值正文。
-- 契约字段用路径引用，不做文档内重复粘贴。
+- 详细命令放到 owning workflow/doc，不在根文件复制。
+- 修改工作流规则时，同阶段同步更新消费者、配置、schema/fallback validator 与对应测试。
+- 历史日志是证据，不是当前指令；仅在当前 Task、恢复对象、ADR 或冻结来源显式引用时展开。
+- source 缺失时回退直接权威来源；不能用摘要猜测缺失边界。
