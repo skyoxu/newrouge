@@ -52,6 +52,18 @@ Inspect the changed surface plus relevant callers/state/contracts for missing/em
 For each required behavior, identify the expected protection, the observed protection, the concrete executable verification, and why the protection would fail if the behavior regressed. Human-experience obligations require explicit human evidence and must remain pending when absent.
 
 If required input for any lens is unavailable, state that limitation and return an incomplete review instead of an empty/OK result.
+
+## Machine-readable completion contract
+After the human-readable lens sections, emit exactly one block beginning with:
+Review Contract JSON:
+
+The next value must be one JSON object with:
+- completion_status: completed | incomplete | failed
+- lenses: one entry for each required lens with name, status (completed | incomplete | not-applicable), and non-empty notes
+- findings: an array. Every finding must include finding_id, claim, severity (P0-P4), authority_refs, evidence, failure_scenario, expected_protection, observed_protection, required_action, verification, and disposition {action, rationale}
+- uncertainty: an array of {kind, statement}, where kind is Question | Limitation | Declined to Judge
+
+Use completion_status=completed only when every applicable lens had sufficient required input. P0/P1 findings cannot use disposition.action=defer.
 """
 
 
