@@ -26,9 +26,10 @@ from _delivery_profile import (
     resolve_delivery_profile,
 )
 from _llm_review_cli import resolve_agents as resolve_llm_review_agents
+from _deterministic_review import DETERMINISTIC_AGENTS
 from _llm_backend import KNOWN_LLM_BACKENDS, resolve_llm_backend
 from _change_scope import classify_change_scope_between_snapshots
-from _risk_profile_floor import derive_delivery_profile_floor, requires_security_auditor_for_change_scope
+from _risk_profile_floor import derive_delivery_profile_floor
 from _util import ci_dir, repo_root, run_cmd, split_csv, write_json, write_text
 
 
@@ -51,27 +52,6 @@ REVIEWER_ANCHOR_EXACT = {
     "scripts/sc/llm_review_needs_fix_fast.py",
     "scripts/sc/run_review_pipeline.py",
 }
-SEMANTIC_TARGET_PREFIXES = (
-    ".taskmaster/",
-    "examples/taskmaster/",
-    "docs/architecture/",
-    "docs/adr/",
-    "docs/prd/",
-    "execution-plans/",
-    "decision-logs/",
-)
-CODE_TARGET_PREFIXES = (
-    "game.core/",
-    "game.godot/",
-    "game.core.tests/",
-    "tests.godot/",
-    "scripts/sc/",
-    "scripts/python/",
-)
-CODE_TARGET_SUFFIXES = (".cs", ".gd", ".tscn", ".tres", ".csproj", ".sln")
-SECURITY_TARGET_TOKENS = ("security", "audit", "whitelist", "tamper")
-
-
 def normalize_verdict(value: str | None) -> str:
     raw = (value or "").strip().lower()
     if raw in {"ok", "pass", "passed"}:
@@ -82,7 +62,21 @@ def normalize_verdict(value: str | None) -> str:
 
 
 def resolve_configured_agents(raw_agents: str) -> list[str]:
-    return [str(agent).strip() for agent in resolve_llm_review_agents(str(raw_agents or "").strip(), "warn") if str(agent).strip()]
+    """Resolve 6.8 execution to deterministic reviewers plus one model reviewer.
+
+    Historical/explicit model persona names remain accepted as CLI compatibility
+    input, but Chapter 6 model execution is normalized to code-reviewer. Finding
+    identity and changed surface narrow context, not reviewer persona.
+    """
+    resolved = [
+        str(agent).strip()
+        for agent in resolve_llm_review_agents(str(raw_agents or "").strip(), "warn")
+        if str(agent).strip()
+    ]
+    deterministic = [agent for agent in resolved if agent in DETERMINISTIC_AGENTS]
+    if any(agent not in DETERMINISTIC_AGENTS for agent in resolved) or not deterministic:
+        deterministic.append("code-reviewer")
+    return list(dict.fromkeys(deterministic))
 
 
 def parse_out_dir(stdout: str) -> Path | None:
@@ -245,31 +239,18 @@ def prefer_targeted_agents_by_change_scope(
     current_source: str,
     change_scope: dict[str, Any] | None,
 ) -> tuple[list[str], str]:
+    """Narrow 6.8 by surface without switching model reviewer identity."""
     if str(current_source or "").strip() != "configured-defaults":
         return list(current_agents), current_source
     scope = change_scope if isinstance(change_scope, dict) else {}
-    changed_paths = [str(item or "").strip().replace("\\", "/").lower() for item in list(scope.get("changed_paths") or []) if str(item or "").strip()]
+    changed_paths = [
+        str(item or "").strip().replace("\\", "/").lower()
+        for item in list(scope.get("changed_paths") or [])
+        if str(item or "").strip()
+    ]
     if not changed_paths:
         return list(current_agents), current_source
-
-    candidate_agents: set[str] = set()
-    if any(any(path.startswith(prefix) for prefix in SEMANTIC_TARGET_PREFIXES) for path in changed_paths):
-        candidate_agents.add("semantic-equivalence-auditor")
-    if any(
-        any(path.startswith(prefix) for prefix in CODE_TARGET_PREFIXES)
-        or path == "project.godot"
-        or path.endswith(CODE_TARGET_SUFFIXES)
-        for path in changed_paths
-    ):
-        candidate_agents.add("code-reviewer")
-    if any(any(token in path for token in SECURITY_TARGET_TOKENS) for path in changed_paths) or requires_security_auditor_for_change_scope(scope):
-        candidate_agents.add("security-auditor")
-
-    targeted_agents = _ordered_agent_subset(configured_agents, candidate_agents)
-    if not targeted_agents:
-        return list(current_agents), current_source
-    return targeted_agents, "change-scope-targeted"
-
+    return list(current_agents), "change-scope-targeted"
 
 def _extract_agents_from_agent_review(agent_review_payload: dict[str, Any], configured_agents: list[str]) -> list[str]:
     candidate_agents: set[str] = set()
