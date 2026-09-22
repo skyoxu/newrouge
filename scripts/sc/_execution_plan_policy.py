@@ -160,7 +160,7 @@ def assess_execution_plan_need(
         anchor_count=anchor_count,
         test_roots=test_roots,
         signals=signals,
-        threshold_hit=decision == "required",
+        threshold_hit=decision in {"required", "recommended"},
         decision=decision,
     )
 
