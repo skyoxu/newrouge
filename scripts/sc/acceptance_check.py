@@ -32,6 +32,7 @@ from _acceptance_task_requirements import (
     task_requires_env_evidence_preflight,
     task_requires_headless_e2e,
 )
+from _acceptance_verification_surface import validate_acceptance_verification
 from _acceptance_steps import StepResult, step_perf_budget
 from _risk_summary import write_risk_summary
 from _security_profile import security_profile_payload
@@ -302,6 +303,7 @@ def main() -> int:
     only_steps = parse_only_steps(args.only)
     subtasks_mode = normalize_subtasks_mode(args.subtasks_coverage)
 
+    verification_surface_report = validate_acceptance_verification(triplet=triplet)
     force_headless_for_task1 = bool(args.require_headless_e2e) and int(triplet.task_id) == 1
     has_gd_refs = task_requires_headless_e2e(triplet) or force_headless_for_task1
     needs_env_preflight = task_requires_env_evidence_preflight(triplet)
@@ -362,6 +364,7 @@ def main() -> int:
             task_requirements={
                 "has_gd_refs": has_gd_refs,
                 "requires_env_evidence_preflight": needs_env_preflight,
+                "verification_surface": verification_surface_report,
             },
             step_plan=step_plan,
         )
@@ -396,6 +399,17 @@ def main() -> int:
 
     if is_enabled(only_steps, "perf"):
         steps.append(step_perf_budget(out_dir, max_p95_ms=perf_p95_ms))
+
+    if int(verification_surface_report.get("classified_count") or 0) > 0:
+        surface_status = str(verification_surface_report.get("status") or "fail")
+        steps.append(
+            StepResult(
+                name="verification-surface",
+                status="ok" if surface_status == "ok" else "fail",
+                rc=0 if surface_status == "ok" else 1,
+                details=verification_surface_report,
+            )
+        )
 
     hard_failed = any(
         should_mark_hard_failure(step_name=s.name, status=s.status, subtasks_mode=subtasks_mode)
@@ -433,6 +447,7 @@ def main() -> int:
         task_requirements={
             "has_gd_refs": has_gd_refs,
             "requires_env_evidence_preflight": needs_env_preflight,
+            "verification_surface": verification_surface_report,
         },
         metrics=metrics,
         risk_summary_rel=risk_summary_rel,
