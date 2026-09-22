@@ -19,6 +19,7 @@ for candidate in (PYTHON_DIR, SC_DIR):
 
 from _change_scope import classify_change_scope_between_snapshots  # noqa: E402
 from _technical_debt import update_technical_debt_register  # noqa: E402
+from _agent_review_contract import normalize_finding_severity  # noqa: E402
 from llm_review_needs_fix_fast import _changed_paths_hit_reviewer_anchors, current_git_fingerprint  # noqa: E402
 from resume_task import build_resume_payload  # noqa: E402
 
@@ -173,9 +174,13 @@ def _residual_reason_from_agent_review(agent_review: dict[str, Any]) -> tuple[bo
     findings = agent_review.get("findings")
     if not isinstance(findings, list) or not findings:
         return False, "no_agent_review_findings"
-    severities = {str(item.get("severity") or "").strip().lower() for item in findings if isinstance(item, dict)}
-    if "high" in severities:
-        return False, "high_severity_finding_present"
+    severities = {
+        normalize_finding_severity(item.get("severity"))
+        for item in findings
+        if isinstance(item, dict)
+    }
+    if severities & {"P0", "P1"}:
+        return False, "must_fix_severity_finding_present"
     for item in findings:
         if not isinstance(item, dict):
             continue
@@ -186,8 +191,8 @@ def _residual_reason_from_agent_review(agent_review: dict[str, Any]) -> tuple[bo
             return False, "p1_floor_finding_present"
         if "artifact_integrity" in message or "planned-only" in message or "acceptance refs" in message:
             return False, "p1_floor_finding_present"
-    if severities & {"medium", "low"}:
-        return True, "only_medium_or_low_findings_remain"
+    if severities & {"P2", "P3", "P4"}:
+        return True, "only_deferrable_findings_remain"
     return False, "no_low_priority_findings"
 
 
