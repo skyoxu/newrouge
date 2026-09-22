@@ -1383,7 +1383,7 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             })
             write_json(tasks_dir / "tasks_back.json", [])
             write_json(tasks_dir / "tasks_gameplay.json", [{
-                "id": "GM-0001",
+                "id": "T1",
                 "taskmaster_id": 1,
                 "title": "Shop rule",
                 "status": "pending",
