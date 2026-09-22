@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -67,7 +68,8 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
 
     def test_human_experience_pending_and_failed_do_not_pass(self) -> None:
         for status in ("pending", "failed"):
-            with self.subTest(status=status):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
                 triplet = self._triplet({
                     "ACC:T15.1": {
                         "verification_surface": "human-experience",
@@ -77,22 +79,56 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                         "human_evidence_status": status,
                     }
                 })
-                report = validate_acceptance_verification(triplet=triplet)
+                report = validate_acceptance_verification(triplet=triplet, root=root)
                 self.assertEqual("fail", report["status"])
 
-    def test_human_experience_pass_requires_explicit_bound_evidence(self) -> None:
-        triplet = self._triplet({
-            "ACC:T15.1": {
-                "verification_surface": "human-experience",
-                "primary_evidence": ["logs/manual/task-15-playtest.md"],
-                "secondary_evidence": [],
-                "human_evidence_required": True,
-                "human_evidence_status": "passed",
-            }
-        })
-        report = validate_acceptance_verification(triplet=triplet)
-        self.assertEqual("ok", report["status"])
-        self.assertEqual(["ACC:T15.1"], report["passed_anchors"])
+    def test_human_experience_pass_requires_real_revision_bound_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence = root / "logs/manual/task-15-playtest.md"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text(
+                "# Task 15 playtest\n\nRevision: abc123\nResult: passed\n",
+                encoding="utf-8",
+            )
+            triplet = self._triplet({
+                "ACC:T15.1": {
+                    "verification_surface": "human-experience",
+                    "primary_evidence": ["logs/manual/task-15-playtest.md"],
+                    "secondary_evidence": [],
+                    "human_evidence_required": True,
+                    "human_evidence_status": "passed",
+                    "human_evidence_revision": "abc123",
+                }
+            })
+            report = validate_acceptance_verification(triplet=triplet, root=root)
+            self.assertEqual("ok", report["status"])
+            self.assertEqual(["ACC:T15.1"], report["passed_anchors"])
+
+    def test_human_experience_pass_rejects_missing_or_unbound_evidence(self) -> None:
+        for case, extra in (
+            ("missing_file", {"human_evidence_revision": "abc123"}),
+            ("missing_revision", {}),
+        ):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                if case == "missing_revision":
+                    evidence = root / "logs/manual/task-15-playtest.md"
+                    evidence.parent.mkdir(parents=True, exist_ok=True)
+                    evidence.write_text("# playtest\n", encoding="utf-8")
+                triplet = self._triplet({
+                    "ACC:T15.1": {
+                        "verification_surface": "human-experience",
+                        "primary_evidence": ["logs/manual/task-15-playtest.md"],
+                        "secondary_evidence": [],
+                        "human_evidence_required": True,
+                        "human_evidence_status": "passed",
+                        **extra,
+                    }
+                })
+                report = validate_acceptance_verification(triplet=triplet, root=root)
+                self.assertEqual("fail", report["status"])
+                self.assertTrue(report["errors"])
 
     def test_player_journey_can_bind_mixed_existing_evidence(self) -> None:
         triplet = self._triplet({
