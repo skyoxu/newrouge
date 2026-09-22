@@ -15,7 +15,7 @@ if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
 from _acceptance_task_requirements import collect_task_refs  # noqa: E402
-from _acceptance_verification_surface import validate_acceptance_verification  # noqa: E402
+from _acceptance_verification_surface import infer_legacy_verification_candidates, validate_acceptance_verification  # noqa: E402
 
 
 class AcceptanceVerificationSurfaceTests(unittest.TestCase):
@@ -28,6 +28,69 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
             },
             gameplay=None,
         )
+
+    def test_legacy_xunit_ref_yields_core_candidate_without_writing_authority(self) -> None:
+        triplet = SimpleNamespace(
+            task_id="15",
+            back={
+                "acceptance": [
+                    "ACC behavior must keep deterministic reward totals. Refs: Game.Core.Tests/Combat/RewardTests.cs",
+                ],
+            },
+            gameplay=None,
+        )
+        candidates = infer_legacy_verification_candidates(triplet)
+        row = candidates["ACC:T15.1"]
+        self.assertEqual("candidate", row["status"])
+        self.assertEqual("core-behavior", row["suggested_surface"])
+        self.assertEqual(["core-behavior"], row["candidate_surfaces"])
+        self.assertNotIn("acceptance_verification", triplet.back)
+
+    def test_legacy_gdunit_scene_ref_yields_scene_candidate(self) -> None:
+        triplet = SimpleNamespace(
+            task_id="15",
+            back={
+                "acceptance": [
+                    "Scene lifecycle and signal wiring must preserve reward UI state. Refs: Tests.Godot/tests/Scenes/test_reward_scene.gd",
+                ],
+            },
+            gameplay=None,
+        )
+        row = infer_legacy_verification_candidates(triplet)["ACC:T15.1"]
+        self.assertEqual("candidate", row["status"])
+        self.assertEqual("godot-scene", row["suggested_surface"])
+
+    def test_legacy_mixed_refs_require_confirmation_without_journey_semantics(self) -> None:
+        triplet = SimpleNamespace(
+            task_id="15",
+            back={
+                "acceptance": [
+                    "Reward behavior must remain correct. Refs: Game.Core.Tests/Combat/RewardTests.cs Tests.Godot/tests/Scenes/test_reward_scene.gd",
+                ],
+            },
+            gameplay=None,
+        )
+        row = infer_legacy_verification_candidates(triplet)["ACC:T15.1"]
+        self.assertEqual("needs-confirmation", row["status"])
+        self.assertEqual("", row["suggested_surface"])
+        self.assertIn("player-journey", row["candidate_surfaces"])
+        self.assertIn("core-behavior", row["candidate_surfaces"])
+        self.assertIn("godot-scene", row["candidate_surfaces"])
+
+    def test_legacy_subjective_semantics_never_auto_classify_from_machine_ref(self) -> None:
+        triplet = SimpleNamespace(
+            task_id="15",
+            back={
+                "acceptance": [
+                    "Combat pacing and visual readability must feel clear in playtest. Refs: Tests.Godot/tests/Scenes/test_combat_scene.gd",
+                ],
+            },
+            gameplay=None,
+        )
+        row = infer_legacy_verification_candidates(triplet)["ACC:T15.1"]
+        self.assertEqual("needs-confirmation", row["status"])
+        self.assertEqual("", row["suggested_surface"])
+        self.assertEqual(["human-experience"], row["candidate_surfaces"])
 
     def test_core_behavior_requires_bound_xunit_identity(self) -> None:
         good = self._triplet({
