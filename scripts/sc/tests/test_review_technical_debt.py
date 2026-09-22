@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SC_DIR = REPO_ROOT / "scripts" / "sc"
 sys.path.insert(0, str(SC_DIR))
 
-from _technical_debt import collect_low_priority_review_findings, update_technical_debt_register, write_low_priority_debt_artifacts  # noqa: E402
+from _technical_debt import collect_low_priority_review_findings, collect_pipeline_low_priority_findings, update_technical_debt_register, write_low_priority_debt_artifacts  # noqa: E402
 
 
 class ReviewTechnicalDebtTests(unittest.TestCase):
@@ -55,7 +55,7 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
             self.assertTrue(all(item["agent"] == "code-reviewer" for item in findings))
             self.assertTrue(all("P1" not in item["message"] for item in findings))
 
-    def test_update_register_should_replace_existing_task_section(self) -> None:
+    def test_update_register_should_preserve_unreviewed_existing_findings(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             doc_path = root / "docs" / "technical-debt.md"
@@ -108,9 +108,30 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
             self.assertIn("newrun", text)
             self.assertIn("trim duplicate helper", text)
             self.assertIn("consider simplifying local naming", text)
-            self.assertNotIn("stale item", text)
+            self.assertIn("stale item", text)
             persisted = json.loads(json.dumps(payload, ensure_ascii=False))
             self.assertEqual("11", persisted["task_id"])
+
+    def test_pipeline_adapter_should_read_real_llm_child_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            child_dir = root / "child-artifacts" / "sc-llm-review"
+            child_dir.mkdir(parents=True, exist_ok=True)
+            review_md = child_dir / "review-code-reviewer.md"
+            review_md.write_text("## P2\n- P2 keep this residual\n\nVerdict: Needs Fix\n", encoding="utf-8")
+            child_summary = child_dir / "summary.json"
+            child_summary.write_text(
+                json.dumps({"status": "warn", "results": [{"agent": "code-reviewer", "status": "ok", "output_path": str(review_md), "details": {"verdict": "Needs Fix"}}]}),
+                encoding="utf-8",
+            )
+            findings, reason = collect_pipeline_low_priority_findings(
+                pipeline_summary={"steps": [{"name": "sc-llm-review", "status": "fail", "summary_file": str(child_summary)}]},
+                root=root,
+            )
+            self.assertEqual("ok", reason)
+            self.assertEqual(1, len(findings))
+            self.assertEqual("P2", findings[0]["severity"])
+            self.assertTrue(findings[0]["finding_id"])
 
     def test_write_artifacts_should_not_touch_register_when_llm_review_not_executed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
