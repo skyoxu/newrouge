@@ -252,6 +252,19 @@ def _route_blocked_by(route_payload: dict[str, Any] | None) -> str:
     return str((route_payload or {}).get("blocked_by") or "").strip().lower()
 
 
+def _route_execution_allowed(route_payload: dict[str, Any] | None) -> bool:
+    route = route_payload if isinstance(route_payload, dict) else {}
+    value = route.get("execution_allowed")
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().lower()
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    return _route_blocked_by(route) != "chapter5_readiness"
+
+
 def _route_next_action(route_payload: dict[str, Any] | None) -> str:
     route = route_payload or {}
     value = route.get("chapter6_next_action")
@@ -299,10 +312,13 @@ def _evaluate_route_state(route_payload: dict[str, Any] | None, *, allow_needs_f
     lane = _route_lane(route_payload)
     next_action = _route_next_action(route_payload)
     has_recovery_signal = _initial_route_has_recovery_signal(route_payload)
+    execution_allowed = _route_execution_allowed(route_payload)
     stop_reason = ""
     needs_fix = False
 
-    if has_recovery_signal:
+    if not execution_allowed or blocked_by == "chapter5_readiness":
+        stop_reason = "chapter5_readiness"
+    elif has_recovery_signal:
         if blocked_by == "artifact_integrity" or latest_reason == "planned_only_incomplete" or latest_run_type == "planned-only":
             stop_reason = "artifact-integrity"
         elif blocked_by in {"approval_pending", "approval_invalid"}:
@@ -329,7 +345,7 @@ def _evaluate_route_state(route_payload: dict[str, Any] | None, *, allow_needs_f
         elif blocked_by in {"rerun_guard", "llm_retry_stop_loss", "sc_test_retry_stop_loss", "waste_signals", "repo-noise", "recent_failure_summary"}:
             stop_reason = blocked_by
 
-    if allow_needs_fix:
+    if allow_needs_fix and execution_allowed and stop_reason != "chapter5_readiness":
         if next_action in {"run-6.8", "needs-fix-fast"}:
             needs_fix = True
         elif next_action not in {"continue", "pause", "fork", "resume", "inspect", "rerun", "fix-and-resume"}:
@@ -337,6 +353,7 @@ def _evaluate_route_state(route_payload: dict[str, Any] | None, *, allow_needs_f
 
     return {
         "has_recovery_signal": has_recovery_signal,
+        "execution_allowed": execution_allowed,
         "lane": lane,
         "next_action": next_action,
         "blocked_by": blocked_by,
@@ -449,6 +466,11 @@ def _decide_phase(
     approval_fork_ready = required_action == "fork" and status == "approved" and ("fork" in allowed_actions or not allowed_actions)
     no_increment_stop_reason = _no_increment_stop_reason(resume_payload, route_payload)
 
+    if not bool(route_eval["execution_allowed"]) or blocked_by == "chapter5_readiness":
+        return {
+            "action": "blocked",
+            "stop_reason": "chapter5_readiness",
+        }
     if approval_resume_stop_reason:
         return {
             "action": "blocked",
@@ -968,6 +990,12 @@ def main() -> int:
             route_payload = initial_route
         elif name in {"local-hard-checks-preflight", "local-hard-checks"}:
             route_payload = final_route if isinstance(final_route, dict) and final_route else post_review_route
+        if not _route_execution_allowed(route_payload) or _route_blocked_by(route_payload) == "chapter5_readiness":
+            summary["status"] = "blocked"
+            summary["stop_reason"] = "chapter5_readiness"
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop=chapter5_readiness")
+            return False
         if _command_is_forbidden(route_payload, cmd):
             summary["status"] = "blocked"
             summary["stop_reason"] = f"forbidden-command:{name}"
