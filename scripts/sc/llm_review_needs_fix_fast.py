@@ -1082,7 +1082,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--agent-timeout-sec", type=int, default=None, help="llm_review --agent-timeout-sec. Default follows delivery profile.")
     ap.add_argument("--step-timeout-sec", type=int, default=None, help="Outer timeout for each subprocess step. Default follows delivery profile.")
     ap.add_argument("--min-llm-budget-min", type=int, default=None, help="Fail fast when remaining budget is below this floor before a new LLM round. Default follows delivery profile.")
-    ap.add_argument("--final-pass", action="store_true", help="Force a full closure pass: no deterministic shortcuts, no reviewer auto-shrink, full reviewer set.")
+    ap.add_argument("--final-pass", action="store_true", help="Force full deterministic closure and complete applicable lenses/surfaces with the single model reviewer; disable narrow reuse shortcuts.")
     ap.add_argument("--skip-sc-test", action="store_true", help="Skip sc-test in deterministic pipeline stage.")
     ap.add_argument("--python", default="py", help="Python launcher command (Windows default: py).")
     return ap
