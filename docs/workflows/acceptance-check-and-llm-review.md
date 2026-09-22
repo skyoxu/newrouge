@@ -117,6 +117,8 @@ Chapter 6 默认由一个 `code-reviewer` 完成模型审查。完整性来自�
 - `Edge Case`
 - `Verification Gap`
 
+The reviewer also receives up to three deterministic surface focuses derived from the actual changed paths (for example Save/Load, Contract/EventBus, UI/Scene, State Machine, Security, Performance). Surface focuses are review methods, not additional reviewer personas, and are omitted when the changed surface does not justify one.
+
 deterministic ADR/security/contract/test gates 仍是独立机器能力，不被模型 reviewer 替代。历史 multi-reviewer artifacts 保留为只读证据，但不能直接证明新的三-lens 审查已经完成。
 
 ### 3.2 必需输入与预算
