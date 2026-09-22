@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from _agent_review_contract import normalize_finding_severity
+
 
 OWNER_STEP_AXES = {
     "sc-test": "implementation",
@@ -71,7 +73,14 @@ def _stable_unique(values: list[str]) -> list[str]:
 
 def _normalize_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
     findings = payload.get("findings")
-    return [item for item in findings if isinstance(item, dict)] if isinstance(findings, list) else []
+    if not isinstance(findings, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in findings:
+        if not isinstance(item, dict):
+            continue
+        out.append({**item, "severity": normalize_finding_severity(item.get("severity"))})
+    return out
 
 
 def _axes_for_finding(finding: dict[str, Any]) -> list[str]:
@@ -90,7 +99,7 @@ def _categories_by_severity(findings: list[dict[str, Any]], categories: set[str]
         category = str(item.get("category") or "").strip()
         if category not in categories:
             continue
-        if str(item.get("severity") or "").strip().lower() != severity:
+        if normalize_finding_severity(item.get("severity")) != str(severity or "").upper():
             continue
         matched.append(category)
     return _stable_unique(matched)
@@ -110,9 +119,9 @@ def summarize_agent_review(payload: dict[str, Any]) -> dict[str, Any]:
     review_verdict = str(payload.get("review_verdict") or "").strip().lower()
     owner_steps = _stable_unique([str(item.get("owner_step") or "") for item in findings])
     categories = _stable_unique([str(item.get("category") or "") for item in findings])
-    severity_counts = {"low": 0, "medium": 0, "high": 0}
+    severity_counts = {level: 0 for level in ("P0", "P1", "P2", "P3", "P4")}
     for item in findings:
-        severity = str(item.get("severity") or "").strip().lower()
+        severity = normalize_finding_severity(item.get("severity"))
         if severity in severity_counts:
             severity_counts[severity] += 1
 
@@ -125,8 +134,14 @@ def summarize_agent_review(payload: dict[str, Any]) -> dict[str, Any]:
     resume_bias_categories = _categories_in(findings, RESUME_BIAS_CATEGORIES)
     refresh_bias_categories = _categories_in(findings, REFRESH_BIAS_CATEGORIES)
     fork_always_categories = _categories_in(findings, FORK_ALWAYS_CATEGORIES)
-    high_refresh_categories = _categories_by_severity(findings, REFRESH_BIAS_CATEGORIES, "high")
-    high_fork_categories = _categories_by_severity(findings, FORK_ON_HIGH_CATEGORIES, "high")
+    high_refresh_categories = _stable_unique(
+        _categories_by_severity(findings, REFRESH_BIAS_CATEGORIES, "P0")
+        + _categories_by_severity(findings, REFRESH_BIAS_CATEGORIES, "P1")
+    )
+    high_fork_categories = _stable_unique(
+        _categories_by_severity(findings, FORK_ON_HIGH_CATEGORIES, "P0")
+        + _categories_by_severity(findings, FORK_ON_HIGH_CATEGORIES, "P1")
+    )
     low_noise_only = bool(findings) and all(
         str(item.get("category") or "").strip() in RESUME_BIAS_CATEGORIES for item in findings
     )
@@ -141,7 +156,7 @@ def summarize_agent_review(payload: dict[str, Any]) -> dict[str, Any]:
         recommended_action = "fork"
     elif review_verdict == "block":
         if cross_step:
-            if cross_axis or not low_noise_only or severity_counts["high"] > 0:
+            if cross_axis or not low_noise_only or severity_counts["P0"] + severity_counts["P1"] > 0:
                 reasons.append("agent_review_cross_step_block")
         if cross_axis:
             reasons.append("agent_review_semantic_axis_mix")
