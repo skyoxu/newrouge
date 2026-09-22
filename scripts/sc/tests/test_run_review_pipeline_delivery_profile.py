@@ -583,6 +583,50 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
             self.assertNotIn("--strict", llm_cmd)
 
+    def test_pipeline_should_fail_recoverably_when_technical_debt_sync_raises(self) -> None:
+        run_id = uuid.uuid4().hex
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_root = Path(tmpdir)
+            out_dir = tmp_root / f"sc-review-pipeline-task-1-{run_id}"
+            latest_path = tmp_root / "sc-review-pipeline-task-1" / "latest.json"
+            argv = [
+                str(SCRIPT),
+                "--task-id",
+                "1",
+                "--run-id",
+                run_id,
+                "--delivery-profile",
+                "fast-ship",
+                "--reselect-profile",
+                "--dry-run",
+                "--skip-test",
+                "--skip-agent-review",
+            ]
+            with (
+                mock.patch.dict(os.environ, {}, clear=False),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(run_review_pipeline_module, "_pipeline_run_dir", return_value=out_dir),
+                mock.patch.object(run_review_pipeline_module, "_pipeline_latest_index_path", return_value=latest_path),
+                mock.patch.object(
+                    run_review_pipeline_module,
+                    "resolve_triplet",
+                    return_value=self._triplet(back={"semantic_review_tier": "minimal"}),
+                ),
+                mock.patch.object(
+                    run_review_pipeline_module,
+                    "write_low_priority_debt_artifacts",
+                    side_effect=OSError("register is read-only"),
+                ),
+            ):
+                rc = run_review_pipeline_module.main()
+
+            self.assertEqual(run_review_pipeline_module.TECHNICAL_DEBT_SYNC_ERROR_RC, rc)
+            log_text = (out_dir / "technical-debt-sync.log").read_text(encoding="utf-8")
+            self.assertIn("technical debt sync failed", log_text)
+            self.assertIn("do not reinterpret the existing Review verdict", log_text)
+            summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual("ok", summary["status"])
+
     def test_dry_run_fast_ship_should_apply_task_level_targeted_review_tier_without_semantic_reviewer(self) -> None:
         run_id = uuid.uuid4().hex
         with tempfile.TemporaryDirectory() as tmpdir:
