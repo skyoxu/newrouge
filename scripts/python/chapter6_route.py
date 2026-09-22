@@ -249,30 +249,6 @@ def route_chapter6(
     record_residual: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
-    readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
-    if not readiness_ok:
-        return 3, {
-            "task_id": str(task_id or "").strip(),
-            "run_id": str(run_id or "").strip(),
-            "preferred_lane": "blocked",
-            "recommended_command": (
-                f"py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-id {str(task_id or '').strip()}"
-            ),
-            "forbidden_commands": ["Chapter 6 RED/GREEN/REFACTOR"],
-            "reviewer_anchor_hit": False,
-            "changed_paths": [],
-            "six_eight_worthwhile": False,
-            "full_67_recommended": False,
-            "repo_noise_classification": "task-issue",
-            "repo_noise_reason": readiness_reason,
-            "recommended_action": "blocked",
-            "recommended_action_why": "Chapter 5 readiness must allow closure before Chapter 6.",
-            "latest_reason": readiness_reason,
-            "chapter6_next_action": "return_to_chapter5",
-            "blocked_by": "chapter5_readiness",
-            "chapter5_readiness": readiness,
-            "residual_recording": {"eligible": False, "performed": False},
-        }
     _, payload = build_resume_payload(
         repo_root=root,
         task_id=str(task_id or "").strip(),
@@ -355,6 +331,30 @@ def route_chapter6(
         "blocked_by": str(chapter6_hints.get("blocked_by") or "").strip(),
         "residual_recording": residual_recording,
     }
+
+    readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
+    route_payload["chapter5_readiness"] = readiness
+    route_payload["chapter5_readiness_ok"] = readiness_ok
+    route_payload["chapter5_readiness_reason"] = readiness_reason
+    route_payload["execution_allowed"] = readiness_ok
+    if not readiness_ok:
+        diagnostic_command = str(route_payload.get("recommended_command") or "").strip()
+        route_payload["diagnostic_recommended_command"] = diagnostic_command
+        route_payload["recommended_command"] = (
+            f"py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-id {str(task_id or '').strip()}"
+        )
+        route_payload["forbidden_commands"] = sorted(set(
+            list(route_payload.get("forbidden_commands") or [])
+            + ["Chapter 6 RED/GREEN/REFACTOR"]
+        ))
+        route_payload["recommended_action"] = "blocked"
+        route_payload["recommended_action_why"] = (
+            "Chapter 5 readiness blocks execution, while the existing run diagnosis remains visible."
+        )
+        route_payload["chapter6_next_action"] = "return_to_chapter5"
+        route_payload["blocked_by"] = "chapter5_readiness"
+        route_payload["latest_reason"] = readiness_reason
+        return 3, route_payload
     return 0, route_payload
 
 
