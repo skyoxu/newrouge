@@ -72,7 +72,53 @@ class AcceptanceTestgenRedTests(unittest.TestCase):
             )
 
         self.assertEqual("ok", report["status"])
-        self.assertEqual("unit_red", report["reason"])
+        self.assertEqual("unit_behavior_red", report["reason"])
+
+    def test_evaluate_red_verification_should_reject_timeout_without_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            report = red.evaluate_red_verification(
+                repo_root=root,
+                out_dir=out_dir,
+                verify_mode="unit",
+                test_step={"status": "fail", "rc": 124, "cmd": ["py", "-3", "scripts/sc/test.py"]},
+                verify_log_text="process timed out",
+            )
+        self.assertEqual("fail", report["status"])
+        self.assertEqual("verification_timeout", report["reason"])
+
+    def test_evaluate_red_verification_should_reject_nonzero_without_behavior_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            report = red.evaluate_red_verification(
+                repo_root=root,
+                out_dir=out_dir,
+                verify_mode="unit",
+                test_step={"status": "fail", "rc": 1, "cmd": ["py", "-3", "scripts/sc/test.py"]},
+                verify_log_text="SC_TEST status=fail",
+            )
+        self.assertEqual("fail", report["status"])
+        self.assertEqual("verification_report_missing", report["reason"])
+
+    def test_evaluate_red_verification_should_reject_tests_failed_without_assertion_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-03-20" / "sc-llm-acceptance-tests"
+            _write_json(
+                root / "logs" / "unit" / "2026-03-20" / "summary.json",
+                {"status": "tests_failed", "failure_excerpt": ["process exited with code 1"]},
+            )
+            report = red.evaluate_red_verification(
+                repo_root=root,
+                out_dir=out_dir,
+                verify_mode="unit",
+                test_step={"status": "fail", "rc": 1, "cmd": ["py", "-3", "scripts/sc/test.py"]},
+                verify_log_text="SC_TEST status=fail",
+            )
+        self.assertEqual("fail", report["status"])
+        self.assertEqual("unit_failure_not_causal", report["reason"])
 
     def test_evaluate_red_verification_should_fail_on_compile_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
