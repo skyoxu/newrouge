@@ -188,6 +188,54 @@ def collect_low_priority_review_findings(
             )
     return findings
 
+def collect_explicit_debt_dispositions(*, summary: dict[str, Any]) -> dict[str, str]:
+    dispositions: dict[str, str] = {}
+    results = summary.get("results")
+    if not isinstance(results, list):
+        return dispositions
+    for result in results:
+        if not isinstance(result, dict) or str(result.get("status") or "").strip().lower() != "ok":
+            continue
+        details = result.get("details") if isinstance(result.get("details"), dict) else {}
+        contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else None
+        if not isinstance(contract, dict) or str(contract.get("completion_status") or "").strip() != "completed":
+            continue
+        findings = contract.get("findings")
+        if not isinstance(findings, list):
+            continue
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            finding_id = str(finding.get("finding_id") or "").strip()
+            disposition = finding.get("disposition") if isinstance(finding.get("disposition"), dict) else {}
+            action = str(disposition.get("action") or "").strip().lower()
+            rationale = str(disposition.get("rationale") or "").strip()
+            evidence = finding.get("evidence")
+            verification = str(finding.get("verification") or "").strip()
+            if (
+                finding_id
+                and action == "reject"
+                and rationale
+                and verification
+                and isinstance(evidence, list)
+                and any(str(item or "").strip() for item in evidence)
+            ):
+                dispositions[finding_id] = "rejected"
+    return dispositions
+
+
+def collect_pipeline_debt_dispositions(
+    *,
+    pipeline_summary: dict[str, Any],
+    root: Path | None = None,
+) -> tuple[dict[str, str], str]:
+    root_dir = root or repo_root()
+    child, reason = _load_pipeline_child_review_summary(summary=pipeline_summary, root=root_dir)
+    if child is None:
+        return {}, reason
+    return collect_explicit_debt_dispositions(summary=child), "ok"
+
+
 def collect_pipeline_low_priority_findings(
     *,
     pipeline_summary: dict[str, Any],
@@ -386,6 +434,10 @@ def write_low_priority_debt_artifacts(
         root=root_dir,
         fix_through=fix_through,
     )
+    dispositions, disposition_status = collect_pipeline_debt_dispositions(
+        pipeline_summary=summary,
+        root=root_dir,
+    )
     if source_status != "ok":
         payload = {
             "cmd": "sc-review-pipeline",
@@ -425,6 +477,7 @@ def write_low_priority_debt_artifacts(
         run_id=str(run_id),
         findings=findings,
         delivery_profile=str(delivery_profile),
+        dispositions=dispositions if disposition_status == "ok" else None,
     )
     payload["register"] = register_result
     write_json(findings_path, payload)
