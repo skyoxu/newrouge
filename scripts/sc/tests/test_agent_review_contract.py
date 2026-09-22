@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SC_DIR = REPO_ROOT / "scripts" / "sc"
 sys.path.insert(0, str(SC_DIR))
 
-from _agent_review_contract import make_review_payload, render_review_markdown, validate_review_payload  # noqa: E402
+from _agent_review_contract import make_review_payload, normalize_finding_severity, render_review_markdown, validate_review_payload  # noqa: E402
 
 
 class AgentReviewContractTests(unittest.TestCase):
@@ -68,6 +68,18 @@ class AgentReviewContractTests(unittest.TestCase):
         self.assertIn("review_verdict: block", rendered)
         self.assertIn("sc-test-failed", rendered)
         self.assertEqual("P1", payload["findings"][0]["severity"])
+
+    def test_legacy_severity_adapter_should_preserve_exact_p0_p4_and_map_legacy_labels(self) -> None:
+        cases = {
+            "high": "P1",
+            "medium": "P2",
+            "low": "P3",
+            "P0": "P0",
+            "P4": "P4",
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(expected, normalize_finding_severity(raw))
 
     def test_render_review_markdown_should_include_approval_section(self) -> None:
         payload = make_review_payload(
