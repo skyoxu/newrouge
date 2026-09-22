@@ -1861,17 +1861,19 @@ def main() -> int:
         print("[sc-review-pipeline] ERROR: --resume, --abort, and --fork are mutually exclusive.")
         return 2
 
-    handoff = validate_handoff(
-        args.frozen_context,
-        args.impact_report,
-        args.revision,
-        repo_root=repo_root(),
-        consumer="review",
-        binding_evidence=args.binding_evidence,
-    )
-    if not handoff.ok:
-        print(f"[sc-review-pipeline] ERROR: {handoff.code}: {handoff.reason}")
-        return handoff.exit_code
+    handoff = None
+    if not args.abort:
+        handoff = validate_handoff(
+            args.frozen_context,
+            args.impact_report,
+            args.revision,
+            repo_root=repo_root(),
+            consumer="review",
+            binding_evidence=args.binding_evidence,
+        )
+        if not handoff.ok:
+            print(f"[sc-review-pipeline] ERROR: {handoff.code}: {handoff.reason}")
+            return handoff.exit_code
 
     requested_run_id = str(args.run_id or "").strip() or uuid.uuid4().hex
     run_id = requested_run_id
@@ -2068,7 +2070,7 @@ def main() -> int:
         "reconciliation_sha256": readiness_payload.get("reconciliation_sha256"),
     }
 
-    if handoff.ok and handoff.identity is not None:
+    if handoff is not None and handoff.ok and handoff.identity is not None:
         if source_handoff_identity is not None and source_handoff_identity != handoff.identity:
             print("[sc-review-pipeline] ERROR: invalid_kcp_binding: resume/fork handoff identity mismatch")
             return 11
