@@ -203,7 +203,11 @@ _FINDING_SEVERITIES = {"P0", "P1", "P2", "P3", "P4"}
 _DISPOSITION_ACTIONS = {"retain", "fix", "reject", "defer"}
 
 
-def parse_review_contract(text: str) -> tuple[dict[str, Any] | None, list[str]]:
+def parse_review_contract(
+    text: str,
+    *,
+    fix_through: str = "P1",
+) -> tuple[dict[str, Any] | None, list[str]]:
     raw = str(text or "")
     marker_index = raw.find(_REVIEW_CONTRACT_MARKER)
     if marker_index < 0:
@@ -220,6 +224,8 @@ def parse_review_contract(text: str) -> tuple[dict[str, Any] | None, list[str]]:
         return None, ["review_contract_must_be_object"]
 
     errors: list[str] = []
+    threshold = str(fix_through or "P1").strip().upper()
+    threshold_rank = {"P1": 1, "P2": 2, "P3": 3}.get(threshold, 1)
     completion = str(payload.get("completion_status") or "").strip()
     if completion not in _REVIEW_COMPLETION:
         errors.append("completion_status_invalid")
@@ -302,7 +308,11 @@ def parse_review_contract(text: str) -> tuple[dict[str, Any] | None, list[str]]:
                 errors.append(f"findings[{index}]_disposition_action_invalid")
             if not rationale:
                 errors.append(f"findings[{index}]_disposition_rationale_missing")
-            if severity in {"P0", "P1"} and action == "defer":
+            if (
+                severity in _FINDING_SEVERITIES
+                and int(severity[1]) <= threshold_rank
+                and action == "defer"
+            ):
                 errors.append(f"findings[{index}]_must_fix_cannot_defer")
 
     uncertainty = payload.get("uncertainty")
