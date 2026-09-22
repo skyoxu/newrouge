@@ -18,6 +18,13 @@ _BULLET_PREFIX_RE = re.compile(r"^\s*(?:[-*]|\d+\.)\s*")
 _VERDICT_RE = re.compile(r"^\s*Verdict\s*:", flags=re.IGNORECASE)
 _FINDING_ID_RE = re.compile(r"\{finding_id=([^}]+)\}")
 _LOW_PRIORITY = {"P2", "P3", "P4"}
+_SEVERITY_RANK = {"P0": 0, "P1": 1, "P2": 2, "P3": 3, "P4": 4}
+
+
+def _debt_severities_for_fix_through(fix_through: str) -> set[str]:
+    threshold = str(fix_through or "P1").strip().upper()
+    threshold_rank = _SEVERITY_RANK.get(threshold, 1)
+    return {severity for severity, rank in _SEVERITY_RANK.items() if rank > threshold_rank}
 
 
 def _normalize_relpath(path: Path, *, root: Path) -> str:
@@ -98,17 +105,61 @@ def _load_pipeline_child_review_summary(*, summary: dict[str, Any], root: Path) 
     return payload, "ok"
 
 
-def collect_low_priority_review_findings(*, summary: dict[str, Any], root: Path | None = None) -> list[dict[str, str]]:
+def collect_low_priority_review_findings(
+    *,
+    summary: dict[str, Any],
+    root: Path | None = None,
+    fix_through: str = "P1",
+) -> list[dict[str, str]]:
     root_dir = root or repo_root()
     results = summary.get("results") or []
     findings: list[dict[str, str]] = []
     seen: set[str] = set()
+    allowed_severities = _debt_severities_for_fix_through(fix_through)
     if not isinstance(results, list):
         return findings
     for result in results:
         if not isinstance(result, dict):
             continue
         output_raw = str(result.get("output_path") or "").strip()
+        agent = str(result.get("agent") or "").strip() or "single-reviewer"
+        details = result.get("details") if isinstance(result.get("details"), dict) else {}
+        contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else None
+        structured_findings = contract.get("findings") if isinstance(contract, dict) and isinstance(contract.get("findings"), list) else None
+
+        if structured_findings is not None:
+            for raw in structured_findings:
+                if not isinstance(raw, dict):
+                    continue
+                severity = str(raw.get("severity") or "").strip().upper()
+                disposition = raw.get("disposition") if isinstance(raw.get("disposition"), dict) else {}
+                if severity not in allowed_severities:
+                    continue
+                if str(disposition.get("action") or "").strip().lower() != "defer":
+                    continue
+                message = str(raw.get("claim") or "").strip()
+                if not message:
+                    continue
+                finding_id = str(raw.get("finding_id") or "").strip() or _stable_finding_id(
+                    agent=agent,
+                    severity=severity,
+                    message=message,
+                )
+                if finding_id in seen:
+                    continue
+                seen.add(finding_id)
+                findings.append(
+                    {
+                        "finding_id": finding_id,
+                        "severity": severity,
+                        "agent": agent,
+                        "message": message,
+                        "source_path": output_raw.replace("\\", "/"),
+                        "source_status": str(result.get("status") or ""),
+                    }
+                )
+            continue
+
         if not output_raw:
             continue
         output_path = Path(output_raw)
@@ -116,9 +167,11 @@ def collect_low_priority_review_findings(*, summary: dict[str, Any], root: Path 
             output_path = root_dir / output_path
         if not output_path.exists():
             continue
-        agent = str(result.get("agent") or "").strip() or "single-reviewer"
         text = output_path.read_text(encoding="utf-8", errors="ignore")
         for item in _parse_review_markdown(text, agent=agent):
+            severity = str(item.get("severity") or "").strip().upper()
+            if severity not in allowed_severities:
+                continue
             finding_id = str(item.get("finding_id") or "").strip()
             if not finding_id or finding_id in seen:
                 continue
@@ -126,7 +179,7 @@ def collect_low_priority_review_findings(*, summary: dict[str, Any], root: Path 
             findings.append(
                 {
                     "finding_id": finding_id,
-                    "severity": item["severity"],
+                    "severity": severity,
                     "agent": agent,
                     "message": item["message"],
                     "source_path": _normalize_relpath(output_path, root=root_dir),
@@ -135,13 +188,21 @@ def collect_low_priority_review_findings(*, summary: dict[str, Any], root: Path 
             )
     return findings
 
-
-def collect_pipeline_low_priority_findings(*, pipeline_summary: dict[str, Any], root: Path | None = None) -> tuple[list[dict[str, str]], str]:
+def collect_pipeline_low_priority_findings(
+    *,
+    pipeline_summary: dict[str, Any],
+    root: Path | None = None,
+    fix_through: str = "P1",
+) -> tuple[list[dict[str, str]], str]:
     root_dir = root or repo_root()
     child, reason = _load_pipeline_child_review_summary(summary=pipeline_summary, root=root_dir)
     if child is None:
         return [], reason
-    return collect_low_priority_review_findings(summary=child, root=root_dir), "ok"
+    return collect_low_priority_review_findings(
+        summary=child,
+        root=root_dir,
+        fix_through=fix_through,
+    ), "ok"
 
 
 def _base_document() -> str:
@@ -315,6 +376,7 @@ def write_low_priority_debt_artifacts(
     task_id: str,
     run_id: str,
     delivery_profile: str,
+    fix_through: str = "P1",
     root: Path | None = None,
 ) -> dict[str, Any]:
     root_dir = root or repo_root()
@@ -322,6 +384,7 @@ def write_low_priority_debt_artifacts(
     findings, source_status = collect_pipeline_low_priority_findings(
         pipeline_summary=summary,
         root=root_dir,
+        fix_through=fix_through,
     )
     if source_status != "ok":
         payload = {
