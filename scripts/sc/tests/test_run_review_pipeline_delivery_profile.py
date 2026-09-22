@@ -579,7 +579,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("skip", execution_context["llm_review"]["semantic_gate"])
             self.assertIn("--semantic-gate", llm_cmd)
             self.assertEqual("skip", llm_cmd[llm_cmd.index("--semantic-gate") + 1])
-            self.assertEqual("code-reviewer,security-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("code-reviewer", llm_cmd[llm_cmd.index("--agents") + 1])
             self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
             self.assertNotIn("--strict", llm_cmd)
 
@@ -618,7 +618,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("warn", execution_context["llm_review"]["semantic_gate"])
             self.assertIn("--semantic-gate", llm_cmd)
             self.assertEqual("warn", llm_cmd[llm_cmd.index("--semantic-gate") + 1])
-            self.assertEqual("code-reviewer,security-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual("code-reviewer", llm_cmd[llm_cmd.index("--agents") + 1])
             self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
             self.assertNotIn("--strict", llm_cmd)
 
@@ -647,7 +647,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
         out_dir = _extract_out_dir(proc.stdout or "")
         summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(["code-reviewer"], [str(x) for x in (summary.get("agents") or [])])
+        self.assertEqual(["code-reviewer", "security-auditor"], [str(x) for x in (summary.get("agents") or [])])
 
     def test_dry_run_fast_ship_should_escalate_minimal_tier_for_contract_task(self) -> None:
         run_id = uuid.uuid4().hex
