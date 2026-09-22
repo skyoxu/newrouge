@@ -201,6 +201,93 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
             self.assertEqual("P2", findings[0]["severity"])
             self.assertTrue(findings[0]["finding_id"])
 
+    def test_explicit_reject_disposition_should_close_only_matching_debt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            doc_path = root / "docs" / "technical-debt.md"
+            doc_path.parent.mkdir(parents=True, exist_ok=True)
+            doc_path.write_text(
+                "\n".join(
+                    [
+                        "# Technical Debt Register",
+                        "",
+                        "<!-- BEGIN AUTO:RUN_REVIEW_PIPELINE_TECHNICAL_DEBT -->",
+                        "## Task 11",
+                        "- latest_run_id: oldrun",
+                        "",
+                        "### P2",
+                        "- [code-reviewer] rejected item {finding_id=F-REJECT}",
+                        "- [code-reviewer] untouched item {finding_id=F-KEEP}",
+                        "",
+                        "<!-- END AUTO:RUN_REVIEW_PIPELINE_TECHNICAL_DEBT -->",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            child_dir = root / "child-artifacts" / "sc-llm-review"
+            child_dir.mkdir(parents=True, exist_ok=True)
+            child_summary = child_dir / "summary.json"
+            child_summary.write_text(
+                json.dumps(
+                    {
+                        "status": "ok",
+                        "results": [
+                            {
+                                "agent": "code-reviewer",
+                                "status": "ok",
+                                "output_path": str(child_dir / "review-code-reviewer.md"),
+                                "details": {
+                                    "review_contract": {
+                                        "completion_status": "completed",
+                                        "lenses": [],
+                                        "findings": [
+                                            {
+                                                "finding_id": "F-REJECT",
+                                                "claim": "Old debt is not applicable after verification.",
+                                                "severity": "P2",
+                                                "evidence": ["Game.Core.Tests/Tasks/Task11Tests.cs"],
+                                                "verification": "Bound regression confirms the old claim is invalid.",
+                                                "disposition": {
+                                                    "action": "reject",
+                                                    "rationale": "Re-review disproved the old finding.",
+                                                },
+                                            }
+                                        ],
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            out_dir = root / "logs" / "ci" / "2026-09-22" / "sc-review-pipeline-task-11-run"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            result = write_low_priority_debt_artifacts(
+                out_dir=out_dir,
+                summary={
+                    "steps": [
+                        {
+                            "name": "sc-llm-review",
+                            "status": "ok",
+                            "summary_file": str(child_summary),
+                        }
+                    ]
+                },
+                task_id="11",
+                run_id="newrun",
+                delivery_profile="fast-ship",
+                root=root,
+            )
+
+            text = doc_path.read_text(encoding="utf-8")
+            self.assertEqual("updated", result["register_status"])
+            self.assertNotIn("F-REJECT", text)
+            self.assertIn("F-KEEP", text)
+            self.assertIn("untouched item", text)
+
     def test_write_artifacts_should_not_touch_register_when_llm_review_not_executed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
