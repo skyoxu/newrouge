@@ -6,10 +6,10 @@
 - Git Head: bd016396db2c70fa22c6374bd2bb34ab923fb455
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
-- Current step: Phase 0 baseline and delta inventory.
-- Last completed step: PR #218 merged; main at bd016396db2c70fa22c6374bd2bb34ab923fb455 with prior PR #180-#216 repair suite closed.
+- Current step: Phase E compatibility/documentation closure; formal CI pending.
+- Last completed step: Phases A-D implemented on this branch; Phase E shared execution-permission projection and current documentation sync implemented.
 - Stop-loss: Do not alter Chapter 3→4→5→6→7 authority order, Taskmaster status ownership, Contract SSoT, Chapter 5 readiness execution ban, persistent harness recovery protocol, or global Knowledge publication boundaries. Record out-of-scope defects instead of widening the initiative.
-- Next action: Implement Phase A context routing and Phase B residual/plan policy, then run targeted tests before moving to Single Reviewer migration.
+- Next action: Open the implementation PR, run Windows Quality/Smoke, fix any hard-regression failures, then record final evidence and remaining live-model/human limitations.
 - Recovery command: py -3 -m unittest scripts.sc.tests.test_review_technical_debt scripts.sc.tests.test_check_tdd_execution_plan scripts.python.tests.test_chapter6_route
 - Open questions: Internal schema layout for verification_surface metadata will be selected during Phase D against actual task/acceptance structures; no second Acceptance authority may be introduced.
 - Exit criteria: All required scenarios A1-A4, K1-K3, B1-B5, C1-C5, D1-D7, E1-E4 are covered by targeted regression/integration evidence; required Windows Quality/Smoke are green; no P0/P1 or explicit fix-through must-fix finding remains; unverified live-model/human evidence is called out rather than inferred.
@@ -71,3 +71,30 @@
 - Reconcile recommendation producers/consumers so same evidence and decision point project the same common policy.
 - Keep stage-specific actions distinct and preserve producer evidence authority.
 - Run targeted matrix plus Windows Quality/Smoke and representative real paths; record live-model/human limitations explicitly.
+
+
+## Implementation evidence before formal CI
+
+- Phase A:
+  - `AGENTS.md` task-scoped route table replaces global preload.
+  - `docs/agents/01-session-recovery.md` uses compact recommendation-first recovery.
+- Phase B:
+  - Technical Debt adapter consumes the real `sc-llm-review` child `summary_file`, assigns stable finding ids and preserves unreviewed debt.
+  - Chapter 6 residual recording writes only `docs/technical-debt.md`.
+  - P1 is the default must-fix floor; explicit P0 is rejected; stricter P2/P3 thresholds propagate into residual eligibility.
+  - Execution Plan required/recommended/none is driven by explicit durable coordination signals rather than file/test counts.
+- Phase C:
+  - Default model reviewer is one `code-reviewer` with Spec Compliance / Edge Case / Verification Gap lenses.
+  - Acceptance semantic input is no longer assigned by reviewer persona and cannot be silently dropped on budget pressure.
+  - Review completion state is separate from findings/verdict.
+  - Legacy severity maps through one adapter to P0-P4; 6.8 repeat detection uses finding claim/anchor/action identity.
+- Phase D:
+  - Optional `acceptance_verification` metadata on existing task views supports core-behavior / godot-scene / player-journey / human-experience.
+  - Classified surface failures are a normal Acceptance hard failure; human pending/failed does not pass.
+  - RED no longer accepts timeout/missing report/generic non-zero as behavior evidence.
+  - Existing targeted MVG mutation infrastructure is reused and remains opt-in.
+- Phase E:
+  - Shared `route_execution_policy` centralizes Chapter 5 readiness execution permission while stage-specific routing stays separate.
+  - Current workflow/profile/SC/Agent/Skill docs are being synchronized; historical multi-reviewer artifacts remain read-only.
+
+Formal Windows CI, representative real task paths, and a real live-model reviewer invocation remain pending and must not be inferred from mock/unit coverage.
