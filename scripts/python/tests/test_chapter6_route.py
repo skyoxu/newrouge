@@ -358,6 +358,24 @@ class Chapter6RouteTests(unittest.TestCase):
             self.assertFalse((root / "decision-logs").exists())
             self.assertFalse((root / "execution-plans").exists())
 
+    def test_p2_fix_through_should_keep_p2_finding_in_must_fix_path(self) -> None:
+        eligible, reason = chapter6_route._residual_reason_from_agent_review(
+            {
+                "findings": [
+                    {
+                        "finding_id": "p2-review-gap",
+                        "severity": "P2",
+                        "category": "llm-review",
+                        "owner_step": "sc-llm-review",
+                        "message": "Verification gap remains.",
+                    }
+                ]
+            },
+            fix_through="P2",
+        )
+        self.assertFalse(eligible)
+        self.assertEqual("must_fix_severity_finding_present", reason)
+
     def test_should_not_record_residual_docs_when_high_severity_finding_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
