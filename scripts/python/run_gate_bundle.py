@@ -328,6 +328,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.sc.tests.test_acceptance_check_runtime",
                 "scripts.sc.tests.test_acceptance_check_cli_guards",
                 "scripts.sc.tests.test_acceptance_testgen_red",
+                "scripts.sc.tests.test_sc_test_refs",
                 "scripts.sc.tests.test_build_tdd_orchestration",
                 "scripts.sc.tests.test_check_tdd_execution_plan",
                 "scripts.sc.tests.test_review_technical_debt",
