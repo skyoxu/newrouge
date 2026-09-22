@@ -883,9 +883,9 @@ py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd
 - RED 验证口径按 Acceptance 的 `verification_surface` 选，不按新建测试文件数量选：`core-behavior` 用 task-scoped xUnit；`godot-scene` 必须取得真实 GdUnit causal RED；`player-journey` 按本任务负责的链路证据执行；`human-experience` 记录 manual preflight/pending，不能伪造机器 RED。
 - 混合 anchor 按义务分别验证；存在 scene 义务时不能因为 unit 更便宜而省略引擎 RED。
 - 有效自动化 RED 必须绑定当前验证 run、目标测试身份和预期行为断言失败；timeout、编译/环境故障、零测试、无关测试失败或缺报告都属于 unverified/blocked，不是行为 RED。
-- 6.5 green 会强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`。
-- 这份 summary 必须来自 `red-first`，且不能存在失败 ref。
-- 如果 6.4 创建了新测试文件，还要求 `red_verify.status = ok`，否则 6.5 直接阻断。
+- 6.5 green 会按 Acceptance obligation 的验证类型检查前置：只要存在 `core-behavior` / `godot-scene` / `player-journey` 自动化义务，就强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`，要求来自 `red-first` 且不存在失败 ref；若 6.4 创建了新测试文件，还要求 `red_verify.status = ok`。
+- 纯 `human-experience` 任务不强造机器 RED；进入实现前必须已有绑定 evidence identity、`human_evidence_required=true` 与显式 `pending|failed|passed` manual preflight 状态。该状态只允许进入实现，不代表最终人工验收通过。
+- mixed anchor/任务逐义务处理：只要仍有自动化义务，manual pending 不能豁免机器 RED；`acceptance_verification` 只覆盖部分 Acceptance anchor 时也不能用已分类的 manual 项绕过未分类义务。
 - 当你在 6.4 使用 `--verify auto|all` 且带 `--task-id` 时，task-scoped GdUnit 现在必须能从任务视图解析出 `.gd` refs；不再静默回退到 `tests/Scenes` 等全量目录。
 - 如果首轮 6.4 出现 `unexpected_green`、大批量新建 GdUnit 同时失败，或外层直接超时，不要原命令重跑；先缩小验证范围，再重新生成干净 red 证据。
 
