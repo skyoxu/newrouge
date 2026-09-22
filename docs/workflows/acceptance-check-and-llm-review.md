@@ -11,6 +11,8 @@
 
 Verification surfaces are carried on the existing task-view Acceptance authority through optional `acceptance_verification` metadata. Mixed Acceptance anchors use `obligations[]` with stable `obligation_id` entries rather than inventing a second Acceptance source. A human-experience obligation remains non-passing while pending or failed; a passed obligation must point to a real evidence file and record `human_evidence_revision` for the reviewed build/revision.
 
+Legacy Acceptance rows without `acceptance_verification` remain valid. Their existing `.cs/.gd` refs are exposed only as migration candidates in the verification-surface report: clear xUnit-only or explicit scene/journey semantics may suggest one surface, while mixed, subjective, or ambiguous rows remain `needs-confirmation`. Candidate inference never writes task authority.
+
 ## 1. 背景与动机（为什么要做）
 
 ### 1.1 现实问题
