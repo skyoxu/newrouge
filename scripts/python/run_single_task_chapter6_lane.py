@@ -188,6 +188,8 @@ def build_review_pipeline_cmd(task_id: str, *, profile_policy: dict[str, str], g
         str(profile_policy["delivery_profile"]),
         "--security-profile",
         str(profile_policy["security_profile"]),
+        "--fix-through",
+        str(profile_policy["fix_through"]),
     ]
     if str(godot_bin).strip():
         cmd += ["--godot-bin", str(godot_bin)]
@@ -211,6 +213,8 @@ def build_needs_fix_fast_cmd(task_id: str, *, profile_policy: dict[str, str]) ->
         str(profile_policy["delivery_profile"]),
         "--security-profile",
         str(profile_policy["security_profile"]),
+        "--fix-through",
+        str(profile_policy["fix_through"]),
         "--rerun-failing-only",
         "--max-rounds",
         str(profile_policy["needs_fix_max_rounds"]),
