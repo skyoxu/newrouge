@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from _acceptance_testgen_refs import extract_acceptance_refs_with_anchors
+
 
 VERIFICATION_SURFACES = {
     "core-behavior",
@@ -36,6 +38,109 @@ def collect_acceptance_verification(triplet: Any) -> dict[str, dict[str, Any]]:
             else:
                 merged[key] = dict(raw)
     return merged
+
+
+def infer_legacy_verification_candidates(triplet: Any) -> dict[str, dict[str, Any]]:
+    task_id = str(getattr(triplet, "task_id", "") or "").strip()
+    explicit = collect_acceptance_verification(triplet)
+    anchors: dict[str, dict[str, Any]] = {}
+    for view in (getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
+        if not isinstance(view, dict):
+            continue
+        by_ref = extract_acceptance_refs_with_anchors(
+            acceptance=view.get("acceptance"),
+            task_id=task_id,
+        )
+        for ref, entries in by_ref.items():
+            normalized_ref = str(ref or "").strip().replace("\\", "/")
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                anchor = str(entry.get("anchor") or "").strip()
+                if not anchor or anchor in explicit:
+                    continue
+                row = anchors.setdefault(anchor, {"refs": set(), "texts": set()})
+                row["refs"].add(normalized_ref)
+                text = str(entry.get("text") or "").strip()
+                if text:
+                    row["texts"].add(text)
+
+    human_tokens = (
+        "feel", "pacing", "balance", "readability", "visual", "spatial", "usability", "playtest",
+        "手感", "节奏", "平衡", "可读性", "视觉", "空间", "试玩", "体验",
+    )
+    scene_tokens = (
+        "scene", "signal", "resource", "ui", "input", "lifecycle", "adapter",
+        "场景", "信号", "资源", "界面", "输入", "生命周期", "适配",
+    )
+    journey_tokens = (
+        "journey", "handoff", "flow", "end-to-end", "cross-layer", "combat->", "continue->",
+        "旅程", "交接", "链路", "流程", "跨层",
+    )
+
+    result: dict[str, dict[str, Any]] = {}
+    for anchor, raw in sorted(anchors.items()):
+        refs = sorted(str(item) for item in raw["refs"] if str(item))
+        text = "\n".join(sorted(str(item) for item in raw["texts"] if str(item))).casefold()
+        cs_refs = [ref for ref in refs if ref.startswith("Game.Core.Tests/") and ref.casefold().endswith(".cs")]
+        gd_refs = [
+            ref for ref in refs
+            if (ref.startswith("Tests.Godot/") or ref.startswith("tests/"))
+            and ref.casefold().endswith(".gd")
+        ]
+        human_semantics = any(token.casefold() in text for token in human_tokens)
+        scene_semantics = any(token.casefold() in text for token in scene_tokens)
+        journey_semantics = any(token.casefold() in text for token in journey_tokens)
+
+        status = "needs-confirmation"
+        suggested_surface = ""
+        candidates: list[str] = []
+        reason = "legacy refs are insufficient to infer one verification surface safely"
+
+        if human_semantics:
+            candidates = ["human-experience"]
+            reason = "subjective/human-experience semantics require explicit human evidence metadata"
+        elif cs_refs and gd_refs:
+            if journey_semantics:
+                status = "candidate"
+                suggested_surface = "player-journey"
+                candidates = ["player-journey"]
+                reason = "mixed xUnit/GdUnit refs plus explicit journey/handoff semantics"
+            else:
+                candidates = ["player-journey", "core-behavior", "godot-scene"]
+                reason = "mixed xUnit/GdUnit refs require obligation-level confirmation"
+        elif gd_refs:
+            if scene_semantics:
+                status = "candidate"
+                suggested_surface = "godot-scene"
+                candidates = ["godot-scene"]
+                reason = "GdUnit ref with explicit scene/engine semantics"
+            elif journey_semantics:
+                status = "candidate"
+                suggested_surface = "player-journey"
+                candidates = ["player-journey"]
+                reason = "GdUnit ref with explicit journey/handoff semantics"
+            else:
+                candidates = ["godot-scene", "player-journey"]
+                reason = "GdUnit ref exists but scene versus journey responsibility is not explicit"
+        elif cs_refs:
+            if scene_semantics or journey_semantics:
+                candidates = ["core-behavior", "player-journey"]
+                reason = "xUnit ref conflicts with cross-layer/engine semantics and needs confirmation"
+            else:
+                status = "candidate"
+                suggested_surface = "core-behavior"
+                candidates = ["core-behavior"]
+                reason = "xUnit-only legacy ref with no engine, journey, or human-experience signal"
+
+        result[anchor] = {
+            "status": status,
+            "suggested_surface": suggested_surface,
+            "candidate_surfaces": candidates,
+            "refs": refs,
+            "reason": reason,
+        }
+    return result
 
 
 def _resolve_evidence_path(value: str, *, root: Path) -> Path:
@@ -230,6 +335,7 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
     task_id = str(getattr(triplet, "task_id", "") or "").strip()
     root_dir = Path(root) if root is not None else Path.cwd()
     mapping = collect_acceptance_verification(triplet)
+    legacy_candidates = infer_legacy_verification_candidates(triplet)
     errors: list[str] = []
     pending: list[str] = []
     failed: list[str] = []
@@ -289,6 +395,8 @@ def validate_acceptance_verification(*, triplet: Any, root: Path | None = None) 
     return {
         "status": status,
         "classified_count": len(mapping),
+        "legacy_candidate_count": len(legacy_candidates),
+        "legacy_candidates": legacy_candidates,
         "errors": errors,
         "passed_anchors": passed,
         "pending_anchors": pending,
