@@ -51,6 +51,35 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
         self.assertEqual("fail", report["status"])
         self.assertTrue(any("xUnit .cs" in item for item in report["errors"]))
 
+    def test_core_and_scene_surfaces_reject_production_code_as_test_evidence(self) -> None:
+        cases = (
+            (
+                "core-behavior",
+                ["Game.Core/Combat/RewardService.cs"],
+                "Game.Core.Tests xUnit .cs identity",
+            ),
+            (
+                "godot-scene",
+                ["Game.Godot/Scripts/UI/CombatScene.gd"],
+                "Tests.Godot GdUnit .gd identity",
+            ),
+        )
+        for surface, primary, expected_error in cases:
+            with self.subTest(surface=surface):
+                triplet = self._triplet({
+                    "ACC:T15.1": {
+                        "verification_surface": surface,
+                        "primary_evidence": primary,
+                        "secondary_evidence": [],
+                        "human_evidence_required": False,
+                    }
+                })
+
+                report = validate_acceptance_verification(triplet=triplet)
+
+                self.assertEqual("fail", report["status"])
+                self.assertTrue(any(expected_error in item for item in report["errors"]))
+
     def test_godot_scene_requires_bound_gdunit_identity_and_routes_ref(self) -> None:
         triplet = self._triplet({
             "ACC:T15.1": {
@@ -239,7 +268,7 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
         report = validate_acceptance_verification(triplet=triplet)
 
         self.assertEqual("fail", report["status"])
-        self.assertTrue(any("executable .cs or .gd test identity" in item for item in report["errors"]))
+        self.assertTrue(any("executable Game.Core.Tests .cs" in item for item in report["errors"]))
 
     def test_player_journey_can_bind_mixed_existing_evidence(self) -> None:
         triplet = self._triplet({
