@@ -160,7 +160,7 @@ Why this is stable:
 - it reads recovery artifacts first, instead of relying on operator memory
 - it classifies high-confidence `repo-noise` vs `task-issue` for the first failed `6.7` round
 - it only recommends `6.8` when current edits hit the previous reviewer anchors
-- it can record residual low-priority findings into `decision-logs/**` and `execution-plans/**` instead of paying for another same-shape rerun
+- explicit residual recording writes eligible deferred findings to `docs/technical-debt.md`; Decision Log and Execution Plan remain reserved for actual policy/authority decisions or durable coordination
 - `scripts/sc/llm_review_needs_fix_fast.py` now consumes the same route preflight before spending deterministic / LLM budget when prior review artifacts exist; run `chapter6-route --recommendation-only` manually when you want the cheapest read-only go/no-go before touching 6.8.
 
 
@@ -223,7 +223,7 @@ Why this is stable:
 Use when:
 - you want one top-level Chapter 6 orchestrator instead of manually stitching `6.3 -> 6.9`
 - you want recovery-first routing before paying for `6.7` or `6.8`
-- you want profile-aware defaults where `playable-ea` defaults to `fix-through=P0` and `fast-ship` / `standard` default to `fix-through=P1`
+- you want the shared repository P1 must-fix floor across `playable-ea`, `fast-ship`, and `standard`, with optional stricter `--fix-through P2|P3`
 
 Prerequisites:
 - task triplet available
@@ -348,15 +348,16 @@ Why this is stable:
 ### `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify auto --execution-plan-policy <mode>`
 
 Use when:
-- generation looks complex before running `llm_generate_tests_from_acceptance_refs.py`
-- the task mixes `.cs` and `.gd`, many missing refs, or many anchors
-- you want to warn, draft, or require an `execution-plan` first
+- you need to determine whether durable recovery/coordination requires an Execution Plan before TDD
+- the task is known cross-session, has ordered behavior slices or partial work to recover, crosses an authority migration stage, or is a staged large refactor/MVG/workflow-control-plane change
+- you want a `required | recommended | none` decision without treating test-file count, mixed `.cs/.gd`, anchors, or verify mode as plan triggers
 
 Prerequisites:
 - task triplet available
 
 Why this is stable:
-- it is the preflight decision gate for long or mixed-surface TDD work
+- it separates durable coordination needs from ordinary implementation complexity
+- `recommended` is advisory; only `required` can create or require a matching active plan under the selected policy
 
 ### `py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage <red|green|refactor> ...`
 
