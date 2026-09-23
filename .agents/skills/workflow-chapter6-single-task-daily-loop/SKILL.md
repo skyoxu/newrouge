@@ -79,4 +79,11 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```
+```\n
+
+## Milestone incremental consumption
+
+- Chapter 6 remains task-local. When a milestone handoff exists, pass it through `--milestone-handoff` and consume only its task-owned behavior, authorities and regression obligations.
+- A stale readiness binding, unresolved change, or task mismatch blocks before RED.
+- If task/contract scope changes during implementation, stop and regenerate Chapter 5 readiness/handoff instead of widening the current RED/GREEN context.
+- Task-local success is not milestone acceptance; cumulative MVG closure remains a separate same-revision run.
