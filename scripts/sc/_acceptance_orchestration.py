@@ -291,6 +291,7 @@ def run_tests_bundle(
     audit_evidence_mode: str,
     godot_bin: str | None,
     run_id: str,
+    candidate_revision: str = "",
 ) -> list[StepResult]:
     steps: list[StepResult] = []
     if not is_enabled(only_steps, "tests"):
@@ -325,7 +326,14 @@ def run_tests_bundle(
                 )
             )
     if require_executed_refs:
-        steps.append(step_acceptance_executed_refs(out_dir, task_id=int(triplet.task_id), expected_run_id=run_id))
+        steps.append(
+            step_acceptance_executed_refs(
+                out_dir,
+                task_id=int(triplet.task_id),
+                expected_run_id=run_id,
+                candidate_revision=candidate_revision,
+            )
+        )
 
     if audit_evidence_mode in ("warn", "require"):
         audit_step = step_security_audit_evidence(out_dir, expected_run_id=run_id)
