@@ -1733,4 +1733,11 @@ Helper modules below are referenced directly by at least two included entry scri
 
 - When adding or deleting a workflow-facing entrypoint, update this document in the same change set as the script.
 - If a business repo copies entrypoints from this template, copy the listed direct and transitive local deps in the same migration batch.
-- Do not re-add one-off migration or sibling-sync scripts unless they graduate into a recurring workflow and are documented elsewhere first.
+- Do not re-add one-off migration or sibling-sync scripts unless they graduate into a recurring workflow and are documented elsewhere first.\n
+
+### Milestone incremental workflow
+
+- `scripts/python/milestone_incremental_handoff.py`: validates reviewed new/extend/reuse/replace/retire/unresolved decisions and produces a task-local handoff bound to Chapter 5 readiness.
+- `scripts/python/update_mvg_baseline.py`: previews or applies a hash-bound cumulative MVG manifest delta; retirement requires authority evidence.
+- `scripts/python/build_source_ledger.py`: add mode also consumes `docs/workflows/chapter3-source-set.json`; source retirement is explicit.
+- `scripts/python/compile_task_triplet.py`: emits v2 explicit task operations and an affected-id export file for lossless Taskmaster export.
