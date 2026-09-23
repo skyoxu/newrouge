@@ -47,7 +47,7 @@ py -3 scripts/python/dev_cli.py serve-project-health
 
 ## Day 2：建立真实 task triplet
 
-在 `.taskmaster/tasks/` 下建立或导入真实 triplet：
+先按 `workflow.md` 3.0–3.9 记录 run-start、声明权威来源、建立 Source Ledger、审阅语义投影并验证守恒，然后编译或审阅导入的真实 triplet。不要绕过这些步骤直接手写 `tasks.json`。下列命令只展示三联编译后的校验：
 
 - `tasks.json`
 - `tasks_back.json`
@@ -108,15 +108,19 @@ dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 
 ## Day 4 及之后：开始真实任务执行
 
+开始前按 `workflow.md` 5.0 完成 Independent Extraction B、全局 reconciliation 和当前 readiness。Chapter 3 应按 `workflow.md` 3.0–3.9 完成来源语义守恒与 run-start/run-end 记录；本示例的命令片段不替代章节门禁。
+
+默认顶层入口是 `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`。以下手工步骤仅用于需要分步处理时；验证面按当前 Acceptance 选择，unit 示例不能替代场景/玩家旅程证据。Chapter 6 全程不隐式刷新 Knowledge/Project Health。
+
 默认日常 profile：`fast-ship`
 
 继续任务时：
 
 ```powershell
-py -3 scripts/python/dev_cli.py resume-task --task-id <id>
+py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only
 ```
 
-- `resume-task` 会直接带出 `Latest reason`、`Latest reuse mode`、`Chapter6 next action`、`Chapter6 can skip 6.7`、`Chapter6 can go to 6.8`、`Chapter6 blocked by`。
+- 需要完整恢复细节时再省略 `--recommendation-only`；完整 `resume-task` 会直接带出 `Latest reason`、`Latest reuse mode`、`Chapter6 next action`、`Chapter6 can skip 6.7`、`Chapter6 can go to 6.8`、`Chapter6 blocked by`。
 - 它现在还会带出 `Approval required action`、`Approval status`、`Approval decision`、`Approval reason`；先看这些字段，再决定是继续修复、进入 `pause`，还是允许 `fork`。
 - `resume-task` also surfaces `recommended_action_why`; if it already says `recommended_action = needs-fix-fast`, prefer targeted closure instead of a full rerun.
 - 恢复判断先看 `reason / run_type / reuse_mode / artifact_integrity`，不要只按最新 `latest.json` 时间戳决定是否重跑。
@@ -132,7 +136,7 @@ py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>
 - `dev_cli.py inspect-run --kind pipeline` 会输出同一组 `latest_summary_signals` / `chapter6_hints`，适合在真正重跑前确认是继续 `6.7` 还是转 `6.8`。
 - 如果这里已经显示 `run_type = planned-only`、`reason = planned_only_incomplete`，或 `Chapter6 blocked by = artifact_integrity`，把该 bundle 只当证据看，不要直接从它 reopen `6.7` / `6.8`。
 
-只有任务很长或跨切面时，才创建 execution plan：
+只有存在跨 session 恢复、有序协调、迁移等持久协调信号时，才按 preflight 结果创建 execution plan：
 
 ```powershell
 py -3 scripts/python/dev_cli.py new-execution-plan --title "<topic>" --task-id <id>
@@ -230,7 +234,7 @@ py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile 
 
 ```powershell
 py -3 scripts/python/dev_cli.py run-local-hard-checks-preflight --delivery-profile fast-ship
-py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"
+py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"
 py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 

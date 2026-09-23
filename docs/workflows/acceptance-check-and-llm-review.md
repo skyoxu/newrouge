@@ -15,6 +15,8 @@ Legacy Acceptance rows without `acceptance_verification` remain valid. Their exi
 
 For TDD sequencing, a valid pure `human-experience` manual preflight may enter GREEN implementation without manufacturing a machine RED. Mixed or automated obligations still require the normal bound causal RED, and partial verification metadata cannot waive RED for unclassified Acceptance anchors. Manual preflight is implementation eligibility only; final human Acceptance still requires revision-bound passed evidence.
 
+Classified task-local automated Acceptance (`core-behavior`, `godot-scene`, and `player-journey` with `journey_scope=task-local`) requires actual bound task test execution evidence in every delivery profile. Relaxed defaults do not waive this requirement, and skipped test cases do not count as passed evidence. MVG-scoped journeys instead require a matching manifest and revision-bound `runtime_verified` MVG result; human obligations require their revision-bound manual evidence. Diagnostic subsets, dry runs and plans are not final Acceptance closure. Legacy rows without classification retain their existing behavior.
+
 ## 1. 背景与动机（为什么要做）
 
 ### 1.1 现实问题

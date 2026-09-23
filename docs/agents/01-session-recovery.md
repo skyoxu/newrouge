@@ -2,7 +2,7 @@
 
 Use this file after a context reset.
 
-Preferred command: `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`. For a quick next-step read, prefer `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only` first.
+Start with `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`. Expand the full report only when the next-step decision requires it.
 
 ## Recovery Order
 1. Read `AGENTS.md` and identify the current task scope.
@@ -16,6 +16,8 @@ Preferred command: `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`.
 9. If required direct authority cannot be located, stop the affected operation rather than filling the gap from a summary or unrelated historical file.
 
 ## What To Trust First
+
+Read only artifacts bound to the current task/run. This list is not a preload order or permission to select the newest plan/decision from a directory.
 - `decision-logs/`: architecture and workflow decisions already made.
 - `execution-plans/`: the current plan, stop-loss, and next step.
 - `summary.json`: the exact pipeline result.

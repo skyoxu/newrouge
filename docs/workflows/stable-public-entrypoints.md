@@ -48,7 +48,7 @@ Prerequisites:
 Why this is stable:
 - it is the repo-level hard-check entrypoint
 - it writes sidecars and latest pointers
-- it now refreshes `project-health` before the hard chain
+- bootstrap/maintenance use refreshes `project-health` before the hard chain; Chapter 6 must pass `--skip-project-health` to preserve the no-refresh boundary
 
 ### `py -3 scripts/python/dev_cli.py project-health-scan`
 
@@ -96,7 +96,7 @@ Why this is stable:
 
 ### `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
 
-Quick read variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
+Default recovery read (compact first): `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 Automation variant: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only --recommendation-format json`
 - Example compact JSON: `docs/workflows/examples/sc-resume-task-compact.example.json`
 - Example compact stdout: `docs/workflows/examples/sc-resume-task-compact.stdout.example.txt`
@@ -122,7 +122,7 @@ Why this is stable:
 
 ### `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>]`
 
-Quick read variant: `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>] --recommendation-only`
+Default recovery read (compact first): `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>] --recommendation-only`
 Automation variant: `py -3 scripts/python/dev_cli.py inspect-run --kind <kind> [--task-id <id>] --recommendation-only --recommendation-format json`
 
 Use when:
@@ -143,7 +143,7 @@ Why this is stable:
 
 ### `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id>`
 
-Quick read variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
+Default recovery read (compact first): `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 Automation variant: `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only --recommendation-format json`
 - Example compact JSON: `docs/workflows/examples/sc-chapter6-route-compact.example.json`
 - Example compact stdout: `docs/workflows/examples/sc-chapter6-route-compact.stdout.example.txt`
@@ -262,7 +262,7 @@ Prerequisites:
 - LLM runtime if you do not pass `--skip-llm-review`
 
 Why this is stable:
-- it is the default task-level main entrypoint
+- it is the Chapter 6.7 review entrypoint; the Chapter 6 daily-loop entrypoint is `dev_cli.py run-single-task-chapter6`
 - it replaces manually stitching lower-level review commands together
 - it now carries rerun stop-loss signals so repeated full reruns are blocked when deterministic is already green or when recent `sc-test` failures share the same fingerprint
 - it now consumes the same `chapter6-route` signal before a fresh full rerun, so `inspect-first`, `repo-noise-stop`, `fix-deterministic`, and `run-6.8` recommendations are enforced before refactor preflight and downstream cost
@@ -285,6 +285,7 @@ Use when:
 
 Prerequisites:
 - task triplet available
+- Chapter 5.0 run-start, independent Extraction B and global reconciliation completed before task-local repair; re-reconcile changed inputs before final readiness/Knowledge promotion
 - LLM runtime for semantics-related steps
 
 Why this is stable:
@@ -307,6 +308,7 @@ Use when:
 
 Prerequisites:
 - task triplet available
+- Chapter 5.0 run-start, independent Extraction B and global reconciliation completed before task-local repair; re-reconcile changed inputs before final readiness/Knowledge promotion
 - LLM runtime for semantics-related steps
 
 Why this is stable:

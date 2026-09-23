@@ -10,7 +10,7 @@
 - 下方命令均为单行、PowerShell 安全命令
 - 真实项目任务文件必须位于 `.taskmaster/tasks/`
 - `examples/taskmaster/**` 只作为模板 fallback，不是业务仓 SSoT
-- 默认的任务级主入口是 `scripts/sc/run_review_pipeline.py`
+- Chapter 6 默认顶层入口是 `dev_cli.py run-single-task-chapter6`；`scripts/sc/run_review_pipeline.py` 是其中 6.7 的任务级 review 入口
 - 日常工作中不要手工串 `scripts/sc/test.py + scripts/sc/acceptance_check.py + scripts/sc/llm_review.py`
 
 ## 1. 全局规则
@@ -220,6 +220,8 @@ Choose one route:
 
 1. `init`: new project initialization.
 2. `add`: changed-source refresh for an existing triplet. Unchanged Source Blocks may be reused only when identity and content hash still match.
+
+在读取/解析本次来源前，先按 3.9 记录 run-start Attempt（交互式 `refresh-knowledge --begin-run` 或脚本化 `run-chapter3-guarded`）；3.9 的标题表示结束刷新位置，不表示把开始记录推迟到最后。
 
 ### 3.1 Declare Authoritative Planning Inputs
 
@@ -461,6 +463,8 @@ py -3 scripts/python/check_tasks_all_refs.py
 py -3 scripts/python/validate_task_master_triplet.py
 ```
 
+Chapter 4 同步保留 Requirement/Capability 引用并报告语义缺口；这些派生回链用于定位原始来源，不取代 PRD/GDD、ADR 或 `Game.Core/Contracts/**` 权威。缺口应回到 Chapter 3/5 核对，不能靠补一个引用宣称语义已闭环。
+
 ### 4.3 创建或调整 contract skeletons
 
 使用：
@@ -485,11 +489,11 @@ py -3 scripts/python/check_domain_contracts.py
 dotnet test Game.Core.Tests/Game.Core.Tests.csproj
 ```
 
-## 5. Phase 3：按条件进入语义稳定化（Conditional Semantics Stabilization）
+## 5. Phase 3：语义核对与就绪门（Semantic Reconciliation and Readiness）
 
-这是条件阶段，不是每个任务都要跑。
+进入 Chapter 6 前必须具备与当前输入一致的 Chapter 5 readiness；有效工件可以复用，不要求每次从零重跑 Extraction B。5.0 的全局审计和就绪检查不能被单任务轻量 lane 替代。
 
-只有在以下情况明显出现时才进入：
+5.1/5.2 的语义修复按需执行，典型触发条件：
 
 - acceptance 质量明显不足
 - refs 正在漂移
@@ -526,6 +530,8 @@ py -3 scripts/python/chapter5_semantic_reconciliation.py check-readiness --task-
 - 若允许非阻断 concerns，显式 `allow_concerns=true`。
 
 `BLOCKED` 禁止进入 Chapter 6；`CONCERNS` 只有显式 policy allowance 才可 closure。Chapter 6 的 `chapter6-route` 和 Review 都会重新验证 readiness/reconciliation hash，不接受陈旧 sidecar。
+
+若 5.1/5.2 或人工修正改变 Acceptance、依赖、Overlay、Contract、ADR 等已核对输入，结束前必须重新执行 reconciliation 与 readiness 检查，不能直接刷新旧 sidecar。
 
 Chapter 5 run 结束时统一刷新 Knowledge。refresh 会重新计算完整 `chapter5_input_fingerprint`，绑定 source manifest/Ledger、Extraction B、semantic requirements、Task semantic/Acceptance/dependency/overlap surface、Overlay/Contract/ADR bytes 与 authority review；任一输入漂移都阻断 stable promotion：
 
@@ -762,8 +768,6 @@ py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id <id>
 ### 6.1 先恢复状态
 
 ```powershell
-py -3 scripts/python/dev_cli.py resume-task --task-id <id>
-# quick recommendation-only read
 py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only
 ```
 
@@ -923,6 +927,8 @@ py -3 scripts/sc/build.py tdd --task-id <id> --stage refactor
 - `build.py tdd` 已经内置 task preflight、`sc-analyze`、必要的 task-context validation，以及 6.4 -> 6.5 -> 6.6 的顺序硬门。
 
 ### 6.7 统一任务级 review pipeline
+
+已显式分类的 `core-behavior`、`godot-scene` 与 task-local `player-journey` 必须有绑定的实际任务测试执行证据；该约束适用于所有 delivery profiles，不能用宽松 profile 或跳过用例制造通过。`mvg-critical` / `mvg-full` 消费对应清单与当前 revision 的 MVG 运行证据；`human-experience` 消费人工证据。参见 `docs/workflows/acceptance-check-and-llm-review.md`。
 
 日常默认：
 
@@ -1176,7 +1182,6 @@ py -3 scripts/python/dev_cli.py serve-project-health
 如果一台设备上同时开了多个项目页面，显式指定端口更稳：
 
 ```powershell
-py -3 scripts/python/dev_cli.py project-health-scan --serve --port 8877
 py -3 scripts/python/dev_cli.py serve-project-health --port 8877
 ```
 
@@ -1236,8 +1241,6 @@ Manual step-by-step template:
 
 1. Recovery inspection:
 ```powershell
-py -3 scripts/python/dev_cli.py resume-task --task-id <id>
-# quick recommendation-only read
 py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only
 ```
 
@@ -1297,7 +1300,7 @@ py -3 scripts/python/dev_cli.py inspect-run --kind local-hard-checks
 ```
 
 Time-saving rules:
-- Keep `6.4` on `unit` first; do not start with `--verify all`.
+- Select `6.4` verification from the actual Acceptance surface: core behavior uses unit evidence; scene/task-local journeys need the relevant engine evidence. Follow 6.4 for pure human/MVG sequencing. Do not force every task through `unit` or `--verify all`.
 - If `6.7` first exposes repo noise, process locks, or `sc-test rc=124`, fix the root cause before chaining more `--resume` attempts.
 - If the same run gets stuck on `sc-test` twice, abandon that run and open a new one after the fix.
 - Only pay for `6.8` when this round actually hits the previous reviewer anchors.
@@ -1331,6 +1334,16 @@ Inspect these first after a failure:
 - `run-events.jsonl`
 - `sc-test.log`
 - 读 6.7 summary 的最短路径：先看 `reason` / `diagnostics.rerun_guard` / `diagnostics.rerun_forbidden`，再看 `dominant_cost_phase` / `step_duration_totals`，最后再决定是否需要加 reviewer 或 step timeout。
+
+### 6.12 Workflow optimization v2 guardrails
+
+- Root/session recovery uses task-scoped routing: compact recommendation first, then only the directly relevant authority/evidence. Do not preload unrelated plan/decision/log directories.
+- Chapter 6 model review defaults to one reviewer with mandatory `Spec Compliance`, `Edge Case`, and `Verification Gap` lenses. Required Acceptance semantics may be compacted but not silently dropped; missing required input/lens makes the review incomplete/failed, not clean.
+- `playable-ea`, `fast-ship`, and `standard` share a P1 must-fix floor. Explicit `P0` fix-through is rejected. A stricter `--fix-through P2|P3` makes that level must-fix as well.
+- `record-residual` writes eligible findings to `docs/technical-debt.md`; Decision Log and Execution Plan are created only for real policy/authority/irreversible decisions or durable recovery/ordered-coordination needs.
+- Execution Plan requirement is driven by explicit durable coordination signals (cross-session recovery, ordered behavior slices, partial-work recovery, authority migration, staged large refactor, workflow/control-plane change). Test-file count, mixed `.cs/.gd`, anchor count, or `verify=auto/all` do not create a plan by themselves.
+- Optional task-view `acceptance_verification` metadata binds existing Acceptance anchors to `core-behavior`, `godot-scene`, `player-journey`, or `human-experience` evidence. A mixed anchor may use `obligations[]` with stable `obligation_id` values; every obligation retains the parent Acceptance anchor and is gated independently. Human pending/failed does not pass Acceptance; `passed` human evidence requires both a real evidence file and `human_evidence_revision` binding. Old tasks without this field remain compatible.
+- Automated RED must be causal: timeout, missing report, compile/environment failure, zero/unrelated failure, or generic non-zero exit is unverified—not a valid behavior RED. Existing targeted MVG mutation remains the falsifiability tool for selected high-risk behavior; it is not a default full-repo gate.
 
 ## 7. Phase 5: Chapter 7 UI Wiring Closure
 
@@ -1573,25 +1586,13 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 
 ## 9. 最佳默认路径（Best Default）
 
-对本仓的大多数真实工作，使用这条默认路径：
+对本仓的大多数真实工作，用户仍通过对应 Chapter Skill 提供来源或 task id；主要编排由 Skill 和脚本承担，章节顺序不变：Chapter 3 → 4 → 5 → 6 → 7。
 
-1. 选择 `fast-ship`
-2. 如果是继续任务，先 `resume-task`
-3. `check_tdd_execution_plan.py --execution-plan-policy draft`
-4. `llm_generate_tests_from_acceptance_refs.py --tdd-stage red-first`
-5. `build.py tdd --stage green`
-6. `build.py tdd --stage refactor`
-7. `run_review_pipeline.py --delivery-profile fast-ship`
-8. 只有当 pipeline 产出明确的 `Needs Fix` 时，再执行 `llm_review_needs_fix_fast.py`
-9. commit 或 PR 前执行 `run-local-hard-checks`
+1. Chapter 3 声明来源、完成语义守恒与任务三联；Chapter 4 冻结 Overlay/Contract 基线。
+2. Chapter 5 完成全局核对并获得当前有效 readiness；BLOCKED 或陈旧工件不得进入 Chapter 6。
+3. Chapter 6 默认调用 `run-single-task-chapter6 --task-id <id> --godot-bin <godot-bin> --delivery-profile fast-ship`。恢复先 compact `resume-task` / `chapter6-route`，按真实信号决定下一步。
+4. 内部仍遵循 6.3 preflight → 6.4 RED → 6.5 GREEN → 6.6 refactor → 6.7 review；验证面决定证据类型，只在需要时进入 6.8。人工/MVG 义务按 6.4 的专门规则处理。
+5. Commit/PR 前执行 `run-local-hard-checks --skip-project-health`。Chapter 6 不触发全局 Knowledge refresh。
+6. MVG 整合收尾另按 `docs/workflows/mvg-integration-acceptance.md` 在同一快照执行清单。Chapter 7 负责 UI 接线闭环；其新增正式任务仍回到 readiness 与 Chapter 6 开发环。
 
-
-### 6.x Workflow optimization v2 guardrails
-
-- Root/session recovery uses task-scoped routing: compact recommendation first, then only the directly relevant authority/evidence. Do not preload unrelated plan/decision/log directories.
-- Chapter 6 model review defaults to one reviewer with mandatory `Spec Compliance`, `Edge Case`, and `Verification Gap` lenses. Required Acceptance semantics may be compacted but not silently dropped; missing required input/lens makes the review incomplete/failed, not clean.
-- `playable-ea`, `fast-ship`, and `standard` share a P1 must-fix floor. Explicit `P0` fix-through is rejected. A stricter `--fix-through P2|P3` makes that level must-fix as well.
-- `record-residual` writes eligible findings to `docs/technical-debt.md`; Decision Log and Execution Plan are created only for real policy/authority/irreversible decisions or durable recovery/ordered-coordination needs.
-- Execution Plan requirement is driven by explicit durable coordination signals (cross-session recovery, ordered behavior slices, partial-work recovery, authority migration, staged large refactor, workflow/control-plane change). Test-file count, mixed `.cs/.gd`, anchor count, or `verify=auto/all` do not create a plan by themselves.
-- Optional task-view `acceptance_verification` metadata binds existing Acceptance anchors to `core-behavior`, `godot-scene`, `player-journey`, or `human-experience` evidence. A mixed anchor may use `obligations[]` with stable `obligation_id` values; every obligation retains the parent Acceptance anchor and is gated independently. Human pending/failed does not pass Acceptance; `passed` human evidence requires both a real evidence file and `human_evidence_revision` binding. Old tasks without this field remain compatible.
-- Automated RED must be causal: timeout, missing report, compile/environment failure, zero/unrelated failure, or generic non-zero exit is unverified—not a valid behavior RED. Existing targeted MVG mutation remains the falsifiability tool for selected high-risk behavior; it is not a default full-repo gate.
+Knowledge 中的 Chapter 3/5 topology 用于追踪来源、任务和语义闭环，不是 MVG 测试汇总页。展示边界见 `docs/workflows/project-health-knowledge.md`。
