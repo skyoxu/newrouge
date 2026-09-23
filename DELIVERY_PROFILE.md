@@ -260,10 +260,10 @@ Automatic stop-loss escalation:
 
 Additional rules:
 
-- explicit CLI `--llm-*` arguments still win over task-tier defaults
+- explicit CLI `--llm-*` arguments still win over task-tier defaults for budget/diff/gate choices; legacy model persona names and their timeout keys are compatibility inputs and normalize to the single `code-reviewer` identity
 - the final effective tier and escalation reasons are written to `execution-context.json`
 - Chapter 6 model review defaults to one `code-reviewer` at every tier; `minimal/targeted/full` change context/diff/budget/strictness while the fixed Spec Compliance / Edge Case / Verification Gap lenses preserve review semantics
-- when the previous run already proved deterministic green and only reviewer/semantic-scope files changed, `playable-ea` / `fast-ship` can also narrow a later `6.7` rerun to the recent non-OK reviewers automatically; explicit `--llm-agents` disables that narrowing
+- when deterministic evidence is already green, later review convergence keeps the same single `code-reviewer`; changed paths, finding identity and surface focus narrow the review context instead of selecting historical model personas. Deterministic reviewers remain independent machine capabilities.
 
 ## 8.3 `Needs Fix` and the Unified Technical Debt Register
 
