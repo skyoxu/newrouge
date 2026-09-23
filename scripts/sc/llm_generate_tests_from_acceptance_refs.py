@@ -20,6 +20,7 @@ import _acceptance_testgen_llm as _llm_helpers  # noqa: E402
 import _acceptance_testgen_quality as _quality_helpers  # noqa: E402
 import _acceptance_testgen_red as _red_helpers  # noqa: E402
 import _acceptance_testgen_refs as _refs_helpers  # noqa: E402
+from _acceptance_verification_surface import collect_acceptance_verification  # noqa: E402
 from _llm_backend import KNOWN_LLM_BACKENDS, resolve_llm_backend, run_llm_exec  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _util import ci_dir, repo_root, run_cmd, write_json, write_text  # noqa: E402
@@ -261,6 +262,7 @@ def _red_requirement_state(triplet, *, task_id: str) -> dict[str, object]:
     non_machine: list[str] = []
     unclassified: list[str] = []
     saw_acceptance = False
+    mapping = collect_acceptance_verification(triplet)
 
     for view in (getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
         if not isinstance(view, dict):
@@ -268,8 +270,6 @@ def _red_requirement_state(triplet, *, task_id: str) -> dict[str, object]:
         acceptance = view.get("acceptance")
         if not isinstance(acceptance, list):
             continue
-        verification = view.get("acceptance_verification")
-        mapping = verification if isinstance(verification, dict) else {}
         for index, raw in enumerate(acceptance, start=1):
             if not str(raw or "").strip():
                 continue
