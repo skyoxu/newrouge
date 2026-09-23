@@ -295,6 +295,68 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
         self.assertEqual("Implement newrouge", mod.intent_title("newrouge-0001", "newrouge"))
         self.assertEqual("Document playable setup", mod.collapse_repeated_words("Document playable setup playable setup"))
 
+    def test_add_mode_should_reuse_intent_ids_and_skip_existing_task_ids(self) -> None:
+        mod = _load_module("normalize_task_intents_for_incremental_id_test", "scripts/python/normalize_task_intents.py")
+        previous = {
+            "schema": "task-generation.task-intents.v1",
+            "intents": [
+                {
+                    "id": "INT-0007",
+                    "intent_key": "gdd:core:gameplay:combat-loop:combat:1",
+                }
+            ],
+        }
+        index = {
+            "schema": "task-generation.requirements-index.v1",
+            "anchors": [
+                {
+                    "requirement_id": "REQ-COMBAT-0001",
+                    "source_path": "docs/gdd/combat.md",
+                    "line": 1,
+                    "kind": "gdd",
+                    "priority": "P1",
+                    "text": "Combat enemy attack damage targeting must be implemented.",
+                    "refs": [],
+                },
+                {
+                    "requirement_id": "REQ-UI-0001",
+                    "source_path": "docs/gdd/ui.md",
+                    "line": 1,
+                    "kind": "gdd",
+                    "priority": "P2",
+                    "text": "UI HUD display must be implemented.",
+                    "refs": [],
+                },
+            ],
+        }
+        first = mod.build_intents(
+            index,
+            mode="add",
+            id_prefix="INT",
+            max_anchors_per_intent=8,
+            reserved_ids={"INT-0001", "INT-0002"},
+            previous_intents=previous,
+        )
+        by_topic = {row["topic"]: row for row in first["intents"]}
+        self.assertEqual("INT-0007", by_topic["combat-loop"]["id"])
+        self.assertEqual("INT-0003", by_topic["ui-hud"]["id"])
+
+        reordered = {
+            **index,
+            "anchors": list(reversed(index["anchors"])),
+        }
+        second = mod.build_intents(
+            reordered,
+            mode="add",
+            id_prefix="INT",
+            max_anchors_per_intent=8,
+            reserved_ids={"INT-0001", "INT-0002"},
+            previous_intents=first,
+        )
+        second_by_topic = {row["topic"]: row for row in second["intents"]}
+        self.assertEqual(by_topic["combat-loop"]["id"], second_by_topic["combat-loop"]["id"])
+        self.assertEqual(by_topic["ui-hud"]["id"], second_by_topic["ui-hud"]["id"])
+
     def test_candidate_generation_should_prefer_task_intents_when_present(self) -> None:
         mod = _load_module("generate_task_candidates_for_intent_test", "scripts/python/generate_task_candidates_from_sources.py")
         with tempfile.TemporaryDirectory() as td:
