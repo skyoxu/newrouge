@@ -546,21 +546,31 @@ def _load_source_set(root: Path, path_value: str) -> dict[str, Any] | None:
 
 
 def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], bool]:
-    values = list(args.prd_path) + list(args.gdd_path) + list(args.epics_path) + list(args.stories_path) + list(args.source_glob)
+    values = (
+        list(getattr(args, "prd_path", []) or [])
+        + list(getattr(args, "gdd_path", []) or [])
+        + list(getattr(args, "epics_path", []) or [])
+        + list(getattr(args, "stories_path", []) or [])
+        + list(getattr(args, "source_glob", []) or [])
+    )
     additions: list[str] = []
     for value in values:
         additions.extend(expand_source_arg(root, value))
-    source_set = _load_source_set(root, args.source_set)
-    if args.mode == "add":
+    source_set_value = str(getattr(args, "source_set", DEFAULT_SOURCE_SET) or DEFAULT_SOURCE_SET)
+    source_set = _load_source_set(root, source_set_value)
+    mode = str(getattr(args, "mode", "init") or "init")
+    if mode == "add":
+        adopt_baseline = bool(getattr(args, "adopt_baseline", False))
         if source_set is None:
-            if not args.adopt_baseline:
+            if not adopt_baseline:
                 raise ValueError("adoption-required: add mode needs a versioned source-set or --adopt-baseline")
             if not additions:
                 raise ValueError("adoption-required: --adopt-baseline needs the complete explicit authoritative input set")
             base: list[str] = []
         else:
             base = list(source_set.get("active_patterns", []))
-        retire = {str(item).strip() for item in args.retire_source if str(item).strip()}
+        retire_values = list(getattr(args, "retire_source", []) or [])
+        retire = {str(item).strip() for item in retire_values if str(item).strip()}
         unknown = sorted(retire - set(base))
         if unknown:
             raise ValueError("cannot retire undeclared sources: " + ", ".join(unknown))
