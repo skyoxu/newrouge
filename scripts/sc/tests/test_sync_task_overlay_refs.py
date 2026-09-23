@@ -93,6 +93,36 @@ class SyncTaskOverlayRefsTests(unittest.TestCase):
             self.assertEqual(1, view_result.skipped_done_tasks)
 
 
+    def test_affected_task_scope_should_leave_unrelated_rows_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            view = root / "tasks_back.json"
+            view.write_text(json.dumps([
+                {"id": "NG-1", "taskmaster_id": 1, "overlay_refs": ["docs/old.md"]},
+                {"id": "NG-2", "taskmaster_id": 2, "overlay_refs": ["docs/unrelated.md"]},
+            ]) + "\n", encoding="utf-8")
+            paths = sync_overlay_refs.OverlayPaths(
+                prd_id="PRD-X",
+                base="docs/architecture/overlays/PRD-X/08",
+                manifest=None,
+                index="docs/architecture/overlays/PRD-X/08/_index.md",
+                feature=None,
+                contracts=None,
+                testing=None,
+                observability=None,
+                acceptance="docs/architecture/overlays/PRD-X/08/ACCEPTANCE_CHECKLIST.md",
+            )
+            payload, result = sync_overlay_refs.sync_view(
+                view,
+                paths,
+                skip_done=False,
+                master_done_task_ids=set(),
+                affected_task_ids={"1"},
+            )
+            self.assertEqual(sync_overlay_refs._refs_for_task(paths), payload[0]["overlay_refs"])
+            self.assertEqual(["docs/unrelated.md"], payload[1]["overlay_refs"])
+            self.assertEqual(["NG-1"], result.changed_ids)
+
     def test_stale_contract_ref_blocks_semantic_backlink_sync(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
