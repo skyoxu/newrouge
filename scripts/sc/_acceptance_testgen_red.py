@@ -121,6 +121,27 @@ def evaluate_red_verification(
         report["reason"] = "compile_error"
         return report
 
+    failure_excerpt = unit_summary.get("failure_excerpt")
+    failure_lines = [str(item) for item in failure_excerpt] if isinstance(failure_excerpt, list) else []
+    combined_failure = "\n".join([verify_log_text, *failure_lines]).lower()
+    if int(rc or 0) == 124 or "timed out" in combined_failure or "timeout" in combined_failure:
+        report["reason"] = "verification_timeout"
+        return report
+
+    environment_tokens = (
+        "permission denied",
+        "access is denied",
+        "connection reset",
+        "network path",
+        "file is locked",
+        "being used by another process",
+        "could not find godot",
+        "dotnet was not found",
+    )
+    if any(token in combined_failure for token in environment_tokens):
+        report["reason"] = "verification_environment_failure"
+        return report
+
     results = gdunit_summary.get("results") if isinstance(gdunit_summary, dict) else {}
     failures = int((results or {}).get("failures") or 0)
     errors = int((results or {}).get("errors") or 0)
@@ -153,28 +174,6 @@ def evaluate_red_verification(
         return report
 
     unit_status = str(unit_summary.get("status") or "").strip()
-    failure_excerpt = unit_summary.get("failure_excerpt")
-    failure_lines = [str(item) for item in failure_excerpt] if isinstance(failure_excerpt, list) else []
-    combined_failure = "\n".join([verify_log_text, *failure_lines]).lower()
-
-    if int(rc or 0) == 124 or "timed out" in combined_failure or "timeout" in combined_failure:
-        report["reason"] = "verification_timeout"
-        return report
-
-    environment_tokens = (
-        "permission denied",
-        "access is denied",
-        "connection reset",
-        "network path",
-        "file is locked",
-        "being used by another process",
-        "could not find godot",
-        "dotnet was not found",
-    )
-    if any(token in combined_failure for token in environment_tokens):
-        report["reason"] = "verification_environment_failure"
-        return report
-
     if unit_status == "tests_failed":
         cs_expected = [ref for ref in expected_refs if ref.casefold().endswith(".cs")]
         unit_filter = str(unit_summary.get("filter") or "")
@@ -231,4 +230,62 @@ def evaluate_red_verification(
         return report
 
     report["reason"] = "verification_failure_unclassified"
+    return report
+
+
+def evaluate_direct_dotnet_red(
+    *,
+    test_step: dict[str, Any] | None,
+    verify_log_text: str,
+    expected_test_refs: list[str],
+) -> dict[str, Any]:
+    expected_refs = [str(item).replace("\\", "/") for item in expected_test_refs if str(item).strip()]
+    report: dict[str, Any] = {
+        "status": "fail",
+        "reason": "unknown",
+        "expected_test_refs": expected_refs,
+    }
+    if not expected_refs:
+        report["reason"] = "target_test_identity_missing"
+        return report
+    if not isinstance(test_step, dict):
+        report["reason"] = "verify_step_missing"
+        return report
+    rc = int(test_step.get("rc") or 0)
+    if rc == 0:
+        report["reason"] = "unexpected_green"
+        return report
+    lower = str(verify_log_text or "").lower()
+    if _contains_compile_error(verify_log_text=verify_log_text, unit_summary={}):
+        report["reason"] = "compile_error"
+        return report
+    if rc == 124 or "timed out" in lower or "timeout" in lower:
+        report["reason"] = "verification_timeout"
+        return report
+    if any(token in lower for token in (
+        "permission denied", "access is denied", "connection reset", "network path",
+        "file is locked", "being used by another process", "dotnet was not found",
+    )):
+        report["reason"] = "verification_environment_failure"
+        return report
+
+    trx_path = Path(str(test_step.get("trx_path") or ""))
+    failed = _failed_trx_results(trx_path)
+    report["failed_tests"] = [item["test_name"] for item in failed if item.get("test_name")]
+    if not failed:
+        report["reason"] = "verification_report_missing"
+        return report
+    target_rows = [
+        item for item in failed
+        if _contains_expected_identity(str(item.get("test_name") or ""), expected_refs)
+    ]
+    if not target_rows:
+        report["reason"] = "unit_failure_not_target"
+        return report
+    assertion_text = "\n".join(str(item.get("message") or "") for item in target_rows).casefold()
+    if not any(token in assertion_text for token in ("expected:", "actual:", "but was:", "assert.", "assertion")):
+        report["reason"] = "unit_failure_not_causal"
+        return report
+    report["status"] = "ok"
+    report["reason"] = "unit_behavior_red"
     return report

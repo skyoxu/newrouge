@@ -406,7 +406,10 @@ def update_technical_debt_register(
     if ordered:
         new_text += ordered + "\n"
     new_text += _END + suffix
-    doc_path.write_text(new_text, encoding="utf-8")
+    if new_text == original:
+        status = "unchanged"
+    else:
+        doc_path.write_text(new_text, encoding="utf-8")
     return {
         "status": status,
         "task_id": str(task_id),

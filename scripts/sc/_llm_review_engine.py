@@ -577,4 +577,4 @@ def main() -> int:
     )
     write_json(out_dir / "summary.json", summary)
     print(f"SC_LLM_REVIEW status={summary['status']} out={repo_rel(out_dir)}")
-    return 0 if summary["status"] in ("ok", "warn") else 1
+    return 0 if summary["completion_status"] == "completed" and summary["status"] in ("ok", "warn") else 1

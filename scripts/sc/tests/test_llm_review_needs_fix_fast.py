@@ -26,12 +26,29 @@ def _write_llm_pipeline_artifacts(
     step_status: str = "ok",
     step_rc: int = 0,
 ) -> tuple[str, str]:
+    normalized_results: list[dict[str, object]] = []
+    for raw in results:
+        row = dict(raw)
+        details = dict(row.get("details") or {})
+        verdict = str(details.get("verdict") or "").strip()
+        if verdict in {"OK", "Needs Fix"} and "review_contract" not in details:
+            details["review_contract"] = {
+                "completion_status": "completed",
+                "findings": [],
+            }
+            details["review_contract_errors"] = []
+        row["details"] = details
+        normalized_results.append(row)
     pipeline_dir = out_dir / step_name
     llm_dir = pipeline_dir / "sc-llm-review-artifacts"
     llm_dir.mkdir(parents=True, exist_ok=True)
     llm_summary_path = llm_dir / "summary.json"
     llm_summary_path.write_text(
-        json.dumps({"status": step_status, "results": results}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(
+            {"status": step_status, "completion_status": "completed", "results": normalized_results},
+            ensure_ascii=False,
+            indent=2,
+        ) + "\n",
         encoding="utf-8",
     )
     pipeline_summary_path = pipeline_dir / "summary.json"
@@ -226,6 +243,33 @@ class NeedsFixFastFindingSignatureTests(unittest.TestCase):
                 needs_fix_fast._round_needs_fix_signature(first),
                 needs_fix_fast._round_needs_fix_signature(second),
             )
+
+    def test_signature_should_use_structured_finding_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            signatures: list[list[dict[str, str]]] = []
+            for finding_id, claim in (("F-A", "First contract gap"), ("F-B", "Second contract gap")):
+                summary = root / f"{finding_id}.json"
+                summary.write_text(json.dumps({
+                    "results": [{
+                        "agent": "code-reviewer",
+                        "details": {
+                            "verdict": "Needs Fix",
+                            "review_contract": {"findings": [{
+                                "finding_id": finding_id,
+                                "claim": claim,
+                                "authority_refs": ["ACC:T56.1"],
+                                "required_action": "Repair this exact gap.",
+                            }]},
+                        },
+                    }],
+                }), encoding="utf-8")
+                signatures.append(needs_fix_fast._round_needs_fix_signature({
+                    "summary_file": str(summary),
+                    "verdicts": {"code-reviewer": "Needs Fix"},
+                }))
+            self.assertNotEqual(signatures[0], signatures[1])
+            self.assertEqual("f-a", signatures[0][0]["finding_id"])
 
 
 class NeedsFixFastDeterministicReuseTests(unittest.TestCase):
@@ -525,6 +569,10 @@ class NeedsFixFastReviewerSelectionTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "warn",
+                        "review_method": {
+                            "reviewer_mode": "single-reviewer",
+                            "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"],
+                        },
                         "results": [
                             {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
                             {"agent": "semantic-equivalence-auditor", "status": "fail", "rc": 124, "details": {"verdict": ""}},
@@ -586,6 +634,10 @@ class NeedsFixFastReviewerSelectionTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "warn",
+                        "review_method": {
+                            "reviewer_mode": "single-reviewer",
+                            "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"],
+                        },
                         "results": [
                             {"agent": "code-reviewer", "status": "fail", "rc": 124, "details": {"verdict": ""}},
                             {"agent": "security-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
@@ -887,6 +939,44 @@ class NeedsFixFastFinalPassTests(unittest.TestCase):
 
 
 class NeedsFixFastTargetedTimeoutTests(unittest.TestCase):
+    def test_timeout_override_should_ignore_legacy_multi_reviewer_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pipeline_summary = root / "pipeline-summary.json"
+            execution_context = root / "execution-context.json"
+            llm_summary = root / "llm-summary.json"
+            pipeline_summary.write_text(json.dumps({
+                "steps": [{"name": "sc-llm-review", "summary_file": str(llm_summary)}],
+            }), encoding="utf-8")
+            execution_context.write_text(json.dumps({
+                "delivery_profile": "fast-ship",
+                "security_profile": "host-safe",
+                "git": {"head": "same", "status_short": []},
+            }), encoding="utf-8")
+            llm_summary.write_text(json.dumps({
+                "status": "warn",
+                "results": [{"agent": "code-reviewer", "rc": 124}],
+            }), encoding="utf-8")
+            with (
+                mock.patch.object(
+                    needs_fix_fast,
+                    "_resolve_latest_pipeline_files",
+                    return_value=({"run_id": "legacy"}, root, pipeline_summary, execution_context),
+                ),
+                mock.patch.object(needs_fix_fast, "_git_snapshot_matches", return_value=True),
+            ):
+                overrides, meta = needs_fix_fast.derive_needs_fix_fast_agent_timeout_overrides(
+                    task_id="56",
+                    delivery_profile="fast-ship",
+                    security_profile="host-safe",
+                    run_agents=["code-reviewer"],
+                    diff_mode="summary",
+                    llm_timeout_sec=900,
+                    agent_timeout_sec=240,
+                )
+        self.assertEqual({}, overrides)
+        self.assertEqual({}, meta)
+
     def test_main_should_add_code_reviewer_only_timeout_override_for_fast_ship_small_diff(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -942,6 +1032,10 @@ class NeedsFixFastTargetedTimeoutTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "warn",
+                        "review_method": {
+                            "reviewer_mode": "single-reviewer",
+                            "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"],
+                        },
                         "results": [
                             {"agent": "code-reviewer", "status": "fail", "rc": 124, "details": {"verdict": ""}},
                             {"agent": "security-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
@@ -1234,10 +1328,14 @@ class NeedsFixFastAlreadyCleanTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "ok",
+                        "completion_status": "completed",
                         "results": [
-                            {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "security-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
+                            {"agent": agent, "status": "ok", "rc": 0, "details": {
+                                "verdict": "OK",
+                                "review_contract": {"completion_status": "completed", "findings": []},
+                                "review_contract_errors": [],
+                            }}
+                            for agent in ("code-reviewer", "security-auditor", "code-reviewer")
                         ],
                     }
                 ),
@@ -1344,14 +1442,17 @@ class NeedsFixFastAlreadyCleanTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "ok",
+                        "completion_status": "completed",
                         "results": [
-                            {"agent": "architect-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "security-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "test-automator", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "semantic-equivalence-auditor", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "adr-compliance-checker", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
-                            {"agent": "performance-slo-validator", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
+                            {"agent": agent, "status": "ok", "rc": 0, "details": {
+                                "verdict": "OK",
+                                "review_contract": {"completion_status": "completed", "findings": []},
+                                "review_contract_errors": [],
+                            }}
+                            for agent in (
+                                "architect-reviewer", "code-reviewer", "security-auditor", "test-automator",
+                                "semantic-equivalence-auditor", "adr-compliance-checker", "performance-slo-validator",
+                            )
                         ],
                     }
                 ),

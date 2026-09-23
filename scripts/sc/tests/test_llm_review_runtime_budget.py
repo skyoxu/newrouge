@@ -31,13 +31,26 @@ def _load_module(name: str, relative_path: str):
 review_engine = _load_module("sc_llm_review_engine_budget_module", "scripts/sc/_llm_review_engine.py")
 
 
+def _complete_review_text(*, verdict: str = "OK", findings: list[dict] | None = None) -> str:
+    contract = {
+        "completion_status": "completed",
+        "lenses": [
+            {"name": name, "status": "completed", "notes": "Checked against the supplied evidence."}
+            for name in ("Spec Compliance", "Edge Case", "Verification Gap")
+        ],
+        "findings": list(findings or []),
+        "uncertainty": [],
+    }
+    return f"Verdict: {verdict}\nReview Contract JSON:\n{json.dumps(contract)}\n"
+
+
 class LlmReviewRuntimeBudgetTests(unittest.TestCase):
     def _run_main_with_time_budget(
         self,
         *,
         agents: str,
         monotonic_values: list[float],
-        review_text: str = "VERDICT: OK\n",
+        review_text: str | None = None,
     ) -> tuple[int, list[int], dict]:
         observed_timeouts: list[int] = []
         monotonic_iter = iter(monotonic_values)
@@ -50,7 +63,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             def fake_run_codex_exec(*, backend: str, prompt: str, output_last_message: Path, timeout_sec: int, codex_configs=None):  # noqa: ANN001
                 observed_timeouts.append(int(timeout_sec))
                 output_last_message.parent.mkdir(parents=True, exist_ok=True)
-                output_last_message.write_text(review_text, encoding="utf-8")
+                output_last_message.write_text(review_text or _complete_review_text(), encoding="utf-8")
                 return 0, "trace ok\n", [str(backend), "fake-model"]
 
             argv = [
@@ -103,16 +116,35 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
         rc, _timeouts, summary = self._run_main_with_time_budget(
             agents="code-reviewer",
             monotonic_values=[0.0, 0.0],
-            review_text=(
-                "## Spec Compliance\nP1 required behavior is missing\n"
-                "## Edge Case\nNo additional edge case.\n"
-                "## Verification Gap\nRequired Action: add causal regression\n"
-                "Verdict: Needs Fix\n"
+            review_text=_complete_review_text(
+                verdict="Needs Fix",
+                findings=[{
+                    "finding_id": "F-P1",
+                    "claim": "Required behavior is missing.",
+                    "severity": "P1",
+                    "authority_refs": ["ACC:T1.1"],
+                    "evidence": ["Game.Core.Tests/Task1Tests.cs"],
+                    "failure_scenario": "The required behavior is absent.",
+                    "expected_protection": "A causal target assertion.",
+                    "observed_protection": "No effective protection.",
+                    "required_action": "Implement the behavior and add the causal regression.",
+                    "verification": "Run the bound Task1 test.",
+                    "disposition": {"action": "fix", "rationale": "P1 is must-fix."},
+                }],
             ),
         )
         self.assertEqual(0, rc)
-        self.assertEqual("warn", summary["status"])
+        self.assertEqual("ok", summary["status"])
         self.assertEqual("completed", summary["completion_status"])
+
+    def test_missing_review_contract_should_be_incomplete_and_nonzero(self) -> None:
+        rc, _timeouts, summary = self._run_main_with_time_budget(
+            agents="code-reviewer",
+            monotonic_values=[0.0, 0.0],
+            review_text="Verdict: OK\n",
+        )
+        self.assertEqual(1, rc)
+        self.assertEqual("incomplete", summary["completion_status"])
 
     def test_main_should_skip_only_reviewers_not_yet_started_after_total_budget_is_exhausted(self) -> None:
         rc, observed_timeouts, summary = self._run_main_with_time_budget(
@@ -120,7 +152,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             monotonic_values=[0.0, 0.0, 170.0, 205.0],
         )
 
-        self.assertEqual(0, rc)
+        self.assertEqual(1, rc)
         self.assertEqual([180, 180], observed_timeouts)
         self.assertEqual("warn", summary["status"])
         self.assertEqual("skipped", summary["results"][2]["status"])
@@ -141,7 +173,7 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
                 agent = output_last_message.stem.replace("review-", "")
                 observed_agents.append(agent)
                 output_last_message.parent.mkdir(parents=True, exist_ok=True)
-                output_last_message.write_text("VERDICT: OK\n", encoding="utf-8")
+                output_last_message.write_text(_complete_review_text(), encoding="utf-8")
                 return 0, "trace ok\n", [str(backend), "fake-model"]
 
             argv = [

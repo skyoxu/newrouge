@@ -32,6 +32,7 @@ def _bootstrap_imports() -> None:
 _bootstrap_imports()
 
 from _acceptance_verification_surface import collect_acceptance_verification  # noqa: E402
+from _acceptance_testgen_red import evaluate_direct_dotnet_red  # noqa: E402
 from _delivery_profile import (  # noqa: E402
     default_security_profile_for_delivery,
     known_delivery_profiles,
@@ -152,16 +153,23 @@ public class {class_name}
 def run_dotnet_test_filtered(task_id: str, *, solution: str, configuration: str, out_dir: Path) -> dict[str, Any]:
     # Best-effort filter to keep the red stage scoped.
     filter_expr = f"FullyQualifiedName~Game.Core.Tests.Tasks.Task{task_id}"
-    cmd = ["dotnet", "test", solution, "-c", configuration, "--filter", filter_expr]
+    trx_path = out_dir / "direct-red.trx"
+    cmd = [
+        "dotnet", "test", solution, "-c", configuration, "--filter", filter_expr,
+        "--results-directory", str(out_dir), "--logger", f"trx;LogFileName={trx_path.name}",
+    ]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=900)
     log_path = out_dir / "dotnet-test-filtered.log"
     write_text(log_path, out)
-    return {"name": "dotnet-test-filtered", "cmd": cmd, "rc": rc, "log": str(log_path), "filter": filter_expr}
+    return {
+        "name": "dotnet-test-filtered", "cmd": cmd, "rc": rc, "log": str(log_path),
+        "filter": filter_expr, "trx_path": str(trx_path),
+    }
 
 
 def _collect_task_test_refs(triplet: Any) -> list[str]:
     refs: list[str] = []
-    for view in (triplet.back, triplet.gameplay):
+    for view in (getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
         if not isinstance(view, dict):
             continue
         test_refs = view.get("test_refs")
@@ -795,8 +803,21 @@ def main() -> int:
         )
         summary["steps"].append(step)
 
-        # In red stage, we EXPECT a failure.
-        summary["status"] = "ok" if step["rc"] != 0 else "unexpected_green"
+        verify_log_path = Path(str(step.get("log") or ""))
+        verify_log_text = (
+            verify_log_path.read_text(encoding="utf-8", errors="ignore")
+            if verify_log_path.is_file()
+            else ""
+        )
+        expected_refs = _collect_task_test_refs(triplet)
+        expected_refs.append(str(test_path).replace("\\", "/"))
+        red_verify = evaluate_direct_dotnet_red(
+            test_step=step,
+            verify_log_text=verify_log_text,
+            expected_test_refs=expected_refs,
+        )
+        summary["red_verify"] = red_verify
+        summary["status"] = "ok" if red_verify["status"] == "ok" else "fail"
         write_json(out_dir / "summary.json", _finalize_summary(summary, start_monotonic=start_monotonic))
         print(f"SC_BUILD_TDD status={summary['status']} out={out_dir}")
         assert_no_new_contract_files(before_contracts, allow_changes=bool(args.allow_contract_changes))

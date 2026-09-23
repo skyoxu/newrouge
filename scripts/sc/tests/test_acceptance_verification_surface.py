@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -221,7 +222,11 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                         "human_evidence_status": status,
                     }
                 })
-                report = validate_acceptance_verification(triplet=triplet, root=root)
+                report = validate_acceptance_verification(
+                    triplet=triplet,
+                    root=root,
+                    expected_revision="abc123",
+                )
                 self.assertEqual("fail", report["status"])
 
     def test_human_experience_pass_requires_real_revision_bound_evidence(self) -> None:
@@ -230,7 +235,8 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
             evidence = root / "logs/manual/task-15-playtest.md"
             evidence.parent.mkdir(parents=True, exist_ok=True)
             evidence.write_text(
-                "# Task 15 playtest\n\nRevision: abc123\nResult: passed\n",
+                "# Task 15 playtest\n\nTask_ID: 15\nAcceptance_Anchor: ACC:T15.1\n"
+                "Obligation_ID:\nRevision: abc123\nResult: passed\n",
                 encoding="utf-8",
             )
             triplet = self._triplet({
@@ -243,9 +249,43 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                     "human_evidence_revision": "abc123",
                 }
             })
-            report = validate_acceptance_verification(triplet=triplet, root=root)
+            report = validate_acceptance_verification(
+                triplet=triplet,
+                root=root,
+                expected_revision="abc123",
+            )
             self.assertEqual("ok", report["status"])
             self.assertEqual(["ACC:T15.1"], report["passed_anchors"])
+
+    def test_human_experience_pass_rejects_evidence_for_previous_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence = root / "logs/manual/task-15-playtest.json"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text(json.dumps({
+                "task_id": "15",
+                "acceptance_anchor": "ACC:T15.1",
+                "obligation_id": "",
+                "revision": "old-revision",
+                "result": "passed",
+            }), encoding="utf-8")
+            triplet = self._triplet({
+                "ACC:T15.1": {
+                    "verification_surface": "human-experience",
+                    "primary_evidence": ["logs/manual/task-15-playtest.json"],
+                    "secondary_evidence": [],
+                    "human_evidence_required": True,
+                    "human_evidence_status": "passed",
+                    "human_evidence_revision": "old-revision",
+                }
+            })
+            report = validate_acceptance_verification(
+                triplet=triplet,
+                root=root,
+                expected_revision="current-revision",
+            )
+        self.assertEqual("fail", report["status"])
+        self.assertTrue(any("does not match current candidate" in item for item in report["errors"]))
 
     def test_human_experience_pass_rejects_missing_or_unbound_evidence(self) -> None:
         for case, extra in (
@@ -294,7 +334,11 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
                     }
                 })
 
-                report = validate_acceptance_verification(triplet=triplet, root=root)
+                report = validate_acceptance_verification(
+                    triplet=triplet,
+                    root=root,
+                    expected_revision="abc123",
+                )
 
                 self.assertEqual("fail", report["status"])
                 self.assertTrue(any("passed human evidence must explicitly bind" in item for item in report["errors"]))

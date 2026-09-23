@@ -303,7 +303,22 @@ def main() -> int:
     only_steps = parse_only_steps(args.only)
     subtasks_mode = normalize_subtasks_mode(args.subtasks_coverage)
 
-    verification_surface_report = validate_acceptance_verification(triplet=triplet, root=repo_root())
+    candidate_revision = str(getattr(args, "candidate_revision", None) or os.environ.get("SC_ACCEPTANCE_CANDIDATE_REVISION") or "").strip()
+    if not candidate_revision:
+        status_probe = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repo_root(), text=True, capture_output=True, check=False
+        )
+        if status_probe.returncode == 0 and not status_probe.stdout.strip():
+            revision_probe = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo_root(), text=True, capture_output=True, check=False
+            )
+            if revision_probe.returncode == 0:
+                candidate_revision = revision_probe.stdout.strip()
+    verification_surface_report = validate_acceptance_verification(
+        triplet=triplet,
+        root=repo_root(),
+        expected_revision=candidate_revision,
+    )
     force_headless_for_task1 = bool(args.require_headless_e2e) and int(triplet.task_id) == 1
     has_gd_refs = task_requires_headless_e2e(triplet) or force_headless_for_task1
     needs_env_preflight = task_requires_env_evidence_preflight(triplet)

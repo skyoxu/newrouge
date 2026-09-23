@@ -163,6 +163,19 @@ class PipelinePlanPreflightTests(unittest.TestCase):
         self.assertNotIn("--require-headless-e2e", cmd)
         self.assertNotIn("--perf-p95-ms", cmd)
 
+    def test_build_acceptance_command_should_forward_candidate_revision(self) -> None:
+        args = self._args()
+        args.revision = "a" * 40
+        cmd = build_acceptance_command(
+            args=args,
+            task_id="56",
+            run_id="c" * 32,
+            delivery_profile="fast-ship",
+            security_profile="host-safe",
+            acceptance_defaults={},
+        )
+        self.assertEqual("a" * 40, cmd[cmd.index("--candidate-revision") + 1])
+
     def test_build_acceptance_command_preflight_should_include_subtasks_when_enabled(self) -> None:
         cmd = build_acceptance_command(
             args=self._args(),

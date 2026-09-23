@@ -77,12 +77,26 @@ class AgentToAgentReviewTests(unittest.TestCase):
             llm_dir.mkdir(parents=True, exist_ok=True)
             llm_summary = {
                 "status": "warn",
+                "completion_status": "completed",
                 "results": [
                     {
                         "agent": "code-reviewer",
                         "status": "ok",
                         "output_path": "logs/ci/2026-03-19/sc-llm-review/review-code-reviewer.md",
-                        "details": {"verdict": "Needs Fix"},
+                        "details": {
+                            "verdict": "Needs Fix",
+                            "review_contract": {
+                                "completion_status": "completed",
+                                "findings": [{
+                                    "finding_id": "F-P1",
+                                    "claim": "Required behavior is missing.",
+                                    "severity": "P1",
+                                    "evidence": ["Game.Core.Tests/Task1Tests.cs"],
+                                    "required_action": "Implement the missing behavior.",
+                                }],
+                            },
+                            "review_contract_errors": [],
+                        },
                     }
                 ],
             }
@@ -110,9 +124,38 @@ class AgentToAgentReviewTests(unittest.TestCase):
             self.assertEqual([], errors)
             self.assertEqual("needs-fix", payload["review_verdict"])
             ids = {item["finding_id"] for item in payload["findings"]}
-            self.assertIn("llm-code-reviewer-needs-fix", ids)
+            self.assertIn("F-P1", ids)
+            finding = next(item for item in payload["findings"] if item["finding_id"] == "F-P1")
+            self.assertEqual("P1", finding["severity"])
             self.assertEqual("resume", payload["explain"]["recommended_action"])
             self.assertIn("sc-llm-review", payload["explain"]["summary"])
+
+    def test_build_agent_review_should_block_incomplete_model_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir)
+            llm_dir = out_dir / "llm"
+            llm_dir.mkdir(parents=True)
+            (llm_dir / "summary.json").write_text(json.dumps({
+                "status": "warn",
+                "completion_status": "incomplete",
+                "results": [{
+                    "agent": "code-reviewer",
+                    "status": "ok",
+                    "details": {"verdict": "OK", "review_contract_errors": ["review_contract_missing"]},
+                }],
+            }), encoding="utf-8")
+            (out_dir / "summary.json").write_text(json.dumps({
+                "task_id": "1", "run_id": "abc123", "status": "ok",
+                "steps": [{"name": "sc-llm-review", "status": "ok", "rc": 0, "cmd": [], "summary_file": str(llm_dir / "summary.json")}],
+            }), encoding="utf-8")
+            (out_dir / "execution-context.json").write_text(json.dumps({"task_id": "1", "run_id": "abc123", "status": "ok", "failed_step": ""}), encoding="utf-8")
+            (out_dir / "repair-guide.json").write_text(json.dumps({"status": "not-needed", "recommendations": []}), encoding="utf-8")
+
+            payload, errors = build_agent_review(out_dir=out_dir, reviewer="artifact-reviewer")
+
+            self.assertEqual([], errors)
+            self.assertEqual("block", payload["review_verdict"])
+            self.assertIn("llm-review-incomplete", {item["finding_id"] for item in payload["findings"]})
 
     def test_build_agent_review_should_ignore_missing_llm_summary_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
