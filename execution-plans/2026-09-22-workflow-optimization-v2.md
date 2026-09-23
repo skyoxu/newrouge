@@ -2,14 +2,14 @@
 
 - Title: Workflow optimization v2 execution plan
 - Status: active
-- Branch: fix/workflow-v2-final-audit-hotfix
-- Git Head: n/a — this evidence-only plan update advances the branch head; current online-audit hotfix implementation freeze is `7a330861dc9de5c9f33c6b6ee7ebd6d53791ca88`.
+- Branch: main (online-audit hotfix merged via PR #223)
+- Git Head: `be4c63c78c2a0f15c4798a21232db86b130e5b5a`; validated PR head was `5223a9d890f977f093943fb13f7d4384fa5f07c9`, with implementation code freeze `7a330861dc9de5c9f33c6b6ee7ebd6d53791ca88`.
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
-- Current step: Validate the online-audit hotfix freeze with Windows Quality/Smoke/MVG, then run the still-required authenticated live-model and representative real-path checks.
-- Last completed step: Online audit remediation through `5597dd50bb1059491ce8f8409774efd6ec0a81f2`: legacy explicit model persona lists now collapse to one `code-reviewer`; the top-level review pipeline and timeout override keys use the same normalized identity and no longer narrow by historical model persona; integration `player-journey` supports explicit `mvg-critical` / `mvg-full` scopes bound to revision-matched `runtime_verified` MVG evidence; 6.4 records explicit `red_not_required` for pure human / pure MVG integration obligations, while mixed or unclassified obligations still require machine RED; GREEN preflight likewise no longer manufactures task-local RED requirements for integration-only MVG obligations.
+- Current step: Run the still-required authenticated live-model `code-reviewer` input/output integration check and representative real-path checks; keep unavailable evidence explicitly unverified.
+- Last completed step: PR #223 merged the final online-audit remediation to `main@be4c63c78c2a0f15c4798a21232db86b130e5b5a`; Windows Quality Gate #929, Windows Smoke #929, and MVG Integration #118 all succeeded on validated PR head `5223a9d890f977f093943fb13f7d4384fa5f07c9`.
 - Stop-loss: Do not alter Chapter 3→4→5→6→7 authority order, Taskmaster status ownership, Contract SSoT, Chapter 5 readiness execution ban, persistent harness recovery protocol, or global Knowledge publication boundaries. Record out-of-scope defects instead of widening the initiative.
-- Next action: Require Windows Quality/Smoke/MVG success for hotfix freeze `5597dd50bb1059491ce8f8409774efd6ec0a81f2` (or a later evidence-only descendant with the same implementation tree). Then run one authenticated live-model `code-reviewer` input/output integration check and the representative core / scene-local-journey / mixed-manual / recovery-reuse paths; unavailable evidence stays explicitly unverified and this plan remains active.
+- Next action: Run one authenticated live-model `code-reviewer` input/output integration check and the representative core / scene-local-journey / mixed-manual / recovery-reuse paths. If no authenticated backend or runnable real-path environment is available, record that limitation explicitly; do not infer success, and keep this plan active.
 - Recovery command: py -3 -m unittest scripts.sc.tests.test_review_technical_debt scripts.sc.tests.test_check_tdd_execution_plan scripts.python.tests.test_chapter6_route
 - Open questions: Internal schema layout for verification_surface metadata will be selected during Phase D against actual task/acceptance structures; no second Acceptance authority may be introduced.
 - Exit criteria: All required scenarios A1-A4, K1-K3, B1-B5, C1-C5, D1-D7, E1-E4 are covered by targeted regression/integration evidence; required Windows Quality/Smoke are green; no P0/P1 or explicit fix-through must-fix finding remains; unverified live-model/human evidence is called out rather than inferred.
@@ -97,7 +97,7 @@
   - Shared `route_execution_policy` centralizes Chapter 5 readiness execution permission while stage-specific routing stays separate.
   - Current workflow/profile/SC/Agent/Skill docs are being synchronized; historical multi-reviewer artifacts remain read-only.
 
-Formal Windows CI, representative real task paths, and a real live-model reviewer invocation remain pending and must not be inferred from mock/unit coverage.
+Formal Windows CI is complete for the final hotfix PR head: Quality #929, Smoke #929, and MVG #118 all succeeded. Representative real task paths and a real authenticated live-model reviewer invocation remain pending and must not be inferred from mock/unit coverage.
 
 ## Phase A-E closure record
 
@@ -163,10 +163,11 @@ Formal Windows CI, representative real task paths, and a real live-model reviewe
 - P1 closed in code: integration `player-journey` now distinguishes `task-local`, `mvg-critical`, and `mvg-full`. Integration scopes require a readable matching manifest and final Acceptance requires a `mode=run`, `status=passed`, `runtime_verified=true`, clean-worktree MVG summary bound to the exact candidate revision and the same coverage mode. Plan/recommend evidence and critical evidence cannot satisfy full scope.
 - TDD convergence: 6.4 emits explicit `red_not_required` only when every classified obligation is non-machine (human or MVG integration); mixed/unclassified obligations still require machine RED. 6.5 consumes the same distinction, while invalid journey scopes and manifest mode mismatches fail closed.
 - P2 recovery bookkeeping closed: this plan now records PR #221/#222 as the audited main baseline and the online hotfix implementation freeze above.
-- Validation status: targeted regressions were added, but no local/CI success is inferred here. Windows Quality/Smoke/MVG and authenticated live-model/representative real paths remain pending until actual evidence exists.
-
-- Confirmed earlier implementation checkpoint `9eead8913aebb1c4907941352acbf6412a9394db`: Windows Quality Gate #872 success, Windows Smoke #872 success, MVG Integration #70 success.
-- The final closure deltas after that checkpoint are intentionally not inferred from the earlier green run. Latest-head Windows Quality/Smoke/MVG must be green before this plan can move past formal CI validation.
+- Validation status: final hotfix PR head `5223a9d890f977f093943fb13f7d4384fa5f07c9` passed Windows Quality Gate #929, Windows Smoke #929, and MVG Integration #118; PR #223 was then squash-merged as `main@be4c63c78c2a0f15c4798a21232db86b130e5b5a`.
+- Quality #929 included successful Hard gates, solution prewarm/build, CI pipeline, soft gates, GdUnit4, GdUnit4 a11y, a11y static check, and schema dump. The task-scoped Acceptance-check step was skipped because the workflow did not resolve an applicable task id; no task acceptance success is inferred from that skip.
+- Smoke #929 successfully ran GdUnit4 and headless smoke.
+- MVG #118 successfully ran runner failure-handling verification, target full-MVG scope inventory validation, committed M1 critical scope plus disconnected-input challenge, and the workspace reward pilot; the optional seeded mutation experiment remained skipped by configuration.
+- Confirmed earlier implementation checkpoint `9eead8913aebb1c4907941352acbf6412a9394db`: Windows Quality Gate #872 success, Windows Smoke #872 success, MVG Integration #70 success. That earlier evidence is retained only as history; final CI status is based on #929/#118 above.
 - Windows Smoke is the authoritative dedicated Godot/GdUnit/headless smoke signal. Soft-gate warnings in Quality remain non-authoritative for gameplay runtime completion.
 - No authenticated live-model reviewer input/output integration run is recorded yet for the final Single Reviewer contract. Unit/mock prompt tests do not satisfy that requirement.
 - This remains intentionally unverified in the absence of a runnable authenticated `codex-cli` or `openai-api` backend; do not mark the plan done or infer model integration success from deterministic CI.
