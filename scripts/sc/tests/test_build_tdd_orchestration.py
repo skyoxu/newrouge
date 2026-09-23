@@ -159,6 +159,40 @@ class GreenPrerequisiteSurfaceTests(unittest.TestCase):
             self.assertEqual(["ACC:T14.2"], result["unclassified_anchors"])
             self.assertIn("cannot waive RED", " ".join(result["errors"]))
 
+    def test_mvg_integration_journey_does_not_require_task_local_red_first(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "sc-build-tdd"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            triplet = SimpleNamespace(
+                task_id="14",
+                back={
+                    "acceptance": ["Combat to reward integrated journey."],
+                    "acceptance_verification": {
+                        "ACC:T14.1": {
+                            "verification_surface": "player-journey",
+                            "journey_scope": "mvg-critical",
+                            "primary_evidence": ["docs/testing/mvg/m1-critical.json"],
+                            "secondary_evidence": [],
+                            "human_evidence_required": False,
+                        }
+                    },
+                },
+                gameplay=None,
+            )
+            with mock.patch.object(tdd_script, "_find_latest_red_first_summary") as red_summary:
+                result = tdd_script.validate_green_red_prerequisite(
+                    task_id="14",
+                    out_dir=out_dir,
+                    triplet=triplet,
+                )
+
+            self.assertEqual(0, result["rc"])
+            self.assertTrue(result["red_not_required"])
+            self.assertFalse(result["manual_only"])
+            self.assertEqual(["ACC:T14.1"], result["integration_obligations"])
+            red_summary.assert_not_called()
+
+
 
 class BuildTddOrchestrationTests(unittest.TestCase):
     def test_direct_red_does_not_consume_a_report_from_an_earlier_invocation(self) -> None:
