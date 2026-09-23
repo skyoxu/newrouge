@@ -114,4 +114,11 @@ Every source block must be accounted for. Every active delivery Requirement must
 
 ## Maintenance
 
-Refresh optional business evidence with `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` only after production rules above are updated in the template source.
+Refresh optional business evidence with `py -3 scripts/python/update_workflow_chapter_skills.py <repo>` only after production rules above are updated in the template source.\n
+
+## Milestone incremental add mode
+
+- Start from the versioned cumulative source set; adding one GDD must not implicitly remove prior sources.
+- Reuse intent ids only by stable `intent_key`; reserve every existing string task id.
+- Treat triplet generation as a reviewed create/update/reuse/retire patch. Never let generated defaults overwrite mature status, Acceptance, refs or metadata.
+- Export the reviewed affected ids explicitly and preserve master-native fields.
