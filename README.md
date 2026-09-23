@@ -144,4 +144,8 @@ Recovery stop-loss rules:
 - Keep docs and tasks aligned through ADR + Base + Overlay + Task refs.
 - Repository Knowledge Control Plane is derived routing infrastructure; source documents remain authoritative.
 
-MVG 集成验收入口（reward pilot / M1 critical / target full scope）：[使用说明](docs/workflows/mvg-integration-acceptance.md)。
+MVG 集成验收入口（reward pilot / M1 critical / target full scope）：[使用说明](docs/workflows/mvg-integration-acceptance.md)。\n
+
+### Incremental milestones
+
+Later GDD milestones reuse the existing Chapter 3→6 and MVG lifecycle. The cumulative source declaration is `docs/workflows/chapter3-source-set.json`; reviewed task/change handoffs use `scripts/python/milestone_incremental_handoff.py`; cumulative integration manifests are evolved with `scripts/python/update_mvg_baseline.py`. See `workflow.md` and `docs/workflows/mvg-integration-acceptance.md`.
