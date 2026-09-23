@@ -357,6 +357,56 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
         self.assertEqual(by_topic["combat-loop"]["id"], second_by_topic["combat-loop"]["id"])
         self.assertEqual(by_topic["ui-hud"]["id"], second_by_topic["ui-hud"]["id"])
 
+    def test_triplet_change_plan_should_preserve_mature_fields_and_block_implicit_overwrite(self) -> None:
+        mod = _load_module("compile_task_triplet_for_incremental_test", "scripts/python/compile_task_triplet.py")
+        existing = [{
+            "id": "INT-0001",
+            "status": "done",
+            "acceptance": ["Keep acceptance"],
+            "semantic_review_tier": "full",
+            "subtasks": [{"id": "s1", "status": "done"}],
+        }]
+        candidate = {
+            "id": "INT-0001",
+            "title": "Updated title",
+            "status": "pending",
+            "acceptance": [],
+        }
+        unchanged, operations, conflicts = mod.build_change_plan(existing, [candidate], "back")
+        self.assertEqual(["INT-0001"], conflicts)
+        self.assertEqual("done", unchanged[0]["status"])
+        self.assertEqual(["Keep acceptance"], unchanged[0]["acceptance"])
+        self.assertEqual("blocked", operations[0]["action"])
+
+        explicit = dict(candidate, change_action="update", field_updates={"title": "Reviewed title"})
+        updated, operations, conflicts = mod.build_change_plan(existing, [explicit], "back")
+        self.assertEqual([], conflicts)
+        self.assertEqual("Reviewed title", updated[0]["title"])
+        self.assertEqual("done", updated[0]["status"])
+        self.assertEqual(["Keep acceptance"], updated[0]["acceptance"])
+        self.assertEqual([{"id": "s1", "status": "done"}], updated[0]["subtasks"])
+        self.assertEqual("update", operations[0]["action"])
+
+    def test_master_merge_preserves_subtasks_and_cross_view_conflicts_fail_closed(self) -> None:
+        mod = _load_module("build_taskmaster_tasks_for_lossless_test", "scripts/python/build_taskmaster_tasks.py")
+        existing = {
+            "id": 6,
+            "title": "Old",
+            "status": "done",
+            "subtasks": [{"id": 1, "status": "done"}],
+            "future_extension": {"keep": True},
+        }
+        merged = mod.merge_master_fields(existing, {"id": 6, "title": "New", "status": "done"})
+        self.assertEqual("New", merged["title"])
+        self.assertEqual(existing["subtasks"], merged["subtasks"])
+        self.assertEqual({"keep": True}, merged["future_extension"])
+        with self.assertRaisesRegex(ValueError, "conflicting cross-view field"):
+            mod._merge_view_task(
+                {"id": "GM-1", "taskmaster_id": 6, "status": "done"},
+                {"id": "GM-1", "taskmaster_id": 7, "status": "done"},
+                "GM-1",
+            )
+
     def test_candidate_generation_should_prefer_task_intents_when_present(self) -> None:
         mod = _load_module("generate_task_candidates_for_intent_test", "scripts/python/generate_task_candidates_from_sources.py")
         with tempfile.TemporaryDirectory() as td:
