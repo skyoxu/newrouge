@@ -15,6 +15,7 @@ VERIFICATION_SURFACES = {
     "human-experience",
 }
 HUMAN_STATUSES = {"pending", "passed", "failed"}
+JOURNEY_SCOPES = {"task-local", "mvg-critical", "mvg-full"}
 
 
 def _list_of_strings(value: Any) -> list[str]:
@@ -143,6 +144,71 @@ def infer_legacy_verification_candidates(triplet: Any) -> dict[str, dict[str, An
 def _resolve_evidence_path(value: str, *, root: Path) -> Path:
     path = Path(str(value or "").strip())
     return path if path.is_absolute() else (root / path)
+
+
+def _normalize_repo_ref(value: str) -> str:
+    return str(value or "").strip().replace("\\", "/")
+
+
+def _eligible_mvg_manifests(*, root: Path, primary: list[str], expected_mode: str) -> list[str]:
+    eligible: list[str] = []
+    for raw in primary:
+        ref = _normalize_repo_ref(raw)
+        if not ref.startswith("docs/testing/mvg/") or not ref.casefold().endswith(".json"):
+            continue
+        path = _resolve_evidence_path(ref, root=root)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        coverage = payload.get("coverage") if isinstance(payload.get("coverage"), dict) else {}
+        blockers = coverage.get("blocking_task_ids") if isinstance(coverage.get("blocking_task_ids"), list) else []
+        if str(coverage.get("mode") or "").strip().lower() == expected_mode and not blockers:
+            eligible.append(ref)
+    return eligible
+
+
+def _find_mvg_runtime_evidence(
+    *,
+    root: Path,
+    manifest_refs: list[str],
+    expected_revision: str,
+    expected_mode: str,
+) -> str:
+    revision = str(expected_revision or "").strip()
+    if not revision or not manifest_refs:
+        return ""
+    manifests = {_normalize_repo_ref(item) for item in manifest_refs}
+    logs_root = root / "logs" / "ci" / "mvg-acceptance"
+    if not logs_root.is_dir():
+        return ""
+    for summary_path in sorted(logs_root.glob("*/summary.json"), key=lambda item: str(item)):
+        try:
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        coverage = payload.get("coverage") if isinstance(payload.get("coverage"), dict) else {}
+        blockers = coverage.get("blocking_task_ids") if isinstance(coverage.get("blocking_task_ids"), list) else []
+        if (
+            str(payload.get("mode") or "").strip().lower() != "run"
+            or str(payload.get("status") or "").strip().lower() != "passed"
+            or payload.get("runtime_verified") is not True
+            or bool(payload.get("workspace_dirty"))
+            or str(payload.get("source_revision") or "").strip() != revision
+            or _normalize_repo_ref(str(payload.get("manifest") or "")) not in manifests
+            or str(coverage.get("mode") or "").strip().lower() != expected_mode
+            or blockers
+        ):
+            continue
+        try:
+            return str(summary_path.relative_to(root)).replace("\\", "/")
+        except ValueError:
+            return str(summary_path).replace("\\", "/")
+    return ""
 
 
 def _human_evidence_confirms_pass(
@@ -322,14 +388,36 @@ def _validate_row(
     if surface == "godot-scene" and primary and not any(is_godot_test_identity(item) for item in primary):
         errors.append(f"{label}: godot-scene primary_evidence must include a Tests.Godot GdUnit .gd identity")
 
-    if surface == "player-journey" and primary and not any(
-        is_core_test_identity(item) or is_godot_test_identity(item)
-        for item in primary
-    ):
-        errors.append(
-            f"{label}: player-journey primary_evidence must include an executable Game.Core.Tests .cs "
-            "or Tests.Godot .gd test identity; integration MVG remains separate integration evidence"
-        )
+    if surface == "player-journey":
+        journey_scope = str(row.get("journey_scope") or "task-local").strip().lower()
+        if journey_scope not in JOURNEY_SCOPES:
+            errors.append(f"{label}: invalid journey_scope={journey_scope or '<missing>'}")
+        elif journey_scope == "task-local":
+            if primary and not any(is_core_test_identity(item) or is_godot_test_identity(item) for item in primary):
+                errors.append(
+                    f"{label}: task-local player-journey primary_evidence must include an executable "
+                    "Game.Core.Tests .cs or Tests.Godot .gd test identity"
+                )
+        else:
+            expected_mode = "critical" if journey_scope == "mvg-critical" else "full"
+            manifests = _eligible_mvg_manifests(root=root, primary=primary, expected_mode=expected_mode)
+            if not manifests:
+                errors.append(
+                    f"{label}: {journey_scope} requires an executable docs/testing/mvg manifest "
+                    f"with coverage.mode={expected_mode} and no blocking_task_ids"
+                )
+            elif not expected_revision:
+                errors.append(f"{label}: {journey_scope} requires the current candidate revision")
+            elif not _find_mvg_runtime_evidence(
+                root=root,
+                manifest_refs=manifests,
+                expected_revision=expected_revision,
+                expected_mode=expected_mode,
+            ):
+                errors.append(
+                    f"{label}: {journey_scope} requires runtime_verified MVG {expected_mode} evidence "
+                    f"bound to revision={expected_revision}; plan/recommend or another scope cannot satisfy it"
+                )
 
     if require_evidence_files and surface in {"core-behavior", "godot-scene", "player-journey"}:
         automated_primary = [
