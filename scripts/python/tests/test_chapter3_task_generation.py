@@ -295,6 +295,118 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
         self.assertEqual("Implement newrouge", mod.intent_title("newrouge-0001", "newrouge"))
         self.assertEqual("Document playable setup", mod.collapse_repeated_words("Document playable setup playable setup"))
 
+    def test_add_mode_should_reuse_intent_ids_and_skip_existing_task_ids(self) -> None:
+        mod = _load_module("normalize_task_intents_for_incremental_id_test", "scripts/python/normalize_task_intents.py")
+        previous = {
+            "schema": "task-generation.task-intents.v1",
+            "intents": [
+                {
+                    "id": "INT-0007",
+                    "intent_key": "gdd:core:gameplay:combat-loop:combat:1",
+                }
+            ],
+        }
+        index = {
+            "schema": "task-generation.requirements-index.v1",
+            "anchors": [
+                {
+                    "requirement_id": "REQ-COMBAT-0001",
+                    "source_path": "docs/gdd/combat.md",
+                    "line": 1,
+                    "kind": "gdd",
+                    "priority": "P1",
+                    "text": "Combat enemy attack damage targeting must be implemented.",
+                    "refs": [],
+                },
+                {
+                    "requirement_id": "REQ-UI-0001",
+                    "source_path": "docs/gdd/ui.md",
+                    "line": 1,
+                    "kind": "gdd",
+                    "priority": "P2",
+                    "text": "UI HUD display must be implemented.",
+                    "refs": [],
+                },
+            ],
+        }
+        first = mod.build_intents(
+            index,
+            mode="add",
+            id_prefix="INT",
+            max_anchors_per_intent=8,
+            reserved_ids={"INT-0001", "INT-0002"},
+            previous_intents=previous,
+        )
+        by_topic = {row["topic"]: row for row in first["intents"]}
+        self.assertEqual("INT-0007", by_topic["combat-loop"]["id"])
+        self.assertEqual("INT-0003", by_topic["ui-hud"]["id"])
+
+        reordered = {
+            **index,
+            "anchors": list(reversed(index["anchors"])),
+        }
+        second = mod.build_intents(
+            reordered,
+            mode="add",
+            id_prefix="INT",
+            max_anchors_per_intent=8,
+            reserved_ids={"INT-0001", "INT-0002"},
+            previous_intents=first,
+        )
+        second_by_topic = {row["topic"]: row for row in second["intents"]}
+        self.assertEqual(by_topic["combat-loop"]["id"], second_by_topic["combat-loop"]["id"])
+        self.assertEqual(by_topic["ui-hud"]["id"], second_by_topic["ui-hud"]["id"])
+
+    def test_triplet_change_plan_should_preserve_mature_fields_and_block_implicit_overwrite(self) -> None:
+        mod = _load_module("compile_task_triplet_for_incremental_test", "scripts/python/compile_task_triplet.py")
+        existing = [{
+            "id": "INT-0001",
+            "status": "done",
+            "acceptance": ["Keep acceptance"],
+            "semantic_review_tier": "full",
+            "subtasks": [{"id": "s1", "status": "done"}],
+        }]
+        candidate = {
+            "id": "INT-0001",
+            "title": "Updated title",
+            "status": "pending",
+            "acceptance": [],
+        }
+        unchanged, operations, conflicts = mod.build_change_plan(existing, [candidate], "back")
+        self.assertEqual(["INT-0001"], conflicts)
+        self.assertEqual("done", unchanged[0]["status"])
+        self.assertEqual(["Keep acceptance"], unchanged[0]["acceptance"])
+        self.assertEqual("blocked", operations[0]["action"])
+
+        explicit = dict(candidate, change_action="update", field_updates={"title": "Reviewed title"})
+        updated, operations, conflicts = mod.build_change_plan(existing, [explicit], "back")
+        self.assertEqual([], conflicts)
+        self.assertEqual("Reviewed title", updated[0]["title"])
+        self.assertEqual("done", updated[0]["status"])
+        self.assertEqual(["Keep acceptance"], updated[0]["acceptance"])
+        self.assertEqual([{"id": "s1", "status": "done"}], updated[0]["subtasks"])
+        self.assertEqual("update", operations[0]["action"])
+
+    def test_master_merge_preserves_subtasks_and_cross_view_conflicts_fail_closed(self) -> None:
+        mod = _load_module("build_taskmaster_tasks_for_lossless_test", "scripts/python/build_taskmaster_tasks.py")
+        existing = {
+            "id": 6,
+            "title": "Old",
+            "status": "done",
+            "subtasks": [{"id": 1, "status": "done"}],
+            "future_extension": {"keep": True},
+        }
+        merged = mod.merge_master_fields(existing, {"id": 6, "title": "New", "status": "done"})
+        self.assertEqual("New", merged["title"])
+        self.assertEqual(existing["subtasks"], merged["subtasks"])
+        self.assertEqual({"keep": True}, merged["future_extension"])
+        with self.assertRaisesRegex(ValueError, "conflicting cross-view field"):
+            mod._merge_view_task(
+                {"id": "GM-1", "taskmaster_id": 6, "status": "done"},
+                {"id": "GM-1", "taskmaster_id": 7, "status": "done"},
+                "GM-1",
+            )
+
     def test_candidate_generation_should_prefer_task_intents_when_present(self) -> None:
         mod = _load_module("generate_task_candidates_for_intent_test", "scripts/python/generate_task_candidates_from_sources.py")
         with tempfile.TemporaryDirectory() as td:
