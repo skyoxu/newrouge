@@ -2,14 +2,14 @@
 
 - Title: Workflow optimization v2 execution plan
 - Status: active
-- Branch: feat/workflow-optimization-v2-impl
-- Git Head: n/a — this evidence-only plan update advances the branch head; implementation freeze is `b419b08bf089a0ea61810a62ef675e7983e02acd`.
+- Branch: fix/workflow-v2-final-audit-hotfix
+- Git Head: n/a — this evidence-only plan update advances the branch head; current online-audit hotfix implementation freeze is `7a330861dc9de5c9f33c6b6ee7ebd6d53791ca88`.
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
-- Current step: Final Windows Quality/Smoke/MVG validation for the implementation freeze; authenticated live-model reviewer integration remains required when a runnable backend is available.
-- Last completed step: Phases A-E implementation and hard-regression closure landed through `b419b08bf089a0ea61810a62ef675e7983e02acd`, including downstream preload removal, explicit incomplete Review Contract regressions, and TRX-bound causal unit RED evidence.
+- Current step: Validate the online-audit hotfix freeze with Windows Quality/Smoke/MVG, then run the still-required authenticated live-model and representative real-path checks.
+- Last completed step: Online audit remediation through `5597dd50bb1059491ce8f8409774efd6ec0a81f2`: legacy explicit model persona lists now collapse to one `code-reviewer`; the top-level review pipeline and timeout override keys use the same normalized identity and no longer narrow by historical model persona; integration `player-journey` supports explicit `mvg-critical` / `mvg-full` scopes bound to revision-matched `runtime_verified` MVG evidence; 6.4 records explicit `red_not_required` for pure human / pure MVG integration obligations, while mixed or unclassified obligations still require machine RED; GREEN preflight likewise no longer manufactures task-local RED requirements for integration-only MVG obligations.
 - Stop-loss: Do not alter Chapter 3→4→5→6→7 authority order, Taskmaster status ownership, Contract SSoT, Chapter 5 readiness execution ban, persistent harness recovery protocol, or global Knowledge publication boundaries. Record out-of-scope defects instead of widening the initiative.
-- Next action: Require latest-head Windows Quality/Smoke/MVG success. Then run one authenticated live-model code-reviewer input/output integration check against the Single Reviewer + lenses contract; if no backend is available, keep that item explicitly unverified and do not mark this plan done.
+- Next action: Require Windows Quality/Smoke/MVG success for hotfix freeze `5597dd50bb1059491ce8f8409774efd6ec0a81f2` (or a later evidence-only descendant with the same implementation tree). Then run one authenticated live-model `code-reviewer` input/output integration check and the representative core / scene-local-journey / mixed-manual / recovery-reuse paths; unavailable evidence stays explicitly unverified and this plan remains active.
 - Recovery command: py -3 -m unittest scripts.sc.tests.test_review_technical_debt scripts.sc.tests.test_check_tdd_execution_plan scripts.python.tests.test_chapter6_route
 - Open questions: Internal schema layout for verification_surface metadata will be selected during Phase D against actual task/acceptance structures; no second Acceptance authority may be introduced.
 - Exit criteria: All required scenarios A1-A4, K1-K3, B1-B5, C1-C5, D1-D7, E1-E4 are covered by targeted regression/integration evidence; required Windows Quality/Smoke are green; no P0/P1 or explicit fix-through must-fix finding remains; unverified live-model/human evidence is called out rather than inferred.
@@ -155,6 +155,15 @@ Formal Windows CI, representative real task paths, and a real live-model reviewe
 | E1-E4 | Covered by compact recovery parity, readiness/approval/artifact-integrity tests, snapshot/change invalidation tests, and hard-check fail-fast behavior. |
 
 ## Formal validation evidence and limits
+
+### 2026-09-23 online audit hotfix
+
+- Audit baseline: `main@40ea4028dc33fe795136f083d900999fcbd67b9c` after PR #222.
+- P1 closed in code: explicit legacy model persona lists can no longer execute multiple model reviewers while claiming `reviewer_mode=single-reviewer`; compatibility inputs, pipeline execution-context identity, historical narrowing and model-persona timeout keys collapse to one `code-reviewer`, while deterministic reviewers remain separate.
+- P1 closed in code: integration `player-journey` now distinguishes `task-local`, `mvg-critical`, and `mvg-full`. Integration scopes require a readable matching manifest and final Acceptance requires a `mode=run`, `status=passed`, `runtime_verified=true`, clean-worktree MVG summary bound to the exact candidate revision and the same coverage mode. Plan/recommend evidence and critical evidence cannot satisfy full scope.
+- TDD convergence: 6.4 emits explicit `red_not_required` only when every classified obligation is non-machine (human or MVG integration); mixed/unclassified obligations still require machine RED. 6.5 consumes the same distinction, while invalid journey scopes and manifest mode mismatches fail closed.
+- P2 recovery bookkeeping closed: this plan now records PR #221/#222 as the audited main baseline and the online hotfix implementation freeze above.
+- Validation status: targeted regressions were added, but no local/CI success is inferred here. Windows Quality/Smoke/MVG and authenticated live-model/representative real paths remain pending until actual evidence exists.
 
 - Confirmed earlier implementation checkpoint `9eead8913aebb1c4907941352acbf6412a9394db`: Windows Quality Gate #872 success, Windows Smoke #872 success, MVG Integration #70 success.
 - The final closure deltas after that checkpoint are intentionally not inferred from the earlier green run. Latest-head Windows Quality/Smoke/MVG must be green before this plan can move past formal CI validation.

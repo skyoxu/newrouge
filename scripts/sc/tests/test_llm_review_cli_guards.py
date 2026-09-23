@@ -85,7 +85,7 @@ class LlmReviewCliGuardTests(unittest.TestCase):
         summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual("dry-run-plan", summary.get("mode"))
         self.assertIsInstance(summary.get("plan"), list)
-        self.assertGreaterEqual(len(summary.get("plan") or []), 2)
+        self.assertEqual(["code-reviewer"], [str(x) for x in (summary.get("agents") or [])])
 
     def test_dry_run_plan_should_emit_summary_without_codex_in_path(self) -> None:
         proc = subprocess.run(
@@ -140,7 +140,7 @@ class LlmReviewCliGuardTests(unittest.TestCase):
         )
 
 
-    def test_dry_run_plan_should_not_auto_add_semantic_reviewer_when_agents_are_explicit(self) -> None:
+    def test_dry_run_plan_should_collapse_explicit_legacy_model_personas_to_single_reviewer(self) -> None:
         proc = subprocess.run(
             [
                 sys.executable,
@@ -162,7 +162,11 @@ class LlmReviewCliGuardTests(unittest.TestCase):
         out_dir = _extract_out_dir(proc.stdout or "")
         summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
         agents = [str(x) for x in (summary.get("agents") or [])]
-        self.assertEqual(["code-reviewer", "security-auditor"], agents)
+        self.assertEqual(["code-reviewer"], agents)
+        self.assertEqual(
+            ["Spec Compliance", "Edge Case", "Verification Gap"],
+            list((summary.get("execution_plan") or {}).get("review_lenses") or []),
+        )
 
 
 

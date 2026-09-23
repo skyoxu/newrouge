@@ -24,6 +24,7 @@ from typing import Any
 
 from agent_to_agent_review import write_agent_review
 from _agent_review_policy import apply_agent_review_policy, apply_agent_review_signal
+from _deterministic_review import DETERMINISTIC_AGENTS
 from _delivery_profile import (
     default_security_profile_for_delivery,
     profile_acceptance_defaults,
@@ -73,7 +74,7 @@ from _pipeline_support import (
     run_step as _run_step,
     upsert_step as _upsert_step,
 )
-from _llm_review_cli import parse_agent_timeout_overrides, resolve_agents
+from _llm_review_cli import normalize_agent_timeout_overrides, parse_agent_timeout_overrides, resolve_agents
 from _change_scope import classify_change_scope_between_snapshots
 from _pipeline_history import collect_recent_failure_summary
 
@@ -541,8 +542,13 @@ def _derive_llm_reviewer_subset_from_recent_signals(
         return {"applied": False, "reason": "logs_missing"}
 
     planned_agents = resolve_agents(llm_agents, llm_semantic_gate)
-    if len(planned_agents) < 2:
-        return {"applied": False, "reason": "planned_agents_not_wide"}
+    model_reviewers = [agent for agent in planned_agents if agent not in DETERMINISTIC_AGENTS]
+    if len(model_reviewers) <= 1:
+        return {
+            "applied": False,
+            "reason": "single_reviewer_method",
+            "planned_agents": planned_agents,
+        }
 
     current_out_dir_resolved = current_out_dir.resolve()
     candidates = sorted(
@@ -2178,10 +2184,11 @@ def main() -> int:
         triplet=triplet,
         profile_defaults=llm_defaults,
     )
-    llm_agents = str(args.llm_agents or llm_review_plan.get("agents") or llm_defaults.get("agents") or "all")
+    raw_llm_agents = str(args.llm_agents or llm_review_plan.get("agents") or llm_defaults.get("agents") or "all")
     llm_timeout_sec = int(args.llm_timeout_sec or llm_review_plan.get("timeout_sec") or llm_defaults.get("timeout_sec") or 900)
     llm_agent_timeout_sec = int(args.llm_agent_timeout_sec or llm_review_plan.get("agent_timeout_sec") or llm_defaults.get("agent_timeout_sec") or 300)
     llm_semantic_gate = str(args.llm_semantic_gate or llm_review_plan.get("semantic_gate") or llm_defaults.get("semantic_gate") or "require")
+    llm_agents = ",".join(resolve_agents(raw_llm_agents, llm_semantic_gate))
     llm_strict = bool(args.llm_strict) or bool(llm_review_plan.get("strict", False))
     llm_diff_mode = str(args.llm_diff_mode or llm_review_plan.get("diff_mode") or llm_defaults.get("diff_mode") or "full")
     explicit_llm_agents = bool(str(args.llm_agents or "").strip())
@@ -2196,7 +2203,20 @@ def main() -> int:
         explicit_llm_agents=explicit_llm_agents,
     )
     if bool(llm_reviewer_subset.get("applied")):
-        llm_agents = ",".join([str(item).strip() for item in list(llm_reviewer_subset.get("agents") or []) if str(item).strip()])
+        subset_raw = ",".join(
+            [str(item).strip() for item in list(llm_reviewer_subset.get("agents") or []) if str(item).strip()]
+        )
+        subset_agents = resolve_agents(subset_raw, llm_semantic_gate)
+        llm_reviewer_subset = {
+            **llm_reviewer_subset,
+            "agents": subset_agents,
+            "normalized_from_agents": [
+                str(item).strip()
+                for item in list(llm_reviewer_subset.get("agents") or [])
+                if str(item).strip()
+            ],
+        }
+        llm_agents = ",".join(subset_agents)
     llm_execution_context = {
         **llm_review_plan,
         "agents": llm_agents,
@@ -2256,15 +2276,17 @@ def main() -> int:
         security_profile=security_profile,
     )
     requested_llm_agent_timeout_overrides = parse_agent_timeout_overrides(getattr(args, "llm_agent_timeouts", ""))
-    derived_llm_agent_timeout_overrides = _derive_llm_agent_timeout_overrides(
-        current_out_dir=out_dir,
-        task_id=task_id,
-        delivery_profile=delivery_profile,
-        security_profile=security_profile,
-        llm_agents=llm_agents,
-        llm_semantic_gate=llm_semantic_gate,
-        llm_timeout_sec=llm_timeout_sec,
-        llm_agent_timeout_sec=llm_agent_timeout_sec,
+    derived_llm_agent_timeout_overrides = normalize_agent_timeout_overrides(
+        _derive_llm_agent_timeout_overrides(
+            current_out_dir=out_dir,
+            task_id=task_id,
+            delivery_profile=delivery_profile,
+            security_profile=security_profile,
+            llm_agents=llm_agents,
+            llm_semantic_gate=llm_semantic_gate,
+            llm_timeout_sec=llm_timeout_sec,
+            llm_agent_timeout_sec=llm_agent_timeout_sec,
+        )
     )
     llm_agent_timeout_overrides = {**derived_llm_agent_timeout_overrides, **requested_llm_agent_timeout_overrides}
     llm_agent_timeouts = _format_agent_timeout_overrides(llm_agent_timeout_overrides)

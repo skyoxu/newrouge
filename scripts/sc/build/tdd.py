@@ -302,7 +302,9 @@ def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
             "metadata_present": False,
             "manual_only": False,
             "automated_obligations": [],
+            "integration_obligations": [],
             "human_obligations": [],
+            "red_not_required": False,
             "unclassified_anchors": [],
             "errors": [],
         }
@@ -313,7 +315,9 @@ def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
             "metadata_present": False,
             "manual_only": False,
             "automated_obligations": [],
+            "integration_obligations": [],
             "human_obligations": [],
+            "red_not_required": False,
             "unclassified_anchors": [],
             "errors": [],
         }
@@ -330,6 +334,7 @@ def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
             acceptance_anchors.add(f"ACC:T{task_id}.{index}")
 
     automated: list[str] = []
+    integration: list[str] = []
     human: list[str] = []
     errors: list[str] = []
     for anchor, row in sorted(mapping.items()):
@@ -359,17 +364,53 @@ def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
                     errors.append(f"{label}: human manual preflight requires explicit pending/failed/passed status")
                 if status == "passed" and not str(obligation.get("human_evidence_revision") or "").strip():
                     errors.append(f"{label}: passed human evidence requires human_evidence_revision")
-            elif surface in {"core-behavior", "godot-scene", "player-journey"}:
+            elif surface == "player-journey":
+                journey_scope = str(obligation.get("journey_scope") or "task-local").strip().lower()
+                if journey_scope == "task-local":
+                    automated.append(label)
+                elif journey_scope in {"mvg-critical", "mvg-full"}:
+                    integration.append(label)
+                    expected_mode = "critical" if journey_scope == "mvg-critical" else "full"
+                    primary = obligation.get("primary_evidence")
+                    manifest_refs = [
+                        str(item or "").strip().replace("\\", "/")
+                        for item in primary
+                        if isinstance(item, str)
+                        and str(item or "").strip().replace("\\", "/").startswith("docs/testing/mvg/")
+                        and str(item or "").strip().lower().endswith(".json")
+                    ] if isinstance(primary, list) else []
+                    valid_manifest = False
+                    for manifest_ref in manifest_refs:
+                        manifest_path = repo_root() / manifest_ref
+                        try:
+                            manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+                        except (OSError, json.JSONDecodeError):
+                            continue
+                        coverage = manifest_payload.get("coverage") if isinstance(manifest_payload, dict) else None
+                        if isinstance(coverage, dict) and str(coverage.get("mode") or "").strip().lower() == expected_mode:
+                            valid_manifest = True
+                            break
+                    if not valid_manifest:
+                        errors.append(
+                            f"{label}: {journey_scope} requires a readable docs/testing/mvg manifest "
+                            f"with coverage.mode={expected_mode}"
+                        )
+                else:
+                    errors.append(f"{label}: invalid journey_scope={journey_scope or '<missing>'}")
+            elif surface in {"core-behavior", "godot-scene"}:
                 automated.append(label)
             else:
                 errors.append(f"{label}: invalid or missing verification_surface")
 
     unclassified = sorted(anchor for anchor in acceptance_anchors if anchor not in mapping)
-    manual_only = bool(mapping) and bool(human) and not automated and not unclassified and not errors
+    manual_only = bool(mapping) and bool(human) and not automated and not integration and not unclassified and not errors
+    red_not_required = bool(mapping) and bool(human or integration) and not automated and not unclassified and not errors
     return {
         "metadata_present": True,
         "manual_only": manual_only,
+        "red_not_required": red_not_required,
         "automated_obligations": automated,
+        "integration_obligations": integration,
         "human_obligations": human,
         "unclassified_anchors": unclassified,
         "errors": errors,
@@ -388,7 +429,7 @@ def validate_green_red_prerequisite(*, task_id: str, out_dir: Path, triplet: Any
             + ", ".join(surface_state["unclassified_anchors"])
         )
 
-    if not surface_state.get("manual_only"):
+    if not surface_state.get("red_not_required"):
         summary_path, payload = _find_latest_red_first_summary(task_id)
         if summary_path is None:
             errors.append("missing red-first summary: run workflow chapter 6.4 first")
@@ -417,7 +458,9 @@ def validate_green_red_prerequisite(*, task_id: str, out_dir: Path, triplet: Any
         f"summary_path={summary_path if summary_path is not None else ''}",
         f"errors={len(errors)}",
         f"manual_only={bool(surface_state.get('manual_only'))}",
+        f"red_not_required={bool(surface_state.get('red_not_required'))}",
         f"automated_obligations={len(surface_state.get('automated_obligations') or [])}",
+        f"integration_obligations={len(surface_state.get('integration_obligations') or [])}",
         f"human_obligations={len(surface_state.get('human_obligations') or [])}",
     ]
     for ref in failed_refs[:30]:
@@ -433,7 +476,9 @@ def validate_green_red_prerequisite(*, task_id: str, out_dir: Path, triplet: Any
         "status": "ok" if not errors else "fail",
         "summary_path": str(summary_path) if summary_path is not None else "",
         "manual_only": bool(surface_state.get("manual_only")),
+        "red_not_required": bool(surface_state.get("red_not_required")),
         "automated_obligations": list(surface_state.get("automated_obligations") or []),
+        "integration_obligations": list(surface_state.get("integration_obligations") or []),
         "human_obligations": list(surface_state.get("human_obligations") or []),
         "unclassified_anchors": list(surface_state.get("unclassified_anchors") or []),
         "errors": errors,

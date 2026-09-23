@@ -30,10 +30,42 @@ review_cli = _load_module("sc_llm_review_cli_module", "scripts/sc/_llm_review_cl
 
 
 class LlmReviewBackendCliTests(unittest.TestCase):
-    def test_resolve_agents_should_preserve_explicit_agent_list_without_auto_adding_semantic_reviewer(self) -> None:
+    def test_resolve_agents_should_collapse_explicit_legacy_model_personas_to_single_reviewer(self) -> None:
         agents = review_cli.resolve_agents("code-reviewer,security-auditor", "warn")
 
-        self.assertEqual(["code-reviewer", "security-auditor"], agents)
+        self.assertEqual(["code-reviewer"], agents)
+
+    def test_resolve_agents_should_preserve_deterministic_reviewers_alongside_single_model_reviewer(self) -> None:
+        agents = review_cli.resolve_agents(
+            "adr-compliance-checker,security-auditor,performance-slo-validator",
+            "warn",
+        )
+
+        self.assertEqual(
+            ["adr-compliance-checker", "code-reviewer", "performance-slo-validator"],
+            agents,
+        )
+
+    def test_legacy_model_timeout_overrides_should_collapse_to_code_reviewer(self) -> None:
+        overrides = review_cli.parse_agent_timeout_overrides(
+            "security-auditor=360,semantic-equivalence-auditor=480,adr-compliance-checker=120"
+        )
+
+        self.assertEqual(
+            {"code-reviewer": 480, "adr-compliance-checker": 120},
+            overrides,
+        )
+
+    def test_resolve_agents_should_add_single_model_reviewer_for_deterministic_only_input(self) -> None:
+        agents = review_cli.resolve_agents(
+            "adr-compliance-checker,performance-slo-validator",
+            "warn",
+        )
+
+        self.assertEqual(
+            ["adr-compliance-checker", "performance-slo-validator", "code-reviewer"],
+            agents,
+        )
 
     def test_resolve_agents_should_use_single_reviewer_when_using_profile_defaults(self) -> None:
         agents = review_cli.resolve_agents("", "warn")

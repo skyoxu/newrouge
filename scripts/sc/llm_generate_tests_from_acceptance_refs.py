@@ -20,6 +20,7 @@ import _acceptance_testgen_llm as _llm_helpers  # noqa: E402
 import _acceptance_testgen_quality as _quality_helpers  # noqa: E402
 import _acceptance_testgen_red as _red_helpers  # noqa: E402
 import _acceptance_testgen_refs as _refs_helpers  # noqa: E402
+from _acceptance_verification_surface import collect_acceptance_verification  # noqa: E402
 from _llm_backend import KNOWN_LLM_BACKENDS, resolve_llm_backend, run_llm_exec  # noqa: E402
 from _taskmaster import resolve_triplet  # noqa: E402
 from _util import ci_dir, repo_root, run_cmd, write_json, write_text  # noqa: E402
@@ -256,6 +257,77 @@ def _generate_missing_files(*, refs: list[str], by_ref, task_id: str, title: str
     return results, created, any_gd, primary_ref
 
 
+def _red_requirement_state(triplet, *, task_id: str) -> dict[str, object]:
+    machine: list[str] = []
+    non_machine: list[str] = []
+    unclassified: list[str] = []
+    saw_acceptance = False
+    mapping = collect_acceptance_verification(triplet)
+
+    for view in (getattr(triplet, "back", None), getattr(triplet, "gameplay", None)):
+        if not isinstance(view, dict):
+            continue
+        acceptance = view.get("acceptance")
+        if not isinstance(acceptance, list):
+            continue
+        for index, raw in enumerate(acceptance, start=1):
+            if not str(raw or "").strip():
+                continue
+            saw_acceptance = True
+            anchor = f"ACC:T{task_id}.{index}"
+            classified = mapping.get(anchor)
+            if not isinstance(classified, dict):
+                unclassified.append(anchor)
+                continue
+            raw_obligations = classified.get("obligations")
+            if raw_obligations is None:
+                rows = [classified]
+            elif isinstance(raw_obligations, list) and raw_obligations:
+                rows = raw_obligations
+            else:
+                unclassified.append(anchor)
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    unclassified.append(anchor)
+                    continue
+                obligation_id = str(row.get("obligation_id") or "").strip()
+                label = f"{anchor}#{obligation_id}" if raw_obligations is not None else anchor
+                surface = str(row.get("verification_surface") or "").strip()
+                if surface == "human-experience":
+                    non_machine.append(label)
+                    continue
+                if surface == "player-journey":
+                    journey_scope = str(row.get("journey_scope") or "task-local").strip().lower()
+                    if journey_scope in {"mvg-critical", "mvg-full"}:
+                        non_machine.append(label)
+                        continue
+                    if journey_scope == "task-local":
+                        machine.append(label)
+                        continue
+                    unclassified.append(label)
+                    continue
+                if surface in {"core-behavior", "godot-scene"}:
+                    machine.append(label)
+                    continue
+                unclassified.append(label)
+
+    def unique(values: list[str]) -> list[str]:
+        return list(dict.fromkeys(values))
+
+    machine = unique(machine)
+    non_machine = unique(non_machine)
+    unclassified = unique(unclassified)
+    red_not_required = bool(saw_acceptance and non_machine and not machine and not unclassified)
+    return {
+        "red_not_required": red_not_required,
+        "machine_obligations": machine,
+        "non_machine_obligations": non_machine,
+        "unclassified_anchors": unclassified,
+    }
+
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate missing tests from acceptance Refs with an LLM backend.")
     ap.add_argument("--task-id", required=True, help="Task id (master id, e.g. 11).")
@@ -345,6 +417,28 @@ def main() -> int:
         is_allowed_test_path_fn=_is_allowed_test_path,
         write_json_fn=write_json,
     )
+    red_requirement = _red_requirement_state(triplet, task_id=task_id)
+    if str(args.tdd_stage) == "red-first" and bool(red_requirement.get("red_not_required")):
+        summary = {
+            "cmd": "sc-llm-generate-tests-from-acceptance-refs",
+            "task_id": task_id,
+            "title": title,
+            "tdd_stage": str(args.tdd_stage),
+            "primary_ref": "",
+            "refs_total": len(refs),
+            "created": 0,
+            "sync_test_refs_rc": 0,
+            "verify_mode": "none",
+            "test_step": None,
+            "llm_backend": str(args.llm_backend),
+            "results": [],
+            "red_not_required": True,
+            "red_requirement": red_requirement,
+            "out_dir": str(out_dir),
+        }
+        write_json(out_dir / f"summary-{task_id}.json", summary)
+        print(f"SC_LLM_ACCEPTANCE_TESTS status=ok created=0 red_not_required=true out={out_dir}")
+        return 0
     if not refs:
         print(f"SC_LLM_ACCEPTANCE_TESTS ERROR: no allowed test refs found for task_id={task_id}.")
         return 1

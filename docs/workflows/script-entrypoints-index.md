@@ -544,7 +544,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - Direct local deps: None.
 - Transitive local deps: None.
 - Subcommands: None.
-- Declared args: `--task-id`, `--run-id`, `--out`, `--date`
+- Declared args: `--task-id`, `--run-id`, `--out`, `--date`, `--candidate-revision`
 - Parameter prerequisites:
   - Windows PowerShell + `py -3` from repo root.
   - Task-scoped parameters require a Taskmaster triplet; template fallback can read `examples/taskmaster/**`, but business repos should use real `.taskmaster/tasks/*.json`.

@@ -150,7 +150,8 @@ py -3 scripts/sc/llm_review.py --task-id 10 --base main
 # 审查未提交改动
 py -3 scripts/sc/llm_review.py --task-id 10 --uncommitted
 
-# 兼容/诊断时可显式指定 reviewer；显式列表按原样保留
+# 兼容/诊断时可显式指定 reviewer；legacy 模型 persona 会归一为单一 code-reviewer，
+# deterministic reviewer 名称仍作为独立机器能力保留。
 py -3 scripts/sc/llm_review.py --task-id 10 --base main --agents code-reviewer
 
 # 只生成执行计划，不调用 live model

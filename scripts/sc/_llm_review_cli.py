@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=KNOWN_LLM_BACKENDS,
         help="LLM transport backend. Default: env SC_LLM_BACKEND or codex-cli.",
     )
-    ap.add_argument("--agents", default="", help="Comma-separated compatibility list. Empty=single code-reviewer; all|full adds deterministic reviewers but keeps one model reviewer.")
+    ap.add_argument("--agents", default="", help="Comma-separated compatibility list. Empty=single code-reviewer; legacy model persona names collapse to code-reviewer; all|full adds deterministic reviewers plus one model reviewer.")
     ap.add_argument("--diff-mode", default="full", choices=["full", "summary", "none"], help="How much diff to include in prompts.")
     ap.add_argument("--base", default="main", help="Base branch for diff review.")
     ap.add_argument("--uncommitted", action="store_true", help="Review staged/unstaged/untracked changes.")
@@ -100,6 +100,18 @@ def apply_delivery_profile_defaults(args: argparse.Namespace) -> argparse.Namesp
     return args
 
 
+def normalize_agent_timeout_overrides(overrides: dict[str, int]) -> dict[str, int]:
+    normalized: dict[str, int] = {}
+    for raw_agent, raw_seconds in overrides.items():
+        agent = str(raw_agent or "").strip()
+        seconds = int(raw_seconds or 0)
+        if not agent or seconds <= 0:
+            continue
+        key = agent if agent in DETERMINISTIC_AGENTS else "code-reviewer"
+        normalized[key] = max(int(normalized.get(key) or 0), seconds)
+    return normalized
+
+
 def parse_agent_timeout_overrides(raw: str) -> dict[str, int]:
     out: dict[str, int] = {}
     for item in split_csv(raw):
@@ -116,17 +128,37 @@ def parse_agent_timeout_overrides(raw: str) -> dict[str, int]:
             continue
         if sec > 0:
             out[k] = sec
-    return out
+    return normalize_agent_timeout_overrides(out)
 
 
 def resolve_agents(raw: str, semantic_gate: str) -> list[str]:
-    # Chapter 6 model review defaults to one reviewer. Deterministic reviewers remain
-    # separate capabilities and may still be requested through "all".
+    # Chapter 6 owns exactly one model reviewer. Legacy model persona names remain
+    # accepted as CLI compatibility input, but they collapse to code-reviewer.
+    # Deterministic reviewers remain separate machine capabilities.
     default_agents = ["code-reviewer"]
-    all_agents = [*DETERMINISTIC_AGENTS, "code-reviewer"]
+    all_agents = [*sorted(DETERMINISTIC_AGENTS), "code-reviewer"]
     raw_text = str(raw or "").strip()
     agents_raw = raw_text.lower()
-    return all_agents if agents_raw in {"all", "full", "6"} else (split_csv(raw_text) or default_agents)
+    if agents_raw in {"all", "full", "6"}:
+        return all_agents
+
+    requested = split_csv(raw_text)
+    if not requested:
+        return default_agents
+
+    normalized: list[str] = []
+    model_reviewer_added = False
+    for agent in requested:
+        if agent in DETERMINISTIC_AGENTS:
+            if agent not in normalized:
+                normalized.append(agent)
+            continue
+        if not model_reviewer_added:
+            normalized.append("code-reviewer")
+            model_reviewer_added = True
+    if not model_reviewer_added:
+        normalized.append("code-reviewer")
+    return normalized
 
 
 def validate_args(args: argparse.Namespace) -> list[str]:

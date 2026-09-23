@@ -97,20 +97,20 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
             summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             return rc, observed_timeouts, summary
 
-    def test_main_should_allow_started_reviewer_to_use_full_agent_timeout_even_when_total_budget_remaining_is_smaller(self) -> None:
+    def test_main_should_allow_single_reviewer_to_use_full_agent_timeout_when_total_budget_remaining_is_smaller(self) -> None:
         rc, observed_timeouts, summary = self._run_main_with_time_budget(
-            agents="code-reviewer,security-auditor",
-            monotonic_values=[0.0, 0.0, 170.0],
+            agents="code-reviewer",
+            monotonic_values=[0.0, 170.0],
         )
 
         self.assertEqual(0, rc)
-        self.assertEqual([180, 180], observed_timeouts)
+        self.assertEqual([180], observed_timeouts)
         self.assertEqual("ok", summary["status"])
         self.assertEqual(
-            ["code-reviewer", "security-auditor"],
+            ["code-reviewer"],
             [str(item.get("agent") or "") for item in summary["results"]],
         )
-        self.assertEqual(30, int((summary["results"][1].get("details") or {}).get("remaining_before_sec") or 0))
+        self.assertEqual(30, int((summary["results"][0].get("details") or {}).get("remaining_before_sec") or 0))
 
     def test_completed_needs_fix_should_remain_completed_not_incomplete(self) -> None:
         rc, _timeouts, summary = self._run_main_with_time_budget(
@@ -146,23 +146,24 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
         self.assertEqual(1, rc)
         self.assertEqual("incomplete", summary["completion_status"])
 
-    def test_main_should_skip_only_reviewers_not_yet_started_after_total_budget_is_exhausted(self) -> None:
+    def test_legacy_model_list_should_not_consume_multiple_timeout_slots(self) -> None:
         rc, observed_timeouts, summary = self._run_main_with_time_budget(
             agents="code-reviewer,security-auditor,test-automator",
-            monotonic_values=[0.0, 0.0, 170.0, 205.0],
+            monotonic_values=[0.0, 0.0],
         )
 
-        self.assertEqual(1, rc)
-        self.assertEqual([180, 180], observed_timeouts)
-        self.assertEqual("warn", summary["status"])
-        self.assertEqual("skipped", summary["results"][2]["status"])
-        self.assertEqual(124, summary["results"][2]["rc"])
-        self.assertIn("total timeout budget exhausted", str((summary["results"][2].get("details") or {}).get("note") or "").lower())
-        self.assertEqual(30, int((summary["results"][1].get("details") or {}).get("remaining_before_sec") or 0))
+        self.assertEqual(0, rc)
+        self.assertEqual([180], observed_timeouts)
+        self.assertEqual("ok", summary["status"])
+        self.assertEqual(
+            ["code-reviewer"],
+            [str(item.get("agent") or "") for item in summary["results"]],
+        )
+        self.assertEqual("completed", summary["completion_status"])
 
-    def test_explicit_legacy_model_list_should_run_without_deferred_persona_stage(self) -> None:
+    def test_explicit_legacy_model_list_should_collapse_to_single_reviewer(self) -> None:
         observed_agents: list[str] = []
-        monotonic_iter = iter([0.0, 0.0, 10.0, 20.0])
+        monotonic_iter = iter([0.0, 0.0])
 
         with tempfile.TemporaryDirectory(dir=str(REPO_ROOT)) as td:
             temp_root = Path(td)
@@ -206,14 +207,13 @@ class LlmReviewRuntimeBudgetTests(unittest.TestCase):
 
             summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(0, rc)
+            self.assertEqual(["code-reviewer"], observed_agents)
             self.assertEqual(
-                ["code-reviewer", "semantic-equivalence-auditor", "security-auditor"],
-                observed_agents,
-            )
-            self.assertEqual(
-                ["primary", "primary", "primary"],
+                ["primary"],
                 [str((item.get("details") or {}).get("execution_stage") or "") for item in summary["results"]],
             )
+            self.assertEqual(["code-reviewer"], summary["requested_agents"])
+            self.assertEqual("single-reviewer", summary["review_method"]["reviewer_mode"])
 
     def test_default_execution_plan_should_have_one_model_reviewer_and_three_lenses(self) -> None:
         plan = review_engine._build_agent_execution_plan(["code-reviewer"])

@@ -409,6 +409,7 @@ def main() -> int:
             audit_evidence_mode=audit_evidence_mode,
             godot_bin=godot_bin,
             run_id=run_id,
+            candidate_revision=candidate_revision,
         )
     )
 

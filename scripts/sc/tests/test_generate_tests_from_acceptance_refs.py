@@ -513,6 +513,108 @@ class GenerateTestsFromAcceptanceRefsTests(unittest.TestCase):
         self.assertFalse(any_gd)
         self.assertEqual(["ok"], [item.status for item in results])
 
+    def test_red_requirement_state_should_skip_machine_red_only_for_non_machine_obligations(self) -> None:
+        integration_only = SimpleNamespace(
+            back={
+                "acceptance": ["Integrated journey. Refs: docs/testing/mvg/m1-critical.json"],
+                "acceptance_verification": {
+                    "ACC:T11.1": {
+                        "verification_surface": "player-journey",
+                        "journey_scope": "mvg-critical",
+                        "primary_evidence": ["docs/testing/mvg/m1-critical.json"],
+                    }
+                },
+            },
+            gameplay=None,
+        )
+        mixed = SimpleNamespace(
+            back={
+                "acceptance": ["Mixed behavior. Refs: Game.Core.Tests/FooTests.cs"],
+                "acceptance_verification": {
+                    "ACC:T11.1": {
+                        "obligations": [
+                            {
+                                "obligation_id": "core",
+                                "verification_surface": "core-behavior",
+                                "primary_evidence": ["Game.Core.Tests/FooTests.cs"],
+                            },
+                            {
+                                "obligation_id": "journey",
+                                "verification_surface": "player-journey",
+                                "journey_scope": "mvg-critical",
+                                "primary_evidence": ["docs/testing/mvg/m1-critical.json"],
+                            },
+                        ]
+                    }
+                },
+            },
+            gameplay=None,
+        )
+
+        integration_state = gen_script._red_requirement_state(integration_only, task_id="11")
+        mixed_state = gen_script._red_requirement_state(mixed, task_id="11")
+
+        self.assertTrue(integration_state["red_not_required"])
+        self.assertEqual(["ACC:T11.1"], integration_state["non_machine_obligations"])
+        self.assertFalse(mixed_state["red_not_required"])
+        self.assertEqual(["ACC:T11.1#core"], mixed_state["machine_obligations"])
+
+    def test_main_should_emit_red_not_required_for_integration_only_journey(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_dir = root / "logs" / "ci" / "2026-09-23" / "sc-llm-acceptance-tests"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            triplet = SimpleNamespace(
+                task_id="11",
+                master={"title": "Integration journey"},
+                back={
+                    "acceptance": ["Integrated journey. Refs: docs/testing/mvg/m1-critical.json"],
+                    "acceptance_verification": {
+                        "ACC:T11.1": {
+                            "verification_surface": "player-journey",
+                            "journey_scope": "mvg-critical",
+                            "primary_evidence": ["docs/testing/mvg/m1-critical.json"],
+                        }
+                    },
+                },
+                gameplay=None,
+            )
+            argv = [
+                "llm_generate_tests_from_acceptance_refs.py",
+                "--task-id",
+                "11",
+                "--tdd-stage",
+                "red-first",
+                "--verify",
+                "unit",
+            ]
+            seen_cmds: list[list[str]] = []
+
+            def fake_run_cmd(cmd: list[str], cwd: Path, timeout_sec: int):  # noqa: ARG001
+                seen_cmds.append(list(cmd))
+                cmd_text = " ".join(cmd)
+                if "validate_acceptance_refs.py" in cmd_text:
+                    return 0, "acceptance refs ok\n"
+                if "scripts/sc/analyze.py" in cmd_text:
+                    return 0, "analysis ok\n"
+                raise AssertionError(f"unexpected command for red_not_required flow: {cmd}")
+
+            with mock.patch.object(sys, "argv", argv), \
+                mock.patch.object(gen_script, "repo_root", return_value=root), \
+                mock.patch.object(gen_script, "ci_dir", return_value=out_dir), \
+                mock.patch.object(gen_script, "resolve_triplet", return_value=triplet), \
+                mock.patch.object(gen_script, "run_cmd", side_effect=fake_run_cmd), \
+                mock.patch.object(gen_script, "_run_codex_exec") as llm_mock:
+                rc = gen_script.main()
+
+            self.assertEqual(0, rc)
+            llm_mock.assert_not_called()
+            summary = json.loads((out_dir / "summary-11.json").read_text(encoding="utf-8"))
+            self.assertTrue(summary["red_not_required"])
+            self.assertEqual("none", summary["verify_mode"])
+            self.assertEqual(0, summary["created"])
+            self.assertFalse(any("scripts/sc/test.py" in " ".join(cmd) for cmd in seen_cmds))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -666,7 +666,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             self.assertEqual("summary", llm_cmd[llm_cmd.index("--diff-mode") + 1])
             self.assertNotIn("--strict", llm_cmd)
 
-    def test_llm_review_dry_plan_should_preserve_narrow_fast_ship_targeted_agents(self) -> None:
+    def test_llm_review_dry_plan_should_collapse_legacy_fast_ship_personas_to_single_reviewer(self) -> None:
         proc = subprocess.run(
             [
                 sys.executable,
@@ -691,7 +691,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
         out_dir = _extract_out_dir(proc.stdout or "")
         summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(["code-reviewer", "security-auditor"], [str(x) for x in (summary.get("agents") or [])])
+        self.assertEqual(["code-reviewer"], [str(x) for x in (summary.get("agents") or [])])
 
     def test_dry_run_fast_ship_should_escalate_minimal_tier_for_contract_task(self) -> None:
         run_id = uuid.uuid4().hex
@@ -766,9 +766,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             steps = {str(item.get("name")): item for item in json.loads((out_dir / "summary.json").read_text(encoding="utf-8")).get("steps", [])}
             llm_cmd = steps["sc-llm-review"]["cmd"]
 
-            self.assertEqual({"security-auditor": 480}, execution_context["llm_review"]["agent_timeout_overrides"])
+            self.assertEqual({"code-reviewer": 480}, execution_context["llm_review"]["agent_timeout_overrides"])
             self.assertIn("--agent-timeouts", llm_cmd)
-            self.assertEqual("security-auditor=480", llm_cmd[llm_cmd.index("--agent-timeouts") + 1])
+            self.assertEqual("code-reviewer=480", llm_cmd[llm_cmd.index("--agent-timeouts") + 1])
 
     def test_dry_run_should_not_publish_latest_or_active_task_sidecar(self) -> None:
         run_id = uuid.uuid4().hex
@@ -915,7 +915,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     llm_agent_timeout_sec=240,
                 )
 
-            self.assertEqual({"security-auditor": 480}, overrides)
+            self.assertEqual({}, overrides)
 
     def test_legacy_reviewer_timeout_cannot_escalate_single_reviewer_budget(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -1068,7 +1068,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     {
                         "review_method": {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"]},
                         "results": [
-                            {"agent": "security-auditor", "status": "fail", "rc": 124, "details": {"verdict": ""}},
+                            {"agent": "code-reviewer", "status": "fail", "rc": 124, "details": {"verdict": ""}},
                         ]
                     }
                 ),
@@ -1087,7 +1087,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     llm_agent_timeout_sec=240,
                 )
 
-            self.assertEqual({"security-auditor": 600}, overrides)
+            self.assertEqual({"code-reviewer": 540}, overrides)
 
     def test_derive_llm_agent_timeout_overrides_should_use_previous_timeout_memory_when_agent_timed_out_again(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -1118,7 +1118,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                         "security_profile": "host-safe",
                         "llm_review": {
                             "agent_timeout_sec": 240,
-                            "agent_timeout_overrides": {"security-auditor": 420},
+                            "agent_timeout_overrides": {"code-reviewer": 420},
                         },
                     }
                 ),
@@ -1130,7 +1130,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                         "review_method": {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"]},
                         "results": [
                             {
-                                "agent": "security-auditor",
+                                "agent": "code-reviewer",
                                 "status": "fail",
                                 "rc": 124,
                                 "details": {"verdict": "", "agent_timeout_sec": 420},
@@ -1153,9 +1153,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     llm_agent_timeout_sec=240,
                 )
 
-            self.assertEqual({"security-auditor": 540}, overrides)
+            self.assertEqual({"code-reviewer": 540}, overrides)
 
-    def test_derive_llm_reviewer_subset_should_narrow_to_recent_non_ok_agents_for_safe_semantic_delta(self) -> None:
+    def test_derive_llm_reviewer_subset_should_not_narrow_single_reviewer_by_legacy_persona(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             previous_run = root / "logs" / "ci" / "2026-04-02" / "sc-review-pipeline-task-1-oldrun"
@@ -1216,9 +1216,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     explicit_llm_agents=False,
                 )
 
-            self.assertTrue(bool(decision.get("applied")))
-            self.assertEqual(["security-auditor", "semantic-equivalence-auditor"], decision.get("agents"))
-            self.assertEqual("oldrun", decision.get("source_run_id"))
+            self.assertFalse(bool(decision.get("applied")))
+            self.assertEqual("single_reviewer_method", decision.get("reason"))
+            self.assertEqual(["code-reviewer"], decision.get("planned_agents"))
 
     def test_derive_llm_reviewer_subset_should_ignore_semantic_skip_from_deferred_stage_guard(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -1288,8 +1288,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                     explicit_llm_agents=False,
                 )
 
-            self.assertTrue(bool(decision.get("applied")))
-            self.assertEqual(["code-reviewer"], decision.get("agents"))
+            self.assertFalse(bool(decision.get("applied")))
+            self.assertEqual("single_reviewer_method", decision.get("reason"))
+            self.assertEqual(["code-reviewer"], decision.get("planned_agents"))
 
     def test_dry_run_should_apply_recent_llm_reviewer_subset_narrowing(self) -> None:
         run_id = uuid.uuid4().hex
@@ -1335,10 +1336,14 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             llm_cmd = steps["sc-llm-review"]["cmd"]
 
             self.assertEqual(
-                ["security-auditor", "semantic-equivalence-auditor"],
+                ["code-reviewer"],
                 execution_context["llm_review"]["derived_reviewer_subset"]["agents"],
             )
-            self.assertEqual("security-auditor,semantic-equivalence-auditor", llm_cmd[llm_cmd.index("--agents") + 1])
+            self.assertEqual(
+                ["security-auditor", "semantic-equivalence-auditor"],
+                execution_context["llm_review"]["derived_reviewer_subset"]["normalized_from_agents"],
+            )
+            self.assertEqual("code-reviewer", llm_cmd[llm_cmd.index("--agents") + 1])
 
 
 if __name__ == '__main__':

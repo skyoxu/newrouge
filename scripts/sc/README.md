@@ -281,7 +281,7 @@ Optional `acceptance_verification` metadata lives on existing task views and is 
 
 - `core-behavior` primary evidence includes xUnit `.cs`.
 - `godot-scene` primary evidence includes GdUnit `.gd` and is routed through the existing headless/GdUnit path.
-- `player-journey` primary evidence binds a task-local executable `Game.Core.Tests/**.cs` or `Tests.Godot/**.gd` identity. Critical/full MVG remains separate integration evidence and keeps its existing manifest/runtime rules.
+- `player-journey` uses `journey_scope`: `task-local` (default) binds an executable `Game.Core.Tests/**.cs` or `Tests.Godot/**.gd` identity; `mvg-critical` / `mvg-full` bind an executable `docs/testing/mvg/*.json` manifest and require a matching `runtime_verified=true` MVG `run` summary for the exact candidate revision. Plan/recommend evidence and critical evidence cannot satisfy full scope.
 - `human-experience` requires explicit human evidence; `pending` or `failed` never passes Acceptance, and `passed` must bind the reviewed revision plus an explicit passed conclusion in the evidence.
 
 RED verification is causal. Timeout, missing reports, compile/environment failure, or generic non-zero exits are unverified and cannot satisfy RED. Use the existing targeted MVG mutation probe for selected high-risk falsifiability checks; it is not a default all-task gate.
