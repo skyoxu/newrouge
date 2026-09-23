@@ -3,9 +3,7 @@
   "active_patterns": [
     "docs/prd/**/*.md",
     "docs/gdd/**/*.md",
-    "_bmad-output/gdd.md",
-    "docs/epics/**/*.md",
-    "docs/stories/**/*.md"
+    "_bmad-output/gdd.md"
   ],
   "retirements": []
 }
