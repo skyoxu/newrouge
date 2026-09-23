@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from impact_analysis_handoff import validate_handoff
+from milestone_incremental_handoff import validate_task_handoff
 from _chapter6_recovery_common import route_execution_policy
 
 
@@ -868,6 +869,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--impact-report", default="")
     parser.add_argument("--revision", default="")
     parser.add_argument("--binding-evidence", default="")
+    parser.add_argument("--milestone-handoff", default="", help="Reviewed task-local milestone handoff from Chapter 5.")
     parser.add_argument("--execution-plan-signal", action="append", default=[], help="Explicit durable coordination signal for 6.3 plan policy.")
     return parser
 
@@ -903,6 +905,23 @@ def main() -> int:
         _write_json(out_dir / "summary.json", payload)
         print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop={handoff.code}")
         return handoff.exit_code
+
+    milestone_handoff_payload: dict[str, Any] = {}
+    if str(args.milestone_handoff or "").strip():
+        milestone_path = (_repo_root() / str(args.milestone_handoff)).resolve()
+        ok, reason, milestone_handoff_payload = validate_task_handoff(_repo_root(), milestone_path, task_id)
+        if not ok:
+            payload = {
+                "cmd": "run-single-task-chapter6",
+                "task_id": task_id,
+                "status": "blocked",
+                "stop_reason": reason,
+                "steps": [],
+                "out_dir": str(out_dir).replace("\\", "/"),
+            }
+            _write_json(out_dir / "summary.json", payload)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={reason}")
+            return 2
 
     if bool(args.self_check):
         placeholder_route = {
@@ -954,6 +973,13 @@ def main() -> int:
         "out_dir": str(out_dir).replace("\\", "/"),
         "steps": [],
         "stop_reason": "",
+        "milestone_handoff": {
+            "path": str(args.milestone_handoff or ""),
+            "change_plan_sha256": milestone_handoff_payload.get("change_plan_sha256"),
+            "required_regressions": milestone_handoff_payload.get("required_regressions", []),
+            "planned_tests": milestone_handoff_payload.get("planned_tests", []),
+            "manual_obligations": milestone_handoff_payload.get("manual_obligations", []),
+        } if milestone_handoff_payload else None,
     }
 
     resume_step, resume_payload = _run_json_step(out_dir, name="resume-task", cmd=build_resume_task_cmd(task_id))
