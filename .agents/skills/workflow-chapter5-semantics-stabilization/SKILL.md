@@ -85,4 +85,11 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```
+```\n
+
+## Milestone incremental handoff
+
+- For affected old/new tasks, require an explicit `new | extend | reuse | replace | retire | unresolved` disposition with source rationale.
+- Record impacted tasks/contracts/overlays/producers/consumers and the required old regressions, planned new tests and human obligations.
+- A planned test may remain unimplemented at ready-to-implement when its owner and behavior are explicit; it can never count as milestone acceptance evidence.
+- Build the task-local milestone handoff only from a closable, current Chapter 5 readiness document. Source/contract/task-surface drift invalidates it.

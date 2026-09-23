@@ -18,6 +18,7 @@ from typing import Any
 
 DEFAULT_REQUIREMENTS = "logs/ci/task-generation/requirements.index.json"
 DEFAULT_OUT = "logs/ci/task-generation/task-intents.normalized.json"
+DEFAULT_TASK_FILES = (".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json")
 
 STOP_WORDS = {
     "acceptance",
@@ -591,12 +592,44 @@ def build_joint_capability_shadow(anchors: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _existing_task_ids(root: Path, task_files: list[str]) -> set[str]:
+    ids: set[str] = set()
+    for raw in task_files:
+        path = Path(raw)
+        path = path if path.is_absolute() else root / path
+        if not path.is_file():
+            continue
+        payload = load_json(path)
+        rows = payload if isinstance(payload, list) else payload.get("tasks", []) if isinstance(payload, dict) else []
+        for row in rows:
+            if isinstance(row, dict) and str(row.get("id") or "").strip():
+                ids.add(str(row["id"]).strip())
+    return ids
+
+
+def _previous_intent_ids(payload: dict[str, Any] | None) -> dict[str, str]:
+    if not isinstance(payload, dict):
+        return {}
+    result: dict[str, str] = {}
+    for row in payload.get("intents", []):
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("intent_key") or "").strip()
+        task_id = str(row.get("id") or "").strip()
+        if key and task_id:
+            result[key] = task_id
+    return result
+
+
 def build_intents(
     index: dict[str, Any],
     mode: str,
     id_prefix: str,
     max_anchors_per_intent: int,
     split_profile: str = "balanced",
+    *,
+    reserved_ids: set[str] | None = None,
+    previous_intents: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     grouped: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for anchor in index.get("anchors", []):
@@ -607,7 +640,26 @@ def build_intents(
 
     intents: list[dict[str, Any]] = []
     next_index = 1
+    used_ids = {str(value).strip() for value in (reserved_ids or set()) if str(value).strip()}
+    previous_id_by_key = _previous_intent_ids(previous_intents)
+    allocated_ids: set[str] = set()
     previous_by_owner_layer: dict[tuple[str, str], str] = {}
+
+    def allocate_id(intent_key: str) -> str:
+        nonlocal next_index
+        previous_id = previous_id_by_key.get(intent_key)
+        if previous_id and previous_id not in allocated_ids:
+            allocated_ids.add(previous_id)
+            used_ids.add(previous_id)
+            return previous_id
+        while True:
+            candidate = f"{id_prefix}-{next_index:04d}"
+            next_index += 1
+            if candidate in used_ids or candidate in allocated_ids:
+                continue
+            allocated_ids.add(candidate)
+            used_ids.add(candidate)
+            return candidate
     for (kind, layer, owner, topic, stem), anchors in sorted(grouped.items(), key=lambda item: item[0]):
         anchors = sorted(anchors, key=lambda a: (str(a.get("source_path", "")), int(a.get("line", 0))))
         chunk_size = chunk_size_for_group(layer, topic, anchors, max_anchors_per_intent, split_profile)
@@ -617,13 +669,14 @@ def build_intents(
             refs = sorted({ref for a in group for ref in a.get("refs", []) if isinstance(ref, str)})
             phrase = str(group[0].get("capability_title") or "").strip() or title_phrase(group, topic)
             title_split_index = split_index if len(anchors) > chunk_size else 0
-            current_id = f"{id_prefix}-{next_index:04d}"
+            intent_key = f"{kind}:{layer}:{owner}:{topic}:{stem}:{split_index}"
+            current_id = allocate_id(intent_key)
             dependency_key = (owner, layer)
             depends_on = [previous_by_owner_layer[dependency_key]] if dependency_key in previous_by_owner_layer else []
             intents.append(
                 {
                     "id": current_id,
-                    "intent_key": f"{kind}:{layer}:{owner}:{topic}:{stem}:{split_index}",
+                    "intent_key": intent_key,
                     "topic": topic,
                     "title": intent_title(topic, phrase, title_split_index),
                     "description": " ".join(str(group[0].get("text", "")).split())[:700],
@@ -667,7 +720,6 @@ def build_intents(
                 }
             )
             previous_by_owner_layer[dependency_key] = current_id
-            next_index += 1
 
     disambiguate_duplicate_titles(intents)
 
@@ -695,6 +747,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--id-prefix", default="INT")
     parser.add_argument("--max-anchors-per-intent", type=int, default=8)
     parser.add_argument("--split-profile", choices=["compact", "balanced", "expanded"], default="balanced")
+    parser.add_argument(
+        "--existing-task-file",
+        action="append",
+        default=[],
+        help="Existing task view used to reserve string task ids. Repeatable; add mode defaults to both triplet views.",
+    )
+    parser.add_argument(
+        "--previous-intents",
+        default="",
+        help="Previous normalized intents used to reuse ids by stable intent_key. Add mode defaults to --out when it already exists.",
+    )
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args(argv)
 
@@ -714,15 +777,27 @@ def main(argv: list[str] | None = None) -> int:
         }
     else:
         index = load_json(root / args.requirements)
+    out = root / args.out
+    task_files = list(args.existing_task_file)
+    if args.mode == "add" and not task_files:
+        task_files = list(DEFAULT_TASK_FILES)
+    previous_intents = None
+    previous_path = Path(args.previous_intents) if str(args.previous_intents).strip() else out
+    if not previous_path.is_absolute():
+        previous_path = root / previous_path
+    if args.mode == "add" and previous_path.is_file():
+        previous_intents = load_json(previous_path)
+
     result = build_intents(
         index,
         args.mode,
         args.id_prefix,
         args.max_anchors_per_intent,
         args.split_profile,
+        reserved_ids=_existing_task_ids(root, task_files),
+        previous_intents=previous_intents,
     )
     result["source_schema"] = index.get("schema")
-    out = root / args.out
     write_json(out, result)
     print(f"task_intents={out} intents={result['intent_count']} anchors={result['source_anchor_count']}")
     return 0

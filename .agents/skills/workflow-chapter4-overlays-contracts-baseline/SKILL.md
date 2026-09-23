@@ -78,4 +78,10 @@ Refresh optional evidence after new business-repo logs are generated:
 ```powershell
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo>
 py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<business-repo-b>
-```
+```\n
+
+## Milestone incremental scope
+
+- Existing Overlay pages are patched, not regenerated as sparse replacements. Merge Task coverage and simple bullets by default; destructive removal/replacement must be explicit and old-content/hash guarded.
+- Restrict `sync_task_overlay_refs.py` to the affected task ids. `--skip-done` is not an impact-analysis substitute.
+- Shared contract changes must name producer/consumer impact and an implementation owner before Chapter 6.

@@ -157,4 +157,8 @@ Recovery stop-loss rules:
 Users continue to select a Chapter Skill and supply the relevant sources or task ID. The chapter order remains 3 → 4 → 5 → 6 → 7. Chapter 3 now conserves source semantics before task generation; Chapter 5 establishes current readiness before implementation; Chapter 6 routes and reuses evidence internally. Blocked/stale readiness requires returning to Chapter 5, and a new formal task from Chapter 7 follows the same readiness/development loop.
 
 - [MVG integration acceptance](docs/workflows/mvg-integration-acceptance.md): tests belong to existing tasks/handoff owners and are implemented during Chapter 6. The separate `run-mvg-acceptance` runner/CI verifies their combination on one snapshot. Default `m1-critical` is not full M1 acceptance; `m1-full` remains blocked while Task 59/60 are pending.
-- [Knowledge and topology](docs/workflows/project-health-knowledge.md): the UI shows Source → Requirement → optional Capability → Task → Acceptance and Chapter 3/5 workspace attempts. It has no dedicated MVG manifest/flow/handoff/result view. Task verification buttons do not substitute for MVG acceptance.
+- [Knowledge and topology](docs/workflows/project-health-knowledge.md): the UI shows Source → Requirement → optional Capability → Task → Acceptance and Chapter 3/5 workspace attempts. It has no dedicated MVG manifest/flow/handoff/result view. Task verification buttons do not substitute for MVG acceptance.\n
+
+### Incremental milestones
+
+Later GDD milestones reuse the existing Chapter 3→6 and MVG lifecycle. The cumulative source declaration is `docs/workflows/chapter3-source-set.json`; reviewed task/change handoffs use `scripts/python/milestone_incremental_handoff.py`; cumulative integration manifests are evolved with `scripts/python/update_mvg_baseline.py`. See `workflow.md` and `docs/workflows/mvg-integration-acceptance.md`.

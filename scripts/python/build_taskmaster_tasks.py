@@ -41,7 +41,7 @@ from __future__ import annotations
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -73,8 +73,30 @@ def load_tasks(task_file: Path) -> List[Dict]:
     return []
 
 
+def _merge_view_task(existing: Dict[str, Any], incoming: Dict[str, Any], tid: str) -> Dict[str, Any]:
+    merged = dict(existing)
+    for key, value in incoming.items():
+        if key == "id":
+            continue
+        if key in merged and merged[key] != value:
+            if key in {"taskmaster_id", "status", "depends_on", "dependencies"}:
+                raise ValueError(f"conflicting cross-view field for {tid}: {key}")
+            if isinstance(merged[key], list) and isinstance(value, list):
+                merged[key] = list(dict.fromkeys([*merged[key], *value]))
+                continue
+            if value in ("", None, [], {}):
+                continue
+            if merged[key] in ("", None, [], {}):
+                merged[key] = value
+                continue
+            raise ValueError(f"conflicting cross-view field for {tid}: {key}")
+        else:
+            merged[key] = value
+    return merged
+
+
 def build_all_tasks(task_files: List[Path]) -> Dict[str, Dict]:
-    """Load tasks from given task_files into a flat id->task mapping."""
+    """Load tasks from views and merge shared string ids without last-writer-wins."""
     all_tasks: Dict[str, Dict] = {}
     for path in task_files:
         tasks = load_tasks(path)
@@ -82,8 +104,11 @@ def build_all_tasks(task_files: List[Path]) -> Dict[str, Dict]:
             tid = t.get("id")
             if not tid:
                 continue
-            # Later files can overwrite, but in practice ids are unique per file group.
-            all_tasks[tid] = t
+            key = str(tid)
+            if key in all_tasks:
+                all_tasks[key] = _merge_view_task(all_tasks[key], t, key)
+            else:
+                all_tasks[key] = dict(t)
     return all_tasks
 
 
@@ -138,6 +163,26 @@ def map_priority(priority: str | None) -> str:
     return "medium"
 
 
+def merge_master_fields(existing_task: Dict[str, Any], generated_fields: Dict[str, Any]) -> Dict[str, Any]:
+    """Update only view-owned Taskmaster fields while preserving master-native extensions."""
+    merged = dict(existing_task)
+    merged.update(generated_fields)
+    return merged
+
+def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[str, Any]:
+    """Merge distinct view rows that intentionally map to one Taskmaster id."""
+    if not rows:
+        raise ValueError(f"Taskmaster {num_id} has no source rows")
+    merged = dict(rows[0])
+    source_ids = [str(merged.get("id") or "")]
+    for row in rows[1:]:
+        source_ids.append(str(row.get("id") or ""))
+        merged = _merge_view_task(merged, row, f"taskmaster:{num_id}")
+    merged["source_view_ids"] = [value for value in source_ids if value]
+    merged["taskmaster_id"] = num_id
+    return merged
+
+
 def build_taskmaster_tasks(args: argparse.Namespace) -> None:
     # 1) 解析任务文件列表（源 SSoT）
     if not args.tasks_files:
@@ -173,7 +218,11 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: failed to read ids-file {ids_path}: {exc}")
     if not root_ids:
-        root_ids = set(T2_ROOT_IDS)
+        if args.allow_legacy_t2_default:
+            root_ids = set(T2_ROOT_IDS)
+        else:
+            print("Error: explicit --ids or --ids-file is required for incremental export.")
+            raise SystemExit(1)
 
     # 3) 计算依赖闭包
     t2_ids = compute_closure(all_tasks, root_ids)
@@ -267,6 +316,25 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         num = id_map.get(tid)
         print(f"  {tid} -> {num}")
 
+    rows_by_numeric: Dict[int, List[Dict[str, Any]]] = {}
+    tids_by_numeric: Dict[int, List[str]] = {}
+    for tid in sorted_ids:
+        src = all_tasks.get(tid)
+        num = id_map.get(tid)
+        if not src or num is None:
+            continue
+        rows_by_numeric.setdefault(num, []).append(src)
+        tids_by_numeric.setdefault(num, []).append(tid)
+    export_units: List[tuple[str, Dict[str, Any], int]] = []
+    emitted_numeric: Set[int] = set()
+    for tid in sorted_ids:
+        num = id_map.get(tid)
+        if num is None or num in emitted_numeric:
+            continue
+        emitted_numeric.add(num)
+        merged_source = merge_numeric_view_group(rows_by_numeric[num], num)
+        export_units.append((tid, merged_source, num))
+
     # 6) 构建/更新目标 Tag 下的 Task Master 任务列表
     existing_by_id: Dict[int, int] = {
         t["id"]: idx
@@ -274,11 +342,7 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         if isinstance(t, dict) and isinstance(t.get("id"), int)
     }
 
-    for tid in sorted_ids:
-        src = all_tasks.get(tid)
-        if not src:
-            continue
-        num_id = id_map[tid]
+    for tid, src, num_id in export_units:
         title = src.get("title") or tid
         description = src.get("description") or ""
 
@@ -324,7 +388,7 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
             if num_dep is not None:
                 dep_ids.append(num_dep)
 
-        tm_task: Dict = {
+        generated_fields: Dict[str, Any] = {
             "id": num_id,
             "title": title,
             "description": description,
@@ -333,16 +397,21 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
             "dependencies": dep_ids,
         }
         if details:
-            tm_task["details"] = details
+            generated_fields["details"] = details
         if test_strategy_str:
-            tm_task["testStrategy"] = test_strategy_str
+            generated_fields["testStrategy"] = test_strategy_str
 
         existing_idx = existing_by_id.get(num_id)
         if existing_idx is not None:
-            tag_tasks[existing_idx] = tm_task
+            existing_task = tag_tasks[existing_idx]
+            if not isinstance(existing_task, dict):
+                raise ValueError(f"existing Taskmaster task {num_id} is not an object")
+            # The view owns the mapped fields above. Master-native fields such as
+            # subtasks and future extensions survive unless an explicit mapped field changes.
+            tag_tasks[existing_idx] = merge_master_fields(existing_task, generated_fields)
         else:
             existing_by_id[num_id] = len(tag_tasks)
-            tag_tasks.append(tm_task)
+            tag_tasks.append(generated_fields)
 
     # Assemble root object for Task Master and persist.
     TASKS_DIR.mkdir(parents=True, exist_ok=True)
@@ -412,6 +481,11 @@ def main() -> None:
     parser.add_argument(
         "--ids-file",
         help="JSON file containing an array of task ids (strings) to export.",
+    )
+    parser.add_argument(
+        "--allow-legacy-t2-default",
+        action="store_true",
+        help="Use the historical T2 root set when no explicit ids are supplied. Not for Chapter 3 incremental export.",
     )
     args = parser.parse_args()
     build_taskmaster_tasks(args)

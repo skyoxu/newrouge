@@ -1,0 +1,126 @@
+{
+  "schema_version": "newrouge.milestone-incremental-hotfix-evidence.v1",
+  "scope": "A-toolchain-hotfix",
+  "base_commit": "268ce69e4dc3424ba5800a4372086b272127e0b1",
+  "branch": "hotfix/milestone-incremental-workflow-v2",
+  "pull_request": 230,
+  "real_business_data_modified": false,
+  "requirements": {
+    "R01": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/build_source_ledger.py",
+        "docs/workflows/chapter3-source-set.json"
+      ],
+      "tests": [
+        "scripts/python/tests/test_chapter3_semantic_conservation.py"
+      ]
+    },
+    "R02": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/normalize_task_intents.py",
+        "scripts/python/compile_task_triplet.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_chapter3_task_generation.py"
+      ]
+    },
+    "R03": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/compile_task_triplet.py",
+        "scripts/python/build_taskmaster_tasks.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_chapter3_task_generation.py"
+      ]
+    },
+    "R04": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/milestone_incremental_handoff.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_milestone_incremental_workflow.py"
+      ]
+    },
+    "R05": {
+      "status": "implemented",
+      "files": [
+        "scripts/sc/_overlay_generator_markdown_patch.py",
+        "scripts/sc/llm_generate_overlays_from_prd.py",
+        "scripts/python/sync_task_overlay_refs.py"
+      ],
+      "tests": [
+        "scripts/sc/tests/test_overlay_generator_markdown_patch.py",
+        "scripts/sc/tests/test_sync_task_overlay_refs.py"
+      ]
+    },
+    "R06": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/milestone_incremental_handoff.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_milestone_incremental_workflow.py"
+      ]
+    },
+    "R07": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/update_mvg_baseline.py",
+        "scripts/python/run_mvg_acceptance.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_milestone_incremental_workflow.py",
+        "scripts/python/tests/test_mvg_acceptance.py"
+      ]
+    },
+    "R08": {
+      "status": "implemented",
+      "files": [
+        "scripts/python/run_single_task_chapter6_lane.py",
+        "scripts/python/dev_cli.py",
+        "scripts/python/dev_cli_builders.py"
+      ],
+      "tests": [
+        "scripts/python/tests/test_milestone_incremental_workflow.py"
+      ]
+    },
+    "R09": {
+      "status": "implemented",
+      "files": [
+        "workflow.md",
+        "workflow.example.md",
+        "README.md",
+        "AGENTS.md",
+        "docs/workflows/stable-public-entrypoints.md",
+        "docs/workflows/mvg-integration-acceptance.md",
+        "docs/workflows/script-entrypoints-index.md",
+        ".agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md",
+        ".agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md",
+        ".agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md",
+        ".agents/skills/workflow-chapter6-single-task-daily-loop/SKILL.md",
+        "scripts/python/update_workflow_chapter_skills.py"
+      ]
+    }
+  },
+  "validation_commands": [
+    "py -3 -m unittest scripts.python.tests.test_chapter3_semantic_conservation -v",
+    "py -3 -m unittest scripts.python.tests.test_chapter3_task_generation -v",
+    "py -3 -m unittest scripts.python.tests.test_milestone_incremental_workflow -v",
+    "py -3 -m unittest scripts.sc.tests.test_overlay_generator_markdown_patch -v",
+    "py -3 -m unittest scripts.sc.tests.test_sync_task_overlay_refs -v",
+    "py -3 -m unittest discover -s scripts/python/tests -p test_mvg_acceptance.py -v"
+  ],
+  "validation_status": "github-actions-required",
+  "scope_B": {
+    "status": "blocked",
+    "reason": "No real second-milestone GDD was supplied; no business task/GDD data was fabricated."
+  },
+  "scope_C": {
+    "status": "deferred",
+    "reason": "Knowledge UI cumulative-baseline display is explicitly out of A scope."
+  }
+}

@@ -103,6 +103,86 @@ Task coverage:
         self.assertIn("- 66, 67, 68", patched)
         self.assertNotIn("- 66, 67\n", patched)
 
+    def test_sparse_update_should_merge_existing_coverage_and_bullets(self) -> None:
+        current = """# Overlay
+
+Task coverage:
+
+- 10, 11
+
+## Rules
+
+- Keep old rule
+"""
+        patched = patchmod.apply_scaffold_update_to_existing_markdown(
+            current_markdown=current,
+            scaffold_update={
+                "task_ids": ["12"],
+                "sections": [{"heading": "Rules", "bullets": ["Add new rule"]}],
+            },
+        )
+        self.assertIn("- 10, 11, 12", patched)
+        self.assertIn("- Keep old rule", patched)
+        self.assertIn("- Add new rule", patched)
+
+    def test_explicit_remove_and_hash_drift_are_fail_closed(self) -> None:
+        import hashlib
+        current = """# Overlay
+
+Task coverage:
+
+- 10, 11
+
+## Rules
+
+- Keep
+- Retire
+"""
+        expected = hashlib.sha256(current.encode("utf-8")).hexdigest()
+        patched = patchmod.apply_scaffold_update_to_existing_markdown(
+            current_markdown=current,
+            scaffold_update={
+                "expected_sha256": "sha256:" + expected,
+                "remove_task_ids": ["10"],
+                "sections": [{"heading": "Rules", "remove_bullets": ["Retire"]}],
+            },
+        )
+        self.assertIn("- 11", patched)
+        self.assertNotIn("- 10, 11", patched)
+        self.assertIn("- Keep", patched)
+        self.assertNotIn("- Retire", patched)
+        with self.assertRaisesRegex(ValueError, "hash drifted"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown=current + "\nchanged",
+                scaffold_update={"expected_sha256": expected, "task_ids": ["12"]},
+            )
+
+    def test_strict_existing_patch_should_block_complex_or_missing_targets(self) -> None:
+        complex_page = """# Overlay
+
+## Rules
+
+### Nested
+
+- Keep
+"""
+        with self.assertRaisesRegex(ValueError, "too complex"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown=complex_page,
+                scaffold_update={
+                    "strict_incremental_patch": True,
+                    "sections": [{"heading": "Rules", "bullets": ["New"]}],
+                },
+            )
+        with self.assertRaisesRegex(ValueError, "no matching target section"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown="# Overlay\n\n## Rules\n\n- Keep\n",
+                scaffold_update={
+                    "strict_incremental_patch": True,
+                    "sections": [{"heading": "Missing", "bullets": ["New"]}],
+                },
+            )
+
     def test_apply_scaffold_update_to_existing_markdown_should_reject_foreign_section_headings(self) -> None:
         current_markdown = """---
 PRD-ID: PRD-TEMPLATE-V1

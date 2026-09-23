@@ -340,7 +340,7 @@ Task views preserve lightweight `semantic_refs`, optional `capability_refs`, pro
 
 Rebuild the compiled view and run the existing baseline unchanged:
 
-    py -3 scripts/python/build_taskmaster_tasks.py
+    py -3 scripts/python/build_taskmaster_tasks.py --tasks-file .taskmaster/tasks/tasks_back.json --tasks-file .taskmaster/tasks/tasks_gameplay.json --ids-file logs/ci/task-generation/task-triplet.export-ids.json
     py -3 scripts/python/task_links_validate.py
     py -3 scripts/python/check_tasks_all_refs.py
     py -3 scripts/python/validate_task_master_triplet.py
@@ -1595,4 +1595,18 @@ py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_B
 5. Commit/PR 前执行 `run-local-hard-checks --skip-project-health`。Chapter 6 不触发全局 Knowledge refresh。
 6. MVG 整合收尾另按 `docs/workflows/mvg-integration-acceptance.md` 在同一快照执行清单。Chapter 7 负责 UI 接线闭环；其新增正式任务仍回到 readiness 与 Chapter 6 开发环。
 
-Knowledge 中的 Chapter 3/5 topology 用于追踪来源、任务和语义闭环，不是 MVG 测试汇总页。展示边界见 `docs/workflows/project-health-knowledge.md`。
+Knowledge 中的 Chapter 3/5 topology 用于追踪来源、任务和语义闭环，不是 MVG 测试汇总页。展示边界见 `docs/workflows/project-health-knowledge.md`。\n
+
+## Milestone incremental workflow
+
+A later milestone extends the current game baseline; it does not create a second MVG lifecycle.
+
+1. Chapter 3 add mode starts from `docs/workflows/chapter3-source-set.json` and overlays the newly declared GDD/source inputs. Source retirement is explicit; a missing baseline returns `adoption-required`.
+2. Task intent ids reuse stable `intent_key` mappings and reserve ids already present in both task views. `compile_task_triplet.py` emits a reviewed `create/update/reuse/retire` patch; existing ids are never overwritten implicitly.
+3. Taskmaster export uses `task-triplet.export-ids.json`; `build_taskmaster_tasks.py` preserves master-native fields such as subtasks and blocks conflicting cross-view ownership instead of last-writer-wins.
+4. Chapter 4 modifies only affected pages/tasks. Sparse Overlay updates merge by default; explicit remove/replace operations and expected old hashes are required for destructive edits.
+5. Chapter 5 records reviewed `new/extend/reuse/replace/retire/unresolved` dispositions in a `newrouge.milestone-change-plan.v1` artifact. `milestone_incremental_handoff.py` binds the task-local slice to the current Chapter 5 readiness fingerprint.
+6. Chapter 6 remains single-task. Supply `--milestone-handoff <path>` when implementing a milestone-owned task; stale or unresolved handoff data blocks before RED.
+7. Evolve the existing MVG manifest with `update_mvg_baseline.py`; do not create an isolated per-milestone test island. A retire operation requires an authority reference. `run-mvg-acceptance` binds results to the exact manifest SHA.
+
+Ready-to-implement may contain planned new tests when the owner, behavior and verification plan are explicit. Milestone accepted requires the current cumulative required range to execute on the same integrated revision plus any required human evidence.

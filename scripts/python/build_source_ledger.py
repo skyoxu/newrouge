@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+DEFAULT_SOURCE_SET = "docs/workflows/chapter3-source-set.json"
 DEFAULT_SOURCE_GLOBS = [
     "docs/prd/**/*.md",
     "docs/gdd/**/*.md",
@@ -530,12 +531,69 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
+def _load_source_set(root: Path, path_value: str) -> dict[str, Any] | None:
+    path = Path(path_value)
+    path = path if path.is_absolute() else root / path
+    if not path.is_file():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("schema_version") != "chapter3.source-set.v1":
+        raise ValueError("invalid Chapter 3 source-set schema")
+    patterns = payload.get("active_patterns")
+    if not isinstance(patterns, list) or not all(isinstance(item, str) and item.strip() for item in patterns):
+        raise ValueError("source-set active_patterns must be a non-empty string list")
+    return payload
+
+
 def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], bool]:
-    values = list(args.prd_path) + list(args.gdd_path) + list(args.epics_path) + list(args.stories_path) + list(args.source_glob)
-    patterns = []
+    values = (
+        list(getattr(args, "prd_path", []) or [])
+        + list(getattr(args, "gdd_path", []) or [])
+        + list(getattr(args, "epics_path", []) or [])
+        + list(getattr(args, "stories_path", []) or [])
+        + list(getattr(args, "source_glob", []) or [])
+    )
+    additions: list[str] = []
     for value in values:
-        patterns.extend(expand_source_arg(root, value))
-    return (patterns or list(DEFAULT_SOURCE_GLOBS), bool(values))
+        additions.extend(expand_source_arg(root, value))
+    source_set_value = str(getattr(args, "source_set", DEFAULT_SOURCE_SET) or DEFAULT_SOURCE_SET)
+    source_set = _load_source_set(root, source_set_value)
+    mode = str(getattr(args, "mode", "init") or "init")
+    if mode == "add":
+        adopt_baseline = bool(getattr(args, "adopt_baseline", False))
+        if source_set is None:
+            if not adopt_baseline:
+                raise ValueError("adoption-required: add mode needs a versioned source-set or --adopt-baseline")
+            if not additions:
+                raise ValueError("adoption-required: --adopt-baseline needs the complete explicit authoritative input set")
+            base: list[str] = []
+        else:
+            base = list(source_set.get("active_patterns", []))
+        retire_values = list(getattr(args, "retire_source", []) or [])
+        retire = {str(item).strip() for item in retire_values if str(item).strip()}
+        unknown = sorted(retire - set(base))
+        if unknown:
+            raise ValueError("cannot retire undeclared sources: " + ", ".join(unknown))
+        patterns = [item for item in base if item not in retire]
+        patterns.extend(additions)
+        return list(dict.fromkeys(patterns)), True
+    if additions:
+        return list(dict.fromkeys(additions)), True
+    if source_set is not None:
+        return list(source_set["active_patterns"]), True
+    return list(DEFAULT_SOURCE_GLOBS), False
+
+
+def source_set_payload(patterns: list[str], retirements: list[str]) -> dict[str, Any]:
+    return {
+        "schema_version": "chapter3.source-set.v1",
+        "active_patterns": list(patterns),
+        "retirements": [
+            {"path": value, "reason": "explicit-cli-retirement"}
+            for value in retirements
+            if str(value).strip()
+        ],
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -548,11 +606,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stories-path", action="append", default=[])
     parser.add_argument("--source-glob", action="append", default=[])
     parser.add_argument("--previous-ledger", default="")
+    parser.add_argument("--source-set", default=DEFAULT_SOURCE_SET)
+    parser.add_argument("--retire-source", action="append", default=[])
+    parser.add_argument("--adopt-baseline", action="store_true")
+    parser.add_argument(
+        "--write-source-set",
+        action="store_true",
+        help="Persist the reviewed effective source declaration to the versioned source-set file.",
+    )
     parser.add_argument("--manifest-out", default="logs/ci/task-generation/source-manifest.v1.json")
     parser.add_argument("--out", default="logs/ci/task-generation/source-blocks.v1.json")
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
-    patterns, explicit = collect_patterns(root, args)
+    try:
+        patterns, explicit = collect_patterns(root, args)
+    except ValueError as exc:
+        print(f"source_ledger_error={exc}")
+        return 2
     out = root / args.out
     previous = None
     previous_path = root / args.previous_ledger if args.previous_ledger else out
@@ -565,6 +635,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     write_json(root / args.manifest_out, manifest)
     write_json(out, ledger)
+    if args.write_source_set:
+        source_set_path = Path(args.source_set)
+        source_set_path = source_set_path if source_set_path.is_absolute() else root / source_set_path
+        write_json(source_set_path, source_set_payload(patterns, list(args.retire_source)))
     delta = ledger["delta"]
     print(
         f"source_ledger={out} sources={manifest['source_count']} blocks={manifest['block_count']} "

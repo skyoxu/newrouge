@@ -40,7 +40,7 @@ Generated from the template repo `workflow.md` by `scripts/python/update_workflo
 - `py -3 scripts/python/validate_semantic_conservation.py --stage closure`
 - `py -3 scripts/python/compile_task_triplet.py --mode <init|add>`
 - `py -3 scripts/python/compile_task_triplet.py --mode <init|add> --write`
-- `py -3 scripts/python/build_taskmaster_tasks.py`
+- `py -3 scripts/python/build_taskmaster_tasks.py --tasks-file .taskmaster/tasks/tasks_back.json --tasks-file .taskmaster/tasks/tasks_gameplay.json --ids-file logs/ci/task-generation/task-triplet.export-ids.json`
 - `py -3 scripts/python/task_links_validate.py`
 - `py -3 scripts/python/check_tasks_all_refs.py`
 - `py -3 scripts/python/validate_task_master_triplet.py`

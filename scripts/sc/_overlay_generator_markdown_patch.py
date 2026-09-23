@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 
 
@@ -75,17 +76,49 @@ def _task_coverage_is_simple(block: str) -> bool:
     return all(line == "Task coverage:" or line.startswith("- ") for line in lines)
 
 
-def _replace_simple_task_coverage(text: str, task_ids: list[str]) -> str:
-    if not task_ids:
+def _task_coverage_ids(block: str) -> list[str]:
+    ids: list[str] = []
+    for line in block.splitlines():
+        value = line.strip()
+        if not value.startswith("- "):
+            continue
+        for item in value[2:].split(","):
+            item = item.strip()
+            if item and item not in ids:
+                ids.append(item)
+    return ids
+
+
+def _replace_simple_task_coverage(
+    text: str,
+    task_ids: list[str],
+    *,
+    remove_task_ids: list[str] | None = None,
+    replace: bool = False,
+    strict: bool = False,
+) -> str:
+    if not task_ids and not remove_task_ids:
         return text
     bounds = _find_task_coverage_bounds(text)
     if bounds is None:
+        if strict:
+            raise ValueError("overlay task coverage target is missing")
         return text
     start, end = bounds
     block = text[start:end]
     if not _task_coverage_is_simple(block):
+        if strict:
+            raise ValueError("overlay task coverage target is too complex for safe incremental patch")
         return text
-    replacement = "Task coverage:\n\n- " + ", ".join(task_ids) + "\n\n"
+    current = [] if replace else _task_coverage_ids(block)
+    removed = {str(item).strip() for item in (remove_task_ids or []) if str(item).strip()}
+    merged = [item for item in current if item not in removed]
+    for item in task_ids:
+        if item not in merged:
+            merged.append(item)
+    replacement = "Task coverage:\n\n"
+    if merged:
+        replacement += "- " + ", ".join(merged) + "\n\n"
     return text[:start] + replacement + text[end:]
 
 
@@ -114,18 +147,42 @@ def _section_is_simple(block: str) -> bool:
     return True
 
 
-def _replace_simple_section(text: str, heading: str, bullets: list[str]) -> str:
-    if not heading.strip() or not bullets:
+def _replace_simple_section(
+    text: str,
+    heading: str,
+    bullets: list[str],
+    *,
+    remove_bullets: list[str] | None = None,
+    replace: bool = False,
+    strict: bool = False,
+) -> str:
+    if not heading.strip() or (not bullets and not remove_bullets):
         return text
     bounds = _find_section_bounds(text, heading)
     bullet_block = _join_bullets(bullets)
     if bounds is None:
+        if strict:
+            raise ValueError(f"overlay section target is missing: {heading}")
         suffix = "" if text.endswith("\n") else "\n"
         return text + suffix + f"\n## {heading}\n\n" + bullet_block
     section_start, body_start, section_end = bounds
     current_body = text[body_start:section_end]
     if not _section_is_simple(current_body):
+        if strict:
+            raise ValueError(f"overlay section is too complex for safe incremental patch: {heading}")
         return text
+    if not replace:
+        existing = [
+            line.strip()[2:].strip()
+            for line in current_body.splitlines()
+            if line.strip().startswith("- ")
+        ]
+        removed = {str(item).strip() for item in (remove_bullets or []) if str(item).strip()}
+        merged = [item for item in existing if item and item not in removed]
+        for item in bullets:
+            if item not in merged:
+                merged.append(item)
+        bullet_block = _join_bullets(merged)
     replacement = f"\n\n{bullet_block}\n"
     return text[:body_start] + replacement + text[section_end:]
 
@@ -136,6 +193,12 @@ def apply_scaffold_update_to_existing_markdown(
     scaffold_update: dict[str, object],
 ) -> str:
     text = _normalize_newlines(current_markdown)
+    expected_sha = str(scaffold_update.get("expected_sha256") or "").strip().removeprefix("sha256:")
+    if expected_sha:
+        actual_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if actual_sha != expected_sha:
+            raise ValueError("overlay source hash drifted; regenerate the patch")
+    strict = bool(scaffold_update.get("strict_incremental_patch"))
     update_sections = [
         section
         for section in scaffold_update.get("sections") or []
@@ -149,15 +212,36 @@ def apply_scaffold_update_to_existing_markdown(
             if str(section.get("heading") or "").strip() in current_headings
         }
         if not overlap:
+            if strict:
+                raise ValueError("overlay patch has no matching target section")
             return text
     purpose = str(scaffold_update.get("purpose") or "").strip()
     if purpose:
         text = _replace_simple_intro(text, purpose)
     task_ids = [str(item).strip() for item in scaffold_update.get("task_ids") or [] if str(item).strip()]
-    if task_ids:
-        text = _replace_simple_task_coverage(text, task_ids)
+    remove_task_ids = [
+        str(item).strip()
+        for item in scaffold_update.get("remove_task_ids") or []
+        if str(item).strip()
+    ]
+    if task_ids or remove_task_ids:
+        text = _replace_simple_task_coverage(
+            text,
+            task_ids,
+            remove_task_ids=remove_task_ids,
+            replace=str(scaffold_update.get("task_coverage_operation") or "").strip().lower() == "replace",
+            strict=strict,
+        )
     for section in update_sections:
         heading = str(section.get("heading") or "").strip()
         bullets = [str(item).strip() for item in section.get("bullets") or [] if str(item).strip()]
-        text = _replace_simple_section(text, heading, bullets)
+        remove_bullets = [str(item).strip() for item in section.get("remove_bullets") or [] if str(item).strip()]
+        text = _replace_simple_section(
+            text,
+            heading,
+            bullets,
+            remove_bullets=remove_bullets,
+            replace=str(section.get("operation") or "").strip().lower() == "replace",
+            strict=strict,
+        )
     return text

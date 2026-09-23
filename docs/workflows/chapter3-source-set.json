@@ -1,0 +1,9 @@
+{
+  "schema_version": "chapter3.source-set.v1",
+  "active_patterns": [
+    "docs/prd/**/*.md",
+    "docs/gdd/**/*.md",
+    "_bmad-output/gdd.md"
+  ],
+  "retirements": []
+}
