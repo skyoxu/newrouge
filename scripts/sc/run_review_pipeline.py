@@ -73,7 +73,7 @@ from _pipeline_support import (
     run_step as _run_step,
     upsert_step as _upsert_step,
 )
-from _llm_review_cli import parse_agent_timeout_overrides, resolve_agents
+from _llm_review_cli import normalize_agent_timeout_overrides, parse_agent_timeout_overrides, resolve_agents
 from _change_scope import classify_change_scope_between_snapshots
 from _pipeline_history import collect_recent_failure_summary
 
@@ -2275,15 +2275,17 @@ def main() -> int:
         security_profile=security_profile,
     )
     requested_llm_agent_timeout_overrides = parse_agent_timeout_overrides(getattr(args, "llm_agent_timeouts", ""))
-    derived_llm_agent_timeout_overrides = _derive_llm_agent_timeout_overrides(
-        current_out_dir=out_dir,
-        task_id=task_id,
-        delivery_profile=delivery_profile,
-        security_profile=security_profile,
-        llm_agents=llm_agents,
-        llm_semantic_gate=llm_semantic_gate,
-        llm_timeout_sec=llm_timeout_sec,
-        llm_agent_timeout_sec=llm_agent_timeout_sec,
+    derived_llm_agent_timeout_overrides = normalize_agent_timeout_overrides(
+        _derive_llm_agent_timeout_overrides(
+            current_out_dir=out_dir,
+            task_id=task_id,
+            delivery_profile=delivery_profile,
+            security_profile=security_profile,
+            llm_agents=llm_agents,
+            llm_semantic_gate=llm_semantic_gate,
+            llm_timeout_sec=llm_timeout_sec,
+            llm_agent_timeout_sec=llm_agent_timeout_sec,
+        )
     )
     llm_agent_timeout_overrides = {**derived_llm_agent_timeout_overrides, **requested_llm_agent_timeout_overrides}
     llm_agent_timeouts = _format_agent_timeout_overrides(llm_agent_timeout_overrides)
