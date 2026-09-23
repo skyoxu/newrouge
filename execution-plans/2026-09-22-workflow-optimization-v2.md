@@ -3,7 +3,8 @@
 - Title: Workflow optimization v2 execution plan
 - Status: active
 - Branch: main (online-audit hotfix merged via PR #223)
-- Git Head: `be4c63c78c2a0f15c4798a21232db86b130e5b5a`; validated PR head was `5223a9d890f977f093943fb13f7d4384fa5f07c9`, with implementation code freeze `7a330861dc9de5c9f33c6b6ee7ebd6d53791ca88`.
+- Git Head: be4c63c78c2a0f15c4798a21232db86b130e5b5a
+- Validation baseline: validated PR head `5223a9d890f977f093943fb13f7d4384fa5f07c9`; implementation code freeze `7a330861dc9de5c9f33c6b6ee7ebd6d53791ca88`.
 - Goal: Implement the uploaded workflow optimization v2 contract without rebuilding capabilities already present after PR #218.
 - Scope: Root context routing; residual/technical-debt and execution-plan policy; Chapter 6 single-reviewer+lenses; acceptance verification surfaces and causal RED; recovery-policy convergence and final validation.
 - Current step: Run the still-required authenticated live-model `code-reviewer` input/output integration check and representative real-path checks; keep unavailable evidence explicitly unverified.
