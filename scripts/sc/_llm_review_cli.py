@@ -100,6 +100,18 @@ def apply_delivery_profile_defaults(args: argparse.Namespace) -> argparse.Namesp
     return args
 
 
+def normalize_agent_timeout_overrides(overrides: dict[str, int]) -> dict[str, int]:
+    normalized: dict[str, int] = {}
+    for raw_agent, raw_seconds in overrides.items():
+        agent = str(raw_agent or "").strip()
+        seconds = int(raw_seconds or 0)
+        if not agent or seconds <= 0:
+            continue
+        key = agent if agent in DETERMINISTIC_AGENTS else "code-reviewer"
+        normalized[key] = max(int(normalized.get(key) or 0), seconds)
+    return normalized
+
+
 def parse_agent_timeout_overrides(raw: str) -> dict[str, int]:
     out: dict[str, int] = {}
     for item in split_csv(raw):
@@ -116,7 +128,7 @@ def parse_agent_timeout_overrides(raw: str) -> dict[str, int]:
             continue
         if sec > 0:
             out[k] = sec
-    return out
+    return normalize_agent_timeout_overrides(out)
 
 
 def resolve_agents(raw: str, semantic_gate: str) -> list[str]:
