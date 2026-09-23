@@ -657,7 +657,7 @@ py -3 scripts/python/check_test_naming.py --style legacy
 
 - `scripts/python/validate_acceptance_execution_evidence.py`
   - 作用：校验 TRX/JUnit 证据里能证明本次执行覆盖了对应 anchors（run_id 绑定）。
-  - 参数：`--task-id <id> --run-id <id> --out <json> [--date YYYY-MM-DD]`。
+  - 参数：`--task-id <id> --run-id <id> --out <json> [--date YYYY-MM-DD] [--candidate-revision <sha>]`。当 Acceptance 含 `player-journey` 的 `mvg-critical` / `mvg-full` scope 时，candidate revision 用于绑定对应 MVG runtime evidence。
 
 #### C2) 任务证据清单（test_refs）
 
