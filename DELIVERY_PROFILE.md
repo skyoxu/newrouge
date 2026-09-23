@@ -281,3 +281,9 @@ Behavior:
 - findings use stable identities; a narrow re-review updates covered findings while unrelated existing debt remains until explicit verified disposition
 - `dry-run`, `skip-llm-review`, failed `llm-review`, or runs without low-priority findings do not overwrite the existing register entry
 - per-run sidecar: `logs/ci/<date>/sc-review-pipeline-task-<id>-<run_id>/llm-review-low-priority-findings.json`
+
+## Classified Acceptance Evidence
+
+Classified task-local automated Acceptance (`core-behavior`, `godot-scene`, and `player-journey` with `journey_scope=task-local`) requires actual bound task test execution evidence in every delivery profile. Relaxed defaults do not waive this requirement, and skipped test cases do not count as passed evidence. MVG-scoped journeys instead require a matching manifest and revision-bound `runtime_verified` MVG result; human obligations require their revision-bound manual evidence. Diagnostic subsets, dry runs and plans are not final Acceptance closure. Legacy rows without classification retain their existing behavior.
+
+See `docs/workflows/acceptance-check-and-llm-review.md` for the owning evidence contract.

@@ -393,9 +393,11 @@ Chapter 6 的正确升级单位是：
 
 ## 7. 第六章现在的正确使用口径
 
+当前日常顶层入口为 `dev_cli.py run-single-task-chapter6`，前置是当前有效的 Chapter 5 readiness。以下是其内部步骤的说明；最终顺序与验证面规则以 `workflow.md` 6.0–6.12 为准。恢复先 compact，必要时才展开完整报告。Chapter 6 不触发全局 Knowledge/Project Health refresh。
+
 对绝大多数日常任务，默认路径应为：
 
-1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
    - For a quick recommendation-only read, use: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 2. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
 3. red / green / refactor
@@ -404,7 +406,7 @@ Chapter 6 的正确升级单位是：
 
 7. `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 8. 只有路由明确给出 `preferred_lane = run-6.8` 时，再跑 `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1`
-9. `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
+9. `py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"`
 - 同一任务重跑前，先看是否改了代码。没改代码才期待 `sc-test` 复用。
 - `fast-ship` 现在就是默认日常姿态，不需要额外手工压参数。
 - 如果第六章失败，优先看：
@@ -424,7 +426,7 @@ Chapter 6 的正确升级单位是：
 
 推荐命令顺序：
 
-1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+1. `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
    - For a quick recommendation-only read, use: `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 2. `py -3 scripts/sc/check_tdd_execution_plan.py --task-id <id> --tdd-stage red-first --verify unit --execution-plan-policy draft`
 3. `py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd-stage red-first --verify unit`
@@ -433,7 +435,7 @@ Chapter 6 的正确升级单位是：
 6. `py -3 scripts/sc/run_review_pipeline.py --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
 7. `py -3 scripts/python/dev_cli.py chapter6-route --task-id <id> --recommendation-only`
 8. 只有路由明确给出 `preferred_lane = run-6.8` 时，再跑 `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship --rerun-failing-only --max-rounds 1`
-9. `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
+9. `py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "$env:GODOT_BIN"`
 
 省时原则：
 

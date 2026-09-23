@@ -3,21 +3,19 @@
 Generated from the template repo `workflow.md` by `scripts/python/update_workflow_chapter_skills.py`.
 
 - Canonical English name: Phase 4: Single Task Daily Loop
-- Source line span: 683-1348
-- Heading count: 20
-- Command-like line count: 75
+- Source line span: 722-1347
+- Heading count: 18
+- Command-like line count: 72
 - Artifact/reference line count: 22
 
 ## Headings
 
 - 6. Phase 4: Single Task Daily Loop
 - 6.0 Choose the Chapter 6 entrypoint first
+- 6.0.1 Chapter 6 Knowledge no-refresh hard boundary
 - 6.1 Recover state first
 - quick recommendation-only read
-- quick recommendation-only read
 - 6.2 Create recovery documents only when useful
-- 6.3 TDD preflight decision
-- 6.3 TDD preflight decision
 - 6.3 TDD preflight decision
 - 6.3 TDD preflight decision
 - 6.3 TDD preflight decision
@@ -29,12 +27,12 @@ Generated from the template repo `workflow.md` by `scripts/python/update_workflo
 - 6.9 Repository-level validation before commit
 - 6.10 PR incremental quick path
 - 6.11 Fast mode fastest template
-- quick recommendation-only read
+- 6.12 Workflow optimization v2 guardrails
 
 ## Command And Artifact Signals
 
 - `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile fast-ship`
-- `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`
+- `py -3 scripts/python/dev_cli.py chapter6-knowledge --task-id <id>`
 - `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`
 - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>`
 - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id> --recommendation-only`
@@ -72,4 +70,4 @@ Generated from the template repo `workflow.md` by `scripts/python/update_workflo
 - `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile fast-ship`
 - `py -3 scripts/sc/llm_review_needs_fix_fast.py --task-id <id> --delivery-profile standard`
 - ``llm_review_needs_fix_fast.py`  `DELIVERY_PROFILE`  reviewer / diff / timeout`
-- `6.7  6.8 `fast-ship`  reviewer  `llm_review_needs_fix_fast.py`  6.7 `run_review_pipeline.py`  `minimal / targeted` tier  `code-reviewer`  `Spec Compliance / Edge Case / Verification Gap` lenses`
+- ``--delivery-profile`  `run_review_pipeline.py` 6.8  profile`

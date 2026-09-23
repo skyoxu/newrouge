@@ -3,7 +3,7 @@
 Generated from the template repo `workflow.md` by `scripts/python/update_workflow_chapter_skills.py`.
 
 - Canonical English name: Phase 2: Overlays And Contracts Baseline
-- Source line span: 420-493
+- Source line span: 414-491
 - Heading count: 5
 - Command-like line count: 10
 - Artifact/reference line count: 0

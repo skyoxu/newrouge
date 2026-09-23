@@ -32,7 +32,7 @@
 在重新执行 `run_review_pipeline.py` 或 Chapter 6 的 `6.7 / 6.8` 之前，先走恢复链，而不是直接重跑：
 
 - 先读 `logs/ci/active-tasks/task-<id>.active.md`，它是最短恢复摘要。
-- 再执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id>`，读取 `Latest reason`、`Latest run type`、`Latest reuse mode`、`Latest artifact integrity`、`Chapter6 next action`、`Chapter6 blocked by`。
+- 再执行 `py -3 scripts/python/dev_cli.py resume-task --task-id <id> --recommendation-only`，读取 `Latest reason`、`Latest run type`、`Latest reuse mode`、`Latest artifact integrity`、`Chapter6 next action`、`Chapter6 blocked by`。
 - `resume-task` 现在还会输出 `Approval required action`、`Approval status`、`Approval decision`、`Approval reason`，用于判断当前是继续修复、进入 `pause`、还是允许 `fork`。
 - 需要深挖时，再执行 `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <id>`。
 - `inspect-run` 对 approval sidecar 的消费口径已经固定：`pending -> pause`、`approved -> fork`、`denied -> resume`、`invalid/mismatched -> inspect`。
@@ -285,3 +285,9 @@ Optional `acceptance_verification` metadata lives on existing task views and is 
 - `human-experience` requires explicit human evidence; `pending` or `failed` never passes Acceptance, and `passed` must bind the reviewed revision plus an explicit passed conclusion in the evidence.
 
 RED verification is causal. Timeout, missing reports, compile/environment failure, or generic non-zero exits are unverified and cannot satisfy RED. Use the existing targeted MVG mutation probe for selected high-risk falsifiability checks; it is not a default all-task gate.
+
+## Classified Acceptance Evidence
+
+Classified task-local automated Acceptance (`core-behavior`, `godot-scene`, and `player-journey` with `journey_scope=task-local`) requires actual bound task test execution evidence in every delivery profile. Relaxed defaults do not waive this requirement, and skipped test cases do not count as passed evidence. MVG-scoped journeys instead require a matching manifest and revision-bound `runtime_verified` MVG result; human obligations require their revision-bound manual evidence. Diagnostic subsets, dry runs and plans are not final Acceptance closure. Legacy rows without classification retain their existing behavior.
+
+The Chapter 6 top-level entry is `dev_cli.py run-single-task-chapter6`; `run_review_pipeline.py` owns step 6.7. See `docs/workflows/acceptance-check-and-llm-review.md`.

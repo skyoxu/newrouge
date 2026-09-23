@@ -43,6 +43,16 @@ Use `--write-planning-artifacts` only after closure PASS to promote stable topol
 
 
 
+## MVG 与 Chapter 3 的展示边界
+
+| 需要查看的关系 | 当前入口 | 能证明什么 |
+| --- | --- | --- |
+| Chapter 3 来源 → Requirement → 可选 Capability → Task → Acceptance | `/knowledge/topology`，Main 或 Workspace | 来源与交付映射；Chapter 3/5 的 Attempt/Successful/Stabilized 状态 |
+| Task → Scene/Script/Test 与任务运行结果 | `/knowledge/` 任务详情及验证按钮 | 对应任务及所选 revision 的局部证据 |
+| MVG → Flow → Handoff owner → Tasks/Tests → 同版本运行结果 | manifest、`run-mvg-acceptance`、CI 及运行摘要 | 当前没有该关系的专用 Knowledge UI/API 汇总；需按 [MVG 使用说明](mvg-integration-acceptance.md) 核对 |
+
+`Verify local main`、`Verify workspace`、`Verify selected` 和 `Audit all gameplay tasks` 仍是任务验证能力；全部任务局部验证成功不能替代 MVG manifest 的整合运行。Source/Requirement/Task 拓扑也不自动生成 MVG flow 或 handoff。`m1-critical` 与 `m1-full` 的范围和阻断任务以选定 manifest 为准，不能从页面绿色状态推断 full-MVG 已通过。
+
 ## Godot 场景图投影
 
 Knowledge 页面提供只读 Godot 场景图。扫描从 `project.godot` 的 `application/run/main_scene` 开始，确定性解析 `.tscn`、`.cs`、`.gd` 与资源路径，结果绑定扫描 revision 并通过 `/api/knowledge/scene-graph` 提供。循环使用 visited 集合终止；动态加载标记为 `dynamic-unknown`，未确认入口标记为 `unreachable-candidate`，不等同于运行时绝对不可达。用户浏览不调用大模型、不执行游戏或修改源文件。页面支持场景树、未确认场景列表及 Node/脚本/资源详情。

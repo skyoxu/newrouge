@@ -50,7 +50,7 @@ A `logs/ci/knowledge-context/**` shadow bundle is optional routing evidence only
 
 ## Idempotent Procedure
 
-1. Confirm the Chapter 3.9 triplet baseline is clean before generating overlays.
+1. Confirm the Chapter 3.8 triplet baseline is clean before generating overlays.
 2. Before the first overlay/contract write, optionally run the Chapter 4 shadow knowledge preflight from `docs/workflows/knowledge-context-shadow.md`. If it returns `fallback_required`, continue with the direct authoritative sources; do not block Chapter 4 on the shadow layer.
 3. Generate overlay skeletons through batch dry-run, batch simulate, single-page repair for outliers, and limited apply.
 4. Do not perform full apply in the first overlay pass, and do not mix acceptance rewrites into overlay generation.

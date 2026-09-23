@@ -11,6 +11,8 @@
 
 ## Quick Links
 
+- Workflow and chapter order: `workflow.md`
+- Task-scoped routing: `AGENTS.md`
 - Agents index: `docs/agents/00-index.md`
 - Session recovery: `docs/agents/01-session-recovery.md`
 - Project docs index: `docs/PROJECT_DOCUMENTATION_INDEX.md`
@@ -41,10 +43,10 @@
 
 When resuming a task after a reset or another session, do not guess from scattered logs first.
 
-1. Read `docs/agents/01-session-recovery.md`
-2. Run `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
-3. Only if that is still insufficient, run `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>`
-4. Before paying for another full `6.7` or `6.8`, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`
+1. Read `AGENTS.md` and select the route for the current task.
+2. Run `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id> --recommendation-only`.
+3. For Chapter 6 continuation, run `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`.
+4. Only if the compact recommendation is insufficient, expand the selected run with `inspect-run --kind pipeline --task-id <task-id>` and the directly referenced authority/evidence. See `docs/agents/01-session-recovery.md`.
 
 Before paying for another full `6.7`, read these signals first:
 
@@ -88,7 +90,7 @@ Recovery stop-loss rules:
 
 ## Commands
 
-- Local hard checks:
+- Repository bootstrap/maintenance hard checks (may refresh Project Health):
   - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "<godot-bin>"`
   - `py -3 scripts/python/dev_cli.py run-local-hard-checks --godot-bin "$env:GODOT_BIN"`
 - Knowledge Control Plane:
@@ -97,8 +99,10 @@ Recovery stop-loss rules:
   - `py -3 scripts/python/publish_knowledge_catalog.py --check`
   - `py -3 scripts/python/validate_knowledge_control_plane.py --require-generated`
   - Shadow/freeze behavior: `docs/workflows/knowledge-context-shadow.md`, `docs/workflows/knowledge-context-freeze.md`
-- Task recovery (canonical):
-  - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id>`
+- Chapter 6 pre-commit hard checks (no global Knowledge/Project Health refresh):
+  - `py -3 scripts/python/dev_cli.py run-local-hard-checks --skip-project-health --godot-bin "<godot-bin>"`
+- Task recovery (compact first):
+  - `py -3 scripts/python/dev_cli.py resume-task --task-id <task-id> --recommendation-only`
   - `py -3 scripts/python/dev_cli.py inspect-run --kind pipeline --task-id <task-id>`
   - `py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`
 - Gate bundle only:
@@ -117,9 +121,11 @@ Recovery stop-loss rules:
 - Chapter 4 overlays and contracts:
   - `py -3 scripts/python/sync_task_overlay_refs.py --prd-id <PRD-ID> --write`
   - `py -3 scripts/python/validate_overlay_execution.py --prd-id <PRD-ID> --strict-refs`
-- Chapter 5 semantics stabilization:
+- Chapter 5 semantic reconciliation and readiness:
   - interactive run start: `py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-run-id <run-id> --begin-run`
   - scripted lifecycle guard: `py -3 scripts/python/dev_cli.py run-chapter5-guarded --trigger-run-id <run-id> -- <command...>`
+  - Follow `workflow.md` 5.0: independent Extraction B (`prepare` → explicit review of every source block → `compile`), global audit, task reconciliation, then `check-readiness`.
+  - Fresh readiness is required before Chapter 6; a task-local light lane does not replace this gate. Reconcile again after any task/authority correction, then finish the run with the bound reconciliation/readiness refresh.
   - `py -3 scripts/python/backfill_semantic_review_tier.py --mode conservative --write`
   - `py -3 scripts/python/validate_semantic_review_tier.py --mode conservative`
   - `py -3 scripts/python/preflight_acceptance_extract_guard.py --task-id <task-id>`
@@ -128,7 +134,9 @@ Recovery stop-loss rules:
   - `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --self-check`
   - `py -3 scripts/python/dev_cli.py run-chapter7-ui-wiring --delivery-profile <profile> --write-doc --create-tasks`
   - `py -3 scripts/python/dev_cli.py run-chapter7-backlog-gap --design-doc-path <doc> --epics-doc-path <doc> --duplicate-audit-path <doc>`
-- Task review pipeline:
+- Chapter 6 daily loop (top-level entry):
+  - `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <task-id> --godot-bin "<godot-bin>" --delivery-profile fast-ship`
+- Chapter 6.7 task review pipeline:
   - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "<godot-bin>"`
   - `py -3 scripts/sc/run_review_pipeline.py --task-id <task-id> --godot-bin "$env:GODOT_BIN"`
 - Prototype lane:
@@ -144,4 +152,9 @@ Recovery stop-loss rules:
 - Keep docs and tasks aligned through ADR + Base + Overlay + Task refs.
 - Repository Knowledge Control Plane is derived routing infrastructure; source documents remain authoritative.
 
-MVG 集成验收入口（reward pilot / M1 critical / target full scope）：[使用说明](docs/workflows/mvg-integration-acceptance.md)。
+## Chapter Workflow, MVG and Knowledge
+
+Users continue to select a Chapter Skill and supply the relevant sources or task ID. The chapter order remains 3 → 4 → 5 → 6 → 7. Chapter 3 now conserves source semantics before task generation; Chapter 5 establishes current readiness before implementation; Chapter 6 routes and reuses evidence internally. Blocked/stale readiness requires returning to Chapter 5, and a new formal task from Chapter 7 follows the same readiness/development loop.
+
+- [MVG integration acceptance](docs/workflows/mvg-integration-acceptance.md): tests belong to existing tasks/handoff owners and are implemented during Chapter 6. The separate `run-mvg-acceptance` runner/CI verifies their combination on one snapshot. Default `m1-critical` is not full M1 acceptance; `m1-full` remains blocked while Task 59/60 are pending.
+- [Knowledge and topology](docs/workflows/project-health-knowledge.md): the UI shows Source → Requirement → optional Capability → Task → Acceptance and Chapter 3/5 workspace attempts. It has no dedicated MVG manifest/flow/handoff/result view. Task verification buttons do not substitute for MVG acceptance.

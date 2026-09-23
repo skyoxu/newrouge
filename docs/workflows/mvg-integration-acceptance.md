@@ -14,6 +14,20 @@
 
 最初的“开发前就绪检查”拆入上述 Chapter 3/4/5，不再新建独立的重型流程。`plan` 只能发现清单结构和引用缺口，不能证明任务拆分合理或产品验收完整。
 
+## 用户入口与执行归属
+
+用户仍通过 Chapter Skill 提供来源或 task id。MVG 不要求把所有测试塞进一个特殊任务：每条 handoff 的 `owner_task` 负责该交接的集成验收，优先复用现有任务；只有无人承担时才新建整合任务。测试实现与修补进入对应任务的 Chapter 6，整组测试则由 `run-mvg-acceptance` 或 MVG CI 在同一 commit/workspace 快照执行。普通单任务 Chapter 6 不等于每次自动运行全部 MVG。
+
+例如 reward pilot 的三条 handoff 分别由 Task 114、128、115 承担；它们共同引用领域/场景/引擎输入测试，而不是由某一个任务独占整个 MVG。清单是测试组合与责任映射，不是另一套任务状态。
+
+若现有 Acceptance 显式分类为 `player-journey` 且 `journey_scope=mvg-critical|mvg-full`，最终 Acceptance 检查消费匹配 manifest、覆盖级别和当前 revision 的 `runtime_verified` 结果；缺失或过期就阻断，不会把普通任务测试报告自动升级为 MVG 证据。详见 [Acceptance evidence](acceptance-check-and-llm-review.md)。
+
+## Knowledge 展示边界
+
+[Knowledge 页面](project-health-knowledge.md) 展示相关任务、场景、测试引用和 Chapter 3/5 设计拓扑，当前没有专门解析 MVG manifest、flow、handoff 和运行摘要的汇总视图。页面上的任务验证按钮不能代替整组 MVG 执行。
+
+当前可核查的完整路径是：manifest（范围/责任/测试）→ CLI `plan` / `recommend`（结构/影响建议）→ `run` / CI → `logs/ci/mvg-acceptance/<run-id>/summary.json` 与原始报告。这提供可追溯证据，但不等价于 Knowledge 中已有 MVG 看板。
+
 ## 清单与责任
 
 当前清单分三层：
