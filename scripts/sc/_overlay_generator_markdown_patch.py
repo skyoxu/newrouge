@@ -95,15 +95,20 @@ def _replace_simple_task_coverage(
     *,
     remove_task_ids: list[str] | None = None,
     replace: bool = False,
+    strict: bool = False,
 ) -> str:
     if not task_ids and not remove_task_ids:
         return text
     bounds = _find_task_coverage_bounds(text)
     if bounds is None:
+        if strict:
+            raise ValueError("overlay task coverage target is missing")
         return text
     start, end = bounds
     block = text[start:end]
     if not _task_coverage_is_simple(block):
+        if strict:
+            raise ValueError("overlay task coverage target is too complex for safe incremental patch")
         return text
     current = [] if replace else _task_coverage_ids(block)
     removed = {str(item).strip() for item in (remove_task_ids or []) if str(item).strip()}
@@ -149,17 +154,22 @@ def _replace_simple_section(
     *,
     remove_bullets: list[str] | None = None,
     replace: bool = False,
+    strict: bool = False,
 ) -> str:
     if not heading.strip() or (not bullets and not remove_bullets):
         return text
     bounds = _find_section_bounds(text, heading)
     bullet_block = _join_bullets(bullets)
     if bounds is None:
+        if strict:
+            raise ValueError(f"overlay section target is missing: {heading}")
         suffix = "" if text.endswith("\n") else "\n"
         return text + suffix + f"\n## {heading}\n\n" + bullet_block
     section_start, body_start, section_end = bounds
     current_body = text[body_start:section_end]
     if not _section_is_simple(current_body):
+        if strict:
+            raise ValueError(f"overlay section is too complex for safe incremental patch: {heading}")
         return text
     if not replace:
         existing = [
@@ -188,6 +198,7 @@ def apply_scaffold_update_to_existing_markdown(
         actual_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if actual_sha != expected_sha:
             raise ValueError("overlay source hash drifted; regenerate the patch")
+    strict = bool(scaffold_update.get("strict_incremental_patch"))
     update_sections = [
         section
         for section in scaffold_update.get("sections") or []
@@ -201,6 +212,8 @@ def apply_scaffold_update_to_existing_markdown(
             if str(section.get("heading") or "").strip() in current_headings
         }
         if not overlap:
+            if strict:
+                raise ValueError("overlay patch has no matching target section")
             return text
     purpose = str(scaffold_update.get("purpose") or "").strip()
     if purpose:
@@ -217,6 +230,7 @@ def apply_scaffold_update_to_existing_markdown(
             task_ids,
             remove_task_ids=remove_task_ids,
             replace=str(scaffold_update.get("task_coverage_operation") or "").strip().lower() == "replace",
+            strict=strict,
         )
     for section in update_sections:
         heading = str(section.get("heading") or "").strip()
@@ -228,5 +242,6 @@ def apply_scaffold_update_to_existing_markdown(
             bullets,
             remove_bullets=remove_bullets,
             replace=str(section.get("operation") or "").strip().lower() == "replace",
+            strict=strict,
         )
     return text
