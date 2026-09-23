@@ -56,6 +56,17 @@ class LlmReviewBackendCliTests(unittest.TestCase):
             overrides,
         )
 
+    def test_resolve_agents_should_add_single_model_reviewer_for_deterministic_only_input(self) -> None:
+        agents = review_cli.resolve_agents(
+            "adr-compliance-checker,performance-slo-validator",
+            "warn",
+        )
+
+        self.assertEqual(
+            ["adr-compliance-checker", "performance-slo-validator", "code-reviewer"],
+            agents,
+        )
+
     def test_resolve_agents_should_use_single_reviewer_when_using_profile_defaults(self) -> None:
         agents = review_cli.resolve_agents("", "warn")
 
