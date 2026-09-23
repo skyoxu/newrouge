@@ -46,6 +46,16 @@ class LlmReviewBackendCliTests(unittest.TestCase):
             agents,
         )
 
+    def test_legacy_model_timeout_overrides_should_collapse_to_code_reviewer(self) -> None:
+        overrides = review_cli.parse_agent_timeout_overrides(
+            "security-auditor=360,semantic-equivalence-auditor=480,adr-compliance-checker=120"
+        )
+
+        self.assertEqual(
+            {"code-reviewer": 480, "adr-compliance-checker": 120},
+            overrides,
+        )
+
     def test_resolve_agents_should_use_single_reviewer_when_using_profile_defaults(self) -> None:
         agents = review_cli.resolve_agents("", "warn")
 
