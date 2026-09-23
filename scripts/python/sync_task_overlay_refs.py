@@ -366,6 +366,7 @@ def sync_master(
     paths: OverlayPaths,
     *,
     skip_done: bool,
+    affected_task_ids: set[str] | None = None,
 ) -> tuple[dict[str, Any], FileSyncResult]:
     payload = _load_json(tasks_json_path)
     master = payload.get("master")
@@ -380,10 +381,12 @@ def sync_master(
     for task in tasks:
         if not isinstance(task, dict):
             continue
+        task_id = str(task.get("id", "")).strip()
+        if affected_task_ids is not None and task_id not in affected_task_ids:
+            continue
         if skip_done and str(task.get("status", "")).strip().lower() == "done":
             skipped_done += 1
             continue
-        task_id = str(task.get("id", "")).strip()
         expected = paths.index
         current = str(task.get("overlay", "")).strip()
         if current != expected:
@@ -405,6 +408,7 @@ def sync_view(
     *,
     skip_done: bool,
     master_done_task_ids: set[str],
+    affected_task_ids: set[str] | None = None,
     active_requirement_ids: set[str] | None = None,
     allowed_contract_refs: set[str] | None = None,
     repo_root: Path | None = None,
@@ -419,9 +423,12 @@ def sync_view(
     for task in tasks:
         if not isinstance(task, dict):
             continue
+        taskmaster_id = _canonical_taskmaster_id(task.get("taskmaster_id"))
+        string_id = str(task.get("id", "")).strip()
+        if affected_task_ids is not None and string_id not in affected_task_ids and (taskmaster_id or "") not in affected_task_ids:
+            continue
         if skip_done:
             status = str(task.get("status", "")).strip().lower()
-            taskmaster_id = _canonical_taskmaster_id(task.get("taskmaster_id"))
             if status == "done" or (taskmaster_id and taskmaster_id in master_done_task_ids):
                 skipped_done += 1
                 continue
@@ -598,6 +605,12 @@ def main() -> int:
         help="Taskmaster tasks directory. Auto-resolve .taskmaster/tasks then examples/taskmaster when omitted.",
     )
     parser.add_argument(
+        "--task-id",
+        action="append",
+        default=[],
+        help="Restrict synchronization to affected string or Taskmaster ids. Repeatable.",
+    )
+    parser.add_argument(
         "--skip-done",
         action="store_true",
         help=(
@@ -650,16 +663,23 @@ def main() -> int:
             print(f"- missing overlay file: {rel}")
         return 2
 
+    affected_task_ids = {str(value).strip() for value in args.task_id if str(value).strip()} or None
     master_payload_for_done = _load_json(tasks_json_path)
     master_done_ids = _done_master_task_ids(master_payload_for_done)
     active_requirement_ids = _active_semantic_requirement_ids(root)
     allowed_contract_refs = _load_allowed_events(root)
-    master_payload, master_result = sync_master(tasks_json_path, paths, skip_done=bool(args.skip_done))
+    master_payload, master_result = sync_master(
+        tasks_json_path,
+        paths,
+        skip_done=bool(args.skip_done),
+        affected_task_ids=affected_task_ids,
+    )
     back_payload, back_result = sync_view(
         tasks_back_path,
         paths,
         skip_done=bool(args.skip_done),
         master_done_task_ids=master_done_ids,
+        affected_task_ids=affected_task_ids,
         active_requirement_ids=active_requirement_ids,
         allowed_contract_refs=allowed_contract_refs,
         repo_root=root,
@@ -669,6 +689,7 @@ def main() -> int:
         paths,
         skip_done=bool(args.skip_done),
         master_done_task_ids=master_done_ids,
+        affected_task_ids=affected_task_ids,
         active_requirement_ids=active_requirement_ids,
         allowed_contract_refs=allowed_contract_refs,
         repo_root=root,
