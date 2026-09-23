@@ -440,6 +440,52 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
         self.assertEqual("ok", report["status"])
         self.assertEqual("player-journey", report["surfaces"]["ACC:T15.1"])
 
+    def test_player_journey_mvg_critical_requires_revision_bound_runtime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest_ref = "docs/testing/mvg/m1-critical.json"
+            manifest = root / manifest_ref
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text(json.dumps({"mvg_id": "m1-critical", "coverage": {"mode": "critical", "blocking_task_ids": []}}), encoding="utf-8")
+            summary = root / "logs/ci/mvg-acceptance/run-1/summary.json"
+            summary.parent.mkdir(parents=True, exist_ok=True)
+            summary.write_text(json.dumps({
+                "mode": "run", "status": "passed", "runtime_verified": True, "workspace_dirty": False,
+                "source_revision": "abc123", "manifest": manifest_ref,
+                "coverage": {"mode": "critical", "blocking_task_ids": []},
+            }), encoding="utf-8")
+            triplet = self._triplet({"ACC:T15.1": {
+                "verification_surface": "player-journey", "journey_scope": "mvg-critical",
+                "primary_evidence": [manifest_ref], "secondary_evidence": [], "human_evidence_required": False,
+            }})
+            passed = validate_acceptance_verification(triplet=triplet, root=root, expected_revision="abc123")
+            stale = validate_acceptance_verification(triplet=triplet, root=root, expected_revision="different-revision")
+            self.assertEqual("ok", passed["status"])
+            self.assertEqual("fail", stale["status"])
+            self.assertTrue(any("runtime_verified MVG critical evidence" in item for item in stale["errors"]))
+
+    def test_player_journey_mvg_full_cannot_reuse_critical_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            full_ref = "docs/testing/mvg/m1-full.json"
+            manifest = root / full_ref
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text(json.dumps({"mvg_id": "m1-full", "coverage": {"mode": "full", "blocking_task_ids": []}}), encoding="utf-8")
+            summary = root / "logs/ci/mvg-acceptance/run-critical/summary.json"
+            summary.parent.mkdir(parents=True, exist_ok=True)
+            summary.write_text(json.dumps({
+                "mode": "run", "status": "passed", "runtime_verified": True, "workspace_dirty": False,
+                "source_revision": "abc123", "manifest": "docs/testing/mvg/m1-critical.json",
+                "coverage": {"mode": "critical", "blocking_task_ids": []},
+            }), encoding="utf-8")
+            triplet = self._triplet({"ACC:T15.1": {
+                "verification_surface": "player-journey", "journey_scope": "mvg-full",
+                "primary_evidence": [full_ref], "secondary_evidence": [], "human_evidence_required": False,
+            }})
+            report = validate_acceptance_verification(triplet=triplet, root=root, expected_revision="abc123")
+            self.assertEqual("fail", report["status"])
+            self.assertTrue(any("runtime_verified MVG full evidence" in item for item in report["errors"]))
+
 
 if __name__ == "__main__":
     unittest.main()
