@@ -157,6 +157,32 @@ Task coverage:
                 scaffold_update={"expected_sha256": expected, "task_ids": ["12"]},
             )
 
+    def test_strict_existing_patch_should_block_complex_or_missing_targets(self) -> None:
+        complex_page = """# Overlay
+
+## Rules
+
+### Nested
+
+- Keep
+"""
+        with self.assertRaisesRegex(ValueError, "too complex"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown=complex_page,
+                scaffold_update={
+                    "strict_incremental_patch": True,
+                    "sections": [{"heading": "Rules", "bullets": ["New"]}],
+                },
+            )
+        with self.assertRaisesRegex(ValueError, "no matching target section"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown="# Overlay\n\n## Rules\n\n- Keep\n",
+                scaffold_update={
+                    "strict_incremental_patch": True,
+                    "sections": [{"heading": "Missing", "bullets": ["New"]}],
+                },
+            )
+
     def test_apply_scaffold_update_to_existing_markdown_should_reject_foreign_section_headings(self) -> None:
         current_markdown = """---
 PRD-ID: PRD-TEMPLATE-V1
