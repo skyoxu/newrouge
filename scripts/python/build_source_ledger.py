@@ -552,9 +552,14 @@ def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], b
         additions.extend(expand_source_arg(root, value))
     source_set = _load_source_set(root, args.source_set)
     if args.mode == "add":
-        if source_set is None and additions and not args.adopt_baseline:
-            raise ValueError("adoption-required: add mode needs a versioned source-set or --adopt-baseline")
-        base = list(source_set.get("active_patterns", [])) if source_set else list(DEFAULT_SOURCE_GLOBS)
+        if source_set is None:
+            if not args.adopt_baseline:
+                raise ValueError("adoption-required: add mode needs a versioned source-set or --adopt-baseline")
+            if not additions:
+                raise ValueError("adoption-required: --adopt-baseline needs the complete explicit authoritative input set")
+            base: list[str] = []
+        else:
+            base = list(source_set.get("active_patterns", []))
         retire = {str(item).strip() for item in args.retire_source if str(item).strip()}
         unknown = sorted(retire - set(base))
         if unknown:
