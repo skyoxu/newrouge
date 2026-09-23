@@ -70,6 +70,50 @@ class MilestoneIncrementalWorkflowTests(unittest.TestCase):
             broken["changes"][0]["verification"] = {}
             self.assertIn("CHG-1:missing_verification_plan", handoff_mod.validate_change_plan(root, broken))
 
+    def test_done_task_extension_requires_change_owner_or_explicit_reopen(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_json(root / ".taskmaster/tasks/tasks_back.json", [])
+            write_json(root / ".taskmaster/tasks/tasks_gameplay.json", [{
+                "id": "GM-0200",
+                "taskmaster_id": 200,
+                "status": "done",
+                "semantic_refs": ["FR-SHOP-1"],
+            }, {
+                "id": "GM-0201",
+                "taskmaster_id": 201,
+                "status": "pending",
+                "semantic_refs": ["FR-SHOP-1"],
+            }])
+            write_json(root / "logs/ci/task-generation/semantic-requirements.v1.json", {
+                "schema_version": "newrouge.semantic-requirements.v1",
+                "requirements": [{"requirement_id": "FR-SHOP-1", "status": "active"}],
+            })
+            base = {
+                "schema_version": handoff_mod.CHANGE_PLAN_SCHEMA,
+                "source_identity": {"source_revision": "source-set:abc"},
+                "changes": [{
+                    "change_id": "CHG-DONE",
+                    "action": "extend",
+                    "target_task_id": "200",
+                    "owner_task_id": "200",
+                    "requirement_ids": ["FR-SHOP-1"],
+                    "reason": "New milestone expands the old behavior.",
+                    "impact": {"tasks": ["200"]},
+                    "verification": {"required_regressions": ["old-regression"]},
+                }],
+            }
+            errors = handoff_mod.validate_change_plan(root, base)
+            self.assertIn("CHG-DONE:done_target_requires_change_owner_or_explicit_reopen", errors)
+
+            linked = json.loads(json.dumps(base))
+            linked["changes"][0]["owner_task_id"] = "201"
+            self.assertEqual([], handoff_mod.validate_change_plan(root, linked))
+
+            reopened = json.loads(json.dumps(base))
+            reopened["changes"][0]["reopen_task"] = True
+            self.assertEqual([], handoff_mod.validate_change_plan(root, reopened))
+
     def test_task_handoff_binds_current_chapter5_readiness_and_detects_drift(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
