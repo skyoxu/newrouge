@@ -191,6 +191,44 @@ def build_task_handoff(
     }
 
 
+def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, str, dict[str, Any]]:
+    if not path.is_file():
+        return False, "milestone_handoff_missing", {}
+    try:
+        payload = _load(path)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False, "milestone_handoff_invalid_json", {}
+    if not isinstance(payload, dict) or payload.get("schema_version") != HANDOFF_SCHEMA:
+        return False, "milestone_handoff_invalid_schema", {}
+    if str(payload.get("task_id") or "") != str(task_id):
+        return False, "milestone_handoff_task_mismatch", {}
+    for path_key, sha_key in (
+        ("change_plan_path", "change_plan_sha256"),
+        ("chapter5_readiness_path", "chapter5_readiness_sha256"),
+    ):
+        rel = str(payload.get(path_key) or "").strip()
+        if not rel:
+            return False, f"milestone_handoff_missing_{path_key}", {}
+        target = (root / rel).resolve()
+        try:
+            target.relative_to(root.resolve())
+        except ValueError:
+            return False, "milestone_handoff_path_escape", {}
+        if not target.is_file() or _file_sha(target) != str(payload.get(sha_key) or ""):
+            return False, f"milestone_handoff_stale_{path_key}", {}
+    readiness = _load(root / str(payload["chapter5_readiness_path"]))
+    if not bool(readiness.get("closure_allowed")):
+        return False, "milestone_handoff_readiness_not_closable", {}
+    if readiness.get("input_fingerprint") != payload.get("chapter5_input_fingerprint"):
+        return False, "milestone_handoff_readiness_fingerprint_drift", {}
+    changes = payload.get("changes")
+    if not isinstance(changes, list) or not changes:
+        return False, "milestone_handoff_missing_changes", {}
+    if any(str(row.get("action") or "").lower() == "unresolved" for row in changes if isinstance(row, dict)):
+        return False, "milestone_handoff_unresolved", {}
+    return True, "ok", payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".")
