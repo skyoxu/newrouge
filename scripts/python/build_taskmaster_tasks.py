@@ -169,6 +169,19 @@ def merge_master_fields(existing_task: Dict[str, Any], generated_fields: Dict[st
     merged.update(generated_fields)
     return merged
 
+def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[str, Any]:
+    """Merge distinct view rows that intentionally map to one Taskmaster id."""
+    if not rows:
+        raise ValueError(f"Taskmaster {num_id} has no source rows")
+    merged = dict(rows[0])
+    source_ids = [str(merged.get("id") or "")]
+    for row in rows[1:]:
+        source_ids.append(str(row.get("id") or ""))
+        merged = _merge_view_task(merged, row, f"taskmaster:{num_id}")
+    merged["source_view_ids"] = [value for value in source_ids if value]
+    merged["taskmaster_id"] = num_id
+    return merged
+
 
 def build_taskmaster_tasks(args: argparse.Namespace) -> None:
     # 1) 解析任务文件列表（源 SSoT）
@@ -303,6 +316,25 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         num = id_map.get(tid)
         print(f"  {tid} -> {num}")
 
+    rows_by_numeric: Dict[int, List[Dict[str, Any]]] = {}
+    tids_by_numeric: Dict[int, List[str]] = {}
+    for tid in sorted_ids:
+        src = all_tasks.get(tid)
+        num = id_map.get(tid)
+        if not src or num is None:
+            continue
+        rows_by_numeric.setdefault(num, []).append(src)
+        tids_by_numeric.setdefault(num, []).append(tid)
+    export_units: List[tuple[str, Dict[str, Any], int]] = []
+    emitted_numeric: Set[int] = set()
+    for tid in sorted_ids:
+        num = id_map.get(tid)
+        if num is None or num in emitted_numeric:
+            continue
+        emitted_numeric.add(num)
+        merged_source = merge_numeric_view_group(rows_by_numeric[num], num)
+        export_units.append((tid, merged_source, num))
+
     # 6) 构建/更新目标 Tag 下的 Task Master 任务列表
     existing_by_id: Dict[int, int] = {
         t["id"]: idx
@@ -310,11 +342,7 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         if isinstance(t, dict) and isinstance(t.get("id"), int)
     }
 
-    for tid in sorted_ids:
-        src = all_tasks.get(tid)
-        if not src:
-            continue
-        num_id = id_map[tid]
+    for tid, src, num_id in export_units:
         title = src.get("title") or tid
         description = src.get("description") or ""
 
