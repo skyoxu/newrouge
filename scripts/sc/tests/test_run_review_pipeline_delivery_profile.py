@@ -766,9 +766,9 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             steps = {str(item.get("name")): item for item in json.loads((out_dir / "summary.json").read_text(encoding="utf-8")).get("steps", [])}
             llm_cmd = steps["sc-llm-review"]["cmd"]
 
-            self.assertEqual({"security-auditor": 480}, execution_context["llm_review"]["agent_timeout_overrides"])
+            self.assertEqual({"code-reviewer": 480}, execution_context["llm_review"]["agent_timeout_overrides"])
             self.assertIn("--agent-timeouts", llm_cmd)
-            self.assertEqual("security-auditor=480", llm_cmd[llm_cmd.index("--agent-timeouts") + 1])
+            self.assertEqual("code-reviewer=480", llm_cmd[llm_cmd.index("--agent-timeouts") + 1])
 
     def test_dry_run_should_not_publish_latest_or_active_task_sidecar(self) -> None:
         run_id = uuid.uuid4().hex
