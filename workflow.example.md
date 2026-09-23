@@ -295,4 +295,16 @@ py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage red --do
 py -3 scripts/python/dev_cli.py run-prototype-tdd --slug <slug> --stage green --dotnet-target Game.Core.Tests/Game.Core.Tests.csproj --filter <Expr>
 ```
 
-If the prototype proves worth promoting, then move back to `workflow.md` and enter the formal task loop.
+If the prototype proves worth promoting, then move back to `workflow.md` and enter the formal task loop.\n
+
+## Incremental milestone example
+
+For a later GDD, keep the prior source set and preview the new delta first:
+
+```powershell
+py -3 scripts/python/build_source_ledger.py --mode add --gdd-path docs/gdd/<milestone>.md
+py -3 scripts/python/normalize_task_intents.py --mode add
+py -3 scripts/python/compile_task_triplet.py
+```
+
+Review all create/update/reuse/retire decisions before `--write`. Export only the reviewed ids, limit Overlay ref synchronization with repeatable `--task-id`, complete Chapter 5 reconciliation, then build a task-local milestone handoff. Chapter 6 may consume that handoff without rereading the whole milestone. At milestone closure, apply a reviewed delta to the existing MVG manifest and run that cumulative manifest against one integrated revision.
