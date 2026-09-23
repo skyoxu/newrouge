@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -76,10 +77,18 @@ def run(args: argparse.Namespace, root: Path | None = None) -> int:
             summary['source_revision'] = snapshot['source_revision']
             summary['snapshot_digest'] = snapshot['snapshot_digest']
             summary['input_manifest'] = str(out / 'input-manifest.json')
+        manifest_path = execution_root / args.manifest
+        manifest_sha256 = 'sha256:' + hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         doc = read_manifest(execution_root, args.manifest)
         errors = validate_manifest(execution_root, doc, executable=args.mode == 'run')
-        summary.update(mvg_id=doc.get('mvg_id'), manifest=args.manifest,
-                       coverage=doc.get('coverage', {}), validation_errors=errors)
+        summary.update(
+            mvg_id=doc.get('mvg_id'),
+            manifest=args.manifest,
+            manifest_sha256=manifest_sha256,
+            baseline_lineage=doc.get('baseline_lineage'),
+            coverage=doc.get('coverage', {}),
+            validation_errors=errors,
+        )
         if errors:
             raise ValueError('; '.join(errors))
         comparison_revision = revision if args.snapshot == 'commit' else git(root, 'rev-parse', 'HEAD')
