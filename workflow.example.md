@@ -56,7 +56,7 @@ py -3 scripts/python/dev_cli.py serve-project-health
 如果需要重建 `tasks.json`：
 
 ```powershell
-py -3 scripts/python/build_taskmaster_tasks.py
+py -3 scripts/python/build_taskmaster_tasks.py --tasks-file .taskmaster/tasks/tasks_back.json --tasks-file .taskmaster/tasks/tasks_gameplay.json --ids-file logs/ci/task-generation/task-triplet.export-ids.json
 ```
 
 校验 triplet：
