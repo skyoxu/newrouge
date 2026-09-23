@@ -880,7 +880,7 @@ py -3 scripts/sc/llm_generate_tests_from_acceptance_refs.py --task-id <id> --tdd
 
 说明：
 
-- RED 验证口径按 Acceptance 的 `verification_surface` 选，不按新建测试文件数量选：`core-behavior` 用 task-scoped xUnit；`godot-scene` 必须取得真实 GdUnit causal RED；`player-journey` 按本任务负责的链路证据执行；`human-experience` 记录 manual preflight/pending，不能伪造机器 RED。
+- RED 验证口径按 Acceptance 的 `verification_surface` 选，不按新建测试文件数量选：`core-behavior` 用 task-scoped xUnit；`godot-scene` 必须取得真实 GdUnit causal RED；`player-journey` 默认 `journey_scope=task-local` 按本任务负责的链路证据执行，`mvg-critical` / `mvg-full` 则复用对应 manifest，并在最终 Acceptance 要求绑定 candidate revision 的真实 MVG runtime evidence；`human-experience` 记录 manual preflight/pending，不能伪造机器 RED。
 - 混合 anchor 按义务分别验证；存在 scene 义务时不能因为 unit 更便宜而省略引擎 RED。
 - 有效自动化 RED 必须绑定当前验证 run、目标测试身份和预期行为断言失败；timeout、编译/环境故障、零测试、无关测试失败或缺报告都属于 unverified/blocked，不是行为 RED。
 - 6.5 green 会按 Acceptance obligation 的验证类型检查前置：只要存在 `core-behavior` / `godot-scene` / `player-journey` 自动化义务，就强制读取最近一次 `sc-llm-acceptance-tests/summary-<task>.json`，要求来自 `red-first` 且不存在失败 ref；若 6.4 创建了新测试文件，还要求 `red_verify.status = ok`。
