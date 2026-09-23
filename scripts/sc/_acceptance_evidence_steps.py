@@ -91,7 +91,13 @@ def step_headless_e2e_evidence(out_dir: Path, *, expected_run_id: str) -> StepRe
     return StepResult(name="headless-e2e-evidence", status="ok" if ok else "fail", rc=0 if ok else 1, details=details)
 
 
-def step_acceptance_executed_refs(out_dir: Path, *, task_id: int, expected_run_id: str) -> StepResult:
+def step_acceptance_executed_refs(
+    out_dir: Path,
+    *,
+    task_id: int,
+    expected_run_id: str,
+    candidate_revision: str = "",
+) -> StepResult:
     out_json = out_dir / "acceptance-executed-refs.json"
     cmd = [
         "py",
@@ -104,6 +110,8 @@ def step_acceptance_executed_refs(out_dir: Path, *, task_id: int, expected_run_i
         "--out",
         str(out_json),
     ]
+    if str(candidate_revision or "").strip():
+        cmd += ["--candidate-revision", str(candidate_revision).strip()]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=120)
     log_path = out_dir / "acceptance-executed-refs.log"
     write_text(log_path, out)
