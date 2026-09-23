@@ -32,8 +32,8 @@ def _file_sha(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _task_ids(root: Path) -> set[str]:
-    result: set[str] = set()
+def _task_index(root: Path) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
     for rel in (".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"):
         path = root / rel
         if not path.is_file():
@@ -45,8 +45,12 @@ def _task_ids(root: Path) -> set[str]:
                 continue
             for key in ("id", "taskmaster_id"):
                 if row.get(key) is not None and str(row.get(key)).strip():
-                    result.add(str(row.get(key)).strip())
+                    result[str(row.get(key)).strip()] = row
     return result
+
+
+def _task_ids(root: Path) -> set[str]:
+    return set(_task_index(root))
 
 
 def _active_requirements(root: Path) -> set[str]:
@@ -74,7 +78,8 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
     if not isinstance(rows, list) or not rows:
         errors.append("missing_changes")
         return errors
-    known_tasks = _task_ids(root)
+    task_index = _task_index(root)
+    known_tasks = set(task_index)
     active_requirements = _active_requirements(root)
     seen: set[str] = set()
     for index, row in enumerate(rows):
@@ -102,6 +107,10 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
             errors.append(f"{change_id}:missing_owner_task")
         if owner and owner not in known_tasks and owner != target:
             errors.append(f"{change_id}:unknown_owner_task:{owner}")
+        target_status = str((task_index.get(target) or {}).get("status") or "").strip().lower()
+        if action in {"extend", "replace"} and target_status == "done":
+            if owner == target and row.get("reopen_task") is not True:
+                errors.append(f"{change_id}:done_target_requires_change_owner_or_explicit_reopen")
         requirement_ids = [str(value) for value in row.get("requirement_ids", []) if str(value).strip()]
         if active_requirements:
             stale = sorted(set(requirement_ids) - active_requirements)
