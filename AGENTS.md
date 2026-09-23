@@ -126,4 +126,13 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 
 - 保持仓库标识为 `newrouge`，清理过期模板名与无效示例。
 - 不在 overlay 复制 Base/ADR 的阈值正文。
-- 契约字段用路径引用，不做文档内重复粘贴。
+- 契约字段用路径引用，不做文档内重复粘贴。\n
+
+## 里程碑增量边界
+
+- 新里程碑继续使用现有 Chapter 3→6 与 MVG 流程，不创建第二套任务状态或独立 MVG 生命周期。
+- Chapter 3 `add` 必须从版本化 `docs/workflows/chapter3-source-set.json` 保留累计来源；退役来源必须显式声明。
+- 已存在任务 ID 不得被候选默认值覆盖；update/reuse/retire 必须来自可审阅变更计划。
+- Chapter 4 只改受影响页面/任务；成熟 Overlay 的稀疏更新默认合并。
+- Chapter 6 仍为单任务实施；若任务属于里程碑增量，优先消费经 Chapter 5 绑定的 milestone handoff，不自行扩大范围。
+- MVG manifest 是累计回归基线；旧 flow/test 只有在有规格依据的显式 retire 中才能移除。
