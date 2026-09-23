@@ -893,6 +893,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             (llm_dir / "summary.json").write_text(
                 json.dumps(
                     {
+                        "review_method": {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"]},
                         "results": [
                             {"agent": "code-reviewer", "status": "ok", "rc": 0, "details": {"verdict": "OK"}},
                             {"agent": "security-auditor", "status": "fail", "rc": 124, "details": {"verdict": ""}},
@@ -915,6 +916,33 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
                 )
 
             self.assertEqual({"security-auditor": 480}, overrides)
+
+    def test_legacy_reviewer_timeout_cannot_escalate_single_reviewer_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            previous = root / "logs/ci/2026-04-02/sc-review-pipeline-task-1-previous"
+            previous.mkdir(parents=True)
+            child = previous / "child.json"
+            (previous / "summary.json").write_text(json.dumps({
+                "steps": [{"name": "sc-llm-review", "summary_file": str(child)}],
+            }), encoding="utf-8")
+            (previous / "execution-context.json").write_text(json.dumps({
+                "delivery_profile": "fast-ship", "security_profile": "host-safe",
+            }), encoding="utf-8")
+            for method in ({}, {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance"]}):
+                with self.subTest(method=method):
+                    child.write_text(json.dumps({
+                        "review_method": method,
+                        "results": [{"agent": "code-reviewer", "rc": 124, "details": {"agent_timeout_sec": 180}}],
+                    }), encoding="utf-8")
+                    with mock.patch.object(run_review_pipeline_module, "repo_root", return_value=root):
+                        overrides = run_review_pipeline_module._derive_llm_agent_timeout_overrides(
+                            current_out_dir=root / "logs/ci/2026-04-03/sc-review-pipeline-task-1-new",
+                            task_id="1", delivery_profile="fast-ship", security_profile="host-safe",
+                            llm_agents="code-reviewer", llm_semantic_gate="warn",
+                            llm_timeout_sec=600, llm_agent_timeout_sec=180,
+                        )
+                    self.assertEqual({}, overrides)
 
     def test_resolve_pipeline_profiles_should_reject_explicit_mismatch_on_resume(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "delivery profile"):
@@ -1038,6 +1066,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             (llm_dir / "summary.json").write_text(
                 json.dumps(
                     {
+                        "review_method": {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"]},
                         "results": [
                             {"agent": "security-auditor", "status": "fail", "rc": 124, "details": {"verdict": ""}},
                         ]
@@ -1098,6 +1127,7 @@ class RunReviewPipelineDeliveryProfileTests(unittest.TestCase):
             (llm_dir / "summary.json").write_text(
                 json.dumps(
                     {
+                        "review_method": {"reviewer_mode": "single-reviewer", "required_lenses": ["Spec Compliance", "Edge Case", "Verification Gap"]},
                         "results": [
                             {
                                 "agent": "security-auditor",

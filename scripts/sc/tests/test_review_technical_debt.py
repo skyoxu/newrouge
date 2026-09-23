@@ -232,6 +232,7 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
                 json.dumps(
                     {
                         "status": "ok",
+                        "completion_status": "completed",
                         "results": [
                             {
                                 "agent": "code-reviewer",
@@ -288,6 +289,41 @@ class ReviewTechnicalDebtTests(unittest.TestCase):
             self.assertIn("F-KEEP", text)
             self.assertIn("untouched item", text)
 
+    def test_invalid_child_review_cannot_close_existing_debt(self) -> None:
+        for completion, errors, contract_completion in (
+            ("incomplete", [], "completed"),
+            ("completed", ["required_lens_missing:Edge Case"], "completed"),
+            ("completed", [], "incomplete"),
+        ):
+            with self.subTest(completion=completion, errors=errors, contract_completion=contract_completion), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                out_dir = root / "run"
+                out_dir.mkdir()
+                debt_file = root / "docs" / "technical-debt.md"
+                update_technical_debt_register(
+                    doc_path=debt_file, task_id="11", run_id="old",
+                    findings=[{"finding_id": "F-KEEP", "severity": "P2", "message": "Open issue", "agent": "code-reviewer"}],
+                    delivery_profile="fast-ship",
+                )
+                before = debt_file.read_text(encoding="utf-8")
+                child_path = out_dir / "child.json"
+                child_path.write_text(json.dumps({
+                    "completion_status": completion,
+                    "results": [{"agent": "code-reviewer", "status": "ok", "details": {
+                        "review_contract_errors": errors,
+                        "review_contract": {"completion_status": contract_completion, "findings": [{
+                            "finding_id": "F-KEEP", "evidence": ["test evidence"], "verification": "Rechecked",
+                            "disposition": {"action": "reject", "rationale": "Invalid conclusion"},
+                        }]},
+                    }}],
+                }), encoding="utf-8")
+                result = write_low_priority_debt_artifacts(
+                    out_dir=out_dir,
+                    summary={"status": "fail", "steps": [{"name": "sc-llm-review", "status": "fail", "summary_file": str(child_path)}]},
+                    task_id="11", run_id="new", delivery_profile="fast-ship", root=root,
+                )
+                self.assertEqual("skipped", result["register_status"])
+                self.assertEqual(before, debt_file.read_text(encoding="utf-8"))
     def test_write_artifacts_should_not_touch_register_when_llm_review_not_executed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

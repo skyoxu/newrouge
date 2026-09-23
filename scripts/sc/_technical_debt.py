@@ -102,6 +102,17 @@ def _load_pipeline_child_review_summary(*, summary: dict[str, Any], root: Path) 
         return None, "llm_review_summary_invalid"
     if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
         return None, "llm_review_summary_invalid"
+    completion = str(payload.get("completion_status") or "").strip()
+    if completion and completion != "completed":
+        return None, "llm_review_incomplete"
+    for result in payload["results"]:
+        if isinstance(result, dict):
+            details = result.get("details") if isinstance(result.get("details"), dict) else {}
+            if details.get("review_contract_errors"):
+                return None, "llm_review_contract_invalid"
+            contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else None
+            if isinstance(contract, dict) and str(contract.get("completion_status") or "").strip() != "completed":
+                return None, "llm_review_contract_invalid"
     return payload, "ok"
 
 
@@ -190,6 +201,8 @@ def collect_low_priority_review_findings(
 
 def collect_explicit_debt_dispositions(*, summary: dict[str, Any]) -> dict[str, str]:
     dispositions: dict[str, str] = {}
+    if str(summary.get("completion_status") or "").strip() != "completed":
+        return dispositions
     results = summary.get("results")
     if not isinstance(results, list):
         return dispositions
@@ -197,6 +210,8 @@ def collect_explicit_debt_dispositions(*, summary: dict[str, Any]) -> dict[str, 
         if not isinstance(result, dict) or str(result.get("status") or "").strip().lower() != "ok":
             continue
         details = result.get("details") if isinstance(result.get("details"), dict) else {}
+        if details.get("review_contract_errors"):
+            continue
         contract = details.get("review_contract") if isinstance(details.get("review_contract"), dict) else None
         if not isinstance(contract, dict) or str(contract.get("completion_status") or "").strip() != "completed":
             continue

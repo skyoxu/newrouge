@@ -161,6 +161,25 @@ class GreenPrerequisiteSurfaceTests(unittest.TestCase):
 
 
 class BuildTddOrchestrationTests(unittest.TestCase):
+    def test_direct_red_does_not_consume_a_report_from_an_earlier_invocation(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td)
+            old_trx = out_dir / "direct-red.trx"
+            old_trx.write_text(
+                '<TestRun><Results><UnitTestResult testName="Game.Core.Tests.Tasks.Task14RedTests.ShouldFail" outcome="Failed">'
+                '<Output><ErrorInfo><Message>Assert.Equal() Failure: Expected: 1 Actual: 0</Message></ErrorInfo></Output>'
+                '</UnitTestResult></Results></TestRun>', encoding="utf-8",
+            )
+            with mock.patch.object(tdd_script, "run_cmd", return_value=(1, "Test host exited unexpectedly")):
+                step = tdd_script.run_dotnet_test_filtered("14", solution="Game.sln", configuration="Debug", out_dir=out_dir)
+            report = tdd_script.evaluate_direct_dotnet_red(
+                test_step=step, verify_log_text=(out_dir / "dotnet-test-filtered.log").read_text(encoding="utf-8"),
+                expected_test_refs=["Game.Core.Tests/Tasks/Task14RedTests.cs"],
+            )
+            self.assertNotEqual(old_trx, Path(step["trx_path"]))
+            self.assertEqual("fail", report["status"])
+            self.assertEqual("verification_report_missing", report["reason"])
+
     def test_red_should_stop_when_context_validation_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "sc-build-tdd"

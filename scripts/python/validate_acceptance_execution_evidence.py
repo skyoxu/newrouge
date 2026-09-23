@@ -241,6 +241,8 @@ def validate_view(
 
     items: list[dict[str, Any]] = []
     errors: list[str] = []
+    verification = entry.get("acceptance_verification")
+    verification = verification if isinstance(verification, dict) else {}
 
     for idx, raw in enumerate(acceptance):
         text = str(raw or "").strip()
@@ -249,6 +251,40 @@ def validate_view(
         if not refs:
             items.append({"index": idx + 1, "status": "fail", "reason": "missing_refs", "anchor": anchor})
             errors.append(f"{view_name}: acceptance[{idx}] missing Refs:")
+            continue
+
+        classified = verification.get(anchor)
+        if isinstance(classified, dict):
+            raw_rows = classified.get("obligations")
+            rows = raw_rows if isinstance(raw_rows, list) else [classified]
+            if not rows:
+                items.append({"index": idx + 1, "status": "fail", "reason": "missing_obligations", "anchor": anchor})
+                errors.append(f"{view_name}: acceptance[{idx}] has no classified obligations: {anchor}")
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    errors.append(f"{view_name}: acceptance[{idx}] has an invalid obligation: {anchor}")
+                    continue
+                obligation_id = str(row.get("obligation_id") or "").strip()
+                label = f"{anchor}#{obligation_id}" if raw_rows is not None else anchor
+                surface = str(row.get("verification_surface") or "").strip()
+                if surface == "human-experience":
+                    items.append({"index": idx + 1, "status": "not_required", "anchor": label, "reason": "human_evidence_checked_by_verification_surface"})
+                    continue
+                if surface not in {"core-behavior", "godot-scene", "player-journey"}:
+                    errors.append(f"{view_name}: acceptance[{idx}] has an invalid verification surface: {label}")
+                    continue
+                primary = row.get("primary_evidence")
+                primary_refs = [str(ref) for ref in primary if isinstance(ref, str) and ref.strip()] if isinstance(primary, list) else []
+                bound_tests = [
+                    bound for ref in primary_refs
+                    if (bound := bind_anchor_to_test(root=root, ref=ref, anchor=anchor)) is not None
+                    and (surface == "player-journey" or (surface == "core-behavior" and bound.kind == "cs") or (surface == "godot-scene" and bound.kind == "gd"))
+                ]
+                executed = any(is_test_executed(bound, trx_names=trx_names, gdunit_names=gdunit_names) for bound in bound_tests)
+                items.append({"index": idx + 1, "status": "ok" if executed else "fail", "anchor": label, "refs": primary_refs, "executed": executed})
+                if not executed:
+                    errors.append(f"{view_name}: acceptance[{idx}] obligation has no executed primary test: {label}")
             continue
 
         # Find a bound test in any referenced file.
