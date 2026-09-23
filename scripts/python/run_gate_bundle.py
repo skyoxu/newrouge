@@ -324,6 +324,7 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.sc.tests.test_fill_acceptance_refs_cli_guards",
                 "scripts.sc.tests.test_acceptance_task_requirements",
                 "scripts.sc.tests.test_acceptance_verification_surface",
+                "scripts.sc.tests.test_acceptance_classified_execution_gate",
                 "scripts.python.tests.test_validate_acceptance_execution_evidence",
                 "scripts.sc.tests.test_acceptance_steps_task_links_validate",
                 "scripts.sc.tests.test_acceptance_check_runtime",

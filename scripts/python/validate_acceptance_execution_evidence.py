@@ -98,7 +98,7 @@ def parse_trx_test_names(trx_path: Path) -> set[str]:
     names: set[str] = set()
     root = ET.parse(trx_path).getroot()
     for elem in root.iter():
-        if elem.tag.endswith("UnitTestResult"):
+        if elem.tag.endswith("UnitTestResult") and elem.attrib.get("outcome", "").strip().lower() == "passed":
             tn = elem.attrib.get("testName")
             if tn:
                 names.add(tn)
@@ -118,10 +118,15 @@ def parse_junit_testcase_names(results_xml: Path) -> set[str]:
     names: set[str] = set()
     root = ET.parse(results_xml).getroot()
     for elem in root.iter():
-        if elem.tag == "testcase":
-            n = elem.attrib.get("name")
-            if n:
-                names.add(n)
+        if elem.tag.rsplit("}", 1)[-1] != "testcase":
+            continue
+        if elem.attrib.get("status", "").strip().lower() in {"skipped", "failed", "error", "notexecuted"}:
+            continue
+        if any(child.tag.rsplit("}", 1)[-1] in {"skipped", "failure", "error"} for child in elem):
+            continue
+        n = elem.attrib.get("name")
+        if n:
+            names.add(n)
     return names
 
 
