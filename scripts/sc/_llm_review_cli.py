@@ -136,7 +136,7 @@ def resolve_agents(raw: str, semantic_gate: str) -> list[str]:
     # accepted as CLI compatibility input, but they collapse to code-reviewer.
     # Deterministic reviewers remain separate machine capabilities.
     default_agents = ["code-reviewer"]
-    all_agents = [*DETERMINISTIC_AGENTS, "code-reviewer"]
+    all_agents = [*sorted(DETERMINISTIC_AGENTS), "code-reviewer"]
     raw_text = str(raw or "").strip()
     agents_raw = raw_text.lower()
     if agents_raw in {"all", "full", "6"}:
@@ -156,6 +156,8 @@ def resolve_agents(raw: str, semantic_gate: str) -> list[str]:
         if not model_reviewer_added:
             normalized.append("code-reviewer")
             model_reviewer_added = True
+    if not model_reviewer_added:
+        normalized.append("code-reviewer")
     return normalized
 
 
