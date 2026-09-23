@@ -163,6 +163,13 @@ def map_priority(priority: str | None) -> str:
     return "medium"
 
 
+def merge_master_fields(existing_task: Dict[str, Any], generated_fields: Dict[str, Any]) -> Dict[str, Any]:
+    """Update only view-owned Taskmaster fields while preserving master-native extensions."""
+    merged = dict(existing_task)
+    merged.update(generated_fields)
+    return merged
+
+
 def build_taskmaster_tasks(args: argparse.Namespace) -> None:
     # 1) 解析任务文件列表（源 SSoT）
     if not args.tasks_files:
@@ -373,9 +380,7 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
                 raise ValueError(f"existing Taskmaster task {num_id} is not an object")
             # The view owns the mapped fields above. Master-native fields such as
             # subtasks and future extensions survive unless an explicit mapped field changes.
-            tm_task = dict(existing_task)
-            tm_task.update(generated_fields)
-            tag_tasks[existing_idx] = tm_task
+            tag_tasks[existing_idx] = merge_master_fields(existing_task, generated_fields)
         else:
             existing_by_id[num_id] = len(tag_tasks)
             tag_tasks.append(generated_fields)
