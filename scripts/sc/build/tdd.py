@@ -364,20 +364,40 @@ def _green_prerequisite_surface_state(triplet: Any | None) -> dict[str, Any]:
                     errors.append(f"{label}: human manual preflight requires explicit pending/failed/passed status")
                 if status == "passed" and not str(obligation.get("human_evidence_revision") or "").strip():
                     errors.append(f"{label}: passed human evidence requires human_evidence_revision")
-            elif surface == "player-journey" and str(obligation.get("journey_scope") or "task-local").strip().lower() in {"mvg-critical", "mvg-full"}:
-                integration.append(label)
-                primary = obligation.get("primary_evidence")
-                if (
-                    not isinstance(primary, list)
-                    or not primary
-                    or not any(
-                        str(item or "").strip().replace("\\", "/").startswith("docs/testing/mvg/")
-                        and str(item or "").strip().lower().endswith(".json")
+            elif surface == "player-journey":
+                journey_scope = str(obligation.get("journey_scope") or "task-local").strip().lower()
+                if journey_scope == "task-local":
+                    automated.append(label)
+                elif journey_scope in {"mvg-critical", "mvg-full"}:
+                    integration.append(label)
+                    expected_mode = "critical" if journey_scope == "mvg-critical" else "full"
+                    primary = obligation.get("primary_evidence")
+                    manifest_refs = [
+                        str(item or "").strip().replace("\\", "/")
                         for item in primary
-                    )
-                ):
-                    errors.append(f"{label}: integration player-journey requires a bound docs/testing/mvg manifest")
-            elif surface in {"core-behavior", "godot-scene", "player-journey"}:
+                        if isinstance(item, str)
+                        and str(item or "").strip().replace("\\", "/").startswith("docs/testing/mvg/")
+                        and str(item or "").strip().lower().endswith(".json")
+                    ] if isinstance(primary, list) else []
+                    valid_manifest = False
+                    for manifest_ref in manifest_refs:
+                        manifest_path = repo_root() / manifest_ref
+                        try:
+                            manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+                        except (OSError, json.JSONDecodeError):
+                            continue
+                        coverage = manifest_payload.get("coverage") if isinstance(manifest_payload, dict) else None
+                        if isinstance(coverage, dict) and str(coverage.get("mode") or "").strip().lower() == expected_mode:
+                            valid_manifest = True
+                            break
+                    if not valid_manifest:
+                        errors.append(
+                            f"{label}: {journey_scope} requires a readable docs/testing/mvg manifest "
+                            f"with coverage.mode={expected_mode}"
+                        )
+                else:
+                    errors.append(f"{label}: invalid journey_scope={journey_scope or '<missing>'}")
+            elif surface in {"core-behavior", "godot-scene"}:
                 automated.append(label)
             else:
                 errors.append(f"{label}: invalid or missing verification_surface")
