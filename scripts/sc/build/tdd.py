@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -153,10 +154,13 @@ public class {class_name}
 def run_dotnet_test_filtered(task_id: str, *, solution: str, configuration: str, out_dir: Path) -> dict[str, Any]:
     # Best-effort filter to keep the red stage scoped.
     filter_expr = f"FullyQualifiedName~Game.Core.Tests.Tasks.Task{task_id}"
-    trx_path = out_dir / "direct-red.trx"
+    # A fresh directory prevents a failed invocation from consuming yesterday's TRX.
+    report_dir = out_dir / "direct-red" / uuid.uuid4().hex
+    report_dir.mkdir(parents=True, exist_ok=False)
+    trx_path = report_dir / "direct-red.trx"
     cmd = [
         "dotnet", "test", solution, "-c", configuration, "--filter", filter_expr,
-        "--results-directory", str(out_dir), "--logger", f"trx;LogFileName={trx_path.name}",
+        "--results-directory", str(report_dir), "--logger", f"trx;LogFileName={trx_path.name}",
     ]
     rc, out = run_cmd(cmd, cwd=repo_root(), timeout_sec=900)
     log_path = out_dir / "dotnet-test-filtered.log"

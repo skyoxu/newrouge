@@ -1485,6 +1485,12 @@ def _derive_llm_agent_timeout_overrides(
         if not llm_summary_path.exists():
             continue
         llm_summary = _read_json(llm_summary_path)
+        review_method = llm_summary.get("review_method") if isinstance(llm_summary.get("review_method"), dict) else {}
+        if (
+            str(review_method.get("reviewer_mode") or "").strip() != "single-reviewer"
+            or review_method.get("required_lenses") != ["Spec Compliance", "Edge Case", "Verification Gap"]
+        ):
+            continue
         for result in llm_summary.get("results", []):
             if not isinstance(result, dict):
                 continue
