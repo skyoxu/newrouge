@@ -81,4 +81,10 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 `.github/workflows/mvg-integration.yml` 对相关改动先 plan 校验 `m1-full` 目标 inventory，再在 commit 快照运行完整 `m1-critical` 多 flow 范围并执行奖励输入断线反例；workspace 快照继续运行较小的 `reward-pilot`，专门守住未提交输入与 GdUnit4 runtime-bin 快照语义，避免把完整 critical 套件重复执行两遍。变异实验仍仅手动选择。只要 `m1-full.coverage.blocking_task_ids` 非空，CI 不得把 critical 通过解释为 full-MVG runtime verified。它不修改分支保护或既有 profile 门禁。构建日志、JUnit/TRX 与摘要一起留存。视觉/手感/平衡/性能代表性仍需要人确认；机器报告不能替代试玩结论。
 
-同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。
+同一次快照执行仅在首个 Godot 套件预热，成功后后续套件和接线反例复用构建；每套件仍单独启动进程并隔离报告。已有质量流水线负责统一恢复文档门禁，MVG CI 不重复直接调用该门禁。\n
+
+## 累计里程碑基线
+
+后续里程碑在现有 manifest 上增量演进，不创建互不相干的 “M2 MVG” 测试岛。先用 `scripts/python/update_mvg_baseline.py --manifest <manifest> --delta <reviewed-delta>` 预览；确认后加 `--write`。delta 绑定预览时的 manifest SHA，支持 flow/test 的 `add/update/retain/retire`；retire 必须带真实规格/权威引用，不能通过删测试或降低范围消除失败。
+
+`run-mvg-acceptance` 的 summary 记录精确 `manifest_sha256` 和可选 `baseline_lineage`。单任务 Chapter 6 只运行任务声明的测试、受影响旧回归与必要冒烟；里程碑收尾则运行当前累计必测范围和本轮新增组合测试的同一整合版本。planned 新测试、blocking task 或人工义务仍未完成时只能报告 partial/blocked，不能把稳定子集绿色改写为 milestone passed。
