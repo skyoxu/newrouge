@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from pathlib import Path
 
@@ -60,6 +61,58 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             ok, reason = refresh_mod.verify_triplet_attestation(root, payload)
             self.assertFalse(ok)
             self.assertIn("triplet_file_hash_mismatch", reason)
+
+    def test_add_source_set_keeps_prior_sources_and_requires_explicit_retirement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_set = root / "docs/workflows/chapter3-source-set.json"
+            write_json(source_set, {
+                "schema_version": "chapter3.source-set.v1",
+                "active_patterns": ["docs/prd/base.md", "docs/gdd/phase1.md"],
+                "retirements": [],
+            })
+            args = SimpleNamespace(
+                mode="add",
+                prd_path=[],
+                gdd_path=["docs/gdd/phase2.md"],
+                epics_path=[],
+                stories_path=[],
+                source_glob=[],
+                source_set="docs/workflows/chapter3-source-set.json",
+                retire_source=[],
+                adopt_baseline=False,
+            )
+            patterns, explicit = ledger_mod.collect_patterns(root, args)
+            self.assertTrue(explicit)
+            self.assertEqual(
+                ["docs/prd/base.md", "docs/gdd/phase1.md", "docs/gdd/phase2.md"],
+                patterns,
+            )
+
+            args.retire_source = ["docs/gdd/phase1.md"]
+            retired, _ = ledger_mod.collect_patterns(root, args)
+            self.assertEqual(["docs/prd/base.md", "docs/gdd/phase2.md"], retired)
+
+            args.retire_source = ["docs/gdd/not-declared.md"]
+            with self.assertRaisesRegex(ValueError, "undeclared"):
+                ledger_mod.collect_patterns(root, args)
+
+    def test_add_with_new_source_and_no_source_set_requires_baseline_adoption(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            args = SimpleNamespace(
+                mode="add",
+                prd_path=[],
+                gdd_path=["docs/gdd/phase2.md"],
+                epics_path=[],
+                stories_path=[],
+                source_glob=[],
+                source_set="docs/workflows/chapter3-source-set.json",
+                retire_source=[],
+                adopt_baseline=False,
+            )
+            with self.assertRaisesRegex(ValueError, "adoption-required"):
+                ledger_mod.collect_patterns(root, args)
 
     def test_full_ledger_keeps_chinese_and_long_blocks_before_filtering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
