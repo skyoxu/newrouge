@@ -114,6 +114,11 @@ class Chapter3SemanticConservationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "adoption-required"):
                 ledger_mod.collect_patterns(root, args)
 
+            args.adopt_baseline = True
+            adopted, explicit = ledger_mod.collect_patterns(root, args)
+            self.assertTrue(explicit)
+            self.assertEqual(["docs/gdd/phase2.md"], adopted)
+
     def test_full_ledger_keeps_chinese_and_long_blocks_before_filtering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
