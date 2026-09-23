@@ -11,10 +11,55 @@ PYTHON_DIR = Path(__file__).resolve().parents[1]
 if str(PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(PYTHON_DIR))
 
-from validate_acceptance_execution_evidence import validate_view  # noqa: E402
+from validate_acceptance_execution_evidence import (  # noqa: E402
+    parse_junit_testcase_names,
+    parse_trx_test_names,
+    validate_view,
+)
 
 
 class ClassifiedExecutionEvidenceTests(unittest.TestCase):
+    def test_skipped_and_failed_results_cannot_satisfy_classified_obligations(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            core = "Game.Core.Tests/Tasks/Task15Tests.cs"
+            scene = "Tests.Godot/tests/Scenes/test_task_15.gd"
+            for ref, source in (
+                (core, "public class Task15Tests\n{\n// ACC:T15.1\n[Fact]\npublic void CoreWorks() {}\n}"),
+                (scene, "# ACC:T15.1\nfunc test_scene_works():\n    pass"),
+            ):
+                path = root / ref
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+            entry = {
+                "acceptance": [f"Mixed behavior. Refs: {core} {scene}"],
+                "acceptance_verification": {"ACC:T15.1": {"obligations": [
+                    {"obligation_id": "core", "verification_surface": "core-behavior", "primary_evidence": [core]},
+                    {"obligation_id": "scene", "verification_surface": "godot-scene", "primary_evidence": [scene]},
+                ]}},
+            }
+            trx = root / "run.trx"
+            junit = root / "results.xml"
+            for core_outcome, scene_result, expected in (
+                ("Passed", "", "ok"),
+                ("Passed", "<skipped/>", "fail"),
+                ("NotExecuted", "<skipped/>", "fail"),
+                ("Failed", "<failure/>", "fail"),
+            ):
+                trx.write_text(
+                    f'<TestRun><Results><UnitTestResult testName="Game.Core.Tests.Tasks.Task15Tests.CoreWorks" '
+                    f'outcome="{core_outcome}"/></Results></TestRun>', encoding="utf-8",
+                )
+                junit.write_text(
+                    f'<testsuites><testsuite><testcase name="test_scene_works">{scene_result}'
+                    '</testcase></testsuite></testsuites>', encoding="utf-8",
+                )
+                result = validate_view(
+                    root=root, view_name="back", task_id="15", entry=entry,
+                    trx_names=parse_trx_test_names(trx), gdunit_names=parse_junit_testcase_names(junit),
+                )
+                self.assertEqual(expected, result["status"], (core_outcome, scene_result))
+
     def test_mixed_anchor_requires_each_automated_obligation_to_execute(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

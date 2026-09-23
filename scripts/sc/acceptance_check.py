@@ -32,7 +32,7 @@ from _acceptance_task_requirements import (
     task_requires_env_evidence_preflight,
     task_requires_headless_e2e,
 )
-from _acceptance_verification_surface import validate_acceptance_verification
+from _acceptance_verification_surface import requires_task_local_execution_evidence, validate_acceptance_verification
 from _acceptance_steps import StepResult, step_perf_budget
 from _risk_summary import write_risk_summary
 from _security_profile import security_profile_payload
@@ -323,7 +323,9 @@ def main() -> int:
     has_gd_refs = task_requires_headless_e2e(triplet) or force_headless_for_task1
     needs_env_preflight = task_requires_env_evidence_preflight(triplet)
     require_headless_e2e = bool(args.require_headless_e2e) and has_gd_refs
-    require_executed_refs = bool(args.require_executed_refs)
+    require_executed_refs = bool(args.require_executed_refs) or (
+        is_enabled(only_steps, "tests") and requires_task_local_execution_evidence(triplet)
+    )
 
     security_profile, security_modes = resolve_security_modes(args)
     audit_evidence_mode = security_modes["audit_evidence"]

@@ -41,6 +41,24 @@ def collect_acceptance_verification(triplet: Any) -> dict[str, dict[str, Any]]:
     return merged
 
 
+def requires_task_local_execution_evidence(triplet: Any) -> bool:
+    for classified in collect_acceptance_verification(triplet).values():
+        rows = classified.get("obligations")
+        if rows is None:
+            rows = [classified]
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            surface = str(row.get("verification_surface") or "").strip()
+            if surface in {"core-behavior", "godot-scene"}:
+                return True
+            if surface == "player-journey" and str(row.get("journey_scope") or "task-local").strip().lower() == "task-local":
+                return True
+    return False
+
+
 def infer_legacy_verification_candidates(triplet: Any) -> dict[str, dict[str, Any]]:
     task_id = str(getattr(triplet, "task_id", "") or "").strip()
     explicit = collect_acceptance_verification(triplet)
