@@ -381,7 +381,16 @@ def main() -> int:
     }
 
     if args.apply:
-        _copy_generated_to_target(generated_dir, existing_dir)
+        for page in selected_pages:
+            filename = str(page.get("filename") or "")
+            old = str((page_state.get(filename) or {}).get("current_page_text") or "")
+            target = existing_dir / filename
+            if (target.read_text(encoding="utf-8") if target.exists() else "") != old:
+                raise ValueError(f"overlay source changed before apply: {filename}")
+        _copy_generated_to_target(generated_dir, existing_dir, {
+            str(page.get("filename") or ""): str((page_state.get(str(page.get("filename") or "")) or {}).get("current_page_text") or "")
+            for page in selected_pages
+        })
         summary["applied_to"] = normalize_relpath(existing_dir, root=root)
 
     write_json(out_dir / "summary.json", summary)

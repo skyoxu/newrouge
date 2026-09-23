@@ -40,6 +40,8 @@ from __future__ import annotations
 
 import json
 import argparse
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
@@ -73,12 +75,24 @@ def load_tasks(task_file: Path) -> List[Dict]:
     return []
 
 
-def _merge_view_task(existing: Dict[str, Any], incoming: Dict[str, Any], tid: str) -> Dict[str, Any]:
+def _merge_view_task(existing: Dict[str, Any], incoming: Dict[str, Any], tid: str, *, numeric_group: bool = False) -> Dict[str, Any]:
     merged = dict(existing)
     for key, value in incoming.items():
         if key == "id":
             continue
         if key in merged and merged[key] != value:
+            if numeric_group and key in {"story_id", "description", "owner"}:
+                # Distinct source tasks may share a numeric Taskmaster task. Keep
+                # each source's identity in the view; do not silently choose one.
+                merged[key] = " / ".join(dict.fromkeys([str(merged[key]), str(value)]))
+                continue
+            if numeric_group and key in {"depends_on", "dependencies"}:
+                merged[key] = list(dict.fromkeys([*merged[key], *value]))
+                continue
+            if numeric_group and key == "status":
+                # A shared master task cannot be done while either source view is pending.
+                merged[key] = next((state for state in ("blocked", "in-progress", "pending", "deferred", "cancelled") if state in {str(merged[key]), str(value)}), "done")
+                continue
             if key in {"taskmaster_id", "status", "depends_on", "dependencies"}:
                 raise ValueError(f"conflicting cross-view field for {tid}: {key}")
             if isinstance(merged[key], list) and isinstance(value, list):
@@ -177,7 +191,7 @@ def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[st
     source_ids = [str(merged.get("id") or "")]
     for row in rows[1:]:
         source_ids.append(str(row.get("id") or ""))
-        merged = _merge_view_task(merged, row, f"taskmaster:{num_id}")
+        merged = _merge_view_task(merged, row, f"taskmaster:{num_id}", numeric_group=True)
     merged["source_view_ids"] = [value for value in source_ids if value]
     merged["taskmaster_id"] = num_id
     return merged
@@ -257,11 +271,9 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         try:
             root_obj = json.loads(TASKMASTER_TASKS_FILE.read_text(encoding="utf-8"))
             if not isinstance(root_obj, dict):
-                print("Existing tasks.json is not an object; resetting.")
-                root_obj = {}
+                raise ValueError("existing tasks.json is not an object")
         except Exception as exc:  # noqa: BLE001
-            print(f"Warning: failed to read existing tasks.json: {exc}")
-            root_obj = {}
+            raise ValueError(f"cannot load existing tasks.json: {exc}") from exc
     else:
         root_obj = {}
 
@@ -385,7 +397,7 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         dep_ids: List[int] = []
         for dep in get_dependencies(src):
             num_dep = id_map.get(dep)
-            if num_dep is not None:
+            if num_dep is not None and num_dep != num_id and num_dep not in dep_ids:
                 dep_ids.append(num_dep)
 
         generated_fields: Dict[str, Any] = {
@@ -413,18 +425,10 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
             existing_by_id[num_id] = len(tag_tasks)
             tag_tasks.append(generated_fields)
 
-    # Assemble root object for Task Master and persist.
-    TASKS_DIR.mkdir(parents=True, exist_ok=True)
-    TASKMASTER_TASKS_FILE.write_text(
-        json.dumps(root_obj, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(f"Wrote Task Master tasks file to: {TASKMASTER_TASKS_FILE}")
-
-    # 7) 更新源任务文件上的 bookkeeping 字段
-    def mark_exported(file_path: Path) -> None:
+    # Prepare every view before writing any of the three files.
+    def mark_exported(file_path: Path) -> Any:
         if not file_path.exists():
-            return
+            return None
         data = json.loads(file_path.read_text(encoding="utf-8"))
         is_list = isinstance(data, list)
         tasks = data if is_list else data.get("tasks", [])
@@ -444,15 +448,44 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         else:
             new_data = data
             new_data["tasks"] = tasks
-        file_path.write_text(
-            json.dumps(new_data, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        print(f"Updated source task file: {file_path}")
+        return new_data
 
-    # 仅更新本次参与构建的源任务文件；用户通常会从这些文件中选择 ID。
+    updates: list[tuple[Path, Any]] = [(TASKMASTER_TASKS_FILE, root_obj)]
     for src_file in task_files:
-        mark_exported(src_file)
+        marked = mark_exported(src_file)
+        if marked is not None:
+            updates.append((src_file, marked))
+    _atomic_write_many(updates)
+    print(f"Wrote Task Master tasks file to: {TASKMASTER_TASKS_FILE}")
+
+
+def _atomic_write_many(updates: list[tuple[Path, Any]]) -> None:
+    staged: list[tuple[Path, Path]] = []
+    originals: dict[Path, bytes | None] = {}
+    replaced: list[Path] = []
+    try:
+        for path, payload in updates:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            originals[path] = path.read_bytes() if path.exists() else None
+            fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+            os.close(fd)
+            temp_path = Path(tmp)
+            staged.append((path, temp_path))
+            temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        for path, temp_path in staged:
+            os.replace(temp_path, path)
+            replaced.append(path)
+    except Exception:
+        for path in reversed(replaced):
+            original = originals[path]
+            if original is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(original)
+        raise
+    finally:
+        for _, temp_path in staged:
+            temp_path.unlink(missing_ok=True)
 
 def main() -> None:
     parser = argparse.ArgumentParser(

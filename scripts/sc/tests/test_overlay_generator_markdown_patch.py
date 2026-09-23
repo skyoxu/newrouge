@@ -8,9 +8,30 @@ if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
 import _overlay_generator_markdown_patch as patchmod
+import _overlay_generator_scaffold_prompting as prompting
 
 
 class OverlayGeneratorMarkdownPatchTests(unittest.TestCase):
+    def test_sparse_section_addition_keeps_unstructured_old_constraint(self) -> None:
+        old = "# Page\n\n## Rules\n\nOld invariant prose must survive.\n\n- Old bullet\n"
+        result = patchmod.apply_scaffold_update_to_existing_markdown(
+            current_markdown=old,
+            scaffold_update={"strict_incremental_patch": True, "sections": [{"heading": "Rules", "bullets": ["New bullet"]}]},
+        )
+        self.assertIn("Old invariant prose must survive.", result)
+        self.assertIn("- Old bullet", result)
+        self.assertIn("- New bullet", result)
+        with self.assertRaisesRegex(ValueError, "manual review"):
+            patchmod.apply_scaffold_update_to_existing_markdown(
+                current_markdown=old,
+                scaffold_update={"strict_incremental_patch": True, "sections": [{"heading": "Rules", "operation": "replace", "bullets": ["New bullet"]}]},
+            )
+        with self.assertRaisesRegex(ValueError, "Unsupported scaffold section operation"):
+            prompting.parse_and_validate_scaffold_update(
+                raw_output='{"filename":"page.md","update":{"sections":[{"heading":"Rules","remove_bullets":["Old bullet"]}]}}',
+                expected_filename="page.md",
+            )
+
     def test_apply_scaffold_update_to_existing_markdown_should_preserve_rich_intro_and_nested_sections(self) -> None:
         current_markdown = """---
 

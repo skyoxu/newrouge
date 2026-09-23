@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import datetime as dt
 import hashlib
 import json
@@ -483,12 +484,19 @@ def build_ledger(
     mode: str,
     explicit: bool = False,
     previous_ledger: dict[str, Any] | None = None,
+    retired_sources: set[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     files, missing = resolve_sources(root, patterns, explicit)
     if missing:
         raise ValueError("declared source patterns matched no supported files: " + ", ".join(missing))
     if not files:
         raise ValueError("no authoritative planning sources matched")
+    if mode == "add" and previous_ledger:
+        previous_paths = {str(row.get("source_path")) for row in previous_ledger.get("blocks", []) if isinstance(row, dict)}
+        current_paths = {path.relative_to(root).as_posix() for path in files}
+        missing_prior = sorted(path for path in previous_paths - current_paths if not any(fnmatch.fnmatch(path, pattern) for pattern in (retired_sources or set())))
+        if missing_prior:
+            raise ValueError("previous sources disappeared without --retire-source: " + ", ".join(missing_prior))
     sources = []
     blocks = []
     for path in files:
@@ -571,7 +579,8 @@ def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], b
             base = list(source_set.get("active_patterns", []))
         retire_values = list(getattr(args, "retire_source", []) or [])
         retire = {str(item).strip() for item in retire_values if str(item).strip()}
-        unknown = sorted(retire - set(base))
+        known_sources = set(source_set.get("active_sources", [])) if source_set else set()
+        unknown = sorted(retire - set(base) - known_sources)
         if unknown:
             raise ValueError("cannot retire undeclared sources: " + ", ".join(unknown))
         patterns = [item for item in base if item not in retire]
@@ -584,10 +593,11 @@ def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], b
     return list(DEFAULT_SOURCE_GLOBS), False
 
 
-def source_set_payload(patterns: list[str], retirements: list[str]) -> dict[str, Any]:
+def source_set_payload(patterns: list[str], retirements: list[str], sources: list[str] | None = None) -> dict[str, Any]:
     return {
         "schema_version": "chapter3.source-set.v1",
         "active_patterns": list(patterns),
+        "active_sources": sources or [],
         "retirements": [
             {"path": value, "reason": "explicit-cli-retirement"}
             for value in retirements
@@ -629,7 +639,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "add" and previous_path.is_file():
         previous = json.loads(previous_path.read_text(encoding="utf-8"))
     try:
-        manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous)
+        manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous, set(args.retire_source))
+        source_set = _load_source_set(root, args.source_set)
+        if args.mode == "add" and source_set:
+            prior_sources = set(source_set.get("active_sources") or [])
+            current_sources = {row["path"] for row in manifest["sources"]}
+            missing_sources = sorted(path for path in prior_sources - current_sources if not any(fnmatch.fnmatch(path, pattern) for pattern in args.retire_source))
+            if missing_sources:
+                raise ValueError("previous sources disappeared without --retire-source: " + ", ".join(missing_sources))
     except ValueError as exc:
         print(f"source_ledger_error={exc}")
         return 2
@@ -638,7 +655,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_source_set:
         source_set_path = Path(args.source_set)
         source_set_path = source_set_path if source_set_path.is_absolute() else root / source_set_path
-        write_json(source_set_path, source_set_payload(patterns, list(args.retire_source)))
+        write_json(source_set_path, source_set_payload(patterns, list(args.retire_source), [row["path"] for row in manifest["sources"]]))
     delta = ledger["delta"]
     print(
         f"source_ledger={out} sources={manifest['source_count']} blocks={manifest['block_count']} "

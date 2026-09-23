@@ -161,4 +161,4 @@ Users continue to select a Chapter Skill and supply the relevant sources or task
 
 ### Incremental milestones
 
-Later GDD milestones reuse the existing Chapter 3→6 and MVG lifecycle. The cumulative source declaration is `docs/workflows/chapter3-source-set.json`; reviewed task/change handoffs use `scripts/python/milestone_incremental_handoff.py`; cumulative integration manifests are evolved with `scripts/python/update_mvg_baseline.py`. See `workflow.md` and `docs/workflows/mvg-integration-acceptance.md`.
+Later GDD milestones reuse the existing Chapter 3→6 and MVG lifecycle. The cumulative source declaration is `docs/workflows/chapter3-source-set.json` and stable intent IDs are recorded in `docs/workflows/chapter3-intent-ids.json`. Review the task triplet preview before `--write`. Reviewed task/change handoffs use `scripts/python/milestone_incremental_handoff.py`; Chapter 6 consumes passed current-revision MVG evidence for declared regressions via `--milestone-regression-summary`. Cumulative integration manifests are evolved with `scripts/python/update_mvg_baseline.py`. See `workflow.md` and `docs/workflows/mvg-integration-acceptance.md`.
