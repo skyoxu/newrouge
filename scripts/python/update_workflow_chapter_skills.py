@@ -43,7 +43,8 @@ SKILLS = {
         "evidence": "Original planning sources remain authority. Source-block accounting and semantic sink coverage are primary; legacy P0/P1 anchors remain downstream packaging evidence only. Capability is optional and Chapter 3 dependency edges are provisional.",
         "steps": [
             "Resolve init versus add and allocate a trigger_run_id. Interactive/multi-turn runs call dev_cli.py refresh-knowledge --source chapter3 --trigger-run-id <run-id> --begin-run before expensive/model-backed work; scripted top-level automation wraps its child workflow with dev_cli.py run-chapter3-guarded so both start and final Attempt refresh are enforced.",
-            "Build the complete Source Block Ledger before any requirement-like filter and fail on declared missing sources."
+            "Build the complete Source Block Ledger before any requirement-like filter and fail on declared missing sources.",
+            "In add mode, start from the versioned cumulative source set; source retirement is explicit and a missing trustworthy baseline requires adoption.",
             "Generate the legacy anchor index from the ledger only as downstream packaging evidence.",
             "Prepare deterministic semantic batches bounded by block count and character budget. Oversized single blocks fail rather than truncate.",
             "The approved model must read every batch, explicitly set delivery_potential, fill atoms or a disposition for every block_result, and reconcile output_accounted_count; requirement_like_hint is diagnostic only.",
