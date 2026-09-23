@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -303,6 +304,11 @@ def main() -> int:
                 base_page = dict(state.get("scaffold_base_page") or {})
                 parsed_page = merge_scaffold_update(base_page, scaffold_update)
                 if current_page_text.strip():
+                    scaffold_update = dict(scaffold_update)
+                    scaffold_update["strict_incremental_patch"] = True
+                    scaffold_update["expected_sha256"] = (
+                        "sha256:" + hashlib.sha256(current_page_text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")).hexdigest()
+                    )
                     output_markdown = apply_scaffold_update_to_existing_markdown(
                         current_markdown=current_page_text,
                         scaffold_update=scaffold_update,
