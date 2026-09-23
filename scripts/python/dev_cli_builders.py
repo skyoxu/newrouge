@@ -485,7 +485,7 @@ def build_run_single_task_chapter6_cmd(args) -> list[str]:
         cmd += ["--fix-through", args.fix_through]
     if args.out_dir:
         cmd += ["--out-dir", args.out_dir]
-    for name in ("frozen_context", "impact_report", "revision", "binding_evidence"):
+    for name in ("frozen_context", "impact_report", "revision", "binding_evidence", "milestone_handoff"):
         value = str(getattr(args, name, "") or "").strip()
         if value:
             cmd += [f"--{name.replace('_', '-')}", value]
