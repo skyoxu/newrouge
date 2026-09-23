@@ -407,6 +407,31 @@ class Chapter3TaskGenerationTests(unittest.TestCase):
                 "GM-1",
             )
 
+        compatible = mod.merge_numeric_view_group([
+            {
+                "id": "NG-6",
+                "taskmaster_id": 6,
+                "status": "done",
+                "acceptance": ["Backbone acceptance"],
+                "overlay_refs": ["docs/back.md"],
+            },
+            {
+                "id": "GM-6",
+                "taskmaster_id": 6,
+                "status": "done",
+                "acceptance": ["Gameplay acceptance"],
+                "overlay_refs": ["docs/game.md"],
+            },
+        ], 6)
+        self.assertEqual(["Backbone acceptance", "Gameplay acceptance"], compatible["acceptance"])
+        self.assertEqual(["docs/back.md", "docs/game.md"], compatible["overlay_refs"])
+        self.assertEqual(["NG-6", "GM-6"], compatible["source_view_ids"])
+        with self.assertRaisesRegex(ValueError, "conflicting cross-view field"):
+            mod.merge_numeric_view_group([
+                {"id": "NG-6", "taskmaster_id": 6, "status": "done", "title": "Backbone"},
+                {"id": "GM-6", "taskmaster_id": 6, "status": "done", "title": "Different gameplay title"},
+            ], 6)
+
     def test_candidate_generation_should_prefer_task_intents_when_present(self) -> None:
         mod = _load_module("generate_task_candidates_for_intent_test", "scripts/python/generate_task_candidates_from_sources.py")
         with tempfile.TemporaryDirectory() as td:
