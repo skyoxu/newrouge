@@ -776,6 +776,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch6.add_argument("--revision", default="")
     p_ch6.add_argument("--binding-evidence", default="")
     p_ch6.add_argument("--milestone-handoff", default="")
+    p_ch6.add_argument("--milestone-regression-summary", default="")
     p_ch6.add_argument("--self-check", action="store_true")
     p_ch6.set_defaults(func=cmd_run_single_task_chapter6)
 

@@ -1741,3 +1741,5 @@ Helper modules below are referenced directly by at least two included entry scri
 - `scripts/python/update_mvg_baseline.py`: previews or applies a hash-bound cumulative MVG manifest delta; retirement requires authority evidence.
 - `scripts/python/build_source_ledger.py`: add mode also consumes `docs/workflows/chapter3-source-set.json`; source retirement is explicit.
 - `scripts/python/compile_task_triplet.py`: emits v2 explicit task operations and an affected-id export file for lossless Taskmaster export.
+
+- `dev-cli run-single-task-chapter6`: forwards `--milestone-handoff` and `--milestone-regression-summary`; consumes regression evidence only for current HEAD and a clean worktree.

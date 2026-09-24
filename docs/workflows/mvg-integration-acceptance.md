@@ -102,3 +102,14 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 后续里程碑在现有 manifest 上增量演进，不创建互不相干的 “M2 MVG” 测试岛。先用 `scripts/python/update_mvg_baseline.py --manifest <manifest> --delta <reviewed-delta>` 预览；确认后加 `--write`。delta 绑定预览时的 manifest SHA，支持 flow/test 的 `add/update/retain/retire`；retire 必须带真实规格/权威引用，不能通过删测试或降低范围消除失败。
 
 `run-mvg-acceptance` 的 summary 记录精确 `manifest_sha256` 和可选 `baseline_lineage`。单任务 Chapter 6 只运行任务声明的测试、受影响旧回归与必要冒烟；里程碑收尾则运行当前累计必测范围和本轮新增组合测试的同一整合版本。planned 新测试、blocking task 或人工义务仍未完成时只能报告 partial/blocked，不能把稳定子集绿色改写为 milestone passed。
+
+
+### Incremental harness regression (T26)
+
+```powershell
+py -3 -m unittest discover -s scripts/python/tests -p test_milestone_two_stage_integration.py -v
+```
+
+This two-stage fixture exercises source accumulation, task preview/apply/export, sparse overlays, Chapter 5 reconciliation and handoff, cumulative baseline updates, and regression evidence consumption. It preserves the old done task and subtasks, blocks planned tests, proves that a passing new shop test cannot hide a failing old reward regression, and accepts both only after correction on one committed revision. Replaying a stale task preview is rejected without changing the triplet.
+
+The fixture replaces the engine adapter with deterministic subprocess assertions and actual TRX parsing in git snapshots. It validates workflow integration, not Godot gameplay or the real next-milestone GDD. Actual milestone acceptance still requires the manifest's real engine/domain tests and human obligations. Chapter 6 rejects previously passed evidence when the current worktree has tracked or untracked changes, even if HEAD is unchanged.

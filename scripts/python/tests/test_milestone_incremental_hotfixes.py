@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import shutil
 import sys
 import tempfile
 import unittest
@@ -20,6 +21,7 @@ import compile_task_triplet as triplet_mod
 import milestone_incremental_handoff as handoff_mod
 import normalize_task_intents as intent_mod
 import update_mvg_baseline as baseline_mod
+import dev_cli
 
 
 def save(path: Path, data: object) -> None:
@@ -28,6 +30,55 @@ def save(path: Path, data: object) -> None:
 
 
 class MilestoneHotfixTests(unittest.TestCase):
+    def test_public_chapter6_entry_forwards_regression_evidence(self) -> None:
+        with patch.object(dev_cli, "run", return_value=0) as run:
+            self.assertEqual(0, dev_cli.main([
+                "run-single-task-chapter6", "--task-id", "6", "--milestone-handoff", "handoff.json",
+                "--milestone-regression-summary", "logs/ci/mvg-acceptance/run/summary.json",
+            ]))
+        cmd = run.call_args.args[0]
+        self.assertEqual("logs/ci/mvg-acceptance/run/summary.json", cmd[cmd.index("--milestone-regression-summary") + 1])
+
+    def test_export_preserves_existing_master_lifecycle_until_explicit_reopen(self) -> None:
+        original = {"id": 6, "status": "done", "subtasks": [{"id": 1, "status": "done"}]}
+        refreshed = master_mod.merge_master_fields(original, {"id": 6, "status": "pending", "title": "Updated"})
+        self.assertEqual("done", refreshed["status"])
+        self.assertEqual(original["subtasks"], refreshed["subtasks"])
+        self.assertEqual("Updated", refreshed["title"])
+        reopened = {**original, "status": "in-progress"}
+        self.assertEqual("in-progress", master_mod.merge_master_fields(reopened, {"status": "done"})["status"])
+
+    def test_real_task6_export_preserves_done_and_all_subtasks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for filename in ("tasks.json", "tasks_back.json", "tasks_gameplay.json"):
+                shutil.copyfile(ROOT / ".taskmaster/tasks" / filename, root / filename)
+            before = next(row for row in json.loads((root / "tasks.json").read_text(encoding="utf-8"))["master"]["tasks"] if row["id"] == 6)
+            with patch.object(master_mod, "ROOT", root), patch.object(master_mod, "TASKMASTER_TASKS_FILE", root / "tasks.json"):
+                master_mod.build_taskmaster_tasks(SimpleNamespace(tasks_files=["tasks_back.json", "tasks_gameplay.json"],
+                    ids=["NG-0004", "GM-0106"], ids_file="", tag="master", allow_legacy_t2_default=False))
+            after = next(row for row in json.loads((root / "tasks.json").read_text(encoding="utf-8"))["master"]["tasks"] if row["id"] == 6)
+            self.assertEqual(before["status"], after["status"])
+            self.assertEqual(before["subtasks"], after["subtasks"])
+
+    def test_retirement_excludes_existing_glob_match_after_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            declaration = root / "docs/workflows/chapter3-source-set.json"
+            save(declaration, {"schema_version": "chapter3.source-set.v1", "active_patterns": ["docs/gdd/**/*.md"], "active_sources": ["docs/gdd/old.md", "docs/gdd/new.md"]})
+            for name in ("old", "new"):
+                path = root / f"docs/gdd/{name}.md"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}\n\nA requirement.\n", encoding="utf-8")
+            args = ["--repo-root", str(root), "--mode", "add", "--write-source-set"]
+            self.assertEqual(0, source_mod.main(args + ["--retire-source", "docs/gdd/old.md"]))
+            (root / "logs/ci/task-generation/source-blocks.v1.json").unlink()
+            self.assertEqual(0, source_mod.main(args))
+            payload = json.loads(declaration.read_text())
+            self.assertEqual(["docs/gdd/new.md"], payload["active_sources"])
+            self.assertEqual("docs/gdd/old.md", payload["retirements"][0]["path"])
+            self.assertTrue((root / "docs/gdd/old.md").is_file())
+
     def test_triplet_write_consumes_reviewed_actions_and_rejects_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -134,9 +185,13 @@ class MilestoneHotfixTests(unittest.TestCase):
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             # Commit identity is supplied per invocation to avoid relying on host config.
             subprocess.run(["git", "-C", str(root), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-qm", "baseline"], check=True)
-            revision = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
             manifest = root / "docs/testing/mvg/critical.json"
             save(manifest, {"tests": [{"id": "old-test"}]})
+            (root / ".gitignore").write_text("logs/\n", encoding="utf-8")
+            (root / "behavior.py").write_text("result = True\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(root), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "tested input"], check=True)
+            revision = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
             summary = root / "logs/ci/mvg-acceptance/run/summary.json"
             save(summary, {
                 "schema_version": "newrouge.mvg-acceptance.v1", "manifest": "docs/testing/mvg/critical.json",
@@ -146,6 +201,12 @@ class MilestoneHotfixTests(unittest.TestCase):
             })
             handoff = {"required_regressions": ["old-test"]}
             self.assertEqual((True, "ok"), handoff_mod.validate_milestone_regressions(root, handoff, summary))
+            (root / "behavior.py").write_text("result = False\n", encoding="utf-8")
+            self.assertEqual("milestone_regression_workspace_dirty", handoff_mod.validate_milestone_regressions(root, handoff, summary)[1])
+            (root / "behavior.py").write_text("result = True\n", encoding="utf-8")
+            (root / "new_behavior.py").write_text("result = False\n", encoding="utf-8")
+            self.assertEqual("milestone_regression_workspace_dirty", handoff_mod.validate_milestone_regressions(root, handoff, summary)[1])
+            (root / "new_behavior.py").unlink()
             save(summary, {**json.loads(summary.read_text()), "steps": [{"id": "old-test", "status": "failed"}]})
             self.assertEqual("milestone_required_regressions_not_passed", handoff_mod.validate_milestone_regressions(root, handoff, summary)[1])
             manifest.write_text(manifest.read_text() + "\n", encoding="utf-8")
