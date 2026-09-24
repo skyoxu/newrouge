@@ -1,8 +1,8 @@
 {
   "authority_ref": "refs/heads/main",
-  "generation_id": "bf5e36e25bfcd0561cf6e2f6bac54621064e737171c7e44165ffa103d931527c",
-  "generation_sha256": "sha256:83f8a8710d2ea9c66ae381c49ca64788d1af4081f48e42bb0633d43ea0bfacf4",
-  "main_commit": "f18c3a8c29accb89956c70e1a434ce0cb9798741",
+  "generation_id": "a2738bccdb91c151c02d1d040fa287cd48cf1bf1f16f098ea64524e01511c312",
+  "generation_sha256": "sha256:b11ad500c090004260ed7df5f962db4fd973ae425cd246f774459a4ba56d2e32",
+  "main_commit": "9aeb23db42b15117de342d6222a356e3ea6cd0b4",
   "schema_version": "newrouge.knowledge-index-pointer.v1",
-  "source_snapshot_id": "56cba19c2bace16e4177724eb898cc68ca97c55ef64faf41acf3709f4bfe9b34"
+  "source_snapshot_id": "02a9995bcdace7d6e550951e2d5cc96805184cfd149546549cebcb0f66b3d7c1"
 }
