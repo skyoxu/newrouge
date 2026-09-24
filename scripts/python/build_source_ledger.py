@@ -489,6 +489,10 @@ def build_ledger(
     files, missing = resolve_sources(root, patterns, explicit)
     if missing:
         raise ValueError("declared source patterns matched no supported files: " + ", ".join(missing))
+    files = [path for path in files if not any(
+        fnmatch.fnmatch(path.relative_to(root).as_posix(), retired)
+        for retired in (retired_sources or set())
+    )]
     if not files:
         raise ValueError("no authoritative planning sources matched")
     if mode == "add" and previous_ledger:
@@ -580,6 +584,8 @@ def collect_patterns(root: Path, args: argparse.Namespace) -> tuple[list[str], b
         retire_values = list(getattr(args, "retire_source", []) or [])
         retire = {str(item).strip() for item in retire_values if str(item).strip()}
         known_sources = set(source_set.get("active_sources", [])) if source_set else set()
+        if source_set:
+            known_sources.update(str(row.get("path")) for row in source_set.get("retirements", []) if isinstance(row, dict))
         unknown = sorted(retire - set(base) - known_sources)
         if unknown:
             raise ValueError("cannot retire undeclared sources: " + ", ".join(unknown))
@@ -639,12 +645,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "add" and previous_path.is_file():
         previous = json.loads(previous_path.read_text(encoding="utf-8"))
     try:
-        manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous, set(args.retire_source))
         source_set = _load_source_set(root, args.source_set)
+        retirement_rows = {
+            str(row["path"]): dict(row)
+            for row in (source_set or {}).get("retirements", [])
+            if isinstance(row, dict) and row.get("path")
+        }
+        for path in args.retire_source:
+            retirement_rows.setdefault(path, {"path": path, "reason": "explicit-cli-retirement"})
+        retired_sources = set(retirement_rows)
+        manifest, ledger = build_ledger(root, patterns, args.mode, explicit, previous, retired_sources)
         if args.mode == "add" and source_set:
             prior_sources = set(source_set.get("active_sources") or [])
             current_sources = {row["path"] for row in manifest["sources"]}
-            missing_sources = sorted(path for path in prior_sources - current_sources if not any(fnmatch.fnmatch(path, pattern) for pattern in args.retire_source))
+            missing_sources = sorted(path for path in prior_sources - current_sources if not any(fnmatch.fnmatch(path, pattern) for pattern in retired_sources))
             if missing_sources:
                 raise ValueError("previous sources disappeared without --retire-source: " + ", ".join(missing_sources))
     except ValueError as exc:
@@ -655,7 +669,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_source_set:
         source_set_path = Path(args.source_set)
         source_set_path = source_set_path if source_set_path.is_absolute() else root / source_set_path
-        write_json(source_set_path, source_set_payload(patterns, list(args.retire_source), [row["path"] for row in manifest["sources"]]))
+        declaration = source_set_payload(patterns, sorted(retired_sources), [row["path"] for row in manifest["sources"]])
+        declaration["retirements"] = [retirement_rows[path] for path in sorted(retirement_rows)]
+        write_json(source_set_path, declaration)
     delta = ledger["delta"]
     print(
         f"source_ledger={out} sources={manifest['source_count']} blocks={manifest['block_count']} "

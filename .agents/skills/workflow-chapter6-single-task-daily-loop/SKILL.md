@@ -84,6 +84,7 @@ py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<busine
 ## Milestone incremental consumption
 
 - Chapter 6 remains task-local. When a milestone handoff exists, pass it through `--milestone-handoff` and consume only its task-owned behavior, authorities and regression obligations.
+- For declared MVG regression IDs, pass `--milestone-regression-summary <path>` through `dev-cli run-single-task-chapter6` or the underlying lane. Evidence must cover the current HEAD and exact manifest; a dirty current worktree blocks consumption. Commit changes and rerun acceptance before completion.
 - A stale readiness binding, unresolved change, or task mismatch blocks before RED.
 - If task/contract scope changes during implementation, stop and regenerate Chapter 5 readiness/handoff instead of widening the current RED/GREEN context.
 - Task-local success is not milestone acceptance; cumulative MVG closure remains a separate same-revision run.

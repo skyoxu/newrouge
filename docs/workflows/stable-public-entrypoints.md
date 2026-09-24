@@ -507,4 +507,6 @@ Use them directly when you are isolating one failing stage or intentionally bypa
 - `scripts/python/update_mvg_baseline.py`: previews/applies an explicit add/update/retain/retire delta to an existing MVG manifest.
 - `scripts/python/run_mvg_acceptance.py`: remains the runtime entrypoint and records the exact manifest SHA/baseline lineage.
 
+`dev-cli run-single-task-chapter6` forwards both `--milestone-handoff` and `--milestone-regression-summary` to the lane. Regression evidence requires the exact current HEAD/manifest and a clean current worktree.
+
 These are additive modes of the existing Chapter workflow, not a second milestone framework.

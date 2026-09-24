@@ -181,6 +181,10 @@ def merge_master_fields(existing_task: Dict[str, Any], generated_fields: Dict[st
     """Update only view-owned Taskmaster fields while preserving master-native extensions."""
     merged = dict(existing_task)
     merged.update(generated_fields)
+    # Export refreshes planning fields, not the existing master lifecycle.
+    # Reopen/complete through the explicit task-status workflow before export.
+    if "status" in existing_task:
+        merged["status"] = existing_task["status"]
     return merged
 
 def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[str, Any]:

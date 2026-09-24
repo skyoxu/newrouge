@@ -311,4 +311,4 @@ py -3 scripts/python/normalize_task_intents.py --mode add
 py -3 scripts/python/compile_task_triplet.py
 ```
 
-Review all create/update/reuse/retire decisions before `--write`. Export only the reviewed ids, limit Overlay ref synchronization with repeatable `--task-id`, complete Chapter 5 reconciliation, then build a task-local milestone handoff. Chapter 6 may consume that handoff without rereading the whole milestone. At milestone closure, apply a reviewed delta to the existing MVG manifest and run that cumulative manifest against one integrated revision.
+Review all create/update/reuse/retire decisions before `--write`. Export only the reviewed ids; preserve existing master status and explicitly reopen a task through the task-status workflow when required. Then limit Overlay ref synchronization with repeatable `--task-id`, complete Chapter 5 reconciliation, then build a task-local milestone handoff. Chapter 6 may consume that handoff without rereading the whole milestone. At milestone closure, apply a reviewed delta to the existing MVG manifest and run that cumulative manifest against one integrated revision.

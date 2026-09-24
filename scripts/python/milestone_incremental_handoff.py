@@ -291,10 +291,13 @@ def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_
         return False, "milestone_regression_evidence_stale_or_unverified"
     try:
         revision = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True, timeout=15).stdout.strip()
+        dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"], capture_output=True, text=True, check=True, timeout=15).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return False, "milestone_regression_revision_unavailable"
     if evidence.get("source_revision") != revision:
         return False, "milestone_regression_revision_drift"
+    if dirty:
+        return False, "milestone_regression_workspace_dirty"
     tests = {str(item.get("id")) for item in manifest.get("tests", []) if isinstance(item, dict)}
     passed = {str(item.get("id")) for item in evidence.get("steps", []) if isinstance(item, dict) and item.get("status") == "passed"}
     if not required <= tests & passed:
