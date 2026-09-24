@@ -160,7 +160,7 @@ class MilestoneHotfixTests(unittest.TestCase):
             save(root / ".taskmaster/tasks/tasks_back.json", [{"id": "NG-1"}])
             plan = root / "plan.json"
             readiness = root / "ready.json"
-            save(plan, {"schema_version": handoff_mod.CHANGE_PLAN_SCHEMA, "source_identity": {"source_revision": "source-set:old"}, "changes": [{"change_id": "c", "action": "extend", "target_task_id": "NG-1", "owner_task_id": "NG-1", "reason": "reviewed", "impact": {}, "verification": {"required_regressions": ["old-test"]}}]})
+            save(plan, {"schema_version": handoff_mod.CHANGE_PLAN_SCHEMA, "source_identity": {"source_revision": "source-set:old"}, "changes": [{"change_id": "c", "action": "extend", "target_task_id": "NG-1", "owner_task_id": "NG-1", "reason": "reviewed", "impact": {"tasks": ["NG-1"]}, "verification": {"required_regressions": ["old-test"]}}]})
             save(readiness, {"schema_version": "newrouge.chapter5-readiness.v1", "task_id": "NG-1", "closure_allowed": True, "input_fingerprint": {"sha256": "stable"}})
             payload = handoff_mod.build_task_handoff(root, plan_path=plan, task_id="NG-1", readiness_path=readiness)
             payload["required_regressions"] = []

@@ -15,6 +15,13 @@ def truncate(text: str, *, max_chars: int) -> str:
     return text[: max_chars - 3] + "..."
 
 
+def complete_page_source_context(prompt: str) -> str:
+    # Large source inputs must stop before model execution instead of hiding the tail.
+    if len(prompt) > 180_000:
+        raise ValueError("overlay page source context exceeds 180000 characters; narrow the page/source scope")
+    return prompt
+
+
 def compact_companion_docs(companion_docs: list[dict[str, str]], *, excerpt_chars: int = 1200) -> list[dict[str, str]]:
     compacted: list[dict[str, str]] = []
     for item in companion_docs:
@@ -139,7 +146,7 @@ def build_overlay_page_prompt(
     page_context: dict[str, Any],
     current_page_text: str,
 ) -> str:
-    companion_json = json.dumps(compact_companion_docs(companion_docs, excerpt_chars=800), ensure_ascii=False, indent=2)
+    companion_json = json.dumps(companion_docs, ensure_ascii=False, indent=2)
     page_context_json = json.dumps(page_context, ensure_ascii=False, indent=2)
     page_profile_json = json.dumps(
         {
@@ -169,7 +176,7 @@ def build_overlay_page_prompt(
         f"PRD-ID: {prd_id}",
         f"Primary PRD path: {prd_path.as_posix()}",
         "Primary PRD excerpt:",
-        truncate(prd_text, max_chars=6000),
+        prd_text,
         "",
         f"Target overlay page: {str(page.get('filename') or '').strip()}",
         "Target page profile:",
@@ -182,9 +189,9 @@ def build_overlay_page_prompt(
         companion_json,
         "",
         "Current page excerpt:",
-        truncate(current_page_text, max_chars=5000),
+        current_page_text,
     ]
-    return "\n".join(constraints + [""] + source_blocks).strip() + "\n"
+    return complete_page_source_context("\n".join(constraints + [""] + source_blocks).strip() + "\n")
 
 
 def build_overlay_page_patch_prompt(
@@ -197,7 +204,7 @@ def build_overlay_page_patch_prompt(
     page_context: dict[str, Any],
     current_page_text: str,
 ) -> str:
-    companion_json = json.dumps(compact_companion_docs(companion_docs, excerpt_chars=800), ensure_ascii=False, indent=2)
+    companion_json = json.dumps(companion_docs, ensure_ascii=False, indent=2)
     page_context_json = json.dumps(page_context, ensure_ascii=False, indent=2)
     page_profile_json = json.dumps(
         {
@@ -227,7 +234,7 @@ def build_overlay_page_patch_prompt(
         f"PRD-ID: {prd_id}",
         f"Primary PRD path: {prd_path.as_posix()}",
         "Primary PRD excerpt:",
-        truncate(prd_text, max_chars=6000),
+        prd_text,
         "",
         f"Target overlay page: {str(page.get('filename') or '').strip()}",
         "Target page profile:",
@@ -240,9 +247,9 @@ def build_overlay_page_patch_prompt(
         companion_json,
         "",
         "Current page excerpt:",
-        truncate(current_page_text, max_chars=5000),
+        current_page_text,
     ]
-    return "\n".join(constraints + [""] + source_blocks).strip() + "\n"
+    return complete_page_source_context("\n".join(constraints + [""] + source_blocks).strip() + "\n")
 
 
 def run_codex_exec(*, repo_root: Path, prompt: str, out_last_message: Path, timeout_sec: int) -> tuple[int, str, list[str]]:

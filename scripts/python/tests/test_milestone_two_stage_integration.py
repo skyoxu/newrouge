@@ -190,7 +190,15 @@ class MilestoneTwoStageIntegrationTests(unittest.TestCase):
             readiness = chapter5.readiness_path_for_task(root, "2")
             plan_path = root / "logs/milestone-plan.json"
             save(plan_path, {"schema_version": handoffs.CHANGE_PLAN_SCHEMA,
-                "source_identity": {"source_revision": ledger["source_revision"]}, "changes": [{
+                "source_identity": {"source_revision": ledger["source_revision"]},
+                "baseline_manifest": "docs/testing/mvg/current.json",
+                "source_block_reviews": [{
+                    "block_id": block["block_id"], "content_hash": block["content_hash"],
+                    "disposition": "requirement" if "Shop rewards" in block["raw_text"] else "context",
+                    "requirement_ids": ["FR-SHOP"] if "Shop rewards" in block["raw_text"] else [],
+                    "reason": "Reviewed shop behavior" if "Shop rewards" in block["raw_text"] else "Section heading",
+                } for block in ledger["blocks"] if block["block_id"] in set(ledger["delta"]["added"]) | set(ledger["delta"]["changed"])],
+                "changes": [{
                     "change_id": "shop-extension", "action": "extend", "target_task_id": "1", "owner_task_id": "2",
                     "reason": "Shop reuses the reward handoff and must preserve the combat return path.",
                     "requirement_ids": ["FR-COMBAT", "FR-SHOP"],
