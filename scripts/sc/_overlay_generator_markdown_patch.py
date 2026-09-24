@@ -171,6 +171,11 @@ def _replace_simple_section(
         if strict:
             raise ValueError(f"overlay section is too complex for safe incremental patch: {heading}")
         return text
+    prose = [line for line in current_body.splitlines() if line.strip() and not line.strip().startswith("- ")]
+    if prose and (replace or remove_bullets):
+        if strict:
+            raise ValueError(f"overlay section contains prose requiring manual review: {heading}")
+        return text
     if not replace:
         existing = [
             line.strip()[2:].strip()
@@ -183,6 +188,11 @@ def _replace_simple_section(
             if item not in merged:
                 merged.append(item)
         bullet_block = _join_bullets(merged)
+        if prose:
+            additions = [item for item in bullets if item not in existing]
+            if not additions:
+                return text
+            return text[:section_end].rstrip("\n") + "\n\n" + _join_bullets(additions) + "\n" + text[section_end:]
     replacement = f"\n\n{bullet_block}\n"
     return text[:body_start] + replacement + text[section_end:]
 

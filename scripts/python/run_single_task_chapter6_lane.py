@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from impact_analysis_handoff import validate_handoff
-from milestone_incremental_handoff import validate_task_handoff
+from milestone_incremental_handoff import validate_task_handoff, validate_milestone_regressions
 from _chapter6_recovery_common import route_execution_policy
 
 
@@ -870,6 +870,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--revision", default="")
     parser.add_argument("--binding-evidence", default="")
     parser.add_argument("--milestone-handoff", default="", help="Reviewed task-local milestone handoff from Chapter 5.")
+    parser.add_argument("--milestone-regression-summary", default="", help="Passed MVG run summary binding the required regressions to this revision.")
     parser.add_argument("--execution-plan-signal", action="append", default=[], help="Explicit durable coordination signal for 6.3 plan policy.")
     return parser
 
@@ -1032,6 +1033,14 @@ def main() -> int:
         print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={plan['stop_reason']}")
         return 1
     if plan["status"] == "complete":
+        if milestone_handoff_payload:
+            evidence_path = (_repo_root() / args.milestone_regression_summary).resolve() if args.milestone_regression_summary else None
+            ok, reason = validate_milestone_regressions(_repo_root(), milestone_handoff_payload, evidence_path)
+            if not ok:
+                summary["status"] = "blocked"
+                summary["stop_reason"] = reason
+                _write_json(out_dir / "summary.json", summary)
+                return 2
         summary["status"] = "complete"
         summary["stop_reason"] = str(plan["stop_reason"] or "continue")
         _write_json(out_dir / "summary.json", summary)
@@ -1216,6 +1225,16 @@ def main() -> int:
         print(f"SINGLE_TASK_CHAPTER6 status=fail task={task_id} stop=inspect-local-hard-checks")
         return 1
 
+    if milestone_handoff_payload:
+        evidence_path = (_repo_root() / args.milestone_regression_summary).resolve() if args.milestone_regression_summary else None
+        ok, reason = validate_milestone_regressions(_repo_root(), milestone_handoff_payload, evidence_path)
+        summary["milestone_regression_evidence"] = str(evidence_path or "")
+        if not ok:
+            summary["status"] = "blocked"
+            summary["stop_reason"] = reason
+            _write_json(out_dir / "summary.json", summary)
+            print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={reason}")
+            return 2
     summary["status"] = "ok"
     _write_json(out_dir / "summary.json", summary)
     print(f"SINGLE_TASK_CHAPTER6 status=ok task={task_id} out={str((out_dir / 'summary.json')).replace('\\', '/')}")

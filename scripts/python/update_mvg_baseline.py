@@ -52,6 +52,8 @@ def _apply_rows(existing: list[dict[str, Any]], ops: list[dict[str, Any]], kind:
                 raise ValueError(f"{kind} update target/fields missing: {item_id}")
             updated = dict(result[idx])
             updated.update(op["field_updates"])
+            if _weakens_baseline(result[idx], updated) and not str(op.get("authority_ref") or "").strip():
+                raise ValueError(f"{kind} weakening requires authority_ref: {item_id}")
             result[idx] = updated
         else:
             if idx is None:
@@ -62,6 +64,25 @@ def _apply_rows(existing: list[dict[str, Any]], ops: list[dict[str, Any]], kind:
             result.pop(idx)
             by_id = {str(row.get("id")): pos for pos, row in enumerate(result)}
     return result
+
+
+def _weakens_baseline(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    for key in ("min_tests", "minimum_tests"):
+        if key in before:
+            try:
+                if int(after.get(key, 0)) < int(before[key]):
+                    return True
+            except (TypeError, ValueError):
+                return True
+    for key in ("test_ids", "required_flow_ids", "handoffs"):
+        if key in before and isinstance(before[key], list):
+            old = {_canonical_sha(item) for item in before[key]}
+            new = {_canonical_sha(item) for item in after.get(key, [])} if isinstance(after.get(key), list) else set()
+            if old - new:
+                return True
+    if before.get("state") == "implemented" and after.get("state") != "implemented":
+        return True
+    return False
 
 
 def apply_delta(manifest: dict[str, Any], delta: dict[str, Any]) -> dict[str, Any]:
@@ -78,6 +99,8 @@ def apply_delta(manifest: dict[str, Any], delta: dict[str, Any]) -> dict[str, An
     if isinstance(coverage_updates, dict):
         coverage = dict(manifest.get("coverage") or {})
         coverage.update(coverage_updates)
+        if _weakens_baseline(dict(manifest.get("coverage") or {}), coverage) and not str(delta.get("authority_ref") or "").strip():
+            raise ValueError("coverage weakening requires authority_ref")
         updated["coverage"] = coverage
     flow_ids = [str(row.get("id")) for row in updated["flows"]]
     if len(flow_ids) != len(set(flow_ids)):

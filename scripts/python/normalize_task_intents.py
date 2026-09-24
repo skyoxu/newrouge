@@ -759,6 +759,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Previous normalized intents used to reuse ids by stable intent_key. Add mode defaults to --out when it already exists.",
     )
     parser.add_argument("--out", default=DEFAULT_OUT)
+    parser.add_argument("--id-map", default="docs/workflows/chapter3-intent-ids.json", help="Versioned stable intent-key to task-id mapping.")
     args = parser.parse_args(argv)
 
     root = Path(args.repo_root).resolve()
@@ -787,6 +788,16 @@ def main(argv: list[str] | None = None) -> int:
         previous_path = root / previous_path
     if args.mode == "add" and previous_path.is_file():
         previous_intents = load_json(previous_path)
+    map_path = root / args.id_map
+    stored_map = load_json(map_path) if map_path.is_file() else {"schema_version": "chapter3.intent-id-map.v1", "intents": []}
+    if stored_map.get("schema_version") != "chapter3.intent-id-map.v1":
+        raise SystemExit("invalid versioned Chapter 3 intent id map")
+    prior_keys = _previous_intent_ids(stored_map)
+    if previous_intents:
+        for key, task_id in _previous_intent_ids(previous_intents).items():
+            if key in prior_keys and prior_keys[key] != task_id:
+                raise SystemExit(f"intent id mapping disagrees with previous output: {key}")
+            prior_keys[key] = task_id
 
     result = build_intents(
         index,
@@ -794,11 +805,18 @@ def main(argv: list[str] | None = None) -> int:
         args.id_prefix,
         args.max_anchors_per_intent,
         args.split_profile,
-        reserved_ids=_existing_task_ids(root, task_files),
-        previous_intents=previous_intents,
+        reserved_ids=_existing_task_ids(root, task_files) | set(prior_keys.values()),
+        previous_intents={"intents": [{"intent_key": key, "id": value} for key, value in prior_keys.items()]} if args.mode == "add" else previous_intents,
     )
     result["source_schema"] = index.get("schema")
+    for key, task_id in _previous_intent_ids(result).items():
+        if key in prior_keys and prior_keys[key] != task_id:
+            raise SystemExit(f"intent id changed unexpectedly: {key}")
+        prior_keys[key] = task_id
     write_json(out, result)
+    write_json(map_path, {"schema_version": "chapter3.intent-id-map.v1", "intents": [
+        {"intent_key": key, "id": value} for key, value in sorted(prior_keys.items())
+    ]})
     print(f"task_intents={out} intents={result['intent_count']} anchors={result['source_anchor_count']}")
     return 0
 

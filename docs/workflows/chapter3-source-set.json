@@ -5,5 +5,32 @@
     "docs/gdd/**/*.md",
     "_bmad-output/gdd.md"
   ],
-  "retirements": []
+  "retirements": [],
+  "active_sources": [
+    "_bmad-output/gdd.md",
+    "docs/gdd/GDD-NEWROUGE-V1.md",
+    "docs/gdd/m1-playable-setup.md",
+    "docs/gdd/m1-playable-setup.zh-CN.md",
+    "docs/gdd/m1-translation-loading-strategy.zh-CN.md",
+    "docs/gdd/t1-t69-m1-wiring-audit.md",
+    "docs/gdd/ui-gdd-flow.md",
+    "docs/prd/BALANCE-REGRESSION-BASELINE-NEWROUGE-V1.md",
+    "docs/prd/CARD-ID-CATALOG-NEWROUGE-V1.md",
+    "docs/prd/CONTENT-AUTHORING-ENTRY-NEWROUGE-V1.md",
+    "docs/prd/CONTENT-POWER-BOUNDS-AND-COMBO-RULES-NEWROUGE-V1.md",
+    "docs/prd/CONTENT-REVIEW-CHECKLIST-NEWROUGE-V1.md",
+    "docs/prd/COPY-FORBIDDEN-WORDS-QA-CHECKLIST-NEWROUGE-V1.md",
+    "docs/prd/EVENT-ID-CATALOG-NEWROUGE-V1.md",
+    "docs/prd/MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1.md",
+    "docs/prd/NARRATIVE-AND-COPY-STYLE-GUIDE-NEWROUGE-V1.md",
+    "docs/prd/PLAYER-CONFUSION-FIX-TRACKER-NEWROUGE-V1.md",
+    "docs/prd/PLAYER-FEEDBACK-EXPLAINABILITY-NEWROUGE-V1.md",
+    "docs/prd/PLAYTEST-ISSUE-GRADING-AND-REVISION-GUIDE-NEWROUGE-V1.md",
+    "docs/prd/PLAYTEST-SCRIPT-60MIN-NEWROUGE-V1.md",
+    "docs/prd/PRD-NEWROUGE-GAME-0001.md",
+    "docs/prd/RELIC-ID-CATALOG-NEWROUGE-V1.md",
+    "docs/prd/SCREEN-BY-SCREEN-PLAYER-SPECS-NEWROUGE-V1.md",
+    "docs/prd/SSOT-LOCKS-NEWROUGE-V1.md",
+    "docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md"
+  ]
 }

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,11 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
     source_identity = payload.get("source_identity")
     if not isinstance(source_identity, dict) or not str(source_identity.get("source_revision") or "").strip():
         errors.append("missing_source_identity")
+    manifest_path = root / "logs/ci/task-generation/source-manifest.v1.json"
+    if manifest_path.is_file() and isinstance(source_identity, dict):
+        manifest = _load(manifest_path)
+        if source_identity.get("source_revision") != manifest.get("source_revision"):
+            errors.append("stale_source_identity")
     rows = payload.get("changes")
     if not isinstance(rows, list) or not rows:
         errors.append("missing_changes")
@@ -154,6 +160,11 @@ def build_task_handoff(
         raise ValueError("Chapter 5 readiness task mismatch")
     if not bool(readiness.get("closure_allowed")):
         raise ValueError("Chapter 5 readiness is not closable")
+    if (root / "logs/ci/task-generation/source-manifest.v1.json").is_file():
+        from chapter5_semantic_reconciliation import load_task_readiness
+        ready, current, reason = load_task_readiness(root, task_id)
+        if not ready or current != readiness:
+            raise ValueError("Chapter 5 readiness is stale: " + reason)
     changes = [
         row for row in plan.get("changes", [])
         if isinstance(row, dict)
@@ -164,6 +175,8 @@ def build_task_handoff(
     unresolved = [row for row in changes if str(row.get("action") or "").lower() == "unresolved"]
     if unresolved:
         raise ValueError("task-local change plan remains unresolved")
+    if str(readiness.get("task_id") or "") != str(task_id) or not readiness.get("input_fingerprint"):
+        raise ValueError("Chapter 5 readiness identity is incomplete")
     return {
         "schema_version": HANDOFF_SCHEMA,
         "task_id": str(task_id),
@@ -225,17 +238,68 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
             return False, "milestone_handoff_path_escape", {}
         if not target.is_file() or _file_sha(target) != str(payload.get(sha_key) or ""):
             return False, f"milestone_handoff_stale_{path_key}", {}
+    plan = _load(root / str(payload["change_plan_path"]))
     readiness = _load(root / str(payload["chapter5_readiness_path"]))
+    if not isinstance(plan, dict) or validate_change_plan(root, plan):
+        return False, "milestone_handoff_invalid_change_plan", {}
+    if not isinstance(readiness, dict) or readiness.get("schema_version") != "newrouge.chapter5-readiness.v1" or str(readiness.get("task_id") or "") != str(task_id):
+        return False, "milestone_handoff_invalid_readiness", {}
     if not bool(readiness.get("closure_allowed")):
         return False, "milestone_handoff_readiness_not_closable", {}
     if readiness.get("input_fingerprint") != payload.get("chapter5_input_fingerprint"):
         return False, "milestone_handoff_readiness_fingerprint_drift", {}
-    changes = payload.get("changes")
-    if not isinstance(changes, list) or not changes:
-        return False, "milestone_handoff_missing_changes", {}
-    if any(str(row.get("action") or "").lower() == "unresolved" for row in changes if isinstance(row, dict)):
-        return False, "milestone_handoff_unresolved", {}
+    try:
+        expected = build_task_handoff(
+            root,
+            plan_path=root / str(payload["change_plan_path"]),
+            task_id=task_id,
+            readiness_path=root / str(payload["chapter5_readiness_path"]),
+        )
+    except (ValueError, OSError, KeyError, TypeError):
+        return False, "milestone_handoff_invalid_projection", {}
+    if payload != expected:
+        return False, "milestone_handoff_projection_drift", {}
     return True, "ok", payload
+
+
+def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_path: Path | None) -> tuple[bool, str]:
+    required = set(map(str, handoff.get("required_regressions") or []))
+    if not required:
+        return True, "ok"
+    if summary_path is None or not summary_path.is_file():
+        return False, "milestone_regression_evidence_missing"
+    try:
+        summary_path.resolve().relative_to((root / "logs/ci/mvg-acceptance").resolve())
+        if summary_path.name != "summary.json":
+            raise ValueError("not a MVG run summary")
+        evidence = _load(summary_path)
+        manifest_ref = str(evidence.get("manifest") or "")
+        manifest_path = (root / manifest_ref).resolve()
+        manifest_path.relative_to(root.resolve())
+        manifest = _load(manifest_path)
+    except (OSError, ValueError, KeyError, AttributeError, json.JSONDecodeError):
+        return False, "milestone_regression_evidence_invalid"
+    if (
+        not manifest_ref.startswith("docs/testing/mvg/")
+        or evidence.get("schema_version") != "newrouge.mvg-acceptance.v1"
+        or evidence.get("mode") != "run"
+        or evidence.get("status") != "passed"
+        or evidence.get("runtime_verified") is not True
+        or evidence.get("workspace_dirty")
+        or evidence.get("manifest_sha256") != _file_sha(manifest_path)
+    ):
+        return False, "milestone_regression_evidence_stale_or_unverified"
+    try:
+        revision = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True, timeout=15).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return False, "milestone_regression_revision_unavailable"
+    if evidence.get("source_revision") != revision:
+        return False, "milestone_regression_revision_drift"
+    tests = {str(item.get("id")) for item in manifest.get("tests", []) if isinstance(item, dict)}
+    passed = {str(item.get("id")) for item in evidence.get("steps", []) if isinstance(item, dict) and item.get("status") == "passed"}
+    if not required <= tests & passed:
+        return False, "milestone_required_regressions_not_passed"
+    return True, "ok"
 
 
 def main() -> int:

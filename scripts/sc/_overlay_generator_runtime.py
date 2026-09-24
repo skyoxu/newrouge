@@ -3,6 +3,8 @@ from __future__ import annotations
 import datetime as dt
 import re
 import shutil
+import os
+import tempfile
 from pathlib import Path
 
 from _overlay_generator_model import parse_existing_page_markdown
@@ -10,10 +12,38 @@ from _overlay_generator_scaffold import build_scaffold_base_page
 from _overlay_generator_support import parse_prd_docs_csv
 
 
-def copy_generated_to_target(generated_dir: Path, target_dir: Path) -> None:
+def copy_generated_to_target(generated_dir: Path, target_dir: Path, expected_texts: dict[str, str] | None = None) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
-    for path in generated_dir.glob("*.md"):
-        shutil.copyfile(path, target_dir / path.name)
+    staged: list[tuple[Path, Path]] = []
+    originals: dict[Path, bytes | None] = {}
+    replaced: list[Path] = []
+    try:
+        for source in generated_dir.glob("*.md"):
+            target = target_dir / source.name
+            originals[target] = target.read_bytes() if target.exists() else None
+            fd, name = tempfile.mkstemp(prefix=source.name + ".", suffix=".tmp", dir=target_dir)
+            os.close(fd)
+            temporary = Path(name)
+            staged.append((target, temporary))
+            shutil.copyfile(source, temporary)
+        for target, temporary in staged:
+            if expected_texts is not None and target.name in expected_texts:
+                current = target.read_text(encoding="utf-8") if target.exists() else ""
+                if current != expected_texts[target.name]:
+                    raise ValueError(f"overlay source changed before apply: {target.name}")
+            os.replace(temporary, target)
+            replaced.append(target)
+    except Exception:
+        for target in reversed(replaced):
+            original = originals[target]
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_bytes(original)
+        raise
+    finally:
+        for _, temporary in staged:
+            temporary.unlink(missing_ok=True)
 
 
 def reset_dir(path: Path) -> None:

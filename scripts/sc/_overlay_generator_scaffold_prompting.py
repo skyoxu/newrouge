@@ -57,7 +57,7 @@ def build_overlay_page_scaffold_prompt(
         f"PRD-ID: {prd_id}",
         f"Primary PRD path: {prd_path.as_posix()}",
         "Primary PRD excerpt:",
-        truncate(prd_text, max_chars=6000),
+        prd_text,
         "",
         f"Target overlay page: {str(page.get('filename') or '').strip()}",
         "Target page profile:",
@@ -73,7 +73,7 @@ def build_overlay_page_scaffold_prompt(
         companion_json,
         "",
         "Current page excerpt:",
-        truncate(current_page_text, max_chars=5000),
+        current_page_text,
     ]
     return "\n".join(constraints + [""] + source_blocks).strip() + "\n"
 
@@ -90,6 +90,13 @@ def parse_and_validate_scaffold_update(
     update = obj.get("update")
     if not isinstance(update, dict):
         raise ValueError("Model output must contain an 'update' object.")
+    allowed = {"purpose", "adr_refs", "arch_refs", "test_refs", "task_ids", "sections"}
+    unknown = set(update) - allowed
+    if unknown:
+        raise ValueError("Unsupported scaffold update operations: " + ", ".join(sorted(unknown)))
+    for section in update.get("sections") or []:
+        if not isinstance(section, dict) or set(section) - {"heading", "bullets"}:
+            raise ValueError("Unsupported scaffold section operation; explicit retirement requires manual review")
     return {
         "purpose": str(update.get("purpose") or "").strip(),
         "adr_refs": [str(item).strip() for item in update.get("adr_refs") or [] if str(item).strip()],

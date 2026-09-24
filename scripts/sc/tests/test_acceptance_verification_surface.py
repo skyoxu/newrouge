@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -452,6 +453,7 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
             summary.write_text(json.dumps({
                 "mode": "run", "status": "passed", "runtime_verified": True, "workspace_dirty": False,
                 "source_revision": "abc123", "manifest": manifest_ref,
+                "manifest_sha256": "sha256:" + hashlib.sha256(manifest.read_bytes()).hexdigest(),
                 "coverage": {"mode": "critical", "blocking_task_ids": []},
             }), encoding="utf-8")
             triplet = self._triplet({"ACC:T15.1": {
@@ -462,6 +464,9 @@ class AcceptanceVerificationSurfaceTests(unittest.TestCase):
             stale = validate_acceptance_verification(triplet=triplet, root=root, expected_revision="different-revision")
             self.assertEqual("ok", passed["status"])
             self.assertEqual("fail", stale["status"])
+            manifest.write_text(manifest.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            drifted = validate_acceptance_verification(triplet=triplet, root=root, expected_revision="abc123")
+            self.assertEqual("fail", drifted["status"])
             self.assertTrue(any("runtime_verified MVG critical evidence" in item for item in stale["errors"]))
 
     def test_player_journey_mvg_full_cannot_reuse_critical_scope(self) -> None:

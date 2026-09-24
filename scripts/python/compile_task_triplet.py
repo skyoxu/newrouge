@@ -235,9 +235,9 @@ def main() -> int:
     for candidate in candidates:
         target = target_for(candidate)
         if target == "gameplay":
-            gameplay_new.append(normalize_task(candidate, "gameplay"))
+            gameplay_new.append(candidate)
         else:
-            back_new.append(normalize_task(candidate, "back"))
+            back_new.append(candidate)
     back_updated, back_ops, back_conflicts = build_change_plan(back_existing, back_new, "back")
     gameplay_updated, gameplay_ops, gameplay_conflicts = build_change_plan(gameplay_existing, gameplay_new, "gameplay")
     conflicts = sorted(set(back_conflicts + gameplay_conflicts))
@@ -263,6 +263,13 @@ def main() -> int:
         ],
     }
     out = root / args.out
+    if args.write:
+        if not out.is_file():
+            raise SystemExit("task triplet preview missing; review a preview before --write")
+        reviewed = load_json(out, {})
+        comparable = ("mode", "source_fingerprints", "tasks_back_operations", "tasks_gameplay_operations", "conflicts")
+        if reviewed.get("schema") != patch["schema"] or any(reviewed.get(key) != patch[key] for key in comparable):
+            raise SystemExit("task triplet patch differs from reviewed preview; regenerate and review before --write")
     write_json(out, patch)
     export_ids = [
         row["id"]
@@ -289,4 +296,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

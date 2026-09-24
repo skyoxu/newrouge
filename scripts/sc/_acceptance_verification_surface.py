@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -199,6 +200,11 @@ def _find_mvg_runtime_evidence(
     if not revision or not manifest_refs:
         return ""
     manifests = {_normalize_repo_ref(item) for item in manifest_refs}
+    current_hashes: dict[str, str] = {}
+    for ref in manifests:
+        path = _resolve_evidence_path(ref, root=root)
+        if path.is_file():
+            current_hashes[ref] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
     logs_root = root / "logs" / "ci" / "mvg-acceptance"
     if not logs_root.is_dir():
         return ""
@@ -217,7 +223,8 @@ def _find_mvg_runtime_evidence(
             or payload.get("runtime_verified") is not True
             or bool(payload.get("workspace_dirty"))
             or str(payload.get("source_revision") or "").strip() != revision
-            or _normalize_repo_ref(str(payload.get("manifest") or "")) not in manifests
+            or _normalize_repo_ref(str(payload.get("manifest") or "")) not in current_hashes
+            or str(payload.get("manifest_sha256") or "") != current_hashes.get(_normalize_repo_ref(str(payload.get("manifest") or "")))
             or str(coverage.get("mode") or "").strip().lower() != expected_mode
             or blockers
         ):
