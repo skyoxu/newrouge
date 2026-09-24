@@ -177,7 +177,10 @@ class AnalyzeImpactCliTests(unittest.TestCase):
         command = [sys.executable, "scripts/python/analyze_impact.py", *self.command()]
         writers = [subprocess.Popen(command, cwd=self.repo, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8") for _ in range(2)]
         results = [(writer, writer.communicate(timeout=120)) for writer in writers]
-        self.assertEqual(sorted(writer.returncode for writer, _ in results), [0, 10])
+        self.assertEqual(
+            sorted(writer.returncode for writer, _ in results), [0, 10],
+            [(writer.returncode, stdout, stderr) for writer, (stdout, stderr) in results],
+        )
         for writer, (stdout, stderr) in results:
             payload = json.loads(stdout)
             if writer.returncode:
