@@ -54,6 +54,47 @@ def _task_ids(root: Path) -> set[str]:
     return set(_task_index(root))
 
 
+def _task_rows(root: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rel in (".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"):
+        path = root / rel
+        if path.is_file():
+            payload = _load(path)
+            if isinstance(payload, list):
+                rows.extend(row for row in payload if isinstance(row, dict))
+    return rows
+
+
+def _canonical_task_id(index: dict[str, dict[str, Any]], value: Any) -> str:
+    row = index.get(str(value))
+    return str(row.get("taskmaster_id") or row.get("id")) if row else str(value)
+
+
+def _required_old_regressions(manifest_path: Path | None, impacted_tasks: set[str], index: dict[str, dict[str, Any]]) -> set[str]:
+    required: set[str] = set()
+    if manifest_path is None:
+        return required
+    manifest = _load(manifest_path)
+    if not isinstance(manifest, dict):
+        return required
+    for flow in manifest.get("flows", []):
+        if not isinstance(flow, dict):
+            continue
+        flow_tasks = {_canonical_task_id(index, value) for value in (flow.get("task_ids") or [])}
+        if flow_tasks & impacted_tasks:
+            required.update(str(value) for value in (flow.get("test_ids") or []) if str(value).strip())
+        for handoff in flow.get("handoffs") or []:
+            if not isinstance(handoff, dict):
+                continue
+            participants = {
+                _canonical_task_id(index, handoff[key])
+                for key in ("producer_task", "consumer_task") if handoff.get(key) is not None
+            }
+            if participants & impacted_tasks:
+                required.update(str(value) for value in (handoff.get("test_ids") or []) if str(value).strip())
+    return required
+
+
 def _active_requirements(root: Path) -> set[str]:
     path = root / "logs/ci/task-generation/semantic-requirements.v1.json"
     if not path.is_file():
@@ -66,6 +107,19 @@ def _active_requirements(root: Path) -> set[str]:
         and row.get("requirement_id")
         and str(row.get("status", "active")).lower() == "active"
     }
+
+
+def _requirements_by_block(root: Path) -> dict[str, set[str]]:
+    path = root / "logs/ci/task-generation/semantic-requirements.v1.json"
+    if not path.is_file():
+        return {}
+    mapping: dict[str, set[str]] = {}
+    for row in _load(path).get("requirements", []):
+        if not isinstance(row, dict) or str(row.get("status", "active")).lower() != "active":
+            continue
+        for block_id in row.get("source_block_ids", []):
+            mapping.setdefault(str(block_id), set()).add(str(row.get("requirement_id")))
+    return mapping
 
 
 def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
@@ -84,9 +138,59 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
     if not isinstance(rows, list) or not rows:
         errors.append("missing_changes")
         return errors
+    mapped_requirements = {
+        str(value) for change in rows if isinstance(change, dict)
+        for value in (change.get("requirement_ids") or [])
+    }
     task_index = _task_index(root)
     known_tasks = set(task_index)
+    task_rows = _task_rows(root)
     active_requirements = _active_requirements(root)
+    requirements_by_block = _requirements_by_block(root)
+    baseline_ref = str(payload.get("baseline_manifest") or "")
+    baseline_path = (root / baseline_ref).resolve() if baseline_ref else None
+    baseline_root = (root / "docs/testing/mvg").resolve()
+    if baseline_path is not None and (not baseline_path.is_file() or baseline_path.parent != baseline_root):
+        errors.append("invalid_baseline_manifest")
+        baseline_path = None
+    if baseline_path is None and any(baseline_root.glob("*.json")):
+        errors.append("missing_baseline_manifest")
+    ledger_path = root / "logs/ci/task-generation/source-blocks.v1.json"
+    if ledger_path.is_file():
+        ledger = _load(ledger_path)
+        expected_blocks = set((ledger.get("delta") or {}).get("added", [])) | set((ledger.get("delta") or {}).get("changed", []))
+        blocks = {str(block.get("block_id")): block for block in ledger.get("blocks", []) if isinstance(block, dict)}
+        reviews = payload.get("source_block_reviews")
+        reviewed_ids: set[str] = set()
+        if expected_blocks and not isinstance(reviews, list):
+            errors.append("missing_source_block_reviews")
+        for review in reviews if isinstance(reviews, list) else []:
+            if not isinstance(review, dict):
+                errors.append("invalid_source_block_review")
+                continue
+            block_id = str(review.get("block_id") or "")
+            if block_id in reviewed_ids or block_id not in expected_blocks:
+                errors.append(f"invalid_source_block_review:{block_id}")
+                continue
+            reviewed_ids.add(block_id)
+            if review.get("content_hash") != (blocks.get(block_id) or {}).get("content_hash"):
+                errors.append(f"stale_source_block_review:{block_id}")
+            disposition = review.get("disposition")
+            if disposition not in {"requirement", "context"} or not str(review.get("reason") or "").strip():
+                errors.append(f"unresolved_source_block_review:{block_id}")
+            declared = set(map(str, review.get("requirement_ids") or []))
+            grounded = requirements_by_block.get(block_id, set()) & active_requirements
+            if disposition == "requirement" and (not declared or not declared <= grounded):
+                errors.append(f"unmapped_source_block_review:{block_id}")
+            if disposition == "requirement" and declared - mapped_requirements:
+                errors.append(f"unassigned_source_block_requirements:{block_id}")
+            if disposition == "context" and grounded:
+                errors.append(f"source_block_review_conflicts_with_requirements:{block_id}")
+            if disposition == "context" and (blocks.get(block_id) or {}).get("requirement_like_hint"):
+                if not str(review.get("non_delivery_rationale") or "").strip():
+                    errors.append(f"requirement_like_context_needs_review:{block_id}")
+        if expected_blocks - reviewed_ids:
+            errors.append("unreviewed_source_blocks:" + ",".join(sorted(expected_blocks - reviewed_ids)))
     seen: set[str] = set()
     for index, row in enumerate(rows):
         if not isinstance(row, dict):
@@ -125,6 +229,34 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
         impact = row.get("impact")
         if not isinstance(impact, dict):
             errors.append(f"{change_id}:missing_impact")
+        else:
+            impacted = {_canonical_task_id(task_index, value) for value in impact.get("tasks", [])} if isinstance(impact.get("tasks"), list) else set()
+            expected_tasks = {_canonical_task_id(task_index, value) for value in (target, owner) if value}
+            missing_tasks = sorted(expected_tasks - impacted)
+            if missing_tasks and action != "unresolved":
+                errors.append(f"{change_id}:impact_missing_tasks:{','.join(missing_tasks)}")
+            old_contracts = {
+                ref for task in task_rows if target and target in {str(task.get("id")), str(task.get("taskmaster_id"))}
+                for ref in (task.get("contractRefs") or [])
+            }
+            owner_contracts = {
+                ref for task in task_rows if owner and owner in {str(task.get("id")), str(task.get("taskmaster_id"))}
+                for ref in (task.get("contractRefs") or [])
+            }
+            shared_contracts = old_contracts & owner_contracts if target != owner else set()
+            declared_contracts = set(impact.get("contracts") or []) if isinstance(impact.get("contracts"), list) else set()
+            missing_contracts = sorted(shared_contracts - declared_contracts)
+            if missing_contracts:
+                errors.append(f"{change_id}:impact_missing_shared_contracts:{','.join(missing_contracts)}")
+            affected_contracts = declared_contracts | shared_contracts
+            consumers = {
+                _canonical_task_id(task_index, task.get("id"))
+                for task in task_rows
+                if set(task.get("contractRefs") or []) & affected_contracts
+            }
+            missing_consumers = sorted(consumers - impacted)
+            if missing_consumers:
+                errors.append(f"{change_id}:impact_missing_contract_consumers:{','.join(missing_consumers)}")
         verification = row.get("verification")
         if not isinstance(verification, dict):
             errors.append(f"{change_id}:missing_verification")
@@ -135,6 +267,12 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
             )
             if not has_evidence_plan:
                 errors.append(f"{change_id}:missing_verification_plan")
+            if isinstance(impact, dict) and action != "unresolved":
+                required_tests = _required_old_regressions(baseline_path, impacted, task_index)
+                actual_tests = set(map(str, verification.get("required_regressions") or []))
+                missing_tests = sorted(required_tests - actual_tests)
+                if missing_tests:
+                    errors.append(f"{change_id}:missing_old_regressions:{','.join(missing_tests)}")
         if action == "unresolved" and not str(row.get("blocked_reason") or "").strip():
             errors.append(f"{change_id}:unresolved_without_block_reason")
     return errors

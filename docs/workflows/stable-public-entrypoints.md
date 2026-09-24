@@ -504,6 +504,7 @@ Use them directly when you are isolating one failing stage or intentionally bypa
 - `scripts/python/build_source_ledger.py --mode add`: consumes the versioned cumulative source set and a declared source delta.
 - `scripts/python/compile_task_triplet.py`: previews explicit create/update/reuse/retire task-view operations; `--write` is conflict- and fingerprint-guarded.
 - `scripts/python/milestone_incremental_handoff.py`: validates a reviewed milestone change plan and binds one task to current Chapter 5 readiness.
+- Milestone change plans review each changed source block and name one cumulative `baseline_manifest`. Handoff validation checks the bound block hashes, target/owner/contract consumers and old flow regressions in that manifest; semantic judgments still require review of the complete GDD.
 - `scripts/python/update_mvg_baseline.py`: previews/applies an explicit add/update/retain/retire delta to an existing MVG manifest.
 - `scripts/python/run_mvg_acceptance.py`: remains the runtime entrypoint and records the exact manifest SHA/baseline lineage.
 

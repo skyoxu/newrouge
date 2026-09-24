@@ -135,7 +135,7 @@ def main() -> int:
     companion_docs = [
         {
             "path": normalize_relpath(path, root=root),
-            "excerpt": read_text(path, max_chars=14_000),
+            "excerpt": read_text(path),
         }
         for path in companion_paths
     ]
@@ -160,7 +160,7 @@ def main() -> int:
         return 2
 
     task_digest = build_task_digest(prd_id, tasks_json, tasks_back, tasks_gameplay)
-    prd_text = read_text(prd_path, max_chars=32_000)
+    prd_text = read_text(prd_path)
     prompts_dir = out_dir / "page-prompts"
     _reset_dir(prompts_dir)
     current_dir = root / "docs" / "architecture" / "overlays" / prd_id / "08"
@@ -177,37 +177,42 @@ def main() -> int:
         current_page_text = str(state.get("current_page_text") or "")
         page_context = dict(state.get("page_context") or {})
         scaffold_base_page = dict(state.get("scaffold_base_page") or {})
-        if args.page_mode == "scaffold":
-            prompt = build_overlay_page_scaffold_prompt(
-                prd_path=prd_path,
-                prd_text=prd_text,
-                prd_id=prd_id,
-                companion_docs=companion_docs,
-                page=page,
-                page_context=page_context,
-                base_page=scaffold_base_page,
-                current_page_text=current_page_text,
-            )
-        elif args.page_mode == "patch":
-            prompt = build_overlay_page_patch_prompt(
-                prd_path=prd_path,
-                prd_text=prd_text,
-                prd_id=prd_id,
-                companion_docs=companion_docs,
-                page=page,
-                page_context=page_context,
-                current_page_text=current_page_text,
-            )
-        else:
-            prompt = build_overlay_page_prompt(
-                prd_path=prd_path,
-                prd_text=prd_text,
-                prd_id=prd_id,
-                companion_docs=companion_docs,
-                page=page,
-                page_context=page_context,
-                current_page_text=current_page_text,
-            )
+        try:
+            if args.page_mode == "scaffold":
+                prompt = build_overlay_page_scaffold_prompt(
+                    prd_path=prd_path,
+                    prd_text=prd_text,
+                    prd_id=prd_id,
+                    companion_docs=companion_docs,
+                    page=page,
+                    page_context=page_context,
+                    base_page=scaffold_base_page,
+                    current_page_text=current_page_text,
+                )
+            elif args.page_mode == "patch":
+                prompt = build_overlay_page_patch_prompt(
+                    prd_path=prd_path,
+                    prd_text=prd_text,
+                    prd_id=prd_id,
+                    companion_docs=companion_docs,
+                    page=page,
+                    page_context=page_context,
+                    current_page_text=current_page_text,
+                )
+            else:
+                prompt = build_overlay_page_prompt(
+                    prd_path=prd_path,
+                    prd_text=prd_text,
+                    prd_id=prd_id,
+                    companion_docs=companion_docs,
+                    page=page,
+                    page_context=page_context,
+                    current_page_text=current_page_text,
+                )
+        except ValueError as exc:
+            write_json(out_dir / "summary.json", {"status": "fail", "error": "page_source_context_incomplete", "failed_page": filename, "detail": str(exc)})
+            print(f"SC_LLM_OVERLAY_GEN status=fail error=page_source_context_incomplete page={filename} detail={exc}")
+            return 2
         prompt_path = prompts_dir / f"{_artifact_name(filename)}.prompt.md"
         write_text(prompt_path, prompt)
         page_prompts.append(

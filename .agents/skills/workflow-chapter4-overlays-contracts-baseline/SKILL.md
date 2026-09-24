@@ -83,5 +83,6 @@ py -3 scripts/python/update_workflow_chapter_skills.py <business-repo-a>,<busine
 ## Milestone incremental scope
 
 - Existing Overlay pages are patched, not regenerated as sparse replacements. Merge Task coverage and simple bullets by default; destructive removal/replacement must be explicit and old-content/hash guarded.
+- Per-page generation reads complete primary/companion sources and the current page. If the combined source context exceeds 180000 characters, narrow the selected page/source scope before model execution; do not proceed with truncated requirements.
 - Restrict `sync_task_overlay_refs.py` to the affected task ids. `--skip-done` is not an impact-analysis substitute.
 - Shared contract changes must name producer/consumer impact and an implementation owner before Chapter 6.

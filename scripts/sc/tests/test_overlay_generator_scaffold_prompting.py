@@ -8,9 +8,29 @@ if str(SC_DIR) not in sys.path:
     sys.path.insert(0, str(SC_DIR))
 
 import _overlay_generator_scaffold_prompting as scaffold_prompting
+import _overlay_generator_prompting as page_prompting
 
 
 class OverlayGeneratorScaffoldPromptingTests(unittest.TestCase):
+    def test_long_new_gdd_and_old_page_tail_are_visible_in_every_page_mode(self) -> None:
+        source = "A" * 33_000 + "\nNew GDD requires shop save and resume."
+        companion = [{"path": "docs/gdd/new.md", "excerpt": "B" * 14_500 + "\nRetain old reward regression."}]
+        current = "C" * 5_500 + "\nOld contract invariant must remain."
+        kwargs = dict(prd_path=Path("docs/gdd/new.md"), prd_text=source,
+                      prd_id="PRD-SHOP", companion_docs=companion,
+                      page={"filename": "08-shop.md", "page_kind": "feature"},
+                      page_context={}, current_page_text=current)
+        for builder in (scaffold_prompting.build_overlay_page_scaffold_prompt,
+                        page_prompting.build_overlay_page_patch_prompt,
+                        page_prompting.build_overlay_page_prompt):
+            with self.subTest(builder=builder.__name__):
+                prompt = builder(**kwargs, **({"base_page": {}} if builder is scaffold_prompting.build_overlay_page_scaffold_prompt else {}))
+                self.assertIn("New GDD requires shop save and resume.", prompt)
+                self.assertIn("Retain old reward regression.", prompt)
+                self.assertIn("Old contract invariant must remain.", prompt)
+        with self.assertRaisesRegex(ValueError, "source context exceeds"):
+            scaffold_prompting.build_overlay_page_scaffold_prompt(**{**kwargs, "prd_text": "A" * 181_000}, base_page={})
+
     def test_build_overlay_page_scaffold_prompt_should_include_base_page(self) -> None:
         page = {
             "filename": "_index.md",

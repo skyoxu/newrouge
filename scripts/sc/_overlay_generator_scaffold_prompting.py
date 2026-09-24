@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from _overlay_generator_contract import REQUIRED_CHECKLIST_HEADINGS
-from _overlay_generator_prompting import compact_companion_docs, truncate
+from _overlay_generator_prompting import complete_page_source_context, truncate
 from _overlay_generator_support import extract_json_object
 
 
@@ -20,7 +20,7 @@ def build_overlay_page_scaffold_prompt(
     base_page: dict[str, Any],
     current_page_text: str,
 ) -> str:
-    companion_json = json.dumps(compact_companion_docs(companion_docs, excerpt_chars=800), ensure_ascii=False, indent=2)
+    companion_json = json.dumps(companion_docs, ensure_ascii=False, indent=2)
     page_context_json = json.dumps(page_context, ensure_ascii=False, indent=2)
     page_profile_json = json.dumps(
         {
@@ -75,7 +75,7 @@ def build_overlay_page_scaffold_prompt(
         "Current page excerpt:",
         current_page_text,
     ]
-    return "\n".join(constraints + [""] + source_blocks).strip() + "\n"
+    return complete_page_source_context("\n".join(constraints + [""] + source_blocks).strip() + "\n")
 
 
 def parse_and_validate_scaffold_update(
