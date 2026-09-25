@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
 from _semantic_topology import load_workspace_topology
+from _project_health_mvg_versions import with_runtime_evidence
 
 
 def image_bytes(root, path, revision):
@@ -151,6 +152,14 @@ def handler_factory(root: Path):
                     # revision alongside graph data so refreshed pages can load
                     # previews without using a stale or empty token.
                     self.send({'revision': state.get('revision'), 'file_manifest': state.get('file_manifest', []), **graph})
+                elif parsed.path == '/api/knowledge/mvg-overview':
+                    snapshot = base_dir(root) / 'latest.json'
+                    state = read_json(snapshot) if snapshot.exists() else {}
+                    overview = state.get('mvg_overview')
+                    if not isinstance(overview, dict) or overview.get('revision') != state.get('revision'):
+                        self.send({'reason': 'Scan local main to build the GDD version and MVG view'}, 409)
+                    else:
+                        self.send(with_runtime_evidence(overview, root))
                 elif parsed.path in ('/api/knowledge/godot/scene', '/api/knowledge/godot/script', '/api/knowledge/godot/unreachable'):
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}
@@ -197,6 +206,8 @@ def handler_factory(root: Path):
                     self.send(Path(__file__).with_name('project_health_unreachable.js').read_text(encoding='utf-8'), content_type='text/javascript')
                 elif parsed.path == '/knowledge/scenes.js':
                     self.send(Path(__file__).with_name('project_health_scenes.js').read_text(encoding='utf-8'), content_type='text/javascript')
+                elif parsed.path == '/knowledge/mvg-versions.js':
+                    self.send(Path(__file__).with_name('project_health_mvg_versions.js').read_text(encoding='utf-8'), content_type='text/javascript')
                 elif parsed.path == '/knowledge/topology.js':
                     self.send(Path(__file__).with_name('project_health_topology.js').read_text(encoding='utf-8'), content_type='text/javascript')
                 elif parsed.path == '/knowledge/treant.js':
