@@ -19,13 +19,14 @@ from _project_health_tasks import attach_task_scenes, task_details, task_page, t
 from _project_health_navigation import ASSET_SUFFIXES, CONFIG_SUFFIXES, build_navigation
 from _godot_scene_graph import build_scene_graph
 from _semantic_topology import attach_scene_design_trace, load_topology_from_snapshot
+from _project_health_mvg_versions import build_overview
 from impact_analysis_index import build_and_publish_index
 from impact_analysis_index import ImpactIndexError
 from impact_analyzer import ImpactAnalyzer
 
 CONFIG = 'scripts/python/project_health_knowledge_config.json'
 REF = 'refs/heads/main'
-STRUCTURAL_SOURCE_PATHS = ['docs/planning/semantic-topology']
+STRUCTURAL_SOURCE_PATHS = ['docs/planning/semantic-topology', 'docs/testing/mvg']
 SOURCE_PATHS = ['.taskmaster/tasks', 'docs/prd', 'docs/gdd', 'docs/adr', 'docs/architecture',
                 'docs/agents', 'docs/workflows', 'Game.Core', 'Game.Godot',
                 'Game.Core.Tests', 'Tests.Godot', 'README.md', 'AGENTS.md',
@@ -236,6 +237,7 @@ def scan(root: Path) -> dict:
         semantic_topology = load_topology_from_snapshot(trusted, details, identity_kind='main')
         scene_graph = build_scene_graph(sources, details, known_paths=trusted.paths)
         attach_scene_design_trace(scene_graph, semantic_topology, details)
+        mvg_overview = build_overview(trusted, details, semantic_topology, scene_graph)
         previous_index_path = root / 'docs/knowledge/catalog/godot-elements.json'
         previous_index = read_json(previous_index_path) if previous_index_path.exists() else None
         file_manifest = sorted(set(sources) | {p for p in trusted.paths
@@ -254,6 +256,7 @@ def scan(root: Path) -> dict:
                   'gdd_files': gdds, 'config': config, 'index': index,
                   'catalog': catalog, 'policies': policies, 'projections': projections,
                   'sources': sources, 'scene_graph': scene_graph, 'semantic_topology': semantic_topology,
+                  'mvg_overview': mvg_overview,
                   'godot_elements': godot_elements,
                   'file_manifest': file_manifest,
                   'publication': {'main_commit': publication.get('main_commit'),

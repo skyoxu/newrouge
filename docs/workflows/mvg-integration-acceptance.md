@@ -24,9 +24,9 @@
 
 ## Knowledge 展示边界
 
-[Knowledge 页面](project-health-knowledge.md) 展示相关任务、场景、测试引用和 Chapter 3/5 设计拓扑，当前没有专门解析 MVG manifest、flow、handoff 和运行摘要的汇总视图。页面上的任务验证按钮不能代替整组 MVG 执行。
+[Knowledge 的场景页面](project-health-knowledge.md) 提供当前 main 的 GDD 候选版本与累计 MVG manifest 的只读汇总：flow、handoff owner、任务、测试和精确匹配当前 revision/manifest 的运行摘要。未追踪来源的任务不能被归属到某个 GDD，静态场景关联不能证明实际可玩。页面上的任务验证按钮不能代替整组 MVG 执行。
 
-当前可核查的完整路径是：manifest（范围/责任/测试）→ CLI `plan` / `recommend`（结构/影响建议）→ `run` / CI → `logs/ci/mvg-acceptance/<run-id>/summary.json` 与原始报告。这提供可追溯证据，但不等价于 Knowledge 中已有 MVG 看板。
+完整核查路径是：manifest（范围/责任/测试）→ CLI `plan` / `recommend`（结构/影响建议）→ `run` / CI → `logs/ci/mvg-acceptance/<run-id>/summary.json` 与原始报告。Knowledge 汇总帮助定位证据，但人工可玩性判断仍需实际试玩。
 
 ## 清单与责任
 

@@ -49,6 +49,24 @@ class SemanticTopologyHttpTests(unittest.TestCase):
         self.assertEqual("legacy_unmapped", payload["status"])
         self.assertEqual("main", payload["identity"]["kind"])
 
+    def test_mvg_view_requires_matching_scan_and_serves_main_snapshot_only(self):
+        status, body = self.request('/api/knowledge/mvg-overview')
+        self.assertEqual(409, status)
+        write_json(base_dir(self.root) / 'latest.json', {
+            'revision': 'a' * 40, 'mvg_overview': {'revision': 'b' * 40, 'versions': [], 'manifests': []},
+        })
+        status, body = self.request('/api/knowledge/mvg-overview')
+        self.assertEqual(409, status)
+        write_json(base_dir(self.root) / 'latest.json', {
+            'revision': 'a' * 40, 'mvg_overview': {'revision': 'a' * 40, 'versions': [], 'manifests': []},
+        })
+        status, body = self.request('/api/knowledge/mvg-overview')
+        self.assertEqual(200, status)
+        self.assertEqual('a' * 40, json.loads(body)['revision'])
+        status, body = self.request('/knowledge/scenes')
+        self.assertEqual(200, status)
+        self.assertIn(b'mvg-version-select', body)
+
     def test_workspace_stabilized_view_is_addressable(self):
         write_json(base_dir(self.root) / "topology/workspace-latest-stabilized.json", {
             "schema_version": "newrouge.semantic-topology-view.v1",

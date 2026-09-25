@@ -49,9 +49,13 @@ Use `--write-planning-artifacts` only after closure PASS to promote stable topol
 | --- | --- | --- |
 | Chapter 3 来源 → Requirement → 可选 Capability → Task → Acceptance | `/knowledge/topology`，Main 或 Workspace | 来源与交付映射；Chapter 3/5 的 Attempt/Successful/Stabilized 状态 |
 | Task → Scene/Script/Test 与任务运行结果 | `/knowledge/` 任务详情及验证按钮 | 对应任务及所选 revision 的局部证据 |
-| MVG → Flow → Handoff owner → Tasks/Tests → 同版本运行结果 | manifest、`run-mvg-acceptance`、CI 及运行摘要 | 当前没有该关系的专用 Knowledge UI/API 汇总；需按 [MVG 使用说明](mvg-integration-acceptance.md) 核对 |
+| MVG → Flow → Handoff owner → Tasks/Tests → 同版本运行结果 | `/knowledge/scenes` 的 GDD versions and cumulative playability、`/api/knowledge/mvg-overview`、manifest 与运行摘要 | 展示当前 main 的累计流程、责任边界与精确匹配当前 revision/manifest 的运行状态；人工试玩另行确认 |
 
 `Verify local main`、`Verify workspace`、`Verify selected` 和 `Audit all gameplay tasks` 仍是任务验证能力；全部任务局部验证成功不能替代 MVG manifest 的整合运行。Source/Requirement/Task 拓扑也不自动生成 MVG flow 或 handoff。`m1-critical` 与 `m1-full` 的范围和阻断任务以选定 manifest 为准，不能从页面绿色状态推断 full-MVG 已通过。
+
+`/knowledge/scenes` 按 Chapter 3 来源集列出 GDD 候选版本，版本身份为 GDD 路径加当前 main 内容 SHA-256。只有已发布、fresh、与扫描 main 同 revision 的语义拓扑中，来源块哈希和 Taskmaster 主编号同时对得上，页面才展示该版本关联的任务及其 Overlay/Contract/ADR 引用。场景、Node 和资源只经任务已验证的静态脚本附着关联，不能推断由该版本创建，也不证明运行时可达或可玩。未发布拓扑时 GDD 标为 `unmapped`，不会按名称或 Git 时间猜测归属；旧 GDD 的历史修订需要另外发布来源证据，当前 main 单一扫描无法复原。
+
+MVG manifest 仍是跨 GDD 版本的累计范围。页面列出每条 flow 的任务、handoff、owner、契约、测试与关联的所有已追踪版本；未归属任务仍留在累计清单内。只有运行摘要的 manifest 内容哈希、main revision、运行模式与干净快照全部一致且 `runtime_verified=true`，才显示 `passed`。阻断任务、动态路线和主观试玩须单独核对；视图本身不写任务或验收状态。
 
 ## Godot 场景图投影
 
