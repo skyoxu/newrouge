@@ -12,6 +12,7 @@
 - The trial metadata write was reverted after the persisted closure gate showed that the generated `INT-*` candidate IDs are not real task IDs. The existing task triplet baseline was re-attested as passed after restoration.
 - A separate batch preparation from the versioned source set produced 85 batches, all 3,270 blocks marked `review_required`. Its first batch is documented in `logs/ci/task-generation/chapter3-source-set-batch-0001-review.md`.
 - Correct-source batch 0001 now has 38 explicitly reviewed blocks and 25 atoms in the separate audit candidate. The remaining 3,232 blocks are still `review_required`; projection compilation stops at batch 0002 as expected.
+- Correct-source batch 0002 now has 40 explicitly reviewed blocks and 8 atoms. The two batches total 78/3,270 reviewed blocks; 3,192 remain. Compilation now stops at batch 0003. See `logs/ci/task-generation/chapter3-source-set-batch-0002-review.md`.
 
 ## Next actions
 
