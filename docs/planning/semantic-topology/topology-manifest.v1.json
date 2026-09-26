@@ -2,7 +2,6 @@
   "schema_version": "newrouge.semantic-topology-manifest.v1",
   "source_revision": "source-set:6d5bc0c20920600a819ea8b1",
   "source_manifest_sha256": "sha256:6d5bc0c20920600a819ea8b1dbe739eac55400dd13a8130408197c8121a96fed",
-  "repository_revision": "e573251dc6a986deecdc827c4c9093798b9c5229",
   "schema_revision": "newrouge.semantic-topology.schemas.v1",
   "generator_revision": "chapter3-init-simulated-20260926",
   "artifacts": {
