@@ -11,6 +11,7 @@ ADR-Refs:
   - ADR-0025-godot-test-strategy
   - ADR-0032-save-resume-determinism
   - ADR-0033-card-identity-and-forms
+  - ADR-0039-character-build-diversity-floor
 Chapter-Refs:
   - docs/architecture/base/01-introduction-and-goals-v2.md
   - docs/architecture/base/02-security-baseline-godot-v2.md
@@ -53,6 +54,7 @@ NewRouge 是一款单人回合制卡牌构筑 roguelike：
 ### 2.1 v1 目标
 - 提供可完成的 3 Act 单局闭环。
 - 提供 3 角色：战士、刺客、德鲁伊。
+- 每个角色至少 2 条可行构筑方向，以构筑标签统计与通关样本复盘验收（见 ADR-0039）。
 - 每角色 30 张基础卡（不含升级形态）。
 - 事件总量 40（支持可重复池策略）。
 - 遗物首发 20。

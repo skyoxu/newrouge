@@ -1,116 +1,261 @@
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
 {
   "schema": "taskmaster-prd-part/v1",
-  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "generated_at_utc": "2026-09-26T08:27:45+00:00",
   "rel_path": ".taskmaster/docs/prd_parts/60-m1-acceptance-checklist.md",
   "title": "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
-  "sha256": "1968c33f103445802b5d03c6a22c3c0cd9aa74f6593a45294f720bf51e48051d",
-  "bytes": 8300
+  "sha256": "9b1d8840530455ba2e7a02ee7948fdade3e3aee0df3c5b472ac8d634672be31e",
+  "bytes": 13540
 }
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_END ===
 
 ---
 PRD-ID: PRD-NEWROUGE-GAME-0001
-Title: 08 功能纵切验收清单（M1：Warrior）
+Title: 08章验收清单（M1: Warrior）
 Status: Draft
 ADR-Refs:
-  - ADR-0005-quality-gates
-  - ADR-0010-internationalization
-  - ADR-0011-windows-only-platform-and-ci
-  - ADR-0019-godot-security-baseline
-  - ADR-0020-contract-location-standardization
-  - ADR-0025-godot-test-strategy
-  - ADR-0033-card-identity-and-forms
+  - ADR-0005
+  - ADR-0019
+  - ADR-0025
+  - ADR-0032
+  - ADR-0033
+  - ADR-0031
+  - ADR-0011
 Test-Refs:
-  - Game.Core.Tests/Determinism/OfferLockingTests.cs # planned
-  - Game.Core.Tests/Save/SaveResumeBoundaryTests.cs # planned
-  - Game.Core.Tests/Cards/CardIdentityAndFormsTests.cs # planned
-  - Tests.Godot/Smoke/ContinueGateTests.gd # planned
+  - logs/ci/2026-02-12/docs-utf8-gate/summary.json
+  - logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json
+  - logs/ci/2026-02-14/sc-semantic-gate-all/summary.json
+  - Game.Core.Tests/Tasks/Task0009AcceptanceTests.cs
+  - Game.Core.Tests/Services/RngStreamRegistryDeterminismTests.cs
+  - Game.Core.Tests/Services/RngStreamRegistryStateRestoreTests.cs
 ---
 
-# 08 功能纵切验收清单（M1：Warrior）
-
-范围：只验收 M1 最小可玩闭环，不验收 v1 全量内容。
-
-参考：
-- 纵切说明：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
-- PRD：`docs/prd/PRD-NEWROUGE-GAME-0001.md`
-- GDD：`docs/gdd/GDD-NEWROUGE-V1.md`
-
-证据归档（统一写入 `logs/**`）：
-- 约定目录：`logs/ci/<YYYY-MM-DD>/`
-
----
+# 08章验收清单（M1: Warrior）
 
 ## 一、文档完整性验收
-
-- [ ] `_index.md` 存在且可导航：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md`
-- [ ] 纵切文档存在：`docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md`
-- [ ] 本清单具备 Front-Matter 且字段齐全：`PRD-ID/Title/Status/ADR-Refs/Test-Refs`
-- [ ] PRD 的 “关联规格（v1）”包含本纵切入口（避免验收锚点漂移）
+- [ ] Overlay 08 目录下索引、纵切、契约、测试、可观测性、验收清单 6 个文档齐全。
+- [ ] Front matter 字段完整：`PRD-ID`、`Title`、`Status`、`ADR-Refs`、`Test-Refs`。
+- [ ] 文档为 UTF-8（可读语义，不允许语义级乱码）。
+- [ ] `_index.md` 与本清单中的文档列表一致。
 
 ## 二、架构设计验收
-
-### 2.1 M1 体验闭环（Warrior）
-
-- [ ] MainMenu → New Run（覆盖确认默认取消）→ 选择难度 → 选择 Warrior → 进入地图
-- [ ] Map（Act 1）至少可进入：战斗、事件、商店、休整
-- [ ] 战斗后奖励：至少 1 次“卡牌三选一”
-- [ ] 战斗基础规则（M1）：能量默认每回合重置为 3（除非卡牌/遗物影响）；每回合默认抽牌=4
-- [ ] 战斗回合结构（M1，Design Gate 01）：`StartOfTurn → Draw → Main → EndOfTurn`
-- [ ] EndOfTurn 顺序（M1，Design Gate 01）：`EndOfTurn.Triggers → Discard non-retained → Cleanup`（保留牌相关效果可在 Triggers 阶段生效）
-- [ ] 能量上限（M1，Design Gate 01）：存在 `max_energy` 且硬上限=99（实现需避免溢出导致的恢复/复盘不一致）
-- [ ] 休整升级：升级是多选一选项之一；选择升级则免费升级 1 张卡；U1 必须 Route A/B 二选一且不可逆
-- [ ] 商店：任何时候不提供升级（UI/文案不得出现升级语境）
-- [ ] 商店库存：进入商店时锁定库存与价格；退出重进不刷新（避免刷商店）
-- [ ] 事件：至少 1 次体现“黑暗代价”（包含 HP loss 与 获得诅咒卡 两类示范），且结果可解释/可复盘
-
-### 2.2 关键口径冻结点（高风险）
-
-- [ ] 卡牌身份与形态：同一 `card_id` 四形态（Base/U1A/U1B/Ultimate），不因升级更换 ID（ADR-0033）
-- [ ] U1 → Ultimate：允许进阶，进阶覆盖 U1 形态能力，但继承实例附着效果（ADR-0033）
-- [ ] 奖励三选一出现 U1 卡时：RouteA/RouteB 由掉落 RNG 决定且 UI 明确标注（ADR-0033）
-- [ ] 退出重进：三选一候选集与顺序不变；战斗中断回到战斗初始状态（与 ADR-0032 对齐）
-- [ ] 跳过奖励：允许跳过，但跳过不刷新候选集、不重抽、不推进 RNG（确定性）
-- [ ] 奖励界面出现即写 autosave：退出重进后仍能回到同一候选集与顺序
-- [ ] 商店购买一致性：单一库存不可重复购买；退出重进恢复“进入商店时的库存 + 已购买记录”
-- [ ] 事件写入：事件选项一旦选择，立刻写入 run 状态（退出重进不刷分支/结果）
-- [ ] 目标不可选止损阀（M1，Design Gate 01）：当松开瞬间目标已死亡/不可选时，取消出牌并回手；不耗能量；不进入弃牌/消耗堆（避免误操作与确定性争议）
-- [ ] 结算顺序确定性（Design Gate 03）：AOE 按 `combatant_id` 升序；多段伤害每段后 `DeathCheck` 且目标死亡后剩余段取消；同一时刻触发器使用稳定键（`stable_id`）排序（先玩家侧后敌人侧）
-- [ ] 自动出牌/复制出牌计入出牌数（Design Gate 03）：避免绕过 `OverplayTax` 与稳定性止损
-- [ ] 回合内稳定性止损（Design Gate 01/03）：单回合出牌达到 100 张时，当前牌结算完后强制结束玩家回合并进入 EndOfTurn（不得被阻止/延后）
-- [ ] 若实现难度 >= 10（M1 允许有限档位）：`OverplayTax`（N=12）触发一次且**第 N+1 张牌也吃到加税**；本回合费用 +1 且最低=1；影响本回合后续抽到/生成牌；不可驱散；回合结束自然失效
-- [ ] 状态系统口径（Design Gate 04）：`Debuff` 可驱散；`RuleModifier` 不可驱散；`status.strength` 不可驱散且允许负值；`status.weak` duration 累加；状态回合数按“持有者回合结束 Cleanup”衰减
-- [ ] `status.bloodbeat`（Design Gate 04）：每次出牌 `PayCost` 成功后对玩家造成 1 点固定伤害（可被护甲格挡；不受 Strength/Weak 修饰）；战斗内常驻；不可叠加
-- [ ] 伤害乘区口径（Design Gate 03/04）：`status.weak` 影响输出乘区（典型 75%，下限 50%）；`status.vulnerable` 影响受击乘区（典型 150%，上限 200%）；固定伤害不吃乘区但可被护甲/格挡吸收
-- [ ] Offer locking 统一结构（Design Gate 05）：候选集快照包含 `stable_ids[] + display_order[] + provenance + rng_stream + locked_at_save_point`，且 `stable_ids[]` 为内容稳定 ID（非文案 key）
-- [ ] Reward 写盘点（Design Gate 05）：生成并锁定 reward 后写 autosave，再展示界面；强退后 Continue 回到 Reward 界面（同候选集同顺序）
-- [ ] Shop 写盘点（Design Gate 05）：进入商店即锁定库存+价格并写入 run 状态；购买后强退 Continue 回到商店且库存/价格/金币/已购标记一致
-- [ ] Event 写盘点（Design Gate 05）：进入事件生成选项后即锁定并写入 run 状态；选择/跳过立刻写入；强退在结果展示中 Continue 进入“已选择后的结果展示/结算后状态”
-- [ ] UI 不推进 RNG（Design Gate 05）：查看详情/翻页/排序/悬停/开关面板/事件内切换升级路线等不得推进 RNG（避免“打开面板影响掉落”）
-- [ ] 敌方意图锁定（Design Gate 06）：敌方回合开始锁定 Intent；退出重进意图一致；查看意图/详情不推进 RNG
-- [ ] 多敌人行动顺序（Design Gate 06）：按 `combatant_id` 升序（稳定键）
-- [ ] Run schema 版本化（Design Gate 07）：run 存档包含 `schema_version`；版本不兼容/校验失败阻断 Continue 并提示；存档包含 `save_point_id`
-
-### 2.3 本地化与可见文本
-
-- [ ] 可见文本不硬编码：关键屏（MainMenu/Reward/Shop/Rest/Upgrade/Continue）文本来自 `Game.Godot/Translations`
-- [ ] 卡牌显示约定（M1）：稀有度使用固定位置标记；卡牌名称颜色区分 Base/U1A/U1B/Ultimate（不依赖路线命名）
-- [ ] 掉落池口径（Act 结构）：普通怪/精英怪/Boss/商店/事件 5 类卡池可区分（M1 可先落骨架）
-- [ ] 诅咒卡口径：`card.curse.<slug>` 独立池、不可升级（单形态）；存在至少一种移除入口（M1 要求：商店/事件/休整均有入口）
+- [ ] M1 纵切范围明确：Warrior + Act1 最小闭环 + Continue Gate。
+- [ ] 升级口径符合 ADR-0033：同 `card_id` 四形态，U1 二选一，Ultimate 不可逆。
+- [ ] 存档口径符合 ADR-0032：单槽、节点前/战斗初始保存、战斗中不保存中间态。
+- [ ] 状态推进遵循 Command-only 入口，不允许 UI 隐式推进决定性状态。
 
 ## 三、代码实现验收
-
-说明：本清单的“代码实现”项用于 Taskmaster 拆任务时作为 Done 标准；M1 前允许处于 planned 状态。
-
-- [ ] `Game.Core/Contracts/**` 存在卡牌形态/升级路线相关契约（不依赖 Godot）
-- [ ] `Game.Core/**` 存在候选集锁定的核心逻辑（可被 xUnit 验证）
-- [ ] `Game.Godot/**` 关键屏具备最小可用 UI：MainMenu/Map/Reward/Shop/Rest/Upgrade
-- [ ] Continue Gate：坏档/迁移失败会阻断 Continue 并提示（错误不静默）
+- [ ] 契约落盘在 `Game.Core/Contracts`，Core 不依赖 Godot API。
+- [ ] 奖励候选集锁定包含可审计标识（stable ids / order / provenance）。
+- [ ] Continue 阻断路径可解释并可取证（坏档、迁移失败、校验失败）。
+- [ ] autosave 写失败路径可解释并可取证，至少覆盖 `temp_write_failed` 与 `atomic_replace_failed`，且失败后保留上一份有效 autosave。
+- [ ] 商店不提供升级入口，升级只允许在休整/特殊事件发生。
 
 ## 四、测试框架验收
+- [ ] xUnit 覆盖：候选集锁定、存档边界、卡牌身份与形态。
+- [ ] Headless/Godot 覆盖：Continue Gate 关键路径。
+- [ ] 证据写入 `logs/unit`、`logs/e2e`、`logs/ci`。
+- [ ] acceptance 与语义门禁对齐通过。
 
-- [ ] xUnit：至少 1 个用例覆盖“候选集锁定不漂移”（Core）
-- [ ] xUnit：至少 1 个用例覆盖“卡牌身份与形态（升级不换 card_id、继承附着效果）”（Core）
-- [ ] Headless 冒烟：至少 1 个用例覆盖“Continue Gate 关键路径”（Godot）
-- [ ] 证据归档：测试与冒烟产物写入 `logs/**`（路径口径以仓库规则为准）
+## 五、回链与门禁验收
+- [ ] 任务 `T56` 覆盖：Audit JSONL validation + gate integration。
+- [ ] 任务 `T57` 覆盖：Traceability gate for ADR/Chapter/Overlay links。
+- [ ] Overlay 文档可被 `overlay_refs` 稳定命中。
+- [ ] ADR/CH/Overlay/Test-Refs 回链一致且可校验。
+
+## 六、Test-Refs 分层
+
+**Real（当前已有证据）**
+- `logs/ci/2026-02-12/docs-utf8-gate/summary.json`
+- `logs/ci/2026-02-12/sc-check-acceptance-garbled/summary.json`
+- `logs/ci/2026-02-14/sc-semantic-gate-all/summary.json`
+
+**Planned（后续实现落地）**
+- `Game.Core.Tests/Domain/OfferLockingDeterminismTests.cs`
+- `Game.Core.Tests/Tasks/Task0050AcceptanceTests.cs`
+- `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`
+- `Tests.Godot/tests/UI/test_main_menu_continue_blocked_message.gd`
+- `Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs`
+- `Game.Core.Tests/Tasks/Task57TraceabilityGateTests.cs`
+
+## 七、Task1 Evidence Path Template（Task1 环境证据路径模板，ACC:T1.3）
+- `logs/ci/<YYYY-MM-DD>/env-evidence/godot-bin-env.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/godot-version.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/godot-bin-version.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/dotnet-version.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/dotnet-sdks.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/dotnet-restore.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/packages-lock-exists.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/windows-only-check.txt`
+- `logs/ci/<YYYY-MM-DD>/env-evidence/utf8-check.txt`
+
+## Task53 Test-Refs (Headless Smoke Runner)
+- logs/ci/<date>/task-0053.json
+- logs/ci/<date>/smoke/<timestamp>/headless.out.log
+- logs/ci/<date>/smoke/<timestamp>/headless.err.log
+- logs/ci/<date>/smoke/<timestamp>/summary.json
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerCliValidationTests.cs
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerArtifactsSummaryTests.cs
+- Game.Core.Tests/Tasks/Task53HeadlessRunnerPermissiveModeTests.cs
+
+## Task54 Gate Notes
+- Task: `T54 Integrate GdUnit4 suites into quality_gates.py`
+- ADR-Refs: `ADR-0005`, `ADR-0011`, `ADR-0024`
+- Chapter-Refs: `CH06`, `CH07`, `CH10`
+- Test-Refs:
+  - `Tests.Godot/tests/Integration/test_quality_gates_gdunit_suite_wiring.gd`
+  - `Tests.Godot/tests/Integration/test_gdunit_junit_artifact_export.gd`
+  - `Game.Core.Tests/Tasks/Task54GdUnitGatePolicyTests.cs`
+  - `Game.Core.Tests/Tasks/Task54QualityGateSummaryTests.cs`
+  - `Game.Core.Tests/Tasks/Task54GdUnitSuiteSelectionTests.cs`
+  - `Game.Core.Tests/Tasks/Task54CiDecisionSyncTests.cs`
+  - `Tests.Godot/tests/ci/test_gdunit_suite_wiring.gd`
+  - `Game.Core.Tests/Tasks/Task32AcceptanceTests.cs`
+- Checklist:
+  - Summary JSON must include suite status, gate level, and overall decision.
+  - GdUnit suites `adapters/security` are hard gate; `integration/ui` are soft gate.
+  - `task-0054.json` must be generated and linked by task evidence refs.
+
+## Task13 ADR 回链
+- Task: `T13 Set up Godot autoloads and composition root`
+- ADR-Refs: `ADR-0007`, `ADR-0021`, `ADR-0022`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task13AdrBacklinkTests.cs`
+  - `Tests.Godot/tests/Tasks/test_task0013_composition_root_acceptance.gd`
+  - `Tests.Godot/tests/Scenes/Smoke/test_main_scene_smoke.gd`
+
+
+## Task28 Contract/Test Backlinks
+- Task: `T28 Create ActConfig data model and loader`
+- ADR-Refs: `ADR-0006`, `ADR-0031`, `ADR-0021`
+- Contract-Refs:
+  - `Game.Core/Contracts/Config/ActConfig.cs`
+  - `Game.Core/Contracts/Config/ActConfigLoadResult.cs`
+  - `Game.Core/Contracts/Interfaces/IActConfigProvider.cs`
+  - `Game.Core/Contracts/Events/ActConfigLoadedEvent.cs` (`core.act.config.loaded`)
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0028AcceptanceTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderTests.cs`
+  - `Game.Core.Tests/Services/ActConfigLoaderSchemaVersionTests.cs`
+- Evidence:
+  - `logs/ci/<date>/task-0028.json`
+- Checklist:
+  - `ActConfig` includes `schema_version/act_id/node_graph/pools/encounters`
+  - schema validation failure is deterministic and assertable
+  - overlay contracts/testing documents both contain the same Task28 refs
+
+## Task5 ADR Mapping
+- ADR-0021
+- ADR-0029
+
+## Task30 ADR Mapping
+- ADR-0010
+- ADR-0020
+- ADR-0021
+
+## Task30 Serialization Semantics
+- RelicDefinition serialized keys must be exactly: `relic_id`, `name_key`, `description_key`, `tags`.
+- RelicInstance serialized keys must be exactly: `instance_id`, `modifiers`.
+- Missing required keys or renamed keys must fail acceptance (`ACC:T30.1`).
+- Refs: `Game.Core.Tests/Tasks/Task0030AcceptanceTests.cs`
+
+## Task36 Autosave Trigger Traceability
+- Task: `T36 Implement autosave triggers per determinism policy`
+- ADR-Refs: `ADR-0032`, `ADR-0023`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0036AcceptanceTests.cs`
+- Checklist:
+  - Battle entered initial state triggers one autosave.
+  - Reward first shown triggers one autosave (deduplicated per reward context).
+  - Event choice committed triggers one autosave.
+  - Skip flow start/completed adds no autosave.
+
+## Task9 Governance Evidence (Non-semantic)
+- This block is governance traceability evidence only and is not a Task 9 RNG behavior acceptance condition.
+- ADR-0032 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0032-backlink.json
+- ADR-0021 back-link check: pass. Evidence: logs/ci/evidence/task-0009-adr-0021-backlink.json
+
+## Task39 Translation Traceability
+- Task: `T39 Populate translations for M1 cards, relics, events`
+- ADR-Refs: `ADR-0010`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0039_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0039AcceptanceTests.cs`
+- Evidence script:
+  - `scripts/python/verify_m1_translations.py`
+
+
+
+- Task39 Acceptance:
+- `ACC:T39.1`: Extract complete M1 visible-text baseline from real sources (cards/relics/events/runtime-visible M1 UI text, not prompts-only); every extracted key must exist in `en.csv` and `zh-CN.csv` with valid values (non-empty, non-key-echo, non-placeholder-garbled).
+- `ACC:T39.2`: In Task39-scoped cards/relics/events data and all runtime-visible M1 UI text (prompts/menu labels/button texts/event option texts/other player-facing labels), visible text must render via translation keys; hardcoded visible human-readable literals fail acceptance.
+- `ACC:T39.3`: M1 locale output correctness is acceptance-critical: for `en` and `zh-CN`, runtime-visible M1 UI text must resolve to non-empty, non-key-echo, non-placeholder values from translation resources; locale-switch refresh timing/mechanism is out of scope for Task39.
+- `ACC:T39.4`: M1 visible-text coverage must be reproducible from source extraction: `required_keys` derived from cards/relics/events/runtime-visible UI sources, and `missing_keys` must be empty for both `en` and `zh-CN`.
+
+## Task20 Test-Refs (Shop Lock / No Upgrade Context)
+- Task: `T20 Implement shop scene with inventory locking and no upgrade context`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0020_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0020AcceptanceTests.cs`
+- Coverage-Tags:
+  - `shop_purchase`
+  - `shop_inventory_lock`
+  - `shop_no_upgrade_copy`
+  - `reenter_persistence`
+- Checklist:
+  - Must load `Game.Godot/Scenes/Shop.tscn` and keep locked inventory stable across re-enter.
+  - Must reject duplicate purchase and invalid offer id purchase.
+  - Must keep shop UI/service texts free of upgrade context.
+
+
+## Task26 Difficulty Contract And Immutability Evidence
+- Task 26 / T26 traceability scope: difficulty configuration contract and run-start immutability.
+- ADR-Refs: `ADR-0023`, `ADR-0032`, `ADR-0021`
+- Test-Refs:
+  - `Tests.Godot/tests/Tasks/test_task0026_acceptance.gd`
+  - `Game.Core.Tests/Tasks/Task0026AcceptanceTests.cs`
+- Checklist:
+  - run metadata persists `difficulty_id`, `label_key`, `description_key`, `ruleset_id` from selected difficulty snapshot
+  - post-start mutation requests are rejected or leave stored values unchanged
+
+
+## Task47 Trigger Ordering And Fixed Damage Evidence
+- Task: `T47 Implement status trigger ordering and fixed damage rules`
+- ADR-Refs: `ADR-0029`, `ADR-0032`
+- Test-Refs:
+  - `Game.Core.Tests/Tasks/Task0047AcceptanceTests.cs`
+  - `Game.Core.Tests/Services/StatusTriggerOrderingTests.cs`
+  - `Game.Core.Tests/Services/FixedDamageRulesTests.cs`
+- Checklist:
+  - Trigger ordering determinism: repeated settlements with identical inputs must preserve trigger sequence and final damage.
+  - Trigger ordering correctness: tie-breaker rule is deterministic and verifiable (Relic before Status under equal priority; same-type ties honor registration order).
+  - Fixed damage unmodified: fixed damage remains unchanged by mutable multipliers and by OverplayTax parameter changes.
+
+## Task59-69 UI Wiring Acceptance Backlinks
+- T59 / GM-0159: New Run must route through `MainMenu -> DifficultySelect -> CharacterSelect -> Map` and preserve Continue/overwrite behavior.
+- T60 / GM-0160: Map must own legal and illegal node routing into Combat, Event, Shop, and Rest.
+- T61 / GM-0161: Reward must be a standalone scene with locked offers, confirm/skip resolution, and return-to-Map routing.
+- T62 / GM-0162: Rest must be a standalone scene with heal, upgrade, remove curse, irreversible upgrade confirmation, and return-to-Map routing.
+- T63 / GM-0163: Continue blocked states must show player-visible recovery reasons without implying unsupported mid-combat resume.
+- T64 / GM-0164: Combat HUD must show decision-critical state and visible command feedback without mutating state on preview/invalid actions.
+- T65 / GM-0165: Main M1 surfaces must render localized visible text without key echo or placeholder-garbled values.
+- T66 / GM-0166: Run Summary surface ownership must be explicit and must read stored metadata without recomputing run state.
+- T67 / GM-0167: Shop must have real UI behavior binding, locked inventory, visible failure feedback, and no upgrade/rest/campfire context.
+- T68 / GM-0168: M1 critical-path surfaces must have invokable primary actions, valid focus cycling, and visible localized labels.
+- T69 / GM-0169: Event must show option costs, committed results, numeric changes, invalid-choice feedback, and route through the Map-owned node model.
+
+GDD reference: `docs/gdd/ui-gdd-flow.md`.
+
+## Task70-116 Runtime Closure Acceptance Backlinks
+- `T70-T116` are covered by the existing Overlay 08 page family and must not silently create a second overlay baseline.
+- Runtime-closure families that must stay documented in Overlay 08:
+  - Map and ActConfig route closure: `T70`, `T86`, `T97`
+  - Combat runtime and deck truth-source closure: `T71-T83`, `T95-T106`, `T111`, `T116`
+  - Reward stability and writeback closure: `T84`, `T85`, `T114`, `T115`
+  - Continue, settlement, and replay closure: `T87`, `T91`, `T98`, `T107`, `T109`, `T113`
+  - Relic runtime closure across combat and run boundaries: `T88`, `T99`, `T110`, `T112`
+- Governance split tasks `T102`, `T103`, `T104`, `T108`, `T109`, and `T112` must be accepted as review-scope narrowing and evidence work, not as gameplay feature implementation.
+- Contract baseline rule for `T70-T116`:
+  - reuse existing `Game.Core/Contracts` files when the public boundary already exists
+  - add new contract files only when implementation promotes a truly new public DTO / event / interface / ownership snapshot
+  - potion-related contract files remain a documented future gap until `T77` or `T111` implementation is actually selected

@@ -29,3 +29,13 @@ The next run must first reconcile the authoritative source inventory and review 
 ## Open Needs Fix: build-diversity threshold
 
 The correct-source batch 0006 review found `_bmad-output/gdd.md:381` requiring at least three baseline archetypes per character to reliably clear difficulties 1-3, while `_bmad-output/gdd.md:390` lists a KPI of at least two viable archetypes per character. The latter can be a weaker monitoring floor, but that role is not explicit. Keep the KPI unresolved until product design clarifies whether it is a monitoring metric or acceptance gate. Evidence: `logs/ci/task-generation/chapter3-source-set-batches-0005-0006-review.md`; repair entry: `execution-plans/2026-09-26-chapter3-semantic-reconciliation.md`.
+
+## Resolution: use the KPI floor
+
+The product owner directed the v1 build-diversity threshold to follow the KPI table: at least two viable archetypes per character. ADR-0039 records the threshold change. GDD and epic statements have been aligned; the changed Source Blocks require a new ledger and projection review before the Chapter 3 candidate can be promoted.
+
+## Resolved Needs Fix: M1 normal-enemy balance-test gate
+
+`docs/gdd/m1-playable-setup.md:92` says to add at least two normal enemies before balance testing, while `docs/gdd/m1-playable-setup.zh-CN.md:90` says this is recommended. The Chinese block `SB-8C9677F64415600E` remains `unresolved` with Product design as owner until the acceptance strength is confirmed. Do not promote the candidate as semantically conserved before that decision. Evidence: `logs/ci/task-generation/chapter3-kpi-batches-0017-0018-review.md`; repair entry: `execution-plans/2026-09-26-chapter3-semantic-reconciliation.md`.
+
+The product owner confirmed that adding two normal enemies is advice, not an M1 acceptance gate. The English GDD now says so explicitly, matching the Chinese GDD. In the refreshed candidate, changed English block `SB-1AAD67E9B68A71D5` is reviewed as non-delivery context, and the Chinese block is reviewed as duplicate guidance rather than unresolved. This resolves the wording conflict but does not complete Chapter 3: BATCH-0021 onward remains unreviewed. Evidence: `logs/ci/task-generation/chapter3-kpi-advisory-review.md`.

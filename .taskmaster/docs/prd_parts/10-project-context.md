@@ -1,7 +1,7 @@
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
 {
   "schema": "taskmaster-prd-part/v1",
-  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "generated_at_utc": "2026-09-26T08:27:45+00:00",
   "rel_path": ".taskmaster/docs/prd_parts/10-project-context.md",
   "title": "project-context.md",
   "sha256": "a0085545011d5ecbaeae4bcaccc44222702d9867172a70eba02f58f23f8c2bed",

@@ -1,0 +1,21 @@
+# ADR-0039: Character Build Diversity Floor
+
+- Status: Accepted
+- Date: 2026-09-26
+- Context:
+  - The GDD's Build diversity KPI specifies at least two viable builds per character.
+  - Several PRD/GDD and epic statements specified at least three, and one added a difficulty 1-3 clear condition. The different thresholds made Chapter 3 semantic review ambiguous.
+  - The product owner chose the KPI threshold as the common v1 floor.
+- Decision:
+  - V1 requires at least two viable build archetypes for each launch character.
+  - Verify viability through build-tag statistics and completed-run sample review, as stated in the GDD KPI table.
+  - A third archetype or a difficulty-specific success threshold may be a future design goal, but is not part of this v1 acceptance floor unless separately approved.
+  - Keep character identity, card-pool size, and other existing design constraints unchanged.
+- Consequences:
+  - GDD, epic, traceability, and derived Taskmaster input text must use the two-archetype floor consistently.
+  - Chapter 3 projection of changed source blocks must be reviewed again; prior content hashes and compiled requirements are stale.
+- Supersedes: None
+- References:
+  - `_bmad-output/gdd.md` (Build diversity KPI)
+  - `docs/gdd/GDD-NEWROUGE-V1.md`
+  - `_bmad-output/epics.md`

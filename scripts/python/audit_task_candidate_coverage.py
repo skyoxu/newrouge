@@ -204,6 +204,18 @@ def audit_semantic(
 
     packaging_rows = []
     packaging_missing = []
+    legacy_task_refs: set[str] = set()
+    for task in tasks:
+        if not isinstance(task, dict):
+            continue
+        generation_mode = str(task.get("generation_mode") or "").casefold()
+        labels = {str(value).casefold() for value in task.get("labels", [])}
+        if generation_mode != "legacy-packaging" and "legacy-packaging" not in labels:
+            continue
+        for value in task.get("requirement_ids", []):
+            text = str(value).strip()
+            if text:
+                legacy_task_refs.add(text)
     for anchor in (legacy_requirements or {}).get("anchors", []):
         if not isinstance(anchor, dict):
             continue
@@ -211,7 +223,10 @@ def audit_semantic(
         if priority not in BLOCKING_PRIORITIES:
             continue
         block_id = str(anchor.get("source_block_id") or "")
-        covered = bool(block_id and block_id in covered_blocks)
+        covered = bool(
+            (block_id and block_id in covered_blocks)
+            or str(anchor.get("requirement_id") or "") in legacy_task_refs
+        )
         row = {
             "requirement_id": str(anchor.get("requirement_id") or ""),
             "source_block_id": block_id,

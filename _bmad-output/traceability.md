@@ -33,7 +33,7 @@ sources:
 | 3 体验支柱 | 构筑表达、代价抉择、机制差异、长线策略 | Core Gameplay / Goals and Context | 1–5 | 支柱将直接约束卡牌/事件的“代价感”与可读性设计 |
 | 4 核心循环 | 选角→天赋→Act1→节点→三选一→Boss→下一Act→结算 | Core Gameplay / Game Mechanics | 1,2,5 | 必须与存档边界一致：节点前/入战斗为唯一边界 |
 | 5 战斗系统 | 回合制战斗与状态交互（PRD 细节） | Game Mechanics / Card Game Specific Design | 1,2 | 需要在 game-design 阶段把“状态词表”与 UI 可读性控制住 |
-| 6 角色设计 | 战士怒气 buff、刺客 debuff 工具箱、德鲁伊姿态爆发；每角多流派 | Game Mechanics（角色身份）/ Card Game Specific（卡牌分布） | 3,4 | PRD 写“至少 3 条流派”，GDD/epics 需保持一致（已作为硬约束写入） |
+| 6 角色设计 | 战士怒气 buff、刺客 debuff 工具箱、德鲁伊姿态爆发；每角多流派 | Game Mechanics（角色身份）/ Card Game Specific（卡牌分布） | 3,4 | 以 PRD/GDD 的 Build diversity KPI 为共同下限：每角至少 2 条可行流派；GDD/epics 保持一致（ADR-0039） |
 | 7 卡牌系统 | 每角 30 基础卡；起始牌组 10 张（7/2/1）；稀有度；获取方式；卡牌升级 | Card Game Specific Design | 3,4 | v1 做 U1 常规升级（二选一路线，不可逆；特殊事件可改路线）+ Ultimate 终极形态（稀有机会）；升级不计入 30 张基础卡 |
 | 8 遗物系统 | 20 个遗物；规则改变/构筑方向优先 | Game Mechanics / Progression and Balance | 4 | 遗物需与三角色机制联动但避免“强度全靠抽到” |
 | 9 地图与节点 | 分叉路线图；节点类型；节奏目标 | Level Design Framework | 1,4 | 单局 60 分钟目标会反向约束节点数与战斗时长 |

@@ -89,7 +89,11 @@ def normalize_task(candidate: dict[str, Any], target: str) -> dict[str, Any]:
         "evidence_refs": list(candidate.get("evidence_refs") or []),
         "source_refs": list(candidate.get("source_refs") or []),
         "requirement_ids": list(candidate.get("requirement_ids") or []),
-        "semantic_refs": list(candidate.get("semantic_refs") or candidate.get("requirement_ids") or []),
+        "semantic_refs": (
+            list(candidate["semantic_refs"])
+            if "semantic_refs" in candidate and isinstance(candidate.get("semantic_refs"), list)
+            else list(candidate.get("requirement_ids") or [])
+        ),
         "capability_refs": list(candidate.get("capability_refs") or []),
         "complexity_score": int(candidate.get("complexity_score") or 1),
         "implementation_files": list(candidate.get("implementation_files") or []),

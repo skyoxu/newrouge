@@ -13,6 +13,7 @@ ADR-Refs:
   - ADR-0025-godot-test-strategy
   - ADR-0032-save-resume-determinism
   - ADR-0033-card-identity-and-forms
+  - ADR-0039-character-build-diversity-floor
 Test-Refs:
   - Game.Core.Tests/Determinism/OfferLockingTests.cs
   - Game.Core.Tests/Save/SaveResumeBoundaryTests.cs
@@ -25,7 +26,7 @@ Test-Refs:
 ## 1. 设计目标
 
 ### 1.1 体验支柱
-- 构筑表达：同角色至少 3 条可行构筑方向。
+- 构筑表达：同角色至少 2 条可行构筑方向。
 - 代价抉择：强收益必须绑定可解释代价。
 - 可读可解释：玩家能理解状态、代价、结果来源。
 - 可复现：退出重进不刷结果，失败可复盘。

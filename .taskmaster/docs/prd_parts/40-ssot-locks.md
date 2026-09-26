@@ -1,7 +1,7 @@
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
 {
   "schema": "taskmaster-prd-part/v1",
-  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "generated_at_utc": "2026-09-26T08:27:45+00:00",
   "rel_path": ".taskmaster/docs/prd_parts/40-ssot-locks.md",
   "title": "docs/prd/SSOT-LOCKS-NEWROUGE-V1.md",
   "sha256": "264c1ec35a81fd0addbf0f1fa6c22ac047a5251a06974292145a1e1533d54574",

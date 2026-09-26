@@ -89,7 +89,7 @@ Slay the Spire works because each floor asks for a clear tradeoff: fight for rew
 | Content Type | Required Path | Minimum M1 Set | Notes |
 | --- | --- | --- | --- |
 | Act config | `Game.Core/Data/act1-config.json` | 1 Act with 6-8 nodes and at least one branch | This file is recommended because `ActConfigLoader` already expects `schema_version`, `act_id`, `node_graph`, `pools`, and `encounters`. |
-| Enemy definitions | `Game.Core/Data/act1-enemy-definitions.json` | Already has normal, elite, boss | Add at least 2 normal enemies before balance testing; current file can support smoke-level M1. |
+| Enemy definitions | `Game.Core/Data/act1-enemy-definitions.json` | Already has normal, elite, boss | The current file can support smoke-level M1; adding at least 2 normal enemies before balance testing is recommended, not required. |
 | Card definitions | `Game.Core/Data/m1-card-definitions.json` | Warrior starting deck plus reward/shop pool | Should include stable IDs, translation keys, cost, type, target rule, base effect, and upgrade routes. |
 | Starting deck | `Game.Core/Data/m1-warrior-starting-deck.json` | 10 cards | Required shape: card IDs and counts. Keep deterministic order or explicit shuffle seed behavior. |
 | Card pools | `Game.Core/Data/m1-card-pools.json` | normal, elite, boss, shop, event reward pools | Existing `CardPoolCatalog` has generated IDs; a real JSON catalog should replace placeholder-only pools for player play. |

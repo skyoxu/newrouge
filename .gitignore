@@ -117,6 +117,10 @@ node_modules/
 # tasks.json
 # tasks/ 
 
+# Locally generated Godot knowledge artifacts
+docs/knowledge/catalog/godot-elements.json
+scripts/python/project_health_knowledge_config.json
+
 # taskdoc: ignore all local task context artifacts
 taskdoc/**
 !taskdoc/

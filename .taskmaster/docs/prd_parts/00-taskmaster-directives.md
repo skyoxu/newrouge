@@ -1,7 +1,7 @@
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
 {
   "schema": "taskmaster-prd-part/v1",
-  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "generated_at_utc": "2026-09-26T08:27:45+00:00",
   "rel_path": ".taskmaster/docs/prd_parts/00-taskmaster-directives.md",
   "title": "Taskmaster directives",
   "sha256": "8553e1aa6bec7eba892663d2c2504f2a9a2b4abca89ec2b980c939866799f738",

@@ -1,7 +1,7 @@
 === TASKMASTER_PRD_PARTS_MANIFEST_JSON_BEGIN ===
 {
   "schema": "taskmaster-prd-part/v1",
-  "generated_at_utc": "2026-01-29T12:44:47+00:00",
+  "generated_at_utc": "2026-09-26T08:27:45+00:00",
   "rel_path": ".taskmaster/docs/prd_parts/50-mechanics-edge-cases.md",
   "title": "docs/prd/MECHANICS-EDGE-CASES-SSOT-NEWROUGE-V1.md",
   "sha256": "68a0cb0ce4d8a3aa1183b985b039242533d9de010b194062a24f8306babcd1fd",

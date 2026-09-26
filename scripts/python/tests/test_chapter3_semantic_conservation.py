@@ -17,6 +17,7 @@ if str(PYTHON_DIR) not in sys.path:
 import attest_chapter3_triplet_baseline as triplet_attest_mod
 import audit_task_candidate_coverage as coverage_mod
 import build_source_ledger as ledger_mod
+import compile_task_triplet as triplet_compile_mod
 import dev_cli as dev_cli_mod
 import enrich_task_candidates as enrich_mod
 import normalize_task_intents as intents_mod
@@ -34,6 +35,70 @@ def write_json(path: Path, payload) -> None:
 
 
 class Chapter3SemanticConservationTests(unittest.TestCase):
+    def test_explicit_empty_semantic_refs_do_not_fallback_to_legacy_requirement_ids(self) -> None:
+        task = triplet_compile_mod.normalize_task(
+            {
+                "id": "INT-0500",
+                "title": "Legacy packaging task",
+                "requirement_ids": ["LEGACY-REQ"],
+                "semantic_refs": [],
+                "generation_mode": "legacy-packaging",
+            },
+            "back",
+        )
+        self.assertEqual(["LEGACY-REQ"], task["requirement_ids"])
+        self.assertEqual([], task["semantic_refs"])
+
+    def test_legacy_packaging_uses_explicit_requirement_ids_without_semantic_edge(self) -> None:
+        semantics = {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "requirements": [],
+            "source_accounting": [],
+        }
+        legacy = {
+            "anchors": [{
+                "requirement_id": "LEGACY-P0",
+                "priority": "P0",
+                "source_block_id": "SB-LEGACY",
+            }],
+        }
+        candidates = {"candidates": [{
+            "id": "INT-0501",
+            "semantic_refs": [],
+            "requirement_ids": ["LEGACY-P0"],
+            "labels": ["legacy-packaging"],
+        }]}
+        report = coverage_mod.audit(semantics, candidates, legacy, [])
+        self.assertEqual("ok", report["status"])
+        self.assertEqual("ok", report["legacy_p0_p1_packaging"]["status"])
+        self.assertEqual([], report["invalid_task_semantic_refs"])
+
+    def test_legacy_packaging_can_bridge_from_semantic_source_block(self) -> None:
+        semantics = {
+            "schema_version": "newrouge.semantic-requirements.v1",
+            "requirements": [{
+                "requirement_id": "FR-CURRENT",
+                "status": "active",
+                "delivery_relevant": True,
+                "source_block_ids": ["SB-LEGACY"],
+                "non_task_sinks": [],
+            }],
+            "source_accounting": [],
+        }
+        legacy = {"anchors": [{
+            "requirement_id": "LEGACY-P0",
+            "priority": "P0",
+            "source_block_id": "SB-LEGACY",
+        }]}
+        candidates = {"candidates": [{
+            "id": "CURRENT",
+            "semantic_refs": ["FR-CURRENT"],
+            "requirement_ids": ["FR-CURRENT"],
+        }]}
+        report = coverage_mod.audit(semantics, candidates, legacy, [])
+        self.assertEqual("ok", report["status"])
+        self.assertEqual("covered", report["legacy_p0_p1_packaging"]["coverage"][0]["coverage_status"])
+
     def test_triplet_attestation_binds_current_task_file_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
