@@ -1,4 +1,1177 @@
 {
   "schema_version": "chapter3.intent-id-map.v1",
-  "intents": []
+  "intents": [
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 0) 什么时候必须跑（触发条件）:1",
+      "id": "INT-0002"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 1) 回归前置条件（统一口径）:1",
+      "id": "INT-0003"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 2) 最小必跑包（v1） > br-003：休整免费升级（u1 二选一不可逆）:1",
+      "id": "INT-0005"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 2) 最小必跑包（v1） > br-005：ultimate 机会（稀有、不可逆、不可换路线）:1",
+      "id": "INT-0006"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 2) 最小必跑包（v1） > br-006：事件同局不重复:1",
+      "id": "INT-0007"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 2) 最小必跑包（v1）:1",
+      "id": "INT-0004"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包） > 3) 快速判定：哪些变化需要“扩展回归”:1",
+      "id": "INT-0008"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:balance-regression-baseline-newrouge-v1::newrouge v1 平衡与内容回归基线（最小必跑包）:1",
+      "id": "INT-0001"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:card-id-catalog-newrouge-v1::newrouge v1 card id catalog（卡牌内容身份证目录） > 1) 目录字段（v1 约定）:1",
+      "id": "INT-0009"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:card-id-catalog-newrouge-v1::newrouge v1 card id catalog（卡牌内容身份证目录） > 2) m1 最小纵切（首批预留 id） > 2.1 warrior（起始牌组 10）:1",
+      "id": "INT-0011"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:card-id-catalog-newrouge-v1::newrouge v1 card id catalog（卡牌内容身份证目录） > 2) m1 最小纵切（首批预留 id）:1",
+      "id": "INT-0010"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:card-id-catalog-newrouge-v1::newrouge v1 card id catalog（卡牌内容身份证目录） > 3) 诅咒卡（curse，独立池，v1）:1",
+      "id": "INT-0012"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 0) 先读 3 份（不读就容易跑偏）:1",
+      "id": "INT-0013"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.1 新增卡牌（card）:1",
+      "id": "INT-0014"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.2 新增卡牌升级（u1/ultimate 的内容补齐）:1",
+      "id": "INT-0015"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.2 新增卡牌升级（u1/ultimate 的内容补齐）:2",
+      "id": "INT-0016"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.3 新增遗物（relic）:1",
+      "id": "INT-0017"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.4 新增事件（event）:1",
+      "id": "INT-0018"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-authoring-entry-newrouge-v1::newrouge 内容作者单一入口（v1） > 1) 你要做的事（按依赖顺序） > 1.5 新增天赋（talent，共享天赋树）:1",
+      "id": "INT-0019"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 0) 核心原则（先止损，再扩展）:1",
+      "id": "INT-0020"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 2) 组合禁区（硬禁止，出现即视为缺陷） > 2.1 无限循环/无上限递归:1",
+      "id": "INT-0022"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 2) 组合禁区（硬禁止，出现即视为缺陷） > 2.2 控制链（玩家失去行动权）:1",
+      "id": "INT-0023"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 2) 组合禁区（硬禁止，出现即视为缺陷） > 2.3 常驻免疫/常驻无敌:1",
+      "id": "INT-0024"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 2) 组合禁区（硬禁止，出现即视为缺陷） > 2.4 事件强度跨越（事件直接替代构筑）:1",
+      "id": "INT-0025"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 2) 组合禁区（硬禁止，出现即视为缺陷）:1",
+      "id": "INT-0021"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 3) 软边界（允许存在，但必须稀有且可解释）:1",
+      "id": "INT-0026"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 3) 软边界（允许存在，但必须稀有且可解释）:2",
+      "id": "INT-0027"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 4) 角色差异的内容审查要点（避免“换皮卡池”） > 4.1 战士（怒气为状态 buff，不是第二属性条）:1",
+      "id": "INT-0028"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 4) 角色差异的内容审查要点（避免“换皮卡池”） > 4.2 刺客（擅长给敌人叠 debuff）:1",
+      "id": "INT-0029"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 4) 角色差异的内容审查要点（避免“换皮卡池”） > 4.3 德鲁伊（状态持久 buff + 切换状态定点爆发）:1",
+      "id": "INT-0030"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-power-bounds-and-combo-rules-newrouge-v1::newrouge 内容强度边界与组合禁区（v1） > 5) 内容作者自检清单（增量提交前 5 分钟）:1",
+      "id": "INT-0031"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p0（stop-ship）：触发任一条直接拒绝合入 > 0) id 与引用（稳定性）:1",
+      "id": "INT-0032"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p0（stop-ship）：触发任一条直接拒绝合入 > 1) 翻译与可见文本（禁止硬编码）:1",
+      "id": "INT-0033"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p0（stop-ship）：触发任一条直接拒绝合入 > 3) 卡牌升级系统（v1 锁定项）:1",
+      "id": "INT-0034"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p1（必须修正）：影响体验一致性/可维护性 > 2) 可解释性与可读性:1",
+      "id": "INT-0036"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p1（必须修正）：影响体验一致性/可维护性 > 3) 取证与日志对齐（内容侧验收点）:1",
+      "id": "INT-0037"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:content-review-checklist-newrouge-v1::newrouge v1 内容制作验收清单（p0/p1） > p1（必须修正）：影响体验一致性/可维护性:1",
+      "id": "INT-0035"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 0) 快速自检流程（v1）:1",
+      "id": "INT-0039"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 1) 硬禁用语境（出现即 p0） > 1.3 商店升级语境（v1 禁止）:1",
+      "id": "INT-0040"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 1) 硬禁用语境（出现即 p0） > 1.4 升级可逆语境（v1 禁止）:1",
+      "id": "INT-0041"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 2) 高误导词（需确认语境后替换）:1",
+      "id": "INT-0042"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 3) 四个高风险界面（必查点） > 3.1 mainmenu/continue:1",
+      "id": "INT-0043"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 3) 四个高风险界面（必查点） > 3.2 reward（三选一/多选一）:1",
+      "id": "INT-0044"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1） > 3) 四个高风险界面（必查点） > 3.3 upgrade（u1/路线重选/ultimate）:1",
+      "id": "INT-0045"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:copy-forbidden-words-qa-checklist-newrouge-v1::newrouge v1 文案禁用词 qa 自检清单（v1）:1",
+      "id": "INT-0038"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 1: 可玩纵切（act 1 骨架） > scope:1",
+      "id": "INT-0046"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 1: 可玩纵切（act 1 骨架） > stories（高层）:1",
+      "id": "INT-0047"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 3: 角色机制（3 角色） > deliverable:1",
+      "id": "INT-0048"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 3: 角色机制（3 角色） > goal:1",
+      "id": "INT-0049"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 3: 角色机制（3 角色） > stories（高层）:1",
+      "id": "INT-0050"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 6: ui/ux 与本地化口径 > scope:1",
+      "id": "INT-0051"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic 7: 质量门禁与发布准备 > scope:1",
+      "id": "INT-0052"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:epics::newrouge - development epics > epic overview:1",
+      "id": "INT-0053"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 1) 事件 id 命名与稳定性（硬规则）:1",
+      "id": "INT-0054"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 2) v1 事件规划口径（规模与分布）:1",
+      "id": "INT-0055"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 3) 落地优先级建议（从 10 → 20 → 40） > 3.1 里程碑 a：10 个可用事件（最小可玩池）:1",
+      "id": "INT-0056"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 3) 落地优先级建议（从 10 → 20 → 40） > 3.1 里程碑 a：10 个可用事件（最小可玩池）:2",
+      "id": "INT-0057"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 3) 落地优先级建议（从 10 → 20 → 40） > 3.2 里程碑 b：20 个可用事件（稳定量产池）:1",
+      "id": "INT-0058"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 3) 落地优先级建议（从 10 → 20 → 40） > 3.3 里程碑 c：40 个事件（v1 交付池）:1",
+      "id": "INT-0059"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 4) v1 事件 id 预留目录（可直接用于登记表） > 4.4 act3（11）:1",
+      "id": "INT-0061"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 4) v1 事件 id 预留目录（可直接用于登记表）:1",
+      "id": "INT-0060"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:event-id-catalog-newrouge-v1::newrouge 事件 id 目录与落地优先级（v1） > 5) 与确定性/存档的对齐规则（必须遵守）:1",
+      "id": "INT-0062"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 1. 设计目标 > 1.1 体验支柱:1",
+      "id": "INT-0064"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 1. 设计目标 > 1.2 目标人群:1",
+      "id": "INT-0065"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 1. 设计目标:1",
+      "id": "INT-0063"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 10. 文案与可访问性:1",
+      "id": "INT-0066"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 12. 任务对齐:1",
+      "id": "INT-0067"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 5. 升级与形态 > 5.1 规则总览:1",
+      "id": "INT-0068"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 6. 黑暗代价:1",
+      "id": "INT-0069"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 7. 存档与 continue:1",
+      "id": "INT-0070"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 8. m1 最小可玩纵切 > 8.1 范围:1",
+      "id": "INT-0071"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 9. 节点与界面要求 > 9.4 shop:1",
+      "id": "INT-0072"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:gdd-newrouge-v1::newrouge v1 gdd（工作版） > 9. 节点与界面要求 > 9.5 rest:1",
+      "id": "INT-0073"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 1. 目标:1",
+      "id": "INT-0075"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 2. 启动与配置完整性 > 2.1 必要配置文件:1",
+      "id": "INT-0076"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 2. 启动与配置完整性 > 2.1 必要配置文件:2",
+      "id": "INT-0077"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 2. 启动与配置完整性 > 2.1 必要配置文件:3",
+      "id": "INT-0078"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 2. 启动与配置完整性 > 2.3 配置验收:1",
+      "id": "INT-0079"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 3. 最小内容数据集 > 3.1 内容数据原则:1",
+      "id": "INT-0080"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 3. 最小内容数据集 > 3.2 必要数据文件与存放路径:1",
+      "id": "INT-0081"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 3. 最小内容数据集 > 3.2 必要数据文件与存放路径:2",
+      "id": "INT-0082"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 3. 最小内容数据集 > 3.2 必要数据文件与存放路径:3",
+      "id": "INT-0083"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 3. 最小内容数据集 > 3.4 内容验收:1",
+      "id": "INT-0084"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 4. 玩家反馈与失败兜底 > 4.1 反馈文件与路径:1",
+      "id": "INT-0085"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 4. 玩家反馈与失败兜底 > 4.1 反馈文件与路径:2",
+      "id": "INT-0086"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 4. 玩家反馈与失败兜底 > 4.2 失败兜底规则:1",
+      "id": "INT-0087"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 4. 玩家反馈与失败兜底 > 4.3 反馈验收:1",
+      "id": "INT-0088"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 5. playable smoke / first-run smoke 时机 > 5.1 能否先做 smoke？:1",
+      "id": "INT-0089"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 5. playable smoke / first-run smoke 时机 > 5.4 first-run smoke 验收:1",
+      "id": "INT-0090"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup.zh-cn::newrouge m1 可玩化配置与首局流程要求 > 6. 当前可以先做的工作:1",
+      "id": "INT-0091"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup:1",
+      "id": "INT-0074"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 1. goal:1",
+      "id": "INT-0093"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 2. startup and configuration completeness > 2.1 required configuration files:1",
+      "id": "INT-0094"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 2. startup and configuration completeness > 2.1 required configuration files:2",
+      "id": "INT-0095"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 2. startup and configuration completeness > 2.1 required configuration files:3",
+      "id": "INT-0096"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 2. startup and configuration completeness > 2.2 required runtime defaults:1",
+      "id": "INT-0097"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 2. startup and configuration completeness > 2.3 config acceptance:1",
+      "id": "INT-0098"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 3. minimum content data set > 3.1 content data philosophy:1",
+      "id": "INT-0099"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 3. minimum content data set > 3.2 required data files and locations:1",
+      "id": "INT-0100"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 3. minimum content data set > 3.2 required data files and locations:2",
+      "id": "INT-0101"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 3. minimum content data set > 3.3 recommended act 1 m1 route:1",
+      "id": "INT-0102"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 3. minimum content data set > 3.4 minimum content acceptance:1",
+      "id": "INT-0103"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks > 4.1 feedback files and locations:1",
+      "id": "INT-0105"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks > 4.1 feedback files and locations:2",
+      "id": "INT-0106"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks > 4.1 feedback files and locations:3",
+      "id": "INT-0107"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks > 4.2 failure fallback rules:1",
+      "id": "INT-0108"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks > 4.3 feedback acceptance:1",
+      "id": "INT-0109"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 4. player feedback and failure fallbacks:1",
+      "id": "INT-0104"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 5. playable smoke / first-run smoke timing > 5.1 can smoke start before the three work areas are finished?:1",
+      "id": "INT-0110"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements > 5. playable smoke / first-run smoke timing > 5.4 first-run smoke acceptance:1",
+      "id": "INT-0111"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-playable-setup::newrouge m1 playable setup and first-run requirements:1",
+      "id": "INT-0092"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-translation-loading-strategy.zh-cn::newrouge m1 翻译注册与加载策略 > 1. 结论:1",
+      "id": "INT-0112"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-translation-loading-strategy.zh-cn::newrouge m1 翻译注册与加载策略 > 2. 当前权威翻译资源:1",
+      "id": "INT-0113"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-translation-loading-strategy.zh-cn::newrouge m1 翻译注册与加载策略 > 3. 当前加载策略:1",
+      "id": "INT-0114"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-translation-loading-strategy.zh-cn::newrouge m1 翻译注册与加载策略 > 4. locale 设置与持久化:1",
+      "id": "INT-0115"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:m1-translation-loading-strategy.zh-cn::newrouge m1 翻译注册与加载策略 > 6. 验收要求:1",
+      "id": "INT-0116"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 1) 存档边界（必须一致）:1",
+      "id": "INT-0118"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 2) 退出重进与确定性（反刷随机）:1",
+      "id": "INT-0119"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 3) 事件同局不重复（边界写死）:1",
+      "id": "INT-0120"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4) 卡牌升级系统（边界写死）:1",
+      "id": "INT-0121"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4) 卡牌升级系统（边界写死）:2",
+      "id": "INT-0122"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.10 offer/shop/event 确定性（边界写死）:1",
+      "id": "INT-0123"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.11 敌方意图与 ai 确定性（边界写死）:1",
+      "id": "INT-0124"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.12 run 存档版本化与 continue gate（边界写死）:1",
+      "id": "INT-0125"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.6 手牌上限与首回合发牌（边界写死）:1",
+      "id": "INT-0126"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.7 回合内止损与高难度刷牌刹车（边界写死）:1",
+      "id": "INT-0127"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.8 结算顺序与触发器确定性（边界写死）:1",
+      "id": "INT-0128"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.8 结算顺序与触发器确定性（边界写死）:2",
+      "id": "INT-0129"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.9 状态系统（status）边界（边界写死）:1",
+      "id": "INT-0130"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 4.9 状态系统（status）边界（边界写死）:2",
+      "id": "INT-0131"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 5) 不允许的“玩法漏洞语境”（文案/ux）:1",
+      "id": "INT-0132"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot > 6) 错误处理（continue gate）:1",
+      "id": "INT-0133"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:mechanics-edge-cases-ssot-newrouge-v1::newrouge v1 机制边界条件与反例 ssot:1",
+      "id": "INT-0117"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 1) 文案必须可本地化（硬规则）:1",
+      "id": "INT-0135"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 2) 文案长度与结构（硬规则）:1",
+      "id": "INT-0136"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 3) 必须一致的关键术语（不要自创同义词）:1",
+      "id": "INT-0137"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 4) 确定性与存档边界的表达规范（高风险，必须写清） > 4.1 continue（继续游戏）:1",
+      "id": "INT-0139"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 4) 确定性与存档边界的表达规范（高风险，必须写清） > 4.2 战斗中退出重进:1",
+      "id": "INT-0140"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 4) 确定性与存档边界的表达规范（高风险，必须写清） > 4.3 三选一奖励（offer locking）:1",
+      "id": "INT-0141"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 4) 确定性与存档边界的表达规范（高风险，必须写清）:1",
+      "id": "INT-0138"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 5) 升级系统文案规范（不可逆/可切换/ultimate 的差异必须明确） > 5.1 休整升级（免费升级 1 张）:1",
+      "id": "INT-0143"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 5) 升级系统文案规范（不可逆/可切换/ultimate 的差异必须明确） > 5.2 u1 路线选择（route a/b）:1",
+      "id": "INT-0144"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 5) 升级系统文案规范（不可逆/可切换/ultimate 的差异必须明确） > 5.4 ultimate（终极形态）:1",
+      "id": "INT-0145"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 5) 升级系统文案规范（不可逆/可切换/ultimate 的差异必须明确）:1",
+      "id": "INT-0142"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 6) 商店文案禁用语境（硬规则）:1",
+      "id": "INT-0146"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 7) 事件写作规范（黑暗代价，但可解释）:1",
+      "id": "INT-0147"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损） > 7) 事件写作规范（黑暗代价，但可解释）:2",
+      "id": "INT-0148"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:narrative-and-copy-style-guide-newrouge-v1::newrouge v1 叙事与文案风格指南（黑暗主题，确定性止损）:1",
+      "id": "INT-0134"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1:1",
+      "id": "INT-0149"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1::newrouge 玩家困惑点 → 修正策略追踪表（v1） > 1) 状态枚举（仅文档用）:1",
+      "id": "INT-0151"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1::newrouge 玩家困惑点 → 修正策略追踪表（v1） > 2) 追踪表（v1）:1",
+      "id": "INT-0152"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1::newrouge 玩家困惑点 → 修正策略追踪表（v1） > 2) 追踪表（v1）:2",
+      "id": "INT-0153"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1::newrouge 玩家困惑点 → 修正策略追踪表（v1） > 2) 追踪表（v1）:3",
+      "id": "INT-0154"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-confusion-fix-tracker-newrouge-v1::newrouge 玩家困惑点 → 修正策略追踪表（v1）:1",
+      "id": "INT-0150"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1:1",
+      "id": "INT-0155"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 0) 总原则（v1）:1",
+      "id": "INT-0157"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 1) 事件（event）结果面板：最低显示字段:1",
+      "id": "INT-0158"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 2) 三选一/多选一奖励：必须解释“可复现”:1",
+      "id": "INT-0159"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 3) 升级系统：必须解释“你在做不可逆选择” > 3.1 休整节点免费升级:1",
+      "id": "INT-0161"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 3) 升级系统：必须解释“你在做不可逆选择” > 3.2 u1 路线选择（route a/b）:1",
+      "id": "INT-0162"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 3) 升级系统：必须解释“你在做不可逆选择” > 3.4 ultimate（终极形态）:1",
+      "id": "INT-0163"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 3) 升级系统：必须解释“你在做不可逆选择”:1",
+      "id": "INT-0160"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 4) continue/存档边界：必须解释“为什么回到战斗初始”:1",
+      "id": "INT-0164"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档） > 5) 最小禁用词清单（内容与 ui 一律避开）:1",
+      "id": "INT-0165"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:player-feedback-explainability-newrouge-v1::newrouge v1 玩家可解释反馈输出规格（事件/奖励/升级/存档）:1",
+      "id": "INT-0156"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 1) 分级规则（p0/p1/p2） > p0（必须阻塞）:1",
+      "id": "INT-0167"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 1) 分级规则（p0/p1/p2） > p1（应尽快修复）:1",
+      "id": "INT-0168"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 2) 问题分类（用于归因与回填） > c1 存档与确定性（continue/offer locking）:1",
+      "id": "INT-0170"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 2) 问题分类（用于归因与回填） > c3 商店与服务语境（商店不升级）:1",
+      "id": "INT-0171"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 2) 问题分类（用于归因与回填）:1",
+      "id": "INT-0169"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 3) 回填流程（建议 20 分钟内完成一次闭环）:1",
+      "id": "INT-0172"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1） > 5) 一次填写示例（纸面走查，未启动游戏）:1",
+      "id": "INT-0173"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-issue-grading-and-revision-guide-newrouge-v1::newrouge 试玩问题分级与文档回填指引（v1）:1",
+      "id": "INT-0166"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 1) 60 分钟流程（建议顺序） > 1.1 0–10 分钟：mainmenu → 新局/覆盖确认 → 难度 → 角色 → 路线图:1",
+      "id": "INT-0175"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 1) 60 分钟流程（建议顺序） > 1.3 25–40 分钟：休整节点升级（u1 二选一不可逆）:1",
+      "id": "INT-0176"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 1) 60 分钟流程（建议顺序） > 1.4 40–50 分钟：商店节点（验证“无升级语境”）:1",
+      "id": "INT-0177"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 1) 60 分钟流程（建议顺序） > 1.5 50–60 分钟：战斗中退出重进（回到战斗初始状态）:1",
+      "id": "INT-0178"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 2) 关键体验门禁（本脚本“必须通过项”）:1",
+      "id": "INT-0179"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 4) 一次填写示例（纸面走查，未启动游戏） > 4.2 升级（示例）:1",
+      "id": "INT-0181"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 4) 一次填写示例（纸面走查，未启动游戏） > 4.3 商店禁用语境扫描（示例）:1",
+      "id": "INT-0182"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 4) 一次填写示例（纸面走查，未启动游戏） > 4.4 战斗退出重进（示例）:1",
+      "id": "INT-0183"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1） > 4) 一次填写示例（纸面走查，未启动游戏）:1",
+      "id": "INT-0180"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:playtest-script-60min-newrouge-v1::newrouge 60 分钟试玩脚本与记录表（v1）:1",
+      "id": "INT-0174"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001:1",
+      "id": "INT-0184"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 0. 文档边界与 ssot:1",
+      "id": "INT-0185"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 1. 产品定位:1",
+      "id": "INT-0186"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 11. 任务拆解策略（供 taskmaster）:1",
+      "id": "INT-0187"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 2. v1 目标与非目标 > 2.1 v1 目标:1",
+      "id": "INT-0189"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 2. v1 目标与非目标 > 2.2 v1 非目标:1",
+      "id": "INT-0190"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 2. v1 目标与非目标:1",
+      "id": "INT-0188"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 4. 核心战斗规则（冻结）:1",
+      "id": "INT-0191"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 5. 升级与形态规则（adr-0033） > 5.2 u1 升级:1",
+      "id": "INT-0192"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 5. 升级与形态规则（adr-0033） > 5.3 换路线事件:1",
+      "id": "INT-0193"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 5. 升级与形态规则（adr-0033） > 5.4 ultimate:1",
+      "id": "INT-0194"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 6. 诅咒与黑暗代价:1",
+      "id": "INT-0195"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 7. 存档、继续游戏与确定性（adr-0032）:1",
+      "id": "INT-0196"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 8. 事件与奖励池:1",
+      "id": "INT-0197"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:prd-newrouge-game-0001::prd-newrouge-game-0001 > 9. ui 与文案硬规则:1",
+      "id": "INT-0198"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1:1",
+      "id": "INT-0199"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 0) 全局体验硬约束（v1）:1",
+      "id": "INT-0201"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 0) 全局体验硬约束（v1）:2",
+      "id": "INT-0202"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 1) mainmenu（主菜单）:1",
+      "id": "INT-0203"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 10) combat（战斗）:1",
+      "id": "INT-0204"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 12) upgrade ui（升级选择：u1 / 路线重选 / ultimate）:1",
+      "id": "INT-0205"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 2) newgame overwrite confirm（覆盖确认）:1",
+      "id": "INT-0206"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 3) difficulty select（难度选择，10 档）:1",
+      "id": "INT-0207"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 4) hero select（角色选择）:1",
+      "id": "INT-0208"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 5) meta progression（天赋树 / 元系统）:1",
+      "id": "INT-0209"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 6) act map（分叉路线图 / 节点选择）:1",
+      "id": "INT-0210"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 7) event node（事件节点）:1",
+      "id": "INT-0211"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 8) shop node（商店节点）:1",
+      "id": "INT-0212"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版） > 9) rest node（休整节点）:1",
+      "id": "INT-0213"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:screen-by-screen-player-specs-newrouge-v1::newrouge v1 逐屏玩家体验规格（闭环可执行版）:1",
+      "id": "INT-0200"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.1 平台与技术栈:1",
+      "id": "INT-0215"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.2 玩法结构与规模:1",
+      "id": "INT-0216"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.3 存档、退出重进与确定性（高风险冻结）:1",
+      "id": "INT-0217"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.3 存档、退出重进与确定性（高风险冻结）:2",
+      "id": "INT-0218"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.4 文案与本地化（禁止硬编码可见文本）:1",
+      "id": "INT-0219"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.5 卡牌升级系统（v1 必做，且强冻结）:1",
+      "id": "INT-0220"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.5 卡牌升级系统（v1 必做，且强冻结）:2",
+      "id": "INT-0221"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 2) 锁定项总表（v1） > 2.6 事件系统（同局去重 + 跨局抑制）:1",
+      "id": "INT-0222"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 3) 变更治理（v1）:1",
+      "id": "INT-0223"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot） > 3) 变更治理（v1）:2",
+      "id": "INT-0224"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ssot-locks-newrouge-v1::newrouge v1 设计锁定表（ssot）:1",
+      "id": "INT-0214"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 3. t1-t69 最小颗粒度功能审计 > 3.1 t1-t18:1",
+      "id": "INT-0225"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 3. t1-t69 最小颗粒度功能审计 > 3.2 t19-t35:1",
+      "id": "INT-0226"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 4. 基于场景路由的功能接线矩阵 > 4.2 当前接线但仍明显是半成品的节点:1",
+      "id": "INT-0227"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 5. 当前未接入 m1 的功能拆分 > 5.1 已有能力补接线:1",
+      "id": "INT-0229"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 5. 当前未接入 m1 的功能拆分:1",
+      "id": "INT-0228"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 6. 结论:1",
+      "id": "INT-0230"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 7. t83-t91 缺口映射 > 7.1 新任务与缺口对应关系:1",
+      "id": "INT-0231"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 7. t83-t91 缺口映射 > 7.1a 复杂度拆分更新:1",
+      "id": "INT-0232"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:t1-t69-m1-wiring-audit::t1-t69 最小功能审计与 m1 接线快照 > 7. t83-t91 缺口映射 > 7.3 任务视图定位说明:1",
+      "id": "INT-0233"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 1) 必须统一的术语（团队与玩家共用）:1",
+      "id": "INT-0235"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 1) 必须统一的术语（团队与玩家共用）:2",
+      "id": "INT-0236"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.10 rewards（三选一/多选一奖励）:1",
+      "id": "INT-0238"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.11 upgrade（升级：u1/重选/ultimate）:1",
+      "id": "INT-0239"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.2 overwrite confirm（覆盖确认，危险操作）:1",
+      "id": "INT-0240"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.7 event（事件）:1",
+      "id": "INT-0241"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.8 shop（商店）:1",
+      "id": "INT-0242"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定） > 2.9 rest（休整）:1",
+      "id": "INT-0243"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 2) 按钮文案（v1 建议固定）:1",
+      "id": "INT-0237"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1） > 3) 错误提示文案槽位（统一格式）:1",
+      "id": "INT-0244"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:terms-and-copy-glossary-newrouge-v1::terms-and-copy-glossary-newrouge-v1：全局术语与按钮文案表（v1）:1",
+      "id": "INT-0234"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow.candidates::candidates:1",
+      "id": "INT-0246"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow:1",
+      "id": "INT-0245"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 1. design goals > 1.1 experience pillars:1",
+      "id": "INT-0247"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 1. design goals > 1.2 target use:1",
+      "id": "INT-0248"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice combat card play surfaces:1",
+      "id": "INT-0249"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice combat rules and feedback surfaces:1",
+      "id": "INT-0250"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice combat runtime bootstrap surfaces:1",
+      "id": "INT-0251"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice combat runtime bootstrap surfaces:2",
+      "id": "INT-0252"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice enemy intent and resolution surfaces:1",
+      "id": "INT-0253"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice map path and continue surfaces:1",
+      "id": "INT-0254"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice relic and combat participant surfaces:1",
+      "id": "INT-0255"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice reward offer and confirm surfaces:1",
+      "id": "INT-0256"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 11. next ui wiring task candidates > candidate slice settlement and run summary surfaces:1",
+      "id": "INT-0257"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 12. copy and accessibility:1",
+      "id": "INT-0258"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > combat card play surfaces:1",
+      "id": "INT-0260"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > combat rules and feedback surfaces:1",
+      "id": "INT-0261"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > combat runtime bootstrap surfaces:1",
+      "id": "INT-0262"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > map path and continue surfaces:1",
+      "id": "INT-0263"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > relic and combat participant surfaces:1",
+      "id": "INT-0264"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > reward offer and confirm surfaces:1",
+      "id": "INT-0265"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance > settlement and run summary surfaces:1",
+      "id": "INT-0266"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 13. test and acceptance:1",
+      "id": "INT-0259"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 14. task alignment:1",
+      "id": "INT-0267"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 2. core player loop:1",
+      "id": "INT-0268"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 3. completed capability inventory:1",
+      "id": "INT-0269"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 3. completed capability inventory:2",
+      "id": "INT-0270"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 3. completed capability inventory:3",
+      "id": "INT-0271"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 4. flow recomposition > combat rules, triggers, and feedback:1",
+      "id": "INT-0272"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 4. flow recomposition > combat runtime bootstrap and deck state:1",
+      "id": "INT-0273"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 4. flow recomposition > relics, powers, potions, and shared triggers:1",
+      "id": "INT-0274"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 5. ui wiring matrix:1",
+      "id": "INT-0275"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 5. ui wiring matrix:2",
+      "id": "INT-0276"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 5. ui wiring matrix:3",
+      "id": "INT-0277"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements > architecture, security, and review governance:1",
+      "id": "INT-0279"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements > map path, continue, and route return:1",
+      "id": "INT-0280"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements > relics, powers, potions, and shared triggers:1",
+      "id": "INT-0281"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements > reward offer, confirm, and return flow:1",
+      "id": "INT-0282"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements > settlement summary, metadata, and resume evidence:1",
+      "id": "INT-0283"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 6. screen and surface requirements:1",
+      "id": "INT-0278"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.1 map path and continue surfaces:1",
+      "id": "INT-0284"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.2 combat card play surfaces:1",
+      "id": "INT-0285"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.3 combat runtime bootstrap surfaces:1",
+      "id": "INT-0286"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.4 enemy intent and resolution surfaces:1",
+      "id": "INT-0287"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.5 combat rules and feedback surfaces:1",
+      "id": "INT-0288"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.6 reward offer and confirm surfaces:1",
+      "id": "INT-0289"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.7 relic and combat participant surfaces:1",
+      "id": "INT-0290"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.8 settlement and run summary surfaces:1",
+      "id": "INT-0291"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 7. screen-level contracts > 7.9 governance and audit surfaces:1",
+      "id": "INT-0292"
+    },
+    {
+      "intent_key": "functional:core:gameplay:functional:ui-gdd-flow::newrouge chapter 7 ui wiring board > 8. screen state matrix:1",
+      "id": "INT-0293"
+    }
+  ]
 }
