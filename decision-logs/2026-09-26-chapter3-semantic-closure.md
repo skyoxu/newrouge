@@ -25,3 +25,7 @@ Create a reviewed many-to-one mapping from the 575 active Requirements to existi
 The first bounded batch review found a simulated projection false positive under `Excludes` and multiple omitted delivery statements. The ledger source inventory also differs from the versioned `chapter3-source-set.json`. Source wording is valid UTF-8; an initial terminal display encoding error was corrected. See `logs/ci/task-generation/chapter3-batch-0001-review.md`.
 
 The next run must first reconcile the authoritative source inventory and review the new bounded batches. The 575 current Requirements are not approved semantic facts; mapping them to mature tasks before that correction would create false traceability.
+
+## Open Needs Fix: build-diversity threshold
+
+The correct-source batch 0006 review found `_bmad-output/gdd.md:381` requiring at least three baseline archetypes per character to reliably clear difficulties 1-3, while `_bmad-output/gdd.md:390` lists a KPI of at least two viable archetypes per character. The latter can be a weaker monitoring floor, but that role is not explicit. Keep the KPI unresolved until product design clarifies whether it is a monitoring metric or acceptance gate. Evidence: `logs/ci/task-generation/chapter3-source-set-batches-0005-0006-review.md`; repair entry: `execution-plans/2026-09-26-chapter3-semantic-reconciliation.md`.
