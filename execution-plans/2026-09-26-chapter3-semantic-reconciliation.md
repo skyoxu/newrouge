@@ -11,6 +11,7 @@
 - An explicit Taskmaster mention audit found 6 single-task mentions, 26 aggregate mentions, and 543 requirements with no direct task mention. See `logs/ci/task-generation/task-semantic-ref-review.v1.json`.
 - The trial metadata write was reverted after the persisted closure gate showed that the generated `INT-*` candidate IDs are not real task IDs. The existing task triplet baseline was re-attested as passed after restoration.
 - A separate batch preparation from the versioned source set produced 85 batches, all 3,270 blocks marked `review_required`. Its first batch is documented in `logs/ci/task-generation/chapter3-source-set-batch-0001-review.md`.
+- Correct-source batch 0001 now has 38 explicitly reviewed blocks and 25 atoms in the separate audit candidate. The remaining 3,232 blocks are still `review_required`; projection compilation stops at batch 0002 as expected.
 
 ## Next actions
 
