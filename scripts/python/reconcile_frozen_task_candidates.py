@@ -18,14 +18,15 @@ def read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def reconcile(root: Path) -> dict:
+def reconcile(root: Path, artifacts: Path | None = None) -> dict:
     scope = load_scope(root)
     if scope is None:
         raise ValueError("Frozen task scope is required")
     allowed = validate_master(root, scope)
     master = {row["id"]: row for row in read(root / scope["master_path"])["master"]["tasks"]}
-    semantics = read(ARTIFACTS / "semantic-requirements.v1.json")
-    ledger = read(ARTIFACTS / "source-blocks.v1.json")
+    artifact_root = artifacts or ARTIFACTS
+    semantics = read(artifact_root / "semantic-requirements.v1.json")
+    ledger = read(artifact_root / "source-blocks.v1.json")
     blocks = {row["block_id"]: row for row in ledger["blocks"]}
     active = {}
     for requirement in semantics["requirements"]:

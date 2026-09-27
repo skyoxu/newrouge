@@ -42,7 +42,7 @@ class FrozenTaskScopeTests(unittest.TestCase):
         self.assertEqual(gdd.render(ROOT), path.read_text(encoding="utf-8"))
 
     def test_reconciliation_reuses_only_active_master_ids(self) -> None:
-        result = reconcile(ROOT)
+        result = reconcile(ROOT, ROOT / "docs/planning/semantic-topology")
         candidates = result["candidates"]
         self.assertEqual(127, len({row["taskmaster_id"] for row in candidates}))
         self.assertTrue(all(row["change_action"] == "update" for row in candidates))

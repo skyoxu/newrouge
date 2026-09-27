@@ -886,9 +886,10 @@ class Chapter7UiWiringTests(unittest.TestCase):
 
     def test_self_check_should_include_write_doc_step_when_requested(self) -> None:
         run_module = _load_module("run_chapter7_ui_wiring_module_for_self_check", "scripts/python/run_chapter7_ui_wiring.py")
-        output = io.StringIO()
-        with redirect_stdout(output):
-            rc = run_module.main(["--delivery-profile", "fast-ship", "--write-doc", "--self-check"])
+        with tempfile.TemporaryDirectory() as td:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                rc = run_module.main(["--repo-root", td, "--delivery-profile", "fast-ship", "--write-doc", "--self-check"])
         payload = json.loads(output.getvalue())
 
         self.assertEqual(0, rc)
@@ -1101,9 +1102,10 @@ class Chapter7UiWiringTests(unittest.TestCase):
 
     def test_orchestrator_self_check_should_include_create_tasks_step_when_requested(self) -> None:
         run_module = _load_module("run_chapter7_ui_wiring_module_for_create_tasks_self_check", "scripts/python/run_chapter7_ui_wiring.py")
-        output = io.StringIO()
-        with redirect_stdout(output):
-            rc = run_module.main(["--delivery-profile", "fast-ship", "--write-doc", "--create-tasks", "--self-check"])
+        with tempfile.TemporaryDirectory() as td:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                rc = run_module.main(["--repo-root", td, "--delivery-profile", "fast-ship", "--write-doc", "--create-tasks", "--self-check"])
         payload = json.loads(output.getvalue())
 
         self.assertEqual(0, rc)
@@ -1578,18 +1580,20 @@ class Chapter7UiWiringTests(unittest.TestCase):
 
     def test_orchestrator_self_check_should_include_parameterized_task_creation_identity(self) -> None:
         run_module = _load_module("run_chapter7_ui_wiring_module_for_identity_self_check", "scripts/python/run_chapter7_ui_wiring.py")
-        output = io.StringIO()
-        with redirect_stdout(output):
-            rc = run_module.main(
-                [
-                    "--delivery-profile", "fast-ship",
-                    "--create-tasks",
-                    "--repo-label", "project-x",
-                    "--back-story-id", "BACKLOG-PROJECT-X-M2",
-                    "--gameplay-story-id", "PRD-PROJECT-X-v2.0",
-                    "--self-check",
-                ]
-            )
+        with tempfile.TemporaryDirectory() as td:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                rc = run_module.main(
+                    [
+                        "--repo-root", td,
+                        "--delivery-profile", "fast-ship",
+                        "--create-tasks",
+                        "--repo-label", "project-x",
+                        "--back-story-id", "BACKLOG-PROJECT-X-M2",
+                        "--gameplay-story-id", "PRD-PROJECT-X-v2.0",
+                        "--self-check",
+                    ]
+                )
         payload = json.loads(output.getvalue())
 
         self.assertEqual(0, rc)

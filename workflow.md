@@ -221,6 +221,12 @@ Choose one route:
 1. `init`: new project initialization.
 2. `add`: changed-source refresh for an existing triplet. Unchanged Source Blocks may be reused only when identity and content hash still match.
 
+#### 3.0a Frozen Existing-Task Reconciliation
+
+This repository is currently in frozen reconciliation mode. The authoritative task scope is exactly T1-T133; Chapter 3 must repair mappings and derived structure without creating new Taskmaster IDs. The current Chapter 3 GDD is the task-derived baseline at `docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`; it is the only active GDD source for this route. Use `docs/workflows/chapter3-task-scope.json` and the frozen reconciliation scripts (`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py`, and `compile_task_triplet.py`) as the guarded entry path. Chapter 7 task creation is likewise rejected while this scope is present, and its new UI board defaults to `docs/planning/chapter7/ui-wiring-board.md`.
+
+Frozen mode is a repository configuration, not a temporary run flag. Before consuming a new milestone GDD, explicitly update the task-scope file, active Chapter 3 source set, Knowledge GDD paths, and Chapter 7 policy; only then may the workflow switch back to normal task creation.
+
 在读取/解析本次来源前，先按 3.9 记录 run-start Attempt（交互式 `refresh-knowledge --begin-run` 或脚本化 `run-chapter3-guarded`）；3.9 的标题表示结束刷新位置，不表示把开始记录推迟到最后。
 
 ### 3.1 Declare Authoritative Planning Inputs
