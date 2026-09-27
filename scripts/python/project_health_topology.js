@@ -14,11 +14,11 @@ function endpoint(edge, side) {
 function nodeRows(state) {
   const nodes = (state && state.nodes) || {};
   return []
-    .concat((nodes.source_blocks || []).map(x => Object.assign({kind: 'source_block'}, x)))
-    .concat((nodes.requirements || []).map(x => Object.assign({kind: 'requirement'}, x)))
-    .concat((nodes.capabilities || []).map(x => Object.assign({kind: 'capability'}, x)))
-    .concat((nodes.tasks || []).map(x => Object.assign({kind: 'task'}, x)))
-    .concat((nodes.acceptance || []).map(x => Object.assign({kind: 'acceptance'}, x)));
+    .concat((nodes.source_blocks || []).map(x => Object.assign({node_kind: 'source_block'}, x)))
+    .concat((nodes.requirements || []).map(x => Object.assign({node_kind: 'requirement'}, x)))
+    .concat((nodes.capabilities || []).map(x => Object.assign({node_kind: 'capability'}, x)))
+    .concat((nodes.tasks || []).map(x => Object.assign({node_kind: 'task'}, x)))
+    .concat((nodes.acceptance || []).map(x => Object.assign({node_kind: 'acceptance'}, x)));
 }
 
 function nodeId(row) {
@@ -68,7 +68,7 @@ function matches(row) {
   const capability = byId('filter-capability').value.toLowerCase();
   const chapter = byId('filter-chapter').value.toLowerCase();
   const source = byId('filter-source').value.toLowerCase();
-  if (kind && row.kind !== kind) return false;
+  if (kind && row.node_kind !== kind) return false;
   const blob = JSON.stringify(row).toLowerCase();
   if (taskStatus && String(row.status || '').toLowerCase() !== taskStatus) return false;
   if (capability && !blob.includes(capability)) return false;
@@ -76,7 +76,7 @@ function matches(row) {
   if (source && !blob.includes(source)) return false;
   if (state === 'unresolved' && !(row.topology_states || []).includes('unresolved')) return false;
   if (state === 'stale' && topology && topology.fresh !== false && !blob.includes('stale')) return false;
-  if (state === 'orphan' && !(row.kind === 'requirement' && row.sink_resolved === false)) return false;
+  if (state === 'orphan' && !(row.node_kind === 'requirement' && row.sink_resolved === false)) return false;
   return true;
 }
 
@@ -103,35 +103,35 @@ function relatedNodes(row) {
     const key = kind + ':' + value;
     if (!result.some(item => item.key === key)) result.push({key, kind, id: String(value)});
   };
-  if (row.kind === 'requirement') {
+  if (row.node_kind === 'requirement') {
     (row.source_block_ids || []).forEach(value => add('source_block', value));
     (row.capability_ids || []).forEach(value => add('capability', value));
-  } else if (row.kind === 'capability') {
+  } else if (row.node_kind === 'capability') {
     (row.requirement_ids || row.covers || []).forEach(value => add('requirement', value));
-  } else if (row.kind === 'task') {
+  } else if (row.node_kind === 'task') {
     const trace = topology?.task_trace?.[String(id)] || {};
     (trace.source_blocks || []).forEach(value => add('source_block', value));
     (trace.requirements || []).forEach(value => add('requirement', value));
     (trace.capabilities || []).forEach(value => add('capability', value));
     (trace.acceptance || []).forEach(value => add('acceptance', value));
-  } else if (row.kind === 'acceptance') {
+  } else if (row.node_kind === 'acceptance') {
     add('task', row.task_id);
-  } else if (row.kind === 'source_block') {
+  } else if (row.node_kind === 'source_block') {
     (topology?.nodes?.requirements || [])
       .filter(req => (req.source_block_ids || []).map(String).includes(String(id)))
-      .forEach(req => add('requirement', nodeId(Object.assign({kind: 'requirement'}, req))));
+      .forEach(req => add('requirement', nodeId(Object.assign({node_kind: 'requirement'}, req))));
   }
   (topology?.edges || []).forEach(edge => {
     const source = endpoint(edge, 'source');
     const target = endpoint(edge, 'target');
-    if (String(source.id) === String(id) && source.kind === row.kind) add(target.kind, target.id);
-    if (String(target.id) === String(id) && target.kind === row.kind) add(source.kind, source.id);
+    if (String(source.id) === String(id) && source.kind === row.node_kind) add(target.kind, target.id);
+    if (String(target.id) === String(id) && target.kind === row.node_kind) add(source.kind, source.id);
   });
   return result.filter(item => item.id && item.id !== '(unnamed)');
 }
 
 function addNodeActions(detail, row) {
-  if (row.kind === 'source_block' && row.source_path) {
+  if (row.node_kind === 'source_block' && row.source_path) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = topology?.identity?.kind === 'main' ? 'Open source at this revision' : 'Workspace source preview unavailable';
@@ -139,13 +139,13 @@ function addNodeActions(detail, row) {
     button.onclick = () => openSource(row).catch(error => byId('topology-status').textContent = error.message);
     detail.append(button);
   }
-  const taskId = row.kind === 'task' ? nodeId(row) : row.task_id;
+  const taskId = row.node_kind === 'task' ? nodeId(row) : row.task_id;
   if (taskId && taskId !== '(unnamed)') {
     const link = document.createElement('a');
     link.href = '/api/knowledge/task?id=' + encodeURIComponent(taskId);
     link.target = '_blank';
     link.rel = 'noopener';
-    link.textContent = row.kind === 'acceptance' ? 'Open owning task detail' : 'Open existing task detail';
+    link.textContent = row.node_kind === 'acceptance' ? 'Open owning task detail' : 'Open existing task detail';
     detail.append(link);
   }
   const related = relatedNodes(row);
@@ -187,15 +187,15 @@ function render() {
   nodeRows(topology).filter(matches).forEach(row => {
     const detail = document.createElement('details');
     const id = nodeId(row);
-    detail.dataset.topologyKind = row.kind;
+    detail.dataset.topologyKind = row.node_kind;
     detail.dataset.topologyId = id;
     const title = document.createElement('summary');
-    title.textContent = row.kind + ' · ' + id;
+    title.textContent = row.node_kind + ' · ' + id;
     const pre = document.createElement('pre');
     pre.textContent = JSON.stringify(row, null, 2);
     detail.append(title, pre);
     addNodeActions(detail, row);
-    if (focus && focus.kind === row.kind && String(focus.id) === String(id)) {
+    if (focus && focus.kind === row.node_kind && String(focus.id) === String(id)) {
       detail.open = true;
       detail.classList.add('topology-focus');
       focusElement = detail;
