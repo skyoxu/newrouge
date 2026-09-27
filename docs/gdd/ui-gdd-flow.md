@@ -1,7 +1,7 @@
 ---
 GDD-ID: GDD-NEWROUGE-UI-WIRING-V1
 Title: Newrouge Chapter 7 UI Wiring Board
-Status: Draft
+Status: Historical Reference
 Owner: codex
 Last Updated: 2026-05-09
 Encoding: UTF-8

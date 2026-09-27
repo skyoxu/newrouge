@@ -1,0 +1,4369 @@
+{
+  "schema_version": "newrouge.semantic-requirements.v1",
+  "generated_at_utc": "2026-09-27T08:56:20.002685+00:00",
+  "source_revision": "source-set:68d145756705834e7b664fcc",
+  "source_manifest_sha256": "sha256:68d145756705834e7b664fcc7302224513887404e4fcab7d8873992bde08ccf1",
+  "source_accounting": [
+    {
+      "block_id": "SB-34D190FF72EF721C",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:6c78aa813e96fcdf10b0af025a9cabec17fcd2e8b86f264349994ee777e6cf3c",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-9D5C0154C962E990",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:dc94738ee79bc0abe0938c1e94741951b7a0aa2c6d41096c66e70f7bf71a7cca",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4EDAA48AB91CC314",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:04b3304a22550893b6fb88eab1e4112cd9cfd518a681906b5b10f5ccec9f4902",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-672D5C0453AA9918",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:bd6ab8b7a8e8b8cf07972496af2017e0f689d51dad291096e1f04993564619de",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-9F6316092E1EB094",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:565783430ddda9ed50667294d499809843f416f3ebc39a6aec04600bf26c191b",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-029F6FE4E0208E69",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:2e7e398a84c7a7fd3d74445be0237db99913fa2465dd19e91f8164de74162a26",
+      "requirement_ids": [],
+      "disposition": "context",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Chapter 3",
+        "reason": "Document identity, table header, or task-scope governance context; no standalone delivery requirement."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A739308239F6CE1F",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:713dd02909226120e925d0e026a909b45f483326e7afe26ec77aea2e1010a174",
+      "requirement_ids": [
+        "NFR-T0001"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T1",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-2DF417A7ABD9B191",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:9b5b2f3d60d3c3d49f08da37695974a14b8fe160548ea4fe5221162526f54ed8",
+      "requirement_ids": [
+        "NFR-T0002"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T2",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-EC6114AB6900B349",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:034caacd06a00aa0e8a7ca27a1b9b372041604a457a401e8cda1fb5ee1d1855c",
+      "requirement_ids": [
+        "FR-T0003"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T3",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-AC12AFA307C0E63E",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:6cb30d0548a4855eeb9fa39edbcb8815964ab051bc3ecb23ad527ce24d8b4fee",
+      "requirement_ids": [
+        "FR-T0004"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T4",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-3DB9A861ED4623AC",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:2f6e0dcdc1722b5a1e6e982bd288ae1b67f6d500e7033f3ef58acd9e5311ac2a",
+      "requirement_ids": [
+        "FR-T0005"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T5",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-165C57EE5A470BDB",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:66bb516d64b8cc4da54a8d2bb2835309c86f4955d9c63cf6a5a1775c03c0fc34",
+      "requirement_ids": [
+        "FR-T0006"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T6",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-BFB2BD2673992751",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:323c027186627fa5f27ecad862cda97cd6c4681949de7ff64213deb38172293d",
+      "requirement_ids": [
+        "FR-T0007"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T7",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CFA3ABEC8A481562",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:c15190eac6da96340bbd5ffc50a3a0ec2978eb29f0ccae651ac04b2fbf0b9d18",
+      "requirement_ids": [
+        "FR-T0008"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T8",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-07FC3AF19BCF2AC1",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:88b8cddef8534fa1efcd5b17c154f6532cfebfffb6ba850f944c52f4554fbdd7",
+      "requirement_ids": [
+        "FR-T0009"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T9",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-DBF2D1F548A8985C",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:5ccf201f855333d2e4111768ae66ece7048cf7742be7ac93b97ef0a4511e2fdd",
+      "requirement_ids": [
+        "FR-T0010"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T10",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-FF4C7ECB5880665E",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:626ce2b1c810522f2b4a31d018718342620d3db32dfa9747429ef70811a0f7ae",
+      "requirement_ids": [
+        "FR-T0011"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T11",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-2C2EC2CA6787DB1E",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:bad48b0b962ecc53cd16eec0797dddbd32d6979fab40bbaa68d04659aebc4405",
+      "requirement_ids": [
+        "FR-T0012"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T12",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-B182A7A92EEC9EAE",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:f505a888d6280dd8adc968c03177170ab9234c1e96e50db31706f2261d2be50d",
+      "requirement_ids": [
+        "FR-T0013"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T13",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-1385929D97DD32E5",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:46d2593d2fc4f440c3cde61ebb9591285dcb70e67be0e05ca421bb537ecdbe90",
+      "requirement_ids": [
+        "FR-T0014"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T14",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-0A23D6E4F328CD8D",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:c582ae573f595367aa715c66c224af541cd9ef91fc24bb99cac55ece4a6d8891",
+      "requirement_ids": [
+        "FR-T0015"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T15",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-68AE7AD423A8A19F",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:de337f83eadb9b322fb4189d85c6108422a0dc26199390fbf6a042de025ab8a1",
+      "requirement_ids": [
+        "FR-T0016"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T16",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-5DDA2E893B8464F5",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:e7ab2efbd164ad3d5e6eb3bfcd4750277c9c1741dc0dadca1b01f17d7cc18d0b",
+      "requirement_ids": [
+        "FR-T0017"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T17",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4AF773E106A558A8",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:02d5966483026c200126456f2366e09536851c572877bad9c91417d726713e2e",
+      "requirement_ids": [
+        "FR-T0018"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T18",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4B077C6A31574767",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:4390002aeb3bc3c4b0a2c9396bb0b7b5ed45f129aeb91290b19471479f4ed447",
+      "requirement_ids": [
+        "FR-T0019"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T19",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-EF04DB581DBAD50E",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:a8f1cbd74b913078ba31b2f2db59899d99a489e92659b01dc77688988f7ec093",
+      "requirement_ids": [
+        "FR-T0020"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T20",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-0337BBC5708C72A5",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:1c448bbc77acc0f48fc3b3d4bf4298cc1db6d4dddb17b2a1a6b6e6a67ea9cd29",
+      "requirement_ids": [
+        "FR-T0021"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T21",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-80A9FDA6D4370EA8",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:1e9c7a4eb4a009bc36d6cb6c6d13ace68fff27967a0e7c99905a37e821c14146",
+      "requirement_ids": [
+        "FR-T0022"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T22",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-DEDCCDF5C48E624B",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:63a5361095cd4abb9ca44ebebd60a47de58cf108a592d5f55b2d1daf1bb9275c",
+      "requirement_ids": [
+        "FR-T0023"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T23",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-7B8D3CF3D8624457",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:fd2bc892bd43b37ee95cea9b7fd2f4589e2639415d43bc7a2f10a0e60603fe07",
+      "requirement_ids": [
+        "FR-T0024"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T24",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-082022C4246FA412",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:9b86648709be273a078346476e0feee9a775150697b7ebb2c14370c3a0f47c77",
+      "requirement_ids": [
+        "FR-T0025"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T25",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-1E3115E0BC64973E",
+      "batch_id": "BATCH-0001",
+      "block_content_hash": "sha256:5eab0d9011e6a1932441496eb8239a83a36e18bce555988dfa6e5655e5f1e031",
+      "requirement_ids": [
+        "FR-T0026"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T26",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E09CFE18978D204D",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:28426a516afa1c38745f1c7eb9b42bcf8c0e5aa4aeff29f19c22c520b88c58ef",
+      "requirement_ids": [
+        "FR-T0027"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T27",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-FE5B460730D4C577",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:a3dee736e070f84059ce5bddded30aab0993bb9662f243bcdc6f91c2d9e68c11",
+      "requirement_ids": [
+        "FR-T0028"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T28",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-D026E88E4FBE9CA9",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:a7d7cddc941b4ee75b64724fd54c37d520c5a0aea3620addaa5fdd65ca78549c",
+      "requirement_ids": [
+        "FR-T0029"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T29",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-7691A7D8512F1A5A",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:16309db74fa50ca3f03fce0b8b271ad9fc4ea3cf935d50c7e5d3b3ebc6671516",
+      "requirement_ids": [
+        "FR-T0030"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T30",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-00E809FA8BCB8DCC",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:08d78be12d5c9200d7d72a983650c3acda4f1cff07a02e5c6d2799250b69cfd8",
+      "requirement_ids": [
+        "FR-T0031"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T31",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8B124E26C7A38064",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:41cf1e9428cde183e6463eb796f7b199081ec37207ef97ed31e59230cd914743",
+      "requirement_ids": [
+        "FR-T0032"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T32",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-B55582DE85541354",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:14a2ad32f680a95176e11b1acab2a9fbc748710d0c4893d4a9241e92710099fd",
+      "requirement_ids": [
+        "FR-T0033"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T33",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-F0476355E95454A9",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:da646677c0ee9bd3ad0f58a9db16a5b08911d3c6e5b5201ca7e26a5831c1fcb4",
+      "requirement_ids": [
+        "FR-T0034"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T34",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-5F734760212F1864",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:cfdff48a01ec07d84af8e898fce3bd34fc4ef17e61d4661becd79253f5e4978b",
+      "requirement_ids": [
+        "FR-T0035"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T35",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-711D9144C6811D5C",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:8d2bfb4076e12b4d847854e3fe6cc8ffb6d643666e97d2bdc5e293b1b7c23656",
+      "requirement_ids": [
+        "FR-T0036"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T36",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-258B03AEA4053338",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:f3be8ccaea18202f190e63838b1cccb4e516dbd8591edb4ceffa108f203ff9d3",
+      "requirement_ids": [
+        "FR-T0037"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T37",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-137FA3441A6D0A79",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:4ec9c0f393e1765d5faf776f08221f849d4308d51293c41024e5d8ddb9fc0c21",
+      "requirement_ids": [
+        "NFR-T0038"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T38",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-0E622601BD73BD45",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:f6f5ab3b8467479bbc707a39329eb4b2f123b4fbc4eedbf9a359f612e242bb45",
+      "requirement_ids": [
+        "FR-T0039"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T39",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-182B552B5EF3743A",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:dfda00e5f578c07d62f594265d7b785e3a755fc61ed9ebf38daa537dde8945fc",
+      "requirement_ids": [
+        "FR-T0040"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T40",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-7053C4E774AEC987",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:89dae3b0aefb176841ca2d53037c6e5401515f06caf277c9edc058041f951e3a",
+      "requirement_ids": [
+        "FR-T0041"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T41",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E43968B8D6905C52",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:a9872b6c3077796b210930a3a6164fc26061b561e7c6965e6d7cb5e3f5556845",
+      "requirement_ids": [
+        "FR-T0042"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T42",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-D7623E91299B386F",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:6c60cdca9170b9c0926f7ea728e81c683abf9d7c3c951a5273111a0ff1e855c6",
+      "requirement_ids": [
+        "FR-T0043"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T43",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-78B6DA56FB5D5FCB",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:f82d1868581598e579d5f12839311d4fcf59fa9165d3def6728f873d396d5a29",
+      "requirement_ids": [
+        "NFR-T0044"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T44",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E9971A1B8EAC4CE3",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:b6c75448f7efaeba963c51eb3bd1c8177aed83330b7a7897ef5ee2b70ffb5259",
+      "requirement_ids": [
+        "FR-T0045"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T45",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-BEE49D7C3F666FAB",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:ad43fae5f69e06e37c4170e5a48684c42944f24eb9fef1d198f210009a69c2ac",
+      "requirement_ids": [
+        "FR-T0046"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T46",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-201C8D7EF08605DA",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:e31b09be4225ce6f1c9cfdc09f7c5564a989b4f76c80be55e7e3ddaac20200a5",
+      "requirement_ids": [
+        "FR-T0047"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T47",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-87E9B1775A9D8412",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:1b6e16e303c37aa631fd4f4d93887b087a3cebc87ef8720c5b0ee4c8853ac715",
+      "requirement_ids": [
+        "FR-T0048"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T48",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A91E2F2877685327",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:9412b133453f586747fb0caed6f8895aee05be541307644f14ce6077c10773f6",
+      "requirement_ids": [
+        "NFR-T0049"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T49",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A41D3707D104D367",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:cb7946d32c47432994cc9dfddc3306e41f724c14f5225d2585213c9960e50941",
+      "requirement_ids": [
+        "FR-T0050"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T50",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A72396B5890D6AAE",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:5b4cb1105efd405673a21759c2b7e754aa497b825d0936e059517d7b08dbeb78",
+      "requirement_ids": [
+        "FR-T0051"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T51",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-20616343E85A985D",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:a32591f50006166fa345f7c4010b0e9de3d6d4e1a20e4556f32819f0bb6d5acc",
+      "requirement_ids": [
+        "FR-T0052"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T52",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-B01B9D6632283233",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:34763f6bc009d9a76d3e04d39c845d196da980ee777156101ece34bb033a0d46",
+      "requirement_ids": [
+        "NFR-T0053"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T53",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-B721E7686393B9C3",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:88da1da1e91bac2cf738c2725331a62b5f8523456e42e0772165eb86ff453d77",
+      "requirement_ids": [
+        "NFR-T0054"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T54",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-FFD0DD100308B05F",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:023778e09f70c8a0d64a4baad2b9324c53d9195ca6ea364bc9c9ddccb42b04ee",
+      "requirement_ids": [
+        "NFR-T0055"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T55",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E388D29AB6F07763",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:891a7c1556c7c5da2d96be3b05faa600c9a9aa6a7181077ae1410e0749beec6f",
+      "requirement_ids": [
+        "NFR-T0056"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T56",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-997D5EA66ACC8285",
+      "batch_id": "BATCH-0002",
+      "block_content_hash": "sha256:14fc9dcc96593d8b33750f2060eb4c4e891fdf482c7e2a0fffc76360e0e8cfd1",
+      "requirement_ids": [
+        "NFR-T0057"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T57",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-BDF33CB6E70A8715",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:60e786bb6de74fb5397816a67d075a438753be7d2700e673923a0ab598244082",
+      "requirement_ids": [
+        "NFR-T0058"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T58",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-ABE65D1BA3FB35FC",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:b94f9f1848b136fddcd9d0047f4ceee7ef20c9d2f6c8a2198f56dcc398630b1c",
+      "requirement_ids": [
+        "FR-T0059"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T59",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-5653A88575E39484",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:60f3d236742b5039db4a4169e948f446e0f3d0f1289c76c0c9b073e24a055824",
+      "requirement_ids": [
+        "FR-T0060"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T60",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-DCC88CE9B37E48BB",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:fff3cb2eff2b5111ee4a9c7bfb1105f22c5b53da041d13b30645d6b6dba3d5e7",
+      "requirement_ids": [
+        "FR-T0061"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T61",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-6B2B743EC4708115",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:8683d4ef8c1f48218801164bddb619d437f9c6f986554d434fff4309332496a9",
+      "requirement_ids": [
+        "FR-T0062"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T62",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A72BA1C351AFAB4C",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:9d1b8487f8a46f77423c60cc61bb9bd0ca7671e54e16bcd3ca5e671eb228b8a3",
+      "requirement_ids": [
+        "FR-T0063"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T63",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-68B6388CB10B37DB",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:342a6e8fc3b0cd7886bfae3600becaf45daf9f8d705ec3ae38371611e9584493",
+      "requirement_ids": [
+        "FR-T0064"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T64",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-22C7B24078238837",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:f4e7fca14715415e56bc4103d7e52f6fad5cf49ab363de44a844f41029f43983",
+      "requirement_ids": [
+        "NFR-T0065"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T65",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8C633D0DB21CF923",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:a1cb317ddda39e298124438ad4a4bc2bf8847b26c842082e7d414d321fb77b9d",
+      "requirement_ids": [
+        "FR-T0066"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T66",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-C1457DFAE27D564C",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:3440bd13e776e29839fc048a94853808f941ee036a0dbaa6e4ca1d5edab2a22d",
+      "requirement_ids": [
+        "FR-T0067"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T67",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-D462847613F3488C",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:ef2f50daef8a29936ebf873f501d75eb9a0e296f2c66216734af8c2a4630fa93",
+      "requirement_ids": [
+        "NFR-T0068"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T68",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-7FF8B664F5D8F80F",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:672964d401f61a07934a5dc8ff322ca8d7e393e20a0162b43f189005895b195f",
+      "requirement_ids": [
+        "FR-T0069"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T69",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-B9ECF5E2E2680CEE",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:7545ac3e12e5728da4028e055c1888e35db2f0b371a7d29a3ec9c843c148a65f",
+      "requirement_ids": [
+        "FR-T0070"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T70",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CA69608C4360D4BD",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:22349aa272400c3e44f7fda19879a36d418a368cac99bf10d3a45c866afb4bf7",
+      "requirement_ids": [
+        "FR-T0071"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T71",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-AAB09499B84EB82E",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:bc84dd95ec13813076257580c5c2a7471479d4c41b87f112967a8e097cc0579e",
+      "requirement_ids": [
+        "FR-T0072"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T72",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-239CB2D1B98D77CE",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:b3714fcc0fb7d0f43851c89605a786fe8a8568e9d6b59821ead38fe2f9452aad",
+      "requirement_ids": [
+        "FR-T0073"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T73",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A3C84192261E5202",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:24aeedfa1afb27218b8c782c0d148858ed6fdc1119ee3a6bac41ea61332e227e",
+      "requirement_ids": [
+        "FR-T0074"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T74",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-C380AD9DE8D8D938",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:1ede8a5c0b847da0a6620ec59df4f766e0517e3b9e83ec0b02cc840391a1500e",
+      "requirement_ids": [
+        "FR-T0075"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T75",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-821B7F6B541E124E",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:e7afdebaaa6d7e26dde5fcc0e34ae9ad02a21f1de90015d2eedb49d686c9bdfa",
+      "requirement_ids": [
+        "FR-T0076"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T76",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-29CA3F69FF72600F",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:e35c6481d91bbabcc3b8db2975c1af038445b7cbc96de05887d65fba69fe0118",
+      "requirement_ids": [
+        "FR-T0077"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T77",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A59B7D05F16FCB59",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:500a8431c12c3df1d370e7d2c4cc7a37b310116b0031f6be4cb357c6d49ba7e7",
+      "requirement_ids": [
+        "FR-T0078"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T78",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A01CEDF96F2FFC18",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:827541e7631fdf91b3e98540a25e8c5924f6ff3adfccc5ec31d0fef693428f20",
+      "requirement_ids": [
+        "FR-T0079"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T79",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-EDCE58FB1E91E27F",
+      "batch_id": "BATCH-0003",
+      "block_content_hash": "sha256:2e83345e3601fd1f3d4794f08e3d4d04e9e1769625794edd4432f56f46e2da2a",
+      "requirement_ids": [
+        "FR-T0080"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T80",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-7CC65E2B8E79C020",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:16a374611bcb5870e78b15cd630d232125f9bede2a398f5a81179fa7176b6abe",
+      "requirement_ids": [
+        "FR-T0081"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T81",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-68F1067D9EAEBAE1",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:68985654fb454042149ec92bcb850c8a78aebfbab14a48a58ffd444ef3fa5af8",
+      "requirement_ids": [
+        "FR-T0082"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T82",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4DF06CD9EA5C5BB8",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:a8d896e19b2014fb963ef835b97c01f20abaaa327b71c8458f2618d3450e5b05",
+      "requirement_ids": [
+        "FR-T0083"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T83",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-16AB94B297199F53",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:f128f0c97132ccf7d2075e3bd24379a515e40cc10b4f3e6812b6685b4231d869",
+      "requirement_ids": [
+        "FR-T0084"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T84",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-518A3E8B0DC45913",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:c2f073c659c1578f439d0e120d4c78c0135dfb5fc22e8367a305c398d4003c31",
+      "requirement_ids": [
+        "FR-T0085"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T85",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-3A1FDDB3495F6543",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:c4361f39199dd6b0aced52315b8db5bacd984ddeb171d2f4876e1f1531a1e85c",
+      "requirement_ids": [
+        "FR-T0086"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T86",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-022D396BBE512189",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:9548cbbe3d12ba71e48b52791ac8932ae3395f9e27a29e36aea2ab52474d7b33",
+      "requirement_ids": [
+        "FR-T0087"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T87",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-1339B8A1AC8661AF",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:afa6eae916feb5a6546d0f085c0b7a5cb4a8d91de6e2d7952ace3174b04c0bc1",
+      "requirement_ids": [
+        "FR-T0088"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T88",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-5575E96AA72DB926",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:2206f534ee0776da948614066f8ba9d1bd2c06201d692c9f26b9fba6c155b724",
+      "requirement_ids": [
+        "FR-T0089"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T89",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E6FA0956079D2AD2",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:367b051e6de4e7d114ded315170102d7faef8e097b3f02e86d8dbdbe0eea9575",
+      "requirement_ids": [
+        "FR-T0090"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T90",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A249B199D4096C7A",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:ebe921fd62566dae0d723adc9b498402326cb77f23b23e7945bf6aee9ed124c8",
+      "requirement_ids": [
+        "FR-T0091"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T91",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4400F005D8789215",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:3c7d18ce6b07be5d652950fbbbfd8e6067f7b6dbe8715be99e1f233c9cfe2c5b",
+      "requirement_ids": [
+        "NFR-T0092"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T92",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E62B35F13ED6B323",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:19ed63e108ba52080ffff41547ca7ccca5d33edbc7cbce6978f470a8b9becbb9",
+      "requirement_ids": [
+        "NFR-T0093"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T93",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CB2C40DCB009207C",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:84550b5c764052826b307f739af99848d7551a91fd49fc1af9d5546f4625841b",
+      "requirement_ids": [
+        "NFR-T0094"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T94",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-55B6B2843EBC77CB",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:240c23f17a0a8f123d469eb55fdb08986ab7f4ae550b2bd4394e1a339a284c8d",
+      "requirement_ids": [
+        "FR-T0095"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T95",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CA8F279E20CD2169",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:942486e74767f19e442ba0a697d21caff26ae549f6492f0799284b6fc8db78df",
+      "requirement_ids": [
+        "FR-T0096"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T96",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-729ED623749B8245",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:2659d201d72509eb905b5bf5711ff011971dceb0a9912050dbdc0d35f52f03ef",
+      "requirement_ids": [
+        "FR-T0097"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T97",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-548E419FE18924CF",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:d9a10dbbca115f6258254cf1e9d3b29595f60f2bb49caf64027e696d535bb062",
+      "requirement_ids": [
+        "FR-T0098"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T98",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-32259B0DF7228013",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:c999589fb083394d4068bafee3f917ac9a0a89b2c7b4baa0a0e049fb938f8729",
+      "requirement_ids": [
+        "FR-T0099"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T99",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8A78B66E95B4646C",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:275a20ef388cf603e32ea909e2c2a64ce2f23cb8c5368e2a1abd2bc6b50050ea",
+      "requirement_ids": [
+        "FR-T0100"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T100",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A001451A6A75FC7D",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:36c855584a2821c94c25dc314ee9f7e54972efff94c0e4d49f5387e8bd4d59ad",
+      "requirement_ids": [
+        "FR-T0101"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T101",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4C9668055FCA754A",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:1c462f5143b36dc25ec08985e65f559d3412bfbd1e56cae25aea2f096c92ef72",
+      "requirement_ids": [
+        "NFR-T0102"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T102",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CFCC46C3064E07AB",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:099140c7f3c985adf96f7d09b5b4e1e860f00a4632c2ea1107eacf0ea3dd5dd6",
+      "requirement_ids": [
+        "NFR-T0103"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T103",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-E42411B79551E5DA",
+      "batch_id": "BATCH-0004",
+      "block_content_hash": "sha256:23ddaf14f8984010f335107900350c5175677f957e3b4a34610763f2cc91ef21",
+      "requirement_ids": [
+        "NFR-T0104"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T104",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8AF3E757E0B52540",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:78c823e39d0c0da4c39c87e62a7652bd9892d1584fc4296df56e0efe1c493563",
+      "requirement_ids": [
+        "FR-T0105"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T105",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-C607EE2A35DA9765",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:114e3551a176e228bbb1261851b9ced798bb21fbb04c523295787a26cbc45c8a",
+      "requirement_ids": [
+        "FR-T0106"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T106",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-DD4DA36C47ADC05D",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:9f010c3500e88a6e59bfcbb82d9383a8ffbbe4603595016bca64c142d8d678a0",
+      "requirement_ids": [
+        "FR-T0107"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T107",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8740C24A622A18C4",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:8ab38b49dc2ece24b08202678dd6be003d320a7b366525d4603eb7b1579d3ab0",
+      "requirement_ids": [
+        "NFR-T0108"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T108",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-A33AF6BD4E6A46BB",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:d67e1a6b572581a78ce561a00807f925352560081c75bfe0db0264c728147fbc",
+      "requirement_ids": [
+        "NFR-T0109"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T109",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-9C6EBBA79953B6A6",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:a58a99532f630bf654aeb0cc0440d091b80904b38d73300330474a932306c8e5",
+      "requirement_ids": [
+        "FR-T0110"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T110",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-302805E890D89F02",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:84d693c717569f0f7be742feed56f6e04465f46a4106c3646f44975f904ef222",
+      "requirement_ids": [
+        "FR-T0111"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T111",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-77F8A06C63F6F8D2",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:13d75c797e20c36d9a076e7524ff6766ca70cc414e9b94cab0b6508738c4dd8f",
+      "requirement_ids": [
+        "NFR-T0112"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T112",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-EC731378EC7FEEB3",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:72a392e5ddaa82c1f826c99ddef83450f51cc433d3c97628c0cfaeb783bc52fd",
+      "requirement_ids": [
+        "FR-T0113"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T113",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-9CD0C1F2F178CC71",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:3787401bf9209791db7fbd23f450d9fe948d647387b3c93d7c248c80286b7835",
+      "requirement_ids": [
+        "FR-T0114"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T114",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-F99AF4BB8BF68BB1",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:7cc3c68cf8c5179b7eca023f7a56a8daf747d2c8bb7f357d935b65a59cea4b4c",
+      "requirement_ids": [
+        "FR-T0115"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T115",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-57DEEE258B6DFF2D",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:d5e7457ca688516f44e9d51943dcac3a4217153fad1b14a6d4bc6fc5526c3e33",
+      "requirement_ids": [
+        "FR-T0116"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T116",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-1D8AE7BE6FE92113",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:0bbe3ff33611751e1beb7b44ccd8377aa28b353f1e77ac024e19cd6b4716c1dd",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T117 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-54904D72869DCAC3",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:90dc365eeaca1a203419543ad14872cb21b43866d6b379cb7ad33e63ff2a8b03",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T118 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-CCEB83853C4FD55D",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:30f4a77c7e4926d5c167e64498a60e80161e32b05473aadca19d2388a001ffef",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T119 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-D17F198808FE3AD3",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:0aad91b60c6d1c3a061a8df087eb1dad631b7fb96992560fc021cef9c6b288fb",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T120 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-509F9B8B3503B8F1",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:6c5131cf0ba1feec025d6cb27964b2fddffe654245c321d95642ae9156c654f2",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T121 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-8A095DAD19D30653",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:8bec97245cf42de6b06a7ffb53745c32b42665448506c5fb78065c5542e102e5",
+      "requirement_ids": [],
+      "disposition": "superseded",
+      "delivery_potential": false,
+      "decision": {
+        "owner": "Taskmaster",
+        "reason": "T122 is cancelled in the master task SSoT; retain its source row for history."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-FBFBD0F7D51094E9",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:127ecd5c766030fe166b2b135944093bf5d49b3b91c608d69d370f122b6d6ec8",
+      "requirement_ids": [
+        "FR-T0123"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T123",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-50509FEC31D23253",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:33091cdac21c1080ce075367b75fd8261deb634793b44e30d1087ee06351f179",
+      "requirement_ids": [
+        "FR-T0124"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T124",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-9C58CAF4327CBE09",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:9a3d715334b947d8977de67e7f7fb16a2d431113a48c58cd70b893631135d19f",
+      "requirement_ids": [
+        "FR-T0125"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T125",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-BD44913D7D4A7184",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:3dab128f8ce5089dc60ac526ec1ed07e328a192512c7baacbb00a076a9b70d9a",
+      "requirement_ids": [
+        "FR-T0126"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T126",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-94162ED6E6DA4A06",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:f4954465e454959d35aa2fb864d987fcff1357b2c2dcdb13143e58ca3b29e31b",
+      "requirement_ids": [
+        "FR-T0127"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T127",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-6A3094DFC7D9CF72",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:1d89cd1b7754e9797ef9cc66aa1ee89ce228b7706bdec631e5d7b84a02dcd634",
+      "requirement_ids": [
+        "FR-T0128"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T128",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-C78ED07D549C231C",
+      "batch_id": "BATCH-0005",
+      "block_content_hash": "sha256:e3787d4ceea0d784babe2305757af001c8dd4d1268cbd211b3d5680172ced09a",
+      "requirement_ids": [
+        "FR-T0129"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T129",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-6872319035BC6D65",
+      "batch_id": "BATCH-0006",
+      "block_content_hash": "sha256:71c0f5bf1de5e52bb23bbd695e1a1a65b841b6c1f6d8bfddc7dcbe342cb8ac16",
+      "requirement_ids": [
+        "FR-T0130"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T130",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-DBDE6A5DA932906C",
+      "batch_id": "BATCH-0006",
+      "block_content_hash": "sha256:7e894d5ad51a7879f699b62e2ff5eb364cd6339f6cadd9542ef6317e3d0e2f7a",
+      "requirement_ids": [
+        "FR-T0131"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T131",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4D1BA545FEA9FD1E",
+      "batch_id": "BATCH-0006",
+      "block_content_hash": "sha256:61d9d6a88771b77f2f533bb984cbd3e7d9ba9201a1d094b7be42848eb7ac18bc",
+      "requirement_ids": [
+        "FR-T0132"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T132",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    },
+    {
+      "block_id": "SB-4F6FDA7C39D500A9",
+      "batch_id": "BATCH-0006",
+      "block_content_hash": "sha256:74406fec3a41794e6c673f4ac83cf632f5de8da1ff38d53a028b3b6c2e097b7b",
+      "requirement_ids": [
+        "FR-T0133"
+      ],
+      "disposition": "atomized",
+      "delivery_potential": true,
+      "decision": {
+        "owner": "T133",
+        "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."
+      },
+      "review_status": "reviewed",
+      "reused_from_source_revision": null
+    }
+  ],
+  "requirements": [
+    {
+      "requirement_id": "NFR-T0001",
+      "kind": "non_functional",
+      "statement": "Initialize the project with Godot 4.5.1 .NET, .NET 8 SDK, and ensure packages.lock.json is present.",
+      "source_block_ids": [
+        "SB-A739308239F6CE1F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T1; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0002",
+      "kind": "non_functional",
+      "statement": "Establish directory boundaries: Game.Core, Game.Godot, Game.Core.Tests, Tests.Godot. Enforce NewRouge.* namespace.",
+      "source_block_ids": [
+        "SB-2DF417A7ABD9B191"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T2; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0003",
+      "kind": "functional",
+      "statement": "Define contracts in Game.Core/Contracts for card identity, forms (Base, U1A, U1B, Ultimate), and upgrade fields per ADR-0033.",
+      "source_block_ids": [
+        "SB-EC6114AB6900B349"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T3; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0004",
+      "kind": "functional",
+      "statement": "Define contracts for offer locking structure, provenance, and RNG streams per ADR-0032 and Design Gate 05.",
+      "source_block_ids": [
+        "SB-AC12AFA307C0E63E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T4; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0005",
+      "kind": "functional",
+      "statement": "Define contracts for status types (Buff, Debuff, RuleModifier), fields, and deterministic ordering per Design Gate 04.",
+      "source_block_ids": [
+        "SB-3DB9A861ED4623AC"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T5; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0006",
+      "kind": "functional",
+      "statement": "Define contracts for combat phases, damage calculation, and deterministic sequencing per Design Gates 01 and 03.",
+      "source_block_ids": [
+        "SB-165C57EE5A470BDB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T6; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0007",
+      "kind": "functional",
+      "statement": "Implement event bus system and place contracts in Game.Core/Contracts per ADR-0004 and ADR-0020.",
+      "source_block_ids": [
+        "SB-BFB2BD2673992751"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T7; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0008",
+      "kind": "functional",
+      "statement": "Create core services for card definition, instance management, and form transitions per ADR-0033.",
+      "source_block_ids": [
+        "SB-CFA3ABEC8A481562"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T8; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0009",
+      "kind": "functional",
+      "statement": "Create RNG stream registry and state management for deterministic systems.",
+      "source_block_ids": [
+        "SB-07FC3AF19BCF2AC1"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T9; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0010",
+      "kind": "functional",
+      "statement": "Create status operations: apply, stack, decay, and dispel boundaries.",
+      "source_block_ids": [
+        "SB-DBF2D1F548A8985C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T10; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0011",
+      "kind": "functional",
+      "statement": "Implement card play pipeline and validation steps in core combat logic.",
+      "source_block_ids": [
+        "SB-FF4C7ECB5880665E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T11; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0012",
+      "kind": "functional",
+      "statement": "Create SaveService serialization, schema versioning, and atomic write.",
+      "source_block_ids": [
+        "SB-2C2EC2CA6787DB1E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T12; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0013",
+      "kind": "functional",
+      "statement": "Configure Godot autoloads (EventBus, DataStore, Logger, etc.) and composition root for dependency injection per project-context.md.",
+      "source_block_ids": [
+        "SB-B182A7A92EEC9EAE"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T13; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0014",
+      "kind": "functional",
+      "statement": "Implement MainMenu.tscn with New Run, Continue (single slot), and Quit buttons per M1 requirements.",
+      "source_block_ids": [
+        "SB-1385929D97DD32E5"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T14; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0015",
+      "kind": "functional",
+      "statement": "Create DifficultySelect.tscn with 10 difficulty levels and descriptions per M1 requirements.",
+      "source_block_ids": [
+        "SB-0A23D6E4F328CD8D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T15; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0016",
+      "kind": "functional",
+      "statement": "Create CharacterSelect.tscn with Warrior as only selectable character and mechanism summary per M1 requirements.",
+      "source_block_ids": [
+        "SB-68AE7AD423A8A19F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T16; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0017",
+      "kind": "functional",
+      "statement": "Implement map system with modular Act structure, not hardcoded to 3 Acts, per M1 requirements.",
+      "source_block_ids": [
+        "SB-5DDA2E893B8464F5"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T17; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0018",
+      "kind": "functional",
+      "statement": "Create Combat.tscn UI layout and bind to core combat state.",
+      "source_block_ids": [
+        "SB-4AF773E106A558A8"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T18; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0019",
+      "kind": "functional",
+      "statement": "Create Reward.tscn with three card choices, offer locking, and deterministic display per ADR-0032.",
+      "source_block_ids": [
+        "SB-4B077C6A31574767"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T19; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0020",
+      "kind": "functional",
+      "statement": "Create Shop.tscn with purchasable items, inventory locking, and no upgrade services per M1 requirements.",
+      "source_block_ids": [
+        "SB-EF04DB581DBAD50E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T20; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0021",
+      "kind": "functional",
+      "statement": "Create Rest.tscn with options including free card upgrade per M1 requirements.",
+      "source_block_ids": [
+        "SB-0337BBC5708C72A5"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T21; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0022",
+      "kind": "functional",
+      "statement": "Create Event.tscn with at least two options and dark cost examples (HP loss, curse card) per M1 requirements.",
+      "source_block_ids": [
+        "SB-80A9FDA6D4370EA8"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T22; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0023",
+      "kind": "functional",
+      "statement": "Configure translations in Game.Godot/Translations/ with key naming per ADR-0010 and project-context.md.",
+      "source_block_ids": [
+        "SB-DEDCCDF5C48E624B"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T23; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0024",
+      "kind": "functional",
+      "statement": "Create Warrior starting deck with 10 cards as per M1 content list.",
+      "source_block_ids": [
+        "SB-7B8D3CF3D8624457"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T24; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0025",
+      "kind": "functional",
+      "statement": "Implement rage as a combat-only state buff for Warrior and integrate with status system.",
+      "source_block_ids": [
+        "SB-082022C4246FA412"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T25; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0026",
+      "kind": "functional",
+      "statement": "Add core DifficultyConfig and run-level immutable difficulty selection (1-10).",
+      "source_block_ids": [
+        "SB-1E3115E0BC64973E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T26; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0027",
+      "kind": "functional",
+      "statement": "Map difficulty to rule modifiers (e.g., OverplayTax threshold for >=10).",
+      "source_block_ids": [
+        "SB-E09CFE18978D204D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T27; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0028",
+      "kind": "functional",
+      "statement": "Define ActConfig and load Act data from JSON for modular acts.",
+      "source_block_ids": [
+        "SB-FE5B460730D4C577"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T28; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0029",
+      "kind": "functional",
+      "statement": "Add card pools by act and encounter type with rarity tiers.",
+      "source_block_ids": [
+        "SB-D026E88E4FBE9CA9"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T29; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0030",
+      "kind": "functional",
+      "statement": "Create relic definition/instance contracts in Game.Core/Contracts.",
+      "source_block_ids": [
+        "SB-7691A7D8512F1A5A"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T30; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0031",
+      "kind": "functional",
+      "statement": "Create 20 relic definitions with unique ids and hookable effects.",
+      "source_block_ids": [
+        "SB-00E809FA8BCB8DCC"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T31; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0032",
+      "kind": "functional",
+      "statement": "Add curse card pool (non-upgradable) and removal flows.",
+      "source_block_ids": [
+        "SB-8B124E26C7A38064"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T32; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0033",
+      "kind": "functional",
+      "statement": "Build deterministic deck operations with hand limit 10 and retain rules.",
+      "source_block_ids": [
+        "SB-B55582DE85541354"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T33; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0034",
+      "kind": "functional",
+      "statement": "Add hover/drag targeting UX in combat scene.",
+      "source_block_ids": [
+        "SB-F0476355E95454A9"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T34; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0035",
+      "kind": "functional",
+      "statement": "Finalize victory/defeat resolution and reward handoff.",
+      "source_block_ids": [
+        "SB-5F734760212F1864"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T35; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0036",
+      "kind": "functional",
+      "statement": "Add autosave on combat start, reward screen open, and event choice.",
+      "source_block_ids": [
+        "SB-711D9144C6811D5C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T36; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0037",
+      "kind": "functional",
+      "statement": "Add run metadata, integrity checks, and Continue gating.",
+      "source_block_ids": [
+        "SB-258B03AEA4053338"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T37; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0038",
+      "kind": "non_functional",
+      "statement": "Implement JSONL audit logging to logs/ per SSoT.",
+      "source_block_ids": [
+        "SB-137FA3441A6D0A79"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T38; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0039",
+      "kind": "functional",
+      "statement": "Add translation entries for M1 content and UI text.",
+      "source_block_ids": [
+        "SB-0E622601BD73BD45"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T39; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0040",
+      "kind": "functional",
+      "statement": "Create enemy definitions and data for Act 1 encounters.",
+      "source_block_ids": [
+        "SB-182B552B5EF3743A"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T40; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0041",
+      "kind": "functional",
+      "statement": "Show enemy next intent in combat UI.",
+      "source_block_ids": [
+        "SB-7053C4E774AEC987"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T41; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0042",
+      "kind": "functional",
+      "statement": "Enforce node selection lock and no backtracking.",
+      "source_block_ids": [
+        "SB-E43968B8D6905C52"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T42; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0043",
+      "kind": "functional",
+      "statement": "Implement run state transitions via Command entries only.",
+      "source_block_ids": [
+        "SB-D7623E91299B386F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T43; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0044",
+      "kind": "non_functional",
+      "statement": "Add GdUnit4 tests for save/resume determinism in reward/shop/event.",
+      "source_block_ids": [
+        "SB-78B6DA56FB5D5FCB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T44; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0045",
+      "kind": "functional",
+      "statement": "Show selected difficulty in HUD and run summary UI.",
+      "source_block_ids": [
+        "SB-E9971A1B8EAC4CE3"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T45; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0046",
+      "kind": "functional",
+      "statement": "Generate and lock offer candidates using RNG streams and provenance.",
+      "source_block_ids": [
+        "SB-BEE49D7C3F666FAB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T46; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0047",
+      "kind": "functional",
+      "statement": "Add deterministic trigger ordering and fixed damage behavior.",
+      "source_block_ids": [
+        "SB-201C8D7EF08605DA"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T47; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0048",
+      "kind": "functional",
+      "statement": "Add damage calculation, AOE ordering, and multi-hit resolution.",
+      "source_block_ids": [
+        "SB-87E9B1775A9D8412"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T48; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0049",
+      "kind": "non_functional",
+      "statement": "Add safety limits (100 cards per turn) and failure handling.",
+      "source_block_ids": [
+        "SB-A91E2F2877685327"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T49; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0050",
+      "kind": "functional",
+      "statement": "Add migration checks and block Continue on invalid save.",
+      "source_block_ids": [
+        "SB-A41D3707D104D367"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T50; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0051",
+      "kind": "functional",
+      "statement": "Wire combat turn flow to core services and save points.",
+      "source_block_ids": [
+        "SB-A72396B5890D6AAE"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T51; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0052",
+      "kind": "functional",
+      "statement": "Add deterministic intent selection rules per enemy.",
+      "source_block_ids": [
+        "SB-20616343E85A985D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T52; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0053",
+      "kind": "non_functional",
+      "statement": "Implement a Python-first headless smoke runner for Godot on Windows, matching the existing PowerShell behavior. Add an optional strict mode that requires a success marker in logs. Source: docs/migration/Phase-12-Headless-Smoke-Backlog.md (B1/B2).",
+      "source_block_ids": [
+        "SB-B01B9D6632283233"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T53; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0054",
+      "kind": "non_functional",
+      "statement": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
+      "source_block_ids": [
+        "SB-B721E7686393B9C3"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T54; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0055",
+      "kind": "non_functional",
+      "statement": "Align xUnit coverage thresholds to the blueprint target (lines >= 90%, branches >= 85%) and allow overriding via environment variables. Provide soft/hard gate modes in scripts/python/run_dotnet.py and scripts/python/quality_gates.py.",
+      "source_block_ids": [
+        "SB-FFD0DD100308B05F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T55; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0056",
+      "kind": "non_functional",
+      "statement": "Add a Python validator for security audit JSONL outputs and integrate it into the quality gates flow.",
+      "source_block_ids": [
+        "SB-E388D29AB6F07763"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T56; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0057",
+      "kind": "non_functional",
+      "statement": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
+      "source_block_ids": [
+        "SB-997D5EA66ACC8285"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T57; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0058",
+      "kind": "non_functional",
+      "statement": "Define a governance baseline for semantic soft review so Task acceptance stays aligned with master.details and avoids review oscillation. View-specific detail: Create a governance guardrail that keeps semantic soft review bounded to task scope while preserving deterministic hard-gate precedence.",
+      "source_block_ids": [
+        "SB-BDF33CB6E70A8715"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T58; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0059",
+      "kind": "functional",
+      "statement": "Replace the current demo-oriented new run route with the M1 player flow MainMenu -> DifficultySelect -> CharacterSelect -> Map.",
+      "source_block_ids": [
+        "SB-ABE65D1BA3FB35FC"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T59; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0060",
+      "kind": "functional",
+      "statement": "Wire the real map flow so selectable nodes route into Combat, Event, Shop, and Rest, and completed nodes return to Map.",
+      "source_block_ids": [
+        "SB-5653A88575E39484"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T60; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0061",
+      "kind": "functional",
+      "statement": "Create a real standalone Reward scene asset and wire Combat/Event completion into Reward and back to Map.",
+      "source_block_ids": [
+        "SB-DCC88CE9B37E48BB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T61; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0062",
+      "kind": "functional",
+      "statement": "Create a real standalone Rest scene asset and wire Map entry and return behavior for heal, upgrade, and curse removal.",
+      "source_block_ids": [
+        "SB-6B2B743EC4708115"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T62; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0063",
+      "kind": "functional",
+      "statement": "Make Continue failures player-visible with explicit blocked reasons and recovery options instead of relying on logs only.",
+      "source_block_ids": [
+        "SB-A72BA1C351AFAB4C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T63; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0064",
+      "kind": "functional",
+      "statement": "Complete the combat HUD so key player-facing results, invalid actions, and decision-critical state are visible without relying on engineering logs.",
+      "source_block_ids": [
+        "SB-68B6388CB10B37DB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T64; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0065",
+      "kind": "non_functional",
+      "statement": "Validate that all M1 player-facing UI surfaces use translation keys and render non-empty, non-key-echo text in supported locales.",
+      "source_block_ids": [
+        "SB-22C7B24078238837"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T65; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0066",
+      "kind": "functional",
+      "statement": "Decide and wire the run summary surface so outcome, difficulty, progress, and recovery metadata are shown without recomputing run state.",
+      "source_block_ids": [
+        "SB-8C633D0DB21CF923"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T66; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0067",
+      "kind": "functional",
+      "statement": "Bind the existing Shop scene to real purchase, remove, transform, leave, and no-upgrade-context behavior with explicit route ownership.",
+      "source_block_ids": [
+        "SB-C1457DFAE27D564C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T67; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0068",
+      "kind": "non_functional",
+      "statement": "Batch the P2 accessibility and focus-cycle work for the M1 run-entry, map, node, reward, rest, shop, combat, and continue surfaces.",
+      "source_block_ids": [
+        "SB-D462847613F3488C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T68; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0069",
+      "kind": "functional",
+      "statement": "Complete Event node UX so costs, choices, results, blocked states, and return-to-map behavior are player-visible and route-owned.",
+      "source_block_ids": [
+        "SB-7FF8B664F5D8F80F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T69; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0070",
+      "kind": "functional",
+      "statement": "Extend the existing M1 Map route ownership with a connected route graph that renders legal path edges, locked paths, completed path history, and current reachable choices instead of reworking route ownership from scratch. View-specific detail: Track the M1 route-graph guardrail as an upgrade on top of the existing route-owned Map flow so visual route connections, legal edge state, and legacy shortcut suppression remain explicit in backlog and quality gates. / Upgrade the existing Map route-owned flow with a connected route graph that shows legal path edges, locked paths, completed path history, and current reachable choices.",
+      "source_block_ids": [
+        "SB-B9ECF5E2E2680CEE"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T70; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0071",
+      "kind": "functional",
+      "statement": "Track the combat deck-lifecycle umbrella milestone over T80-T82 so backlog and quality gates treat this work as an integration checkpoint over existing deck/runtime capabilities, not as a separate build track. View-specific detail: Use this task only as the combat deck-lifecycle umbrella above T80-T82, with implementation carried by the concrete shared-runtime slices instead of a parallel scene-local rework.",
+      "source_block_ids": [
+        "SB-CA69608C4360D4BD"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T71; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0072",
+      "kind": "functional",
+      "statement": "Track CombatScene binding to existing card definitions, translations, and effect contracts so data-driven card behavior does not fork into a second card model. View-specific detail: Wire CombatScene to existing data-driven card definitions, localized card text, costs, targeting rules, and effect resolution instead of extending hard-coded Strike and Defend behavior.",
+      "source_block_ids": [
+        "SB-AAB09499B84EB82E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T72; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0073",
+      "kind": "functional",
+      "statement": "Track the upgrade from the current single-target or partial targeting skeleton to route-owned multi-enemy combat state, without replacing existing victory-route ownership. View-specific detail: Extend the current combat targeting and victory-routing skeleton so cards resolve against legal enemies, dead enemies leave the target set, and multi-enemy combat completion stays route-owned.",
+      "source_block_ids": [
+        "SB-239CB2D1B98D77CE"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T73; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0074",
+      "kind": "functional",
+      "statement": "Add mouse drag, target hover, release-to-play, cancel, and invalid-target feedback on top of the current targeting/play path while preserving the existing click or button accessibility fallback. View-specific detail: Track drag targeting as an input-layer upgrade over the current validated play path, while preserving the existing accessibility fallback. / Add mouse drag, target hover, release-to-play, cancel, and invalid-target feedback on top of the current targeting path while preserving click or button accessibility fallback.",
+      "source_block_ids": [
+        "SB-A3C84192261E5202"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T74; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0075",
+      "kind": "functional",
+      "statement": "Track combat status visibility as wiring of existing status contracts and rule semantics into the player-facing combat runtime, rather than a duplicate status implementation. View-specific detail: Expose the existing player and enemy status-effect foundations as visible combat state such as strength, weak, vulnerable, block, poison, and temporary modifiers with deterministic updates.",
+      "source_block_ids": [
+        "SB-C380AD9DE8D8D938"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T75; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0076",
+      "kind": "functional",
+      "statement": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
+      "source_block_ids": [
+        "SB-821B7F6B541E124E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T76; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0077",
+      "kind": "functional",
+      "statement": "Integrate deterministic trigger registration and card-play, turn, damage, and death-check hooks into combat runtime while deferring powers/relics/potions presentation and effect integration to a follow-up task.",
+      "source_block_ids": [
+        "SB-29CA3F69FF72600F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T77; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0078",
+      "kind": "functional",
+      "statement": "Add the player-facing presentation layer for combat actions while keeping deterministic combat state, routing, and RNG ownership in the existing runtime path. View-specific detail: Track the presentation-feedback layer as a UI-only overlay on existing deterministic combat runtime, without introducing a second logic path. / Add the player-facing combat presentation layer while keeping deterministic combat state separate from UI-only presentation effects on the existing runtime path.",
+      "source_block_ids": [
+        "SB-A59B7D05F16FCB59"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T78; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0079",
+      "kind": "functional",
+      "statement": "Refactor the current combat HP mutation paths into a single state update path that triggers defeat routing whenever HP changes to <= 0, with one-shot guard to prevent duplicate resolve. View-specific detail: Track defeat routing unification across existing HP mutation paths so any HP<=0 transition resolves exactly once. / Refactor the existing combat HP mutation paths to a single state update path that triggers defeat routing whenever HP changes to <= 0, with a one-shot guard to prevent duplicate resolve.",
+      "source_block_ids": [
+        "SB-A01CEDF96F2FFC18"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T79; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0080",
+      "kind": "functional",
+      "statement": "Replace CombatScene local draw/discard counter mutation with the existing DeckService-backed runtime deck state transitions for draw, play/discard, and end-turn hand processing. View-specific detail: Track CombatScene migration from local pile arithmetic to the existing DeckService runtime state as the first concrete implementation slice under T71.",
+      "source_block_ids": [
+        "SB-EDCE58FB1E91E27F"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T80; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0081",
+      "kind": "functional",
+      "statement": "Enable runtime draw-empty handling so discard pile reshuffles into draw pile and discard resets to zero before continuing draw actions, using the existing service reshuffle policy rather than a scene-local implementation. View-specific detail: Track reshuffle exposure through the shared DeckService-backed combat runtime rather than a scene-local reshuffle implementation. / Enable runtime draw-empty handling so discard pile reshuffles into draw pile and discard resets to zero before continuing draw actions, using the shared DeckService-backed combat runtime.",
+      "source_block_ids": [
+        "SB-7CC65E2B8E79C020"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T81; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0082",
+      "kind": "functional",
+      "statement": "Add a deck total indicator on the combat HUD and keep draw+hand+discard equal to total deck count under the shared DeckService-backed runtime transitions. View-specific detail: Track total-deck HUD and pile invariant visibility on top of the shared DeckService-backed combat runtime, not as a second deck implementation.",
+      "source_block_ids": [
+        "SB-68F1067D9EAEBAE1"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T82; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0083",
+      "kind": "functional",
+      "statement": "Replace scene-local card resolution with the shared CombatService and PlayCard runtime while keeping current scene ownership and leaving Warrior seed and Rage runtime closure to follow-up tasks.",
+      "source_block_ids": [
+        "SB-4DF06CD9EA5C5BB8"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T83; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0084",
+      "kind": "functional",
+      "statement": "Replace placeholder Reward card content by generating the initial three-card offer from the current act and encounter context through the existing card pool path. View-specific detail: Track first-entry Reward offer generation from the current act and encounter context so Reward stops relying on placeholder card content and uses the shared pool path. / Generate the initial Reward offer from the current act and encounter context through the existing card pool path instead of placeholder Reward content.",
+      "source_block_ids": [
+        "SB-16AB94B297199F53"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T84; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0085",
+      "kind": "functional",
+      "statement": "Turn the current Reward surface into a real three-choice-one interaction where one offer can be selected and confirmation is gated by that selection. View-specific detail: Track the completion of the current Reward interaction so one offer can be selected and confirm is gated through the existing Reward scene. / Finish the current Reward interaction so one offer can be selected and confirm is gated through the existing Reward scene.",
+      "source_block_ids": [
+        "SB-518A3E8B0DC45913"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T85; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0086",
+      "kind": "functional",
+      "statement": "Replace the hard-coded M1 map node list with route graph generation from ActConfig while keeping current Map surface binding and visual closure in a follow-up task.",
+      "source_block_ids": [
+        "SB-3A1FDDB3495F6543"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T86; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0087",
+      "kind": "functional",
+      "statement": "Complete the successful Continue path for Map and combat entry boundaries while deferring locked surface restoration for Reward, Shop, and Event to a follow-up task.",
+      "source_block_ids": [
+        "SB-022D396BBE512189"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T87; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0088",
+      "kind": "functional",
+      "statement": "Promote relic definitions into acquired, equipped, and visible runtime state on the shared run path while deferring combat-time relic effect execution to a follow-up task.",
+      "source_block_ids": [
+        "SB-1339B8A1AC8661AF"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T88; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0089",
+      "kind": "functional",
+      "statement": "Replace placeholder combat enemy construction with runtime instantiation from current enemy definitions while preserving current combat ownership. View-specific detail: Track replacement of placeholder enemy construction with data-backed runtime enemy instantiation while keeping current combat ownership. / Replace placeholder combat enemy construction with data-backed runtime enemy instantiation while preserving current combat ownership.",
+      "source_block_ids": [
+        "SB-5575E96AA72DB926"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T89; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0090",
+      "kind": "functional",
+      "statement": "Move the existing deterministic trigger ordering and fixed damage rules into the player-facing combat runtime while deferring AOE and feedback consistency closure to follow-up tasks.",
+      "source_block_ids": [
+        "SB-E6FA0956079D2AD2"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T90; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0091",
+      "kind": "functional",
+      "statement": "Upgrade the current run summary into a stored-data-backed settlement surface for outcome and route progress while deferring reward, relic, and resume metadata completion to a follow-up task.",
+      "source_block_ids": [
+        "SB-A249B199D4096C7A"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T91; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0092",
+      "kind": "non_functional",
+      "statement": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
+      "source_block_ids": [
+        "SB-4400F005D8789215"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T92; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0093",
+      "kind": "non_functional",
+      "statement": "Introduce a single guarded external-process path so direct OS.execute style behavior remains deny-by-default, auditable, and safe during future tooling and runtime expansion. View-specific detail: Provide a single adapter for external process execution and keep OS.execute disabled by default. Allow only explicit dev-mode allowlisted commands and write audit records on any deny/allow. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B3).",
+      "source_block_ids": [
+        "SB-E62B35F13ED6B323"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T93; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0094",
+      "kind": "non_functional",
+      "statement": "Add deterministic validation for security-sensitive signal names and arguments so signal drift is caught before the next wave of runtime and gameplay expansion work. View-specific detail: Add contract validation for security-sensitive signals (naming/arguments) and integrate into CI checks. This should catch accidental drift between signal definitions and expected contracts. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B5).",
+      "source_block_ids": [
+        "SB-CB2C40DCB009207C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T94; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0095",
+      "kind": "functional",
+      "statement": "Extend the CombatService-backed entry path so combat starts from the Warrior starting deck and shared deck state instead of scene-local placeholder hands.",
+      "source_block_ids": [
+        "SB-55B6B2843EBC77CB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T95; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0096",
+      "kind": "functional",
+      "statement": "Finish the Warrior combat runtime by wiring Rage state creation, mutation, and player-visible effect through the shared combat path.",
+      "source_block_ids": [
+        "SB-CA8F279E20CD2169"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T96; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0097",
+      "kind": "functional",
+      "statement": "Project the generated ActConfig route graph into the current Map scene so reachable, locked, selected, and completed path states remain visible and actionable.",
+      "source_block_ids": [
+        "SB-729ED623749B8245"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T97; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0098",
+      "kind": "functional",
+      "statement": "Extend Continue restoration so valid autosaves re-enter locked Reward, Shop, and Event surfaces without changing deterministic offers or route ownership.",
+      "source_block_ids": [
+        "SB-548E419FE18924CF"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T98; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0099",
+      "kind": "functional",
+      "statement": "Finish relic runtime combat closure by executing relic effects through the shared combat trigger path after acquisition and display are already live.",
+      "source_block_ids": [
+        "SB-32259B0DF7228013"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T99; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0100",
+      "kind": "functional",
+      "statement": "Extend rule promotion so AOE and multi-hit effects resolve in the same deterministic target order as the shared damage rules during live combat.",
+      "source_block_ids": [
+        "SB-8A78B66E95B4646C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T100; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0101",
+      "kind": "functional",
+      "statement": "Finish combat rule promotion by ensuring combat feedback surfaces always reflect the shared runtime result after trigger, fixed damage, and AOE resolution.",
+      "source_block_ids": [
+        "SB-A001451A6A75FC7D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T101; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0102",
+      "kind": "non_functional",
+      "statement": "Add a lightweight governance pass to keep late M1 runtime tasks sized for one deterministic closure per Chapter 6 run before additional role, card, and monster expansion begins.",
+      "source_block_ids": [
+        "SB-4C9668055FCA754A"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T102; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0103",
+      "kind": "non_functional",
+      "statement": "Keep Continue tasks narrow at execution time by teaching the review path to validate primary boundaries separately from locked surface restoration.",
+      "source_block_ids": [
+        "SB-CFCC46C3064E07AB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T103; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0104",
+      "kind": "non_functional",
+      "statement": "Keep combat rule promotion executable in narrower Chapter 6 loops by separating core rule integration from scene feedback reconciliation.",
+      "source_block_ids": [
+        "SB-E42411B79551E5DA"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T104; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0105",
+      "kind": "functional",
+      "statement": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
+      "source_block_ids": [
+        "SB-8AF3E757E0B52540"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T105; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0106",
+      "kind": "functional",
+      "statement": "Build on the shared trigger path so powers and relics become visible, inspectable, and effectful participants on the combat surface.",
+      "source_block_ids": [
+        "SB-C607EE2A35DA9765"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T106; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0107",
+      "kind": "functional",
+      "statement": "Enrich the settlement surface so stored reward and relic results are visible without recomputing run state.",
+      "source_block_ids": [
+        "SB-DD4DA36C47ADC05D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T107; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0108",
+      "kind": "non_functional",
+      "statement": "Keep enemy intent execution narrow in Chapter 6 by separating preview generation from enemy turn resolution and no-repeat verification.",
+      "source_block_ids": [
+        "SB-8740C24A622A18C4"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T108; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0109",
+      "kind": "non_functional",
+      "statement": "Keep settlement tasks narrow at execution time by teaching the review path to validate owner-surface closure, reward or relic metadata, and resume evidence as separate lanes.",
+      "source_block_ids": [
+        "SB-A33AF6BD4E6A46BB"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T109; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0110",
+      "kind": "functional",
+      "statement": "Finish relic runtime closure outside direct combat resolution by executing relic effects through shared run trigger boundaries after combat-path effects are live.",
+      "source_block_ids": [
+        "SB-9C6EBBA79953B6A6"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T110; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0111",
+      "kind": "functional",
+      "statement": "Build on the shared trigger path so potions become visible, inspectable, and effectful participants on the combat surface.",
+      "source_block_ids": [
+        "SB-302805E890D89F02"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T111; no new task is authorized."
+    },
+    {
+      "requirement_id": "NFR-T0112",
+      "kind": "non_functional",
+      "statement": "Keep relic runtime tasks narrow at execution time by teaching the review path to validate combat trigger closure separately from broader run trigger closure.",
+      "source_block_ids": [
+        "SB-77F8A06C63F6F8D2"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "architecture",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T112; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0113",
+      "kind": "functional",
+      "statement": "Enrich the settlement surface so stored resume-related evidence is visible without mutating or recomputing run state at display time.",
+      "source_block_ids": [
+        "SB-EC731378EC7FEEB3"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T113; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0114",
+      "kind": "functional",
+      "statement": "Build on first-entry Reward generation so the offer stays locked across re-entry and fails safe when pool context cannot resolve a valid offer.",
+      "source_block_ids": [
+        "SB-9CD0C1F2F178CC71"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T114; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0115",
+      "kind": "functional",
+      "statement": "Build on Reward selection state so confirm writes the chosen card into live run state and skip resolves once without mutating the deck.",
+      "source_block_ids": [
+        "SB-F99AF4BB8BF68BB1"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T115; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0116",
+      "kind": "functional",
+      "statement": "Build on data-backed enemy runtime so visible enemy surfaces stay synchronized and invalid definitions fail safe with player-visible feedback.",
+      "source_block_ids": [
+        "SB-57DEEE258B6DFF2D"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T116; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0123",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Map Path And Continue Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-FBFBD0F7D51094E9"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T123; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0124",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Combat Card Play Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-50509FEC31D23253"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T124; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0125",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Combat Runtime Bootstrap Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-9C58CAF4327CBE09"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T125; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0126",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Enemy Intent And Resolution Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-BD44913D7D4A7184"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T126; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0127",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Combat Rules And Feedback Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-94162ED6E6DA4A06"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T127; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0128",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Reward Offer And Confirm Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-6A3094DFC7D9CF72"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T128; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0129",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Relic And Combat Participant Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-C78ED07D549C231C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T129; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0130",
+      "kind": "functional",
+      "statement": "Create the Chapter 7 UI wiring slice for Settlement And Run Summary Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
+      "source_block_ids": [
+        "SB-6872319035BC6D65"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P2",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T130; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0131",
+      "kind": "functional",
+      "statement": "Build on T76 and T105 so a displayed enemy intent can execute multiple structured effects across current-turn and next-turn timing without falling back to description-only parsing.",
+      "source_block_ids": [
+        "SB-DBDE6A5DA932906C"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T131; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0132",
+      "kind": "functional",
+      "statement": "Build on the closed relic wiring path so relics that can actually appear in M1 runs execute real configured gameplay effects instead of remaining placeholder-only identities.",
+      "source_block_ids": [
+        "SB-4D1BA545FEA9FD1E"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T132; no new task is authorized."
+    },
+    {
+      "requirement_id": "FR-T0133",
+      "kind": "functional",
+      "statement": "Build a governed hook between reward-pool selection and reward-snapshot locking so relics, events, and other run-state systems can add, remove, or mutate reward entries for the next reward context without editing pool files.",
+      "source_block_ids": [
+        "SB-4F6FDA7C39D500A9"
+      ],
+      "delivery_relevant": true,
+      "capability_ids": [],
+      "sink_policy": "task_required",
+      "status": "active",
+      "priority": "P1",
+      "owner_hint": "gameplay",
+      "layer_hint": null,
+      "non_task_sinks": [],
+      "rationale": "Existing frozen Taskmaster identity T133; no new task is authorized."
+    }
+  ]
+}

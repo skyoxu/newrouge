@@ -1626,7 +1626,7 @@
         "id": 54,
         "title": "Integrate GdUnit4 suites into quality_gates.py",
         "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           53
@@ -1676,7 +1676,7 @@
         "id": 57,
         "title": "Traceability gate for ADR/Chapter/Overlay links",
         "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           56
@@ -1715,7 +1715,7 @@
         "id": 59,
         "title": "Rewire M1 run entry from main menu to difficulty, character, and map",
         "description": "Replace the current demo-oriented new run route with the M1 player flow MainMenu -> DifficultySelect -> CharacterSelect -> Map.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "Story: PRD-NEWROUGE-GAME-0001\nADR Refs: ADR-0010; ADR-0025; ADR-0032\nChapters: CH05; CH06; CH07; CH10\nOverlays: docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md; docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md\nTest Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd; Tests.Godot/tests/Tasks/test_task0014_acceptance.gd; Game.Core.Tests/Tasks/Task0059AcceptanceTests.cs\nAcceptance: Activating New Run on MainMenu must route into the M1-only entry chain, opening DifficultySelect first; no demo-oriented entry target (including StartScreen/demo-only screens) may be reachable from this New Run action. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.1); Confirming a difficulty on DifficultySelect must navigate next to CharacterSelect, must not jump directly to Map or any demo-route target, and selecting a difficulty without confirmation must keep the current route on DifficultySelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.2); Confirming the available M1 character on CharacterSelect must navigate next to Map, must not pass through placeholder screens/StartScreen/demo-only screens, and changing character selection without confirmation must keep the current route on CharacterSelect. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.3); With autosave-present preconditions that trigger New Run overwrite confirmation, cancel must keep the current scene on MainMenu, confirm must enter the M1 entry chain at DifficultySelect (not StartScreen/demo-only targets), and Continue availability behavior must remain unchanged for the same preconditions. Refs: Tests.Godot/tests/Tasks/test_task0014_acceptance.gd (anchor: ACC:T59.4) Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.4); A GdUnit integration test must assert route-history order MainMenu -> DifficultySelect -> CharacterSelect -> Map and final current scene = Map under the New Run flow. Refs: Tests.Godot/tests/Integration/test_m1_run_entry_vertical_slice.gd (anchor: ACC:T59.5)\nTest Strategy: Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that validates Task 59 acceptance semantics and route invariants.\nLabels: newrouge; m1; ui; flow; routing\nOwner: gameplay\nLayer: adapter",
@@ -1726,7 +1726,7 @@
         "id": 60,
         "title": "Implement map-to-node route ownership for the M1 playable loop",
         "description": "Wire the real map flow so selectable nodes route into Combat, Event, Shop, and Rest, and completed nodes return to Map.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           59
@@ -1825,7 +1825,7 @@
         "id": 64,
         "title": "Implement combat HUD explainability and command feedback",
         "description": "Complete the combat HUD so key player-facing results, invalid actions, and decision-critical state are visible without relying on engineering logs.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           60
@@ -2018,7 +2018,7 @@
         "id": 71,
         "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
         "description": "Track the combat deck-lifecycle umbrella milestone over T80-T82 so backlog and quality gates treat this work as an integration checkpoint over existing deck/runtime capabilities, not as a separate build track.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           92
@@ -2031,7 +2031,7 @@
         "id": 72,
         "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
         "description": "Track CombatScene binding to existing card definitions, translations, and effect contracts so data-driven card behavior does not fork into a second card model.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           71
@@ -2044,7 +2044,7 @@
         "id": 73,
         "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
         "description": "Track the upgrade from the current single-target or partial targeting skeleton to route-owned multi-enemy combat state, without replacing existing victory-route ownership.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           72
@@ -2063,7 +2063,7 @@
         "dependencies": [
           "73"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [],
         "adrRefs": [
           "ADR-0010",
@@ -2086,7 +2086,7 @@
         "id": 75,
         "title": "Wire existing status contracts and rules into visible combat status effects",
         "description": "Track combat status visibility as wiring of existing status contracts and rule semantics into the player-facing combat runtime, rather than a duplicate status implementation.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           72,
@@ -2100,7 +2100,7 @@
         "id": 76,
         "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
         "description": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           73,
@@ -2569,7 +2569,7 @@
         "id": 92,
         "title": "Promote architecture boundary tests into the main task line for Core-versus-Godot protection",
         "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
           57
@@ -2942,7 +2942,7 @@
         "id": 105,
         "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
         "description": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           76
@@ -3790,7 +3790,7 @@
         "id": 131,
         "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews",
         "description": "Build on T76 and T105 so a displayed enemy intent can execute multiple structured effects across current-turn and next-turn timing without falling back to description-only parsing.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           76,
@@ -3816,7 +3816,7 @@
     "id": 132,
     "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog",
     "description": "Build on the closed relic wiring path so relics that can actually appear in M1 runs execute real configured gameplay effects instead of remaining placeholder-only identities.",
-    "status": "pending",
+    "status": "done",
     "priority": "high",
     "dependencies": [],
     "adrRefs": [
@@ -3838,7 +3838,7 @@
         "id": 133,
         "title": "Add a pre-snapshot runtime modifier pipeline for reward entries",
         "description": "Build a governed hook between reward-pool selection and reward-snapshot locking so relics, events, and other run-state systems can add, remove, or mutate reward entries for the next reward context without editing pool files.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "adrRefs": [
@@ -3865,8 +3865,8 @@
       "tags": [
         "master"
       ],
-      "taskCount": 84,
-      "completedCount": 58,
+      "taskCount": 133,
+      "completedCount": 127,
       "lastModified": "2026-05-18T00:00:00+08:00"
     }
   }

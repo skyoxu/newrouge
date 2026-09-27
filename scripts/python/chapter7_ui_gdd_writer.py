@@ -11,6 +11,7 @@ from typing import Any
 
 from _chapter7_profile import bucket_names, bucket_profile, feature_bucket, load_chapter7_profile
 from collect_ui_wiring_inputs import OVERLAY_ROOT, TASKS_BACK, TASKS_GAMEPLAY, TASKS_JSON, UI_GDD_FLOW, build_summary
+from chapter3_task_scope import load_scope
 
 
 def _today() -> str:
@@ -435,7 +436,7 @@ def render_ui_gdd_flow(*, repo_root: Path, summary: dict[str, Any], profile: dic
         "Encoding: UTF-8",
         "Applies-To:",
         "  - .taskmaster/tasks/tasks.json",
-        "  - docs/gdd/ui-gdd-flow.md",
+        ("  - docs/planning/chapter7/ui-wiring-board.md" if load_scope(repo_root) is not None else "  - docs/gdd/ui-gdd-flow.md"),
         "ADR-Refs:",
     ]
     if adr_refs:
@@ -570,6 +571,11 @@ def write_ui_gdd_flow(
     overlay_root_path: Path | None = None,
     chapter7_profile_path: Path | None = None,
 ) -> Path:
+    if load_scope(repo_root) is not None:
+        retired = (repo_root / UI_GDD_FLOW).resolve()
+        requested = (ui_gdd_flow_path if ui_gdd_flow_path.is_absolute() else repo_root / ui_gdd_flow_path).resolve()
+        if requested == retired:
+            raise ValueError("The retired Chapter 7 GDD reference is read-only")
     profile = load_chapter7_profile(repo_root=repo_root, profile_path=chapter7_profile_path)
     out = ui_gdd_flow_path if ui_gdd_flow_path.is_absolute() else (repo_root / ui_gdd_flow_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -581,7 +587,7 @@ def write_ui_gdd_flow(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate the governed Chapter 7 UI wiring GDD artifact.")
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--ui-gdd-flow-path", default=str(UI_GDD_FLOW))
+    parser.add_argument("--ui-gdd-flow-path", default="")
     parser.add_argument("--tasks-json-path", default=str(TASKS_JSON))
     parser.add_argument("--tasks-back-path", default=str(TASKS_BACK))
     parser.add_argument("--tasks-gameplay-path", default=str(TASKS_GAMEPLAY))
@@ -590,6 +596,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
+    if not args.ui_gdd_flow_path:
+        args.ui_gdd_flow_path = (
+            "docs/planning/chapter7/ui-wiring-board.md"
+            if load_scope(repo_root) is not None else str(UI_GDD_FLOW)
+        )
     summary = build_summary(
         repo_root=repo_root,
         tasks_json_path=Path(args.tasks_json_path),

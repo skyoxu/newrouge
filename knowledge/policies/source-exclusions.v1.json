@@ -1,6 +1,9 @@
 {
   "schema_version": "newrouge.knowledge-source-exclusions.v1",
   "rules": [
+    {"id": "historical-bmad-gdd", "disposition": "excluded", "path_prefix": "_bmad-output/gdd.md", "reason": "Historical GDD reference; not current design authority."},
+    {"id": "historical-v1-gdd", "disposition": "excluded", "path_prefix": "docs/gdd/GDD-NEWROUGE-V1.md", "reason": "Historical GDD reference; not current design authority."},
+    {"id": "historical-ui-gdd", "disposition": "excluded", "path_prefix": "docs/gdd/ui-gdd-flow.md", "reason": "Historical Chapter 7 GDD reference; not current design authority."},
     {"id": "logs", "disposition": "excluded", "path_prefix": "logs", "reason": "Run evidence is not global repository truth."},
     {"id": "backup", "disposition": "excluded", "path_prefix": "backup", "reason": "Backup content must not outrank current sources."},
     {"id": "migration", "disposition": "excluded", "path_prefix": "docs/migration", "reason": "Migration records are historical unless explicitly requested."},

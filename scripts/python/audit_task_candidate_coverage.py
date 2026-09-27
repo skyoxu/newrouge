@@ -32,7 +32,9 @@ def candidate_coverage(candidates: dict[str, Any]) -> tuple[dict[str, list[str]]
     by_req: dict[str, list[str]] = {}
     rows = [row for row in candidates.get("candidates", []) if isinstance(row, dict)]
     for task in rows:
-        tid = str(task.get("id", ""))
+        if str(task.get("status", task.get("taskmaster_status", ""))).casefold() == "cancelled":
+            continue
+        tid = str(task.get("taskmaster_id") or task.get("id", ""))
         refs = task.get("semantic_refs", task.get("requirement_ids", []))
         if not isinstance(refs, list):
             continue
@@ -90,6 +92,8 @@ def audit_semantic(
     }
     invalid_refs = []
     for task in tasks:
+        if str(task.get("status", task.get("taskmaster_status", ""))).casefold() == "cancelled":
+            continue
         task_id = str(task.get("id", ""))
         refs = task.get("semantic_refs", task.get("requirement_ids", []))
         if not isinstance(refs, list):
@@ -263,6 +267,8 @@ def audit_persisted_semantic_coverage(
     invalid_refs: list[dict[str, Any]] = []
     for task in existing_tasks:
         if not isinstance(task, dict):
+            continue
+        if str(task.get("status", "")).casefold() == "cancelled":
             continue
         task_id = str(
             task.get("taskmaster_id")

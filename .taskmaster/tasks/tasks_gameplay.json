@@ -62,7 +62,17 @@
     "test_strategy": [
       "Check Godot version via 'godot --version', .NET version via 'dotnet --version', and verify packages.lock.json exists. Log environment evidence to logs/ci/<YYYY-MM-DD>/env-evidence/. Refs: ADR-0031, ADR-0011."
     ],
-    "title": "Set up project environment and dependencies"
+    "title": "Set up project environment and dependencies",
+    "semantic_refs": [
+      "NFR-T0001"
+    ],
+    "requirement_ids": [
+      "NFR-T0001"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:18"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -126,7 +136,17 @@
       "Evidence note: structure snapshot may be stored as logs/ci/<date>/task-0002-structure.txt for review traceability.",
       "Evidence note: capture sc-acceptance-check summary at logs/ci/<YYYY-MM-DD>/sc-acceptance-check-task-2/summary.json and keep dotnet-build-warnaserror step status for audit (non-Refs evidence)."
     ],
-    "title": "Create core project structure and namespaces"
+    "title": "Create core project structure and namespaces",
+    "semantic_refs": [
+      "NFR-T0002"
+    ],
+    "requirement_ids": [
+      "NFR-T0002"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:19"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -187,7 +207,17 @@
     "test_strategy": [
       "Write xUnit tests in Game.Core.Tests/Contracts to validate contract definitions and upgrade field constraints. Ensure no Godot dependencies. Refs: ADR-0033, ADR-0020."
     ],
-    "title": "Implement core contracts for card identity and forms"
+    "title": "Implement core contracts for card identity and forms",
+    "semantic_refs": [
+      "FR-T0003"
+    ],
+    "requirement_ids": [
+      "FR-T0003"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:20"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -257,7 +287,17 @@
     "test_strategy": [
       "Write xUnit tests to validate offer locking structure and provenance fields. Test serialization/deserialization for deterministic behavior. Refs: ADR-0032."
     ],
-    "title": "Implement core contracts for offer locking and deterministic outcomes"
+    "title": "Implement core contracts for offer locking and deterministic outcomes",
+    "semantic_refs": [
+      "FR-T0004"
+    ],
+    "requirement_ids": [
+      "FR-T0004"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:21"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -322,7 +362,17 @@
     "test_strategy": [
       "Write xUnit tests for status operations: stacking, duration handling, and dispel boundaries. Validate deterministic ordering via stable_id sorting. Refs: ADR-0021, ADR-0029."
     ],
-    "title": "Implement core contracts for status and modifier system"
+    "title": "Implement core contracts for status and modifier system",
+    "semantic_refs": [
+      "FR-T0005"
+    ],
+    "requirement_ids": [
+      "FR-T0005"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:22"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -413,7 +463,17 @@
     "test_strategy": [
       "Write xUnit tests for combat phase transitions, damage calculation, and OverplayTax application. Ensure deterministic ordering via combatant_id and stable_id. Refs: ADR-0021, ADR-0032."
     ],
-    "title": "Implement core contracts for combat loop and resolution pipeline"
+    "title": "Implement core contracts for combat loop and resolution pipeline",
+    "semantic_refs": [
+      "FR-T0006"
+    ],
+    "requirement_ids": [
+      "FR-T0006"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:23"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -483,7 +543,17 @@
     "test_strategy": [
       "Write xUnit tests for event publishing and subscription. Verify contracts are in correct location and not duplicated in Godot scripts. Refs: ADR-0004, ADR-0020."
     ],
-    "title": "Set up event bus and contracts location"
+    "title": "Set up event bus and contracts location",
+    "semantic_refs": [
+      "FR-T0007"
+    ],
+    "requirement_ids": [
+      "FR-T0007"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:24"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -577,7 +647,17 @@
     "test_strategy": [
       "Write xUnit tests in Game.Core.Tests/Cards for card identity, upgrade paths, and modifier inheritance. Reference ADR-0033 in test descriptions. Refs: ADR-0033."
     ],
-    "title": "Implement core logic for card identity and forms"
+    "title": "Implement core logic for card identity and forms",
+    "semantic_refs": [
+      "FR-T0008"
+    ],
+    "requirement_ids": [
+      "FR-T0008"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:25"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -643,7 +723,17 @@
       "xUnit tests for stream isolation, seed/state serialization, and non-advancing UI actions. Refs: ADR-0032.",
       "Governance traceability for ADR and overlay backlinks is audited separately and does not define Task 9 RNG behavior acceptance semantics."
     ],
-    "title": "Implement deterministic RNG stream registry"
+    "title": "Implement deterministic RNG stream registry",
+    "semantic_refs": [
+      "FR-T0009"
+    ],
+    "requirement_ids": [
+      "FR-T0009"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:26"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -702,7 +792,17 @@
     "test_strategy": [
       "xUnit tests for stacking, duration decay, and dispel boundaries. Refs: ADR-0029."
     ],
-    "title": "Implement status application, stacking, and decay"
+    "title": "Implement status application, stacking, and decay",
+    "semantic_refs": [
+      "FR-T0010"
+    ],
+    "requirement_ids": [
+      "FR-T0010"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:27"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -803,7 +903,17 @@
     "test_strategy": [
       "xUnit tests for pipeline step ordering and deterministic execution with fixed inputs. Refs: ADR-0032."
     ],
-    "title": "Implement combat resolution pipeline (core)"
+    "title": "Implement combat resolution pipeline (core)",
+    "semantic_refs": [
+      "FR-T0011"
+    ],
+    "requirement_ids": [
+      "FR-T0011"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:28"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -891,7 +1001,17 @@
     "test_strategy": [
       "xUnit tests for serialization round-trip and atomic write behavior. Refs: ADR-0032."
     ],
-    "title": "Implement save serialization and atomic write"
+    "title": "Implement save serialization and atomic write",
+    "semantic_refs": [
+      "FR-T0012"
+    ],
+    "requirement_ids": [
+      "FR-T0012"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:29"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -955,7 +1075,17 @@
     "test_strategy": [
       "Run Godot project to verify autoloads load without errors. Write GdUnit4 tests to validate composition root wiring. Refs: ADR-0021, ADR-0022."
     ],
-    "title": "Set up Godot autoloads and composition root"
+    "title": "Set up Godot autoloads and composition root",
+    "semantic_refs": [
+      "FR-T0013"
+    ],
+    "requirement_ids": [
+      "FR-T0013"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:30"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1032,7 +1162,17 @@
     "test_strategy": [
       "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010."
     ],
-    "title": "Create main menu scene with new run and continue options"
+    "title": "Create main menu scene with new run and continue options",
+    "semantic_refs": [
+      "FR-T0014"
+    ],
+    "requirement_ids": [
+      "FR-T0014"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:31"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1098,7 +1238,17 @@
     "test_strategy": [
       "Test UI navigation and difficulty persistence. Verify descriptions do not imply strong binding to talent tree. Refs: ADR-0010, ADR-0032."
     ],
-    "title": "Implement difficulty selection UI"
+    "title": "Implement difficulty selection UI",
+    "semantic_refs": [
+      "FR-T0015"
+    ],
+    "requirement_ids": [
+      "FR-T0015"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:32"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1160,7 +1310,17 @@
     "test_strategy": [
       "Verify Warrior selection works and other characters are not selectable. Check translation keys for mechanism summary. Refs: ADR-0010."
     ],
-    "title": "Implement character selection UI for Warrior only"
+    "title": "Implement character selection UI for Warrior only",
+    "semantic_refs": [
+      "FR-T0016"
+    ],
+    "requirement_ids": [
+      "FR-T0016"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:33"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1239,7 +1399,17 @@
     "test_strategy": [
       "Test map navigation and node selection. Write xUnit tests for Act structure modularity. Refs: ADR-0007, ADR-0021."
     ],
-    "title": "Create modular Act structure for map system"
+    "title": "Create modular Act structure for map system",
+    "semantic_refs": [
+      "FR-T0017"
+    ],
+    "requirement_ids": [
+      "FR-T0017"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:34"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1345,7 +1515,17 @@
     "test_strategy": [
       "GdUnit4 tests for UI presence and bindings to state. Refs: ADR-0025."
     ],
-    "title": "Implement combat scene UI shell and bindings"
+    "title": "Implement combat scene UI shell and bindings",
+    "semantic_refs": [
+      "FR-T0018"
+    ],
+    "requirement_ids": [
+      "FR-T0018"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:35"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1424,7 +1604,17 @@
     "test_strategy": [
       "Test reward display, selection, and skip. Verify offer locking by exiting and re-entering. Write xUnit tests for offer locking logic. Refs: ADR-0032, ADR-0010."
     ],
-    "title": "Implement reward scene with card three-choice-one and offer locking"
+    "title": "Implement reward scene with card three-choice-one and offer locking",
+    "semantic_refs": [
+      "FR-T0019"
+    ],
+    "requirement_ids": [
+      "FR-T0019"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:36"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1490,7 +1680,17 @@
     "test_strategy": [
       "Test shop purchases and inventory persistence on exit/re-enter. Verify UI lacks upgrade wording. Refs: ADR-0032, ADR-0010."
     ],
-    "title": "Implement shop scene with inventory locking and no upgrade context"
+    "title": "Implement shop scene with inventory locking and no upgrade context",
+    "semantic_refs": [
+      "FR-T0020"
+    ],
+    "requirement_ids": [
+      "FR-T0020"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:37"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1564,7 +1764,17 @@
     "test_strategy": [
       "Test upgrade flow and confirmation. Verify upgrade is free and irreversible. Check translation keys. Refs: ADR-0033, ADR-0010."
     ],
-    "title": "Implement rest scene with free upgrade option"
+    "title": "Implement rest scene with free upgrade option",
+    "semantic_refs": [
+      "FR-T0021"
+    ],
+    "requirement_ids": [
+      "FR-T0021"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:38"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1632,7 +1842,17 @@
     "test_strategy": [
       "Test event options and cost application. Verify choice locking on exit/re-enter. Refs: ADR-0032, ADR-0010."
     ],
-    "title": "Implement event scene with dark cost examples"
+    "title": "Implement event scene with dark cost examples",
+    "semantic_refs": [
+      "FR-T0022"
+    ],
+    "requirement_ids": [
+      "FR-T0022"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:39"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1691,7 +1911,17 @@
     "test_strategy": [
       "Load translations in Godot and verify UI text appears correctly. Check key naming compliance. Refs: ADR-0010."
     ],
-    "title": "Set up translations system with key naming conventions"
+    "title": "Set up translations system with key naming conventions",
+    "semantic_refs": [
+      "FR-T0023"
+    ],
+    "requirement_ids": [
+      "FR-T0023"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:40"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1754,7 +1984,17 @@
     "test_strategy": [
       "Write xUnit tests to verify deck composition and card properties. Reference M1 content list. Refs: ADR-0033."
     ],
-    "title": "Implement Warrior starting deck with 10 cards"
+    "title": "Implement Warrior starting deck with 10 cards",
+    "semantic_refs": [
+      "FR-T0024"
+    ],
+    "requirement_ids": [
+      "FR-T0024"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:41"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1819,7 +2059,17 @@
     "test_strategy": [
       "xUnit tests for Rage stacking, persistence across turns, and reset after combat end. Verify deterministic ordering with other statuses. Refs: ADR-0033."
     ],
-    "title": "Implement rage as state buff for Warrior"
+    "title": "Implement rage as state buff for Warrior",
+    "semantic_refs": [
+      "FR-T0025"
+    ],
+    "requirement_ids": [
+      "FR-T0025"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:42"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1891,7 +2141,17 @@
     "test_strategy": [
       "xUnit tests for difficulty persistence and immutability after run start. Refs: ADR-0032."
     ],
-    "title": "Define difficulty configuration contract and immutability"
+    "title": "Define difficulty configuration contract and immutability",
+    "semantic_refs": [
+      "FR-T0026"
+    ],
+    "requirement_ids": [
+      "FR-T0026"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:43"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -1961,7 +2221,17 @@
     "test_strategy": [
       "xUnit tests for rule resolution by difficulty and deterministic outputs. Refs: ADR-0032."
     ],
-    "title": "Implement difficulty rule modifiers"
+    "title": "Implement difficulty rule modifiers",
+    "semantic_refs": [
+      "FR-T0027"
+    ],
+    "requirement_ids": [
+      "FR-T0027"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:44"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2026,7 +2296,17 @@
     "test_strategy": [
       "xUnit tests for loading valid/invalid ActConfig and schema version checks. Refs: ADR-0006."
     ],
-    "title": "Create ActConfig data model and loader"
+    "title": "Create ActConfig data model and loader",
+    "semantic_refs": [
+      "FR-T0028"
+    ],
+    "requirement_ids": [
+      "FR-T0028"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:45"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2094,7 +2374,17 @@
     "test_strategy": [
       "xUnit tests for pool selection determinism and rarity distribution stability. Refs: ADR-0032."
     ],
-    "title": "Implement card drop pools per Act and encounter type"
+    "title": "Implement card drop pools per Act and encounter type",
+    "semantic_refs": [
+      "FR-T0029"
+    ],
+    "requirement_ids": [
+      "FR-T0029"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:46"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2161,7 +2451,17 @@
     "test_strategy": [
       "xUnit tests for relic contract validity and serialization. Refs: ADR-0020."
     ],
-    "title": "Define relic contracts and instance model"
+    "title": "Define relic contracts and instance model",
+    "semantic_refs": [
+      "FR-T0030"
+    ],
+    "requirement_ids": [
+      "FR-T0030"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:47"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2228,7 +2528,17 @@
     "test_strategy": [
       "xUnit tests to validate unique relic_id and translation key presence. Refs: ADR-0010."
     ],
-    "title": "Implement 20 starting relic definitions and uniqueness checks"
+    "title": "Implement 20 starting relic definitions and uniqueness checks",
+    "semantic_refs": [
+      "FR-T0031"
+    ],
+    "requirement_ids": [
+      "FR-T0031"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:48"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2289,7 +2599,17 @@
     "test_strategy": [
       "xUnit tests for curse constraints and removal operations. Refs: ADR-0033."
     ],
-    "title": "Implement curse cards and removal services"
+    "title": "Implement curse cards and removal services",
+    "semantic_refs": [
+      "FR-T0032"
+    ],
+    "requirement_ids": [
+      "FR-T0032"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:49"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2362,7 +2682,17 @@
     "test_strategy": [
       "xUnit tests for draw/discard ordering, retain behavior, and hand limit overflow. Refs: ADR-0032."
     ],
-    "title": "Implement deck operations service (draw/discard/exhaust/retain)"
+    "title": "Implement deck operations service (draw/discard/exhaust/retain)",
+    "semantic_refs": [
+      "FR-T0033"
+    ],
+    "requirement_ids": [
+      "FR-T0033"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:50"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2433,7 +2763,17 @@
     "test_strategy": [
       "GdUnit4 tests for target selection and drag-drop play flow. Refs: ADR-0025."
     ],
-    "title": "Implement card targeting and drag UX"
+    "title": "Implement card targeting and drag UX",
+    "semantic_refs": [
+      "FR-T0034"
+    ],
+    "requirement_ids": [
+      "FR-T0034"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:51"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2495,7 +2835,17 @@
     "test_strategy": [
       "xUnit tests for combat end resolution and state transitions. Refs: ADR-0032."
     ],
-    "title": "Implement end-of-combat resolution pipeline"
+    "title": "Implement end-of-combat resolution pipeline",
+    "semantic_refs": [
+      "FR-T0035"
+    ],
+    "requirement_ids": [
+      "FR-T0035"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:52"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2562,7 +2912,17 @@
     "test_strategy": [
       "xUnit tests for autosave timing and content. Refs: ADR-0032."
     ],
-    "title": "Implement autosave triggers per determinism policy"
+    "title": "Implement autosave triggers per determinism policy",
+    "semantic_refs": [
+      "FR-T0036"
+    ],
+    "requirement_ids": [
+      "FR-T0036"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:53"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2626,7 +2986,17 @@
     "test_strategy": [
       "xUnit tests for metadata validation and Continue gating. Refs: ADR-0032."
     ],
-    "title": "Single-slot continue metadata and integrity checks"
+    "title": "Single-slot continue metadata and integrity checks",
+    "semantic_refs": [
+      "FR-T0037"
+    ],
+    "requirement_ids": [
+      "FR-T0037"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:54"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2694,7 +3064,17 @@
     "test_strategy": [
       "xUnit tests to verify JSONL schema and file paths. Refs: ADR-0019."
     ],
-    "title": "Audit logging for determinism and security events"
+    "title": "Audit logging for determinism and security events",
+    "semantic_refs": [
+      "NFR-T0038"
+    ],
+    "requirement_ids": [
+      "NFR-T0038"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:55"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2759,7 +3139,17 @@
     "test_strategy": [
       "Script or manual checks to ensure all referenced keys exist; GdUnit4 smoke. Refs: ADR-0010."
     ],
-    "title": "Populate translations for M1 cards, relics, events"
+    "title": "Populate translations for M1 cards, relics, events",
+    "semantic_refs": [
+      "FR-T0039"
+    ],
+    "requirement_ids": [
+      "FR-T0039"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:56"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2816,7 +3206,17 @@
     "test_strategy": [
       "xUnit tests for enemy data validity and deterministic ordering of definitions. Refs: ADR-0021."
     ],
-    "title": "Define Act 1 enemy data and definitions"
+    "title": "Define Act 1 enemy data and definitions",
+    "semantic_refs": [
+      "FR-T0040"
+    ],
+    "requirement_ids": [
+      "FR-T0040"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:57"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2879,7 +3279,17 @@
     "test_strategy": [
       "GdUnit4 tests for intent display and updates on turn start. Refs: ADR-0025."
     ],
-    "title": "Implement enemy intent display and preview UI"
+    "title": "Implement enemy intent display and preview UI",
+    "semantic_refs": [
+      "FR-T0041"
+    ],
+    "requirement_ids": [
+      "FR-T0041"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:58"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -2942,7 +3352,17 @@
     "test_strategy": [
       "xUnit tests for node selection lock and deterministic node order. Refs: ADR-0032."
     ],
-    "title": "Map node entry gating and backtracking rules"
+    "title": "Map node entry gating and backtracking rules",
+    "semantic_refs": [
+      "FR-T0042"
+    ],
+    "requirement_ids": [
+      "FR-T0042"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:59"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3006,7 +3426,17 @@
     "test_strategy": [
       "xUnit tests for command transition ordering and state invariants. Refs: ADR-0032."
     ],
-    "title": "Run state machine with Command-only transitions"
+    "title": "Run state machine with Command-only transitions",
+    "semantic_refs": [
+      "FR-T0043"
+    ],
+    "requirement_ids": [
+      "FR-T0043"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:60"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3083,7 +3513,17 @@
     "test_strategy": [
       "Run headless suite and verify JUnit/XML + audit logs. Refs: ADR-0032."
     ],
-    "title": "Deterministic resume integration tests (headless)"
+    "title": "Deterministic resume integration tests (headless)",
+    "semantic_refs": [
+      "NFR-T0044"
+    ],
+    "requirement_ids": [
+      "NFR-T0044"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:61"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3149,7 +3589,17 @@
     "test_strategy": [
       "GdUnit4 tests to verify HUD shows selected difficulty and does not change mid-run. Refs: ADR-0032."
     ],
-    "title": "Display difficulty in HUD and run summary"
+    "title": "Display difficulty in HUD and run summary",
+    "semantic_refs": [
+      "FR-T0045"
+    ],
+    "requirement_ids": [
+      "FR-T0045"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:62"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3221,7 +3671,17 @@
     "test_strategy": [
       "xUnit tests for offer lock determinism across reloads. Refs: ADR-0032."
     ],
-    "title": "Implement offer locking generation using RNG streams"
+    "title": "Implement offer locking generation using RNG streams",
+    "semantic_refs": [
+      "FR-T0046"
+    ],
+    "requirement_ids": [
+      "FR-T0046"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:63"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3286,7 +3746,17 @@
     "test_strategy": [
       "xUnit tests for trigger ordering and fixed damage invariants. Refs: ADR-0029."
     ],
-    "title": "Implement status trigger ordering and fixed damage rules"
+    "title": "Implement status trigger ordering and fixed damage rules",
+    "semantic_refs": [
+      "FR-T0047"
+    ],
+    "requirement_ids": [
+      "FR-T0047"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:64"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3348,7 +3818,17 @@
     "test_strategy": [
       "xUnit tests for damage calculations and multi-hit ordering. Refs: ADR-0032."
     ],
-    "title": "Implement damage calculation and AOE ordering"
+    "title": "Implement damage calculation and AOE ordering",
+    "semantic_refs": [
+      "FR-T0048"
+    ],
+    "requirement_ids": [
+      "FR-T0048"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:65"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3420,7 +3900,17 @@
     "test_strategy": [
       "xUnit tests for hard-stop behavior and audit log entries. Refs: ADR-0029."
     ],
-    "title": "Implement stability safeguards for combat loop"
+    "title": "Implement stability safeguards for combat loop",
+    "semantic_refs": [
+      "NFR-T0049"
+    ],
+    "requirement_ids": [
+      "NFR-T0049"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:66"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3482,7 +3972,17 @@
     "test_strategy": [
       "xUnit tests for migration failure blocking and error paths. Refs: ADR-0032."
     ],
-    "title": "Implement save migration validation and failure blocking"
+    "title": "Implement save migration validation and failure blocking",
+    "semantic_refs": [
+      "FR-T0050"
+    ],
+    "requirement_ids": [
+      "FR-T0050"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:67"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3564,7 +4064,17 @@
     "test_strategy": [
       "GdUnit4 tests for turn flow and resume behavior. Refs: ADR-0032."
     ],
-    "title": "Integrate combat turn flow and persistence"
+    "title": "Integrate combat turn flow and persistence",
+    "semantic_refs": [
+      "FR-T0051"
+    ],
+    "requirement_ids": [
+      "FR-T0051"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:68"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3626,7 +4136,17 @@
     "test_strategy": [
       "xUnit tests for intent selection determinism. Refs: ADR-0032."
     ],
-    "title": "Implement enemy intent selection logic"
+    "title": "Implement enemy intent selection logic",
+    "semantic_refs": [
+      "FR-T0052"
+    ],
+    "requirement_ids": [
+      "FR-T0052"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:69"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3706,7 +4226,17 @@
       "Run locally on Windows against a known-good scene and verify exit code + artifacts.",
       "Run in CI headless and confirm logs are archived under logs/ci/**."
     ],
-    "title": "Headless smoke runner (Python) + strict mode"
+    "title": "Headless smoke runner (Python) + strict mode",
+    "semantic_refs": [
+      "NFR-T0053"
+    ],
+    "requirement_ids": [
+      "NFR-T0053"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:70"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3783,7 +4313,17 @@
       "Run quality_gates.py locally with and without GdUnit4 flags to verify behavior.",
       "Validate CI job consumes the summary JSON for pass/fail decisions."
     ],
-    "title": "Integrate GdUnit4 suites into quality_gates.py"
+    "title": "Integrate GdUnit4 suites into quality_gates.py",
+    "semantic_refs": [
+      "NFR-T0054"
+    ],
+    "requirement_ids": [
+      "NFR-T0054"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:71"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3837,7 +4377,17 @@
     "test_strategy": [
       "Run dotnet tests on Windows and verify threshold behavior by temporarily setting env vars."
     ],
-    "title": "Coverage thresholds as configurable soft/hard gate"
+    "title": "Coverage thresholds as configurable soft/hard gate",
+    "semantic_refs": [
+      "NFR-T0055"
+    ],
+    "requirement_ids": [
+      "NFR-T0055"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:72"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3905,7 +4455,17 @@
     "test_strategy": [
       "Use valid/invalid JSONL fixtures to reproduce one pass and one fail run on Windows."
     ],
-    "title": "Audit JSONL validation + gate integration"
+    "title": "Audit JSONL validation + gate integration",
+    "semantic_refs": [
+      "NFR-T0056"
+    ],
+    "requirement_ids": [
+      "NFR-T0056"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:73"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -3977,7 +4537,17 @@
     "test_strategy": [
       "Run traceability check on Windows with one pass sample and one fail sample."
     ],
-    "title": "Traceability gate for ADR/Chapter/Overlay links"
+    "title": "Traceability gate for ADR/Chapter/Overlay links",
+    "semantic_refs": [
+      "NFR-T0057"
+    ],
+    "requirement_ids": [
+      "NFR-T0057"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:74"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4033,7 +4603,17 @@
     "test_strategy": [
       "Validate policy evaluation on Windows for pass/advisory cases and verify generated summary evidence fields are complete."
     ],
-    "title": "Semantic scope governance for soft review stabilization"
+    "title": "Semantic scope governance for soft review stabilization",
+    "semantic_refs": [
+      "NFR-T0058"
+    ],
+    "requirement_ids": [
+      "NFR-T0058"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:75"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4087,7 +4667,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 59,
@@ -4099,7 +4679,17 @@
     "test_strategy": [
       "Run a Windows GdUnit run-entry smoke and a focused Task0059 xUnit guard that validates Task 59 acceptance semantics and route invariants."
     ],
-    "title": "Rewire M1 run entry from main menu to difficulty, character, and map"
+    "title": "Rewire M1 run entry from main menu to difficulty, character, and map",
+    "semantic_refs": [
+      "FR-T0059"
+    ],
+    "requirement_ids": [
+      "FR-T0059"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:76"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4149,7 +4739,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 60,
@@ -4162,7 +4752,17 @@
     "test_strategy": [
       "Run a Windows Map route smoke covering Combat, Event, Shop, and Rest node transitions plus blocked unreachable choices."
     ],
-    "title": "Implement map-to-node route ownership for the M1 playable loop"
+    "title": "Implement map-to-node route ownership for the M1 playable loop",
+    "semantic_refs": [
+      "FR-T0060"
+    ],
+    "requirement_ids": [
+      "FR-T0060"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:77"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4231,7 +4831,17 @@
     "test_strategy": [
       "Run a Windows Reward real-scene route roundtrip test and deterministic offer-locking regression tests."
     ],
-    "title": "Implement standalone Reward scene and route integration"
+    "title": "Implement standalone Reward scene and route integration",
+    "semantic_refs": [
+      "FR-T0061"
+    ],
+    "requirement_ids": [
+      "FR-T0061"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:78"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4299,7 +4909,17 @@
     "test_strategy": [
       "Run a Windows Rest real-scene route roundtrip test and irreversible-upgrade confirmation regression tests."
     ],
-    "title": "Implement standalone Rest scene and route integration"
+    "title": "Implement standalone Rest scene and route integration",
+    "semantic_refs": [
+      "FR-T0062"
+    ],
+    "requirement_ids": [
+      "FR-T0062"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:79"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4364,7 +4984,17 @@
     "test_strategy": [
       "Run a Windows MainMenu blocked-state UI smoke covering missing-save and invalid-save reasons."
     ],
-    "title": "Implement Continue blocked-state UX and recovery messaging"
+    "title": "Implement Continue blocked-state UX and recovery messaging",
+    "semantic_refs": [
+      "FR-T0063"
+    ],
+    "requirement_ids": [
+      "FR-T0063"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:80"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4425,7 +5055,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 64,
@@ -4437,7 +5067,17 @@
     "test_strategy": [
       "Run a Windows combat feedback smoke and an invalid-action no-mutation regression test."
     ],
-    "title": "Implement combat HUD explainability and command feedback"
+    "title": "Implement combat HUD explainability and command feedback",
+    "semantic_refs": [
+      "FR-T0064"
+    ],
+    "requirement_ids": [
+      "FR-T0064"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:81"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4513,7 +5153,17 @@
     "test_strategy": [
       "Run a GdUnit M1 visible-text flow smoke for en and zh-CN on Windows."
     ],
-    "title": "Implement M1 visible text flow validation across UI scenes"
+    "title": "Implement M1 visible text flow validation across UI scenes",
+    "semantic_refs": [
+      "NFR-T0065"
+    ],
+    "requirement_ids": [
+      "NFR-T0065"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:82"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4574,7 +5224,17 @@
     "test_strategy": [
       "Add a focused UI test for the chosen Run Summary surface and consistency with HUD/Continue metadata."
     ],
-    "title": "Define and implement run summary surface ownership"
+    "title": "Define and implement run summary surface ownership",
+    "semantic_refs": [
+      "FR-T0066"
+    ],
+    "requirement_ids": [
+      "FR-T0066"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:83"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4644,7 +5304,17 @@
     "test_strategy": [
       "Add a real-scene Shop behavior binding test and route roundtrip check on Windows."
     ],
-    "title": "Implement real Shop UI behavior binding and route ownership"
+    "title": "Implement real Shop UI behavior binding and route ownership",
+    "semantic_refs": [
+      "FR-T0067"
+    ],
+    "requirement_ids": [
+      "FR-T0067"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:84"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4709,7 +5379,17 @@
     "test_strategy": [
       "Run existing A11y UI tests and add one M1 critical-path focus smoke after P0/P1 UI surfaces exist."
     ],
-    "title": "Implement M1 UI focus and accessibility pass"
+    "title": "Implement M1 UI focus and accessibility pass",
+    "semantic_refs": [
+      "NFR-T0068"
+    ],
+    "requirement_ids": [
+      "NFR-T0068"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:85"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4782,7 +5462,17 @@
     "test_strategy": [
       "Add one real-scene Event result feedback test and one route-return smoke on Windows."
     ],
-    "title": "Implement Event result explainability and node feedback routing"
+    "title": "Implement Event result explainability and node feedback routing",
+    "semantic_refs": [
+      "FR-T0069"
+    ],
+    "requirement_ids": [
+      "FR-T0069"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:86"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4851,7 +5541,17 @@
     "test_strategy": [
       "Extend the existing Map route GdUnit suite to cover connected route graph edges, path-state visualization, legal unlock progression, and hidden legacy shortcut buttons on Windows."
     ],
-    "title": "Upgrade Map route graph visualization on top of existing route ownership"
+    "title": "Upgrade Map route graph visualization on top of existing route ownership",
+    "semantic_refs": [
+      "FR-T0070"
+    ],
+    "requirement_ids": [
+      "FR-T0070"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:87"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4908,7 +5608,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 71,
@@ -4921,7 +5621,17 @@
     "test_strategy": [
       "Validate this milestone by aggregating T80-T82 evidence from existing DeckService and Combat scene suites; do not add a separate implementation-only test slice under T71."
     ],
-    "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82"
+    "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
+    "semantic_refs": [
+      "FR-T0071"
+    ],
+    "requirement_ids": [
+      "FR-T0071"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:88"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -4981,7 +5691,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 72,
@@ -4994,7 +5704,17 @@
     "test_strategy": [
       "Extend Combat scene binding and feedback suites to cover data-driven card definitions, localized text, effect summaries, and refusal paths."
     ],
-    "title": "Bind CombatScene to existing data-driven card definitions and localized card text"
+    "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
+    "semantic_refs": [
+      "FR-T0072"
+    ],
+    "requirement_ids": [
+      "FR-T0072"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:89"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5051,7 +5771,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 73,
@@ -5063,7 +5783,17 @@
     "test_strategy": [
       "Extend Combat and targeting flow suites to cover legal target resolution, invalid target refusal, enemy death, and combat completion routing."
     ],
-    "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state"
+    "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
+    "semantic_refs": [
+      "FR-T0073"
+    ],
+    "requirement_ids": [
+      "FR-T0073"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:90"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5119,7 +5849,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 74,
@@ -5132,7 +5862,17 @@
     "test_strategy": [
       "Promote existing drag-target harness coverage into real Combat scene behavior tests, including valid drop, invalid drop, cancel, and accessibility fallback."
     ],
-    "title": "Upgrade existing targeting flow with Slay-the-Spire-style card drag UX"
+    "title": "Upgrade existing targeting flow with Slay-the-Spire-style card drag UX",
+    "semantic_refs": [
+      "FR-T0074"
+    ],
+    "requirement_ids": [
+      "FR-T0074"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:91"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5190,7 +5930,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 75,
@@ -5202,7 +5942,17 @@
     "test_strategy": [
       "Extend Combat UI binding and feedback tests to cover status rendering, status-modified damage/block resolution, and turn-boundary decay."
     ],
-    "title": "Wire existing status contracts and rules into visible combat status effects"
+    "title": "Wire existing status contracts and rules into visible combat status effects",
+    "semantic_refs": [
+      "FR-T0075"
+    ],
+    "requirement_ids": [
+      "FR-T0075"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:92"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5258,7 +6008,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 76,
@@ -5269,7 +6019,17 @@
     "test_strategy": [
       "Extend Combat scene tests to cover deterministic enemy intent generation, visible preview, and UI-only RNG non-advancement on the upgraded intent path."
     ],
-    "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces"
+    "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
+    "semantic_refs": [
+      "FR-T0076"
+    ],
+    "requirement_ids": [
+      "FR-T0076"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:93"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5341,7 +6101,17 @@
     "test_strategy": [
       "Add deterministic trigger-order assertions through existing Combat scene suites for card-play, turn, damage, and death-check hooks on the shared runtime path."
     ],
-    "title": "Integrate trigger registration and combat-time hooks into the shared combat runtime"
+    "title": "Integrate trigger registration and combat-time hooks into the shared combat runtime",
+    "semantic_refs": [
+      "FR-T0077"
+    ],
+    "requirement_ids": [
+      "FR-T0077"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:94"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5413,7 +6183,17 @@
     "test_strategy": [
       "Extend Combat UI tests with observable presentation-layer nodes/events and verify they do not mutate deterministic combat state or RNG."
     ],
-    "title": "Layer combat presentation feedback on top of deterministic state without mutating runtime logic"
+    "title": "Layer combat presentation feedback on top of deterministic state without mutating runtime logic",
+    "semantic_refs": [
+      "FR-T0078"
+    ],
+    "requirement_ids": [
+      "FR-T0078"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:95"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5478,7 +6258,17 @@
     "test_strategy": [
       "Add/extend Combat scene tests for HP-change-driven defeat trigger on end-turn and non-end-turn HP mutation paths, and verify one-shot defeat routing."
     ],
-    "title": "Unify combat defeat trigger by HP change event and single-resolution guard"
+    "title": "Unify combat defeat trigger by HP change event and single-resolution guard",
+    "semantic_refs": [
+      "FR-T0079"
+    ],
+    "requirement_ids": [
+      "FR-T0079"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:96"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5545,7 +6335,17 @@
     "test_strategy": [
       "Add/extend tests for deck-state-driven UI counters after play card/end turn and ensure deterministic transitions remain stable."
     ],
-    "title": "Wire CombatScene to existing DeckService runtime state instead of local pile counters"
+    "title": "Wire CombatScene to existing DeckService runtime state instead of local pile counters",
+    "semantic_refs": [
+      "FR-T0080"
+    ],
+    "requirement_ids": [
+      "FR-T0080"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:97"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5610,7 +6410,17 @@
     "test_strategy": [
       "Add tests that exhaust draw pile, verify reshuffle from discard, discard reset, and continued draw behavior without state corruption."
     ],
-    "title": "Expose draw-empty reshuffle cycle through existing DeckService-backed combat runtime"
+    "title": "Expose draw-empty reshuffle cycle through existing DeckService-backed combat runtime",
+    "semantic_refs": [
+      "FR-T0081"
+    ],
+    "requirement_ids": [
+      "FR-T0081"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:98"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5679,7 +6489,17 @@
     "test_strategy": [
       "Add UI/state tests ensuring draw+hand+discard equals total after play, end turn, and reshuffle transitions."
     ],
-    "title": "Add combat deck total display on top of DeckService-backed pile state"
+    "title": "Add combat deck total display on top of DeckService-backed pile state",
+    "semantic_refs": [
+      "FR-T0082"
+    ],
+    "requirement_ids": [
+      "FR-T0082"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:99"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5747,7 +6567,17 @@
     "test_strategy": [
       "Add or extend Combat scene and acceptance tests to verify CombatService-backed card resolution and removal of scene-local-only play behavior while preserving current surface ownership."
     ],
-    "title": "Hand off CombatScene card play to the existing CombatService runtime"
+    "title": "Hand off CombatScene card play to the existing CombatService runtime",
+    "semantic_refs": [
+      "FR-T0083"
+    ],
+    "requirement_ids": [
+      "FR-T0083"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:100"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5818,7 +6648,17 @@
     "test_strategy": [
       "Add or extend Reward scene and integration tests to cover pool-driven first-entry offer generation through the shared reward path."
     ],
-    "title": "Generate Reward offers from existing card drop pools on first entry"
+    "title": "Generate Reward offers from existing card drop pools on first entry",
+    "semantic_refs": [
+      "FR-T0084"
+    ],
+    "requirement_ids": [
+      "FR-T0084"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:101"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5885,7 +6725,17 @@
       "Add or extend Reward scene tests to cover single selection state and confirm gating on the existing Reward surface.",
       "Workflow selection evidence remains a governance gate and is validated by Game.Core.Tests/Tasks/Task0085WorkflowSelectionEvidenceTests.cs."
     ],
-    "title": "Complete Reward three-choice selection and confirm gating on the existing Reward scene"
+    "title": "Complete Reward three-choice selection and confirm gating on the existing Reward scene",
+    "semantic_refs": [
+      "FR-T0085"
+    ],
+    "requirement_ids": [
+      "FR-T0085"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:102"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -5952,7 +6802,17 @@
     "test_strategy": [
       "Add or extend map service tests to cover ActConfig-driven route generation and deterministic refusal for invalid or incomplete map content."
     ],
-    "title": "Generate route graph from existing ActConfig for the live Map path"
+    "title": "Generate route graph from existing ActConfig for the live Map path",
+    "semantic_refs": [
+      "FR-T0086"
+    ],
+    "requirement_ids": [
+      "FR-T0086"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:103"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6020,7 +6880,17 @@
     "test_strategy": [
       "Add or extend resume integration tests to cover valid restore into Map or combat boundaries and unchanged blocked-state behavior for invalid saves."
     ],
-    "title": "Resume Continue into real Map or combat entry boundaries from autosave metadata"
+    "title": "Resume Continue into real Map or combat entry boundaries from autosave metadata",
+    "semantic_refs": [
+      "FR-T0087"
+    ],
+    "requirement_ids": [
+      "FR-T0087"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:104"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6089,7 +6959,17 @@
     "test_strategy": [
       "Add or extend run inventory and UI tests to cover relic grant, uniqueness enforcement, and visible equipped state on the shared run path."
     ],
-    "title": "Integrate relic acquisition, equip state, and player-facing display on the shared run path"
+    "title": "Integrate relic acquisition, equip state, and player-facing display on the shared run path",
+    "semantic_refs": [
+      "FR-T0088"
+    ],
+    "requirement_ids": [
+      "FR-T0088"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:105"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6161,7 +7041,17 @@
     "test_strategy": [
       "Add or extend enemy data and combat runtime tests to cover data-backed enemy instantiation in the live combat path."
     ],
-    "title": "Instantiate combat enemy runtime from existing enemy data definitions"
+    "title": "Instantiate combat enemy runtime from existing enemy data definitions",
+    "semantic_refs": [
+      "FR-T0089"
+    ],
+    "requirement_ids": [
+      "FR-T0089"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:106"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6230,7 +7120,17 @@
     "test_strategy": [
       "Add or extend combat rule tests to cover trigger ordering and fixed damage exemptions inside the live combat runtime path."
     ],
-    "title": "Promote status trigger ordering and fixed damage rules into the live combat runtime"
+    "title": "Promote status trigger ordering and fixed damage rules into the live combat runtime",
+    "semantic_refs": [
+      "FR-T0090"
+    ],
+    "requirement_ids": [
+      "FR-T0090"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:107"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6298,7 +7198,17 @@
     "test_strategy": [
       "Add or extend run summary tests to cover outcome and route-progress visibility from stored data and route-independent opening behavior."
     ],
-    "title": "Expand the run summary into a stored-data-backed settlement surface"
+    "title": "Expand the run summary into a stored-data-backed settlement surface",
+    "semantic_refs": [
+      "FR-T0091"
+    ],
+    "requirement_ids": [
+      "FR-T0091"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:108"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6369,7 +7279,17 @@
     "test_strategy": [
       "Add or extend acceptance and Combat scene tests to verify Warrior deck seeding on combat entry and synchronization between CombatService state and visible piles."
     ],
-    "title": "Seed CombatService runtime from the Warrior starting deck on combat entry"
+    "title": "Seed CombatService runtime from the Warrior starting deck on combat entry",
+    "semantic_refs": [
+      "FR-T0095"
+    ],
+    "requirement_ids": [
+      "FR-T0095"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:112"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6441,7 +7361,17 @@
     "test_strategy": [
       "Add or extend Warrior acceptance and Combat scene tests to verify Rage state application, persistence, and visible combat impact through the shared runtime."
     ],
-    "title": "Promote Rage into the live CombatService-backed player runtime"
+    "title": "Promote Rage into the live CombatService-backed player runtime",
+    "semantic_refs": [
+      "FR-T0096"
+    ],
+    "requirement_ids": [
+      "FR-T0096"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:113"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6514,7 +7444,17 @@
     "test_strategy": [
       "Add or extend Map scene tests to cover generated route binding, visible route states, and actionable node selection on the live Map surface."
     ],
-    "title": "Bind generated ActConfig route data onto the live Map surface and route states"
+    "title": "Bind generated ActConfig route data onto the live Map surface and route states",
+    "semantic_refs": [
+      "FR-T0097"
+    ],
+    "requirement_ids": [
+      "FR-T0097"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:114"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6588,7 +7528,17 @@
     "test_strategy": [
       "Add or extend resume integration tests to cover deterministic re-entry into Reward, Shop, and Event surfaces with preserved locked offers and unchanged route ownership."
     ],
-    "title": "Restore locked Reward, Shop, and Event surfaces after Continue"
+    "title": "Restore locked Reward, Shop, and Event surfaces after Continue",
+    "semantic_refs": [
+      "FR-T0098"
+    ],
+    "requirement_ids": [
+      "FR-T0098"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:115"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6656,7 +7606,17 @@
     "test_strategy": [
       "Add or extend combat integration tests to verify relic-triggered combat effects execute through shared trigger paths while preserving uniqueness and ownership rules."
     ],
-    "title": "Drive relic runtime effects through the shared combat trigger path"
+    "title": "Drive relic runtime effects through the shared combat trigger path",
+    "semantic_refs": [
+      "FR-T0099"
+    ],
+    "requirement_ids": [
+      "FR-T0099"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:116"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6722,7 +7682,17 @@
     "test_strategy": [
       "Add or extend combat rule tests to cover AOE and multi-hit ordering inside the live combat runtime path."
     ],
-    "title": "Promote AOE and multi-hit ordering rules into the live combat runtime"
+    "title": "Promote AOE and multi-hit ordering rules into the live combat runtime",
+    "semantic_refs": [
+      "FR-T0100"
+    ],
+    "requirement_ids": [
+      "FR-T0100"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:117"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6787,7 +7757,17 @@
     "test_strategy": [
       "Add or extend Combat scene feedback tests to verify player-visible logs and indicators match shared runtime outcomes after trigger, fixed damage, and AOE resolution."
     ],
-    "title": "Align player-visible combat feedback with the promoted runtime rule results"
+    "title": "Align player-visible combat feedback with the promoted runtime rule results",
+    "semantic_refs": [
+      "FR-T0101"
+    ],
+    "requirement_ids": [
+      "FR-T0101"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:118"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6842,7 +7822,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 105,
@@ -6853,7 +7833,17 @@
     "test_strategy": [
       "Extend Combat scene tests to cover one-shot enemy action resolution, status-aware intent execution, and deterministic no-repeat behavior on the shared runtime path."
     ],
-    "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path"
+    "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
+    "semantic_refs": [
+      "FR-T0105"
+    ],
+    "requirement_ids": [
+      "FR-T0105"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:122"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6920,7 +7910,17 @@
     "test_strategy": [
       "Add deterministic trigger-order assertions, visible/inspectable Combat UI state assertions, and at least one player-observable runtime outcome assertion for powers and relics as effectful combat participants."
     ],
-    "title": "Integrate powers and relics as visible and effectful combat participants"
+    "title": "Integrate powers and relics as visible and effectful combat participants",
+    "semantic_refs": [
+      "FR-T0106"
+    ],
+    "requirement_ids": [
+      "FR-T0106"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:123"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -6986,7 +7986,17 @@
     "test_strategy": [
       "Add or extend settlement-level tests and integration tests to cover reward-card and relic metadata visibility from stored run data, and fail coverage when settlement recomputes or omits that stored metadata."
     ],
-    "title": "Complete settlement metadata for rewards and relics"
+    "title": "Complete settlement metadata for rewards and relics",
+    "semantic_refs": [
+      "FR-T0107"
+    ],
+    "requirement_ids": [
+      "FR-T0107"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:124"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7055,7 +8065,17 @@
     "test_strategy": [
       "Add or extend run and integration tests to verify relic-triggered non-combat effects build on the T99 shared run trigger boundary path, execute at reward, node-resolution, and post-combat ownership-transition boundaries, and preserve uniqueness and ownership without scene-local runtime stacks."
     ],
-    "title": "Drive relic runtime effects through shared run trigger boundaries"
+    "title": "Drive relic runtime effects through shared run trigger boundaries",
+    "semantic_refs": [
+      "FR-T0110"
+    ],
+    "requirement_ids": [
+      "FR-T0110"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:127"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7116,7 +8136,17 @@
     "test_strategy": [
       "Add deterministic trigger-order assertions and Combat UI state assertions for potions as visible, inspectable, and effectful combat participants on the shared combat ownership path."
     ],
-    "title": "Integrate potions as visible and effectful combat participants"
+    "title": "Integrate potions as visible and effectful combat participants",
+    "semantic_refs": [
+      "FR-T0111"
+    ],
+    "requirement_ids": [
+      "FR-T0111"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:128"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7179,7 +8209,17 @@
     "test_strategy": [
       "Add or extend settlement and integration tests to cover resume-related evidence visibility from stored run data while preserving the T91 owner surface and display-time read-only behavior."
     ],
-    "title": "Surface settlement resume evidence from stored run data"
+    "title": "Surface settlement resume evidence from stored run data",
+    "semantic_refs": [
+      "FR-T0113"
+    ],
+    "requirement_ids": [
+      "FR-T0113"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:130"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7242,7 +8282,17 @@
     "test_strategy": [
       "Add or extend Reward scene and integration tests to cover shared offer-lock persistence across re-entry, current Reward scene ownership preservation, and visible invalid-pool fallback."
     ],
-    "title": "Stabilize Reward offer lock re-entry and invalid-pool fallback"
+    "title": "Stabilize Reward offer lock re-entry and invalid-pool fallback",
+    "semantic_refs": [
+      "FR-T0114"
+    ],
+    "requirement_ids": [
+      "FR-T0114"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:131"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7377,7 +8427,17 @@
     "test_strategy": [
       "Add or extend Reward scene tests to cover confirm writeback, skip-without-mutation, reuse of the existing Reward scene, and single-resolution route return."
     ],
-    "title": "Resolve Reward confirm writeback and skip through the route-owned return path"
+    "title": "Resolve Reward confirm writeback and skip through the route-owned return path",
+    "semantic_refs": [
+      "FR-T0115"
+    ],
+    "requirement_ids": [
+      "FR-T0115"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:132"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -7443,7 +8503,17 @@
     "test_strategy": [
       "Add or extend Combat scene tests and integration tests to cover visible enemy stat binding, reuse of existing targeting and intent surfaces, and invalid-definition fallback on top of the data-backed enemy runtime."
     ],
-    "title": "Bind combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies"
+    "title": "Bind combat enemy surfaces and invalid-definition fallback to data-backed runtime enemies",
+    "semantic_refs": [
+      "FR-T0116"
+    ],
+    "requirement_ids": [
+      "FR-T0116"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:133"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8147,7 +9217,17 @@
       "screen_group": "Map Path And Continue Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Map / Continue / Route Return Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0123"
+    ],
+    "requirement_ids": [
+      "FR-T0123"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:140"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8222,7 +9302,17 @@
       "screen_group": "Combat Card Play Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Combat Scene / Hand / Drag-To-Play Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0124"
+    ],
+    "requirement_ids": [
+      "FR-T0124"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:141"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8304,7 +9394,17 @@
       "screen_group": "Combat Runtime Bootstrap Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Combat HUD / Deck State / Runtime Bootstrap Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0125"
+    ],
+    "requirement_ids": [
+      "FR-T0125"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:142"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8384,7 +9484,17 @@
       "screen_group": "Enemy Intent And Resolution Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Enemy Intent Preview / Enemy Runtime Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0126"
+    ],
+    "requirement_ids": [
+      "FR-T0126"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:143"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8464,7 +9574,17 @@
       "screen_group": "Combat Rules And Feedback Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Combat Feedback / Status / Resolution Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0127"
+    ],
+    "requirement_ids": [
+      "FR-T0127"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:144"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8540,7 +9660,17 @@
       "screen_group": "Reward Offer And Confirm Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Reward Scene / Offer Choice / Return Path"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0128"
+    ],
+    "requirement_ids": [
+      "FR-T0128"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:145"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8624,7 +9754,17 @@
       "screen_group": "Relic And Combat Participant Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Relic Display / Participant HUD / Shared Trigger Feedback"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0129"
+    ],
+    "requirement_ids": [
+      "FR-T0129"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:146"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8703,7 +9843,17 @@
       "screen_group": "Settlement And Run Summary Surfaces",
       "source": "docs/gdd/ui-gdd-flow.candidates.json",
       "ui_entry": "Run Summary / Settlement / Resume Evidence Surfaces"
-    }
+    },
+    "semantic_refs": [
+      "FR-T0130"
+    ],
+    "requirement_ids": [
+      "FR-T0130"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:147"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8761,7 +9911,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 131,
@@ -8772,7 +9922,17 @@
     "test_strategy": [
       "Add xUnit and GdUnit coverage for structured enemy intent effects, delayed next-turn scheduling, preview-to-resolution identity, and invalid-payload refusal on the shared runtime path."
     ],
-    "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews"
+    "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews",
+    "semantic_refs": [
+      "FR-T0131"
+    ],
+    "requirement_ids": [
+      "FR-T0131"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:148"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8826,7 +9986,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 132,
@@ -8838,7 +9998,17 @@
     "test_strategy": [
       "Add xUnit and GdUnit coverage for catalog-backed relic effect definitions, live reward-pool eligibility, shared combat/run boundary execution, and player-visible outcome evidence for implemented relics."
     ],
-    "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog"
+    "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog",
+    "semantic_refs": [
+      "FR-T0132"
+    ],
+    "requirement_ids": [
+      "FR-T0132"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:149"
+    ],
+    "complexity_score": 1
   },
   {
     "acceptance": [
@@ -8889,7 +10059,7 @@
     "owner": "gameplay",
     "priority": "P1",
     "semantic_review_tier": "full",
-    "status": "pending",
+    "status": "done",
     "story_id": "PRD-NEWROUGE-GAME-0001",
     "taskmaster_exported": true,
     "taskmaster_id": 133,
@@ -8901,6 +10071,16 @@
     "test_strategy": [
       "Add xUnit and GdUnit coverage for pre-snapshot modifier registration, deterministic next-context application, already-locked context immutability, and visible reward-scene results after modifier application."
     ],
-    "title": "Add a pre-snapshot runtime modifier pipeline for reward entries"
+    "title": "Add a pre-snapshot runtime modifier pipeline for reward entries",
+    "semantic_refs": [
+      "FR-T0133"
+    ],
+    "requirement_ids": [
+      "FR-T0133"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:150"
+    ],
+    "complexity_score": 1
   }
 ]

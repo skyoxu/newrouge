@@ -45,6 +45,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
+from chapter3_task_scope import load_scope, validate_master
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -81,6 +83,9 @@ def _merge_view_task(existing: Dict[str, Any], incoming: Dict[str, Any], tid: st
         if key == "id":
             continue
         if key in merged and merged[key] != value:
+            if numeric_group and key == "taskmaster_exported":
+                merged[key] = bool(merged[key]) or bool(value)
+                continue
             if numeric_group and key in {"story_id", "description", "owner"}:
                 # Distinct source tasks may share a numeric Taskmaster task. Keep
                 # each source's identity in the view; do not silently choose one.
@@ -202,6 +207,8 @@ def merge_numeric_view_group(rows: List[Dict[str, Any]], num_id: int) -> Dict[st
 
 
 def build_taskmaster_tasks(args: argparse.Namespace) -> None:
+    scope = load_scope(ROOT)
+    frozen_ids = validate_master(ROOT, scope) if scope is not None else None
     # 1) 解析任务文件列表（源 SSoT）
     if not args.tasks_files:
         print("Error: --tasks-file is required (one or more).")
@@ -268,7 +275,16 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
     for tid in sorted(t2_ids):
         visit(tid)
 
-    sorted_ids = ordered
+    if frozen_ids is not None:
+        # Dependency closure may include historical view-only rows. They are
+        # not authorized to allocate new numeric Taskmaster identities.
+        sorted_ids = [
+            tid for tid in ordered
+            if isinstance(all_tasks.get(tid, {}).get("taskmaster_id"), int)
+            and all_tasks[tid]["taskmaster_id"] in frozen_ids
+        ]
+    else:
+        sorted_ids = ordered
     # 4) 载入现有 Task Master tasks.json（若存在），并准备目标 Tag
     root_obj: Dict[str, Dict]
     if TASKMASTER_TASKS_FILE.exists():
@@ -331,6 +347,11 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
     for tid in sorted_ids:
         num = id_map.get(tid)
         print(f"  {tid} -> {num}")
+
+    if frozen_ids is not None:
+        unexpected = sorted(set(id_map.values()) - frozen_ids)
+        if unexpected:
+            raise ValueError(f"Frozen Chapter 3 scope rejects task IDs: {unexpected}")
 
     rows_by_numeric: Dict[int, List[Dict[str, Any]]] = {}
     tids_by_numeric: Dict[int, List[str]] = {}
@@ -422,10 +443,16 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
             existing_task = tag_tasks[existing_idx]
             if not isinstance(existing_task, dict):
                 raise ValueError(f"existing Taskmaster task {num_id} is not an object")
+            if frozen_ids is not None:
+                # Reconciliation links existing views to existing master IDs.
+                # The master remains authoritative for all planning and lifecycle fields.
+                continue
             # The view owns the mapped fields above. Master-native fields such as
             # subtasks and future extensions survive unless an explicit mapped field changes.
             tag_tasks[existing_idx] = merge_master_fields(existing_task, generated_fields)
         else:
+            if frozen_ids is not None:
+                raise ValueError(f"Frozen Chapter 3 scope rejects new master task {num_id}")
             existing_by_id[num_id] = len(tag_tasks)
             tag_tasks.append(generated_fields)
 
@@ -434,6 +461,8 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         if not file_path.exists():
             return None
         data = json.loads(file_path.read_text(encoding="utf-8"))
+        if frozen_ids is not None:
+            return data
         is_list = isinstance(data, list)
         tasks = data if is_list else data.get("tasks", [])
         for t in tasks:

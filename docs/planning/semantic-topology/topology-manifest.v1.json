@@ -1,0 +1,14 @@
+{
+  "schema_version": "newrouge.semantic-topology-manifest.v1",
+  "source_revision": "source-set:68d145756705834e7b664fcc",
+  "source_manifest_sha256": "sha256:68d145756705834e7b664fcc7302224513887404e4fcab7d8873992bde08ccf1",
+  "schema_revision": "v1",
+  "generator_revision": "chapter3-semantic-conservation-v1",
+  "artifacts": {
+    "docs/planning/semantic-topology/source-blocks.v1.json": "sha256:9cc8d3579ede472a1a0d0dd6225b75038cee1f778911641ee723f4e7d07d9f13",
+    "docs/planning/semantic-topology/semantic-requirements.v1.json": "sha256:63e360e5b09b8992afb1adaaca007a87a9546dab66408548fc29098c2be34583",
+    "docs/planning/semantic-topology/capabilities.v1.json": "sha256:425667106ca9bd1c2bad2ac7358557ea05886b84b8b7cf6462b83400f0ab2d9f",
+    "docs/planning/semantic-topology/topology-edges.v1.json": "sha256:66841db465523cad89d2e461ff41d924d819683126ea96889dc80857cf65664b"
+  },
+  "source_repository_revision": "4ddc682be3747793230d7d21ff73e1ea50bf8e40"
+}

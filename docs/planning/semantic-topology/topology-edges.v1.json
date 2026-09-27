@@ -1,0 +1,1912 @@
+{
+  "schema_version": "newrouge.topology-edges.v1",
+  "generated_at_utc": "2026-09-27T11:06:01.800935+00:00",
+  "source_revision": "source-set:68d145756705834e7b664fcc",
+  "edges": [
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A739308239F6CE1F",
+      "target_type": "requirement",
+      "target_id": "NFR-T0001",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-2DF417A7ABD9B191",
+      "target_type": "requirement",
+      "target_id": "NFR-T0002",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-EC6114AB6900B349",
+      "target_type": "requirement",
+      "target_id": "FR-T0003",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-AC12AFA307C0E63E",
+      "target_type": "requirement",
+      "target_id": "FR-T0004",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-3DB9A861ED4623AC",
+      "target_type": "requirement",
+      "target_id": "FR-T0005",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-165C57EE5A470BDB",
+      "target_type": "requirement",
+      "target_id": "FR-T0006",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-BFB2BD2673992751",
+      "target_type": "requirement",
+      "target_id": "FR-T0007",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-CFA3ABEC8A481562",
+      "target_type": "requirement",
+      "target_id": "FR-T0008",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-07FC3AF19BCF2AC1",
+      "target_type": "requirement",
+      "target_id": "FR-T0009",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-DBF2D1F548A8985C",
+      "target_type": "requirement",
+      "target_id": "FR-T0010",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-FF4C7ECB5880665E",
+      "target_type": "requirement",
+      "target_id": "FR-T0011",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-2C2EC2CA6787DB1E",
+      "target_type": "requirement",
+      "target_id": "FR-T0012",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-B182A7A92EEC9EAE",
+      "target_type": "requirement",
+      "target_id": "FR-T0013",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-1385929D97DD32E5",
+      "target_type": "requirement",
+      "target_id": "FR-T0014",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-0A23D6E4F328CD8D",
+      "target_type": "requirement",
+      "target_id": "FR-T0015",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-68AE7AD423A8A19F",
+      "target_type": "requirement",
+      "target_id": "FR-T0016",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-5DDA2E893B8464F5",
+      "target_type": "requirement",
+      "target_id": "FR-T0017",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4AF773E106A558A8",
+      "target_type": "requirement",
+      "target_id": "FR-T0018",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4B077C6A31574767",
+      "target_type": "requirement",
+      "target_id": "FR-T0019",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-EF04DB581DBAD50E",
+      "target_type": "requirement",
+      "target_id": "FR-T0020",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-0337BBC5708C72A5",
+      "target_type": "requirement",
+      "target_id": "FR-T0021",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-80A9FDA6D4370EA8",
+      "target_type": "requirement",
+      "target_id": "FR-T0022",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-DEDCCDF5C48E624B",
+      "target_type": "requirement",
+      "target_id": "FR-T0023",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-7B8D3CF3D8624457",
+      "target_type": "requirement",
+      "target_id": "FR-T0024",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-082022C4246FA412",
+      "target_type": "requirement",
+      "target_id": "FR-T0025",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-1E3115E0BC64973E",
+      "target_type": "requirement",
+      "target_id": "FR-T0026",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E09CFE18978D204D",
+      "target_type": "requirement",
+      "target_id": "FR-T0027",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-FE5B460730D4C577",
+      "target_type": "requirement",
+      "target_id": "FR-T0028",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-D026E88E4FBE9CA9",
+      "target_type": "requirement",
+      "target_id": "FR-T0029",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-7691A7D8512F1A5A",
+      "target_type": "requirement",
+      "target_id": "FR-T0030",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-00E809FA8BCB8DCC",
+      "target_type": "requirement",
+      "target_id": "FR-T0031",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-8B124E26C7A38064",
+      "target_type": "requirement",
+      "target_id": "FR-T0032",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-B55582DE85541354",
+      "target_type": "requirement",
+      "target_id": "FR-T0033",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-F0476355E95454A9",
+      "target_type": "requirement",
+      "target_id": "FR-T0034",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-5F734760212F1864",
+      "target_type": "requirement",
+      "target_id": "FR-T0035",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-711D9144C6811D5C",
+      "target_type": "requirement",
+      "target_id": "FR-T0036",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-258B03AEA4053338",
+      "target_type": "requirement",
+      "target_id": "FR-T0037",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-137FA3441A6D0A79",
+      "target_type": "requirement",
+      "target_id": "NFR-T0038",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-0E622601BD73BD45",
+      "target_type": "requirement",
+      "target_id": "FR-T0039",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-182B552B5EF3743A",
+      "target_type": "requirement",
+      "target_id": "FR-T0040",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-7053C4E774AEC987",
+      "target_type": "requirement",
+      "target_id": "FR-T0041",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E43968B8D6905C52",
+      "target_type": "requirement",
+      "target_id": "FR-T0042",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-D7623E91299B386F",
+      "target_type": "requirement",
+      "target_id": "FR-T0043",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-78B6DA56FB5D5FCB",
+      "target_type": "requirement",
+      "target_id": "NFR-T0044",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E9971A1B8EAC4CE3",
+      "target_type": "requirement",
+      "target_id": "FR-T0045",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-BEE49D7C3F666FAB",
+      "target_type": "requirement",
+      "target_id": "FR-T0046",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-201C8D7EF08605DA",
+      "target_type": "requirement",
+      "target_id": "FR-T0047",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-87E9B1775A9D8412",
+      "target_type": "requirement",
+      "target_id": "FR-T0048",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A91E2F2877685327",
+      "target_type": "requirement",
+      "target_id": "NFR-T0049",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A41D3707D104D367",
+      "target_type": "requirement",
+      "target_id": "FR-T0050",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A72396B5890D6AAE",
+      "target_type": "requirement",
+      "target_id": "FR-T0051",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-20616343E85A985D",
+      "target_type": "requirement",
+      "target_id": "FR-T0052",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-B01B9D6632283233",
+      "target_type": "requirement",
+      "target_id": "NFR-T0053",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-B721E7686393B9C3",
+      "target_type": "requirement",
+      "target_id": "NFR-T0054",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-FFD0DD100308B05F",
+      "target_type": "requirement",
+      "target_id": "NFR-T0055",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E388D29AB6F07763",
+      "target_type": "requirement",
+      "target_id": "NFR-T0056",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-997D5EA66ACC8285",
+      "target_type": "requirement",
+      "target_id": "NFR-T0057",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-BDF33CB6E70A8715",
+      "target_type": "requirement",
+      "target_id": "NFR-T0058",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-ABE65D1BA3FB35FC",
+      "target_type": "requirement",
+      "target_id": "FR-T0059",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-5653A88575E39484",
+      "target_type": "requirement",
+      "target_id": "FR-T0060",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-DCC88CE9B37E48BB",
+      "target_type": "requirement",
+      "target_id": "FR-T0061",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-6B2B743EC4708115",
+      "target_type": "requirement",
+      "target_id": "FR-T0062",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A72BA1C351AFAB4C",
+      "target_type": "requirement",
+      "target_id": "FR-T0063",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-68B6388CB10B37DB",
+      "target_type": "requirement",
+      "target_id": "FR-T0064",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-22C7B24078238837",
+      "target_type": "requirement",
+      "target_id": "NFR-T0065",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-8C633D0DB21CF923",
+      "target_type": "requirement",
+      "target_id": "FR-T0066",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-C1457DFAE27D564C",
+      "target_type": "requirement",
+      "target_id": "FR-T0067",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-D462847613F3488C",
+      "target_type": "requirement",
+      "target_id": "NFR-T0068",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-7FF8B664F5D8F80F",
+      "target_type": "requirement",
+      "target_id": "FR-T0069",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-B9ECF5E2E2680CEE",
+      "target_type": "requirement",
+      "target_id": "FR-T0070",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-CA69608C4360D4BD",
+      "target_type": "requirement",
+      "target_id": "FR-T0071",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-AAB09499B84EB82E",
+      "target_type": "requirement",
+      "target_id": "FR-T0072",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-239CB2D1B98D77CE",
+      "target_type": "requirement",
+      "target_id": "FR-T0073",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A3C84192261E5202",
+      "target_type": "requirement",
+      "target_id": "FR-T0074",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-C380AD9DE8D8D938",
+      "target_type": "requirement",
+      "target_id": "FR-T0075",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-821B7F6B541E124E",
+      "target_type": "requirement",
+      "target_id": "FR-T0076",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-29CA3F69FF72600F",
+      "target_type": "requirement",
+      "target_id": "FR-T0077",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A59B7D05F16FCB59",
+      "target_type": "requirement",
+      "target_id": "FR-T0078",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A01CEDF96F2FFC18",
+      "target_type": "requirement",
+      "target_id": "FR-T0079",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-EDCE58FB1E91E27F",
+      "target_type": "requirement",
+      "target_id": "FR-T0080",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-7CC65E2B8E79C020",
+      "target_type": "requirement",
+      "target_id": "FR-T0081",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-68F1067D9EAEBAE1",
+      "target_type": "requirement",
+      "target_id": "FR-T0082",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4DF06CD9EA5C5BB8",
+      "target_type": "requirement",
+      "target_id": "FR-T0083",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-16AB94B297199F53",
+      "target_type": "requirement",
+      "target_id": "FR-T0084",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-518A3E8B0DC45913",
+      "target_type": "requirement",
+      "target_id": "FR-T0085",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-3A1FDDB3495F6543",
+      "target_type": "requirement",
+      "target_id": "FR-T0086",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-022D396BBE512189",
+      "target_type": "requirement",
+      "target_id": "FR-T0087",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-1339B8A1AC8661AF",
+      "target_type": "requirement",
+      "target_id": "FR-T0088",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-5575E96AA72DB926",
+      "target_type": "requirement",
+      "target_id": "FR-T0089",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E6FA0956079D2AD2",
+      "target_type": "requirement",
+      "target_id": "FR-T0090",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A249B199D4096C7A",
+      "target_type": "requirement",
+      "target_id": "FR-T0091",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4400F005D8789215",
+      "target_type": "requirement",
+      "target_id": "NFR-T0092",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E62B35F13ED6B323",
+      "target_type": "requirement",
+      "target_id": "NFR-T0093",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-CB2C40DCB009207C",
+      "target_type": "requirement",
+      "target_id": "NFR-T0094",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-55B6B2843EBC77CB",
+      "target_type": "requirement",
+      "target_id": "FR-T0095",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-CA8F279E20CD2169",
+      "target_type": "requirement",
+      "target_id": "FR-T0096",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-729ED623749B8245",
+      "target_type": "requirement",
+      "target_id": "FR-T0097",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-548E419FE18924CF",
+      "target_type": "requirement",
+      "target_id": "FR-T0098",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-32259B0DF7228013",
+      "target_type": "requirement",
+      "target_id": "FR-T0099",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-8A78B66E95B4646C",
+      "target_type": "requirement",
+      "target_id": "FR-T0100",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A001451A6A75FC7D",
+      "target_type": "requirement",
+      "target_id": "FR-T0101",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4C9668055FCA754A",
+      "target_type": "requirement",
+      "target_id": "NFR-T0102",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-CFCC46C3064E07AB",
+      "target_type": "requirement",
+      "target_id": "NFR-T0103",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-E42411B79551E5DA",
+      "target_type": "requirement",
+      "target_id": "NFR-T0104",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-8AF3E757E0B52540",
+      "target_type": "requirement",
+      "target_id": "FR-T0105",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-C607EE2A35DA9765",
+      "target_type": "requirement",
+      "target_id": "FR-T0106",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-DD4DA36C47ADC05D",
+      "target_type": "requirement",
+      "target_id": "FR-T0107",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-8740C24A622A18C4",
+      "target_type": "requirement",
+      "target_id": "NFR-T0108",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-A33AF6BD4E6A46BB",
+      "target_type": "requirement",
+      "target_id": "NFR-T0109",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-9C6EBBA79953B6A6",
+      "target_type": "requirement",
+      "target_id": "FR-T0110",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-302805E890D89F02",
+      "target_type": "requirement",
+      "target_id": "FR-T0111",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-77F8A06C63F6F8D2",
+      "target_type": "requirement",
+      "target_id": "NFR-T0112",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-EC731378EC7FEEB3",
+      "target_type": "requirement",
+      "target_id": "FR-T0113",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-9CD0C1F2F178CC71",
+      "target_type": "requirement",
+      "target_id": "FR-T0114",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-F99AF4BB8BF68BB1",
+      "target_type": "requirement",
+      "target_id": "FR-T0115",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-57DEEE258B6DFF2D",
+      "target_type": "requirement",
+      "target_id": "FR-T0116",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-FBFBD0F7D51094E9",
+      "target_type": "requirement",
+      "target_id": "FR-T0123",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-50509FEC31D23253",
+      "target_type": "requirement",
+      "target_id": "FR-T0124",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-9C58CAF4327CBE09",
+      "target_type": "requirement",
+      "target_id": "FR-T0125",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-BD44913D7D4A7184",
+      "target_type": "requirement",
+      "target_id": "FR-T0126",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-94162ED6E6DA4A06",
+      "target_type": "requirement",
+      "target_id": "FR-T0127",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-6A3094DFC7D9CF72",
+      "target_type": "requirement",
+      "target_id": "FR-T0128",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-C78ED07D549C231C",
+      "target_type": "requirement",
+      "target_id": "FR-T0129",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-6872319035BC6D65",
+      "target_type": "requirement",
+      "target_id": "FR-T0130",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-DBDE6A5DA932906C",
+      "target_type": "requirement",
+      "target_id": "FR-T0131",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4D1BA545FEA9FD1E",
+      "target_type": "requirement",
+      "target_id": "FR-T0132",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "source_block",
+      "source_id": "SB-4F6FDA7C39D500A9",
+      "target_type": "requirement",
+      "target_id": "FR-T0133",
+      "relation": "projects_to"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0001",
+      "target_type": "task",
+      "target_id": "1",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0004",
+      "target_type": "task",
+      "target_id": "4",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0005",
+      "target_type": "task",
+      "target_id": "5",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0006",
+      "target_type": "task",
+      "target_id": "6",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0012",
+      "target_type": "task",
+      "target_id": "12",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0013",
+      "target_type": "task",
+      "target_id": "13",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0014",
+      "target_type": "task",
+      "target_id": "14",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0017",
+      "target_type": "task",
+      "target_id": "17",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0019",
+      "target_type": "task",
+      "target_id": "19",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0029",
+      "target_type": "task",
+      "target_id": "29",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0030",
+      "target_type": "task",
+      "target_id": "30",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0036",
+      "target_type": "task",
+      "target_id": "36",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0038",
+      "target_type": "task",
+      "target_id": "38",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0043",
+      "target_type": "task",
+      "target_id": "43",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0044",
+      "target_type": "task",
+      "target_id": "44",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0049",
+      "target_type": "task",
+      "target_id": "49",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0050",
+      "target_type": "task",
+      "target_id": "50",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0051",
+      "target_type": "task",
+      "target_id": "51",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0052",
+      "target_type": "task",
+      "target_id": "52",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0053",
+      "target_type": "task",
+      "target_id": "53",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0054",
+      "target_type": "task",
+      "target_id": "54",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0055",
+      "target_type": "task",
+      "target_id": "55",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0056",
+      "target_type": "task",
+      "target_id": "56",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0057",
+      "target_type": "task",
+      "target_id": "57",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0058",
+      "target_type": "task",
+      "target_id": "58",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0070",
+      "target_type": "task",
+      "target_id": "70",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0071",
+      "target_type": "task",
+      "target_id": "71",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0072",
+      "target_type": "task",
+      "target_id": "72",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0073",
+      "target_type": "task",
+      "target_id": "73",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0074",
+      "target_type": "task",
+      "target_id": "74",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0075",
+      "target_type": "task",
+      "target_id": "75",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0076",
+      "target_type": "task",
+      "target_id": "76",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0077",
+      "target_type": "task",
+      "target_id": "77",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0078",
+      "target_type": "task",
+      "target_id": "78",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0079",
+      "target_type": "task",
+      "target_id": "79",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0080",
+      "target_type": "task",
+      "target_id": "80",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0081",
+      "target_type": "task",
+      "target_id": "81",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0082",
+      "target_type": "task",
+      "target_id": "82",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0083",
+      "target_type": "task",
+      "target_id": "83",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0084",
+      "target_type": "task",
+      "target_id": "84",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0085",
+      "target_type": "task",
+      "target_id": "85",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0086",
+      "target_type": "task",
+      "target_id": "86",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0087",
+      "target_type": "task",
+      "target_id": "87",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0088",
+      "target_type": "task",
+      "target_id": "88",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0089",
+      "target_type": "task",
+      "target_id": "89",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0090",
+      "target_type": "task",
+      "target_id": "90",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0091",
+      "target_type": "task",
+      "target_id": "91",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0092",
+      "target_type": "task",
+      "target_id": "92",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0093",
+      "target_type": "task",
+      "target_id": "93",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0094",
+      "target_type": "task",
+      "target_id": "94",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0095",
+      "target_type": "task",
+      "target_id": "95",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0096",
+      "target_type": "task",
+      "target_id": "96",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0097",
+      "target_type": "task",
+      "target_id": "97",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0098",
+      "target_type": "task",
+      "target_id": "98",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0099",
+      "target_type": "task",
+      "target_id": "99",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0100",
+      "target_type": "task",
+      "target_id": "100",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0101",
+      "target_type": "task",
+      "target_id": "101",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0102",
+      "target_type": "task",
+      "target_id": "102",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0103",
+      "target_type": "task",
+      "target_id": "103",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0104",
+      "target_type": "task",
+      "target_id": "104",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0105",
+      "target_type": "task",
+      "target_id": "105",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0106",
+      "target_type": "task",
+      "target_id": "106",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0107",
+      "target_type": "task",
+      "target_id": "107",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0108",
+      "target_type": "task",
+      "target_id": "108",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0109",
+      "target_type": "task",
+      "target_id": "109",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0110",
+      "target_type": "task",
+      "target_id": "110",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0111",
+      "target_type": "task",
+      "target_id": "111",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0112",
+      "target_type": "task",
+      "target_id": "112",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0113",
+      "target_type": "task",
+      "target_id": "113",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0114",
+      "target_type": "task",
+      "target_id": "114",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0115",
+      "target_type": "task",
+      "target_id": "115",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0116",
+      "target_type": "task",
+      "target_id": "116",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0123",
+      "target_type": "task",
+      "target_id": "123",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0124",
+      "target_type": "task",
+      "target_id": "124",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0125",
+      "target_type": "task",
+      "target_id": "125",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0126",
+      "target_type": "task",
+      "target_id": "126",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0127",
+      "target_type": "task",
+      "target_id": "127",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0128",
+      "target_type": "task",
+      "target_id": "128",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0129",
+      "target_type": "task",
+      "target_id": "129",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0130",
+      "target_type": "task",
+      "target_id": "130",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0131",
+      "target_type": "task",
+      "target_id": "131",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0132",
+      "target_type": "task",
+      "target_id": "132",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0133",
+      "target_type": "task",
+      "target_id": "133",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0002",
+      "target_type": "task",
+      "target_id": "2",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0003",
+      "target_type": "task",
+      "target_id": "3",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0007",
+      "target_type": "task",
+      "target_id": "7",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0008",
+      "target_type": "task",
+      "target_id": "8",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0009",
+      "target_type": "task",
+      "target_id": "9",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0010",
+      "target_type": "task",
+      "target_id": "10",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0011",
+      "target_type": "task",
+      "target_id": "11",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0015",
+      "target_type": "task",
+      "target_id": "15",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0016",
+      "target_type": "task",
+      "target_id": "16",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0018",
+      "target_type": "task",
+      "target_id": "18",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0020",
+      "target_type": "task",
+      "target_id": "20",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0021",
+      "target_type": "task",
+      "target_id": "21",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0022",
+      "target_type": "task",
+      "target_id": "22",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0023",
+      "target_type": "task",
+      "target_id": "23",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0024",
+      "target_type": "task",
+      "target_id": "24",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0025",
+      "target_type": "task",
+      "target_id": "25",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0026",
+      "target_type": "task",
+      "target_id": "26",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0027",
+      "target_type": "task",
+      "target_id": "27",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0028",
+      "target_type": "task",
+      "target_id": "28",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0031",
+      "target_type": "task",
+      "target_id": "31",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0032",
+      "target_type": "task",
+      "target_id": "32",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0033",
+      "target_type": "task",
+      "target_id": "33",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0034",
+      "target_type": "task",
+      "target_id": "34",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0035",
+      "target_type": "task",
+      "target_id": "35",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0037",
+      "target_type": "task",
+      "target_id": "37",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0039",
+      "target_type": "task",
+      "target_id": "39",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0040",
+      "target_type": "task",
+      "target_id": "40",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0041",
+      "target_type": "task",
+      "target_id": "41",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0042",
+      "target_type": "task",
+      "target_id": "42",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0045",
+      "target_type": "task",
+      "target_id": "45",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0046",
+      "target_type": "task",
+      "target_id": "46",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0047",
+      "target_type": "task",
+      "target_id": "47",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0048",
+      "target_type": "task",
+      "target_id": "48",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0059",
+      "target_type": "task",
+      "target_id": "59",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0060",
+      "target_type": "task",
+      "target_id": "60",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0061",
+      "target_type": "task",
+      "target_id": "61",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0062",
+      "target_type": "task",
+      "target_id": "62",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0063",
+      "target_type": "task",
+      "target_id": "63",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0064",
+      "target_type": "task",
+      "target_id": "64",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0065",
+      "target_type": "task",
+      "target_id": "65",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0066",
+      "target_type": "task",
+      "target_id": "66",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0067",
+      "target_type": "task",
+      "target_id": "67",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0068",
+      "target_type": "task",
+      "target_id": "68",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0069",
+      "target_type": "task",
+      "target_id": "69",
+      "relation": "implemented_by",
+      "contribution": "implementation"
+    }
+  ]
+}
