@@ -22,3 +22,7 @@
 - Requirement→Task 边：1253，全部使用 Taskmaster 主编号
 - 未知语义引用：0
 - 未闭包 Requirement：0
+
+## Follow-up task reconciliation
+
+Evidence-backed reuse was extended beyond the original three examples. `INT-0301` / task 434 is the same ten-level DifficultySelect behavior already implemented and tested by master task 15, so `FR-9F636642DD84` was moved to `GM-0115` and the generated task was cancelled. `INT-0302` / task 435 and `INT-0303` / task 436 were also reconciled to the existing pending owners `GM-0167` and `GM-0162`, respectively, because their acceptance scope is already represented by those route-owned Shop and Rest tasks. The following generated item, `INT-0304` / task 437, has no equivalent owner proven by implementation and acceptance evidence and remains pending. Remaining generated tasks are retained pending until evidence-backed reuse, update, create, or governed sink decisions are documented.

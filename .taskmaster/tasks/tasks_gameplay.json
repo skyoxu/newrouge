@@ -1076,6 +1076,15 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
     "id": "GM-0115",
+    "semantic_refs": [
+      "FR-9F636642DD84"
+    ],
+    "requirement_ids": [
+      "FR-9F636642DD84"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-V1.md:124"
+    ],
     "labels": [
       "newrouge",
       "m1",
@@ -4276,6 +4285,15 @@
       "logs/ci/<date>/task-0062.json"
     ],
     "id": "GM-0162",
+    "semantic_refs": [
+      "FR-0D9FBA50CA53"
+    ],
+    "requirement_ids": [
+      "FR-0D9FBA50CA53"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-V1.md:135"
+    ],
     "labels": [
       "newrouge",
       "m1",
@@ -4630,6 +4648,15 @@
       "logs/ci/<date>/task-0067.json"
     ],
     "id": "GM-0167",
+    "semantic_refs": [
+      "FR-75C47B9AA7EB"
+    ],
+    "requirement_ids": [
+      "FR-75C47B9AA7EB"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-V1.md:131"
+    ],
     "labels": [
       "newrouge",
       "m1",
@@ -11847,8 +11874,8 @@
     "id": "INT-0301",
     "story_id": "TASK-GENERATION",
     "title": "Implement gdd newrouge v1 9.2 Difficulty Select line 124",
-    "description": "Difficulty Select offers levels one through ten.",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration reconciliation: behavior is already covered by master task 15.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -11901,12 +11928,12 @@
     "id": "INT-0302",
     "story_id": "TASK-GENERATION",
     "title": "Implement gdd newrouge v1 9.4 Shop line 131",
-    "description": "The shop supports purchasing, removing, and transforming.",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration reconciliation: behavior is owned by master task 67, which covers purchase, remove, transform, leave, and route ownership.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0301"
+      "GM-0115"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",
@@ -11955,12 +11982,12 @@
     "id": "INT-0303",
     "story_id": "TASK-GENERATION",
     "title": "Implement 9.5 Rest",
-    "description": "Rest offers at least recovery, upgrading, and Curse removal, with an extensible choice structure.",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration reconciliation: behavior is owned by master task 62, which covers Rest route integration, recovery, upgrading, and Curse removal.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0302"
+      "GM-0167"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",
@@ -12014,7 +12041,7 @@
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0303"
+      "GM-0162"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",

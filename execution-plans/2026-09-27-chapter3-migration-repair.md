@@ -34,3 +34,13 @@
 - Chapter 4/5 的 Overlay、契约、Acceptance 深化仍按后续流程处理。
 - 历史任务仍可能没有来源映射；本轮只要求新增/修复承接可追溯。
 - 运行时 Godot 代码未修改。
+
+## Follow-up reconciliation: generated continuation set
+
+The follow-up audit found three additional direct handoffs in the generated GDD continuation chain:
+
+- `INT-0301` / task 434 is an exact reuse of done master task 15. `FR-9F636642DD84` is now attached to `GM-0115`; `INT-0301` is cancelled.
+- `INT-0302` / task 435 is owned by pending master task 67, whose acceptance and tests cover purchase, remove, transform, leave, and route ownership. `FR-75C47B9AA7EB` is now attached to `GM-0167`; `INT-0302` is cancelled.
+- `INT-0303` / task 436 is owned by pending master task 62, whose acceptance and tests cover Rest route integration, recovery, upgrade, and Curse removal. `FR-0D9FBA50CA53` is now attached to `GM-0162`; `INT-0303` is cancelled.
+
+The next generated item, `INT-0304` / task 437 (audio cues), has no matching existing task with equivalent behavior and remains pending. The remainder of the generated set remains pending unless an equivalent implementation and acceptance owner can be demonstrated; no task is cancelled based on title similarity alone. Dependencies formerly pointing at retired generated items were redirected to the owning master tasks.
