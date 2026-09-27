@@ -1,7 +1,7 @@
 ---
 GDD-ID: GDD-NEWROUGE-V1
 Title: NewRouge v1 Game Design Document（工作版）
-Status: Draft
+Status: Historical Reference
 Owner: skyo
 Last Updated: 2026-02-12
 Encoding: UTF-8

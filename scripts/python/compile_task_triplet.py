@@ -16,6 +16,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from chapter3_task_scope import load_scope, validate_candidate_operations, validate_master
+
 TASKS_DIR = Path(".taskmaster/tasks")
 
 
@@ -89,7 +91,11 @@ def normalize_task(candidate: dict[str, Any], target: str) -> dict[str, Any]:
         "evidence_refs": list(candidate.get("evidence_refs") or []),
         "source_refs": list(candidate.get("source_refs") or []),
         "requirement_ids": list(candidate.get("requirement_ids") or []),
-        "semantic_refs": list(candidate.get("semantic_refs") or candidate.get("requirement_ids") or []),
+        "semantic_refs": (
+            list(candidate["semantic_refs"])
+            if "semantic_refs" in candidate and isinstance(candidate.get("semantic_refs"), list)
+            else list(candidate.get("requirement_ids") or [])
+        ),
         "capability_refs": list(candidate.get("capability_refs") or []),
         "complexity_score": int(candidate.get("complexity_score") or 1),
         "implementation_files": list(candidate.get("implementation_files") or []),
@@ -229,6 +235,21 @@ def main() -> int:
     gameplay_existing = load_json(gameplay_path, [])
     if not isinstance(back_existing, list) or not isinstance(gameplay_existing, list):
         raise SystemExit("task view files must be JSON lists")
+    scope = load_scope(root)
+    if scope is not None:
+        allowed = validate_master(root, scope)
+        existing_by_view = {
+            str(row.get("id")): row
+            for row in back_existing + gameplay_existing
+            if isinstance(row, dict) and row.get("id") is not None
+        }
+        for candidate in candidates:
+            view_id = str(candidate.get("id") or "")
+            numeric_id = candidate.get("taskmaster_id")
+            if view_id not in existing_by_view or numeric_id not in allowed:
+                raise SystemExit(f"frozen task scope rejects candidate {view_id}:{numeric_id}")
+            if existing_by_view[view_id].get("taskmaster_id") != numeric_id:
+                raise SystemExit(f"frozen task scope rejects remapped candidate {view_id}:{numeric_id}")
 
     back_new: list[dict[str, Any]] = []
     gameplay_new: list[dict[str, Any]] = []
@@ -240,6 +261,8 @@ def main() -> int:
             back_new.append(candidate)
     back_updated, back_ops, back_conflicts = build_change_plan(back_existing, back_new, "back")
     gameplay_updated, gameplay_ops, gameplay_conflicts = build_change_plan(gameplay_existing, gameplay_new, "gameplay")
+    if scope is not None:
+        validate_candidate_operations(back_ops + gameplay_ops, allowed)
     conflicts = sorted(set(back_conflicts + gameplay_conflicts))
     patch = {
         "schema": "task-generation.triplet-patch.v2",

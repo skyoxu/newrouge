@@ -64,7 +64,17 @@
     "taskmaster_id": 1,
     "taskmaster_exported": true,
     "contractRefs": [],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0001"
+    ],
+    "requirement_ids": [
+      "NFR-T0001"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:18"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0002",
@@ -134,7 +144,17 @@
       "logs/ci/<date>/task-0004.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0004"
+    ],
+    "requirement_ids": [
+      "FR-T0004"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:21"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0003",
@@ -199,7 +219,17 @@
       "logs/ci/<date>/task-0005.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0005"
+    ],
+    "requirement_ids": [
+      "FR-T0005"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:22"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0004",
@@ -290,7 +320,17 @@
       "logs/ci/<date>/task-0006.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0006"
+    ],
+    "requirement_ids": [
+      "FR-T0006"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:23"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0005",
@@ -378,7 +418,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0012"
+    ],
+    "requirement_ids": [
+      "FR-T0012"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:29"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0006",
@@ -443,7 +493,17 @@
       "logs/ci/<date>/task-0013.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0013"
+    ],
+    "requirement_ids": [
+      "FR-T0013"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:30"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0007",
@@ -522,7 +582,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0014"
+    ],
+    "requirement_ids": [
+      "FR-T0014"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:31"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0008",
@@ -603,7 +673,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0017"
+    ],
+    "requirement_ids": [
+      "FR-T0017"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:34"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0009",
@@ -682,7 +762,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0019.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0019"
+    ],
+    "requirement_ids": [
+      "FR-T0019"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:36"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0010",
@@ -749,7 +839,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0029"
+    ],
+    "requirement_ids": [
+      "FR-T0029"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:46"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0011",
@@ -816,7 +916,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0030.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0030"
+    ],
+    "requirement_ids": [
+      "FR-T0030"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:47"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0012",
@@ -882,7 +992,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0036.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0036"
+    ],
+    "requirement_ids": [
+      "FR-T0036"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:53"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0013",
@@ -952,7 +1072,17 @@
       "logs/ci/<date>/task-0038.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0038"
+    ],
+    "requirement_ids": [
+      "NFR-T0038"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:55"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0014",
@@ -1018,7 +1148,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0043"
+    ],
+    "requirement_ids": [
+      "FR-T0043"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:60"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0015",
@@ -1093,7 +1233,17 @@
     "evidence_refs": [
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0044"
+    ],
+    "requirement_ids": [
+      "NFR-T0044"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:61"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0016",
@@ -1164,7 +1314,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0049.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0049"
+    ],
+    "requirement_ids": [
+      "NFR-T0049"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:66"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0017",
@@ -1228,7 +1388,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0050.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0050"
+    ],
+    "requirement_ids": [
+      "FR-T0050"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:67"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0018",
@@ -1309,7 +1479,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md",
       "logs/ci/<date>/task-0051.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0051"
+    ],
+    "requirement_ids": [
+      "FR-T0051"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:68"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0019",
@@ -1372,7 +1552,17 @@
       "logs/ci/<date>/task-0052.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0052"
+    ],
+    "requirement_ids": [
+      "FR-T0052"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:69"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0020",
@@ -1454,14 +1644,24 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0053"
+    ],
+    "requirement_ids": [
+      "NFR-T0053"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:70"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0021",
     "story_id": "BACKLOG-M1",
     "title": "Integrate GdUnit4 suites into quality_gates.py",
     "description": "Extend scripts/python/quality_gates.py to optionally run selected GdUnit4 suites (adapters/security as hard gate, integration/UI as soft gate) and aggregate results into a single summary JSON. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B2).",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "ci",
     "depends_on": [
@@ -1533,7 +1733,17 @@
       "logs/ci/<date>/quality-gates/summary.json",
       "logs/e2e/<date>/gdunit/junit.xml"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0054"
+    ],
+    "requirement_ids": [
+      "NFR-T0054"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:71"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0022",
@@ -1589,7 +1799,17 @@
       "logs/ci/<date>/task-0055.json",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0055"
+    ],
+    "requirement_ids": [
+      "NFR-T0055"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:72"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0023",
@@ -1659,14 +1879,24 @@
       "docs/architecture/base/07-dev-build-and-gates-v2.md",
       "logs/ci/<date>/security-audit.jsonl"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0056"
+    ],
+    "requirement_ids": [
+      "NFR-T0056"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:73"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0043",
     "story_id": "BACKLOG-M1",
     "title": "Traceability gate for ADR/Chapter/Overlay links",
     "description": "Split from T56: enforce ADR, chapter, and overlay Test-Refs traceability as a dedicated gate task.",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -1733,7 +1963,17 @@
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
       "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0057"
+    ],
+    "requirement_ids": [
+      "NFR-T0057"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:74"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0044",
@@ -1797,7 +2037,17 @@
       "logs/ci/<date>/sc-acceptance-check-task-<id>/summary.json",
       "logs/ci/<date>/sc-llm-review-task-<id>/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0058"
+    ],
+    "requirement_ids": [
+      "NFR-T0058"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:75"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0045",
@@ -1807,9 +2057,7 @@
     "status": "pending",
     "priority": "P1",
     "layer": "adapter",
-    "depends_on": [
-      "NG-0024"
-    ],
+    "depends_on": [],
     "adr_refs": [
       "ADR-0010",
       "ADR-0025",
@@ -1867,14 +2115,24 @@
       "logs/ci/<date>/task-0070.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0070"
+    ],
+    "requirement_ids": [
+      "FR-T0070"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:87"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0046",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Consolidate combat deck lifecycle wiring as the umbrella task for T80-T82",
     "description": "Track the combat deck-lifecycle umbrella milestone over T80-T82 so backlog and quality gates treat this work as an integration checkpoint over existing deck/runtime capabilities, not as a separate build track.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -1939,14 +2197,24 @@
       "logs/ci/<date>/task-0071.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0071"
+    ],
+    "requirement_ids": [
+      "FR-T0071"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:88"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0047",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Bind CombatScene to existing data-driven card definitions and localized card text",
     "description": "Track CombatScene binding to existing card definitions, translations, and effect contracts so data-driven card behavior does not fork into a second card model.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2014,14 +2282,24 @@
       "logs/ci/<date>/task-0072.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0072"
+    ],
+    "requirement_ids": [
+      "FR-T0072"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:89"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0048",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Upgrade existing combat targeting and victory routing to multi-enemy runtime state",
     "description": "Track the upgrade from the current single-target or partial targeting skeleton to route-owned multi-enemy combat state, without replacing existing victory-route ownership.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2085,14 +2363,24 @@
       "logs/ci/<date>/task-0073.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0073"
+    ],
+    "requirement_ids": [
+      "FR-T0073"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:90"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0049",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Upgrade existing targeting flow with Slay-the-Spire-style card drag UX",
     "description": "Track drag targeting as an input-layer upgrade over the current validated play path, while preserving the existing accessibility fallback.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2156,14 +2444,24 @@
       "logs/ci/<date>/task-0074.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0074"
+    ],
+    "requirement_ids": [
+      "FR-T0074"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:91"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0050",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Wire existing status contracts and rules into visible combat status effects",
     "description": "Track combat status visibility as wiring of existing status contracts and rule semantics into the player-facing combat runtime, rather than a duplicate status implementation.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2228,14 +2526,24 @@
       "logs/ci/<date>/task-0075.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0075"
+    ],
+    "requirement_ids": [
+      "FR-T0075"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:92"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0051",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Bind enemy intent generation and preview to data-driven AI on existing intent surfaces",
     "description": "Replace fixed enemy attack preview with data-driven intent generation and preview while deferring enemy action resolution and no-repeat guardrails to a follow-up task.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -2297,7 +2605,17 @@
       "logs/ci/<date>/task-0076.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0076"
+    ],
+    "requirement_ids": [
+      "FR-T0076"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:93"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0052",
@@ -2371,7 +2689,17 @@
       "logs/ci/<date>/task-0077.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0077"
+    ],
+    "requirement_ids": [
+      "FR-T0077"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:94"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0053",
@@ -2445,7 +2773,17 @@
       "logs/ci/<date>/task-0078.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0078"
+    ],
+    "requirement_ids": [
+      "FR-T0078"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:95"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0054",
@@ -2512,7 +2850,17 @@
       "logs/ci/<date>/task-0079.json",
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0079"
+    ],
+    "requirement_ids": [
+      "FR-T0079"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:96"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0055",
@@ -2581,7 +2929,17 @@
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0080.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0080"
+    ],
+    "requirement_ids": [
+      "FR-T0080"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:97"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0056",
@@ -2648,7 +3006,17 @@
       "logs/ci/<date>/task-0081.json",
       "logs/ci/<date>/single-task-light-lane-t80-t89/shards/shard-001-t80-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0081"
+    ],
+    "requirement_ids": [
+      "FR-T0081"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:98"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0057",
@@ -2719,7 +3087,17 @@
       "logs/ci/<date>/single-task-light-lane-t82-t89/shards/shard-001-t82-89/summary.json",
       "logs/ci/<date>/single-task-light-lane-rerun-t80-t81/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0082"
+    ],
+    "requirement_ids": [
+      "FR-T0082"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:99"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0058",
@@ -2789,7 +3167,17 @@
       "logs/ci/<date>/task-0083.json",
       "logs/ci/<date>/single-task-light-lane-t83-t89/shards/shard-001-t83-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0083"
+    ],
+    "requirement_ids": [
+      "FR-T0083"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:100"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0059",
@@ -2861,7 +3249,17 @@
       "logs/ci/<date>/task-0084.json",
       "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0084"
+    ],
+    "requirement_ids": [
+      "FR-T0084"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:101"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0060",
@@ -2930,7 +3328,17 @@
       "logs/ci/<date>/task-0085.json",
       "logs/ci/<date>/single-task-light-lane-t84-t89/shards/shard-001-t84-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0085"
+    ],
+    "requirement_ids": [
+      "FR-T0085"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:102"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0061",
@@ -2999,7 +3407,17 @@
       "logs/ci/<date>/task-0086.json",
       "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0086"
+    ],
+    "requirement_ids": [
+      "FR-T0086"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:103"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0062",
@@ -3067,7 +3485,17 @@
       "logs/ci/<date>/task-0087.json",
       "logs/ci/<date>/single-task-light-lane-t86-t89/shards/shard-001-t86-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0087"
+    ],
+    "requirement_ids": [
+      "FR-T0087"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:104"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0063",
@@ -3137,7 +3565,17 @@
       "logs/ci/<date>/task-0088.json",
       "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0088"
+    ],
+    "requirement_ids": [
+      "FR-T0088"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:105"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0064",
@@ -3210,7 +3648,17 @@
       "logs/ci/<date>/task-0089.json",
       "logs/ci/<date>/single-task-light-lane-t88-t89/shards/shard-001-t88-89/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0089"
+    ],
+    "requirement_ids": [
+      "FR-T0089"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:106"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0065",
@@ -3280,7 +3728,17 @@
       "logs/ci/<date>/task-0090.json",
       "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0090"
+    ],
+    "requirement_ids": [
+      "FR-T0090"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:107"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0066",
@@ -3349,14 +3807,24 @@
       "logs/ci/<date>/task-0091.json",
       "logs/ci/<date>/single-task-light-lane-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0091"
+    ],
+    "requirement_ids": [
+      "FR-T0091"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:108"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0034",
     "story_id": "BACKLOG-M1",
     "title": "Promote architecture boundary tests into the main task line for Core-versus-Godot protection",
     "description": "Add xUnit-based architecture tests to enforce the three-layer boundary: Game.Core must not reference Godot APIs, and adapters are the only layer allowed to touch Godot. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B5).",
-    "status": "pending",
+    "status": "done",
     "priority": "P2",
     "layer": "ci",
     "depends_on": [
@@ -3414,7 +3882,17 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0092.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0092"
+    ],
+    "requirement_ids": [
+      "NFR-T0092"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:109"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0035",
@@ -3474,7 +3952,17 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0093.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0093"
+    ],
+    "requirement_ids": [
+      "NFR-T0093"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:110"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0036",
@@ -3484,10 +3972,7 @@
     "status": "pending",
     "priority": "P3",
     "layer": "ci",
-    "depends_on": [
-      "NG-0024",
-      "NG-0025"
-    ],
+    "depends_on": [],
     "adr_refs": [
       "ADR-0004",
       "ADR-0019",
@@ -3539,7 +4024,17 @@
     "evidence_refs": [
       "logs/ci/<date>/task-0094.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0094"
+    ],
+    "requirement_ids": [
+      "NFR-T0094"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:111"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0067",
@@ -3610,7 +4105,17 @@
       "logs/ci/<date>/task-0095.json",
       "logs/ci/<date>/single-task-light-lane-rerun-t90-t95/shards/shard-001-t90-95/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0095"
+    ],
+    "requirement_ids": [
+      "FR-T0095"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:112"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0068",
@@ -3682,7 +4187,17 @@
       "logs/ci/<date>/task-0096.json",
       "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0096"
+    ],
+    "requirement_ids": [
+      "FR-T0096"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:113"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0069",
@@ -3756,7 +4271,17 @@
       "logs/ci/<date>/task-0097.json",
       "logs/ci/<date>/single-task-light-lane-rerun2-t96-t97-t98-t100/shards/shard-001-t96-100/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0097"
+    ],
+    "requirement_ids": [
+      "FR-T0097"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:114"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0070",
@@ -3833,7 +4358,17 @@
       "logs/ci/<date>/single-task-light-lane-v2-batch/shards/shard-001-t70-89/summary.json",
       "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0098"
+    ],
+    "requirement_ids": [
+      "FR-T0098"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:115"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0071",
@@ -3902,7 +4437,17 @@
       "logs/ci/<date>/task-0099.json",
       "logs/ci/<date>/single-task-light-lane-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0099"
+    ],
+    "requirement_ids": [
+      "FR-T0099"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:116"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0072",
@@ -3969,7 +4514,17 @@
       "logs/ci/<date>/task-0100.json",
       "logs/ci/<date>/single-task-light-lane-rerun-t96-t101/shards/shard-001-t96-101/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0100"
+    ],
+    "requirement_ids": [
+      "FR-T0100"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:117"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0073",
@@ -4036,7 +4591,17 @@
       "docs/gdd/t1-t69-m1-wiring-audit.md",
       "logs/ci/<date>/task-0101.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0101"
+    ],
+    "requirement_ids": [
+      "FR-T0101"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:118"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0074",
@@ -4096,7 +4661,17 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0102"
+    ],
+    "requirement_ids": [
+      "NFR-T0102"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:119"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0075",
@@ -4156,7 +4731,17 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0103"
+    ],
+    "requirement_ids": [
+      "NFR-T0103"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:120"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0076",
@@ -4217,14 +4802,24 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0104"
+    ],
+    "requirement_ids": [
+      "NFR-T0104"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:121"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0077",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Resolve enemy turn actions and no-repeat guardrails from the displayed intent path",
     "description": "Build on intent preview so ending the player turn resolves the displayed enemy action exactly once and applies no-repeat guardrails through the shared runtime.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -4285,7 +4880,17 @@
       "logs/ci/<date>/task-0105.json",
       "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0105"
+    ],
+    "requirement_ids": [
+      "FR-T0105"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:122"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0078",
@@ -4354,7 +4959,17 @@
       "logs/ci/<date>/task-0106.json",
       "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0106"
+    ],
+    "requirement_ids": [
+      "FR-T0106"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:123"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0079",
@@ -4422,7 +5037,17 @@
       "logs/ci/<date>/task-0107.json",
       "logs/ci/<date>/single-task-light-lane-t102-t108/shards/shard-001-t102-108/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0107"
+    ],
+    "requirement_ids": [
+      "FR-T0107"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:124"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0080",
@@ -4484,7 +5109,17 @@
       "execution-plans/2026-05-06-task-108-enemy-intent-review-split-governance-evidence.md",
       "logs/ci/2026-05-06/sc-build-tdd/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0108"
+    ],
+    "requirement_ids": [
+      "NFR-T0108"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:125"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0081",
@@ -4545,7 +5180,17 @@
       "docs/gdd/t1-t69-m1-wiring-audit.md",
       "execution-plans/2026-05-07-task-109-settlement-review-lane-split-governance-evidence.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0109"
+    ],
+    "requirement_ids": [
+      "NFR-T0109"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:126"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0082",
@@ -4616,7 +5261,17 @@
       "logs/ci/<date>/task-0110.json",
       "Tests.Godot/tests/Integration/test_m1_node_resolution_routes.gd"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0110"
+    ],
+    "requirement_ids": [
+      "FR-T0110"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:127"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0083",
@@ -4679,7 +5334,17 @@
       "logs/ci/<date>/task-0111.json",
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0111"
+    ],
+    "requirement_ids": [
+      "FR-T0111"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:128"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0084",
@@ -4738,7 +5403,17 @@
     "evidence_refs": [
       "docs/gdd/t1-t69-m1-wiring-audit.md"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "NFR-T0112"
+    ],
+    "requirement_ids": [
+      "NFR-T0112"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:129"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0085",
@@ -4803,7 +5478,17 @@
       "logs/ci/<date>/task-0113.json",
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0113"
+    ],
+    "requirement_ids": [
+      "FR-T0113"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:130"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0086",
@@ -4868,7 +5553,17 @@
       "logs/ci/<date>/task-0114.json",
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0114"
+    ],
+    "requirement_ids": [
+      "FR-T0114"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:131"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0087",
@@ -4934,7 +5629,17 @@
       "logs/ci/<date>/task-0115.json",
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0115"
+    ],
+    "requirement_ids": [
+      "FR-T0115"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:132"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0088",
@@ -5002,783 +5707,17 @@
       "logs/ci/<date>/task-0116.json",
       "logs/ci/<date>/single-task-light-lane-t109-t116/shards/shard-001-t109-116/summary.json"
     ],
-    "semantic_review_tier": "full"
-  },
-  {
-    "id": "NG-0024",
-    "story_id": "BACKLOG-M1",
-    "title": "External URL allowlist + safe ShellOpen adapter",
-    "description": "Provide a single safe entry point for opening external URLs and enforce HTTPS + allowlisted hosts. Support GD_OFFLINE_MODE=1 to deny all network-like actions and write audit records. Source: docs/migration/Phase-14-Godot-Security-Backlog.md (B1).",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0019",
-      "ADR-0011",
-      "ADR-0018"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0116"
     ],
-    "chapter_refs": [
-      "CH01",
-      "CH02",
-      "CH06",
-      "CH07",
-      "CH10"
+    "requirement_ids": [
+      "FR-T0116"
     ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:133"
     ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "xUnit tests cover allow/deny/invalid URL cases and offline mode behavior."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0057.json"
-    ]
-  },
-  {
-    "id": "NG-0025",
-    "story_id": "BACKLOG-M1",
-    "title": "Secure file access adapter (res:// read-only, user:// read-write)",
-    "description": "Introduce a file access adapter that enforces the allowed roots (res://, user://), rejects absolute paths and path traversal, and emits audit records on violations.",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0019",
-      "ADR-0006",
-      "ADR-0011"
-    ],
-    "chapter_refs": [
-      "CH02",
-      "CH05",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "xUnit tests cover user:// allow, res:// allow-read-only, absolute path deny, and traversal deny."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0058.json"
-    ]
-  },
-  {
-    "id": "NG-0026",
-    "story_id": "BACKLOG-M1",
-    "title": "Performance budget gate integrated into quality gates",
-    "description": "Ensure performance P95 budget checks are consistently executed in CI and surfaced in the unified quality gates summary. Source: docs/migration/Phase-15-Performance-Budgets-Backlog.md (B1) and ADR-0015.",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0021"
-    ],
-    "adr_refs": [
-      "ADR-0015",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH07",
-      "CH09"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run perf suite locally with a low threshold to force a failure and verify gate behavior."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0059.json"
-    ]
-  },
-  {
-    "id": "NG-0027",
-    "story_id": "BACKLOG-M1",
-    "title": "Baseline-based performance regression comparison (optional)",
-    "description": "Add an optional baseline comparison workflow that compares current perf metrics against stored baseline JSON and fails if deviation exceeds tolerance. Source: docs/migration/Phase-15-Performance-Budgets-Backlog.md (B2).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0026"
-    ],
-    "adr_refs": [
-      "ADR-0015",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH07",
-      "CH09"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Use a small fixture baseline/current JSON pair to validate compare logic."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0060.json"
-    ]
-  },
-  {
-    "id": "NG-0028",
-    "story_id": "BACKLOG-M1",
-    "title": "Observability bootstrap (structured logs + optional Sentry init)",
-    "description": "Implement an observability bootstrap in Godot (autoload) to provide structured logs and (optionally) initialize Sentry SDK when configured. Source: docs/migration/Phase-16-Observability-Backlog.md (B1).",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0003",
-      "ADR-0018",
-      "ADR-0011"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH03",
-      "CH06",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run headless selfcheck and verify structured log output is produced."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0061.json"
-    ]
-  },
-  {
-    "id": "NG-0029",
-    "story_id": "BACKLOG-M1",
-    "title": "Release health gate script (Sentry Sessions) + CI integration",
-    "description": "Provide a Windows-friendly release health gate script that queries Sentry Sessions/Users and enforces the Crash-Free threshold defined in ADR-0003. Source: docs/migration/Phase-16-Observability-Backlog.md (B3) and Phase-19 backlog (B1).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0028"
-    ],
-    "adr_refs": [
-      "ADR-0003",
-      "ADR-0005",
-      "ADR-0011",
-      "ADR-0008"
-    ],
-    "chapter_refs": [
-      "CH03",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run in dry-run mode with stub data (or missing env vars) and verify failure is explicit and logged."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0062.json"
-    ]
-  },
-  {
-    "id": "NG-0030",
-    "story_id": "BACKLOG-M1",
-    "title": "Build/export pipeline hardening (Windows-only)",
-    "description": "Harden the Windows build/export pipeline: environment checks, consistent artifacts, and log outputs under logs/ci/**. Source: docs/migration/Phase-17-Build-Backlog.md (B1/B2).",
-    "status": "pending",
-    "priority": "P2",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0018",
-      "ADR-0005",
-      "ADR-0011",
-      "ADR-0008"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH06",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run export in a local Windows environment and confirm build artifacts + logs are generated."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0063.json"
-    ]
-  },
-  {
-    "id": "NG-0031",
-    "story_id": "BACKLOG-M1",
-    "title": "Release channel + release profile metadata (optional)",
-    "description": "Introduce a release channel concept (qa/internal/beta/stable) and generate a release profile JSON capturing channel + enabled FeatureFlags + build metadata for traceability. Source: docs/migration/Phase-18-Staged-Release-Backlog.md (B1/B2).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0030"
-    ],
-    "adr_refs": [
-      "ADR-0003",
-      "ADR-0008",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH03",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run build/export with RELEASE_CHANNEL set and verify release-profile.json contents."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0064.json"
-    ]
-  },
-  {
-    "id": "NG-0032",
-    "story_id": "BACKLOG-M1",
-    "title": "Privacy & logging guidelines docs (project-facing)",
-    "description": "Create project-facing privacy and logging guidelines documents to consolidate existing scattered rules and reduce future ambiguity. Source: docs/migration/Phase-16-Observability-Backlog.md (B4/B5).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [],
-    "adr_refs": [
-      "ADR-0003",
-      "ADR-0019"
-    ],
-    "chapter_refs": [
-      "CH02",
-      "CH03"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Doc review: ensure ADR references are correct and no secrets/PII examples are included."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0065.json"
-    ]
-  },
-  {
-    "id": "NG-0033",
-    "story_id": "BACKLOG-M1",
-    "title": "Duplication and cyclomatic complexity gate (lightweight)",
-    "description": "Add lightweight duplication and cyclomatic complexity checks suitable for a Windows-only Godot+C# repo. Prefer Roslyn analyzers / dotnet tooling and small Python scanners over heavy external platforms. Source: docs/migration/Phase-13-Quality-Gates-Backlog.md (B3).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0021"
-    ],
-    "adr_refs": [
-      "ADR-0005",
-      "ADR-0011"
-    ],
-    "chapter_refs": [
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run quality_gates.py locally on Windows and confirm reports are generated and parsed."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0066.json"
-    ]
-  },
-  {
-    "id": "NG-0037",
-    "story_id": "BACKLOG-M1",
-    "title": "Performance reports and history artifacts (project-level)",
-    "description": "Generate a human-readable performance report and keep a minimal history artifact (CSV/JSONL) for trend tracking. This is optional for T2 but should be ready before any wider distribution. Source: docs/migration/Phase-15-Performance-Budgets-Backlog.md (B3).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0026"
-    ],
-    "adr_refs": [
-      "ADR-0015",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH07",
-      "CH09"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run perf suite locally and inspect the generated report files for completeness."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0070.json"
-    ]
-  },
-  {
-    "id": "NG-0038",
-    "story_id": "BACKLOG-M1",
-    "title": "Dedicated performance gate workflow (optional)",
-    "description": "Add a dedicated CI workflow/job that runs only the performance gate (headless) and uploads perf artifacts. Source: docs/migration/Phase-15-Performance-Budgets-Backlog.md (B5).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0026"
-    ],
-    "adr_refs": [
-      "ADR-0015",
-      "ADR-0005",
-      "ADR-0011"
-    ],
-    "chapter_refs": [
-      "CH07",
-      "CH09",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Trigger the workflow manually and verify artifact upload and pass/fail behavior."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0071.json"
-    ]
-  },
-  {
-    "id": "NG-0039",
-    "story_id": "BACKLOG-M1",
-    "title": "Game.Core observability client (structured logs + PII scrubbing)",
-    "description": "Implement a pure C# observability client for Game.Core: structured logs, breadcrumbs, and optional sinks (e.g., Sentry via adapter). Include PII scrubbing rules aligned with ADR-0003/ADR-0019. Source: docs/migration/Phase-16-Observability-Backlog.md (B2).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0028"
-    ],
-    "adr_refs": [
-      "ADR-0003",
-      "ADR-0019",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH02",
-      "CH03",
-      "CH07"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Unit tests validate field scrubbing, tag propagation, and sink invocation ordering."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0072.json"
-    ]
-  },
-  {
-    "id": "NG-0040",
-    "story_id": "BACKLOG-M1",
-    "title": "Dedicated Windows release workflow (tag/dispatch) + artifacts",
-    "description": "Provide a dedicated GitHub Actions workflow for Windows releases (tag push or workflow_dispatch). It should export the game, run smoke, and upload artifacts with consistent naming. Source: docs/migration/Phase-17-Build-Backlog.md (B3).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0030"
-    ],
-    "adr_refs": [
-      "ADR-0008",
-      "ADR-0011",
-      "ADR-0018",
-      "ADR-0005"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH06",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Dry-run on a non-protected branch using workflow_dispatch and inspect uploaded artifacts."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0073.json"
-    ]
-  },
-  {
-    "id": "NG-0041",
-    "story_id": "BACKLOG-M1",
-    "title": "Optional code signing step (SignTool) for release artifacts",
-    "description": "Add an optional code signing step using Windows SignTool, controlled by environment variables and secrets. No signing material is stored in git. Source: docs/migration/Phase-17-Build-Backlog.md (B4).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0040"
-    ],
-    "adr_refs": [
-      "ADR-0008",
-      "ADR-0011",
-      "ADR-0018"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH06",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run in a local environment without secrets to confirm it safely skips."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0074.json"
-    ]
-  },
-  {
-    "id": "NG-0042",
-    "story_id": "BACKLOG-M1",
-    "title": "Export presets for multiple configurations (debug/release/demo)",
-    "description": "Define multiple export presets (Debug/Release/Demo) and update scripts to select presets via parameters. Source: docs/migration/Phase-17-Build-Backlog.md (B5).",
-    "status": "pending",
-    "priority": "P3",
-    "layer": "ci",
-    "depends_on": [
-      "NG-0030"
-    ],
-    "adr_refs": [
-      "ADR-0018",
-      "ADR-0011",
-      "ADR-0008"
-    ],
-    "chapter_refs": [
-      "CH01",
-      "CH06",
-      "CH07",
-      "CH10"
-    ],
-    "overlay_refs": [
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/_index.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Feature-Slice-M1-Warrior.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Contracts-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Testing-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/08-Observability-M1.md",
-      "docs/architecture/overlays/PRD-NEWROUGE-GAME-0001/08/ACCEPTANCE_CHECKLIST.md"
-    ],
-    "labels": [
-      "backlog",
-      "guardrails",
-      "newrouge",
-      "m1",
-      "ci"
-    ],
-    "owner": "architecture",
-    "test_refs": [],
-    "acceptance": [],
-    "test_strategy": [
-      "Run export for each preset and verify artifacts are produced and runnable."
-    ],
-    "taskmaster_id": null,
-    "taskmaster_exported": false,
-    "contractRefs": [],
-    "evidence_refs": [
-      "logs/ci/<date>/task-0075.json"
-    ]
+    "complexity_score": 1
   },
   {
     "id": "NG-0117",
@@ -5791,7 +5730,6 @@
       "NG-0015",
       "NG-0016",
       "NG-0021",
-      "NG-0026",
       "NG-0043",
       "NG-0045",
       "NG-0053",
@@ -5890,11 +5828,8 @@
       "NG-0020",
       "NG-0022",
       "NG-0023",
-      "NG-0024",
       "NG-0035",
       "NG-0036",
-      "NG-0038",
-      "NG-0039",
       "NG-0044",
       "NG-0061",
       "NG-0062",
@@ -6003,11 +5938,7 @@
       "NG-0005",
       "NG-0006",
       "NG-0017",
-      "NG-0025",
-      "NG-0027",
       "NG-0034",
-      "NG-0041",
-      "NG-0042",
       "NG-0049",
       "NG-0051",
       "NG-0059",
@@ -6205,9 +6136,6 @@
     "story_id": "BACKLOG-TASKMASTER-M1",
     "owner": "architecture",
     "depends_on": [
-      "NG-0028",
-      "NG-0029",
-      "NG-0030",
       "NG-0046",
       "NG-0047",
       "NG-0048",
@@ -6307,12 +6235,7 @@
     "story_id": "BACKLOG-TASKMASTER-M1",
     "owner": "architecture",
     "depends_on": [
-      "NG-0002",
-      "NG-0031",
-      "NG-0032",
-      "NG-0033",
-      "NG-0037",
-      "NG-0040"
+      "NG-0002"
     ],
     "taskmaster_exported": false,
     "taskmaster_id": 122,
@@ -6391,7 +6314,7 @@
       "NG-0086",
       "NG-0087"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 123,
     "title": "Wire UI: Map Path And Continue Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Map Path And Continue Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6460,7 +6383,17 @@
       "Run task-scoped GdUnit coverage for map route, node selection, and continue transition surfaces.",
       "Run task-scoped xUnit acceptance checks for map act configuration and route state invariants.",
       "Capture Chapter 7 artifact evidence mapping pass/fail (or N/A with rationale) across both frameworks."
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0123"
+    ],
+    "requirement_ids": [
+      "FR-T0123"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:140"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0124",
@@ -6471,7 +6404,7 @@
       "NG-0074",
       "NG-0083"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 124,
     "title": "Wire UI: Combat Card Play Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Combat Card Play Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6535,7 +6468,17 @@
       "Run task-scoped GdUnit coverage for combat UI bindings and feedback surfaces.",
       "Run task-scoped xUnit acceptance checks for combat card play runtime path and rejection invariants.",
       "Capture Chapter 7 artifact evidence mapping pass/fail (or N/A with rationale) across both frameworks."
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0124"
+    ],
+    "requirement_ids": [
+      "FR-T0124"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:141"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0125",
@@ -6547,7 +6490,7 @@
       "NG-0081",
       "NG-0082"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 125,
     "title": "Wire UI: Combat Runtime Bootstrap Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Combat Runtime Bootstrap Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6615,7 +6558,17 @@
       "Run targeted GdUnit: py -3 scripts/sc/test.py --type gdunit --task-id 125 --godot-bin $env:GODOT_BIN",
       "Run targeted xUnit (deck/runtime evidence): dotnet test Game.Core.Tests/Game.Core.Tests.csproj --filter \"FullyQualifiedName~DeckServiceTests\"",
       "Run targeted xUnit (workflow governance evidence): dotnet test Game.Core.Tests/Game.Core.Tests.csproj --filter \"FullyQualifiedName~Task0071WorkflowSelectionEvidenceTests\""
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0125"
+    ],
+    "requirement_ids": [
+      "FR-T0125"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:142"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0126",
@@ -6625,7 +6578,7 @@
       "NG-0073",
       "NG-0076"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 126,
     "title": "Wire UI: Enemy Intent And Resolution Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Enemy Intent And Resolution Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6692,7 +6645,17 @@
       "xunit",
       "gdunit4",
       "acceptance_refs"
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0126"
+    ],
+    "requirement_ids": [
+      "FR-T0126"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:143"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0127",
@@ -6704,7 +6667,7 @@
       "NG-0078",
       "NG-0079"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 127,
     "title": "Wire UI: Combat Rules And Feedback Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Combat Rules And Feedback Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6770,7 +6733,17 @@
       ],
       "ui_entry": "Combat Feedback / Status / Resolution Surfaces"
     },
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0127"
+    ],
+    "requirement_ids": [
+      "FR-T0127"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:144"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0128",
@@ -6780,7 +6753,7 @@
       "NG-0084",
       "NG-0085"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 128,
     "title": "Wire UI: Reward Offer And Confirm Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Reward Offer And Confirm Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6846,7 +6819,17 @@
     "semantic_review_tier": "full",
     "test_strategy": [
       "Validate reward UI wiring with task-level and route-roundtrip runtime assertions for stable offers, confirm/skip gating, invalid/failure outcomes, and owned-route return semantics. Refs: Game.Core.Tests/Tasks/Task0084AcceptanceTests.cs, Tests.Godot/tests/Scenes/Reward/test_reward_scene_route_roundtrip.gd, Tests.Godot/tests/Scenes/Reward/test_reward_scene_three_cards_rendered.gd, Tests.Godot/tests/Integration/test_reward_first_entry_shared_pool_route.gd."
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0128"
+    ],
+    "requirement_ids": [
+      "FR-T0128"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:145"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0129",
@@ -6855,7 +6838,7 @@
     "depends_on": [
       "NG-0088"
     ],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 129,
     "title": "Wire UI: Relic And Combat Participant Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Relic And Combat Participant Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -6928,14 +6911,24 @@
       "Run xUnit task acceptance suites for scope tasks (T88/T99/T106/T110/T111/T112) and verify relic-participant UI wiring evidence remains deterministic via existing contracts.",
       "Run GdUnit coverage for Relic Display, Participant HUD, and Shared Trigger Feedback surfaces; record pass/fail or explicit N/A rationale in Chapter 7 evidence artifacts.",
       "Validate empty/failure UI states are visibly rendered (not log-only) and map acceptance evidence to overlay refs and test refs for Task 129 closure."
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0129"
+    ],
+    "requirement_ids": [
+      "FR-T0129"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:146"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0130",
     "story_id": "BACKLOG-TASKMASTER-M1",
     "owner": "architecture",
     "depends_on": [],
-    "taskmaster_exported": false,
+    "taskmaster_exported": true,
     "taskmaster_id": 130,
     "title": "Wire UI: Settlement And Run Summary Surfaces",
     "description": "Create the Chapter 7 UI wiring slice for Settlement And Run Summary Surfaces from docs/gdd/ui-gdd-flow.candidates.json.",
@@ -7003,14 +6996,24 @@
       "Run xUnit acceptance coverage for settlement and run-summary scope refs (Task0066 and Task0091 workflow evidence) and ensure stored-data-backed outcome assertions remain deterministic.",
       "Run GdUnit suites for Run Summary / Settlement / Resume Evidence surfaces and capture pass/fail (or explicit N/A rationale) in Chapter 7 evidence artifacts.",
       "Verify missing-data and no-stored-data states are explicitly visible on governed summary surfaces, and map acceptance evidence back to overlay refs and test refs for Task 130 closure."
-    ]
+    ],
+    "semantic_refs": [
+      "FR-T0130"
+    ],
+    "requirement_ids": [
+      "FR-T0130"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:147"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0131",
     "story_id": "BACKLOG-M1-COMBAT",
     "title": "Extend enemy intent runtime to resolve structured multi-effect actions from displayed previews",
     "description": "Build on T76 and T105 so a displayed enemy intent can execute multiple structured effects across current-turn and next-turn timing without falling back to description-only parsing.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [
@@ -7074,14 +7077,24 @@
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0131.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0131"
+    ],
+    "requirement_ids": [
+      "FR-T0131"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:148"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0132",
     "story_id": "BACKLOG-M1-RELIC",
     "title": "Promote live relic rewards from placeholder text to a config-driven effect catalog",
     "description": "Build on the closed relic wiring path so relics that can actually appear in M1 runs execute real configured gameplay effects instead of remaining placeholder-only identities.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [],
@@ -7142,14 +7155,24 @@
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0132.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0132"
+    ],
+    "requirement_ids": [
+      "FR-T0132"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:149"
+    ],
+    "complexity_score": 1
   },
   {
     "id": "NG-0133",
     "story_id": "BACKLOG-M1-REWARD",
     "title": "Add a pre-snapshot runtime modifier pipeline for reward entries",
     "description": "Build a governed hook between reward-pool selection and reward-snapshot locking so relics, events, and other run-state systems can add, remove, or mutate reward entries for the next reward context without editing pool files.",
-    "status": "pending",
+    "status": "done",
     "priority": "P1",
     "layer": "adapter",
     "depends_on": [],
@@ -7207,6 +7230,16 @@
       "docs/gdd/ui-gdd-flow.md",
       "logs/ci/<date>/task-0133.json"
     ],
-    "semantic_review_tier": "full"
+    "semantic_review_tier": "full",
+    "semantic_refs": [
+      "FR-T0133"
+    ],
+    "requirement_ids": [
+      "FR-T0133"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:150"
+    ],
+    "complexity_score": 1
   }
 ]

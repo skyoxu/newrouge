@@ -240,7 +240,9 @@ def closure_checks(
         row for row in (candidates or {}).get("candidates", []) if isinstance(row, dict)
     ]
     for task in candidate_rows:
-        task_id = str(task.get("id") or "")
+        if str(task.get("status", task.get("taskmaster_status", ""))).casefold() == "cancelled":
+            continue
+        task_id = str(task.get("taskmaster_id") or task.get("id") or "")
         try:
             score = int(task.get("complexity_score") or 0)
         except (TypeError, ValueError):

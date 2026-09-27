@@ -15,6 +15,8 @@ game_type: "card-game"
 game_name: "NewRouge"
 ---
 
+> Historical reference only. Current GDD: `docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`. Do not use this file as a Chapter 3 task-generation input.
+
 # NewRouge - Game Design Document
 
 **Author:** skyo

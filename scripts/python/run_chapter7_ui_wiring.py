@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from _chapter7_profile import bucket_names, bucket_profile, load_chapter7_profile, surface_aliases
+from chapter3_task_scope import load_scope
 
 
 def _today() -> str:
@@ -872,7 +873,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--tasks-back-path', default='.taskmaster/tasks/tasks_back.json')
     parser.add_argument('--tasks-gameplay-path', default='.taskmaster/tasks/tasks_gameplay.json')
     parser.add_argument('--overlay-root-path', default='docs/architecture/overlays')
-    parser.add_argument('--ui-gdd-flow-path', default='docs/gdd/ui-gdd-flow.md')
+    parser.add_argument('--ui-gdd-flow-path', default='')
     parser.add_argument('--alignment-audit-path', default='')
     parser.add_argument('--wiring-audit-path', default='')
     parser.add_argument('--chapter7-profile-path', default='')
@@ -886,6 +887,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
+    if load_scope(repo_root) is not None and args.create_tasks:
+        raise SystemExit('Frozen task scope rejects Chapter 7 task creation')
+    if not args.ui_gdd_flow_path:
+        args.ui_gdd_flow_path = (
+            'docs/planning/chapter7/ui-wiring-board.md'
+            if load_scope(repo_root) is not None else 'docs/gdd/ui-gdd-flow.md'
+        )
+    if load_scope(repo_root) is not None and Path(args.ui_gdd_flow_path).as_posix() == 'docs/gdd/ui-gdd-flow.md' and args.write_doc:
+        raise SystemExit('The retired Chapter 7 GDD reference is read-only; select a planning output path')
     if args.self_check:
         planned_steps = ['collect']
         if args.write_doc:

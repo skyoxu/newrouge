@@ -40,7 +40,7 @@ SOURCE_PATH_BINDINGS = dict(zip(
 DEFAULT_CONFIG = {
     'source_paths': SOURCE_PATHS,
     'source_path_bindings': SOURCE_PATH_BINDINGS,
-    'gdd_paths': ['_bmad-output/gdd.md', 'docs/gdd/GDD-NEWROUGE-V1.md', 'docs/gdd/ui-gdd-flow.md'],
+    'gdd_paths': ['docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md'],
     'task_scene_bindings': [{
         'task_id': 115, 'scene': 'Game.Godot/Scenes/Reward.tscn', 'node': '.',
         'script': 'Game.Godot/Scripts/RewardScene.gd',

@@ -29,6 +29,10 @@ Produce a coarse but semantically conservative task triplet. The invariant is:
 
 Every source block must be accounted for. Every active delivery Requirement must end at a Task or an explicit governed non-Task sink.
 
+### Frozen existing-task mode
+
+When `docs/workflows/chapter3-task-scope.json` is present with `mode: reconcile-existing-only`, the repository is intentionally frozen to its declared numeric task range. Chapter 3 repairs the existing triplet only: the task-derived GDD is the active design baseline, candidates must target existing view rows, and `create` operations are blocked. Use the repository's frozen projection/reconciliation entry points and committed `docs/planning/semantic-topology/*.v1.json` artifacts for clean-checkout tests; do not require `logs/**` run output as test input. Chapter 7 task creation remains blocked until the scope file and active source/Knowledge configuration are explicitly updated for the next milestone.
+
 ## Required Reading
 
 1. Read the Chapter 3 section in `workflow.md`.

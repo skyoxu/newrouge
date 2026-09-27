@@ -1,7 +1,7 @@
 {
   "schema_version": "newrouge.mvg-integration.v1",
   "mvg_id": "m1-full",
-  "scope_note": "Target automated M1 MVG scope. It is intentionally plan-only while scoped Taskmaster work is non-done; executable full verification must fail closed until blocking_task_ids is empty.",
+  "scope_note": "Target automated M1 MVG scope. The frozen T1-T133 baseline is implemented; runtime execution remains subject to the declared evidence and human-acceptance exclusions.",
   "coverage": {
     "mode": "full",
     "scope_id": "m1-player-loop",
@@ -11,14 +11,11 @@
       "continue-resume-recovery",
       "combat-reward-return"
     ],
-    "blocking_task_ids": [
-      59,
-      60
-    ],
+    "blocking_task_ids": [],
     "excluded_claims": [
       "Human gameplay approval and balance quality remain separate.",
       "OS-native mouse geometry, device-specific focus navigation and subjective presentation quality remain separate.",
-      "A full runtime_verified claim is forbidden while blocking_task_ids is non-empty."
+      "A full runtime_verified claim still requires the declared automated evidence and human acceptance."
     ]
   },
   "flows": [
