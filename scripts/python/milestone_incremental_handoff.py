@@ -35,18 +35,28 @@ def _file_sha(path: Path) -> str:
 
 def _task_index(root: Path) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
+    master_path = root / ".taskmaster/tasks/tasks.json"
+    master = None
+    if master_path.is_file():
+        master = {str(row["id"]): row for row in _load(master_path)["master"]["tasks"]}
+        result.update({key: dict(row) for key, row in master.items()})
     for rel in (".taskmaster/tasks/tasks_back.json", ".taskmaster/tasks/tasks_gameplay.json"):
         path = root / rel
         if not path.is_file():
             continue
-        payload = _load(path)
-        rows = payload if isinstance(payload, list) else []
-        for row in rows:
+        rows = _load(path)
+        for row in rows if isinstance(rows, list) else []:
             if not isinstance(row, dict):
                 continue
+            numeric = str(row.get("taskmaster_id") or "")
+            if master is not None and numeric not in master:
+                continue
+            effective = dict(row)
+            if master is not None:
+                effective["status"] = master[numeric].get("status")
             for key in ("id", "taskmaster_id"):
-                if row.get(key) is not None and str(row.get(key)).strip():
-                    result[str(row.get(key)).strip()] = row
+                if row.get(key) is not None and str(row[key]).strip():
+                    result[str(row[key]).strip()] = effective
     return result
 
 
@@ -219,7 +229,7 @@ def validate_change_plan(root: Path, payload: dict[str, Any]) -> list[str]:
             errors.append(f"{change_id}:unknown_owner_task:{owner}")
         target_status = str((task_index.get(target) or {}).get("status") or "").strip().lower()
         if action in {"extend", "replace"} and target_status == "done":
-            if owner == target and row.get("reopen_task") is not True:
+            if _canonical_task_id(task_index, owner) == _canonical_task_id(task_index, target) and row.get("reopen_task") is not True:
                 errors.append(f"{change_id}:done_target_requires_change_owner_or_explicit_reopen")
         requirement_ids = [str(value) for value in row.get("requirement_ids", []) if str(value).strip()]
         if active_requirements:
