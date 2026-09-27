@@ -1037,7 +1037,7 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
             self.assertEqual("BLOCKED", gate["readiness"])
 
     def test_readiness_fingerprint_invalidates_semantics_task_and_authority_drift(self) -> None:
-        mutations = ("semantics", "semantic_refs", "acceptance", "dependency", "overlay", "contract")
+        mutations = ("semantics", "semantic_refs", "acceptance", "dependency", "overlay", "contract", "payload", "payload_dependency")
         for mutation in mutations:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
@@ -1050,6 +1050,11 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                     semantic_refs=["INV-U1"],
                     acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"],
                 )
+                if mutation in {"payload", "payload_dependency"}:
+                    (root / "Game.Core/Contracts/SelectedEvent.cs").write_text(
+                        'public record SelectedEvent(int Price, PriceData Data) { public const string EventType = RouteEvents.Selected; }', encoding="utf-8")
+                    (root / "Game.Core/Contracts/PriceData.cs").write_text(
+                        'public record PriceData(int Amount);', encoding="utf-8")
                 decisions = root / "decisions.json"
                 write_json(decisions, self._review_decisions(root))
                 reconciliation_path = ch5.reconciliation_path_for_task(root, "1")
@@ -1084,6 +1089,10 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 elif mutation == "overlay":
                     overlay = root / "docs/architecture/overlays/PRD/08/_index.md"
                     overlay.write_text("# Route overlay\n\nChanged architecture constraint.\n", encoding="utf-8")
+                elif mutation in {"payload", "payload_dependency"}:
+                    name = "SelectedEvent.cs" if mutation == "payload" else "PriceData.cs"
+                    contract = root / "Game.Core/Contracts" / name
+                    contract.write_text(contract.read_text(encoding="utf-8").replace("int ", "string "), encoding="utf-8")
                 else:
                     contract = root / "Game.Core/Contracts/RouteEvents.cs"
                     contract.write_text(

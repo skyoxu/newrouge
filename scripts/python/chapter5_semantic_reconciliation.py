@@ -569,6 +569,9 @@ def _line_for_token(text: str, token: str) -> int | None:
     return None
 
 
+from _chapter5_contract_bindings import resolve_contract
+
+
 def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """Bind Chapter 5 task reconciliation to real Chapter 4/ADR/Contract authority bytes."""
     errors: list[str] = []
@@ -604,32 +607,15 @@ def build_task_authority_scope(root: Path, task: dict[str, Any]) -> tuple[dict[s
                 "sha256": "sha256:" + _sha_text(adr_text),
             }
 
-    contract_files = sorted((root / "Game.Core/Contracts").rglob("*.cs"))
-    contract_texts: list[tuple[Path, str]] = []
-    for path in contract_files:
-        try:
-            contract_texts.append((path, path.read_text(encoding="utf-8")))
-        except UnicodeDecodeError:
-            continue
     for contract_ref in task.get("contract_refs", []):
         token = str(contract_ref or "").strip()
         if not token:
             continue
-        found = None
-        for path, text in contract_texts:
-            if token in text:
-                found = (path, text)
-                break
-        if found is None:
+        binding = resolve_contract(root, token)
+        if binding is None:
             errors.append(f"contract_missing:{token}")
-            continue
-        path, text = found
-        contracts.append({
-            "ref": token,
-            "path": path.relative_to(root).as_posix(),
-            "line": _line_for_token(text, token),
-            "sha256": "sha256:" + _sha_text(text),
-        })
+        else:
+            contracts.append(binding)
 
     return {
         "overlays": overlays,
@@ -660,7 +646,6 @@ def augment_authority_scope_from_acceptance_links(
         if isinstance(row, dict):
             refs.update(str(value).strip().replace("\\", "/") for value in row.get("authority_refs", []) if str(value).strip())
 
-    contract_files = sorted((root / "Game.Core/Contracts").rglob("*.cs"))
     for value in sorted(refs - existing):
         if re.fullmatch(r"ADR-\d{3,5}", value, re.IGNORECASE):
             matches = sorted((root / "docs/adr").glob(value.upper() + "*.md"))
@@ -682,28 +667,9 @@ def augment_authority_scope_from_acceptance_links(
                 "sha256": "sha256:" + _sha_text(text),
             })
             continue
-        if value.startswith("Game.Core/Contracts/") and direct.is_file():
-            text = direct.read_text(encoding="utf-8")
-            scope["contracts"].append({
-                "ref": value,
-                "path": value,
-                "line": None,
-                "sha256": "sha256:" + _sha_text(text),
-            })
-            continue
-        for path in contract_files:
-            try:
-                text = path.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
-                continue
-            if value in text:
-                scope["contracts"].append({
-                    "ref": value,
-                    "path": path.relative_to(root).as_posix(),
-                    "line": _line_for_token(text, value),
-                    "sha256": "sha256:" + _sha_text(text),
-                })
-                break
+        binding = resolve_contract(root, value)
+        if binding is not None:
+            scope["contracts"].append(binding)
     scope["contracts"] = sorted(scope["contracts"], key=lambda row: (str(row.get("ref") or ""), str(row.get("path") or "")))
     scope["adrs"] = sorted(scope["adrs"], key=lambda row: (str(row.get("ref") or ""), str(row.get("path") or "")))
     return scope
