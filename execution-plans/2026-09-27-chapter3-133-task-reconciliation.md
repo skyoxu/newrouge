@@ -1,8 +1,26 @@
 # Chapter 3 reconciliation of the frozen T1-T133 baseline
 
 - Status: In progress
+- Title: chapter3-133-task-reconciliation
+- Branch: chapter3-repair-133-20260927
+- Git Head: 895a927bee8eb149d3354299890a08c405018b6b
+- Goal: Repair the frozen 133-task Chapter 3 triplet and governance evidence without creating new tasks.
 - Scope: Structural repair only; no new Taskmaster task IDs or runtime changes.
 - Branch base: `main`. The experimental `chapter3-init-20260926` branch is reference evidence only.
+
+- Current step: Close CI governance failures for run 36319054383, then rerun the hard gates.
+- Last completed step: Frozen task triplet, topology, semantic closure, and Chapter 7 checks passed on the committed branch.
+- Stop-loss: Do not regenerate tasks or expand the frozen T1-T133 scope; stop if a check requires new task IDs or runtime changes.
+- Next action: Update the overlay baseline and complete schema-compliant recovery evidence, then rerun hard gates.
+- Recovery command: `py -3 scripts/python/run_gate_bundle.py --mode hard --delivery-profile fast-ship --task-files .taskmaster/tasks/tasks_back.json .taskmaster/tasks/tasks_gameplay.json`
+- Open questions: None; canonical Knowledge publication remains gated on merge to `main`.
+- Exit criteria: Recovery-doc validation and hard gates pass; the CI failure analysis is recorded; the branch is pushed cleanly.
+- Related ADRs: none
+- Related decision logs: `decision-logs/2026-09-27-chapter3-133-task-scope.md`; `decision-logs/2026-09-27-run-36319054383-failure-analysis.md`
+- Related task id(s): T1-T133 (frozen baseline)
+- Related run id: `36319054383`
+- Related latest.json: n/a (CI run-level repair)
+- Related pipeline artifacts: n/a (CI run-level artifact URL is recorded by the related run id)
 
 ## Completed
 
