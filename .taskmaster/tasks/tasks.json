@@ -7023,8 +7023,8 @@
       {
         "id": 398,
         "title": "gdd newrouge v1 实现7. 存档与 Continue line 103",
-        "description": "A failed Continue attempt is blocked and explains the reason to the player.",
-        "status": "pending",
+        "description": "Retired during Chapter 3 migration repair: behavior is already covered by master task 63.",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [
           397
@@ -7039,7 +7039,7 @@
         "status": "pending",
         "priority": "medium",
         "dependencies": [
-          398
+          63
         ],
         "details": "Story: TASK-GENERATION\nAcceptance: Requirement FAIL-DF863BC846DC is implemented with traceable evidence. Source: _bmad-output/gdd.md:43; Requirement FAIL-22B03EAF5B17 is implemented with traceable evidence. Source: _bmad-output/gdd.md:44; Requirement FAIL-97A116BED6F5 is implemented with traceable evidence. Source: _bmad-output/gdd.md:49\nTest Strategy: Red: add or update xUnit coverage for the primary deterministic behavior.; Green: implement the minimal pure-core logic required by the assertions.; Refactor: preserve passing tests and rerun the Chapter 3 coverage audit.\nLabels: core; failure; gameplay; generated; init; intent\nOwner: gameplay\nLayer: core",
         "testStrategy": "Red: add or update xUnit coverage for the primary deterministic behavior.\nGreen: implement the minimal pure-core logic required by the assertions.\nRefactor: preserve passing tests and rerun the Chapter 3 coverage audit."
@@ -7443,8 +7443,8 @@
       {
         "id": 433,
         "title": "Implement gdd newrouge v1 9.1 MainMenu line 120",
-        "description": "The main menu offers New Run, Continue, and Quit.",
-        "status": "pending",
+        "description": "Retired during Chapter 3 migration repair: behavior is already covered by master task 14.",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [
           432
@@ -7459,7 +7459,7 @@
         "status": "pending",
         "priority": "medium",
         "dependencies": [
-          433
+          14
         ],
         "details": "Story: TASK-GENERATION\nAcceptance: Requirement FR-9F636642DD84 is implemented with traceable evidence. Source: docs/gdd/GDD-NEWROUGE-V1.md:124\nTest Strategy: Red: add or update xUnit coverage for the primary deterministic behavior.; Green: implement the minimal pure-core logic required by the assertions.; Refactor: preserve passing tests and rerun the Chapter 3 coverage audit.\nLabels: core; functional; gameplay; generated; init; intent\nOwner: gameplay\nLayer: core",
         "testStrategy": "Red: add or update xUnit coverage for the primary deterministic behavior.\nGreen: implement the minimal pure-core logic required by the assertions.\nRefactor: preserve passing tests and rerun the Chapter 3 coverage audit."
@@ -8127,8 +8127,8 @@
       {
         "id": 490,
         "title": "playtest issue grading 实现5) 一次填写示例（纸面走查，未启动游戏）",
-        "description": "| P1 | C4 文案与术语一致性 | 全局（Translations） | 文档走查：检查 `Game.Godot/Translations` 是否已有可用文本资源 | 所有可见文本可从 Translations 配置获得 | 当前仅有 `Game.Godot/Translations/README.md`（缺少实际文本资源） | `logs/ci/2026-01-25/playtest/newrouge--playtest--issues--paper-audit--2026-01-25.md` | `project-context.md`、`docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md` | 需要补齐最小 Translations 资源后再做真实试玩校验 |",
-        "status": "pending",
+        "description": "Retired during Chapter 3 migration repair: source is a historical playtest filling example, not a current delivery obligation.",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [
           489
@@ -8143,7 +8143,7 @@
         "status": "pending",
         "priority": "medium",
         "dependencies": [
-          490
+          489
         ],
         "details": "Story: TASK-GENERATION\nAcceptance: Requirement FR-4C9089F5AAF3 is implemented with traceable evidence. Source: docs/prd/PLAYTEST-SCRIPT-60MIN-NEWROUGE-V1.md:14\nTest Strategy: Red: add or update xUnit coverage for the primary deterministic behavior.; Green: implement the minimal pure-core logic required by the assertions.; Refactor: preserve passing tests and rerun the Chapter 3 coverage audit.\nLabels: core; functional; gameplay; generated; init; intent\nOwner: gameplay\nLayer: core",
         "testStrategy": "Red: add or update xUnit coverage for the primary deterministic behavior.\nGreen: implement the minimal pure-core logic required by the assertions.\nRefactor: preserve passing tests and rerun the Chapter 3 coverage audit."

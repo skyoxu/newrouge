@@ -1032,7 +1032,16 @@
     "test_strategy": [
       "Manual testing of UI flow: new run with overwrite confirm, continue when autosave exists. Write GdUnit4 tests for button interactions and translation loading. Refs: ADR-0032, ADR-0010."
     ],
-    "title": "Create main menu scene with new run and continue options"
+    "title": "Create main menu scene with new run and continue options",
+    "semantic_refs": [
+      "FR-66307AB7B77B"
+    ],
+    "requirement_ids": [
+      "FR-66307AB7B77B"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-V1.md:120"
+    ]
   },
   {
     "acceptance": [
@@ -4364,7 +4373,16 @@
     "test_strategy": [
       "Run a Windows MainMenu blocked-state UI smoke covering missing-save and invalid-save reasons."
     ],
-    "title": "Implement Continue blocked-state UX and recovery messaging"
+    "title": "Implement Continue blocked-state UX and recovery messaging",
+    "semantic_refs": [
+      "FAIL-C0CA1515B8E1"
+    ],
+    "requirement_ids": [
+      "FAIL-C0CA1515B8E1"
+    ],
+    "source_refs": [
+      "docs/gdd/GDD-NEWROUGE-V1.md:103"
+    ]
   },
   {
     "acceptance": [
@@ -9793,8 +9811,8 @@
     "id": "INT-0265",
     "story_id": "TASK-GENERATION",
     "title": "gdd newrouge v1 实现7. 存档与 Continue line 103",
-    "description": "A failed Continue attempt is blocked and explains the reason to the player.",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration repair: behavior is already covered by master task 63.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -9828,12 +9846,8 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-V1.md:103"
     ],
-    "requirement_ids": [
-      "FAIL-C0CA1515B8E1"
-    ],
-    "semantic_refs": [
-      "FAIL-C0CA1515B8E1"
-    ],
+    "requirement_ids": [],
+    "semantic_refs": [],
     "capability_refs": [],
     "complexity_score": 1,
     "implementation_files": [],
@@ -9852,7 +9866,7 @@
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0265"
+      "GM-0163"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",
@@ -11783,8 +11797,8 @@
     "id": "INT-0300",
     "story_id": "TASK-GENERATION",
     "title": "Implement gdd newrouge v1 9.1 MainMenu line 120",
-    "description": "The main menu offers New Run, Continue, and Quit.",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration repair: behavior is already covered by master task 14.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -11818,12 +11832,8 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-V1.md:120"
     ],
-    "requirement_ids": [
-      "FR-66307AB7B77B"
-    ],
-    "semantic_refs": [
-      "FR-66307AB7B77B"
-    ],
+    "requirement_ids": [],
+    "semantic_refs": [],
     "capability_refs": [],
     "complexity_score": 1,
     "implementation_files": [],
@@ -11842,7 +11852,7 @@
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0300"
+      "GM-0114"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",
@@ -15061,8 +15071,8 @@
     "id": "INT-0357",
     "story_id": "TASK-GENERATION",
     "title": "playtest issue grading 实现5) 一次填写示例（纸面走查，未启动游戏）",
-    "description": "| P1 | C4 文案与术语一致性 | 全局（Translations） | 文档走查：检查 `Game.Godot/Translations` 是否已有可用文本资源 | 所有可见文本可从 Translations 配置获得 | 当前仅有 `Game.Godot/Translations/README.md`（缺少实际文本资源） | `logs/ci/2026-01-25/playtest/newrouge--playtest--issues--paper-audit--2026-01-25.md` | `project-context.md`、`docs/prd/TERMS-AND-COPY-GLOSSARY-NEWROUGE-V1.md` | 需要补齐最小 Translations 资源后再做真实试玩校验 |",
-    "status": "pending",
+    "description": "Retired during Chapter 3 migration repair: source is a historical playtest filling example, not a current delivery obligation.",
+    "status": "cancelled",
     "priority": "P2",
     "layer": "core",
     "depends_on": [
@@ -15100,16 +15110,8 @@
       "docs/prd/PLAYTEST-ISSUE-GRADING-AND-REVISION-GUIDE-NEWROUGE-V1.md:131",
       "docs/prd/PLAYTEST-ISSUE-GRADING-AND-REVISION-GUIDE-NEWROUGE-V1.md:132"
     ],
-    "requirement_ids": [
-      "FR-74C15D8FA10C",
-      "FR-9B96AB7167DC",
-      "FR-72DAE0C83495"
-    ],
-    "semantic_refs": [
-      "FR-74C15D8FA10C",
-      "FR-9B96AB7167DC",
-      "FR-72DAE0C83495"
-    ],
+    "requirement_ids": [],
+    "semantic_refs": [],
     "capability_refs": [],
     "complexity_score": 3,
     "implementation_files": [],
@@ -15128,7 +15130,7 @@
     "priority": "P2",
     "layer": "core",
     "depends_on": [
-      "INT-0357"
+      "INT-0356"
     ],
     "dependency_status": "provisional",
     "dependency_reason": "generation-order owner/layer skeleton; Chapter 5 must validate semantic dependency",

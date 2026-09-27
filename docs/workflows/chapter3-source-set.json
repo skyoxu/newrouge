@@ -5,7 +5,16 @@
     "docs/gdd/**/*.md",
     "_bmad-output/gdd.md"
   ],
-  "retirements": [],
+  "retirements": [
+    {
+      "path": "_bmad-output/epics.md",
+      "reason": "Historical generated planning view; authoritative Chapter 3 sources are the versioned GDD/PRD set."
+    },
+    {
+      "path": "docs/gdd/ui-gdd-flow.candidates.json",
+      "reason": "Candidate planning projection; retained only as historical evidence, not an authoritative source."
+    }
+  ],
   "active_sources": [
     "_bmad-output/gdd.md",
     "docs/gdd/GDD-NEWROUGE-V1.md",
