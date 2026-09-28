@@ -90,6 +90,7 @@
   }
   get('mvg-version-select').addEventListener('change', renderVersion);
   get('mvg-manifest-select').addEventListener('change', renderManifest);
+  get('mvg-scope-help').insertAdjacentHTML('beforeend', '<div class="mvg-scope-example"><strong>示例：m1-full 的 map-node-owned-flow</strong><p><strong>Flow</strong>：<code>map-node-owned-flow</code>，表示从 Map 选择节点，进入该节点所属流程，并回到 Map。</p><p><strong>Task IDs</strong>：<code>42, 60, 69, 97, 110</code>，指向 <code>.taskmaster/tasks/tasks_gameplay.json</code> 中的 Map 节点门控、路由所有权和状态验证任务。</p><p><strong>Handoff</strong>：Task <code>42 → 60</code>，owner 为 Task <code>60</code>，契约指向 <code>Game.Core/Contracts/Run/RunTransition.cs</code>；它表示可达节点被选中后交给 route owner，完成或拒绝都遵守同一边界。</p><p><strong>Outcome</strong>：<code>A reachable Map node enters its owned Combat/Event/Shop/Rest flow and returns through the route owner; blocked or illegal nodes leave progression unchanged with an explicit reason.</code>，这是该 Flow 要证明的行为结果。</p><p><strong>Evidence</strong>：指向 <code>map-route-domain</code>、<code>map-route-scene</code>、<code>map-state-scene</code> 三组测试，以及当前 main revision 上的 manifest 运行结果。</p></div>');
   get('mvg-scope-help-toggle').addEventListener('click', () => {
     const button = get('mvg-scope-help-toggle');
     const help = get('mvg-scope-help');

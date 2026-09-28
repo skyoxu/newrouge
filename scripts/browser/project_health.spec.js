@@ -139,6 +139,10 @@ test.describe('project health Godot scene graph', () => {
     await page.locator('#mvg-scope-help-toggle').click();
     await expect(page.locator('#mvg-scope-help')).toBeVisible();
     await expect(page.locator('#mvg-scope-help')).toContainText('累计的 MVG');
+    await expect(page.locator('#mvg-scope-help')).toContainText('m1-full 的 map-node-owned-flow');
+    await expect(page.locator('#mvg-scope-help')).toContainText('42, 60, 69, 97, 110');
+    await expect(page.locator('#mvg-scope-help')).toContainText('RunTransition.cs');
+    await expect(page.locator('#mvg-scope-help')).toContainText('map-route-domain');
     await page.locator('#mvg-scope-help-toggle').click();
     await expect(page.locator('#mvg-scope-help')).toBeHidden();
     await page.getByRole('button', { name: 'Scene route tree' }).click();
