@@ -803,13 +803,36 @@ def _authority_decisions(
     raw = decisions.get("authority_decisions", [])
     if not isinstance(raw, list):
         raw = []
-    by_ref = {
-        str(row.get("authority_ref") or ""): row
-        for row in raw
-        if isinstance(row, dict) and str(row.get("authority_ref") or "").strip()
-    }
+    by_ref: dict[str, dict[str, Any]] = {}
+    ambiguous_refs: set[str] = set()
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        ref = str(row.get("authority_ref") or "").strip()
+        if not ref:
+            continue
+        normalized = {
+            "status": str(row.get("status") or "").strip(),
+            "rationale": str(row.get("rationale") or "").strip(),
+        }
+        if ref in by_ref and by_ref[ref] != normalized:
+            ambiguous_refs.add(ref)
+        else:
+            by_ref[ref] = normalized
     reviews: list[dict[str, Any]] = []
-    findings: list[dict[str, Any]] = []
+    # Never let array order resolve competing reviews, even outside the inferred scope.
+    findings: list[dict[str, Any]] = [
+        {
+            "finding_type": "authority",
+            "status": "needs_human_decision",
+            "authority_ref": ref,
+            "reason_code": "conflicting_authority_decisions",
+            "reason": "Multiple authority reviews disagree; submit one resolved status and rationale.",
+            "priority": "P1",
+            "action": "resolve_duplicate_authority_reviews",
+        }
+        for ref in sorted(ambiguous_refs)
+    ]
     required = []
     for kind in ("contracts", "adrs"):
         for item in authority_scope.get(kind, []):
@@ -820,6 +843,9 @@ def _authority_decisions(
         decision = by_ref.get(ref, {})
         status = str(decision.get("status") or "").strip()
         rationale = str(decision.get("rationale") or "").strip()
+        if ref in ambiguous_refs:
+            status = "needs_human_decision"
+            rationale = "Conflicting duplicate authority reviews require explicit resolution."
         if status not in ALLOWED_AUTHORITY_STATUS or not rationale:
             status = "needs_human_decision"
         review = {
