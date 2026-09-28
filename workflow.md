@@ -547,6 +547,13 @@ py -3 scripts/python/dev_cli.py refresh-knowledge --source chapter5 --trigger-ru
 
 BLOCKED/FAIL 只更新 Last Attempt；只有 READY 或 policy-allowed CONCERNS 才更新 `workspace-latest-stabilized.json`。正式 KCP publication 仍只允许 trusted clean main。
 
+### Chapter 5 authority review consistency
+
+For each authority_ref, submit one resolved status and rationale. Identical normalized duplicates are idempotent; differing statuses or rationales block readiness regardless of array order. Correct the review input and reconcile again; do not use append order to supersede a conflict.
+
+Before milestone handoff, read the referenced test bodies: a local model or fabricated snapshot is not proof of a production scene journey. Bind planned tests to concrete production entrypoints and behavior-specific assertions; an existing suite pass alone does not verify a new behavior. Keep handoff planned test IDs aligned with the cumulative manifest delta and attach the delta to the change plan. For read-only features, distinguish cached observation from getters that can initialize or generate state; specify the missing-state behavior.
+
+
 ### 5.1 单任务轻量 lane
 
 第五章的顶层编排入口分两类：

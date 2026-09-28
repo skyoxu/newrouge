@@ -310,6 +310,35 @@ class Chapter5SemanticReconciliationTests(unittest.TestCase):
                 else:
                     self.assertIn("conflict_with_adr", statuses)
 
+    def test_duplicate_authority_reviews_are_order_independent(self) -> None:
+        for variant in ("conflict", "out_of_scope", "different_reason", "identical"):
+            for reverse in (False, True):
+                with self.subTest(variant=variant, reverse=reverse), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    _, _, ledger, _ = self._compile_snapshot(root, statement="U1 route choice is irreversible.")
+                    semantics = self._write_semantics(root, ledger, include=True)
+                    self._write_task(root, semantic_refs=["INV-U1"], acceptance=["Route remains locked. Refs: Game.Core.Tests/RouteTests.cs"])
+                    payload = self._review_decisions(root)
+                    original = dict(payload["authority_decisions"][0])
+                    duplicate = dict(original)
+                    if variant in ("conflict", "out_of_scope"):
+                        duplicate["status"] = variant
+                    elif variant == "different_reason":
+                        duplicate["rationale"] = "An incompatible replacement interpretation."
+                    pair = [original, duplicate]
+                    payload["authority_decisions"] = (list(reversed(pair)) if reverse else pair) + payload["authority_decisions"][1:]
+                    path = root / "decisions.json"
+                    write_json(path, payload)
+                    reconciliation, gate = ch5.reconcile(
+                        root, task_id="1", snapshot_path=root / ch5.DEFAULT_EXTRACTION_SNAPSHOT,
+                        semantics_path=semantics, decisions_path=path,
+                        out_path=ch5.reconciliation_path_for_task(root, "1"),
+                        readiness_path=ch5.readiness_path_for_task(root, "1"),
+                    )
+                    self.assertEqual(variant == "identical", gate["closure_allowed"])
+                    if variant != "identical":
+                        self.assertTrue(any(row.get("reason_code") == "conflicting_authority_decisions" for row in reconciliation["findings"]))
+
     def test_invented_chapter3_behavior_and_acceptance_scope_creep_block_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
