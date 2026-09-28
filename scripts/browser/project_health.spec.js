@@ -115,6 +115,66 @@ test.describe('project health Godot scene graph', () => {
     await expect(page.locator('.scene-composition-toolbar')).toBeHidden();
   });
 
+  test('opens separate GDD version and MVG scope panels from the scene view switcher', async ({ page }) => {
+    await page.route('**/api/knowledge/mvg-overview', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        revision: 'main-revision', topology_fresh: true,
+        versions: [{ id: 'gdd@hash', gdd_path: 'docs/gdd/test.md', gdd_sha256: 'a'.repeat(64), mapping: 'traced', tasks: [], references: {}, scenes: [], scene_candidates: [{ path: 'Game.Godot/Scenes/Candidate.tscn', classification: 'unreachable-candidate', nodes: [], resources: [], evidence_sources: ['Tests.Godot/tests/Integration/test_candidate.gd'] }] }],
+        manifests: [{ path: 'docs/testing/mvg/test.json', mvg_id: 'test-scope', sha256: 'sha256:test', coverage: { mode: 'pilot', blocking_task_ids: [] }, evidence: { status: 'not_verified' }, flows: [], tests: [] }]
+      })
+    }));
+    await page.goto(base() + '/knowledge/scenes');
+    await expect(page.locator('#mvg-versions')).toBeHidden();
+    await page.getByRole('button', { name: 'GDD versions and MVG' }).click();
+    await expect(page.locator('#scene-graph')).toBeHidden();
+    await expect(page.locator('#mvg-versions')).toBeVisible();
+    await expect(page.locator('#gdd-version-panel')).toContainText('docs/gdd/test.md');
+    await expect(page.locator('#gdd-version-panel')).toContainText('Candidate scenes (1)');
+    await expect(page.locator('#gdd-version-panel')).toContainText('Game.Godot/Scenes/Candidate.tscn');
+    await expect(page.locator('#mvg-scope-panel')).toContainText('test-scope');
+    await expect(page.locator('#mvg-scope-help-toggle')).toBeVisible();
+    await expect(page.locator('#mvg-scope-help')).toBeHidden();
+    await page.locator('#mvg-scope-help-toggle').click();
+    await expect(page.locator('#mvg-scope-help')).toBeVisible();
+    await expect(page.locator('#mvg-scope-help')).toContainText('累计的 MVG');
+    await page.locator('#mvg-scope-help-toggle').click();
+    await expect(page.locator('#mvg-scope-help')).toBeHidden();
+    await page.getByRole('button', { name: 'Scene route tree' }).click();
+    await expect(page.locator('#mvg-versions')).toBeHidden();
+  });
+
+  test('runs selected MVG scope from the main revision shown on the page', async ({ page }) => {
+    await page.route('**/api/knowledge/mvg-overview', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({revision: 'a'.repeat(40), topology_fresh: true, versions: [], manifests: [
+        {path: 'docs/testing/mvg/m1-critical.json', mvg_id: 'm1-critical', sha256: 'sha256:test', coverage: {mode: 'critical', blocking_task_ids: []}, evidence: {status: 'not_verified'}, flows: [], tests: []},
+        {path: 'docs/testing/mvg/reward-pilot.json', mvg_id: 'reward-pilot', sha256: 'sha256:pilot', coverage: {mode: 'pilot', blocking_task_ids: []}, evidence: {status: 'not_verified'}, flows: [], tests: []},
+        {path: 'docs/testing/mvg/m1-full.json', mvg_id: 'm1-full', sha256: 'sha256:full', coverage: {mode: 'full', blocking_task_ids: []}, evidence: {status: 'not_verified'}, flows: [], tests: []}
+      ]})
+    }));
+    await page.route('**/api/knowledge/session', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({token: 'test-token'})
+    }));
+    let requestBody;
+    await page.route('**/api/knowledge/mvg-run', async route => {
+      requestBody = route.request().postDataJSON();
+      await route.fulfill({status: 404, contentType: 'application/json', body: JSON.stringify({reason: 'Not found'})});
+    });
+    await page.goto(base() + '/knowledge/scenes');
+    await page.getByRole('button', {name: 'GDD versions and MVG'}).click();
+    await expect(page.locator('#mvg-run')).toHaveText('Run m1-critical on main');
+    await page.locator('#mvg-manifest-select').selectOption('docs/testing/mvg/reward-pilot.json');
+    await expect(page.locator('#mvg-run')).toHaveText('Run reward-pilot on main');
+    await page.locator('#mvg-run').click();
+    await expect(page.locator('#mvg-status')).toContainText('reward-pilot cannot start');
+    await expect(page.locator('#mvg-run')).toBeEnabled();
+    expect(requestBody).toEqual({revision: 'a'.repeat(40), manifest: 'docs/testing/mvg/reward-pilot.json'});
+    await page.locator('#mvg-manifest-select').selectOption('docs/testing/mvg/m1-full.json');
+    await expect(page.locator('#mvg-run')).toHaveText('Run m1-full on main');
+  });
+
   test('shows the full route-tree closure by default and adds outside scenes only on request', async ({ page }) => {
     await page.route('**/api/knowledge/scene-graph', route => route.fulfill({
       status: 200,
@@ -345,5 +405,33 @@ test.describe('project health semantic topology', () => {
     const orphan = page.locator('details[data-topology-kind="requirement"][data-topology-id="FR-ORPHAN"]');
     await expect(orphan).toBeVisible();
     await expect(page.locator('details[data-topology-kind="capability"]')).toHaveCount(0);
+  });
+
+  test('shows Chinese state labels and filters normal nodes with contextual help', async ({ page }) => {
+    await page.route('**/api/knowledge/topology?mode=main', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        available: true,
+        fresh: true,
+        identity: { kind: 'main', revision: 'main-revision' },
+        status: 'fresh',
+        nodes: {
+          requirements: [{ requirement_id: 'FR-NORMAL', topology_states: [], sink_resolved: true }],
+          capabilities: [{ capability_id: 'CAP-NORMAL' }]
+        },
+        edges: [],
+        summary: {},
+        problems: []
+      })
+    }));
+
+    await page.goto(base() + '/knowledge/topology?mode=main');
+    const state = page.locator('#filter-state');
+    await expect(state.locator('option')).toHaveText(['全部', '正常', '孤立', '未解决', '过期']);
+    await state.selectOption('normal');
+    await expect(page.locator('#filter-state-help')).toHaveText('正常：拓扑新鲜，且节点没有孤立、未解决或过期标记。');
+    await expect(page.locator('details[data-topology-id="FR-NORMAL"]')).toBeVisible();
+    await expect(page.locator('details[data-topology-id="CAP-NORMAL"]')).toBeVisible();
   });
 });

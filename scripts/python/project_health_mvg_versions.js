@@ -10,10 +10,17 @@
     parent.append(group);
   };
   let overview;
-  function render() {
+  let runInProgress = false;
+  const selectedManifest = () => overview?.manifests.find(row => row.path === get('mvg-manifest-select').value);
+  function updateRunButton() {
+    const manifest = selectedManifest();
+    const button = get('mvg-run');
+    button.textContent = manifest ? `Run ${manifest.mvg_id} on main` : 'Run selected MVG on main';
+    button.disabled = runInProgress || !manifest;
+  }
+  function renderVersion() {
     const version = overview.versions.find(row => row.id === get('mvg-version-select').value);
-    const manifest = overview.manifests.find(row => row.path === get('mvg-manifest-select').value);
-    const details = get('mvg-version-detail'); const flows = get('mvg-flow-detail'); details.replaceChildren(); flows.replaceChildren();
+    const details = get('mvg-version-detail'); details.replaceChildren();
     if (version) {
       const heading = item('h3', version.gdd_path, details); heading.title = version.id;
       item('p', `GDD content SHA-256: ${version.gdd_sha256} · Chapter 3 trace: ${version.mapping} · main revision: ${overview.revision}`, details);
@@ -21,16 +28,29 @@
       if (version.mapping !== 'traced') item('p', 'Registered GDD candidate. Chapter 3 consumption and downstream ownership are not established in the published main topology.', details);
       list('Taskmaster primary IDs', version.tasks.map(task => `${task.id} · ${task.status || 'unknown'} · ${task.title || ''}`), details);
       for (const [key, label] of [['overlays', 'Overlay references'], ['contracts', 'Contract references'], ['adrs', 'ADR references']]) list(label, version.references[key] || [], details, key !== 'adrs');
-      const scenes = document.createElement('details'); item('summary', `Statically attached scenes (${version.scenes.length})`, scenes);
-      for (const scene of version.scenes) {
+      const renderScene = (scene, parent, candidate) => {
         const row = document.createElement('details'); item('summary', `${scene.path} · ${scene.classification || 'unknown'}`, row);
-        item('p', 'Declared task association and verified static script attachment; this does not prove a runtime route.', row);
+        item('p', candidate ? 'Candidate association from a task test reference; this does not prove static attachment or runtime reachability.' : 'Declared task association and verified static script attachment; this does not prove a runtime route.', row);
+        if (candidate && scene.evidence_sources?.length) list('Evidence sources', scene.evidence_sources, row, true);
         const open = item('button', 'Open scene details', row); open.type = 'button';
         open.addEventListener('click', () => { if (window.openScenePreview) window.openScenePreview(scene.path); });
-        list('Nodes', scene.nodes, row); list('Node resources', scene.resources, row, true); scenes.append(row);
+        list('Nodes', scene.nodes, row); list('Node resources', scene.resources, row, true);
+        parent.append(row);
+      };
+      const scenes = document.createElement('details'); item('summary', `Verified static attachments (${version.scenes.length})`, scenes);
+      for (const scene of version.scenes) {
+        renderScene(scene, scenes, false);
       }
       details.append(scenes);
+      const candidates = document.createElement('details'); item('summary', `Candidate scenes (${(version.scene_candidates || []).length})`, candidates);
+      for (const scene of (version.scene_candidates || [])) renderScene(scene, candidates, true);
+      details.append(candidates);
     }
+  }
+  function renderManifest() {
+    const manifest = selectedManifest();
+    updateRunButton();
+    const flows = get('mvg-flow-detail'); flows.replaceChildren();
     if (!manifest) { item('p', 'No MVG manifest in the scanned main snapshot.', flows); return; }
     const coverage = manifest.coverage || {};
     item('p', `${manifest.mvg_id} · ${coverage.mode || 'unknown'} · ${manifest.evidence.status} · blocking tasks: ${(coverage.blocking_task_ids || []).join(', ') || 'none'}`, flows);
@@ -63,11 +83,60 @@
       for (const row of rows) { const option = item('option', row[label] + (value === 'id' ? ' @' + row.gdd_sha256.slice(0, 12) : ''), selector); option.value = row[value]; }
       if (rows.some(row => row[value] === previous)) selector.value = previous;
     }
-    get('mvg-status').textContent = `${payload.versions.length} registered GDD candidates · ${payload.versions.filter(row => row.mapping === 'traced').length} traced · ${payload.manifests.length} cumulative MVG manifests · ${payload.topology_fresh ? 'fresh topology' : 'topology unavailable or stale'}. Historical GDD revisions require published provenance.`;
-    render();
+    get('gdd-version-status').textContent = `${payload.versions.length} registered GDD candidates · ${payload.versions.filter(row => row.mapping === 'traced').length} traced · ${payload.topology_fresh ? 'fresh topology' : 'topology unavailable or stale'}. Historical GDD revisions require published provenance.`;
+    get('mvg-status').textContent = `${payload.manifests.length} cumulative MVG manifests · main revision ${payload.revision}.`;
+    renderVersion();
+    renderManifest();
   }
-  get('mvg-version-select').addEventListener('change', render);
-  get('mvg-manifest-select').addEventListener('change', render);
+  get('mvg-version-select').addEventListener('change', renderVersion);
+  get('mvg-manifest-select').addEventListener('change', renderManifest);
+  get('mvg-scope-help-toggle').addEventListener('click', () => {
+    const button = get('mvg-scope-help-toggle');
+    const help = get('mvg-scope-help');
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.setAttribute('aria-label', expanded ? 'Show cumulative MVG scope help' : 'Hide cumulative MVG scope help');
+    help.hidden = expanded;
+  });
   get('mvg-refresh').addEventListener('click', () => load().catch(error => { get('mvg-status').textContent = error.message; }));
+  get('mvg-run').addEventListener('click', async () => {
+    const manifest = selectedManifest();
+    if (!manifest || runInProgress) return;
+    const button = get('mvg-run');
+    runInProgress = true;
+    button.disabled = true;
+    get('mvg-manifest-select').disabled = true;
+    get('mvg-status').textContent = `Running ${manifest.mvg_id} against the current main revision...`;
+    try {
+      const sessionResponse = await fetch('/api/knowledge/session', {cache: 'no-store'});
+      if (!sessionResponse.ok) throw new Error('Unable to start a verified session');
+      const session = await sessionResponse.json();
+      const response = await fetch('/api/knowledge/mvg-run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Project-Health-Token': session.token},
+        body: JSON.stringify({revision: overview.revision, manifest: manifest.path})
+      });
+      const result = await response.json();
+      if (response.status === 404) {
+        get('mvg-status').textContent = `${manifest.mvg_id} cannot start: the Project Health service is running an older API. Restart the local service and reload this page.`;
+        return;
+      }
+      const outcome = result.status || 'failed';
+      const location = result.summary ? ` Summary: ${result.summary}` : '';
+      const message = `${manifest.mvg_id} ${outcome}.${result.reason ? ' ' + result.reason : ''}${location}`;
+      if (response.ok) {
+        await load();
+        get('mvg-status').textContent += ` ${message}`;
+      } else {
+        get('mvg-status').textContent = message;
+      }
+    } catch (error) {
+      get('mvg-status').textContent = `${manifest.mvg_id} failed: ${error.message}`;
+    } finally {
+      runInProgress = false;
+      get('mvg-manifest-select').disabled = false;
+      updateRunButton();
+    }
+  });
   load().catch(error => { get('mvg-status').textContent = error.message; });
 })();
