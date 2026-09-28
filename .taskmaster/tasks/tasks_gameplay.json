@@ -74,7 +74,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
     ]
   },
   {
@@ -151,7 +151,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
     ]
   },
   {
@@ -225,7 +225,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -308,7 +308,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
     ]
   },
   {
@@ -386,7 +386,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -490,7 +490,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -573,7 +574,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
     ]
   },
   {
@@ -680,7 +681,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -759,7 +760,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
     ]
   },
   {
@@ -831,7 +832,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -945,7 +946,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -1046,7 +1047,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -1123,7 +1124,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-FOUNDATION"
+      "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
     ]
   },
   {
@@ -1213,7 +1214,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -1292,7 +1294,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY"
     ]
   },
   {
@@ -1367,7 +1369,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "CAP-WARRIOR-PLAYABLE-IDENTITY"
     ]
   },
   {
@@ -1459,7 +1462,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -1578,7 +1581,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -1670,7 +1673,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -1749,7 +1753,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -1836,7 +1841,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -1917,7 +1922,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -1989,7 +1994,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUN-FLOW"
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -2065,7 +2070,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-WARRIOR-PLAYABLE-IDENTITY"
     ]
   },
   {
@@ -2143,7 +2149,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+      "CAP-WARRIOR-PLAYABLE-IDENTITY"
     ]
   },
   {
@@ -2228,7 +2235,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY"
     ]
   },
   {
@@ -2311,7 +2318,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -2389,7 +2397,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -2470,7 +2478,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -2550,7 +2558,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -2630,7 +2638,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -2704,7 +2712,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-PLAYER-CONTENT"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -2790,7 +2799,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -2874,7 +2883,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -2949,7 +2958,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -3029,7 +3039,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -3106,7 +3116,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -3187,7 +3197,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
     ]
   },
   {
@@ -3265,7 +3276,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -3335,7 +3346,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -3411,7 +3422,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -3487,7 +3498,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -3564,7 +3575,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -3654,7 +3665,9 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -3733,7 +3746,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -3818,7 +3832,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
     ]
   },
   {
@@ -3896,7 +3910,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -3971,7 +3985,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -4056,7 +4070,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -4131,7 +4145,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -4226,7 +4240,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -4301,7 +4316,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-COMBAT-CORE"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -4394,7 +4409,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
     ]
   },
   {
@@ -4484,7 +4499,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
     ]
   },
   {
@@ -4551,7 +4566,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
     ]
   },
   {
@@ -4632,7 +4647,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+      "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
     ]
   },
   {
@@ -4717,7 +4733,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
     ]
   },
   {
@@ -4786,7 +4802,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-QUALITY-GOVERNANCE"
+      "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
     ]
   },
   {
@@ -4865,7 +4881,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-RUN-ENTRY-AND-DIFFICULTY"
     ]
   },
   {
@@ -4941,7 +4958,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -5023,7 +5040,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -5104,7 +5122,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -5182,7 +5201,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -5268,7 +5287,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -5357,7 +5376,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -5431,7 +5450,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -5514,7 +5533,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -5592,7 +5612,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -5678,7 +5698,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-M1-PLAYABLE-LOOP"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-SHOP-REST-AND-EVENT-SERVICES"
     ]
   },
   {
@@ -5760,7 +5781,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -5843,7 +5864,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
     ]
   },
   {
@@ -5929,7 +5951,9 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -6011,7 +6035,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -6093,7 +6117,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
     ]
   },
   {
@@ -6176,7 +6201,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -6256,7 +6281,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -6341,7 +6366,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -6426,7 +6451,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -6504,7 +6529,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -6584,7 +6609,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -6662,7 +6687,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -6744,7 +6769,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
     ]
   },
   {
@@ -6825,7 +6850,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -6909,7 +6934,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -6989,7 +7014,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -7069,7 +7094,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -7150,7 +7175,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -7232,7 +7258,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -7317,7 +7343,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -7399,7 +7425,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -7480,7 +7506,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -7564,7 +7590,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-WARRIOR-PLAYABLE-IDENTITY"
     ]
   },
   {
@@ -7649,7 +7676,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+      "CAP-WARRIOR-PLAYABLE-IDENTITY"
     ]
   },
   {
@@ -7735,7 +7763,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
     ]
   },
   {
@@ -7822,7 +7850,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -7903,7 +7932,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -7982,7 +8011,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -8060,7 +8089,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-RUNTIME-INTEGRATION"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -8139,7 +8169,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -8219,7 +8249,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -8298,7 +8328,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -8380,7 +8410,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -8454,7 +8484,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -8530,7 +8560,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -8606,7 +8636,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -8754,7 +8785,9 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -8833,7 +8866,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-CLOSURE-STABILIZATION"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -9550,7 +9583,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
     ]
   },
   {
@@ -9638,7 +9672,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -9733,7 +9767,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
     ]
   },
   {
@@ -9826,7 +9860,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -9919,7 +9953,8 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
     ]
   },
   {
@@ -10008,7 +10043,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   },
   {
@@ -10105,7 +10140,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -10197,7 +10232,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-UI-WIRING"
+      "CAP-RUN-SUMMARY-AND-SETTLEMENT"
     ]
   },
   {
@@ -10279,7 +10314,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-LATE-RUNTIME-EXTENSIONS"
+      "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
     ]
   },
   {
@@ -10358,7 +10393,7 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-LATE-RUNTIME-EXTENSIONS"
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
     ]
   },
   {
@@ -10434,7 +10469,9 @@
     ],
     "complexity_score": 1,
     "capability_refs": [
-      "CAP-LATE-RUNTIME-EXTENSIONS"
+      "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS",
+      "CAP-REWARD-OFFERS-AND-ACQUISITION"
     ]
   }
 ]

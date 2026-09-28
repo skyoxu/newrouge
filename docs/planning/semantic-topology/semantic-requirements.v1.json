@@ -2214,14 +2214,16 @@
         "SB-A739308239F6CE1F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T1; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T1; no new task is authorized.",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ]
     },
     {
       "requirement_id": "NFR-T0002",
@@ -2231,14 +2233,16 @@
         "SB-2DF417A7ABD9B191"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T2; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T2; no new task is authorized.",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ]
     },
     {
       "requirement_id": "FR-T0003",
@@ -2248,14 +2252,16 @@
         "SB-EC6114AB6900B349"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T3; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T3; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0004",
@@ -2265,14 +2271,16 @@
         "SB-AC12AFA307C0E63E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T4; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T4; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ]
     },
     {
       "requirement_id": "FR-T0005",
@@ -2282,14 +2290,16 @@
         "SB-3DB9A861ED4623AC"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T5; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T5; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0006",
@@ -2299,14 +2309,17 @@
         "SB-165C57EE5A470BDB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T6; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T6; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0007",
@@ -2316,14 +2329,16 @@
         "SB-BFB2BD2673992751"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T7; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T7; no new task is authorized.",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ]
     },
     {
       "requirement_id": "FR-T0008",
@@ -2333,14 +2348,16 @@
         "SB-CFA3ABEC8A481562"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T8; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T8; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0009",
@@ -2350,14 +2367,16 @@
         "SB-07FC3AF19BCF2AC1"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T9; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T9; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ]
     },
     {
       "requirement_id": "FR-T0010",
@@ -2367,14 +2386,16 @@
         "SB-DBF2D1F548A8985C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T10; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T10; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0011",
@@ -2384,14 +2405,16 @@
         "SB-FF4C7ECB5880665E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T11; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T11; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0012",
@@ -2401,14 +2424,16 @@
         "SB-2C2EC2CA6787DB1E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T12; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T12; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0013",
@@ -2418,14 +2443,16 @@
         "SB-B182A7A92EEC9EAE"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T13; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T13; no new task is authorized.",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ]
     },
     {
       "requirement_id": "FR-T0014",
@@ -2435,14 +2462,17 @@
         "SB-1385929D97DD32E5"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T14; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T14; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0015",
@@ -2452,14 +2482,16 @@
         "SB-0A23D6E4F328CD8D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T15; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T15; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY"
+      ]
     },
     {
       "requirement_id": "FR-T0016",
@@ -2469,14 +2501,17 @@
         "SB-68AE7AD423A8A19F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T16; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T16; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ]
     },
     {
       "requirement_id": "FR-T0017",
@@ -2486,14 +2521,16 @@
         "SB-5DDA2E893B8464F5"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T17; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T17; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0018",
@@ -2503,14 +2540,16 @@
         "SB-4AF773E106A558A8"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T18; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T18; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0019",
@@ -2520,14 +2559,17 @@
         "SB-4B077C6A31574767"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T19; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T19; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0020",
@@ -2537,14 +2579,17 @@
         "SB-EF04DB581DBAD50E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T20; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T20; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0021",
@@ -2554,14 +2599,16 @@
         "SB-0337BBC5708C72A5"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T21; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T21; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0022",
@@ -2571,14 +2618,16 @@
         "SB-80A9FDA6D4370EA8"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T22; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T22; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0023",
@@ -2588,14 +2637,16 @@
         "SB-DEDCCDF5C48E624B"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T23; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T23; no new task is authorized.",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0024",
@@ -2605,14 +2656,17 @@
         "SB-7B8D3CF3D8624457"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T24; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T24; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ]
     },
     {
       "requirement_id": "FR-T0025",
@@ -2622,14 +2676,17 @@
         "SB-082022C4246FA412"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T25; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T25; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ]
     },
     {
       "requirement_id": "FR-T0026",
@@ -2639,14 +2696,16 @@
         "SB-1E3115E0BC64973E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T26; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T26; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY"
+      ]
     },
     {
       "requirement_id": "FR-T0027",
@@ -2656,14 +2715,17 @@
         "SB-E09CFE18978D204D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T27; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T27; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0028",
@@ -2673,14 +2735,16 @@
         "SB-FE5B460730D4C577"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T28; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T28; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0029",
@@ -2690,14 +2754,16 @@
         "SB-D026E88E4FBE9CA9"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T29; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T29; no new task is authorized.",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0030",
@@ -2707,14 +2773,16 @@
         "SB-7691A7D8512F1A5A"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T30; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T30; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0031",
@@ -2724,14 +2792,16 @@
         "SB-00E809FA8BCB8DCC"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T31; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T31; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0032",
@@ -2741,14 +2811,17 @@
         "SB-8B124E26C7A38064"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T32; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T32; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0033",
@@ -2758,14 +2831,16 @@
         "SB-B55582DE85541354"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T33; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T33; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0034",
@@ -2775,14 +2850,16 @@
         "SB-F0476355E95454A9"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T34; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T34; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0035",
@@ -2792,14 +2869,17 @@
         "SB-5F734760212F1864"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T35; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T35; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0036",
@@ -2809,14 +2889,16 @@
         "SB-711D9144C6811D5C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T36; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T36; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0037",
@@ -2826,14 +2908,16 @@
         "SB-258B03AEA4053338"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T37; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T37; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "NFR-T0038",
@@ -2843,14 +2927,17 @@
         "SB-137FA3441A6D0A79"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T38; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T38; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
+      ]
     },
     {
       "requirement_id": "FR-T0039",
@@ -2860,14 +2947,16 @@
         "SB-0E622601BD73BD45"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T39; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T39; no new task is authorized.",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0040",
@@ -2877,14 +2966,16 @@
         "SB-182B552B5EF3743A"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T40; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T40; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0041",
@@ -2894,14 +2985,16 @@
         "SB-7053C4E774AEC987"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T41; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T41; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0042",
@@ -2911,14 +3004,16 @@
         "SB-E43968B8D6905C52"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T42; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T42; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0043",
@@ -2928,14 +3023,16 @@
         "SB-D7623E91299B386F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T43; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T43; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "NFR-T0044",
@@ -2945,14 +3042,18 @@
         "SB-78B6DA56FB5D5FCB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T44; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T44; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0045",
@@ -2962,14 +3063,17 @@
         "SB-E9971A1B8EAC4CE3"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T45; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T45; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "FR-T0046",
@@ -2979,14 +3083,16 @@
         "SB-BEE49D7C3F666FAB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T46; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T46; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ]
     },
     {
       "requirement_id": "FR-T0047",
@@ -2996,14 +3102,16 @@
         "SB-201C8D7EF08605DA"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T47; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T47; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0048",
@@ -3013,14 +3121,16 @@
         "SB-87E9B1775A9D8412"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T48; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T48; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "NFR-T0049",
@@ -3030,14 +3140,16 @@
         "SB-A91E2F2877685327"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T49; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T49; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0050",
@@ -3047,14 +3159,16 @@
         "SB-A41D3707D104D367"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T50; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T50; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0051",
@@ -3064,14 +3178,17 @@
         "SB-A72396B5890D6AAE"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T51; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T51; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0052",
@@ -3081,14 +3198,16 @@
         "SB-20616343E85A985D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T52; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T52; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "NFR-T0053",
@@ -3098,14 +3217,16 @@
         "SB-B01B9D6632283233"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T53; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T53; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ]
     },
     {
       "requirement_id": "NFR-T0054",
@@ -3115,14 +3236,16 @@
         "SB-B721E7686393B9C3"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T54; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T54; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ]
     },
     {
       "requirement_id": "NFR-T0055",
@@ -3132,14 +3255,16 @@
         "SB-FFD0DD100308B05F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T55; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T55; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ]
     },
     {
       "requirement_id": "NFR-T0056",
@@ -3149,14 +3274,17 @@
         "SB-E388D29AB6F07763"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T56; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T56; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
+      ]
     },
     {
       "requirement_id": "NFR-T0057",
@@ -3166,14 +3294,16 @@
         "SB-997D5EA66ACC8285"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T57; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T57; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ]
     },
     {
       "requirement_id": "NFR-T0058",
@@ -3183,14 +3313,16 @@
         "SB-BDF33CB6E70A8715"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T58; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T58; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "FR-T0059",
@@ -3200,14 +3332,17 @@
         "SB-ABE65D1BA3FB35FC"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T59; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T59; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-RUN-ENTRY-AND-DIFFICULTY"
+      ]
     },
     {
       "requirement_id": "FR-T0060",
@@ -3217,14 +3352,16 @@
         "SB-5653A88575E39484"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T60; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T60; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0061",
@@ -3234,14 +3371,17 @@
         "SB-DCC88CE9B37E48BB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T61; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T61; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0062",
@@ -3251,14 +3391,17 @@
         "SB-6B2B743EC4708115"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T62; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T62; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0063",
@@ -3268,14 +3411,16 @@
         "SB-A72BA1C351AFAB4C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T63; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T63; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0064",
@@ -3285,14 +3430,16 @@
         "SB-68B6388CB10B37DB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T64; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T64; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "NFR-T0065",
@@ -3302,14 +3449,16 @@
         "SB-22C7B24078238837"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T65; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T65; no new task is authorized.",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0066",
@@ -3319,14 +3468,16 @@
         "SB-8C633D0DB21CF923"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T66; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T66; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "FR-T0067",
@@ -3336,14 +3487,17 @@
         "SB-C1457DFAE27D564C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T67; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T67; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "NFR-T0068",
@@ -3353,14 +3507,16 @@
         "SB-D462847613F3488C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T68; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T68; no new task is authorized.",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0069",
@@ -3370,14 +3526,17 @@
         "SB-7FF8B664F5D8F80F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T69; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T69; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ]
     },
     {
       "requirement_id": "FR-T0070",
@@ -3387,14 +3546,16 @@
         "SB-B9ECF5E2E2680CEE"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T70; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T70; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0071",
@@ -3404,14 +3565,17 @@
         "SB-CA69608C4360D4BD"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T71; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T71; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "FR-T0072",
@@ -3421,14 +3585,18 @@
         "SB-AAB09499B84EB82E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T72; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T72; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0073",
@@ -3438,14 +3606,16 @@
         "SB-239CB2D1B98D77CE"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T73; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T73; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0074",
@@ -3455,14 +3625,17 @@
         "SB-A3C84192261E5202"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T74; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T74; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ]
     },
     {
       "requirement_id": "FR-T0075",
@@ -3472,14 +3645,16 @@
         "SB-C380AD9DE8D8D938"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T75; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T75; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0076",
@@ -3489,14 +3664,16 @@
         "SB-821B7F6B541E124E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T76; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T76; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0077",
@@ -3506,14 +3683,16 @@
         "SB-29CA3F69FF72600F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T77; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T77; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0078",
@@ -3523,14 +3702,16 @@
         "SB-A59B7D05F16FCB59"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T78; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T78; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0079",
@@ -3540,14 +3721,16 @@
         "SB-A01CEDF96F2FFC18"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T79; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T79; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0080",
@@ -3557,14 +3740,16 @@
         "SB-EDCE58FB1E91E27F"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T80; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T80; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0081",
@@ -3574,14 +3759,16 @@
         "SB-7CC65E2B8E79C020"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T81; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T81; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0082",
@@ -3591,14 +3778,16 @@
         "SB-68F1067D9EAEBAE1"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T82; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T82; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ]
     },
     {
       "requirement_id": "FR-T0083",
@@ -3608,14 +3797,16 @@
         "SB-4DF06CD9EA5C5BB8"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T83; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T83; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0084",
@@ -3625,14 +3816,16 @@
         "SB-16AB94B297199F53"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T84; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T84; no new task is authorized.",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0085",
@@ -3642,14 +3835,16 @@
         "SB-518A3E8B0DC45913"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T85; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T85; no new task is authorized.",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0086",
@@ -3659,14 +3854,16 @@
         "SB-3A1FDDB3495F6543"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T86; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T86; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0087",
@@ -3676,14 +3873,17 @@
         "SB-022D396BBE512189"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T87; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T87; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0088",
@@ -3693,14 +3893,16 @@
         "SB-1339B8A1AC8661AF"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T88; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T88; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0089",
@@ -3710,14 +3912,16 @@
         "SB-5575E96AA72DB926"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T89; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T89; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0090",
@@ -3727,14 +3931,16 @@
         "SB-E6FA0956079D2AD2"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T90; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T90; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0091",
@@ -3744,14 +3950,16 @@
         "SB-A249B199D4096C7A"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T91; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T91; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "NFR-T0092",
@@ -3761,14 +3969,17 @@
         "SB-4400F005D8789215"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T92; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T92; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ]
     },
     {
       "requirement_id": "NFR-T0093",
@@ -3778,14 +3989,16 @@
         "SB-E62B35F13ED6B323"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T93; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T93; no new task is authorized.",
+      "capability_ids": [
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
+      ]
     },
     {
       "requirement_id": "NFR-T0094",
@@ -3795,14 +4008,17 @@
         "SB-CB2C40DCB009207C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T94; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T94; no new task is authorized.",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
+      ]
     },
     {
       "requirement_id": "FR-T0095",
@@ -3812,14 +4028,17 @@
         "SB-55B6B2843EBC77CB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T95; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T95; no new task is authorized.",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ]
     },
     {
       "requirement_id": "FR-T0096",
@@ -3829,14 +4048,17 @@
         "SB-CA8F279E20CD2169"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T96; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T96; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ]
     },
     {
       "requirement_id": "FR-T0097",
@@ -3846,14 +4068,16 @@
         "SB-729ED623749B8245"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T97; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T97; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ]
     },
     {
       "requirement_id": "FR-T0098",
@@ -3863,14 +4087,17 @@
         "SB-548E419FE18924CF"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T98; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T98; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0099",
@@ -3880,14 +4107,16 @@
         "SB-32259B0DF7228013"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T99; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T99; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0100",
@@ -3897,14 +4126,16 @@
         "SB-8A78B66E95B4646C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T100; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T100; no new task is authorized.",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0101",
@@ -3914,14 +4145,17 @@
         "SB-A001451A6A75FC7D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T101; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T101; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "NFR-T0102",
@@ -3931,14 +4165,16 @@
         "SB-4C9668055FCA754A"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T102; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T102; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "NFR-T0103",
@@ -3948,14 +4184,16 @@
         "SB-CFCC46C3064E07AB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T103; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T103; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "NFR-T0104",
@@ -3965,14 +4203,16 @@
         "SB-E42411B79551E5DA"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T104; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T104; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "FR-T0105",
@@ -3982,14 +4222,16 @@
         "SB-8AF3E757E0B52540"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T105; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T105; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0106",
@@ -3999,14 +4241,16 @@
         "SB-C607EE2A35DA9765"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T106; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T106; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0107",
@@ -4016,14 +4260,16 @@
         "SB-DD4DA36C47ADC05D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T107; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T107; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "NFR-T0108",
@@ -4033,14 +4279,16 @@
         "SB-8740C24A622A18C4"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T108; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T108; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "NFR-T0109",
@@ -4050,14 +4298,16 @@
         "SB-A33AF6BD4E6A46BB"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T109; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T109; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "FR-T0110",
@@ -4067,14 +4317,16 @@
         "SB-9C6EBBA79953B6A6"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T110; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T110; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0111",
@@ -4084,14 +4336,16 @@
         "SB-302805E890D89F02"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T111; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T111; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "NFR-T0112",
@@ -4101,14 +4355,16 @@
         "SB-77F8A06C63F6F8D2"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "architecture",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T112; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T112; no new task is authorized.",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ]
     },
     {
       "requirement_id": "FR-T0113",
@@ -4118,14 +4374,16 @@
         "SB-EC731378EC7FEEB3"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T113; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T113; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "FR-T0114",
@@ -4135,14 +4393,17 @@
         "SB-9CD0C1F2F178CC71"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T114; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T114; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0115",
@@ -4152,14 +4413,18 @@
         "SB-F99AF4BB8BF68BB1"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T115; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T115; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0116",
@@ -4169,14 +4434,16 @@
         "SB-57DEEE258B6DFF2D"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T116; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T116; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0123",
@@ -4186,14 +4453,17 @@
         "SB-FBFBD0F7D51094E9"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T123; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T123; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ]
     },
     {
       "requirement_id": "FR-T0124",
@@ -4203,14 +4473,16 @@
         "SB-50509FEC31D23253"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T124; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T124; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0125",
@@ -4220,14 +4492,16 @@
         "SB-9C58CAF4327CBE09"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T125; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T125; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ]
     },
     {
       "requirement_id": "FR-T0126",
@@ -4237,14 +4511,16 @@
         "SB-BD44913D7D4A7184"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T126; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T126; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0127",
@@ -4254,14 +4530,17 @@
         "SB-94162ED6E6DA4A06"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T127; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T127; no new task is authorized.",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0128",
@@ -4271,14 +4550,16 @@
         "SB-6A3094DFC7D9CF72"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T128; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T128; no new task is authorized.",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     },
     {
       "requirement_id": "FR-T0129",
@@ -4288,14 +4569,16 @@
         "SB-C78ED07D549C231C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T129; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T129; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0130",
@@ -4305,14 +4588,16 @@
         "SB-6872319035BC6D65"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P2",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T130; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T130; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ]
     },
     {
       "requirement_id": "FR-T0131",
@@ -4322,14 +4607,16 @@
         "SB-DBDE6A5DA932906C"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T131; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T131; no new task is authorized.",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ]
     },
     {
       "requirement_id": "FR-T0132",
@@ -4339,14 +4626,16 @@
         "SB-4D1BA545FEA9FD1E"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T132; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T132; no new task is authorized.",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ]
     },
     {
       "requirement_id": "FR-T0133",
@@ -4356,14 +4645,18 @@
         "SB-4F6FDA7C39D500A9"
       ],
       "delivery_relevant": true,
-      "capability_ids": [],
       "sink_policy": "task_required",
       "status": "active",
       "priority": "P1",
       "owner_hint": "gameplay",
       "layer_hint": null,
       "non_task_sinks": [],
-      "rationale": "Existing frozen Taskmaster identity T133; no new task is authorized."
+      "rationale": "Existing frozen Taskmaster identity T133; no new task is authorized.",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ]
     }
   ]
 }

@@ -1,203 +1,298 @@
 {
   "schema_version": "newrouge.capabilities.v1",
-  "generated_at_utc": "2026-09-28T07:02:52.386156+00:00",
+  "generated_at_utc": "2026-09-28T08:12:15.957110+00:00",
   "source_revision": "source-set:68d145756705834e7b664fcc",
   "capabilities": [
     {
-      "capability_id": "CAP-FOUNDATION",
-      "title": "Project foundation",
-      "description": "Core project structure, contracts, services, persistence, and composition root.",
+      "capability_id": "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES",
+      "title": "Project composition and architectural boundaries",
+      "description": "Supporting infrastructure for the Godot/.NET project, shared event contracts, composition, and protected layer boundaries.",
       "requirement_ids": [
-        "FR-T0003",
-        "FR-T0004",
-        "FR-T0005",
-        "FR-T0006",
         "FR-T0007",
-        "FR-T0008",
-        "FR-T0009",
-        "FR-T0010",
-        "FR-T0011",
-        "FR-T0012",
         "FR-T0013",
         "NFR-T0001",
-        "NFR-T0002"
+        "NFR-T0002",
+        "NFR-T0092"
       ]
     },
     {
-      "capability_id": "CAP-RUN-FLOW",
-      "title": "Run entry and scene flow",
-      "description": "Run entry scenes, route surfaces, localization, and initial map flow.",
+      "capability_id": "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "title": "Deterministic outcome generation and locking",
+      "description": "Shared RNG state, offer provenance, immutable offers, and preservation across re-entry or resume.",
       "requirement_ids": [
-        "FR-T0014",
-        "FR-T0015",
-        "FR-T0016",
-        "FR-T0017",
-        "FR-T0018",
+        "FR-T0004",
+        "FR-T0009",
         "FR-T0019",
         "FR-T0020",
-        "FR-T0021",
-        "FR-T0022",
-        "FR-T0023"
+        "FR-T0046",
+        "FR-T0098",
+        "FR-T0114",
+        "FR-T0133",
+        "NFR-T0038",
+        "NFR-T0044"
       ]
     },
     {
-      "capability_id": "CAP-PLAYER-CONTENT",
-      "title": "Player content and progression",
-      "description": "Warrior content, difficulty, acts, relics, curses, and content pools.",
+      "capability_id": "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "title": "Card identity and deck lifecycle",
+      "description": "Card forms, instances, curse constraints, shared deck operations, and live pile state.",
       "requirement_ids": [
+        "FR-T0003",
+        "FR-T0008",
         "FR-T0024",
-        "FR-T0025",
-        "FR-T0026",
-        "FR-T0027",
-        "FR-T0028",
-        "FR-T0029",
-        "FR-T0030",
-        "FR-T0031",
-        "FR-T0032"
+        "FR-T0032",
+        "FR-T0033",
+        "FR-T0071",
+        "FR-T0072",
+        "FR-T0080",
+        "FR-T0081",
+        "FR-T0082",
+        "FR-T0095",
+        "FR-T0115"
       ]
     },
     {
-      "capability_id": "CAP-COMBAT-CORE",
-      "title": "Combat and deterministic runtime",
-      "description": "Deck operations, targeting, combat resolution, saves, and deterministic combat rules.",
+      "capability_id": "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "title": "Combat interaction and runtime orchestration",
+      "description": "Validated card play, turn sequencing, scene bindings, targeting, hooks, completion, and player feedback.",
       "requirement_ids": [
-        "FR-T0033",
+        "FR-T0006",
+        "FR-T0011",
+        "FR-T0018",
         "FR-T0034",
         "FR-T0035",
-        "FR-T0036",
-        "FR-T0037",
-        "FR-T0039",
-        "FR-T0040",
-        "FR-T0041",
-        "FR-T0042",
-        "FR-T0043",
-        "FR-T0045",
-        "FR-T0046",
-        "FR-T0047",
-        "FR-T0048",
-        "FR-T0050",
         "FR-T0051",
-        "FR-T0052",
-        "NFR-T0038",
-        "NFR-T0044",
+        "FR-T0064",
+        "FR-T0072",
+        "FR-T0073",
+        "FR-T0074",
+        "FR-T0077",
+        "FR-T0078",
+        "FR-T0079",
+        "FR-T0083",
+        "FR-T0101",
+        "FR-T0124",
+        "FR-T0125",
+        "FR-T0127",
         "NFR-T0049"
       ]
     },
     {
-      "capability_id": "CAP-QUALITY-GOVERNANCE",
-      "title": "Quality and governance",
-      "description": "Headless execution, quality gates, traceability, and semantic scope controls.",
+      "capability_id": "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+      "title": "Status, modifiers, and damage resolution",
+      "description": "Status contracts and lifecycle, deterministic triggers, fixed damage, AOE, multi-hit rules, and faithful visible results.",
       "requirement_ids": [
-        "NFR-T0053",
-        "NFR-T0054",
-        "NFR-T0055",
-        "NFR-T0056",
-        "NFR-T0057",
-        "NFR-T0058"
+        "FR-T0005",
+        "FR-T0006",
+        "FR-T0010",
+        "FR-T0025",
+        "FR-T0027",
+        "FR-T0047",
+        "FR-T0048",
+        "FR-T0075",
+        "FR-T0090",
+        "FR-T0096",
+        "FR-T0100",
+        "FR-T0101",
+        "FR-T0127"
       ]
     },
     {
-      "capability_id": "CAP-M1-PLAYABLE-LOOP",
-      "title": "M1 playable loop",
-      "description": "M1 route ownership, scene integration, feedback, accessibility, and recovery UX.",
+      "capability_id": "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION",
+      "title": "Enemy definitions, intent, and action execution",
+      "description": "Data-backed enemies, intent selection and preview, action resolution, no-repeat rules, and structured timed effects.",
       "requirement_ids": [
+        "FR-T0040",
+        "FR-T0041",
+        "FR-T0052",
+        "FR-T0076",
+        "FR-T0089",
+        "FR-T0105",
+        "FR-T0116",
+        "FR-T0126",
+        "FR-T0131"
+      ]
+    },
+    {
+      "capability_id": "CAP-WARRIOR-PLAYABLE-IDENTITY",
+      "title": "Warrior playable identity",
+      "description": "Warrior selection, starting cards, combat seeding, and Rage integration.",
+      "requirement_ids": [
+        "FR-T0016",
+        "FR-T0024",
+        "FR-T0025",
+        "FR-T0095",
+        "FR-T0096"
+      ]
+    },
+    {
+      "capability_id": "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "title": "Run entry and difficulty",
+      "description": "Main menu, selection flow, immutable difficulty, rule modifiers, and difficulty visibility.",
+      "requirement_ids": [
+        "FR-T0014",
+        "FR-T0015",
+        "FR-T0016",
+        "FR-T0026",
+        "FR-T0027",
+        "FR-T0045",
+        "FR-T0059"
+      ]
+    },
+    {
+      "capability_id": "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "title": "Act maps and route ownership",
+      "description": "Modular Act data, generated route graphs, legal node selection, run transitions, and owned entry/return paths.",
+      "requirement_ids": [
+        "FR-T0017",
+        "FR-T0028",
+        "FR-T0042",
+        "FR-T0043",
         "FR-T0059",
         "FR-T0060",
         "FR-T0061",
         "FR-T0062",
-        "FR-T0063",
-        "FR-T0064",
-        "FR-T0066",
         "FR-T0067",
         "FR-T0069",
+        "FR-T0070",
+        "FR-T0086",
+        "FR-T0087",
+        "FR-T0097",
+        "FR-T0115",
+        "FR-T0123"
+      ]
+    },
+    {
+      "capability_id": "CAP-REWARD-OFFERS-AND-ACQUISITION",
+      "title": "Reward offers and acquisition",
+      "description": "Contextual drop pools, three-choice offers, selection, confirmation, skipping, fallback, and reward-entry modification.",
+      "requirement_ids": [
+        "FR-T0019",
+        "FR-T0029",
+        "FR-T0035",
+        "FR-T0061",
+        "FR-T0084",
+        "FR-T0085",
+        "FR-T0114",
+        "FR-T0115",
+        "FR-T0128",
+        "FR-T0133"
+      ]
+    },
+    {
+      "capability_id": "CAP-SHOP-REST-AND-EVENT-SERVICES",
+      "title": "Shop, rest, and event services",
+      "description": "Noncombat node choices, costs, purchases, card services, healing, upgrades, removal, and player-visible results.",
+      "requirement_ids": [
+        "FR-T0020",
+        "FR-T0021",
+        "FR-T0022",
+        "FR-T0032",
+        "FR-T0062",
+        "FR-T0067",
+        "FR-T0069"
+      ]
+    },
+    {
+      "capability_id": "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS",
+      "title": "Relics and effectful combat participants",
+      "description": "Relic contracts and catalog, acquisition/equip/display, combat and run effects, powers, and potions.",
+      "requirement_ids": [
+        "FR-T0030",
+        "FR-T0031",
+        "FR-T0088",
+        "FR-T0099",
+        "FR-T0106",
+        "FR-T0110",
+        "FR-T0111",
+        "FR-T0129",
+        "FR-T0132",
+        "FR-T0133"
+      ]
+    },
+    {
+      "capability_id": "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+      "title": "Save integrity and Continue recovery",
+      "description": "Atomic saves, autosave boundaries, integrity/migration gates, blocked-state UX, and restored run surfaces.",
+      "requirement_ids": [
+        "FR-T0012",
+        "FR-T0014",
+        "FR-T0036",
+        "FR-T0037",
+        "FR-T0050",
+        "FR-T0051",
+        "FR-T0063",
+        "FR-T0087",
+        "FR-T0098",
+        "FR-T0123",
+        "NFR-T0044"
+      ]
+    },
+    {
+      "capability_id": "CAP-RUN-SUMMARY-AND-SETTLEMENT",
+      "title": "Run summary and settlement",
+      "description": "Stored-data presentation of outcome, difficulty, route progress, reward/relic results, and resume evidence.",
+      "requirement_ids": [
+        "FR-T0045",
+        "FR-T0066",
+        "FR-T0091",
+        "FR-T0107",
+        "FR-T0113",
+        "FR-T0130"
+      ]
+    },
+    {
+      "capability_id": "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION",
+      "title": "Localization and accessible interaction",
+      "description": "Translation infrastructure and content, rendered-text validation, focus cycles, and accessible input fallback.",
+      "requirement_ids": [
+        "FR-T0023",
+        "FR-T0039",
+        "FR-T0072",
+        "FR-T0074",
         "NFR-T0065",
         "NFR-T0068"
       ]
     },
     {
-      "capability_id": "CAP-RUNTIME-INTEGRATION",
-      "title": "Runtime integration",
-      "description": "Map graph, combat runtime wiring, data-driven enemies, statuses, relics, and settlement.",
+      "capability_id": "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+      "title": "Automated quality gates and verification",
+      "description": "Headless smoke execution, suite aggregation, coverage controls, audit validation, traceability, and boundary checks.",
       "requirement_ids": [
-        "FR-T0070",
-        "FR-T0071",
-        "FR-T0072",
-        "FR-T0073",
-        "FR-T0074",
-        "FR-T0075",
-        "FR-T0076",
-        "FR-T0077",
-        "FR-T0078",
-        "FR-T0079",
-        "FR-T0080",
-        "FR-T0081",
-        "FR-T0082",
-        "FR-T0083",
-        "FR-T0084",
-        "FR-T0085",
-        "FR-T0086",
-        "FR-T0087",
-        "FR-T0088",
-        "FR-T0089",
-        "FR-T0090",
-        "FR-T0091",
-        "FR-T0095",
-        "FR-T0096",
-        "FR-T0097",
-        "FR-T0098",
-        "FR-T0099",
-        "FR-T0100",
-        "FR-T0101",
+        "NFR-T0044",
+        "NFR-T0053",
+        "NFR-T0054",
+        "NFR-T0055",
+        "NFR-T0056",
+        "NFR-T0057",
         "NFR-T0092",
+        "NFR-T0094"
+      ]
+    },
+    {
+      "capability_id": "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+      "title": "Security controls and audit evidence",
+      "description": "Determinism/security JSONL evidence, guarded process execution, and security-sensitive signal validation.",
+      "requirement_ids": [
+        "NFR-T0038",
+        "NFR-T0056",
         "NFR-T0093",
         "NFR-T0094"
       ]
     },
     {
-      "capability_id": "CAP-CLOSURE-STABILIZATION",
-      "title": "Closure stabilization",
-      "description": "Chapter 6 sizing, review splits, enemy actions, rewards, re-entry, and fallback behavior.",
+      "capability_id": "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE",
+      "title": "Task scope and review governance",
+      "description": "Bounded semantic review, deterministic closure sizing, integration checkpoints, and separated review lanes.",
       "requirement_ids": [
-        "FR-T0105",
-        "FR-T0106",
-        "FR-T0107",
-        "FR-T0110",
-        "FR-T0111",
-        "FR-T0113",
-        "FR-T0114",
-        "FR-T0115",
-        "FR-T0116",
+        "FR-T0071",
+        "NFR-T0058",
         "NFR-T0102",
         "NFR-T0103",
         "NFR-T0104",
         "NFR-T0108",
         "NFR-T0109",
         "NFR-T0112"
-      ]
-    },
-    {
-      "capability_id": "CAP-UI-WIRING",
-      "title": "UI wiring",
-      "description": "Player-facing UI wiring across boot, HUD, combat, economy, map, reward, relic, and settlement surfaces.",
-      "requirement_ids": [
-        "FR-T0123",
-        "FR-T0124",
-        "FR-T0125",
-        "FR-T0126",
-        "FR-T0127",
-        "FR-T0128",
-        "FR-T0129",
-        "FR-T0130"
-      ]
-    },
-    {
-      "capability_id": "CAP-LATE-RUNTIME-EXTENSIONS",
-      "title": "Late runtime extensions",
-      "description": "Structured enemy actions, config-driven relic rewards, and reward modifier pipeline.",
-      "requirement_ids": [
-        "FR-T0131",
-        "FR-T0132",
-        "FR-T0133"
       ]
     }
   ]
