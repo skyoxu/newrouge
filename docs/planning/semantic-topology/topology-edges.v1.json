@@ -1907,6 +1907,895 @@
       "target_id": "69",
       "relation": "implemented_by",
       "contribution": "implementation"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0003",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0004",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0005",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0006",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0007",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0008",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0009",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0010",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0011",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0012",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0013",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0001",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0002",
+      "target_type": "capability",
+      "target_id": "CAP-FOUNDATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0014",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0015",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0016",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0017",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0018",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0019",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0020",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0021",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0022",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0023",
+      "target_type": "capability",
+      "target_id": "CAP-RUN-FLOW",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0024",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0025",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0026",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0027",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0028",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0029",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0030",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0031",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0032",
+      "target_type": "capability",
+      "target_id": "CAP-PLAYER-CONTENT",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0033",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0034",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0035",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0036",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0037",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0039",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0040",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0041",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0042",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0043",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0045",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0046",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0047",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0048",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0050",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0051",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0052",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0038",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0044",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0049",
+      "target_type": "capability",
+      "target_id": "CAP-COMBAT-CORE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0053",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0054",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0055",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0056",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0057",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0058",
+      "target_type": "capability",
+      "target_id": "CAP-QUALITY-GOVERNANCE",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0059",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0060",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0061",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0062",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0063",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0064",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0066",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0067",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0069",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0065",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0068",
+      "target_type": "capability",
+      "target_id": "CAP-M1-PLAYABLE-LOOP",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0070",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0071",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0072",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0073",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0074",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0075",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0076",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0077",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0078",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0079",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0080",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0081",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0082",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0083",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0084",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0085",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0086",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0087",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0088",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0089",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0090",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0091",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0095",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0096",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0097",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0098",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0099",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0100",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0101",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0092",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0093",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0094",
+      "target_type": "capability",
+      "target_id": "CAP-RUNTIME-INTEGRATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0105",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0106",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0107",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0110",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0111",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0113",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0114",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0115",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0116",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0102",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0103",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0104",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0108",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0109",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "NFR-T0112",
+      "target_type": "capability",
+      "target_id": "CAP-CLOSURE-STABILIZATION",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0123",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0124",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0125",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0126",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0127",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0128",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0129",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0130",
+      "target_type": "capability",
+      "target_id": "CAP-UI-WIRING",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0131",
+      "target_type": "capability",
+      "target_id": "CAP-LATE-RUNTIME-EXTENSIONS",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0132",
+      "target_type": "capability",
+      "target_id": "CAP-LATE-RUNTIME-EXTENSIONS",
+      "relation": "grouped_by"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "FR-T0133",
+      "target_type": "capability",
+      "target_id": "CAP-LATE-RUNTIME-EXTENSIONS",
+      "relation": "grouped_by"
     }
   ]
 }

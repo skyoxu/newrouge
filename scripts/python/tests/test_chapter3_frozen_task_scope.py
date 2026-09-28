@@ -48,7 +48,7 @@ class FrozenTaskScopeTests(unittest.TestCase):
         self.assertTrue(all(row["change_action"] == "update" for row in candidates))
         self.assertFalse({117, 118, 119, 120, 121, 122} & {row["taskmaster_id"] for row in candidates})
         self.assertTrue(all(set(row["field_updates"]) == {
-            "semantic_refs", "requirement_ids", "source_refs", "complexity_score"
+            "semantic_refs", "requirement_ids", "source_refs", "complexity_score", "capability_refs"
         } for row in candidates))
 
     def test_cancelled_candidate_is_not_a_semantic_sink(self) -> None:

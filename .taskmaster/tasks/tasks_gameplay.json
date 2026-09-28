@@ -72,7 +72,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:18"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -146,7 +149,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:19"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -217,7 +223,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:20"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -297,7 +306,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:21"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -372,7 +384,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:22"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -473,7 +488,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:23"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -553,7 +571,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:24"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -657,7 +678,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:25"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -733,7 +757,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:26"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -802,7 +829,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:27"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -913,7 +943,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:28"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -1011,7 +1044,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:29"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -1085,7 +1121,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:30"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-FOUNDATION"
+    ]
   },
   {
     "acceptance": [
@@ -1172,7 +1211,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:31"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1248,7 +1290,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:32"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1320,7 +1365,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:33"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1409,7 +1457,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:34"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1525,7 +1576,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:35"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1614,7 +1668,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:36"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1690,7 +1747,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:37"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1774,7 +1834,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:38"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1852,7 +1915,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:39"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1921,7 +1987,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:40"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUN-FLOW"
+    ]
   },
   {
     "acceptance": [
@@ -1994,7 +2063,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:41"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2069,7 +2141,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:42"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2151,7 +2226,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:43"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2231,7 +2309,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:44"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2306,7 +2387,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:45"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2384,7 +2468,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:46"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2461,7 +2548,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:47"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2538,7 +2628,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:48"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2609,7 +2702,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:49"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-PLAYER-CONTENT"
+    ]
   },
   {
     "acceptance": [
@@ -2692,7 +2788,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:50"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -2773,7 +2872,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:51"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -2845,7 +2947,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:52"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -2922,7 +3027,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:53"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -2996,7 +3104,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:54"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3074,7 +3185,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:55"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3149,7 +3263,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:56"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3216,7 +3333,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:57"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3289,7 +3409,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:58"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3362,7 +3485,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:59"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3436,7 +3562,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:60"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3523,7 +3652,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:61"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3599,7 +3731,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:62"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3681,7 +3816,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:63"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3756,7 +3894,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:64"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3828,7 +3969,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:65"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3910,7 +4054,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:66"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -3982,7 +4129,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:67"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -4074,7 +4224,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:68"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -4146,7 +4299,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:69"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-COMBAT-CORE"
+    ]
   },
   {
     "acceptance": [
@@ -4236,7 +4392,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:70"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4323,7 +4482,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:71"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4387,7 +4549,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:72"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4465,7 +4630,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:73"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4547,7 +4715,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:74"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4613,7 +4784,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:75"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-QUALITY-GOVERNANCE"
+    ]
   },
   {
     "acceptance": [
@@ -4689,7 +4863,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:76"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -4762,7 +4939,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:77"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -4841,7 +5021,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:78"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -4919,7 +5102,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:79"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -4994,7 +5180,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:80"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5077,7 +5266,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:81"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5163,7 +5355,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:82"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5234,7 +5429,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:83"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5314,7 +5512,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:84"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5389,7 +5590,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:85"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5472,7 +5676,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:86"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-M1-PLAYABLE-LOOP"
+    ]
   },
   {
     "acceptance": [
@@ -5551,7 +5758,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:87"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -5631,7 +5841,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:88"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -5714,7 +5927,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:89"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -5793,7 +6009,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:90"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -5872,7 +6091,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:91"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -5952,7 +6174,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:92"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6029,7 +6254,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:93"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6111,7 +6339,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:94"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6193,7 +6424,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:95"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6268,7 +6502,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:96"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6345,7 +6582,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:97"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6420,7 +6660,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:98"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6499,7 +6742,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:99"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6577,7 +6823,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:100"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6658,7 +6907,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:101"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6735,7 +6987,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:102"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6812,7 +7067,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:103"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6890,7 +7148,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:104"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -6969,7 +7230,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:105"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7051,7 +7315,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:106"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7130,7 +7397,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:107"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7208,7 +7478,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:108"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7289,7 +7562,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:112"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7371,7 +7647,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:113"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7454,7 +7733,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:114"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7538,7 +7820,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:115"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7616,7 +7901,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:116"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7692,7 +7980,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:117"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7767,7 +8058,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:118"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-RUNTIME-INTEGRATION"
+    ]
   },
   {
     "acceptance": [
@@ -7843,7 +8137,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:122"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -7920,7 +8217,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:123"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -7996,7 +8296,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:124"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8075,7 +8378,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:127"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8146,7 +8452,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:128"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8219,7 +8528,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:130"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8292,7 +8604,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:131"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8437,7 +8752,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:132"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -8513,7 +8831,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:133"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-CLOSURE-STABILIZATION"
+    ]
   },
   {
     "acceptance": [
@@ -9227,7 +9548,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:140"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9312,7 +9636,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:141"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9404,7 +9731,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:142"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9494,7 +9824,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:143"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9584,7 +9917,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:144"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9670,7 +10006,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:145"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9764,7 +10103,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:146"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9853,7 +10195,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:147"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-UI-WIRING"
+    ]
   },
   {
     "acceptance": [
@@ -9932,7 +10277,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:148"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-LATE-RUNTIME-EXTENSIONS"
+    ]
   },
   {
     "acceptance": [
@@ -10008,7 +10356,10 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:149"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-LATE-RUNTIME-EXTENSIONS"
+    ]
   },
   {
     "acceptance": [
@@ -10081,6 +10432,9 @@
     "source_refs": [
       "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md:150"
     ],
-    "complexity_score": 1
+    "complexity_score": 1,
+    "capability_refs": [
+      "CAP-LATE-RUNTIME-EXTENSIONS"
+    ]
   }
 ]

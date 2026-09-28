@@ -15,6 +15,30 @@ ARTIFACTS = ROOT / "logs/ci/task-generation"
 TASK_ROW = re.compile(r"^\| T(\d+) \|")
 GOVERNANCE_IDS = {1, 2, 38, 44, 49, 53, 54, 55, 56, 57, 58, 65, 68, 92, 93, 94, 102, 103, 104, 108, 109, 112}
 
+# The current GDD is a task-baseline projection, so it does not carry a
+# separate capability section. Keep the capability projection deterministic and
+# tied to the GDD's staged task ranges. Capabilities are grouping nodes only;
+# they never create or rename frozen Taskmaster tasks.
+CAPABILITY_BANDS = (
+    (1, 13, "CAP-FOUNDATION", "Project foundation", "Core project structure, contracts, services, persistence, and composition root."),
+    (14, 23, "CAP-RUN-FLOW", "Run entry and scene flow", "Run entry scenes, route surfaces, localization, and initial map flow."),
+    (24, 32, "CAP-PLAYER-CONTENT", "Player content and progression", "Warrior content, difficulty, acts, relics, curses, and content pools."),
+    (33, 52, "CAP-COMBAT-CORE", "Combat and deterministic runtime", "Deck operations, targeting, combat resolution, saves, and deterministic combat rules."),
+    (53, 58, "CAP-QUALITY-GOVERNANCE", "Quality and governance", "Headless execution, quality gates, traceability, and semantic scope controls."),
+    (59, 69, "CAP-M1-PLAYABLE-LOOP", "M1 playable loop", "M1 route ownership, scene integration, feedback, accessibility, and recovery UX."),
+    (70, 101, "CAP-RUNTIME-INTEGRATION", "Runtime integration", "Map graph, combat runtime wiring, data-driven enemies, statuses, relics, and settlement."),
+    (102, 116, "CAP-CLOSURE-STABILIZATION", "Closure stabilization", "Chapter 6 sizing, review splits, enemy actions, rewards, re-entry, and fallback behavior."),
+    (117, 130, "CAP-UI-WIRING", "UI wiring", "Player-facing UI wiring across boot, HUD, combat, economy, map, reward, relic, and settlement surfaces."),
+    (131, 133, "CAP-LATE-RUNTIME-EXTENSIONS", "Late runtime extensions", "Structured enemy actions, config-driven relic rewards, and reward modifier pipeline."),
+)
+
+
+def capability_for_task(task_id: int) -> tuple[str, str, str]:
+    for first, last, capability_id, title, description in CAPABILITY_BANDS:
+        if first <= task_id <= last:
+            return capability_id, title, description
+    raise ValueError(f"Task T{task_id} is outside the frozen capability bands")
+
 
 def load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
@@ -52,6 +76,7 @@ def reviewed_candidate(root: Path) -> tuple[dict, dict]:
     by_block = {row["block_id"]: row for row in ledger["blocks"]}
     results = {row["block_id"]: row for row in candidate["block_results"]}
     seen_tasks: set[int] = set()
+    capability_requirements: dict[str, list[str]] = {row[2]: [] for row in CAPABILITY_BANDS}
     batch_counts: dict[str, int] = {row["batch_id"]: 0 for row in batches["batches"]}
     for batch in batches["batches"]:
         source = load(ARTIFACTS / "semantic-batches" / (batch["batch_id"].lower() + ".json"))
@@ -104,6 +129,8 @@ def reviewed_candidate(root: Path) -> tuple[dict, dict]:
                         "decision": {"owner": f"T{task_id}", "reason": "Reviewed task-scope row with an explicit frozen Taskmaster identity."},
                         "review_status": "reviewed",
                     })
+                    capability_id, _title, _description = capability_for_task(task_id)
+                    capability_requirements[capability_id].append(f"{prefix}-T{task_id:04d}")
             else:
                 if block["block_type"] not in {"heading", "paragraph", "table_row", "table_separator"}:
                     raise ValueError(f"Unexpected non-task block type: {block_id}")
@@ -115,6 +142,16 @@ def reviewed_candidate(root: Path) -> tuple[dict, dict]:
             batch_counts[batch["batch_id"]] += 1
     if seen_tasks != expected_ids or len(results) != len(by_block):
         raise ValueError("Reviewed task rows or source blocks are incomplete")
+    candidate["capabilities"] = [
+        {
+            "capability_id": capability_id,
+            "title": title,
+            "description": description,
+            "requirement_ids": sorted(requirement_ids),
+        }
+        for _first, _last, capability_id, title, description in CAPABILITY_BANDS
+        if (requirement_ids := capability_requirements[capability_id])
+    ]
     for summary in candidate["batch_summaries"]:
         summary["output_accounted_count"] = batch_counts[summary["batch_id"]]
     report = {

@@ -18,6 +18,7 @@ Operate Chapter 3 idempotently for a business repository. Preserve the existing 
 - Do not use one prompt/context window as proof that a large GDD was read completely.
 - Do not reopen engine, architecture, or technology-stack selection.
 - Capability is optional grouping only and has no Taskmaster status.
+- When the active source is the frozen task-baseline GDD (`docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`), the reviewed semantic projection must create deterministic Capability nodes from the GDD task rows and attach each active Requirement to its Capability. This does not authorize new Tasks or change frozen Taskmaster identity/status.
 - Chapter 3 dependencies are provisional skeletons; Chapter 5 must validate or correct them.
 - Do not rerun expensive steps before reading existing recovery artifacts.
 
@@ -48,6 +49,7 @@ When `docs/workflows/chapter3-task-scope.json` is present with `mode: reconcile-
 4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. Batches are bounded by both block count and `--max-chars-per-batch`; a single oversized Source Block fails instead of being truncated. The batch index must cover every Source Block exactly once as primary ownership.
    - In `add` mode, a prior candidate may be reused only for ledger `unchanged` blocks whose `content_hash` still matches and whose prior result was fully reviewed. Cross-block atoms are reusable only when every referenced Source Block is unchanged. Changed/added blocks remain `review_required`; removed blocks and stale capabilities are not carried forward.
 5. The approved Chapter 3 model/Skill reads **every batch file** and fills `semantic-projection.candidate.json`. The template intentionally starts with blank disposition, `delivery_potential=null`, and `output_accounted_count=0`; these are not defaults the model may leave untouched. For every owned Source Block, explicitly set delivery potential and emit one or more semantic atoms or exactly one explicit disposition, then reconcile the batch output count. Never delete a `block_result` to make a batch pass.
+   - For the frozen task-baseline GDD, derive Capability grouping from the reviewed GDD task rows at this step, write `candidate.capabilities`, and preserve the Requirement-to-Capability mapping through compile, normalization, and topology refresh. Do not invent capability nodes from retired sources or create Tasks as a side effect.
 6. Compile Projection A with `py -3 scripts/python/project_semantics_from_sources.py compile`.
 7. Run `py -3 scripts/python/validate_semantic_conservation.py --stage projection`. Stop on unaccounted source blocks, source hash drift, invalid semantic refs, or unresolved delivery-potential blocks without an explicit owner decision and rationale.
 8. Normalize coarse task intents from validated semantics with `py -3 scripts/python/normalize_task_intents.py --mode <init|add>`, then run `audit_task_intents_quality.py`.
