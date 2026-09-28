@@ -1337,6 +1337,7 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
 
     var parsed = _parse_reward_action_payload(action_payload)
     var normalized = str(parsed.get("action", "")).strip_edges().to_lower()
+    var is_legacy_string_action := typeof(action_payload) != TYPE_DICTIONARY
     var selected_card_id = str(parsed.get("selected_card_id", "")).strip_edges()
     var selected_index = int(parsed.get("selected_index", -1))
     var selected_reward_type = str(parsed.get("selected_reward_type", "")).strip_edges()
@@ -1349,6 +1350,8 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
     # confirmation supplies a selected reward type and follows per-entry
     # writeback below.
     if normalized == "confirm" and selected_reward_type.is_empty():
+        return SkipRemainingRewardsForTest()
+    if normalized == "skip" and is_legacy_string_action:
         return SkipRemainingRewardsForTest()
 
     var resolved_type = selected_reward_type if normalized == "confirm" else skip_reward_type
