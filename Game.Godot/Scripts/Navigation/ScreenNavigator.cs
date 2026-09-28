@@ -98,11 +98,15 @@ public partial class ScreenNavigator : Node
         }
         foreach (var child in _root.GetChildren())
         {
-            _root.RemoveChild(child);
-            if (child != _cachedMap)
+            if (child == _cachedMap)
             {
-                child.QueueFree();
+                if (child is CanvasItem cachedCanvas)
+                {
+                    cachedCanvas.Visible = false;
+                }
+                continue;
             }
+            child.QueueFree();
         }
         _current = null;
         var inst = scenePath.EndsWith("/Map.tscn", StringComparison.Ordinal)
@@ -110,7 +114,14 @@ public partial class ScreenNavigator : Node
             && GodotObject.IsInstanceValid(_cachedMap)
             ? _cachedMap
             : packed.Instantiate();
-        _root!.AddChild(inst);
+        if (inst.GetParent() != _root)
+        {
+            _root!.AddChild(inst);
+        }
+        if (inst is CanvasItem canvas)
+        {
+            canvas.Visible = true;
+        }
         _current = inst;
         _currentScenePath = scenePath;
         _routeHistory.Add(scenePath);
