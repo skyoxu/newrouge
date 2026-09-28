@@ -1344,6 +1344,13 @@ func ResolveRewardForTest(action_payload) -> Dictionary:
     if normalized != "confirm" and normalized != "skip":
         return {"ok": false, "reason": "unsupported-action", "scene_path": current_scene}
 
+    # The route integration suite uses the legacy confirm shorthand without a
+    # reward type when it only needs to close the boundary. A real UI
+    # confirmation supplies a selected reward type and follows per-entry
+    # writeback below.
+    if normalized == "confirm" and selected_reward_type.is_empty():
+        return SkipRemainingRewardsForTest()
+
     var resolved_type = selected_reward_type if normalized == "confirm" else skip_reward_type
     var selection_state = _reward_selection_state_by_context.get(_reward_offer_active_context_id, {})
     if not resolved_type.is_empty() and typeof(selection_state) == TYPE_DICTIONARY:
