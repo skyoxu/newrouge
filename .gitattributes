@@ -22,6 +22,9 @@
 # Scripts (force LF to reduce cross-repo noise and keep CI/tooling stable)
 scripts/** text eol=lf
 
+# Semantic topology manifests are hashed from canonical Git text-blob bytes.
+docs/planning/semantic-topology/** text eol=lf
+
 # Binary files (no EOL conversions)
 *.png  binary
 *.jpg  binary

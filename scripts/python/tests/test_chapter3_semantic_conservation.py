@@ -34,6 +34,48 @@ def write_json(path: Path, payload) -> None:
 
 
 class Chapter3SemanticConservationTests(unittest.TestCase):
+    def test_copy_planning_artifacts_hashes_canonical_lf_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_dir = root / "logs/ci/task-generation"
+            destination_dir = root / "docs/planning/semantic-topology"
+            source_dir.mkdir(parents=True)
+            payloads = {
+                "ledger.json": {"schema_version": "newrouge.source-blocks.v1", "blocks": []},
+                "semantics.json": {"schema_version": "newrouge.semantic-requirements.v1", "requirements": []},
+                "capabilities.json": {"schema_version": "newrouge.capabilities.v1", "capabilities": []},
+                "edges.json": {"schema_version": "newrouge.topology-edges.v1", "edges": []},
+            }
+            paths = {}
+            for name, payload in payloads.items():
+                path = source_dir / name
+                raw = (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").replace("\n", "\r\n").encode("utf-8")
+                path.write_bytes(raw)
+                paths[name] = path
+
+            manifest = refresh_mod.copy_planning_artifacts(
+                root,
+                {"source_revision": "source-set:test", "manifest_sha256": "sha256:" + "0" * 64},
+                paths["ledger.json"],
+                paths["semantics.json"],
+                paths["capabilities.json"],
+                paths["edges.json"],
+            )
+
+            for path in destination_dir.glob("*.json"):
+                if path.name == "topology-manifest.v1.json":
+                    continue
+                self.assertNotIn(b"\r\n", path.read_bytes())
+            for artifact_path, expected in manifest["artifacts"].items():
+                self.assertEqual(
+                    expected,
+                    "sha256:" + refresh_mod.sha256_bytes((root / artifact_path).read_bytes()),
+                )
+                self.assertEqual(
+                    expected,
+                    "sha256:" + refresh_mod.sha256_bytes((root / artifact_path).read_bytes().replace(b"\r\n", b"\n")),
+                )
+
     def test_triplet_attestation_binds_current_task_file_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

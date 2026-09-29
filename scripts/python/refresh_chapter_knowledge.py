@@ -81,6 +81,11 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def canonical_artifact_bytes(data: bytes) -> bytes:
+    """Match Git text-blob bytes so CRLF checkouts cannot poison manifest hashes."""
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def _snapshot_file(path: Path) -> bytes | None:
     return path.read_bytes() if path.is_file() else None
 
@@ -552,7 +557,11 @@ def copy_planning_artifacts(
                 raise ValueError(f"missing topology source artifact: {source_path}")
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_path, destination)
-            artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(destination.read_bytes())
+            copied_bytes = destination.read_bytes()
+            canonical_bytes = canonical_artifact_bytes(copied_bytes)
+            if canonical_bytes != copied_bytes:
+                destination.write_bytes(canonical_bytes)
+            artifact_hashes[destination.relative_to(root).as_posix()] = "sha256:" + sha256_bytes(canonical_bytes)
         manifest = {
             "schema_version": "newrouge.semantic-topology-manifest.v1",
             "source_revision": source_manifest.get("source_revision"),
