@@ -57,6 +57,8 @@ Use `--write-planning-artifacts` only after closure PASS to promote stable topol
 
 MVG manifest 仍是跨 GDD 版本的累计范围。页面列出每条 flow 的任务、handoff、owner、契约、测试与关联的所有已追踪版本；未归属任务仍留在累计清单内。只有运行摘要的 manifest 内容哈希、main revision、运行模式与干净快照全部一致且 `runtime_verified=true`，才显示 `passed`。阻断任务、动态路线和主观试玩须单独核对；视图本身不写任务或验收状态。
 
+`/knowledge/scenes` 的 MVG 视图提供随所选 manifest 改名的运行按钮，在 commit 快照执行所选 MVG scope；声明了输入断线反例的清单也执行该反例。按钮要求页面扫描 revision 与当前 `main`/`HEAD` 一致，并由服务进程提供 `GODOT_BIN`；commit 快照从 Git revision 隔离准备，因此工作区可有未提交改动。运行结果写入 `logs/ci/mvg-acceptance/**`，成功后刷新当前 MVG 证据。
+
 ## Godot 场景图投影
 
 Knowledge 页面提供只读 Godot 场景图。扫描从 `project.godot` 的 `application/run/main_scene` 开始，确定性解析 `.tscn`、`.cs`、`.gd` 与资源路径，结果绑定扫描 revision 并通过 `/api/knowledge/scene-graph` 提供。循环使用 visited 集合终止；动态加载标记为 `dynamic-unknown`，未确认入口标记为 `unreachable-candidate`，不等同于运行时绝对不可达。用户浏览不调用大模型、不执行游戏或修改源文件。页面支持场景树、未确认场景列表及 Node/脚本/资源详情。

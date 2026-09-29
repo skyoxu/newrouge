@@ -75,10 +75,23 @@ function matches(row) {
   if (chapter && !blob.includes(chapter)) return false;
   if (source && !blob.includes(source)) return false;
   if (state === 'unresolved' && !(row.topology_states || []).includes('unresolved')) return false;
-  if (state === 'stale' && topology && topology.fresh !== false && !blob.includes('stale')) return false;
+  if (state === 'stale' && !(topology && topology.fresh === false) && !blob.includes('stale')) return false;
   if (state === 'orphan' && !(row.node_kind === 'requirement' && row.sink_resolved === false)) return false;
+  if (state === 'normal') {
+    if (!topology || topology.fresh === false) return false;
+    if ((row.topology_states || []).length) return false;
+    if (blob.includes('stale')) return false;
+  }
   return true;
 }
+
+const stateHelp = {
+  '': '全部：不按状态筛选。',
+  normal: '正常：拓扑新鲜，且节点没有孤立、未解决或过期标记。',
+  orphan: '孤立：Requirement 没有解析到交付 sink；仅归入 Capability 不算完成交付关联。',
+  unresolved: '未解决：Requirement 的语义分析结论仍未确定，状态或处置字段为 unresolved。',
+  stale: '过期：拓扑快照与当前仓库版本不一致，或节点被标记为 stale。'
+};
 
 async function openSource(row) {
   if (!topology || topology.identity?.kind !== 'main') return;
@@ -169,6 +182,9 @@ function render() {
   host.replaceChildren();
   summary.replaceChildren();
   edgeBody.replaceChildren();
+  const stateControl = byId('filter-state');
+  const stateHelpNode = byId('filter-state-help');
+  if (stateControl && stateHelpNode) stateHelpNode.textContent = stateHelp[stateControl.value] || stateHelp[''];
   const identity = (topology && topology.identity) || {};
   if (topology && topology.available) {
     const viewLabel = identity.kind === 'workspace' ? ' · ' + (topology.workspace_view || currentWorkspaceView()) : '';
@@ -232,7 +248,7 @@ async function load() {
   const mode = currentMode();
   const view = currentWorkspaceView();
   const query = new URLSearchParams({mode});
-  if (mode === 'workspace') query.set('view', view);
+  if (mode === 'workspace' && params.has('view')) query.set('view', view);
   const response = await fetch('/api/knowledge/topology?' + query.toString(), {cache: 'no-store'});
   topology = await response.json();
   if (!response.ok) throw new Error(topology.reason || 'Topology request failed');
@@ -242,9 +258,19 @@ async function load() {
 ['filter-kind','filter-state','filter-task-status','filter-capability','filter-chapter','filter-source']
   .forEach(id => byId(id).addEventListener('input', render));
 byId('topology-identity').addEventListener('change', () => {
+  const params = new URLSearchParams(window.location.search);
+  params.set('mode', currentMode());
+  params.delete('view');
+  history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
   syncWorkspaceControls();
   load().catch(e => byId('topology-status').textContent = e.message);
 });
-byId('workspace-view').addEventListener('change', () => load().catch(e => byId('topology-status').textContent = e.message));
+byId('workspace-view').addEventListener('change', () => {
+  const params = new URLSearchParams(window.location.search);
+  params.set('mode', 'workspace');
+  params.set('view', currentWorkspaceView());
+  history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+  load().catch(e => byId('topology-status').textContent = e.message);
+});
 byId('topology-refresh').onclick = () => load().catch(e => byId('topology-status').textContent = e.message);
 load().catch(e => byId('topology-status').textContent = e.message);

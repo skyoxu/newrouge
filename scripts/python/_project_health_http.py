@@ -39,6 +39,42 @@ def image_bytes(root, path, revision):
 RUNTIME_HOST_TIMEOUT_SECONDS = 3690
 
 
+def run_mvg_manifest(root: Path, expected_revision: str, godot_bin: str,
+                     manifest_path: str) -> tuple[int, dict]:
+    if not re.fullmatch(r'[0-9a-f]{40}', expected_revision):
+        raise ValueError('Current main revision is unavailable; scan local main again')
+    def git(*args: str) -> str:
+        result = subprocess.run(['git', '-C', str(root), *args], capture_output=True,
+                                text=True, encoding='utf-8', timeout=30, check=True)
+        return result.stdout.strip()
+    main_revision = git('rev-parse', 'refs/heads/main')
+    if main_revision != expected_revision or git('rev-parse', 'HEAD') != main_revision:
+        raise ValueError('Main revision changed; scan local main again before running MVG')
+    snapshot = base_dir(root) / 'latest.json'
+    state = read_json(snapshot) if snapshot.exists() else {}
+    overview = state.get('mvg_overview') or {}
+    if state.get('revision') != main_revision or overview.get('revision') != main_revision:
+        raise ValueError('MVG overview revision changed; scan local main again')
+    manifest = next((row for row in overview.get('manifests', [])
+                     if row.get('path') == manifest_path), None)
+    if manifest is None:
+        raise ValueError('Selected MVG manifest is not in the scanned main scope')
+    command = [sys.executable, str(Path(__file__).with_name('dev_cli.py')),
+               'run-mvg-acceptance', '--manifest', manifest_path,
+               '--mode', 'run', '--snapshot', 'commit', '--revision', 'HEAD',
+               '--godot-bin', godot_bin]
+    if any(test.get('challenge') == 'disconnect-reward-input'
+           for test in manifest.get('tests', [])):
+        command.append('--challenge-input')
+    result = subprocess.run(command, cwd=root, capture_output=True, text=True,
+                            encoding='utf-8', timeout=RUNTIME_HOST_TIMEOUT_SECONDS)
+    try:
+        payload = json.loads(result.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        payload = {'status': 'failed', 'reason': result.stderr[-2000:] or 'Invalid MVG runner response'}
+    return (200 if result.returncode == 0 else 422), payload
+
+
 def handler_factory(root: Path):
     token = secrets.token_urlsafe(32)
     operation = threading.Lock()
@@ -255,6 +291,25 @@ def handler_factory(root: Path):
                 path = urlsplit(self.path).path
                 if path == '/api/knowledge/scan':
                     self.cli('scan')
+                elif path == '/api/knowledge/mvg-run':
+                    godot_bin = os.environ.get('GODOT_BIN')
+                    if not godot_bin:
+                        raise ValueError('GODOT_BIN is required for MVG verification')
+                    if not operation.acquire(blocking=False):
+                        self.send({'reason': 'Another operation is running'}, 409)
+                        return
+                    try:
+                        with operation_guard:
+                            operation_state.update(active=True, action='mvg-run', task_ids=[],
+                                                   verification_mode='main', started_at=datetime.now(timezone.utc).isoformat())
+                        code, payload = run_mvg_manifest(root, request.get('revision', ''), godot_bin,
+                                                         request.get('manifest', ''))
+                        self.send(payload, code)
+                    finally:
+                        with operation_guard:
+                            operation_state.update(active=False, action=None, task_ids=[],
+                                                   verification_mode=None, started_at=None)
+                        operation.release()
                 elif path == '/api/knowledge/runtime':
                     godot_bin = os.environ.get('GODOT_BIN')
                     if not godot_bin:
