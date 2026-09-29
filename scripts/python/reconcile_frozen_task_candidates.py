@@ -26,6 +26,14 @@ def reconcile(root: Path, artifacts: Path | None = None) -> dict:
     master = {row["id"]: row for row in read(root / scope["master_path"])["master"]["tasks"]}
     artifact_root = artifacts or ARTIFACTS
     semantics = read(artifact_root / "semantic-requirements.v1.json")
+    capabilities = read(artifact_root / "capabilities.v1.json")
+    capability_refs_by_requirement: dict[str, list[str]] = {}
+    for capability in capabilities.get("capabilities", []):
+        capability_id = str(capability.get("capability_id") or "").strip()
+        if not capability_id:
+            raise ValueError("Capability is missing capability_id")
+        for requirement_id in capability.get("requirement_ids", []):
+            capability_refs_by_requirement.setdefault(str(requirement_id), []).append(capability_id)
     ledger = read(artifact_root / "source-blocks.v1.json")
     blocks = {row["block_id"]: row for row in ledger["blocks"]}
     active = {}
@@ -56,6 +64,9 @@ def reconcile(root: Path, artifacts: Path | None = None) -> dict:
                 continue
             requirement = active[numeric_id]
             refs = [requirement["requirement_id"]]
+            capability_refs = sorted(set(capability_refs_by_requirement.get(refs[0], [])))
+            if not capability_refs:
+                raise ValueError(f"Active requirement has no Capability mapping: {numeric_id}")
             source_refs = []
             for block_id in requirement["source_block_ids"]:
                 block = blocks[block_id]
@@ -65,6 +76,7 @@ def reconcile(root: Path, artifacts: Path | None = None) -> dict:
                 "requirement_ids": refs,
                 "source_refs": sorted(set(source_refs)),
                 "complexity_score": 1,
+                "capability_refs": capability_refs,
             }
             candidates.append({
                 "id": row["id"],
@@ -76,6 +88,7 @@ def reconcile(root: Path, artifacts: Path | None = None) -> dict:
                 "requirement_ids": refs,
                 "source_refs": updates["source_refs"],
                 "complexity_score": 1,
+                "capability_refs": capability_refs,
                 "field_updates": updates,
             })
     if {row["taskmaster_id"] for row in candidates} != expected:

@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace Game.Godot.Scripts.Navigation;
@@ -12,6 +13,7 @@ public partial class ScreenNavigator : Node
     private Control? _root;
     private Control? _overlays;
     private Node? _current;
+    private Node? _cachedMap;
     private bool _busy;
     private readonly global::Godot.Collections.Array<string> _routeHistory = new();
     private string _currentScenePath = string.Empty;
@@ -73,6 +75,12 @@ public partial class ScreenNavigator : Node
             _current = null;
         }
 
+        if (_cachedMap != null)
+        {
+            _cachedMap.QueueFree();
+            _cachedMap = null;
+        }
+
         _currentScenePath = string.Empty;
         return true;
     }
@@ -80,14 +88,40 @@ public partial class ScreenNavigator : Node
     private void DoSwitch(PackedScene packed, string scenePath)
     {
         // Call Exit on current if present, then remove
-        if (_current != null)
+        if (_current != null && _current.HasMethod("Exit"))
         {
-            if (_current.HasMethod("Exit")) _current.CallDeferred("Exit");
-            _current.QueueFree();
-            _current = null;
+            _current.CallDeferred("Exit");
         }
-        var inst = packed.Instantiate();
-        _root!.AddChild(inst);
+        if (_current != null && _currentScenePath.EndsWith("/Map.tscn", StringComparison.Ordinal))
+        {
+            _cachedMap = _current;
+        }
+        foreach (var child in _root.GetChildren())
+        {
+            if (child == _cachedMap)
+            {
+                if (child is CanvasItem cachedCanvas)
+                {
+                    cachedCanvas.Visible = false;
+                }
+                continue;
+            }
+            child.QueueFree();
+        }
+        _current = null;
+        var inst = scenePath.EndsWith("/Map.tscn", StringComparison.Ordinal)
+            && _cachedMap is not null
+            && GodotObject.IsInstanceValid(_cachedMap)
+            ? _cachedMap
+            : packed.Instantiate();
+        if (inst.GetParent() != _root)
+        {
+            _root!.AddChild(inst);
+        }
+        if (inst is CanvasItem canvas)
+        {
+            canvas.Visible = true;
+        }
         _current = inst;
         _currentScenePath = scenePath;
         _routeHistory.Add(scenePath);

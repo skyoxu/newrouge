@@ -190,9 +190,29 @@ public partial class MapScene : Control
     public global::Godot.Collections.Array<string> GetReachableRouteNodeIdsForTest()
     {
         var result = new global::Godot.Collections.Array<string>();
+        var reachableIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var node in _routeNodes)
         {
             if (IsRouteNodeReachable(node))
+            {
+                reachableIds.Add(node.Id);
+            }
+        }
+
+        // Preserve the authored edge order for sibling choices. This is the
+        // route contract exposed to callers and keeps generated graph order
+        // stable when node ids sort differently from the design order.
+        foreach (var edge in _routeEdges)
+        {
+            if (reachableIds.Contains(edge.ToId) && !result.Contains(edge.ToId))
+            {
+                result.Add(edge.ToId);
+            }
+        }
+
+        foreach (var node in _routeNodes)
+        {
+            if (reachableIds.Contains(node.Id) && !result.Contains(node.Id))
             {
                 result.Add(node.Id);
             }
@@ -921,8 +941,8 @@ public partial class MapScene : Control
                 }
 
                 return (
-                    nodes.OrderBy(node => node.Floor).ThenBy(node => node.Id, StringComparer.Ordinal).ToList(),
-                    edges.OrderBy(edge => edge.FromFloor).ThenBy(edge => edge.FromId, StringComparer.Ordinal).ThenBy(edge => edge.ToId, StringComparer.Ordinal).ToList());
+                    nodes.OrderBy(node => node.Floor).ToList(),
+                    edges.OrderBy(edge => edge.FromFloor).ThenBy(edge => edge.FromId, StringComparer.Ordinal).ToList());
             }
             catch
             {

@@ -1,9 +1,10 @@
 """Read-only, provenance-limited GDD version and cumulative MVG projection."""
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
+
+from _mvg_manifest import manifest_sha256
 
 
 def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -> dict:
@@ -40,6 +41,7 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
         mapped = sorted(associated[path], key=lambda item: (not item.isdigit(), int(item) if item.isdigit() else item))
         refs = {'overlays': set(), 'contracts': set(), 'adrs': set()}
         scenes = {}
+        scene_candidates = {}
         for task_id in mapped:
             detail = task_ids[task_id]
             for view in detail.get('mappings', {}).values():
@@ -57,12 +59,29 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
                     'resources': sorted({resource for node in scene.get('nodes', []) for resource in node.get('resources', []) if isinstance(resource, str)}),
                     'evidence': 'declared_task_with_verified_static_attachment',
                 }
+            for candidate in detail.get('godot', {}).get('candidates', []):
+                scene_path = candidate.get('scene')
+                if not scene_path or scene_path not in graph.get('nodes', {}):
+                    continue
+                scene = graph['nodes'][scene_path]
+                entry = scene_candidates.setdefault(scene_path, {
+                    'path': scene_path,
+                    'classification': scene.get('classification'),
+                    'nodes': sorted({str(node.get('parent') or '.') + '/' + str(node.get('name') or '(unnamed)') for node in scene.get('nodes', [])}),
+                    'resources': sorted({resource for node in scene.get('nodes', []) for resource in node.get('resources', []) if isinstance(resource, str)}),
+                    'evidence_sources': [],
+                    'evidence': 'candidate_task_test_reference',
+                })
+                evidence = candidate.get('evidence')
+                if isinstance(evidence, str) and evidence not in entry['evidence_sources']:
+                    entry['evidence_sources'].append(evidence)
         versions.append({
             'id': path + '@' + sha[:16], 'gdd_path': path, 'gdd_sha256': sha,
             'mapping': 'traced' if mapped else 'unmapped',
             'task_ids': mapped, 'tasks': [{'id': id_, 'title': task_ids[id_]['task'].get('title'), 'status': task_ids[id_]['task'].get('status')} for id_ in mapped],
             'references': {key: sorted(values) for key, values in refs.items()},
             'scenes': [scenes[key] for key in sorted(scenes)],
+            'scene_candidates': [scene_candidates[key] for key in sorted(scene_candidates) if key not in scenes],
         })
     manifests = []
     for path in sorted(p for p in paths if p.startswith('docs/testing/mvg/') and p.endswith('.json')):
@@ -77,7 +96,7 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
                           'task_ids': sorted(ids), 'test_ids': flow.get('test_ids', []),
                           'handoffs': flow.get('handoffs', []),
                           'version_ids': [version['id'] for version in versions if ids.intersection(version['task_ids'])]})
-        manifests.append({'path': path, 'sha256': 'sha256:' + hashlib.sha256(data).hexdigest(),
+        manifests.append({'path': path, 'sha256': manifest_sha256(data),
                           'mvg_id': manifest.get('mvg_id'), 'coverage': manifest.get('coverage', {}),
                           'flows': flows, 'tests': manifest.get('tests', [])})
     return {'schema_version': 'newrouge.knowledge-mvg-overview.v1', 'revision': snapshot.commit,
@@ -100,7 +119,7 @@ def with_runtime_evidence(overview: dict, root: Path) -> dict:
                 continue
             if (summary.get('manifest') != manifest['path'] or summary.get('manifest_sha256') != manifest['sha256']
                     or summary.get('mode') != 'run' or summary.get('source_revision') != overview.get('revision')
-                    or summary.get('base_commit') != overview.get('revision') or summary.get('workspace_dirty') is not False):
+                    or summary.get('base_commit') != overview.get('revision')):
                 continue
             copy['evidence'] = {'status': 'passed' if summary.get('status') == 'passed' and summary.get('runtime_verified') is True else 'failed',
                                 'run_id': summary.get('run_id'), 'reason': summary.get('reason', ''),

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from pathlib import Path, PurePosixPath
 
@@ -9,6 +10,12 @@ SCHEMA = 'newrouge.mvg-integration.v1'
 LEVELS = {'dotnet': {'domain-integration'},
           'gdunit': {'scene-method', 'engine-input'}}
 COVERAGE_MODES = {'pilot', 'critical', 'full'}
+
+
+def manifest_sha256(data: bytes) -> str:
+    """Hash manifest content independent of Git checkout line-ending filters."""
+    normalized = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+    return 'sha256:' + hashlib.sha256(normalized).hexdigest()
 
 
 def safe_path(root: Path, value: str) -> Path:

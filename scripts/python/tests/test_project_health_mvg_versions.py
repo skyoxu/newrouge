@@ -68,6 +68,21 @@ class MvgVersionTests(unittest.TestCase):
         self.assertEqual(2, len(overview['manifests'][0]['flows'][0]['version_ids']))
         self.assertEqual(['1', '2', '3'], overview['manifests'][0]['flows'][0]['task_ids'])
 
+    def test_gdd_version_preserves_candidate_scene_evidence_separately(self):
+        self.details[0]['godot']['candidates'] = [{
+            'scene': 'Game.Godot/Scenes/Candidate.tscn',
+            'evidence': 'Tests.Godot/tests/Integration/test_candidate.gd',
+            'kind': 'test_reference',
+        }]
+        self.graph['nodes']['Game.Godot/Scenes/Candidate.tscn'] = {
+            'classification': 'unreachable-candidate',
+            'nodes': [],
+        }
+        overview = build_overview(self.snapshot, self.details, self.topology, self.graph)
+        version = next(item for item in overview['versions'] if item['gdd_path'] == 'docs/gdd/old.md')
+        self.assertEqual(['Game.Godot/Scenes/Candidate.tscn'], [item['path'] for item in version['scene_candidates']])
+        self.assertEqual(['Tests.Godot/tests/Integration/test_candidate.gd'], version['scene_candidates'][0]['evidence_sources'])
+
     def test_stale_topology_and_changed_gdd_do_not_assign_tasks(self):
         self.topology['identity']['revision'] = 'b' * 40
         self.assertTrue(all(not version['task_ids'] for version in build_overview(self.snapshot, self.details, self.topology, self.graph)['versions']))
@@ -90,10 +105,13 @@ class MvgVersionTests(unittest.TestCase):
             target.write_text(json.dumps(run))
             self.assertEqual('passed', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'])
             for field, wrong in (('manifest_sha256', 'sha256:wrong'), ('source_revision', 'workspace:dirty'),
-                                 ('workspace_dirty', True), ('mode', 'plan')):
+                                 ('mode', 'plan')):
                 changed = {**run, field: wrong}
                 target.write_text(json.dumps(changed))
                 self.assertEqual('not_verified', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'], field)
+            dirty_commit = {**run, 'workspace_dirty': True}
+            target.write_text(json.dumps(dirty_commit))
+            self.assertEqual('passed', with_runtime_evidence(overview, root)['manifests'][0]['evidence']['status'])
 
 
 if __name__ == '__main__':

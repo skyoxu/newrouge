@@ -184,7 +184,8 @@ includeUnreachableLabel.style.margin='0'; includeUnreachableHelp.style.marginRig
 let structurePage = 1; const structurePageSize = 20;
 const graphButton = document.createElement('button'); graphButton.type = 'button'; graphButton.textContent = 'Scene route tree'; graphButton.setAttribute('aria-pressed', 'true');
 const structureButton = document.createElement('button'); structureButton.type = 'button'; structureButton.textContent = 'Scene composition'; structureButton.setAttribute('aria-pressed', 'false');
-el('scene-graph-refresh').parentNode.insertBefore(structureButton, el('scene-graph-refresh')); el('scene-graph-refresh').parentNode.insertBefore(graphButton, structureButton);
+const mvgButton = document.createElement('button'); mvgButton.type = 'button'; mvgButton.textContent = 'GDD versions and MVG'; mvgButton.setAttribute('aria-pressed', 'false');
+el('scene-graph-refresh').parentNode.insertBefore(mvgButton, el('scene-graph-refresh')); el('scene-graph-refresh').parentNode.insertBefore(structureButton, mvgButton); el('scene-graph-refresh').parentNode.insertBefore(graphButton, structureButton);
 function compositionResources() {
   const resources = new Map(); const add = (path, type, meta={}) => {
     if (!path || /^SubResource\(/.test(path) || /^ExtResource\(/.test(path)) return;
@@ -263,8 +264,9 @@ function renderStructure() {
   table.append(tbody); scroll.append(table); structureHost.append(scroll); if(!filtered.length) structureHost.textContent='No resources in this category.';
   firstPage.disabled=previousPage.disabled=structurePage<=1; nextPage.disabled=lastPage.disabled=structurePage>=pages;
 }
-const setView = view => { const graphVisible = view === 'graph'; graphHost.style.display = graphVisible ? '' : 'none'; structureHost.style.display = graphVisible ? 'none' : ''; structureToolbar.style.display = graphVisible ? 'none' : 'flex'; graphHost.hidden = !graphVisible; structureHost.hidden = graphVisible; graphButton.setAttribute('aria-pressed', String(graphVisible)); structureButton.setAttribute('aria-pressed', String(!graphVisible)); el('scene-status').textContent = graphVisible ? 'Scene route tree view · snapshot data' : 'Scene composition view · snapshot data'; };
+const setView = view => { const graphVisible = view === 'graph'; const structureVisible = view === 'structure'; const mvgVisible = view === 'mvg'; graphHost.style.display = graphVisible ? '' : 'none'; structureHost.style.display = structureVisible ? '' : 'none'; structureToolbar.style.display = structureVisible ? 'flex' : 'none'; graphHost.hidden = !graphVisible; structureHost.hidden = !structureVisible; el('mvg-versions').hidden = !mvgVisible; graphButton.setAttribute('aria-pressed', String(graphVisible)); structureButton.setAttribute('aria-pressed', String(structureVisible)); mvgButton.setAttribute('aria-pressed', String(mvgVisible)); el('scene-status').textContent = graphVisible ? 'Scene route tree view · snapshot data' : structureVisible ? 'Scene composition view · snapshot data' : 'GDD and MVG evidence view · snapshot data'; };
 structureButton.onclick = () => { structurePage=1; renderStructure(); setView('structure'); structureToolbar.hidden=false; };
 graphButton.onclick = () => { structureToolbar.hidden=true; setView('graph'); };
+mvgButton.onclick = () => { structureToolbar.hidden=true; setView('mvg'); };
 structureType.onchange=()=>{structurePage=1;renderStructure();}; firstPage.onclick=()=>{structurePage=1;renderStructure();}; previousPage.onclick=()=>{structurePage--;renderStructure();}; nextPage.onclick=()=>{structurePage++;renderStructure();}; lastPage.onclick=()=>{structurePage=Number.MAX_SAFE_INTEGER;renderStructure();}; pageInput.onchange=()=>{structurePage=Math.max(1,Number(pageInput.value)||1);renderStructure();};
 includeUnreachable.onchange=()=>{structurePage=1;renderStructure();};

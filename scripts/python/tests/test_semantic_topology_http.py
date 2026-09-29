@@ -6,13 +6,14 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts/python"))
 
-from _project_health_http import handler_factory
+from _project_health_http import handler_factory, run_mvg_manifest
 from project_health_knowledge import base_dir, write_json
 
 
@@ -37,6 +38,72 @@ class SemanticTopologyHttpTests(unittest.TestCase):
         status, body = response.status, response.read()
         connection.close()
         return status, body
+
+    def post(self, path: str, body: dict, authenticated: bool = True) -> tuple[int, bytes]:
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port)
+        headers = {'Content-Type': 'application/json'}
+        if authenticated:
+            _, session = self.request('/api/knowledge/session')
+            headers.update({'Origin': f'http://127.0.0.1:{self.server.server_port}',
+                            'X-Project-Health-Token': json.loads(session)['token']})
+        connection.request('POST', path, json.dumps(body), headers)
+        response = connection.getresponse()
+        status, payload = response.status, response.read()
+        connection.close()
+        return status, payload
+
+    def test_mvg_run_route_is_authenticated_and_uses_selected_manifest(self):
+        status, _ = self.post('/api/knowledge/mvg-run', {}, authenticated=False)
+        self.assertEqual(403, status)
+        with mock.patch('_project_health_http.run_mvg_manifest', return_value=(200, {'status': 'passed'})) as run:
+            with mock.patch.dict('os.environ', {'GODOT_BIN': 'C:/Godot/godot.exe'}):
+                status, body = self.post('/api/knowledge/mvg-run', {'revision': 'a' * 40,
+                    'manifest': 'docs/testing/mvg/reward-pilot.json'})
+        self.assertEqual(200, status)
+        self.assertEqual('passed', json.loads(body)['status'])
+        run.assert_called_once_with(self.root, 'a' * 40, 'C:/Godot/godot.exe', 'docs/testing/mvg/reward-pilot.json')
+
+    def test_mvg_runner_rejects_stale_revision_before_execution(self):
+        with mock.patch('_project_health_http.subprocess.run') as run:
+            run.return_value = mock.Mock(returncode=0, stdout='b' * 40 + '\n', stderr='')
+            with self.assertRaisesRegex(ValueError, 'revision'):
+                run_mvg_manifest(self.root, 'a' * 40, 'C:/Godot/godot.exe', 'docs/testing/mvg/reward-pilot.json')
+        self.assertEqual(1, run.call_count)
+
+    def test_mvg_runner_uses_selected_manifest_in_commit_command(self):
+        revision = 'a' * 40
+        write_json(base_dir(self.root) / 'latest.json', {'revision': revision,
+            'mvg_overview': {'revision': revision, 'manifests': [
+                {'path': 'docs/testing/mvg/reward-pilot.json', 'tests': [{'challenge': 'disconnect-reward-input'}]}]}})
+        def execute(command, **kwargs):
+            if command[:1] == ['git']:
+                output = '' if command[-2:] == ['status', '--porcelain'] else revision + '\n'
+                return mock.Mock(returncode=0, stdout=output, stderr='')
+            return mock.Mock(returncode=0, stdout=json.dumps({'status': 'passed', 'summary': 'logs/ci/mvg-acceptance/run/summary.json'}), stderr='')
+        with mock.patch('_project_health_http.subprocess.run', side_effect=execute) as run:
+            code, payload = run_mvg_manifest(self.root, revision, 'C:/Godot/godot.exe',
+                                             'docs/testing/mvg/reward-pilot.json')
+        self.assertEqual(200, code)
+        self.assertEqual('passed', payload['status'])
+        command = run.call_args.args[0]
+        self.assertIn('run-mvg-acceptance', command)
+        self.assertEqual('docs/testing/mvg/reward-pilot.json', command[command.index('--manifest') + 1])
+        self.assertEqual('run', command[command.index('--mode') + 1])
+        self.assertEqual('commit', command[command.index('--snapshot') + 1])
+        self.assertEqual('HEAD', command[command.index('--revision') + 1])
+        self.assertEqual('C:/Godot/godot.exe', command[command.index('--godot-bin') + 1])
+        self.assertIn('--challenge-input', command)
+
+    def test_mvg_runner_rejects_manifest_outside_scanned_main_scope(self):
+        revision = 'a' * 40
+        write_json(base_dir(self.root) / 'latest.json', {'revision': revision,
+            'mvg_overview': {'revision': revision, 'manifests': [
+                {'path': 'docs/testing/mvg/m1-critical.json', 'tests': []}]}})
+        with mock.patch('_project_health_http.subprocess.run') as run:
+            run.return_value = mock.Mock(returncode=0, stdout=revision + '\n', stderr='')
+            with self.assertRaisesRegex(ValueError, 'manifest'):
+                run_mvg_manifest(self.root, revision, 'C:/Godot/godot.exe',
+                                 'docs/testing/mvg/reward-pilot.json')
 
     def test_topology_page_is_available_without_generated_topology(self):
         status, body = self.request("/knowledge/topology")

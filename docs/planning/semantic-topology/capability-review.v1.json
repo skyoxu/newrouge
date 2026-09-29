@@ -1,0 +1,1807 @@
+{
+  "source_sha256": "5014169ae0fda39749be088d19f858765b4479d1e1495fdc00170281632b9769",
+  "source_read_ranges": [
+    {
+      "start_row": 1,
+      "end_row": 150,
+      "maximum_requested_rows": 170,
+      "purpose": "Initial bounded source read"
+    },
+    {
+      "start_row": 1,
+      "end_row": 50,
+      "purpose": "Detailed semantic review"
+    },
+    {
+      "start_row": 51,
+      "end_row": 100,
+      "purpose": "Detailed semantic review"
+    },
+    {
+      "start_row": 101,
+      "end_row": 150,
+      "purpose": "Detailed semantic review"
+    }
+  ],
+  "capabilities": [
+    {
+      "capability_id": "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES",
+      "title": "Project composition and architectural boundaries",
+      "description": "Supporting infrastructure for the Godot/.NET project, shared event contracts, composition, and protected layer boundaries.",
+      "included_task_ids": [
+        1,
+        2,
+        7,
+        13,
+        92
+      ],
+      "boundary_rationale": "Contains environment and structural enforcement work; domain contracts are grouped with their gameplay responsibilities."
+    },
+    {
+      "capability_id": "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "title": "Deterministic outcome generation and locking",
+      "description": "Shared RNG state, offer provenance, immutable offers, and preservation across re-entry or resume.",
+      "included_task_ids": [
+        4,
+        9,
+        19,
+        20,
+        38,
+        44,
+        46,
+        98,
+        114,
+        133
+      ],
+      "boundary_rationale": "Covers explicit outcome locking and shared random-state responsibilities; deterministic combat arithmetic remains with combat rules."
+    },
+    {
+      "capability_id": "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "title": "Card identity and deck lifecycle",
+      "description": "Card forms, instances, curse constraints, shared deck operations, and live pile state.",
+      "included_task_ids": [
+        3,
+        8,
+        24,
+        32,
+        33,
+        71,
+        72,
+        80,
+        81,
+        82,
+        95,
+        115
+      ],
+      "boundary_rationale": "Tracks the card/deck model and its runtime bindings; reward acquisition and card-play execution have their own groupings."
+    },
+    {
+      "capability_id": "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "title": "Combat interaction and runtime orchestration",
+      "description": "Validated card play, turn sequencing, scene bindings, targeting, hooks, completion, and player feedback.",
+      "included_task_ids": [
+        6,
+        11,
+        18,
+        34,
+        35,
+        49,
+        51,
+        64,
+        72,
+        73,
+        74,
+        77,
+        78,
+        79,
+        83,
+        101,
+        124,
+        125,
+        127
+      ],
+      "boundary_rationale": "The shared combat execution path and interaction shell; enemy behavior, status arithmetic, and deck management remain separately navigable."
+    },
+    {
+      "capability_id": "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+      "title": "Status, modifiers, and damage resolution",
+      "description": "Status contracts and lifecycle, deterministic triggers, fixed damage, AOE, multi-hit rules, and faithful visible results.",
+      "included_task_ids": [
+        5,
+        6,
+        10,
+        25,
+        27,
+        47,
+        48,
+        75,
+        90,
+        96,
+        100,
+        101,
+        127
+      ],
+      "boundary_rationale": "Groups resolution semantics with their live promotion and display; generic combat hooks and action orchestration belong to CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION."
+    },
+    {
+      "capability_id": "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION",
+      "title": "Enemy definitions, intent, and action execution",
+      "description": "Data-backed enemies, intent selection and preview, action resolution, no-repeat rules, and structured timed effects.",
+      "included_task_ids": [
+        40,
+        41,
+        52,
+        76,
+        89,
+        105,
+        116,
+        126,
+        131
+      ],
+      "boundary_rationale": "The enemy behavior chain from definition to visible action; player targeting is owned by combat interaction."
+    },
+    {
+      "capability_id": "CAP-WARRIOR-PLAYABLE-IDENTITY",
+      "title": "Warrior playable identity",
+      "description": "Warrior selection, starting cards, combat seeding, and Rage integration.",
+      "included_task_ids": [
+        16,
+        24,
+        25,
+        95,
+        96
+      ],
+      "boundary_rationale": "A character-specific vertical slice limited to the explicitly supplied Warrior scope."
+    },
+    {
+      "capability_id": "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "title": "Run entry and difficulty",
+      "description": "Main menu, selection flow, immutable difficulty, rule modifiers, and difficulty visibility.",
+      "included_task_ids": [
+        14,
+        15,
+        16,
+        26,
+        27,
+        45,
+        59
+      ],
+      "boundary_rationale": "Player run setup and difficulty semantics; continuation storage and restoration remain in CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY."
+    },
+    {
+      "capability_id": "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "title": "Act maps and route ownership",
+      "description": "Modular Act data, generated route graphs, legal node selection, run transitions, and owned entry/return paths.",
+      "included_task_ids": [
+        17,
+        28,
+        42,
+        43,
+        59,
+        60,
+        61,
+        62,
+        67,
+        69,
+        70,
+        86,
+        87,
+        97,
+        115,
+        123
+      ],
+      "boundary_rationale": "Run navigation and route state; individual node transactions are separately grouped, with explicit route work cross-listed."
+    },
+    {
+      "capability_id": "CAP-REWARD-OFFERS-AND-ACQUISITION",
+      "title": "Reward offers and acquisition",
+      "description": "Contextual drop pools, three-choice offers, selection, confirmation, skipping, fallback, and reward-entry modification.",
+      "included_task_ids": [
+        19,
+        29,
+        35,
+        61,
+        84,
+        85,
+        114,
+        115,
+        128,
+        133
+      ],
+      "boundary_rationale": "Reward transaction lifecycle; shared outcome locking is cross-listed in CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING and broader relic execution remains in CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS."
+    },
+    {
+      "capability_id": "CAP-SHOP-REST-AND-EVENT-SERVICES",
+      "title": "Shop, rest, and event services",
+      "description": "Noncombat node choices, costs, purchases, card services, healing, upgrades, removal, and player-visible results.",
+      "included_task_ids": [
+        20,
+        21,
+        22,
+        32,
+        62,
+        67,
+        69
+      ],
+      "boundary_rationale": "Cohesion is noncombat node transactions and their route integration; reward choice is a separately developed transaction lifecycle."
+    },
+    {
+      "capability_id": "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS",
+      "title": "Relics and effectful combat participants",
+      "description": "Relic contracts and catalog, acquisition/equip/display, combat and run effects, powers, and potions.",
+      "included_task_ids": [
+        30,
+        31,
+        88,
+        99,
+        106,
+        110,
+        111,
+        129,
+        132,
+        133
+      ],
+      "boundary_rationale": "Persistent relic ownership and effects plus explicitly related participant surfaces; generic hook infrastructure is CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION."
+    },
+    {
+      "capability_id": "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+      "title": "Save integrity and Continue recovery",
+      "description": "Atomic saves, autosave boundaries, integrity/migration gates, blocked-state UX, and restored run surfaces.",
+      "included_task_ids": [
+        12,
+        14,
+        36,
+        37,
+        44,
+        50,
+        51,
+        63,
+        87,
+        98,
+        123
+      ],
+      "boundary_rationale": "Persistence and recovery behavior including dedicated determinism tests; summary-only evidence display belongs to CAP-RUN-SUMMARY-AND-SETTLEMENT."
+    },
+    {
+      "capability_id": "CAP-RUN-SUMMARY-AND-SETTLEMENT",
+      "title": "Run summary and settlement",
+      "description": "Stored-data presentation of outcome, difficulty, route progress, reward/relic results, and resume evidence.",
+      "included_task_ids": [
+        45,
+        66,
+        91,
+        107,
+        113,
+        130
+      ],
+      "boundary_rationale": "Reporting stored run results without recomputation; does not own reward execution or save restoration."
+    },
+    {
+      "capability_id": "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION",
+      "title": "Localization and accessible interaction",
+      "description": "Translation infrastructure and content, rendered-text validation, focus cycles, and accessible input fallback.",
+      "included_task_ids": [
+        23,
+        39,
+        65,
+        68,
+        72,
+        74
+      ],
+      "boundary_rationale": "Cross-scene usability support; ordinary visual feedback stays with its gameplay surface unless localization or accessibility is explicit."
+    },
+    {
+      "capability_id": "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+      "title": "Automated quality gates and verification",
+      "description": "Headless smoke execution, suite aggregation, coverage controls, audit validation, traceability, and boundary checks.",
+      "included_task_ids": [
+        44,
+        53,
+        54,
+        55,
+        56,
+        57,
+        92,
+        94
+      ],
+      "boundary_rationale": "Supporting verification mechanisms and explicit domain tests; review-scope policy is CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE and runtime security enforcement is CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE."
+    },
+    {
+      "capability_id": "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+      "title": "Security controls and audit evidence",
+      "description": "Determinism/security JSONL evidence, guarded process execution, and security-sensitive signal validation.",
+      "included_task_ids": [
+        38,
+        56,
+        93,
+        94
+      ],
+      "boundary_rationale": "Host-facing enforcement and audit contracts; test-pipeline integrations overlap CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION only where explicitly stated."
+    },
+    {
+      "capability_id": "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE",
+      "title": "Task scope and review governance",
+      "description": "Bounded semantic review, deterministic closure sizing, integration checkpoints, and separated review lanes.",
+      "included_task_ids": [
+        58,
+        71,
+        102,
+        103,
+        104,
+        108,
+        109,
+        112
+      ],
+      "boundary_rationale": "Governance rather than new gameplay delivery; review splits are kept here rather than counted as runtime implementation."
+    }
+  ],
+  "per_task_analysis": [
+    {
+      "task_id": "T1",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ],
+      "rationale": "Pins Godot 4.5.1 .NET and .NET 8 setup and requires the package lock file.",
+      "source_rows": [
+        18
+      ]
+    },
+    {
+      "task_id": "T2",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ],
+      "rationale": "Establishes Core, Godot, and test directory boundaries and NewRouge namespaces.",
+      "source_rows": [
+        19
+      ]
+    },
+    {
+      "task_id": "T3",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Defines card identity, Base/U1A/U1B/Ultimate forms, and upgrade fields.",
+      "source_rows": [
+        20
+      ]
+    },
+    {
+      "task_id": "T4",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Defines shared offer-lock structure, provenance, and RNG stream contracts.",
+      "source_rows": [
+        21
+      ]
+    },
+    {
+      "task_id": "T5",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Defines Buff, Debuff, and RuleModifier contracts with deterministic ordering.",
+      "source_rows": [
+        22
+      ]
+    },
+    {
+      "task_id": "T6",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Combat phases and sequencing define orchestration; the same contract explicitly covers damage calculation rules.",
+      "source_rows": [
+        23
+      ]
+    },
+    {
+      "task_id": "T7",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ],
+      "rationale": "Provides the shared event bus and the canonical contracts location.",
+      "source_rows": [
+        24
+      ]
+    },
+    {
+      "task_id": "T8",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Implements card definitions, instances, and transitions between forms.",
+      "source_rows": [
+        25
+      ]
+    },
+    {
+      "task_id": "T9",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Provides the deterministic RNG stream registry and state management.",
+      "source_rows": [
+        26
+      ]
+    },
+    {
+      "task_id": "T10",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Implements status application, stacking, decay, and dispel boundaries.",
+      "source_rows": [
+        27
+      ]
+    },
+    {
+      "task_id": "T11",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Implements the core validated card-play resolution pipeline.",
+      "source_rows": [
+        28
+      ]
+    },
+    {
+      "task_id": "T12",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Implements save serialization, schema versioning, and atomic writes.",
+      "source_rows": [
+        29
+      ]
+    },
+    {
+      "task_id": "T13",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES"
+      ],
+      "rationale": "Configures Godot autoloads and dependency composition.",
+      "source_rows": [
+        30
+      ]
+    },
+    {
+      "task_id": "T14",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Creates New Run and Quit entry actions and explicitly exposes single-slot Continue.",
+      "source_rows": [
+        31
+      ]
+    },
+    {
+      "task_id": "T15",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY"
+      ],
+      "rationale": "Provides selection and descriptions for ten difficulty levels.",
+      "source_rows": [
+        32
+      ]
+    },
+    {
+      "task_id": "T16",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-WARRIOR-PLAYABLE-IDENTITY"
+      ],
+      "rationale": "Creates the character selection step and restricts playable selection and mechanism summary to Warrior.",
+      "source_rows": [
+        33
+      ]
+    },
+    {
+      "task_id": "T17",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Makes Act structure modular rather than fixing the map to three Acts.",
+      "source_rows": [
+        34
+      ]
+    },
+    {
+      "task_id": "T18",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Creates the combat UI shell and binds it to core combat state.",
+      "source_rows": [
+        35
+      ]
+    },
+    {
+      "task_id": "T19",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Creates three-card reward choice and explicitly locks offers for deterministic display.",
+      "source_rows": [
+        36
+      ]
+    },
+    {
+      "task_id": "T20",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Creates purchasable shop inventory with no upgrade service and explicitly locks that inventory.",
+      "source_rows": [
+        37
+      ]
+    },
+    {
+      "task_id": "T21",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ],
+      "rationale": "Creates the rest choice surface with a free card upgrade option.",
+      "source_rows": [
+        38
+      ]
+    },
+    {
+      "task_id": "T22",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ],
+      "rationale": "Creates event choices with explicit HP-loss and curse-card cost examples.",
+      "source_rows": [
+        39
+      ]
+    },
+    {
+      "task_id": "T23",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Sets up translation resources and key naming conventions.",
+      "source_rows": [
+        40
+      ]
+    },
+    {
+      "task_id": "T24",
+      "capability_ids": [
+        "CAP-WARRIOR-PLAYABLE-IDENTITY",
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Defines the Warrior-specific ten-card starting deck, supplying card/deck content.",
+      "source_rows": [
+        41
+      ]
+    },
+    {
+      "task_id": "T25",
+      "capability_ids": [
+        "CAP-WARRIOR-PLAYABLE-IDENTITY",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Defines Warrior Rage as a combat-only state buff integrated with statuses.",
+      "source_rows": [
+        42
+      ]
+    },
+    {
+      "task_id": "T26",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY"
+      ],
+      "rationale": "Defines the immutable run-level difficulty contract with values 1-10.",
+      "source_rows": [
+        43
+      ]
+    },
+    {
+      "task_id": "T27",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Translates selected difficulty into rule modifiers, including the stated OverplayTax threshold example.",
+      "source_rows": [
+        44
+      ]
+    },
+    {
+      "task_id": "T28",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Defines ActConfig and JSON loading for modular Act data.",
+      "source_rows": [
+        45
+      ]
+    },
+    {
+      "task_id": "T29",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ],
+      "rationale": "Defines Act- and encounter-specific card drop pools with rarity tiers.",
+      "source_rows": [
+        46
+      ]
+    },
+    {
+      "task_id": "T30",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Defines relic definition and instance contracts.",
+      "source_rows": [
+        47
+      ]
+    },
+    {
+      "task_id": "T31",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Provides twenty unique relic definitions with hookable effects.",
+      "source_rows": [
+        48
+      ]
+    },
+    {
+      "task_id": "T32",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-SHOP-REST-AND-EVENT-SERVICES"
+      ],
+      "rationale": "Defines non-upgradable curse cards and the removal services that operate on them.",
+      "source_rows": [
+        49
+      ]
+    },
+    {
+      "task_id": "T33",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Implements shared deterministic draw, discard, exhaust, and retain operations with hand limit ten.",
+      "source_rows": [
+        50
+      ]
+    },
+    {
+      "task_id": "T34",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Adds hover and drag targeting to the combat interaction path.",
+      "source_rows": [
+        51
+      ]
+    },
+    {
+      "task_id": "T35",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ],
+      "rationale": "Resolves victory/defeat and explicitly hands completed combat to rewards.",
+      "source_rows": [
+        52
+      ]
+    },
+    {
+      "task_id": "T36",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Triggers autosaves at combat start, reward opening, and event choice.",
+      "source_rows": [
+        53
+      ]
+    },
+    {
+      "task_id": "T37",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Adds single-slot run metadata, integrity checks, and Continue gating.",
+      "source_rows": [
+        54
+      ]
+    },
+    {
+      "task_id": "T38",
+      "capability_ids": [
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Writes JSONL audit evidence for security events and explicitly for determinism events.",
+      "source_rows": [
+        55
+      ]
+    },
+    {
+      "task_id": "T39",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Populates translations for M1 cards, relics, events, and UI text.",
+      "source_rows": [
+        56
+      ]
+    },
+    {
+      "task_id": "T40",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Defines Act 1 encounter enemy data.",
+      "source_rows": [
+        57
+      ]
+    },
+    {
+      "task_id": "T41",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Displays each enemy's next intent on the combat surface.",
+      "source_rows": [
+        58
+      ]
+    },
+    {
+      "task_id": "T42",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Locks node selection and prevents map backtracking.",
+      "source_rows": [
+        59
+      ]
+    },
+    {
+      "task_id": "T43",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Restricts run-state transitions to Command entries.",
+      "source_rows": [
+        60
+      ]
+    },
+    {
+      "task_id": "T44",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Adds headless GdUnit4 integration tests, verifying save/resume behavior and deterministic reward/shop/event outcomes.",
+      "source_rows": [
+        61
+      ]
+    },
+    {
+      "task_id": "T45",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "Exposes selected difficulty in the HUD and explicitly in the run summary.",
+      "source_rows": [
+        62
+      ]
+    },
+    {
+      "task_id": "T46",
+      "capability_ids": [
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Generates and locks offer candidates using RNG streams and provenance.",
+      "source_rows": [
+        63
+      ]
+    },
+    {
+      "task_id": "T47",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Implements deterministic status trigger ordering and fixed damage behavior.",
+      "source_rows": [
+        64
+      ]
+    },
+    {
+      "task_id": "T48",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Implements damage calculation with AOE and multi-hit resolution order.",
+      "source_rows": [
+        65
+      ]
+    },
+    {
+      "task_id": "T49",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Adds combat-loop stability limits of 100 cards per turn and failure handling.",
+      "source_rows": [
+        66
+      ]
+    },
+    {
+      "task_id": "T50",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Validates save migration and blocks Continue when saves are invalid.",
+      "source_rows": [
+        67
+      ]
+    },
+    {
+      "task_id": "T51",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Connects combat turn flow to core services and explicitly wires persistence save points.",
+      "source_rows": [
+        68
+      ]
+    },
+    {
+      "task_id": "T52",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Implements deterministic enemy intent selection rules.",
+      "source_rows": [
+        69
+      ]
+    },
+    {
+      "task_id": "T53",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Adds the Windows Python headless smoke runner and strict success-marker validation.",
+      "source_rows": [
+        70
+      ]
+    },
+    {
+      "task_id": "T54",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Aggregates selected GdUnit4 suites into hard/soft quality gates and summary JSON.",
+      "source_rows": [
+        71
+      ]
+    },
+    {
+      "task_id": "T55",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Implements configurable xUnit coverage thresholds and hard/soft gate modes.",
+      "source_rows": [
+        72
+      ]
+    },
+    {
+      "task_id": "T56",
+      "capability_ids": [
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Validates security audit JSONL and explicitly integrates that validator with quality gates.",
+      "source_rows": [
+        73
+      ]
+    },
+    {
+      "task_id": "T57",
+      "capability_ids": [
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Adds the dedicated ADR/chapter/overlay Test-Refs traceability gate.",
+      "source_rows": [
+        74
+      ]
+    },
+    {
+      "task_id": "T58",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Bounds semantic soft review to task scope and preserves deterministic hard-gate precedence.",
+      "source_rows": [
+        75
+      ]
+    },
+    {
+      "task_id": "T59",
+      "capability_ids": [
+        "CAP-RUN-ENTRY-AND-DIFFICULTY",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Wires menu, difficulty, and character selection into the real Map entry route.",
+      "source_rows": [
+        76
+      ]
+    },
+    {
+      "task_id": "T60",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Owns Map entry into Combat/Event/Shop/Rest and completed-node return routing.",
+      "source_rows": [
+        77
+      ]
+    },
+    {
+      "task_id": "T61",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Creates the standalone Reward scene and owns Combat/Event-to-Reward-to-Map routes.",
+      "source_rows": [
+        78
+      ]
+    },
+    {
+      "task_id": "T62",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Creates the rest service surface for healing/upgrades/removal and explicitly owns Map entry/return.",
+      "source_rows": [
+        79
+      ]
+    },
+    {
+      "task_id": "T63",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "Makes Continue blocking reasons and recovery options visible to the player.",
+      "source_rows": [
+        80
+      ]
+    },
+    {
+      "task_id": "T64",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Shows combat action results, invalid commands, and decision-critical HUD state.",
+      "source_rows": [
+        81
+      ]
+    },
+    {
+      "task_id": "T65",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Validates translation-key usage and nonempty, non-key-echo text across supported locales.",
+      "source_rows": [
+        82
+      ]
+    },
+    {
+      "task_id": "T66",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "Owns the run summary surface for stored outcome, difficulty, progress, and recovery metadata.",
+      "source_rows": [
+        83
+      ]
+    },
+    {
+      "task_id": "T67",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Binds shop purchase/remove/transform/leave behavior and explicitly owns its route without upgrade services.",
+      "source_rows": [
+        84
+      ]
+    },
+    {
+      "task_id": "T68",
+      "capability_ids": [
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Provides focus-cycle and accessibility work across M1 player-facing surfaces.",
+      "source_rows": [
+        85
+      ]
+    },
+    {
+      "task_id": "T69",
+      "capability_ids": [
+        "CAP-SHOP-REST-AND-EVENT-SERVICES",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Makes event costs, choices, results, and blocks visible and owns feedback return-to-Map routing.",
+      "source_rows": [
+        86
+      ]
+    },
+    {
+      "task_id": "T70",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Adds connected legal edges, locked paths, completed history, and reachable choices on existing route ownership.",
+      "source_rows": [
+        87
+      ]
+    },
+    {
+      "task_id": "T71",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Tracks deck lifecycle integration over T80-T82 as an umbrella checkpoint, explicitly avoiding a separate implementation track.",
+      "source_rows": [
+        88
+      ]
+    },
+    {
+      "task_id": "T72",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Binds existing card definitions and localized text to CombatScene costs, targeting rules, and effect resolution.",
+      "source_rows": [
+        89
+      ]
+    },
+    {
+      "task_id": "T73",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Extends legal combat targeting to multiple living enemies while retaining existing victory-route ownership.",
+      "source_rows": [
+        90
+      ]
+    },
+    {
+      "task_id": "T74",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+        "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION"
+      ],
+      "rationale": "Adds drag/hover/release/cancel and invalid-target feedback while explicitly retaining accessible click/button fallback.",
+      "source_rows": [
+        91
+      ]
+    },
+    {
+      "task_id": "T75",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Exposes existing player/enemy status semantics as visible combat state with deterministic updates.",
+      "source_rows": [
+        92
+      ]
+    },
+    {
+      "task_id": "T76",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Binds data-driven intent generation and previews, explicitly deferring action resolution and no-repeat rules.",
+      "source_rows": [
+        93
+      ]
+    },
+    {
+      "task_id": "T77",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Registers deterministic combat hooks for card play, turns, damage, and death checks; participant effects remain deferred.",
+      "source_rows": [
+        94
+      ]
+    },
+    {
+      "task_id": "T78",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Adds combat presentation feedback without mutating deterministic runtime, routing, or RNG ownership.",
+      "source_rows": [
+        95
+      ]
+    },
+    {
+      "task_id": "T79",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Unifies HP updates so any HP<=0 transition resolves defeat exactly once.",
+      "source_rows": [
+        96
+      ]
+    },
+    {
+      "task_id": "T80",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Replaces scene-local counters with shared DeckService draw/play/discard/end-turn state.",
+      "source_rows": [
+        97
+      ]
+    },
+    {
+      "task_id": "T81",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Exposes the shared draw-empty reshuffle cycle with discard reset before continued draws.",
+      "source_rows": [
+        98
+      ]
+    },
+    {
+      "task_id": "T82",
+      "capability_ids": [
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Displays total deck count and draw+hand+discard invariance over the shared deck runtime.",
+      "source_rows": [
+        99
+      ]
+    },
+    {
+      "task_id": "T83",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Hands scene card resolution to CombatService/PlayCard while explicitly deferring Warrior deck seeding and Rage.",
+      "source_rows": [
+        100
+      ]
+    },
+    {
+      "task_id": "T84",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ],
+      "rationale": "Generates the initial three-card reward from existing pools using current Act and encounter context.",
+      "source_rows": [
+        101
+      ]
+    },
+    {
+      "task_id": "T85",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ],
+      "rationale": "Makes one reward selectable and gates confirmation on that selection.",
+      "source_rows": [
+        102
+      ]
+    },
+    {
+      "task_id": "T86",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Generates route graphs from ActConfig while deferring Map surface binding.",
+      "source_rows": [
+        103
+      ]
+    },
+    {
+      "task_id": "T87",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Restores autosaves at real Map/combat entry boundaries, connecting Continue recovery to run navigation.",
+      "source_rows": [
+        104
+      ]
+    },
+    {
+      "task_id": "T88",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Promotes relic acquisition, equipped state, and visible run ownership while deferring combat effects.",
+      "source_rows": [
+        105
+      ]
+    },
+    {
+      "task_id": "T89",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Instantiates runtime combat enemies from existing enemy definitions.",
+      "source_rows": [
+        106
+      ]
+    },
+    {
+      "task_id": "T90",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Promotes trigger ordering and fixed damage into live combat while deferring AOE and feedback closure.",
+      "source_rows": [
+        107
+      ]
+    },
+    {
+      "task_id": "T91",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "Builds a stored-data settlement surface for outcome and route progress, deferring later metadata additions.",
+      "source_rows": [
+        108
+      ]
+    },
+    {
+      "task_id": "T92",
+      "capability_ids": [
+        "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES",
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Uses xUnit architecture tests to enforce Core/Godot separation and adapter-only Godot access.",
+      "source_rows": [
+        109
+      ]
+    },
+    {
+      "task_id": "T93",
+      "capability_ids": [
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE"
+      ],
+      "rationale": "Provides one guarded process adapter, default denial, dev allowlisting, and allow/deny audit records.",
+      "source_rows": [
+        110
+      ]
+    },
+    {
+      "task_id": "T94",
+      "capability_ids": [
+        "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+        "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION"
+      ],
+      "rationale": "Validates security-sensitive signal names/arguments and integrates drift detection into CI checks.",
+      "source_rows": [
+        111
+      ]
+    },
+    {
+      "task_id": "T95",
+      "capability_ids": [
+        "CAP-WARRIOR-PLAYABLE-IDENTITY",
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE"
+      ],
+      "rationale": "Seeds combat with the Warrior starting deck through shared deck state rather than placeholder hands.",
+      "source_rows": [
+        112
+      ]
+    },
+    {
+      "task_id": "T96",
+      "capability_ids": [
+        "CAP-WARRIOR-PLAYABLE-IDENTITY",
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Creates, mutates, and visibly applies Warrior Rage through the shared combat runtime.",
+      "source_rows": [
+        113
+      ]
+    },
+    {
+      "task_id": "T97",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Binds generated ActConfig graphs to visible reachable, locked, selected, and completed map states.",
+      "source_rows": [
+        114
+      ]
+    },
+    {
+      "task_id": "T98",
+      "capability_ids": [
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Restores locked Reward/Shop/Event autosave surfaces while preserving deterministic offers and route ownership.",
+      "source_rows": [
+        115
+      ]
+    },
+    {
+      "task_id": "T99",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Executes relic effects through the shared combat trigger path after acquisition/display integration.",
+      "source_rows": [
+        116
+      ]
+    },
+    {
+      "task_id": "T100",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION"
+      ],
+      "rationale": "Promotes AOE and multi-hit rules into live combat using deterministic shared damage target order.",
+      "source_rows": [
+        117
+      ]
+    },
+    {
+      "task_id": "T101",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "Aligns combat feedback surfaces with actual trigger, fixed-damage, and AOE resolution results.",
+      "source_rows": [
+        118
+      ]
+    },
+    {
+      "task_id": "T102",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Audits T70-T101 sizing and splits work exceeding one deterministic Chapter 6 closure.",
+      "source_rows": [
+        119
+      ]
+    },
+    {
+      "task_id": "T103",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Splits review validation of primary Continue boundaries from locked-surface restoration; it changes review scope.",
+      "source_rows": [
+        120
+      ]
+    },
+    {
+      "task_id": "T104",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Separates combat core rule integration review from scene feedback reconciliation.",
+      "source_rows": [
+        121
+      ]
+    },
+    {
+      "task_id": "T105",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Resolves the displayed enemy action once at player-turn end and enforces no-repeat rules.",
+      "source_rows": [
+        122
+      ]
+    },
+    {
+      "task_id": "T106",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Makes powers and relics visible, inspectable, and effectful through shared combat hooks.",
+      "source_rows": [
+        123
+      ]
+    },
+    {
+      "task_id": "T107",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "Displays stored reward and relic settlement results without recomputing run state.",
+      "source_rows": [
+        124
+      ]
+    },
+    {
+      "task_id": "T108",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Separates enemy preview review from turn resolution and no-repeat verification.",
+      "source_rows": [
+        125
+      ]
+    },
+    {
+      "task_id": "T109",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Separates settlement owner-surface, reward/relic metadata, and resume-evidence review lanes.",
+      "source_rows": [
+        126
+      ]
+    },
+    {
+      "task_id": "T110",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Executes relic effects at shared run trigger boundaries outside direct combat resolution.",
+      "source_rows": [
+        127
+      ]
+    },
+    {
+      "task_id": "T111",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Makes potions visible, inspectable, and effectful through the shared combat trigger path.",
+      "source_rows": [
+        128
+      ]
+    },
+    {
+      "task_id": "T112",
+      "capability_ids": [
+        "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+      ],
+      "rationale": "Separates combat-trigger relic review from broader run-trigger closure review.",
+      "source_rows": [
+        129
+      ]
+    },
+    {
+      "task_id": "T113",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "Displays stored resume evidence on settlement without mutating or recomputing run state.",
+      "source_rows": [
+        130
+      ]
+    },
+    {
+      "task_id": "T114",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING"
+      ],
+      "rationale": "Stabilizes Reward offer locking across re-entry and fails safely on invalid pool context.",
+      "source_rows": [
+        131
+      ]
+    },
+    {
+      "task_id": "T115",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION",
+        "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP"
+      ],
+      "rationale": "Writes the confirmed card into the live deck, leaves it unchanged on skip, and resolves through the owned return route once.",
+      "source_rows": [
+        132
+      ]
+    },
+    {
+      "task_id": "T116",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Synchronizes enemy surfaces to data-backed runtime enemies and supplies visible invalid-definition fallback.",
+      "source_rows": [
+        133
+      ]
+    },
+    {
+      "task_id": "T117",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        134
+      ]
+    },
+    {
+      "task_id": "T118",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        135
+      ]
+    },
+    {
+      "task_id": "T119",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        136
+      ]
+    },
+    {
+      "task_id": "T120",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        137
+      ]
+    },
+    {
+      "task_id": "T121",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        138
+      ]
+    },
+    {
+      "task_id": "T122",
+      "capability_ids": [],
+      "rationale": "Explicitly superseded by T123-T130 after the scoped Chapter 7 re-audit on 2026-05-09; retained only as historical accounting, with no active capability membership.",
+      "source_rows": [
+        139
+      ]
+    },
+    {
+      "task_id": "T123",
+      "capability_ids": [
+        "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+        "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY"
+      ],
+      "rationale": "The supplied Chapter 7 title explicitly combines Map Path and Continue surfaces; detailed candidates are unavailable.",
+      "source_rows": [
+        140
+      ]
+    },
+    {
+      "task_id": "T124",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "The supplied Chapter 7 title specifies Combat Card Play surface wiring, without additional candidate detail.",
+      "source_rows": [
+        141
+      ]
+    },
+    {
+      "task_id": "T125",
+      "capability_ids": [
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "The supplied Chapter 7 title specifies Combat Runtime Bootstrap surfaces; specific bootstrap mechanisms are not supplied.",
+      "source_rows": [
+        142
+      ]
+    },
+    {
+      "task_id": "T126",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "The supplied Chapter 7 title identifies Enemy Intent and Resolution surface wiring.",
+      "source_rows": [
+        143
+      ]
+    },
+    {
+      "task_id": "T127",
+      "capability_ids": [
+        "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+        "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION"
+      ],
+      "rationale": "The supplied Chapter 7 title explicitly combines Combat Rules with Feedback surfaces.",
+      "source_rows": [
+        144
+      ]
+    },
+    {
+      "task_id": "T128",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION"
+      ],
+      "rationale": "The supplied Chapter 7 title identifies Reward Offer and Confirm surface wiring.",
+      "source_rows": [
+        145
+      ]
+    },
+    {
+      "task_id": "T129",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "The supplied Chapter 7 title identifies Relic and Combat Participant surface wiring.",
+      "source_rows": [
+        146
+      ]
+    },
+    {
+      "task_id": "T130",
+      "capability_ids": [
+        "CAP-RUN-SUMMARY-AND-SETTLEMENT"
+      ],
+      "rationale": "The supplied Chapter 7 title identifies Settlement and Run Summary surface wiring.",
+      "source_rows": [
+        147
+      ]
+    },
+    {
+      "task_id": "T131",
+      "capability_ids": [
+        "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION"
+      ],
+      "rationale": "Extends displayed enemy intents to structured multiple effects with current-turn and next-turn timing, avoiding text parsing.",
+      "source_rows": [
+        148
+      ]
+    },
+    {
+      "task_id": "T132",
+      "capability_ids": [
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Turns relics that can appear in live M1 runs into a configured gameplay-effect catalog rather than placeholder identities.",
+      "source_rows": [
+        149
+      ]
+    },
+    {
+      "task_id": "T133",
+      "capability_ids": [
+        "CAP-REWARD-OFFERS-AND-ACQUISITION",
+        "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+        "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS"
+      ],
+      "rationale": "Adds a reward-entry mutation hook before snapshot locking; explicitly lets relics and other run systems modify the next reward context without editing pools.",
+      "source_rows": [
+        150
+      ]
+    }
+  ],
+  "superseded_task_ids": [
+    "T117",
+    "T118",
+    "T119",
+    "T120",
+    "T121",
+    "T122"
+  ],
+  "ambiguities": [
+    {
+      "task_ids": [
+        "T123",
+        "T124",
+        "T125",
+        "T126",
+        "T127",
+        "T128",
+        "T129",
+        "T130"
+      ],
+      "description": "Chapter 7 rows reference an unavailable candidates file. Membership is based only on the named surfaces; detailed widgets, events, and closure requirements cannot be inferred."
+    },
+    {
+      "task_ids": [
+        "T117",
+        "T118",
+        "T119",
+        "T120",
+        "T121",
+        "T122"
+      ],
+      "description": "Supersession is stated collectively by T123-T130. No exact predecessor-to-successor mapping or surviving settings/config-audit requirements is inferred."
+    },
+    {
+      "task_ids": [
+        "T71"
+      ],
+      "description": "This remains an accounted-for umbrella checkpoint over T80-T82, not a separately implementable deck system."
+    },
+    {
+      "task_ids": [
+        "T102",
+        "T103",
+        "T104",
+        "T108",
+        "T109",
+        "T112"
+      ],
+      "description": "These rows govern sizing and review lanes. Gameplay subjects in their titles are review context, not authorization to implement additional runtime behavior."
+    },
+    {
+      "task_ids": [
+        "T4",
+        "T46"
+      ],
+      "description": "Offer locking is described generically; no unsupported claim is made that every node consumes a particular implementation."
+    },
+    {
+      "task_ids": [
+        "T133"
+      ],
+      "description": "The row explicitly names relics, events, and other run-state systems as reward modifiers. Cross-listing relic integration reflects that scope; it does not define unsupplied event or modifier implementations."
+    },
+    {
+      "description": "Referenced ADRs, design gates, M1 content lists, migration backlogs, and project context were not supplied and were not consulted; only explicit row text was used."
+    },
+    {
+      "description": "Many view-specific cells contain replacement glyphs. Usable titles, design scopes, and readable details provide the grouping evidence; missing cell contents were not reconstructed."
+    },
+    {
+      "description": "The source projects task scope rather than authoritative task status. Active here means not explicitly superseded in this source, not pending or incomplete."
+    }
+  ],
+  "coverage": {
+    "source_task_count": 133,
+    "nonsuperseded_task_count": 127,
+    "mapped_nonsuperseded_task_count": 127,
+    "unmapped_nonsuperseded_task_ids": [],
+    "capability_count": 18
+  },
+  "interpretation": "Optional semantic reference/navigation groupings only. Membership is not task ordering, authority, acceptance, delivery status, or a new workflow.",
+  "schema_version": "chapter3.capability-review.v1",
+  "source_path": "docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md",
+  "source_text_sha256": "a108674813f4f187f7199a60e9407148cf214362bd69fa1bea78a27067f34ad4",
+  "selection": {
+    "run": 3,
+    "method": "Three isolated same-model analyses with identical inputs and instructions; reviewer selected run 3 by source fidelity and boundary clarity.",
+    "original_result_sha256": "a6b72bf8b89fc17583afb2e5f9f9d63ca920cd8c563cd5da56af4e694efaf8b1",
+    "id_normalization": {
+      "C01": "CAP-PROJECT-COMPOSITION-AND-ARCHITECTURAL-BOUNDARIES",
+      "C02": "CAP-DETERMINISTIC-OUTCOME-GENERATION-AND-LOCKING",
+      "C03": "CAP-CARD-IDENTITY-AND-DECK-LIFECYCLE",
+      "C04": "CAP-COMBAT-INTERACTION-AND-RUNTIME-ORCHESTRATION",
+      "C05": "CAP-STATUS-MODIFIERS-AND-DAMAGE-RESOLUTION",
+      "C06": "CAP-ENEMY-DEFINITIONS-INTENT-AND-ACTION-EXECUTION",
+      "C07": "CAP-WARRIOR-PLAYABLE-IDENTITY",
+      "C08": "CAP-RUN-ENTRY-AND-DIFFICULTY",
+      "C09": "CAP-ACT-MAPS-AND-ROUTE-OWNERSHIP",
+      "C10": "CAP-REWARD-OFFERS-AND-ACQUISITION",
+      "C11": "CAP-SHOP-REST-AND-EVENT-SERVICES",
+      "C12": "CAP-RELICS-AND-EFFECTFUL-COMBAT-PARTICIPANTS",
+      "C13": "CAP-SAVE-INTEGRITY-AND-CONTINUE-RECOVERY",
+      "C14": "CAP-RUN-SUMMARY-AND-SETTLEMENT",
+      "C15": "CAP-LOCALIZATION-AND-ACCESSIBLE-INTERACTION",
+      "C16": "CAP-AUTOMATED-QUALITY-GATES-AND-VERIFICATION",
+      "C17": "CAP-SECURITY-CONTROLS-AND-AUDIT-EVIDENCE",
+      "C18": "CAP-TASK-SCOPE-AND-REVIEW-GOVERNANCE"
+    },
+    "membership_changes": 0
+  }
+}

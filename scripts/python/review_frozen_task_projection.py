@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -14,6 +15,40 @@ ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "logs/ci/task-generation"
 TASK_ROW = re.compile(r"^\| T(\d+) \|")
 GOVERNANCE_IDS = {1, 2, 38, 44, 49, 53, 54, 55, 56, 57, 58, 65, 68, 92, 93, 94, 102, 103, 104, 108, 109, 112}
+
+def reviewed_capabilities(root: Path, requirement_ids: list[str]) -> list[dict]:
+    """Replay a source-bound semantic review without reclassifying task numbers."""
+    review = load(root / "docs/planning/semantic-topology/capability-review.v1.json")
+    source = root / review["source_path"]
+    digest = hashlib.sha256(source.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+    if digest != review["source_text_sha256"]:
+        raise ValueError("Capability review source drift; repeat semantic review")
+    by_task = {}
+    for rid in requirement_ids:
+        match = re.fullmatch(r"(?:FR|NFR)-T(\d{4})", rid)
+        if not match or int(match[1]) in by_task:
+            raise ValueError(f"Invalid frozen requirement identity: {rid}")
+        by_task[int(match[1])] = rid
+    covered = set()
+    seen = set()
+    result = []
+    for row in review["capabilities"]:
+        cid = row["capability_id"]
+        members = row["included_task_ids"]
+        if not cid or cid in seen or not row["title"].strip() or not members:
+            raise ValueError("Invalid reviewed Capability identity or membership")
+        if len(set(members)) != len(members) or not set(members).issubset(by_task):
+            raise ValueError("Capability coverage includes duplicate or inactive task identities")
+        seen.add(cid)
+        covered.update(members)
+        result.append({
+            "capability_id": cid, "title": row["title"],
+            "description": row["description"],
+            "requirement_ids": sorted(by_task[task_id] for task_id in members),
+        })
+    if covered != set(by_task):
+        raise ValueError("Capability coverage omits active task requirements")
+    return result
 
 
 def load(path: Path):
@@ -115,6 +150,11 @@ def reviewed_candidate(root: Path) -> tuple[dict, dict]:
             batch_counts[batch["batch_id"]] += 1
     if seen_tasks != expected_ids or len(results) != len(by_block):
         raise ValueError("Reviewed task rows or source blocks are incomplete")
+    candidate["capabilities"] = reviewed_capabilities(root, [
+        atom["requirement_id"]
+        for result in candidate["block_results"]
+        for atom in result["atoms"]
+    ])
     for summary in candidate["batch_summaries"]:
         summary["output_accounted_count"] = batch_counts[summary["batch_id"]]
     report = {
