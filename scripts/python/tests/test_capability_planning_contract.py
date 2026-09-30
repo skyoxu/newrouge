@@ -10,7 +10,7 @@ PYTHON = ROOT / "scripts" / "python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
-from _planning_skill_common import validate_runner_description
+from _planning_skill_common import scrub_capability_answers, validate_runner_description
 from plan_capabilities import build_alignment, validate_candidate
 
 
@@ -99,6 +99,20 @@ class CapabilityPlanningContractTests(unittest.TestCase):
         self.assertEqual("CAP-KEEP", by_candidate["TMP-CAP-ONE"]["stable_id"])
         self.assertFalse(by_candidate["TMP-CAP-TWO"]["resolved"])
         self.assertFalse(alignment["resolved"])
+
+    def test_blinding_removes_prior_capability_answers(self) -> None:
+        payload = {
+            "requirements": [
+                {
+                    "requirement_id": "RQ-1",
+                    "capability_ids": ["CAP-OLD"],
+                    "nested": {"capability_ref": "CAP-OLD"},
+                }
+            ]
+        }
+        blinded = scrub_capability_answers(payload)
+        self.assertNotIn("capability_ids", blinded["requirements"][0])
+        self.assertNotIn("capability_ref", blinded["requirements"][0]["nested"])
 
     def test_formal_runner_rejects_read_anywhere_boundary(self) -> None:
         with self.assertRaisesRegex(ValueError, "workspace-only"):
