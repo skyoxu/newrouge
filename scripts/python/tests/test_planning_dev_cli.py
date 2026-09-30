@@ -34,6 +34,19 @@ class PlanningDevCliTests(unittest.TestCase):
         self.assertIn("--runner", cmd)
         self.assertIn("tools/isolated-runner.exe", cmd)
 
+    def test_mvg_rebind_handoff_forwards_existing_contract_inputs(self) -> None:
+        args = dev_cli.build_parser().parse_args([
+            "plan-mvg", "--stage", "rebind-handoff", "--run-id", "m1",
+            "--task-id", "42",
+            "--change-plan", "logs/milestone/change-plan.json",
+            "--handoff-out", "logs/milestone/task-42-handoff.json",
+        ])
+        cmd = build_plan_mvg_cmd(args)
+        self.assertIn("rebind-handoff", cmd)
+        self.assertEqual(1, cmd.count("--task-id"))
+        self.assertIn("logs/milestone/change-plan.json", cmd)
+        self.assertIn("logs/milestone/task-42-handoff.json", cmd)
+
     def test_mvg_prepare_forwards_explicit_capability_and_manifest(self) -> None:
         args = dev_cli.build_parser().parse_args([
             "plan-mvg", "--stage", "prepare", "--run-id", "m1",

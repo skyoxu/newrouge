@@ -824,7 +824,11 @@ def build_parser() -> argparse.ArgumentParser:
         "plan-mvg",
         help="run independent MVG planning from an explicit Capability version",
     )
-    p_mvg_plan.add_argument("--stage", required=True, choices=["prepare", "generate", "validate", "apply", "status"])
+    p_mvg_plan.add_argument(
+        "--stage",
+        required=True,
+        choices=["prepare", "generate", "validate", "apply", "rebind-handoff", "status"],
+    )
     p_mvg_plan.add_argument("--repo-root", default=".")
     p_mvg_plan.add_argument("--run-id", required=True)
     p_mvg_plan.add_argument("--capabilities", default="")
@@ -834,6 +838,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
     p_mvg_plan.add_argument("--confirm", action="store_true")
+    p_mvg_plan.add_argument("--change-plan", default="")
+    p_mvg_plan.add_argument("--handoff-out", default="")
     p_mvg_plan.set_defaults(func=cmd_plan_mvg)
 
 

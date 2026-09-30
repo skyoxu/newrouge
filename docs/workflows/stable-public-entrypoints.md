@@ -243,6 +243,7 @@ Why this is stable:
 - an existing manifest evolves through `update_mvg_baseline.py` semantics instead of replacement
 - planned entrypoints cannot masquerade as existing files, and planning never claims runtime verification
 - Chapter 6 remains blocked until changed milestone handoff/readiness bindings are valid
+- for a task that is actually owned by a milestone change plan, use `--stage rebind-handoff --task-id <id> --change-plan <path> --handoff-out <path>`; this reuses the existing milestone handoff contract instead of inventing a planning-owned handoff
 
 Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
 
