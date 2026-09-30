@@ -147,6 +147,7 @@ def prepare(
         files[f"sources/{value}"] = _copy_file(root, repo_path(root, value), bundle, f"sources/{value}")
     for path in TASK_VIEWS:
         files[f"task-views/{path.name}"] = _copy_file(root, root / path, bundle, f"task-views/{path.name}")
+    files["task-master.json"] = _copy_file(root, root / ".taskmaster/tasks/tasks.json", bundle, "task-master.json")
 
     referenced: set[str] = set()
     for row in _task_view_rows(root):
@@ -361,6 +362,12 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
         return output, execution
 
     known_task_ids = sorted(_task_ids(root))
+    task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
+    task_statuses = {
+        str(row["id"]): str(row.get("status", "")).lower()
+        for row in task_master.get("master", {}).get("tasks", [])
+    }
+    known_non_done_ids = sorted(int(task_id) for task_id, status in task_statuses.items() if status != "done")
     source_manifest = load_json(root / SOURCE_MANIFEST, {})
     known_source_paths = sorted({
         str(row.get("path"))
@@ -386,15 +393,19 @@ Deterministic validation reminders for the FULL replacement proposal:
 - manifest_candidate must contain non-empty flows and tests arrays.
 - coverage.mode must be exactly one of pilot, critical, full. For a minimal acceptance journey prefer pilot unless the evidence clearly supports a broader mode.
 - manifest_candidate.coverage is mandatory with scope_id, required_flow_ids in exact flow order, blocking_task_ids, and non-empty excluded_claims.
+- blocking_task_ids is derived ONLY from Taskmaster status in analysis-input/task-master.json: sorted unique referenced flow tasks whose status is not done, excluding dedicated integration owners that appear as owners but never producers/consumers across all flows. Planned entrypoints/tests and missing runtime evidence do not change Taskmaster status and must not add blockers. Never infer status from implementation obligations.
 - Every flow requires id, outcome, task_ids, source_paths, handoffs, test_ids. task_ids and every handoff producer_task/consumer_task/owner_task are JSON integers, never quoted numeric strings.
 - Every handoff requires producer_task, consumer_task, owner_task, contract_ref, non-empty behavior, and non-empty test_ids.
 - Every test requires id, kind, state, path, selector, evidence_level, min_tests.
 - dotnet tests require evidence_level=domain-integration and a Game.Core.Tests/... .cs path.
+- Every dotnet selector must be a class name (for example RelayTests or Game.Core.Tests.Tasks.RelayTests), never a test filter expression, method selector, wildcard, or comparison.
 - gdunit tests require evidence_level=scene-method or engine-input and a Tests.Godot/tests/... .gd path.
 - source_paths and contract_ref values in the formal manifest are original repository-relative paths, never analysis-input/... paths.
 - Every planned entrypoint requires integer owner_task plus non-empty path, symbol, inputs, state, assertions, implementation_acceptance.
 - Do not omit a required field merely because it can be inferred from prose.
 Known Taskmaster IDs for this planning input: {known_task_ids}
+Authoritative Taskmaster statuses (task ID to status): {json.dumps(task_statuses, sort_keys=True)}
+The only known non-done Taskmaster IDs are: {known_non_done_ids}. If this list is empty, coverage.blocking_task_ids MUST be [] in every replacement proposal, even when tests and entrypoints are planned.
 Declared authoritative source paths: {known_source_paths}
 Existing reviewed contract refs from task views: {known_contract_refs}
 Existing test refs from task views: {known_test_refs}

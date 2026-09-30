@@ -419,6 +419,35 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertIn("unresolved_gaps contradict", prompts[1])
         self.assertIn("do not hide genuine upstream uncertainty", prompts[1])
 
+    def test_generation_pins_task_status_during_full_structural_correction(self):
+        _, proposal, _ = prepared_mvg(self.root)
+        prompts = []
+        def invoke(*args, **kwargs):
+            prompts.append(kwargs["prompt_path"].read_text())
+            master = load_json(kwargs["workspace"] / "analysis-input/task-master.json")
+            self.assertEqual({7: "done", 42: "done"},
+                {row["id"]: row["status"] for row in master["master"]["tasks"]})
+            value = deepcopy(proposal)
+            if len(prompts) == 1:
+                value["manifest_candidate"]["coverage"]["blocking_task_ids"] = [7, 42]
+            elif len(prompts) == 2:
+                value["manifest_candidate"]["tests"][0]["selector"] = "FullyQualifiedName~RelayTests"
+            atomic_json(kwargs["output_path"], value)
+            return {"model": "fixture-generator", "model_tools": []}
+        with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
+             patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            result = mvg.generate(self.root, run_id="repair", timeout_sec=1, llm_backend="copilot-cli")
+        self.assertEqual(3, result["attempt_count"])
+        self.assertIn("non-done scoped tasks []", prompts[1])
+        self.assertIn("selector must be a class name", prompts[2])
+        for prompt in prompts:
+            self.assertIn('"7": "done"', prompt)
+            self.assertIn('"42": "done"', prompt)
+            self.assertIn("coverage.blocking_task_ids MUST be []", prompt)
+        final = load_json(self.root / "logs/ci/mvg-planning/repair/proposal.json")
+        self.assertEqual([], final["manifest_candidate"]["coverage"]["blocking_task_ids"])
+        self.assertEqual("RelayTests", final["manifest_candidate"]["tests"][0]["selector"])
+
 
 if __name__ == "__main__":
     unittest.main()
