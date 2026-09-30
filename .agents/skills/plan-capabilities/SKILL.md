@@ -25,9 +25,9 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
    `py -3 scripts/python/plan_capabilities.py prepare --run-id <id> --task-id <id> [--task-id <id> ...]`
 2. Inspect `logs/ci/capability-planning/<id>/analysis-input/analysis-index.json`. A draft may use `--allow-unready-draft`, but formal candidate generation refuses an unready scope.
 3. Generate three candidates through the configured isolation runner:
-   `py -3 scripts/python/plan_capabilities.py generate --run-id <id> --runner <isolated-runner>`
+   `py -3 scripts/python/dev_cli.py plan-capabilities --stage generate --run-id <id>`
 4. Run independent anonymous review:
-   `py -3 scripts/python/plan_capabilities.py review --run-id <id> --runner <isolated-runner>`
+   `py -3 scripts/python/dev_cli.py plan-capabilities --stage review --run-id <id>`
 5. Preview historical ID alignment:
    `py -3 scripts/python/plan_capabilities.py preview-alignment --run-id <id>`
    Exact Requirement-membership matches reuse IDs automatically. Any changed membership is unresolved until an explicit reviewed alignment decision is supplied.
@@ -37,7 +37,9 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
 
 ## Isolation runner contract
 
-The runner is external to this Skill and must answer `--describe` with schema `newrouge.isolated-model-runner.v1`, including:
+Default verified runner: `scripts/python/openai_isolated_model_runner.py`. It serializes only UTF-8 files inside the prepared candidate/review workspace into a text-only OpenAI API request and exposes no model tools. Set `OPENAI_API_KEY` and optionally `SC_OPENAI_MODEL` / `OPENAI_MODEL`. The stable `dev_cli plan-capabilities` command uses this runner by default.
+
+A custom runner may be supplied, but it must answer `--describe` with schema `newrouge.isolated-model-runner.v1`, including:
 
 - `filesystem_scope = workspace_only`
 - `fresh_session_per_invocation = true`
