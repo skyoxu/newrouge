@@ -3,22 +3,22 @@
 Owner: PR #251. Starting revision: 86164cfff58046f121038e2fe0409e1f1af818cb.
 
 - Title: planning-audit-repair
-- Status: In progress
+- Status: Completed
 - Branch: fix/planning-audit-repair
-- Git Head: 4f52941a5a135b3e2ba1d02410fdee4be8dca52b
+- Git Head: 5271f65ef7c906f224f39aa50e41183b50e6b4de
 - Goal: Close the six production-entry defects in the three-document implementation audit.
 - Scope: Planning validation, durable apply recovery and Chapter 6 obligation gates; no business-source/task changes.
-- Current step: Run repository checks and current-revision production acceptance.
-- Last completed step: All six original defects reproduce in RED and pass; 215 three-document regressions, including 23 focused repair tests and both isolated model adapters, pass.
+- Current step: Complete; implementation and all four CI workflows pass at revision 5271f65e. This final checkpoint updates documentation only.
+- Last completed step: Verified real same-model Capability/MVG production evidence and all Windows/MVG workflows; 215 three-document regressions, including 23 focused repair tests and both isolated model adapters, pass.
 - Stop-loss: Preserve user edits and prepared identities; never bypass pending transactions, semantic review or stale handoffs.
-- Next action: Inspect the next revision's production and Windows/MVG gates; persist actual acceptance results. The previous run exposed missing modern Copilot usage/shutdown identity parsing, now covered by strict adapter regressions. Transport/identity and full-output correction retries remain bounded and never weaken the validators.
+- Next action: Review PR #251. No implementation action remains; merge is outside this repair instruction.
 - Recovery command: `py -3 -m unittest scripts.python.tests.test_planning_audit_repair -v`
 - Open questions: None; Windows runtime validation uses existing CI because this workspace has no .NET/Godot binaries.
 - Exit criteria: Current implementation passes repository gates and the real isolated Capability-to-MVG production chain.
 - Related ADRs: none; implements existing approved requirement boundaries.
 - Related decision logs: none; no new policy or irreversible decision.
 - Related task id(s): n/a (workflow implementation; no business-task status edits)
-- Related run id: 36760142028 (production); 36760142007 (Windows quality); 36760141996 (Windows smoke); 36760142010 (MVG integration)
+- Related run id: 36765025379 (production PASS); 36765023945 (Windows quality PASS); 36765023968 (Windows smoke PASS); 36765023912 (MVG integration PASS)
 - Related latest.json: n/a (repo-level repair; logs are under logs/ci/planning-audit-repair/)
 - Related pipeline artifacts: `logs/ci/planning-audit-repair/**`
 
@@ -31,6 +31,6 @@ Scope: implement the six production-entry defects identified against the Chapter
 - [x] A05: consume persisted MVG obligation bindings at Chapter 6 entry; bind actual milestone handoffs to the applied manifest.
 - [x] A06: journal Capability apply and recover interrupted writes and readiness rebinding without overriding external edits.
 - [x] Run focused negative/positive tests and appropriate repository checks.
-- [ ] Update workflow instructions, acceptance evidence and PR #251; inspect CI for the pushed revision.
+- [x] Update workflow instructions, acceptance evidence and PR #251; inspect CI for the pushed code revision.
 
 Validation evidence belongs under logs/ci/planning-audit-repair/. Real model acceptance must use the isolated production fixture and must distinguish planning evidence from runtime verification. No game execution is required by this repair.

@@ -2,7 +2,7 @@
 
 Requirement: `REQ-CAPABILITY-MVG-SKILLS-001`
 
-Status: implementation repaired; current-revision production acceptance is tracked on PR #251. The earlier production run below predates the six-defect audit and is not proof of those repairs.
+Status: **complete**. Audit-repair code revision `5271f65ef7c906f224f39aa50e41183b50e6b4de` passes real production-model acceptance, Windows Quality, Windows Smoke and MVG Integration. The historical run below predates the audit repairs.
 
 This document maps the implementation to AC01-AC26 and records the controlled real-model acceptance required by the requirement. It does not claim gameplay runtime acceptance, human playtest approval, or KCP publication.
 
@@ -30,6 +30,24 @@ Observed evidence from the run:
 - The production acceptance intentionally did not apply the MVG manifest and reports `runtime_verified=false`.
 - Model request billing amount was not exposed by the backend, so no monetary cost is invented. Copilot request count was not observable as an exact model-request count and is reported accordingly.
 - The complete acceptance evidence artifact was uploaded as `planning-production-acceptance-36734641027`.
+
+## Audit-repair production-model acceptance
+
+Code revision: `5271f65ef7c906f224f39aa50e41183b50e6b4de`.
+
+Production run: [36765025379](https://github.com/skyoxu/newrouge/actions/runs/36765025379), **PASS**.
+
+Artifact: `planning-production-acceptance-36765025379-attempt-1`, ID `11120062665`, digest `sha256:06c785eef50f91cd0d9fc91385c8ea2c35e4f889e46601ca930a440ef2464dd0`.
+
+- Exactly three valid fresh no-tools candidates; all use actual model `mai-code-1.1-flash`, each accepted on its first attempt. Anonymous review uses the same actual model and selects `candidate-3`.
+- Capability apply preserves current Chapter 5 readiness for real fixture Tasks `7` and `42`.
+- Independently generated MVG proposal SHA-256: `sha256:14390707885b897d1362522b15fb169442af796a63804ee3f128e679aa824186`.
+- A separate fresh semantic reviewer approves both delivery Requirements and the cross-system player journey with zero findings. Review file SHA-256: `sha256:7f99110ae84f4bf43106290f6c09ed4d4e5b6f248d83daea86b07c947ce66c36`.
+- Deterministic final validation returns `formal_applicable=true`, zero errors and zero unresolved gaps.
+- Six fresh invocation-owned model-event evidence records are retained. The accepted candidate model identities and both MVG file hashes were verified from the downloaded artifact.
+- Acceptance intentionally does not apply the MVG manifest and reports `runtime_verified=false`; formal apply and final obligation bindings are exercised by the deterministic repair regressions.
+
+Repository gates for the same code revision: [Windows Quality](https://github.com/skyoxu/newrouge/actions/runs/36765023945) **PASS**, [Windows Smoke](https://github.com/skyoxu/newrouge/actions/runs/36765023968) **PASS**, [MVG Integration](https://github.com/skyoxu/newrouge/actions/runs/36765023912) **PASS**. This completion record changes documentation only; executable implementation and business authorities remain at the verified revision.
 
 ## AC01-AC26
 
@@ -60,7 +78,7 @@ Observed evidence from the run:
 | AC23 budget exhaustion / recovery | PASS | Candidate/review retry limits, per-candidate and total active-time budgets, observable request limit, process-tree timeout termination and persisted budget state are implemented. When exact request/cost accounting is unavailable it is reported unavailable instead of invented. |
 | AC24 final handoff after MVG apply | PASS | Both Chapter 6 entrypoints consume the durable applied trace, require current obligation bindings, and cannot bypass by omitting the flag. The lane consumes its bound real milestone handoff; the handoff itself hashes the applied manifest. An ordinary binding resolves applicability and current readiness without a fake milestone handoff. |
 | AC25 source-authored Capability classification | PASS | Authoritative source text is copied unchanged into the blinded bundle and classification signals are retained; only old derived answers are removed. |
-| AC26 real MVG production path | PASS | Run #36734641027 consumed the actual selected/applied Capability, generated a real MVG proposal with Copilot CLI, and passed the existing plan/formal validator. No mock/preloaded manifest substituted for this chain. |
+| AC26 real MVG production path | PASS | Audit-repair run #36765025379 consumes the actual selected/applied Capability, independently generates a real MVG proposal, performs a separate fresh semantic review and passes deterministic/formal validation. No mock/preloaded manifest substitutes for this chain. |
 
 ## Six-defect audit repair verification
 
@@ -70,7 +88,7 @@ The final three-document regression set contains 215 passing tests, including 23
 
 The Copilot adapter also reads documented `assistant.usage` and executed `session.shutdown.modelMetrics` evidence. A selected/configured model alone cannot prove execution, and multiple executed models in one invocation are rejected. CI acceptance artifacts include the workflow attempt number to retain separate attempts. When CLI stdout omits identity, the adapter reads only this invocation's fresh private session event log before cleanup, retains model-event diagnostics without message/reasoning text, and rejects multiple session logs. Cached/selected model names alone cannot prove execution. Runtime cleanup also covers timeouts. Event authority: https://github.com/github/copilot-sdk/blob/main/docs/features/streaming-events.md; session-log authority: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference.
 
-The clean CRLF checkout passes `validate_semantic_topology.py --worktree --require-available` for 139 source blocks and 127 active Requirements. Both Git and worktree topology checks are in the hard bundle. The current production workflow includes an independent isolated MVG semantic reviewer before formal validation. Read its current-revision outcome from PR #251 and retained Actions artifacts; the historical run above is not new repair evidence.
+The clean CRLF checkout passes `validate_semantic_topology.py --worktree --require-available` for 139 source blocks and 127 active Requirements. Both Git and worktree topology checks are in the hard bundle. The repaired production workflow's independent isolated MVG semantic reviewer and final validator passed in run #36765025379; the historical run above is not new repair evidence.
 
 ## Implementation surfaces
 
@@ -87,4 +105,4 @@ The clean CRLF checkout passes `validate_semantic_topology.py --worktree --requi
 
 ## Completion boundary
 
-This requirement is complete when the current PR HEAD keeps the production acceptance workflow and the repository gates green. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
+The executable implementation is complete at the explicitly recorded revision, where production acceptance and all repository gates pass. The final documentation checkpoint records those results without changing executable implementation or business authorities. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
