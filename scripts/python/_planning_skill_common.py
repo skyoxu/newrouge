@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -176,9 +177,15 @@ def parse_model_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _runner_prefix(executable: Path) -> list[str]:
+    if executable.suffix.casefold() == ".py":
+        return [sys.executable, str(executable)]
+    return [str(executable)]
+
+
 def inspect_isolated_runner(executable: Path) -> dict[str, Any]:
     proc = subprocess.run(
-        [str(executable), "--describe"],
+        [*_runner_prefix(executable), "--describe"],
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -216,7 +223,7 @@ def run_isolated_model(
 ) -> dict[str, Any]:
     proc = subprocess.run(
         [
-            str(executable),
+            *_runner_prefix(executable),
             "--workspace", str(workspace),
             "--prompt-file", str(prompt_path),
             "--output", str(output_path),
