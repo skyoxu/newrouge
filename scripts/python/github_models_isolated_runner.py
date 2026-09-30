@@ -84,21 +84,37 @@ def _chat(messages: list[dict[str, str]], *, timeout_sec: float) -> tuple[str, d
             "messages": messages,
         }).encode("utf-8"),
         headers={
-            "Accept": "application/vnd.github+json",
+            "Accept": "application/json",
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "User-Agent": "newrouge-planning-acceptance",
+            "X-GitHub-Api-Version": "2022-11-28",
         },
         method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=max(1.0, timeout_sec)) as response:
-            raw = response.read().decode("utf-8")
+            status = int(getattr(response, "status", 200) or 200)
+            content_type = str(response.headers.get("Content-Type") or "")
+            raw_bytes = response.read()
+            raw = raw_bytes.decode("utf-8", errors="replace").strip()
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"GitHub Models HTTP {exc.code}: {body[-2000:]}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"GitHub Models request failed: {exc}") from exc
-    payload = json.loads(raw)
+    if not raw:
+        raise RuntimeError(
+            f"GitHub Models returned empty HTTP body status={status} content_type={content_type!r}"
+        )
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        preview = raw[:1000].replace("\n", "\\n")
+        raise RuntimeError(
+            f"GitHub Models returned non-JSON status={status} "
+            f"content_type={content_type!r} body_prefix={preview!r}"
+        ) from exc
     if not isinstance(payload, dict):
         raise RuntimeError("GitHub Models response is not a JSON object")
     output = _content(payload)
