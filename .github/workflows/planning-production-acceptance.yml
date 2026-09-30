@@ -52,7 +52,7 @@ jobs:
         run: npm install -g @github/copilot@latest
 
       - name: Deterministic acceptance fixture smoke
-        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract scripts.python.tests.test_planning_audit_repair -v
+        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract scripts.python.tests.test_planning_audit_repair scripts.python.tests.test_copilot_isolated_model_runner scripts.python.tests.test_openai_isolated_model_runner -v
 
       - name: Run real Capability to MVG production acceptance
         run: |
@@ -66,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: planning-production-acceptance-${{ github.run_id }}
+          name: planning-production-acceptance-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             logs/ci/planning-production-acceptance/evidence/**
             logs/ci/planning-production-acceptance/workspace/logs/ci/capability-planning/**

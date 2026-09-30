@@ -366,6 +366,8 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.python.tests.test_chapter3_semantic_conservation",
                 "scripts.python.tests.test_chapter5_semantic_reconciliation",
                 "scripts.python.tests.test_capability_planning_contract",
+                "scripts.python.tests.test_copilot_isolated_model_runner",
+                "scripts.python.tests.test_openai_isolated_model_runner",
                 "scripts.python.tests.test_mvg_planning_contract",
                 "scripts.python.tests.test_planning_audit_repair",
                 "scripts.python.tests.test_planning_dev_cli",

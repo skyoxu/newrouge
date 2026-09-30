@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -31,6 +32,44 @@ class CopilotIsolatedRunnerTests(unittest.TestCase):
             '{"type":"session.usage_checkpoint","data":{"lastActiveModel":"m"}}',
         ])
         with self.assertRaisesRegex(ValueError, "forbids model tool requests"):
+            parse_copilot_json_stream(raw)
+
+    def test_usage_event_proves_model_without_legacy_checkpoint(self) -> None:
+        raw = '\n'.join(json.dumps(event) for event in [
+            {"type": "assistant.message", "data": {"content": "answer", "toolRequests": []}},
+            {"type": "assistant.usage", "data": {"model": "actual-model", "outputTokens": 10}},
+            {"type": "session.usage_checkpoint", "data": {"lastActiveModel": "auto"}},
+        ])
+        self.assertEqual(("answer", "actual-model"), parse_copilot_json_stream(raw))
+
+    def test_shutdown_metrics_use_executed_model_and_ignore_unused_selection(self) -> None:
+        raw = '\n'.join(json.dumps(event) for event in [
+            {"type": "assistant.message", "data": {"content": "answer"}},
+            {"type": "session.shutdown", "data": {"currentModel": "selected-model", "modelMetrics": {
+                "actual-model": {"requests": {"count": 1}, "usage": {"outputTokens": 10}},
+                "selected-model": {"requests": {"count": 0}, "usage": {"outputTokens": 0}},
+            }}},
+        ])
+        self.assertEqual(("answer", "actual-model"), parse_copilot_json_stream(raw))
+
+    def test_mixed_execution_models_are_rejected(self) -> None:
+        for event_type in ("assistant.usage", "session.shutdown"):
+            with self.subTest(event_type=event_type):
+                events = [{"type": "assistant.message", "data": {"content": "answer"}}]
+                if event_type == "assistant.usage":
+                    events.extend({"type": event_type, "data": {"model": name}} for name in ("a", "b"))
+                else:
+                    events.append({"type": event_type, "data": {"modelMetrics": {
+                        name: {"requests": {"count": 1}} for name in ("a", "b")}}})
+                with self.assertRaisesRegex(ValueError, "mixed actual models"):
+                    parse_copilot_json_stream('\n'.join(json.dumps(event) for event in events))
+
+    def test_selected_model_without_execution_evidence_is_rejected(self) -> None:
+        raw = '\n'.join(json.dumps(event) for event in [
+            {"type": "assistant.message", "data": {"content": "answer"}},
+            {"type": "session.shutdown", "data": {"currentModel": "selected-model", "modelMetrics": {}}},
+        ])
+        with self.assertRaisesRegex(ValueError, "did not expose the actual model identity"):
             parse_copilot_json_stream(raw)
 
     def test_description_satisfies_no_tools_isolation_contract(self) -> None:

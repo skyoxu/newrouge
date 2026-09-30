@@ -27,6 +27,12 @@ def model_name() -> str:
 def parse_copilot_json_stream(raw: str) -> tuple[str, str]:
     messages: list[str] = []
     actual_model = ""
+    execution_models: set[str] = set()
+
+    def identity(value: object) -> str:
+        name = str(value or "").strip()
+        return "" if name.lower() in {"auto", "automatic"} else name
+
     for line in raw.splitlines():
         text = line.strip()
         if not text.startswith("{"):
@@ -39,6 +45,25 @@ def parse_copilot_json_stream(raw: str) -> tuple[str, str]:
             continue
         event_type = str(event.get("type") or "")
         data = event.get("data")
+        # https://github.com/github/copilot-sdk/blob/main/docs/features/streaming-events.md
+        # Usage reports executed calls; shutdown currentModel only reports selection.
+        if event_type == "assistant.usage" and isinstance(data, dict):
+            model = identity(data.get("model"))
+            if model:
+                execution_models.add(model)
+        if event_type == "session.shutdown" and isinstance(data, dict):
+            metrics = data.get("modelMetrics")
+            if isinstance(metrics, dict):
+                for name, metric in metrics.items():
+                    if not isinstance(metric, dict):
+                        continue
+                    requests = metric.get("requests") or {}
+                    usage = metric.get("usage") or {}
+                    counts = [requests.get("count", 0), usage.get("inputTokens", 0), usage.get("outputTokens", 0)]
+                    if any(isinstance(value, (int, float)) and value > 0 for value in counts):
+                        model = identity(name)
+                        if model:
+                            execution_models.add(model)
         if event_type == "assistant.message" and isinstance(data, dict):
             tool_requests = data.get("toolRequests")
             if isinstance(tool_requests, list) and tool_requests:
@@ -48,17 +73,21 @@ def parse_copilot_json_stream(raw: str) -> tuple[str, str]:
             if content and phase != "thinking":
                 messages.append(content)
         if event_type == "session.usage_checkpoint" and isinstance(data, dict):
-            last = str(data.get("lastActiveModel") or "").strip()
+            last = identity(data.get("lastActiveModel"))
             if last:
                 actual_model = last
             rows = data.get("modelCacheState")
             if not actual_model and isinstance(rows, list):
                 for row in reversed(rows):
                     if isinstance(row, dict) and str(row.get("modelId") or "").strip():
-                        actual_model = str(row["modelId"]).strip()
+                        actual_model = identity(row["modelId"])
                         break
     if not messages:
         raise ValueError("Copilot JSON stream contained no assistant.message response")
+    if len(execution_models) > 1:
+        raise ValueError("Copilot JSON stream exposes mixed actual models: " + ",".join(sorted(execution_models)))
+    if execution_models:
+        actual_model = next(iter(execution_models))
     if not actual_model:
         raise ValueError("Copilot JSON stream did not expose the actual model identity")
     return messages[-1], actual_model
