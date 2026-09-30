@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+PYTHON = ROOT / "scripts" / "python"
+if str(PYTHON) not in sys.path:
+    sys.path.insert(0, str(PYTHON))
 
 from planning_acceptance_fixture import build_fixture
 from chapter5_semantic_reconciliation import load_task_readiness
