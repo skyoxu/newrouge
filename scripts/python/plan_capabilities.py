@@ -792,7 +792,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         if final_result.get("corrections"):
             path = review_dir / "corrected-candidate.json"
             atomic_json(path, corrected_candidate)
-            final_candidate_path = relative(root, path)
+            final_candidate_path = "review/corrected-candidate.json"
     state["phase"] = "reviewed"
     state["selected_candidate"] = selected_label
     state["final_candidate_path"] = final_candidate_path
@@ -885,16 +885,72 @@ def _selected_candidate(run_dir: Path, state: dict[str, Any]) -> dict[str, Any]:
     label = str(state.get("selected_candidate") or "")
     if not label:
         raise ValueError("no selected Capability candidate")
+    final_path = str(state.get("final_candidate_path") or "").strip()
+    if final_path:
+        path = (run_dir / final_path).resolve()
+        if not path.is_relative_to(run_dir.resolve()) or not path.is_file():
+            raise ValueError("corrected final candidate path is invalid")
+        return load_json(path, {})
     return load_json(run_dir / "candidates" / f"{label}.json", {})
 
 
+def _validate_snapshot_freshness(root: Path, run_dir: Path) -> dict[str, Any]:
+    index = load_json(run_dir / "analysis-input" / "analysis-index.json", {})
+    authority = index.get("authority_inputs")
+    if not isinstance(authority, dict) or not authority:
+        raise ValueError("Capability analysis input identity is incomplete")
+    drift: list[dict[str, Any]] = []
+    for rel_path, expected in sorted(authority.items()):
+        path = repo_path(root, str(rel_path))
+        actual = file_sha(path) if path.is_file() else None
+        if actual != expected:
+            drift.append({
+                "path": str(rel_path),
+                "expected_sha256": expected,
+                "actual_sha256": actual,
+            })
+    prepared_repo = index.get("repository_identity") or {}
+    current_repo = _repository_identity(root)
+    report = {
+        "schema_version": "newrouge.capability-input-freshness.v1",
+        "analysis_identity_sha256": index.get("analysis_identity_sha256"),
+        "authority_input_drift": drift,
+        "prepared_repository_identity": prepared_repo,
+        "current_repository_identity": current_repo,
+        "repository_revision_changed": (
+            prepared_repo.get("revision") is not None
+            and current_repo.get("revision") is not None
+            and prepared_repo.get("revision") != current_repo.get("revision")
+        ),
+        "status": "blocked" if drift else "current",
+    }
+    atomic_json(run_dir / "input-freshness.json", report)
+    if drift:
+        raise ValueError(
+            "Capability apply blocked by input drift: "
+            + ",".join(str(row["path"]) for row in drift)
+        )
+    return report
+
+
 def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
-    _run_path, state = _load_run(root, run_id)
+    run_path, state = _load_run(root, run_id)
     run_dir = _run_dir(root, run_id)
+    started = time.monotonic()
     candidate = _selected_candidate(run_dir, state)
     existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
     result = build_alignment(candidate, existing)
+    elapsed = time.monotonic() - started
+    budget = _budget(state)
+    budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + elapsed
+    budget["alignment_activity_sec"] = float(budget.get("alignment_activity_sec") or 0.0) + elapsed
+    if float(budget["activity_sec"]) > float(budget["total_budget_sec"]):
+        state["phase"] = "alignment-blocked"
+        state["stop_reason"] = "Capability planning total active-time budget exhausted"
+        atomic_json(run_path, state)
+        raise ValueError(state["stop_reason"])
     atomic_json(run_dir / "alignment-preview.json", result)
+    atomic_json(run_path, state)
     return result
 
 
@@ -1062,8 +1118,7 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     if state.get("review_status") != "selected":
         raise ValueError("Capability apply requires a selected independent review winner")
     review = load_json(run_dir / "review/review.json", {})
-    if review.get("corrections"):
-        raise ValueError("review corrections must be materialized and revalidated before apply")
+    freshness = _validate_snapshot_freshness(root, run_dir)
     candidate = _selected_candidate(run_dir, state)
     ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
     semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
@@ -1135,7 +1190,11 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         "selected_candidate": state["selected_candidate"],
         "selected_candidate_sha256": canonical_sha(candidate),
         "review_sha256": canonical_sha(review),
+        "final_candidate_sha256": canonical_sha(candidate),
+        "corrections_applied": bool(review.get("corrections")),
         "alignment": alignment,
+        "input_freshness": freshness,
+        "generation_readiness_sha256": file_sha(run_dir / "analysis-input/readiness-summary.json"),
         "applied_at_utc": now(),
     }
 
@@ -1196,6 +1255,7 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         "changed_task_ids": changed_tasks,
         "readiness_rebind": rebind,
         "capabilities_sha256": state["applied_capabilities_sha256"],
+        "generation_readiness_sha256": file_sha(run_dir / "analysis-input/readiness-summary.json"),
         "mvg_formal_planning_allowed": all(row.get("status") == "rebound" for row in rebind),
     })
     return load_json(run_dir / "apply-summary.json", {})
