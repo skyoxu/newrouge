@@ -321,6 +321,105 @@ def _copy_analysis(run_dir: Path, workspace: Path) -> None:
     shutil.copytree(run_dir / "analysis-input", target)
 
 
+def _budget(state: dict[str, Any]) -> dict[str, Any]:
+    value = state.get("budget")
+    if not isinstance(value, dict):
+        raise ValueError("Capability planning budget state is missing")
+    return value
+
+
+def _candidate_record(state: dict[str, Any], label: str) -> dict[str, Any]:
+    records = state.setdefault("candidate_attempts", {})
+    row = records.get(label)
+    if not isinstance(row, dict) or "attempts" not in row:
+        row = {"attempts": [], "valid_attempt": None, "final_meta": None}
+        records[label] = row
+    return row
+
+
+def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any]) -> int | None:
+    if runner_info.get("request_accounting") != "exact_per_runner_invocation":
+        return None
+    if runner_info.get("supports_batched_session") is True:
+        return int(state.get("model_batch_count") or 0) + 2
+    return 1
+
+
+def _remaining_attempt_budget(
+    state: dict[str, Any],
+    *,
+    label: str | None,
+    timeout_sec: int,
+    runner_info: dict[str, Any],
+) -> int:
+    budget = _budget(state)
+    total_remaining = float(budget["total_budget_sec"]) - float(budget.get("activity_sec") or 0.0)
+    if total_remaining <= 0:
+        raise ValueError("Capability planning total active-time budget exhausted")
+    remaining = total_remaining
+    if label is not None:
+        by_candidate = budget.setdefault("candidate_activity_sec", {})
+        candidate_remaining = float(budget["candidate_budget_sec"]) - float(by_candidate.get(label) or 0.0)
+        if candidate_remaining <= 0:
+            raise ValueError(f"{label} active-time budget exhausted")
+        remaining = min(remaining, candidate_remaining)
+    estimated = _estimated_requests(state, runner_info)
+    if estimated is not None:
+        observed = int(budget.get("model_requests_observed") or 0)
+        if observed + estimated > int(budget["request_limit"]):
+            raise ValueError(
+                f"Capability planning model request budget exhausted: "
+                f"{observed}+{estimated}>{budget['request_limit']}"
+            )
+    return max(1, min(int(timeout_sec), int(remaining)))
+
+
+def _record_runner_activity(
+    state: dict[str, Any],
+    *,
+    label: str | None,
+    elapsed_sec: float,
+    receipt: dict[str, Any] | None,
+) -> None:
+    budget = _budget(state)
+    budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + float(elapsed_sec)
+    budget["runner_invocations"] = int(budget.get("runner_invocations") or 0) + 1
+    if label is not None:
+        by_candidate = budget.setdefault("candidate_activity_sec", {})
+        by_candidate[label] = float(by_candidate.get(label) or 0.0) + float(elapsed_sec)
+    else:
+        budget["review_activity_sec"] = float(budget.get("review_activity_sec") or 0.0) + float(elapsed_sec)
+    if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
+        budget["model_requests_observed"] = (
+            int(budget.get("model_requests_observed") or 0)
+            + int(receipt.get("model_request_count") or 0)
+        )
+    else:
+        budget["request_count_complete"] = False
+
+
+def _valid_candidate_reusable(
+    run_dir: Path,
+    state: dict[str, Any],
+    label: str,
+    *,
+    prompt_sha: str,
+    runner_info: dict[str, Any],
+) -> bool:
+    record = _candidate_record(state, label)
+    meta = record.get("final_meta")
+    path = run_dir / "candidates" / f"{label}.json"
+    return (
+        isinstance(meta, dict)
+        and not meta.get("validation_errors")
+        and meta.get("analysis_identity_sha256") == state.get("analysis_identity_sha256")
+        and meta.get("prompt_sha256") == prompt_sha
+        and meta.get("model") == runner_info.get("model")
+        and path.is_file()
+        and meta.get("output_sha256") == file_sha(path)
+    )
+
+
 def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     if state.get("formal_ready") is not True:
@@ -328,49 +427,122 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     runner_info = inspect_isolated_runner(runner)
     run_dir = run_path.parent
     prompt_sha = text_sha(CANDIDATE_PROMPT)
+    state["runner"] = runner_info
     outputs = []
+    blocked: list[str] = []
+    max_attempts = 1 + int(_budget(state).get("candidate_retry_limit") or 0)
     for index in range(1, 4):
         label = f"candidate-{index}"
-        workspace = run_dir / "isolated-workspaces" / label
-        if workspace.exists():
-            shutil.rmtree(workspace)
-        workspace.mkdir(parents=True)
-        _copy_analysis(run_dir, workspace)
-        prompt_path = workspace / "prompt.txt"
-        prompt_path.write_text(CANDIDATE_PROMPT, encoding="utf-8", newline="\n")
-        output = workspace / "candidate.json"
-        receipt = run_isolated_model(
-            runner,
-            workspace=workspace,
-            prompt_path=prompt_path,
-            output_path=output,
-            timeout_sec=timeout_sec,
-        )
-        candidate = parse_model_json(output)
-        ledger = load_json(workspace / "analysis-input/source-blocks.v1.json", {})
-        semantics = load_json(workspace / "analysis-input/semantic-requirements.v1.json", {})
-        errors = validate_candidate(
-            candidate, ledger, semantics, str(state["analysis_identity_sha256"])
-        )
-        persisted = run_dir / "candidates" / f"{label}.json"
-        atomic_json(persisted, candidate)
-        meta = {
+        if _valid_candidate_reusable(
+            run_dir, state, label, prompt_sha=prompt_sha, runner_info=runner_info
+        ):
+            outputs.append({"candidate": label, "valid": True, "reused": True, "errors": []})
+            continue
+        record = _candidate_record(state, label)
+        attempts = record.setdefault("attempts", [])
+        valid = False
+        last_errors: list[str] = []
+        while len(attempts) < max_attempts and not valid:
+            attempt_no = len(attempts) + 1
+            try:
+                attempt_timeout = _remaining_attempt_budget(
+                    state,
+                    label=label,
+                    timeout_sec=timeout_sec,
+                    runner_info=runner_info,
+                )
+            except ValueError as exc:
+                last_errors = [str(exc)]
+                break
+            workspace = run_dir / "isolated-workspaces" / label / f"attempt-{attempt_no}"
+            if workspace.exists():
+                shutil.rmtree(workspace)
+            workspace.mkdir(parents=True)
+            _copy_analysis(run_dir, workspace)
+            prompt_path = workspace / "prompt.txt"
+            prompt_path.write_text(CANDIDATE_PROMPT, encoding="utf-8", newline="\n")
+            output = workspace / "candidate.json"
+            receipt: dict[str, Any] | None = None
+            candidate: dict[str, Any] | None = None
+            errors: list[str] = []
+            started = time.monotonic()
+            try:
+                receipt = run_isolated_model(
+                    runner,
+                    workspace=workspace,
+                    prompt_path=prompt_path,
+                    output_path=output,
+                    timeout_sec=attempt_timeout,
+                )
+                candidate = parse_model_json(output)
+                ledger = load_json(workspace / "analysis-input/source-blocks.v1.json", {})
+                semantics = load_json(workspace / "analysis-input/semantic-requirements.v1.json", {})
+                errors = validate_candidate(
+                    candidate, ledger, semantics, str(state["analysis_identity_sha256"])
+                )
+            except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                errors = [f"runner_or_output_failure:{exc}"]
+            elapsed = time.monotonic() - started
+            _record_runner_activity(
+                state, label=label, elapsed_sec=elapsed, receipt=receipt
+            )
+            meta = {
+                "candidate": label,
+                "attempt": attempt_no,
+                "model": runner_info.get("model"),
+                "runner": runner_info,
+                "prompt_sha256": prompt_sha,
+                "analysis_identity_sha256": state["analysis_identity_sha256"],
+                "elapsed_active_sec": elapsed,
+                "validation_errors": errors,
+                "receipt": receipt or {},
+                "output_sha256": file_sha(output) if output.is_file() else None,
+            }
+            attempts.append(meta)
+            atomic_json(
+                run_dir / "candidates" / "attempts" / f"{label}-attempt-{attempt_no}.meta.json",
+                meta,
+            )
+            if candidate is not None:
+                atomic_json(
+                    run_dir / "candidates" / "attempts" / f"{label}-attempt-{attempt_no}.json",
+                    candidate,
+                )
+            elif output.is_file():
+                raw_target = run_dir / "candidates" / "attempts" / f"{label}-attempt-{attempt_no}.raw.txt"
+                raw_target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(output, raw_target)
+            if not errors and candidate is not None:
+                persisted = run_dir / "candidates" / f"{label}.json"
+                atomic_json(persisted, candidate)
+                final_meta = dict(meta)
+                final_meta["output_sha256"] = file_sha(persisted)
+                record["valid_attempt"] = attempt_no
+                record["final_meta"] = final_meta
+                atomic_json(run_dir / "candidates" / f"{label}.meta.json", final_meta)
+                valid = True
+                last_errors = []
+            else:
+                last_errors = errors
+            atomic_json(run_path, state)
+        outputs.append({
             "candidate": label,
-            "model": runner_info.get("model"),
-            "runner": runner_info,
-            "prompt_sha256": prompt_sha,
-            "analysis_identity_sha256": state["analysis_identity_sha256"],
-            "output_sha256": file_sha(persisted),
-            "validation_errors": errors,
-            "receipt": receipt,
-        }
-        atomic_json(run_dir / "candidates" / f"{label}.meta.json", meta)
-        state.setdefault("candidate_attempts", {})[label] = meta
-        outputs.append({"candidate": label, "valid": not errors, "errors": errors})
+            "valid": valid,
+            "reused": False,
+            "attempt_count": len(record.get("attempts", [])),
+            "errors": last_errors,
+        })
+        if not valid:
+            blocked.append(label)
+    if blocked:
+        state["phase"] = "generation-blocked"
+        state["stop_reason"] = "invalid_or_budget_exhausted_candidates:" + ",".join(blocked)
+        atomic_json(run_path, state)
+        raise ValueError(state["stop_reason"])
     state["phase"] = "candidates-generated"
-    state["runner"] = runner_info
+    state["stop_reason"] = None
     atomic_json(run_path, state)
-    return {"run_id": run_id, "candidates": outputs}
+    return {"run_id": run_id, "status": "complete", "candidates": outputs, "budget": state["budget"]}
 
 
 def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
