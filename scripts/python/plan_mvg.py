@@ -322,24 +322,52 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
         return output, execution
 
-    strict_contract = """
+    known_task_ids = sorted(_task_ids(root))
+    source_manifest = load_json(root / SOURCE_MANIFEST, {})
+    known_source_paths = sorted({
+        str(row.get("path"))
+        for row in source_manifest.get("sources", [])
+        if isinstance(row, dict) and str(row.get("path") or "").strip()
+    })
+    known_contract_refs = sorted({
+        str(value)
+        for row in _task_view_rows(root)
+        for value in row.get("contractRefs", [])
+        if str(value).strip()
+    })
+    known_test_refs = sorted({
+        str(value)
+        for row in _task_view_rows(root)
+        for value in row.get("test_refs", [])
+        if str(value).strip()
+    })
+    strict_contract = f"""
 Deterministic validation reminders for the FULL replacement proposal:
 - manifest_candidate.schema_version must be exactly newrouge.mvg-integration.v1.
 - manifest_candidate.mvg_id and every flow/test id must be lowercase kebab-case strings.
 - manifest_candidate must contain non-empty flows and tests arrays.
-- manifest_candidate.coverage is mandatory with mode, scope_id, required_flow_ids in exact flow order, blocking_task_ids, and non-empty excluded_claims.
+- coverage.mode must be exactly one of pilot, critical, full. For a minimal acceptance journey prefer pilot unless the evidence clearly supports a broader mode.
+- manifest_candidate.coverage is mandatory with scope_id, required_flow_ids in exact flow order, blocking_task_ids, and non-empty excluded_claims.
 - Every flow requires id, outcome, task_ids, source_paths, handoffs, test_ids. task_ids and every handoff producer_task/consumer_task/owner_task are JSON integers, never quoted numeric strings.
+- Every handoff requires producer_task, consumer_task, owner_task, contract_ref, non-empty behavior, and non-empty test_ids.
 - Every test requires id, kind, state, path, selector, evidence_level, min_tests.
-- For this planning fixture, use only task IDs that are present in analysis-input/task-views and the master task file.
+- dotnet tests require evidence_level=domain-integration and a Game.Core.Tests/... .cs path.
+- gdunit tests require evidence_level=scene-method or engine-input and a Tests.Godot/tests/... .gd path.
+- source_paths and contract_ref values in the formal manifest are original repository-relative paths, never analysis-input/... paths.
 - Every planned entrypoint requires integer owner_task plus non-empty path, symbol, inputs, state, assertions, implementation_acceptance.
 - Do not omit a required field merely because it can be inferred from prose.
+Known Taskmaster IDs for this planning input: {known_task_ids}
+Declared authoritative source paths: {known_source_paths}
+Existing reviewed contract refs from task views: {known_contract_refs}
+Existing test refs from task views: {known_test_refs}
+Prefer these real refs instead of inventing alternatives. If a required real object does not exist, record a gap and use planning_status=draft.
 """
 
     prompt = PROMPT + "\n" + strict_contract
     attempts: list[dict[str, Any]] = []
     proposal: dict[str, Any] | None = None
     validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
-    for attempt in (1, 2):
+    for attempt in (1, 2, 3):
         output, execution = invoke(prompt, attempt)
         text_value = output.read_text(encoding="utf-8").strip()
         if text_value.startswith("```"):
@@ -380,7 +408,7 @@ Deterministic validation reminders for the FULL replacement proposal:
     })
     if validation.get("status") != "passed":
         raise ValueError(
-            "MVG model output remains structurally invalid after bounded correction: "
+            "MVG model output remains structurally invalid after bounded correction attempts: "
             + "; ".join(str(value) for value in validation.get("errors", []))
         )
     state["phase"] = "generated"

@@ -213,7 +213,11 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("JSON integers", source)
         self.assertIn("coverage is mandatory", source)
         self.assertIn("completely corrected FULL proposal", source)
-        self.assertIn("for attempt in (1, 2)", source)
+        self.assertIn("Known Taskmaster IDs for this planning input", source)
+        self.assertIn("Declared authoritative source paths", source)
+        self.assertIn("Existing reviewed contract refs", source)
+        self.assertIn("Existing test refs", source)
+        self.assertIn("for attempt in (1, 2, 3)", source)
 
     def test_delta_preserves_unchanged_rows(self) -> None:
         existing = self.manifest()
