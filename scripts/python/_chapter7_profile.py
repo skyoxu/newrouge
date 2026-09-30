@@ -134,6 +134,48 @@ def _validate_effective_profile(profile: dict[str, Any]) -> None:
                 )
             task_owner[raw_id] = bucket
 
+    templates = (
+        profile.get("task_creation", {}).get("view_id_templates", {})
+        if isinstance(profile.get("task_creation"), dict)
+        else {}
+    )
+    if not isinstance(templates, dict):
+        raise ValueError("Chapter 7 view_id_templates must be an object")
+    for prefix, raw_template in templates.items():
+        template = str(raw_template)
+        rendered: dict[str, int] = {}
+        for task_id in sorted(task_owner):
+            try:
+                value = template.format(
+                    prefix=str(prefix),
+                    task_id=task_id,
+                    task_id_plus_100=task_id + 100,
+                    task_id_plus_1000=task_id + 1000,
+                )
+            except (KeyError, IndexError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid Chapter 7 view id template for {prefix}: {template}"
+                ) from exc
+            previous = rendered.get(value)
+            if previous is not None and previous != task_id:
+                raise ValueError(
+                    f"Chapter 7 view id template collision for {prefix}: "
+                    f"tasks {previous} and {task_id} both render {value}"
+                )
+            rendered[value] = task_id
+
+
+def configured_feature_task_ids(profile: dict[str, Any]) -> set[int]:
+    result: set[int] = set()
+    for bucket in bucket_names(profile):
+        config = bucket_profile(profile, bucket)
+        result.update(
+            int(value)
+            for value in config.get("feature_task_ids", [])
+            if type(value) is int
+        )
+    return result
+
 
 def _resolve_profile_path(repo_root: Path, value: Path | None) -> Path | None:
     if value is not None:

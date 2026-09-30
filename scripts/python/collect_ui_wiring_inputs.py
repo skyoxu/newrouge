@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from _chapter7_profile import load_chapter7_profile, task_id_in_scope, task_scope
+from _chapter7_profile import configured_feature_task_ids, load_chapter7_profile, task_id_in_scope, task_scope
 
 TASKS_JSON = Path('.taskmaster/tasks/tasks.json')
 TASKS_BACK = Path('.taskmaster/tasks/tasks_back.json')
@@ -256,12 +256,35 @@ def build_summary(
         }
 
     master_tasks = _load_master_tasks(repo_root, tasks_json_path)
-    done_master = [
+    master_ids = {
+        int(task["id"])
+        for task in master_tasks
+        if isinstance(task.get("id"), int)
+    }
+    invalid_profile_ids = sorted(configured_feature_task_ids(profile) - master_ids)
+    if invalid_profile_ids:
+        raise ValueError(
+            "Chapter 7 profile references unknown Taskmaster IDs: "
+            + ", ".join(str(value) for value in invalid_profile_ids)
+        )
+    completed_master = [
         task
         for task in master_tasks
         if str(task.get('status') or '').lower() == 'done'
         and isinstance(task.get('id'), int)
-        and task_id_in_scope(profile, int(task['id']))
+    ]
+    done_master = [
+        task for task in completed_master
+        if task_id_in_scope(profile, int(task['id']))
+    ]
+    excluded_completed_tasks = [
+        {
+            "task_id": int(task["id"]),
+            "task_title": str(task.get("title") or ""),
+            "reason": "outside_chapter7_task_scope",
+        }
+        for task in completed_master
+        if not task_id_in_scope(profile, int(task["id"]))
     ]
     back_tasks = _load_view_tasks(repo_root, tasks_back_path)
     gameplay_tasks = _load_view_tasks(repo_root, tasks_gameplay_path)
@@ -325,6 +348,9 @@ def build_summary(
         'overlay_root': str(overlay_root_path).replace('\\', '/'),
         'task_scope': task_scope(profile),
         'completed_master_tasks_count': len(done_master),
+        'completed_master_tasks_total': len(completed_master),
+        'excluded_completed_tasks_count': len(excluded_completed_tasks),
+        'excluded_completed_tasks': excluded_completed_tasks,
         'needed_wiring_features_count': len(needed),
         'feature_family_counts': families,
         'needed_wiring_features': needed,
