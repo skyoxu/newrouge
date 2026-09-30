@@ -216,6 +216,36 @@ Why this is stable:
 - `--dry-run` lets you preview all operations without writing
 - it records an explicit summary of applied and failed operations
 
+### `py -3 scripts/python/dev_cli.py plan-capabilities --stage <stage> --run-id <id>`
+
+Use when:
+- the affected Chapter 5 scope is stable and you need the formal derived Capability map
+- you need three isolated same-model candidates plus independent anonymous selection
+- you need historical Capability ID alignment and controlled `capability_refs` rebinding
+
+Why this is stable:
+- formal generation fails closed unless the external runner proves workspace-only fresh-session isolation
+- candidates are bound to one blinded analysis identity
+- the review is a separate anonymous A/B/C run
+- apply is restricted to derived Capability surfaces and capability-only Chapter 5 rebinds
+
+Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
+
+### `py -3 scripts/python/dev_cli.py plan-mvg --stage <stage> --run-id <id>`
+
+Use when:
+- one explicit Capability version has been selected/applied
+- you need an initial MVG manifest or a cumulative reviewed delta
+- you need player-journey flows, entrypoint plans, task/contract/test ownership and anti-weakening validation
+
+Why this is stable:
+- the exact Capability file hash is part of the run identity
+- an existing manifest evolves through `update_mvg_baseline.py` semantics instead of replacement
+- planned entrypoints cannot masquerade as existing files, and planning never claims runtime verification
+- Chapter 6 remains blocked until changed milestone handoff/readiness bindings are valid
+
+Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
+
 ## Task Delivery Loop
 
 ### `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`
