@@ -265,6 +265,22 @@ class Chapter7UiWiringTests(unittest.TestCase):
         path = root / "docs" / "workflows" / "chapter7-profile.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         effective = self._merge_profile_fixture(self._legacy_chapter7_profile(), payload)
+        master_path = root / ".taskmaster" / "tasks" / "tasks.json"
+        if master_path.is_file():
+            master = json.loads(master_path.read_text(encoding="utf-8"))
+            known_ids = {
+                int(row["id"])
+                for row in (master.get("master") or {}).get("tasks", [])
+                if isinstance(row, dict) and type(row.get("id")) is int
+            }
+            for config in (effective.get("buckets") or {}).values():
+                if not isinstance(config, dict):
+                    continue
+                config["feature_task_ids"] = [
+                    value
+                    for value in config.get("feature_task_ids", [])
+                    if type(value) is int and value in known_ids
+                ]
         path.write_text(json.dumps(effective, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
         return path
 
@@ -290,6 +306,7 @@ class Chapter7UiWiringTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        self._write_chapter7_profile(root, {})
         gameplay = [
             {
                 "id": "GM-0001",
@@ -388,7 +405,6 @@ class Chapter7UiWiringTests(unittest.TestCase):
         return sidecar
 
     def _write_rich_sample_repo(self, root: Path) -> None:
-        self._write_chapter7_profile(root, {})
         tasks_dir = root / ".taskmaster" / "tasks"
         tasks_dir.mkdir(parents=True)
         docs_dir = root / "docs" / "gdd"
