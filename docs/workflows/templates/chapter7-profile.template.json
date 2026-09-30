@@ -4,12 +4,7 @@
     "Project business sections replace generic defaults. Define bucket/task mappings explicitly; task_creation may inherit generic structural defaults."
   ],
   "bucket_order": [
-    "entry",
-    "loop",
-    "combat",
-    "economy",
-    "meta",
-    "governance"
+    "entry"
   ],
   "surface_aliases": {
     "RuntimeHud": [
@@ -69,5 +64,6 @@
         41
       ]
     }
-  }
+  },
+  "fallback_bucket": "entry"
 }
