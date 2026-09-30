@@ -90,7 +90,8 @@ class MvgPlanningContractTests(unittest.TestCase):
         source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
         self.assertIn("run_isolated_model(", source)
         self.assertIn("openai_isolated_model_runner.py", source)
-        self.assertIn('prompt_path = workspace / "prompt.txt"', source)
+        self.assertIn('prompt_path = workspace / f"prompt-attempt-{attempt}.txt"', source)
+        self.assertIn('"proposal-attempt-{attempt}.json"', source)
 
     def test_copilot_cli_is_a_supported_real_planning_backend(self) -> None:
         self.assertIn("copilot-cli", SUPPORTED_LLM_BACKENDS)
@@ -135,7 +136,8 @@ class MvgPlanningContractTests(unittest.TestCase):
 
     def test_openai_generation_state_does_not_depend_on_codex_command_variable(self) -> None:
         source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
-        self.assertIn('"runner": execution.get("runner")', source)
+        self.assertIn('"runner": runner.as_posix()', source)
+        self.assertIn('"attempt_count": len(attempts)', source)
         self.assertNotIn('state["model_command"] = cmd', source)
 
     def test_proposal_rejects_unknown_capability(self) -> None:
