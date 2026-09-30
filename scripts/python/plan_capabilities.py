@@ -225,6 +225,8 @@ Return JSON only with schema_version = "newrouge.capability-review.v2" and:
 - evidence_refs
 - corrections (empty unless a small explicit correction is required)
 - rationale
+
+If corrections are needed, use at most 12 JSON-Pointer operations. Each item must contain op (add|replace|remove), path, reason, evidence_refs, and value when required. Corrections apply only to the selected candidate; never change schema_version, analysis_identity_sha256, capability_id, add/remove an entire Capability, or merge candidates into a fourth design.
 """
 
 
@@ -545,13 +547,116 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     return {"run_id": run_id, "status": "complete", "candidates": outputs, "budget": state["budget"]}
 
 
+def _decode_json_pointer(path: str) -> list[str]:
+    if not path.startswith("/") or path == "/":
+        raise ValueError(f"invalid correction JSON pointer: {path}")
+    return [
+        token.replace("~1", "/").replace("~0", "~")
+        for token in path[1:].split("/")
+    ]
+
+
+def _validate_correction_path(tokens: list[str]) -> None:
+    if not tokens:
+        raise ValueError("empty correction path")
+    if tokens[0] in {"schema_version", "analysis_identity_sha256"}:
+        raise ValueError("correction cannot change candidate identity")
+    if tokens[0] == "capabilities":
+        if len(tokens) < 3 or not tokens[1].isdigit():
+            raise ValueError("correction cannot add/remove an entire Capability")
+        if tokens[2] == "capability_id":
+            raise ValueError("correction cannot change capability_id")
+        if tokens[2] not in {
+            "title", "description", "boundary_rationale",
+            "requirement_ids", "source_block_ids",
+        }:
+            raise ValueError(f"unsupported Capability correction field: {tokens[2]}")
+        return
+    if tokens[0] not in {
+        "ungrouped_requirements",
+        "multi_membership_rationales",
+        "source_accounting",
+        "questions",
+        "generation_notes",
+    }:
+        raise ValueError(f"unsupported correction root: {tokens[0]}")
+
+
+def apply_review_corrections(
+    candidate: dict[str, Any],
+    corrections: Any,
+) -> dict[str, Any]:
+    if corrections in (None, []):
+        return deepcopy(candidate)
+    if not isinstance(corrections, list) or len(corrections) > 12:
+        raise ValueError("review corrections must be an array of at most 12 operations")
+    result: Any = deepcopy(candidate)
+    for index, row in enumerate(corrections, 1):
+        if not isinstance(row, dict):
+            raise ValueError(f"correction {index} must be an object")
+        op = str(row.get("op") or "").strip().lower()
+        path = str(row.get("path") or "").strip()
+        reason = str(row.get("reason") or "").strip()
+        refs = row.get("evidence_refs")
+        if op not in {"add", "replace", "remove"} or not reason:
+            raise ValueError(f"invalid correction operation {index}")
+        if not isinstance(refs, list) or not refs:
+            raise ValueError(f"correction {index} requires evidence_refs")
+        tokens = _decode_json_pointer(path)
+        _validate_correction_path(tokens)
+        parent = result
+        for token in tokens[:-1]:
+            if isinstance(parent, list):
+                if not token.isdigit() or int(token) >= len(parent):
+                    raise ValueError(f"correction path not found: {path}")
+                parent = parent[int(token)]
+            elif isinstance(parent, dict):
+                if token not in parent:
+                    if op == "add":
+                        parent[token] = {}
+                    else:
+                        raise ValueError(f"correction path not found: {path}")
+                parent = parent[token]
+            else:
+                raise ValueError(f"correction path is not traversable: {path}")
+        leaf = tokens[-1]
+        if isinstance(parent, list):
+            if op == "add" and leaf == "-":
+                parent.append(deepcopy(row.get("value")))
+            elif leaf.isdigit() and int(leaf) < len(parent):
+                pos = int(leaf)
+                if op == "remove":
+                    parent.pop(pos)
+                else:
+                    parent[pos] = deepcopy(row.get("value"))
+            else:
+                raise ValueError(f"correction list path invalid: {path}")
+        elif isinstance(parent, dict):
+            if op == "remove":
+                if leaf not in parent:
+                    raise ValueError(f"correction remove path not found: {path}")
+                del parent[leaf]
+            elif op == "replace":
+                if leaf not in parent:
+                    raise ValueError(f"correction replace path not found: {path}")
+                parent[leaf] = deepcopy(row.get("value"))
+            else:
+                parent[leaf] = deepcopy(row.get("value"))
+        else:
+            raise ValueError(f"correction parent is not editable: {path}")
+    if not isinstance(result, dict):
+        raise ValueError("corrected candidate must remain an object")
+    return result
+
+
 def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     run_dir = run_path.parent
     labels = [f"candidate-{index}" for index in range(1, 4)]
     for label in labels:
-        meta = state.get("candidate_attempts", {}).get(label, {})
-        if meta.get("validation_errors"):
+        record = _candidate_record(state, label)
+        meta = record.get("final_meta")
+        if not isinstance(meta, dict) or meta.get("validation_errors"):
             raise ValueError("all three candidates must be structurally valid before review")
         if not (run_dir / "candidates" / f"{label}.json").is_file():
             raise ValueError(f"missing candidate: {label}")
@@ -565,34 +670,110 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     random.Random(int(seed_hex[:16], 16)).shuffle(shuffled)
     anonymous = dict(zip(["A", "B", "C"], shuffled))
 
-    workspace = run_dir / "isolated-workspaces" / "review"
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
-    _copy_analysis(run_dir, workspace)
-    (workspace / "candidates").mkdir()
-    for alias, label in anonymous.items():
-        shutil.copyfile(
-            run_dir / "candidates" / f"{label}.json",
-            workspace / "candidates" / f"{alias}.json",
+    max_attempts = 1 + int(_budget(state).get("review_retry_limit") or 0)
+    attempts = state.setdefault("review_attempts", [])
+    final_result: dict[str, Any] | None = None
+    final_meta: dict[str, Any] | None = None
+    corrected_candidate: dict[str, Any] | None = None
+    last_error = ""
+    while len(attempts) < max_attempts and final_result is None:
+        attempt_no = len(attempts) + 1
+        attempt_timeout = _remaining_attempt_budget(
+            state, label=None, timeout_sec=timeout_sec, runner_info=runner_info
         )
-    prompt_path = workspace / "prompt.txt"
-    prompt_path.write_text(REVIEW_PROMPT, encoding="utf-8", newline="\n")
-    output = workspace / "review.json"
-    receipt = run_isolated_model(
-        runner, workspace=workspace, prompt_path=prompt_path,
-        output_path=output, timeout_sec=timeout_sec,
-    )
-    result = parse_model_json(output)
-    if result.get("schema_version") != REVIEW_SCHEMA:
-        raise ValueError("invalid review schema")
-    selected = result.get("selected")
-    if selected is not None and selected not in anonymous:
-        raise ValueError("review selected an unknown anonymous candidate")
-    if result.get("status") == "selected" and selected is None:
-        raise ValueError("selected review must name one candidate")
-    if result.get("status") == "no_valid_winner" and selected is not None:
-        raise ValueError("no_valid_winner cannot select a candidate")
+        workspace = run_dir / "isolated-workspaces" / "review" / f"attempt-{attempt_no}"
+        if workspace.exists():
+            shutil.rmtree(workspace)
+        workspace.mkdir(parents=True)
+        _copy_analysis(run_dir, workspace)
+        (workspace / "candidates").mkdir()
+        for alias, label in anonymous.items():
+            shutil.copyfile(
+                run_dir / "candidates" / f"{label}.json",
+                workspace / "candidates" / f"{alias}.json",
+            )
+        prompt_path = workspace / "prompt.txt"
+        prompt_path.write_text(REVIEW_PROMPT, encoding="utf-8", newline="\n")
+        output = workspace / "review.json"
+        receipt: dict[str, Any] | None = None
+        result: dict[str, Any] | None = None
+        errors: list[str] = []
+        started = time.monotonic()
+        try:
+            receipt = run_isolated_model(
+                runner, workspace=workspace, prompt_path=prompt_path,
+                output_path=output, timeout_sec=attempt_timeout,
+            )
+            result = parse_model_json(output)
+            if result.get("schema_version") != REVIEW_SCHEMA:
+                errors.append("invalid_review_schema")
+            selected = result.get("selected")
+            if selected is not None and selected not in anonymous:
+                errors.append("unknown_selected_candidate")
+            if result.get("status") == "selected" and selected is None:
+                errors.append("selected_review_missing_candidate")
+            if result.get("status") == "no_valid_winner" and selected is not None:
+                errors.append("no_valid_winner_cannot_select_candidate")
+            if result.get("status") not in {"selected", "no_valid_winner"}:
+                errors.append("invalid_review_status")
+            if not errors and result.get("status") == "selected":
+                source_label = anonymous[str(selected)]
+                source_candidate = load_json(
+                    run_dir / "candidates" / f"{source_label}.json", {}
+                )
+                corrected_candidate = apply_review_corrections(
+                    source_candidate, result.get("corrections", [])
+                )
+                ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
+                semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+                correction_errors = validate_candidate(
+                    corrected_candidate,
+                    ledger,
+                    semantics,
+                    str(state["analysis_identity_sha256"]),
+                )
+                if correction_errors:
+                    errors.extend(
+                        f"corrected_candidate:{value}" for value in correction_errors
+                    )
+        except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            errors = [f"review_runner_or_output_failure:{exc}"]
+        elapsed = time.monotonic() - started
+        _record_runner_activity(
+            state, label=None, elapsed_sec=elapsed, receipt=receipt
+        )
+        meta = {
+            "attempt": attempt_no,
+            "model": runner_info.get("model"),
+            "prompt_sha256": text_sha(REVIEW_PROMPT),
+            "analysis_identity_sha256": state["analysis_identity_sha256"],
+            "elapsed_active_sec": elapsed,
+            "validation_errors": errors,
+            "receipt": receipt or {},
+            "output_sha256": file_sha(output) if output.is_file() else None,
+        }
+        attempts.append(meta)
+        atomic_json(
+            run_dir / "review" / "attempts" / f"review-attempt-{attempt_no}.meta.json",
+            meta,
+        )
+        if result is not None:
+            atomic_json(
+                run_dir / "review" / "attempts" / f"review-attempt-{attempt_no}.json",
+                result,
+            )
+        if not errors and result is not None:
+            final_result = result
+            final_meta = meta
+        else:
+            last_error = ";".join(errors)
+        atomic_json(run_path, state)
+
+    if final_result is None or final_meta is None:
+        state["phase"] = "review-blocked"
+        state["stop_reason"] = last_error or "review_attempt_budget_exhausted"
+        atomic_json(run_path, state)
+        raise ValueError(state["stop_reason"])
 
     review_dir = run_dir / "review"
     review_dir.mkdir(parents=True, exist_ok=True)
@@ -600,21 +781,34 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         "seed_sha256": "sha256:" + seed_hex,
         "mapping": anonymous,
     })
-    atomic_json(review_dir / "review.json", result)
-    atomic_json(review_dir / "review.meta.json", {
-        "model": runner_info.get("model"),
-        "prompt_sha256": text_sha(REVIEW_PROMPT),
-        "analysis_identity_sha256": state["analysis_identity_sha256"],
-        "receipt": receipt,
-    })
+    atomic_json(review_dir / "review.json", final_result)
+    atomic_json(review_dir / "review.meta.json", final_meta)
+    selected = final_result.get("selected")
+    selected_label = anonymous.get(str(selected)) if selected is not None else None
+    final_candidate_path = None
+    if final_result.get("status") == "selected":
+        if corrected_candidate is None:
+            raise ValueError("selected review did not materialize a final candidate")
+        if final_result.get("corrections"):
+            path = review_dir / "corrected-candidate.json"
+            atomic_json(path, corrected_candidate)
+            final_candidate_path = relative(root, path)
     state["phase"] = "reviewed"
-    state["selected_candidate"] = anonymous.get(selected) if selected else None
-    state["review_status"] = result.get("status")
+    state["selected_candidate"] = selected_label
+    state["final_candidate_path"] = final_candidate_path
+    state["review_status"] = final_result.get("status")
+    state["stop_reason"] = (
+        "no_valid_winner"
+        if final_result.get("status") == "no_valid_winner"
+        else None
+    )
     atomic_json(run_path, state)
     return {
         "run_id": run_id,
-        "status": result.get("status"),
-        "selected_candidate": state["selected_candidate"],
+        "status": final_result.get("status"),
+        "selected_candidate": selected_label,
+        "corrected": bool(final_result.get("corrections")),
+        "budget": state["budget"],
     }
 
 
