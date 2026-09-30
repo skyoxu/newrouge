@@ -317,8 +317,6 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             atomic_json(run_dir / "model-execution.json", execution)
             raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
     atomic_json(run_dir / "model-execution.json", execution)
-            raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
-    atomic_json(run_dir / "model-execution.json", execution)
     text = output.read_text(encoding="utf-8").strip()
     if text.startswith("```"):
         lines = text.splitlines()[1:]
