@@ -254,12 +254,13 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
         shutil.rmtree(workspace)
     workspace.mkdir(parents=True)
     shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
-    output = workspace / "proposal.json"
     tool_sc_dir = Path(__file__).resolve().parents[1] / "sc"
     if str(tool_sc_dir) not in sys.path:
         sys.path.insert(0, str(tool_sc_dir))
     from _llm_backend import inspect_llm_backend, run_llm_exec
 
+    runner: Path | None = None
+    backend_info: dict[str, Any]
     if llm_backend in {"openai-api", "copilot-cli"}:
         runner_name = (
             "openai_isolated_model_runner.py"
@@ -267,41 +268,45 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             else "copilot_isolated_model_runner.py"
         )
         runner = Path(__file__).resolve().with_name(runner_name)
-        info = inspect_isolated_runner(runner)
-        prompt_path = workspace / "prompt.txt"
-        prompt_path.write_text(PROMPT, encoding="utf-8", newline="\n")
-        receipt = run_isolated_model(
-            runner,
-            workspace=workspace,
-            prompt_path=prompt_path,
-            output_path=output,
-            timeout_sec=timeout_sec,
-        )
-        execution = {
-            "schema_version": "newrouge.mvg-planning-model-execution.v1",
-            "backend": llm_backend,
-            "backend_info": info,
-            "runner": runner.as_posix(),
-            "returncode": 0,
-            "receipt": receipt,
-        }
+        backend_info = inspect_isolated_runner(runner)
     else:
-        info = inspect_llm_backend(llm_backend)
-        if info.get("available") is not True:
-            reasons = "; ".join(str(value) for value in info.get("blocking_errors", []))
+        backend_info = inspect_llm_backend(llm_backend)
+        if backend_info.get("available") is not True:
+            reasons = "; ".join(str(value) for value in backend_info.get("blocking_errors", []))
             raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
+
+    def invoke(prompt: str, attempt: int) -> tuple[Path, dict[str, Any]]:
+        output = workspace / f"proposal-attempt-{attempt}.json"
+        if runner is not None:
+            prompt_path = workspace / f"prompt-attempt-{attempt}.txt"
+            prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
+            receipt = run_isolated_model(
+                runner,
+                workspace=workspace,
+                prompt_path=prompt_path,
+                output_path=output,
+                timeout_sec=timeout_sec,
+            )
+            return output, {
+                "attempt": attempt,
+                "backend": llm_backend,
+                "backend_info": backend_info,
+                "runner": runner.as_posix(),
+                "returncode": 0,
+                "receipt": receipt,
+            }
         rc, stdout, cmd = run_llm_exec(
             backend=llm_backend,
             root=workspace,
-            prompt=PROMPT,
+            prompt=prompt,
             output_last_message=output,
             timeout_sec=timeout_sec,
             codex_configs=["model_reasoning_effort=high"],
         )
-        execution = {
-            "schema_version": "newrouge.mvg-planning-model-execution.v1",
+        execution: dict[str, Any] = {
+            "attempt": attempt,
             "backend": llm_backend,
-            "backend_info": info,
+            "backend_info": backend_info,
             "command": cmd,
             "returncode": rc,
         }
@@ -314,30 +319,83 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
         else:
             execution["stdout_tail"] = stdout[-4000:]
         if rc != 0:
-            atomic_json(run_dir / "model-execution.json", execution)
             raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
-    atomic_json(run_dir / "model-execution.json", execution)
-    text = output.read_text(encoding="utf-8").strip()
-    if text.startswith("```"):
-        lines = text.splitlines()[1:]
-        if lines and lines[-1].strip().startswith("```"):
-            lines = lines[:-1]
-        text = "\n".join(lines)
-    proposal = json.loads(text)
-    if not isinstance(proposal, dict):
-        raise ValueError("MVG proposal must be an object")
+        return output, execution
+
+    strict_contract = """
+Deterministic validation reminders for the FULL replacement proposal:
+- manifest_candidate.schema_version must be exactly newrouge.mvg-integration.v1.
+- manifest_candidate.mvg_id and every flow/test id must be lowercase kebab-case strings.
+- manifest_candidate must contain non-empty flows and tests arrays.
+- manifest_candidate.coverage is mandatory with mode, scope_id, required_flow_ids in exact flow order, blocking_task_ids, and non-empty excluded_claims.
+- Every flow requires id, outcome, task_ids, source_paths, handoffs, test_ids. task_ids and every handoff producer_task/consumer_task/owner_task are JSON integers, never quoted numeric strings.
+- Every test requires id, kind, state, path, selector, evidence_level, min_tests.
+- For this planning fixture, use only task IDs that are present in analysis-input/task-views and the master task file.
+- Every planned entrypoint requires integer owner_task plus non-empty path, symbol, inputs, state, assertions, implementation_acceptance.
+- Do not omit a required field merely because it can be inferred from prose.
+"""
+
+    prompt = PROMPT + "\n" + strict_contract
+    attempts: list[dict[str, Any]] = []
+    proposal: dict[str, Any] | None = None
+    validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
+    for attempt in (1, 2):
+        output, execution = invoke(prompt, attempt)
+        text_value = output.read_text(encoding="utf-8").strip()
+        if text_value.startswith("```"):
+            lines = text_value.splitlines()[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            text_value = "\n".join(lines)
+        parsed = json.loads(text_value)
+        if not isinstance(parsed, dict):
+            raise ValueError("MVG proposal must be an object")
+        proposal = parsed
+        validation = validate_proposal(root, state, proposal)
+        execution["proposal_sha256"] = canonical_sha(proposal)
+        execution["deterministic_validation"] = validation
+        attempts.append(execution)
+        atomic_json(run_dir / f"proposal-attempt-{attempt}.json", proposal)
+        if validation.get("status") == "passed":
+            break
+        errors = validation.get("errors") or []
+        prompt = (
+            PROMPT
+            + "\n"
+            + strict_contract
+            + "\nYour previous FULL proposal failed deterministic validation. "
+              "Do not patch fragments; return a completely corrected FULL proposal JSON. "
+              "These validator errors must all be fixed without inventing task, contract, source, or test evidence:\n- "
+            + "\n- ".join(str(value) for value in errors)
+        )
+
+    if proposal is None:
+        raise ValueError("MVG proposal was not produced")
     atomic_json(run_dir / "proposal.json", proposal)
+    atomic_json(run_dir / "model-execution.json", {
+        "schema_version": "newrouge.mvg-planning-model-execution.v1",
+        "backend": llm_backend,
+        "attempts": attempts,
+        "final_attempt": len(attempts),
+    })
+    if validation.get("status") != "passed":
+        raise ValueError(
+            "MVG model output remains structurally invalid after bounded correction: "
+            + "; ".join(str(value) for value in validation.get("errors", []))
+        )
     state["phase"] = "generated"
     state["model_backend"] = llm_backend
     state["model_execution"] = {
         "path": (run_dir / "model-execution.json").relative_to(root).as_posix(),
         "backend": llm_backend,
-        "command": execution.get("command"),
-        "runner": execution.get("runner"),
+        "attempt_count": len(attempts),
     }
     atomic_json(run_path, state)
-    return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json")}
-
+    return {
+        "run_id": run_id,
+        "proposal_sha256": file_sha(run_dir / "proposal.json"),
+        "attempt_count": len(attempts),
+    }
 
 def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []

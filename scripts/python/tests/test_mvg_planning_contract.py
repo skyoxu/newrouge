@@ -202,6 +202,17 @@ class MvgPlanningContractTests(unittest.TestCase):
             self.assertEqual("valid", state["handoff_bindings"]["1"]["status"])
             self.assertEqual(run_state["applied_manifest_sha256"], state["handoff_bindings"]["1"]["manifest_sha256"])
 
+    def test_model_correction_contract_mentions_numeric_task_ids_and_required_manifest_shape(self) -> None:
+        import inspect
+        import plan_mvg
+
+        source = inspect.getsource(plan_mvg.generate)
+        self.assertIn("task_ids and every handoff", source)
+        self.assertIn("JSON integers", source)
+        self.assertIn("coverage is mandatory", source)
+        self.assertIn("completely corrected FULL proposal", source)
+        self.assertIn("for attempt in (1, 2)", source)
+
     def test_delta_preserves_unchanged_rows(self) -> None:
         existing = self.manifest()
         proposal = {
