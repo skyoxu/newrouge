@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -408,6 +410,28 @@ def validate_runner_description(payload: dict[str, Any]) -> None:
         raise ValueError("formal Capability generation requires a no-tools model session")
 
 
+def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=15,
+                check=False,
+            )
+            return
+        except (OSError, subprocess.SubprocessError):
+            proc.kill()
+            return
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        proc.kill()
+
+
 def run_isolated_model(
     executable: Path,
     *,
@@ -416,27 +440,39 @@ def run_isolated_model(
     output_path: Path,
     timeout_sec: int,
 ) -> dict[str, Any]:
-    proc = subprocess.run(
-        [
-            *_runner_prefix(executable),
-            "--workspace", str(workspace),
-            "--prompt-file", str(prompt_path),
-            "--output", str(output_path),
-            "--timeout-sec", str(timeout_sec),
-        ],
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=max(timeout_sec + 30, 60),
-    )
+    cmd = [
+        *_runner_prefix(executable),
+        "--workspace", str(workspace),
+        "--prompt-file", str(prompt_path),
+        "--output", str(output_path),
+        "--timeout-sec", str(timeout_sec),
+    ]
+    kwargs: dict[str, Any] = {
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    else:
+        kwargs["start_new_session"] = True
+    proc = subprocess.Popen(cmd, **kwargs)
+    try:
+        stdout, _stderr = proc.communicate(timeout=max(timeout_sec + 30, 60))
+    except subprocess.TimeoutExpired as exc:
+        _terminate_process_tree(proc)
+        stdout, _stderr = proc.communicate()
+        raise TimeoutError(
+            f"isolated model runner timed out after {timeout_sec}s: {stdout[-2000:]}"
+        ) from exc
     if proc.returncode != 0:
-        raise RuntimeError(f"isolated model runner failed: {proc.stdout.strip()}")
+        raise RuntimeError(f"isolated model runner failed: {stdout.strip()}")
     if not output_path.is_file():
         raise RuntimeError("isolated model runner produced no output")
     receipt = {}
-    for line in reversed(proc.stdout.splitlines()):
+    for line in reversed(stdout.splitlines()):
         line = line.strip()
         if line.startswith("{") and line.endswith("}"):
             try:
