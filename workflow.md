@@ -764,6 +764,8 @@ Required sequence:
 
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
 
+Default isolation runner: `scripts/python/openai_isolated_model_runner.py`; it requires `OPENAI_API_KEY` and sends only prepared workspace text with no model tools.
+
 ### 5.4 Independent MVG Planning
 
 MVG Planning is a separate lifecycle. It consumes one explicit Capability file/version and never invokes Capability generation.
