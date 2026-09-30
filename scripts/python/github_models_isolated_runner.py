@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -77,33 +79,69 @@ def _chat(messages: list[dict[str, str]], *, timeout_sec: float) -> tuple[str, d
     token = token_value()
     if not token:
         raise ValueError("GitHub Models token is unavailable")
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps({
-            "model": model_name(),
-            "messages": messages,
-            "stream": False,
-        }).encode("utf-8"),
-        headers={
-            "Accept": "application/json",
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "User-Agent": "newrouge-planning-acceptance",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=max(1.0, timeout_sec)) as response:
-            status = int(getattr(response, "status", 200) or 200)
-            content_type = str(response.headers.get("Content-Type") or "")
-            raw_bytes = response.read()
-            raw = raw_bytes.decode("utf-8", errors="replace").strip()
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"GitHub Models HTTP {exc.code}: {body[-2000:]}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"GitHub Models request failed: {exc}") from exc
+    body = json.dumps({
+        "model": model_name(),
+        "messages": messages,
+        "stream": False,
+    }, ensure_ascii=False)
+
+    curl = shutil.which("curl")
+    if curl:
+        proc = subprocess.run(
+            [
+                curl,
+                "--silent",
+                "--show-error",
+                "--fail-with-body",
+                "--max-time",
+                str(max(1, int(timeout_sec))),
+                API_URL,
+                "-H", "Accept: application/json",
+                "-H", f"Authorization: Bearer {token}",
+                "-H", "Content-Type: application/json",
+                "-H", "User-Agent: newrouge-planning-acceptance",
+                "--data-binary", "@-",
+            ],
+            input=body,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=max(5.0, timeout_sec + 5.0),
+        )
+        raw = (proc.stdout or "").strip()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"GitHub Models curl failed rc={proc.returncode} body={raw[-2000:]!r}"
+            )
+        status = 200
+        content_type = "application/json-via-curl"
+    else:
+        request = urllib.request.Request(
+            API_URL,
+            data=body.encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "newrouge-planning-acceptance",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=max(1.0, timeout_sec)) as response:
+                status = int(getattr(response, "status", 200) or 200)
+                content_type = str(response.headers.get("Content-Type") or "")
+                raw_bytes = response.read()
+                raw = raw_bytes.decode("utf-8", errors="replace").strip()
+        except urllib.error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"GitHub Models HTTP {exc.code}: {response_body[-2000:]}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"GitHub Models request failed: {exc}") from exc
+
     if not raw:
         raise RuntimeError(
             f"GitHub Models returned empty HTTP body status={status} content_type={content_type!r}"
