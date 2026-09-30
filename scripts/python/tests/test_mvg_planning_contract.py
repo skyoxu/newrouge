@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -12,7 +13,7 @@ PYTHON = ROOT / "scripts" / "python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
-from plan_mvg import SUPPORTED_LLM_BACKENDS, build_delta, validate_proposal
+from plan_mvg import SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal
 from update_mvg_baseline import apply_delta
 
 
@@ -100,6 +101,50 @@ class MvgPlanningContractTests(unittest.TestCase):
             }
             result = validate_proposal(root, state, proposal)
             self.assertIn("unknown_capability_ref:CAP-MISSING", result["errors"])
+
+    def test_handoff_rebind_requires_applied_manifest_and_reuses_existing_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            manifest_path = root / "docs/testing/mvg/fixture.json"
+            manifest_path.parent.mkdir(parents=True)
+            manifest_path.write_text(json.dumps(self.manifest()), encoding="utf-8")
+            run_dir = root / "logs/ci/mvg-planning/run-1"
+            run_dir.mkdir(parents=True)
+            run_state = {
+                "schema_version": "newrouge.mvg-planning-run.v1",
+                "run_id": "run-1",
+                "applied": True,
+                "manifest_path": "docs/testing/mvg/fixture.json",
+                "applied_manifest_sha256": __import__("plan_mvg").file_sha(manifest_path),
+                "involved_task_ids": ["1", "2"],
+                "handoff_bindings": {},
+            }
+            (run_dir / "run.json").write_text(json.dumps(run_state), encoding="utf-8")
+            readiness_path = root / "logs/ci/chapter5/readiness/task-1.json"
+            readiness_path.parent.mkdir(parents=True)
+            readiness_path.write_text(json.dumps({"schema_version": "newrouge.chapter5-readiness.v1"}), encoding="utf-8")
+            change_plan = root / "logs/change-plan.json"
+            change_plan.parent.mkdir(parents=True, exist_ok=True)
+            change_plan.write_text("{}\n", encoding="utf-8")
+            out = root / "logs/handoff.json"
+            handoff = {"schema_version": "newrouge.milestone-task-handoff.v1", "task_id": "1"}
+
+            with patch("chapter5_semantic_reconciliation.load_task_readiness", return_value=(True, {"readiness": "READY"}, "ready")), \
+                 patch("milestone_incremental_handoff.build_task_handoff", return_value=handoff), \
+                 patch("milestone_incremental_handoff.validate_task_handoff", return_value=(True, "valid", handoff)):
+                result = rebind_handoff(
+                    root,
+                    run_id="run-1",
+                    task_id="1",
+                    change_plan_path=change_plan,
+                    out_path=out,
+                )
+            self.assertEqual("bound", result["status"])
+            self.assertTrue(result["chapter6_handoff_ready"])
+            self.assertFalse(result["runtime_verified"])
+            state = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual("valid", state["handoff_bindings"]["1"]["status"])
+            self.assertEqual(run_state["applied_manifest_sha256"], state["handoff_bindings"]["1"]["manifest_sha256"])
 
     def test_delta_preserves_unchanged_rows(self) -> None:
         existing = self.manifest()

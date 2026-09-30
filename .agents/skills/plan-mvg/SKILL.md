@@ -31,6 +31,9 @@ Design cumulative player-journey integration coverage after Capability planning.
    `py -3 scripts/python/plan_mvg.py validate --run-id <id>`
 5. Apply only after validation:
    `py -3 scripts/python/plan_mvg.py apply --run-id <id> --confirm`
+6. For each task that is actually owned by a milestone change plan, rebuild the existing Chapter 5→6 handoff against the current readiness and the applied MVG manifest:
+   `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task> --change-plan <reviewed-plan.json> --out <handoff.json>`
+   Do not invent a handoff for tasks outside the milestone handoff lifecycle. An ordinary task continues through its current Chapter 5 readiness route.
 
 For an existing manifest, the Skill computes a reviewed delta and passes it through `update_mvg_baseline.py` logic; it does not overwrite the old baseline directly. For a first manifest, it validates the same runner schema before creation.
 
@@ -38,7 +41,7 @@ For an existing manifest, the Skill computes a reviewed delta and passes it thro
 
 The durable run is under `logs/ci/mvg-planning/<run-id>/`. The applied trace sidecar is under `docs/testing/mvg/planning/<run-id>.json`; it is planning provenance, not another runtime-test state authority.
 
-After apply, always inspect current Chapter 5 readiness for involved tasks and rebuild the applicable milestone handoff when obligations/owner/contracts changed. The apply summary intentionally reports `runtime_verified=false` and `handoff_rebind_required=true`. Chapter 6 must not consume the new obligations until that final handoff binding is valid.
+After apply, always inspect current Chapter 5 readiness for involved tasks. The apply summary lists `handoff_review_required_tasks`; that list means “review applicability”, not “fabricate a handoff for every task”. If a task is owned by a milestone change plan, run `rebind-handoff`; it reuses `milestone_incremental_handoff.py`, binds the current Chapter 5 readiness and the exact applied MVG manifest, and fails closed if either drifted. Tasks outside the milestone-handoff lifecycle keep their ordinary Chapter 5 route. Planning and handoff rebind both keep `runtime_verified=false`; runtime evidence still belongs to the MVG runner/Chapter 6 acceptance path.
 
 ## Refresh rules
 

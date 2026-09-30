@@ -524,7 +524,9 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     state["applied"] = True
     state["applied_manifest_sha256"] = file_sha(manifest_path)
     state["post_apply_task_readiness"] = readiness
-    state["handoff_rebind_required"] = True
+    state["involved_task_ids"] = involved
+    state["handoff_bindings"] = dict(state.get("handoff_bindings") or {})
+    state["handoff_review_required_tasks"] = involved
     atomic_json(run_path, state)
     result = {
         "status": "applied",
@@ -533,12 +535,97 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         "trace_path": trace_path.resolve().relative_to(root.resolve()).as_posix(),
         "planning_complete": True,
         "runtime_verified": False,
-        "chapter6_ready": all(row["ready"] for row in readiness) and not state["handoff_rebind_required"],
-        "handoff_rebind_required": True,
+        "chapter6_ready": False,
+        "handoff_review_required_tasks": involved,
+        "handoff_note": (
+            "Only milestone-owned tasks require milestone handoff rebind. "
+            "Use rebind-handoff for each applicable task; ordinary tasks continue through current Chapter 5 readiness."
+        ),
         "post_apply_task_readiness": readiness,
     }
     atomic_json(run_dir / "apply-summary.json", result)
     return result
+
+
+def rebind_handoff(
+    root: Path,
+    *,
+    run_id: str,
+    task_id: str,
+    change_plan_path: Path,
+    out_path: Path,
+) -> dict[str, Any]:
+    run_path, state = _load_run(root, run_id)
+    if state.get("applied") is not True:
+        raise ValueError("MVG handoff rebind requires an applied planning run")
+    manifest_ref = str(state.get("manifest_path") or "").strip()
+    if not manifest_ref:
+        raise ValueError("MVG handoff rebind is missing the applied manifest path")
+    manifest_path = repo_path(root, manifest_ref)
+    expected_manifest_sha = str(state.get("applied_manifest_sha256") or "")
+    if not manifest_path.is_file() or file_sha(manifest_path) != expected_manifest_sha:
+        raise ValueError("applied MVG manifest changed before handoff rebind")
+
+    canonical_task = str(task_id).strip()
+    involved = {str(value) for value in state.get("involved_task_ids", [])}
+    if canonical_task not in involved:
+        raise ValueError(
+            f"task {canonical_task} is not involved in this applied MVG planning run"
+        )
+
+    from chapter5_semantic_reconciliation import (
+        load_task_readiness,
+        readiness_path_for_task,
+    )
+    ready, _payload, reason = load_task_readiness(root, canonical_task)
+    if not ready:
+        raise ValueError(
+            f"current Chapter 5 readiness is not valid for task {canonical_task}: {reason}"
+        )
+    readiness_path = readiness_path_for_task(root, canonical_task)
+
+    from milestone_incremental_handoff import (
+        build_task_handoff,
+        validate_task_handoff,
+    )
+    handoff = build_task_handoff(
+        root,
+        plan_path=change_plan_path,
+        task_id=canonical_task,
+        readiness_path=readiness_path,
+    )
+    atomic_json(out_path, handoff)
+    ok, validation_reason, validated = validate_task_handoff(
+        root, out_path, canonical_task
+    )
+    if not ok:
+        out_path.unlink(missing_ok=True)
+        raise ValueError(
+            f"rebuilt milestone handoff is invalid for task {canonical_task}: "
+            f"{validation_reason}"
+        )
+
+    bindings = dict(state.get("handoff_bindings") or {})
+    bindings[canonical_task] = {
+        "status": "valid",
+        "path": out_path.relative_to(root).as_posix(),
+        "sha256": file_sha(out_path),
+        "change_plan_path": change_plan_path.relative_to(root).as_posix(),
+        "chapter5_readiness_path": readiness_path.relative_to(root).as_posix(),
+        "manifest_path": manifest_ref,
+        "manifest_sha256": expected_manifest_sha,
+    }
+    state["handoff_bindings"] = bindings
+    atomic_json(run_path, state)
+    return {
+        "status": "bound",
+        "task_id": canonical_task,
+        "handoff_path": out_path.relative_to(root).as_posix(),
+        "handoff_sha256": file_sha(out_path),
+        "chapter6_handoff_ready": True,
+        "runtime_verified": False,
+        "handoff": validated,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -566,6 +653,15 @@ def main(argv: list[str] | None = None) -> int:
     p_apply.add_argument("--run-id", required=True)
     p_apply.add_argument("--confirm", action="store_true")
 
+    p_handoff = sub.add_parser(
+        "rebind-handoff",
+        help="rebuild one applicable milestone handoff against the applied MVG manifest and current Chapter 5 readiness",
+    )
+    p_handoff.add_argument("--run-id", required=True)
+    p_handoff.add_argument("--task-id", required=True)
+    p_handoff.add_argument("--change-plan", required=True)
+    p_handoff.add_argument("--out", required=True)
+
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
     try:
@@ -588,6 +684,14 @@ def main(argv: list[str] | None = None) -> int:
             result = validate(root, run_id=args.run_id)
         elif args.command == "apply":
             result = apply(root, run_id=args.run_id, confirm=bool(args.confirm))
+        elif args.command == "rebind-handoff":
+            result = rebind_handoff(
+                root,
+                run_id=args.run_id,
+                task_id=str(args.task_id),
+                change_plan_path=repo_path(root, args.change_plan),
+                out_path=repo_path(root, args.out),
+            )
         else:
             _path, result = _load_run(root, args.run_id)
         print(json.dumps(result, ensure_ascii=False, indent=2))
