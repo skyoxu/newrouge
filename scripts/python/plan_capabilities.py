@@ -792,13 +792,6 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             state, label=None, elapsed_sec=elapsed, receipt=receipt
         )
         actual_model = str((receipt or {}).get("model") or runner_info.get("model") or "").strip()
-        expected_actual_model = str(state.get("actual_model") or "").strip()
-        if expected_actual_model and actual_model != expected_actual_model:
-            errors.append(
-                f"review_actual_model_mismatch:{actual_model}!={expected_actual_model}"
-            )
-        elif actual_model:
-            state["actual_model"] = actual_model
         meta = {
             "attempt": attempt_no,
             "model": actual_model,

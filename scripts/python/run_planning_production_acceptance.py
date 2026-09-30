@@ -177,7 +177,7 @@ def execute(
     attempts = cap_state.get("candidate_attempts", {})
     if sorted(attempts) != ["candidate-1", "candidate-2", "candidate-3"]:
         raise RuntimeError("Capability acceptance did not retain exactly three candidate records")
-    actual_models: set[str] = set()
+    candidate_models: set[str] = set()
     for label, record in attempts.items():
         if not isinstance(record, dict) or not record.get("valid_attempt"):
             raise RuntimeError(f"Capability candidate is not valid: {label}")
@@ -185,10 +185,16 @@ def execute(
         actual_model = str(final_meta.get("model") or "").strip()
         if not actual_model:
             raise RuntimeError(f"Capability candidate model identity missing: {label}")
-        actual_models.add(actual_model)
+        candidate_models.add(actual_model)
         runner = final_meta.get("runner") or {}
         if runner.get("fresh_session_per_invocation") is not True or runner.get("model_tools") != []:
             raise RuntimeError(f"Capability candidate isolation contract failed: {label}")
+    if len(candidate_models) != 1:
+        raise RuntimeError(
+            "Capability candidates did not use one actual model: "
+            + ",".join(sorted(candidate_models))
+        )
+    candidate_model = next(iter(candidate_models))
     review_attempts = [
         row for row in cap_state.get("review_attempts", [])
         if isinstance(row, dict) and not row.get("validation_errors")
@@ -196,14 +202,8 @@ def execute(
     if not review_attempts:
         raise RuntimeError("Capability acceptance has no valid independent review attempt")
     review_model = str(review_attempts[-1].get("model") or "").strip()
-    if review_model:
-        actual_models.add(review_model)
-    if len(actual_models) != 1:
-        raise RuntimeError(
-            "Capability candidate/review sessions did not use one actual model: "
-            + ",".join(sorted(actual_models))
-        )
-    actual_model = next(iter(actual_models))
+    if not review_model:
+        raise RuntimeError("Capability independent review model identity is missing")
 
     cap_apply = load_json(
         fixture_root / f"logs/ci/capability-planning/{cap_run}/apply-summary.json", {}
@@ -235,7 +235,8 @@ def execute(
         "schema_version": "newrouge.planning-production-acceptance.v1",
         "status": "passed",
         "fixture": fixture,
-        "model": actual_model,
+        "candidate_model": candidate_model,
+        "review_model": review_model,
         "requested_model": model,
         "backend": selected_backend,
         "capability": {
