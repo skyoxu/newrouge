@@ -38,6 +38,9 @@ jobs:
       - name: Install OpenAI SDK
         run: python -m pip install --disable-pip-version-check 'openai>=1.0.0'
 
+      - name: Deterministic acceptance fixture smoke
+        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract -v
+
       - name: Require configured OpenAI credential
         shell: bash
         run: |
@@ -45,9 +48,6 @@ jobs:
             echo "OPENAI_API_KEY repository secret is not configured for this same-repository PR."
             exit 2
           fi
-
-      - name: Deterministic acceptance fixture smoke
-        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract -v
 
       - name: Run real Capability to MVG production acceptance
         run: python scripts/python/run_planning_production_acceptance.py --timeout-sec 900
