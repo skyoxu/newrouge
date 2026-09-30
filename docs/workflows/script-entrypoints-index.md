@@ -84,6 +84,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/audit_task_candidate_coverage.py`: audits candidate coverage against requirement anchors and blocks missing P0/P1 coverage.
 - `scripts/python/compile_task_triplet.py`: compiles enriched candidates into a reviewable triplet patch, or writes task view files with `--write`.
 - `scripts/python/plan_capabilities.py`: post-Chapter-5 Capability stage machine (prepare, isolated three-candidate generation, anonymous review, identity alignment, controlled apply). Prefer `dev_cli.py plan-capabilities`.
+- `scripts/python/openai_isolated_model_runner.py`: default text-only OpenAI API isolation runner for formal Capability candidate/review sessions; model-visible input is limited to the prepared workspace snapshot.
 - `scripts/python/plan_mvg.py`: independent post-Capability MVG planning stage machine for initial manifests or guarded cumulative deltas. Prefer `dev_cli.py plan-mvg`.
 
 ### Taskmaster / semantics / overlay
