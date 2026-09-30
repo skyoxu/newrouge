@@ -256,6 +256,153 @@ class WorkflowPortabilityTests(unittest.TestCase):
         self.assertNotIn(59, blockers)
         self.assertNotIn(60, blockers)
 
+
+    def _semantic_anchor(
+        self,
+        *,
+        requirement_id: str,
+        kind: str,
+        layer: str,
+        owner: str,
+        heading: str,
+        text: str,
+    ) -> dict:
+        return {
+            "requirement_id": requirement_id,
+            "source_path": "docs/gdd/game.md",
+            "line": 10,
+            "kind": kind,
+            "priority": "P1",
+            "text": text,
+            "refs": [],
+            "heading_path": [heading],
+            "capability_id": "",
+            "capability_title": "",
+            "capability_ids": [],
+            "layer_hint": layer,
+            "owner_hint": owner,
+            "semantic": True,
+        }
+
+    def test_second_project_fixture_uses_sparse_ids_without_newrouge_semantics(self) -> None:
+        project_a = {
+            "anchors": [
+                self._semantic_anchor(
+                    requirement_id="PLAY-ROUTE",
+                    kind="functional",
+                    layer="core",
+                    owner="gameplay",
+                    heading="Route Choice",
+                    text="The player chooses one route and sees the chosen route.",
+                )
+            ]
+        }
+        project_b = {
+            "anchors": [
+                self._semantic_anchor(
+                    requirement_id="OPS-AUDIT",
+                    kind="non_functional",
+                    layer="adapter",
+                    owner="architecture",
+                    heading="Audit Export",
+                    text="The operator exports an audit snapshot with immutable metadata.",
+                )
+            ]
+        }
+        previous_a = {
+            "intents": [{
+                "id": "TASK-0007",
+                "intent_key": "functional:core:gameplay:requirement:route:1",
+                "layer": "core",
+                "owner": "gameplay",
+                "requirement_ids": ["PLAY-ROUTE"],
+            }]
+        }
+        previous_b = {
+            "intents": [{
+                "id": "TASK-0007",
+                "intent_key": "non_functional:adapter:architecture:requirement:audit:1",
+                "layer": "adapter",
+                "owner": "architecture",
+                "requirement_ids": ["OPS-AUDIT"],
+            }]
+        }
+        result_a = build_intents(
+            project_a, "add", "TASK", 8,
+            reserved_ids={"TASK-0001", "TASK-0042"},
+            previous_intents=previous_a,
+        )
+        result_b = build_intents(
+            project_b, "add", "TASK", 8,
+            reserved_ids={"TASK-0001", "TASK-0042"},
+            previous_intents=previous_b,
+        )
+        self.assertEqual("TASK-0007", result_a["intents"][0]["id"])
+        self.assertEqual("TASK-0007", result_b["intents"][0]["id"])
+        self.assertIn("functional", result_a["intents"][0]["labels"])
+        self.assertIn("non_functional", result_b["intents"][0]["labels"])
+        self.assertEqual("gameplay", result_a["intents"][0]["owner"])
+        self.assertEqual("architecture", result_b["intents"][0]["owner"])
+
+    def test_sparse_reserved_task_ids_do_not_require_contiguous_numbering(self) -> None:
+        index = {
+            "anchors": [
+                self._semantic_anchor(
+                    requirement_id="REQ-A",
+                    kind="functional",
+                    layer="core",
+                    owner="gameplay",
+                    heading="A",
+                    text="A must be visible.",
+                ),
+                self._semantic_anchor(
+                    requirement_id="REQ-B",
+                    kind="functional",
+                    layer="adapter",
+                    owner="gameplay",
+                    heading="B",
+                    text="B must be visible.",
+                ),
+            ]
+        }
+        result = build_intents(
+            index,
+            "add",
+            "TASK",
+            1,
+            reserved_ids={"TASK-0001", "TASK-0003", "TASK-0100"},
+        )
+        ids = [row["id"] for row in result["intents"]]
+        self.assertEqual(["TASK-0002", "TASK-0004"], ids)
+        self.assertNotIn("TASK-0003", ids)
+        self.assertNotIn("TASK-0100", ids)
+
+    def test_multi_requirement_membership_does_not_require_capability(self) -> None:
+        index = {
+            "anchors": [
+                self._semantic_anchor(
+                    requirement_id="REQ-A",
+                    kind="functional",
+                    layer="core",
+                    owner="gameplay",
+                    heading="Shared Surface",
+                    text="The shared surface renders route state.",
+                ),
+                self._semantic_anchor(
+                    requirement_id="REQ-B",
+                    kind="functional",
+                    layer="core",
+                    owner="gameplay",
+                    heading="Shared Surface",
+                    text="The shared surface renders reward state.",
+                ),
+            ]
+        }
+        result = build_intents(index, "add", "TASK", 8)
+        self.assertEqual(1, len(result["intents"]))
+        self.assertEqual(["REQ-A", "REQ-B"], result["intents"][0]["requirement_ids"])
+        self.assertEqual([], result["intents"][0]["capability_refs"])
+
     def _mvg_fixture(self, root: Path) -> dict:
         tasks = root / ".taskmaster/tasks"
         tasks.mkdir(parents=True)
