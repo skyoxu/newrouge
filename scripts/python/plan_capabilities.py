@@ -427,6 +427,11 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     if state.get("formal_ready") is not True:
         raise ValueError("formal generation is blocked until the explicit Chapter 5 scope is ready")
     runner_info = inspect_isolated_runner(runner)
+    if int(state.get("model_batch_count") or 0) > 1 and runner_info.get("supports_batched_session") is not True:
+        raise ValueError(
+            "formal Capability generation with multiple model batches requires "
+            "supports_batched_session=true"
+        )
     run_dir = run_path.parent
     prompt_sha = text_sha(CANDIDATE_PROMPT)
     state["runner"] = runner_info

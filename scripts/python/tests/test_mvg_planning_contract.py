@@ -92,6 +92,9 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("openai_isolated_model_runner.py", source)
         self.assertIn('prompt_path = workspace / "prompt.txt"', source)
 
+    def test_copilot_cli_is_a_supported_real_planning_backend(self) -> None:
+        self.assertIn("copilot-cli", SUPPORTED_LLM_BACKENDS)
+
     def test_openai_api_is_a_supported_real_planning_backend(self) -> None:
         self.assertIn("openai-api", SUPPORTED_LLM_BACKENDS)
         self.assertIn("codex-cli", SUPPORTED_LLM_BACKENDS)
