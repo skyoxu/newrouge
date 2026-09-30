@@ -290,13 +290,8 @@ def anchor_capability_ids(anchor: dict[str, Any]) -> list[str]:
 
 
 def semantic_grouping_stem(anchor: dict[str, Any]) -> str:
-    primary_capability = str(anchor.get("capability_id") or "").strip()
-    if primary_capability:
-        # Preserve the pre-shadow primary Capability partition exactly.
-        return primary_capability
-    capability_ids = anchor_capability_ids(anchor)
-    if capability_ids:
-        return capability_ids[0]
+    # Capability is a derived post-stabilization projection. It must never
+    # determine Task intent identity or mature Task boundaries.
     heading_path = [
         str(value).strip()
         for value in anchor.get("heading_path", [])
@@ -340,10 +335,8 @@ def priority_of(anchors: list[dict[str, Any]]) -> str:
 
 def choose_topic(anchor: dict[str, Any]) -> tuple[str, str, str]:
     if anchor.get("semantic"):
-        capability_id = str(anchor.get("capability_id") or "").strip()
-        topic = capability_id.lower() if capability_id else str(anchor.get("kind") or "requirement").lower()
         return (
-            topic,
+            str(anchor.get("kind") or "requirement").lower(),
             str(anchor.get("layer_hint") or "core"),
             str(anchor.get("owner_hint") or "gameplay"),
         )
@@ -621,6 +614,27 @@ def _previous_intent_ids(payload: dict[str, Any] | None) -> dict[str, str]:
     return result
 
 
+def _previous_requirement_partitions(payload: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return {}
+    owners: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in payload.get("intents", []):
+        if not isinstance(row, dict):
+            continue
+        task_id = str(row.get("id") or "").strip()
+        if not task_id:
+            continue
+        for requirement_id in row.get("requirement_ids", []):
+            value = str(requirement_id).strip()
+            if value:
+                owners[value].append(row)
+    return {
+        requirement_id: rows[0]
+        for requirement_id, rows in owners.items()
+        if len(rows) == 1
+    }
+
+
 def build_intents(
     index: dict[str, Any],
     mode: str,
@@ -631,11 +645,27 @@ def build_intents(
     reserved_ids: set[str] | None = None,
     previous_intents: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    grouped: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    grouped: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    previous_partition = _previous_requirement_partitions(previous_intents)
     for anchor in index.get("anchors", []):
         topic, layer, owner = choose_topic(anchor)
-        grouping_stem = semantic_grouping_stem(anchor)
-        key = (str(anchor.get("kind", "requirement")), layer, owner, topic, grouping_stem)
+        preferred_id = ""
+        previous = previous_partition.get(str(anchor.get("requirement_id") or ""))
+        if previous is not None:
+            preferred_id = str(previous.get("id") or "").strip()
+            layer = str(previous.get("layer") or layer)
+            owner = str(previous.get("owner") or owner)
+            grouping_stem = f"existing-intent:{preferred_id}"
+        else:
+            grouping_stem = semantic_grouping_stem(anchor)
+        key = (
+            str(anchor.get("kind", "requirement")),
+            layer,
+            owner,
+            topic,
+            grouping_stem,
+            preferred_id,
+        )
         grouped[key].append(anchor)
 
     intents: list[dict[str, Any]] = []
@@ -645,8 +675,12 @@ def build_intents(
     allocated_ids: set[str] = set()
     previous_by_owner_layer: dict[tuple[str, str], str] = {}
 
-    def allocate_id(intent_key: str) -> str:
+    def allocate_id(intent_key: str, preferred_id: str = "") -> str:
         nonlocal next_index
+        if preferred_id and preferred_id not in allocated_ids:
+            allocated_ids.add(preferred_id)
+            used_ids.add(preferred_id)
+            return preferred_id
         previous_id = previous_id_by_key.get(intent_key)
         if previous_id and previous_id not in allocated_ids:
             allocated_ids.add(previous_id)
@@ -660,17 +694,21 @@ def build_intents(
             allocated_ids.add(candidate)
             used_ids.add(candidate)
             return candidate
-    for (kind, layer, owner, topic, stem), anchors in sorted(grouped.items(), key=lambda item: item[0]):
+    for (kind, layer, owner, topic, stem, preferred_id), anchors in sorted(grouped.items(), key=lambda item: item[0]):
         anchors = sorted(anchors, key=lambda a: (str(a.get("source_path", "")), int(a.get("line", 0))))
-        chunk_size = chunk_size_for_group(layer, topic, anchors, max_anchors_per_intent, split_profile)
+        chunk_size = (
+            len(anchors)
+            if preferred_id
+            else chunk_size_for_group(layer, topic, anchors, max_anchors_per_intent, split_profile)
+        )
         for split_index, group in enumerate(chunked(anchors, chunk_size), 1):
             requirement_ids = [str(a.get("requirement_id")) for a in group]
             source_refs = [f"{a.get('source_path')}:{a.get('line')}" for a in group]
             refs = sorted({ref for a in group for ref in a.get("refs", []) if isinstance(ref, str)})
-            phrase = str(group[0].get("capability_title") or "").strip() or title_phrase(group, topic)
+            phrase = title_phrase(group, topic)
             title_split_index = split_index if len(anchors) > chunk_size else 0
             intent_key = f"{kind}:{layer}:{owner}:{topic}:{stem}:{split_index}"
-            current_id = allocate_id(intent_key)
+            current_id = allocate_id(intent_key, preferred_id)
             dependency_key = (owner, layer)
             depends_on = [previous_by_owner_layer[dependency_key]] if dependency_key in previous_by_owner_layer else []
             intents.append(
@@ -799,6 +837,20 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"intent id mapping disagrees with previous output: {key}")
             prior_keys[key] = task_id
 
+    effective_previous = previous_intents if isinstance(previous_intents, dict) else {"intents": []}
+    if args.mode == "add":
+        rows = [dict(row) for row in effective_previous.get("intents", []) if isinstance(row, dict)]
+        known_keys = {
+            str(row.get("intent_key") or "").strip()
+            for row in rows
+            if str(row.get("intent_key") or "").strip()
+        }
+        rows.extend(
+            {"intent_key": key, "id": value}
+            for key, value in prior_keys.items()
+            if key not in known_keys
+        )
+        effective_previous = {"intents": rows}
     result = build_intents(
         index,
         args.mode,
@@ -806,7 +858,7 @@ def main(argv: list[str] | None = None) -> int:
         args.max_anchors_per_intent,
         args.split_profile,
         reserved_ids=_existing_task_ids(root, task_files) | set(prior_keys.values()),
-        previous_intents={"intents": [{"intent_key": key, "id": value} for key, value in prior_keys.items()]} if args.mode == "add" else previous_intents,
+        previous_intents=effective_previous if args.mode == "add" else previous_intents,
     )
     result["source_schema"] = index.get("schema")
     for key, task_id in _previous_intent_ids(result).items():

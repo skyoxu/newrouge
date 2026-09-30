@@ -7,11 +7,13 @@ Use it when a business repo needs different bucket mapping, closure task ids, ta
 
 ## Load Order
 
-1. Built-in defaults in `scripts/python/_chapter7_profile.py`
-2. Optional repo-local override: `docs/workflows/chapter7-profile.json`
-3. Optional explicit CLI override: `--chapter7-profile-path <path>`
+1. Generic structural defaults in `scripts/python/_chapter7_profile.py`. They contain no project task ids or closure ids.
+2. Optional repo-local profile: `docs/workflows/chapter7-profile.json`.
+3. Optional explicit CLI profile: `--chapter7-profile-path <path>`.
 
-The scripts deep-merge overrides over the built-in defaults.
+Project business sections `bucket_order`, `fallback_bucket`, `surface_aliases`, `task_scope`, and `buckets` replace the generic section as a whole. This prevents an apparently complete project profile from inheriting example task ids such as historical T41-T46 mappings. `task_creation` still inherits only generic structural defaults and may override fields individually.
+
+Advanced migrations may list a replace-section name in `_inherit_sections` to request explicit inheritance. The effective profile records `_profile_sources`. Empty arrays and objects remain empty; they are not replaced through truthy fallback.
 
 ## Common Files
 

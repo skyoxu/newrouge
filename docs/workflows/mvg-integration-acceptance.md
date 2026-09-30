@@ -99,7 +99,9 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ## 累计里程碑基线
 
-后续里程碑在现有 manifest 上增量演进，不创建互不相干的 “M2 MVG” 测试岛。先用 `scripts/python/update_mvg_baseline.py --manifest <manifest> --delta <reviewed-delta>` 预览；确认后加 `--write`。delta 绑定预览时的 manifest SHA，支持 flow/test 的 `add/update/retain/retire`；retire 必须带真实规格/权威引用，不能通过删测试或降低范围消除失败。
+后续里程碑在现有 manifest 上增量演进，不创建互不相干的 “M2 MVG” 测试岛。先用 `scripts/python/update_mvg_baseline.py --manifest <manifest> --delta <reviewed-delta>` 预览；确认后加 `--write`。delta 绑定预览时的 manifest SHA，支持 flow/test 的 `add/update/retain/retire`。同一对象在一个 delta 中只能出现一次，update 不能改写对象 ID，apply 后会重新校验完整 manifest。
+
+任何 retire 或确定性可识别的基线削弱都必须同时提供可解析的仓库内规格路径 `authority_ref`（可带 `#anchor`）和 `authority_review: {"status":"reviewed","rationale":"..."}`。脚本会验证规格文件真实存在；仅填非空字符串不构成授权。范围/required flow、handoff、task/source/test obligations、implemented state、测试最小数、coverage mode 或 evidence level 的削弱都受此门禁约束。自然语言 outcome 是否语义削弱仍由人工/模型语义评审负责，确定性 updater 不冒充语义理解器。
 
 `run-mvg-acceptance` 的 summary 记录精确 `manifest_sha256` 和可选 `baseline_lineage`。单任务 Chapter 6 只运行任务声明的测试、受影响旧回归与必要冒烟；里程碑收尾则运行当前累计必测范围和本轮新增组合测试的同一整合版本。planned 新测试、blocking task 或人工义务仍未完成时只能报告 partial/blocked，不能把稳定子集绿色改写为 milestone passed。
 
