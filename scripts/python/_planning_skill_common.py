@@ -130,13 +130,13 @@ def build_blinded_analysis_bundle(
             source.read_text(encoding="utf-8", errors="replace")
         )
 
-    for name, source in (
-        ("source-manifest.v1.json", source_manifest_path),
-        ("source-blocks.v1.json", ledger_path),
-        ("semantic-requirements.v1.json", semantics_path),
+    for name, payload in (
+        ("source-manifest.v1.json", manifest),
+        ("source-blocks.v1.json", ledger),
+        ("semantic-requirements.v1.json", semantics),
     ):
         target = out_dir / name
-        shutil.copyfile(source, target)
+        atomic_json(target, scrub_capability_answers(payload))
         files[name] = file_sha(target)
 
     task_dir = out_dir / "task-views"
