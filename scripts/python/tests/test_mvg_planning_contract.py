@@ -12,7 +12,7 @@ PYTHON = ROOT / "scripts" / "python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
-from plan_mvg import build_delta, validate_proposal
+from plan_mvg import SUPPORTED_LLM_BACKENDS, build_delta, validate_proposal
 from update_mvg_baseline import apply_delta
 
 
@@ -78,6 +78,10 @@ class MvgPlanningContractTests(unittest.TestCase):
                 "min_tests": 1,
             }],
         }
+
+    def test_openai_api_is_a_supported_real_planning_backend(self) -> None:
+        self.assertIn("openai-api", SUPPORTED_LLM_BACKENDS)
+        self.assertIn("codex-cli", SUPPORTED_LLM_BACKENDS)
 
     def test_proposal_rejects_unknown_capability(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

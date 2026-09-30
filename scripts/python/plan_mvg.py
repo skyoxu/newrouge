@@ -17,6 +17,7 @@ from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_js
 
 RUN_SCHEMA = "newrouge.mvg-planning-run.v1"
 PROPOSAL_SCHEMA = "newrouge.mvg-planning-proposal.v1"
+SUPPORTED_LLM_BACKENDS = {"codex-cli", "openai-api"}
 DEFAULT_RUN_ROOT = Path("logs/ci/mvg-planning")
 FORMAL_TRACE_ROOT = Path("docs/testing/mvg/planning")
 TASK_VIEWS = (
@@ -235,8 +236,10 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
     run_path, state = _load_run(root, run_id)
     if state.get("formal_ready") is not True:
         raise ValueError("formal MVG planning is blocked until the explicit Chapter 5 scope is ready")
-    if llm_backend != "codex-cli":
-        raise ValueError("MVG file-backed planning currently requires codex-cli")
+    if llm_backend not in SUPPORTED_LLM_BACKENDS:
+        raise ValueError(
+            "MVG planning requires one of: " + ", ".join(sorted(SUPPORTED_LLM_BACKENDS))
+        )
     run_dir = run_path.parent
     workspace = run_dir / "model-workspace"
     if workspace.exists():
