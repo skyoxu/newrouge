@@ -316,7 +316,12 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
     atomic_json(run_dir / "proposal.json", proposal)
     state["phase"] = "generated"
     state["model_backend"] = llm_backend
-    state["model_command"] = cmd
+    state["model_execution"] = {
+        "path": (run_dir / "model-execution.json").relative_to(root).as_posix(),
+        "backend": llm_backend,
+        "command": execution.get("command"),
+        "runner": execution.get("runner"),
+    }
     atomic_json(run_path, state)
     return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json")}
 
@@ -327,6 +332,13 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         errors.append("invalid_proposal_schema")
     if proposal.get("analysis_identity_sha256") != state.get("analysis_identity_sha256"):
         errors.append("analysis_identity_mismatch")
+    planning_status = str(proposal.get("planning_status") or "").strip()
+    if planning_status not in {"draft", "ready_for_validation"}:
+        errors.append("invalid_planning_status")
+    gaps = proposal.get("gaps")
+    if not isinstance(gaps, list):
+        errors.append("gaps_not_array")
+        gaps = []
     manifest = proposal.get("manifest_candidate")
     if not isinstance(manifest, dict):
         return {"status": "blocked", "errors": errors + ["manifest_candidate_missing"]}
@@ -385,7 +397,20 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                     errors.append(f"planned_entrypoint_missing_{field}:{path or owner}")
         else:
             errors.append(f"invalid_entrypoint_status:{status}")
-    return {"status": "passed" if not errors else "blocked", "errors": sorted(set(errors))}
+    status = "passed" if not errors else "blocked"
+    formal_blockers: list[str] = []
+    if planning_status != "ready_for_validation":
+        formal_blockers.append("planning_status_not_ready")
+    if gaps:
+        formal_blockers.append("unresolved_gaps")
+    return {
+        "status": status,
+        "errors": sorted(set(errors)),
+        "planning_status": planning_status,
+        "unresolved_gap_count": len(gaps),
+        "formal_applicable": status == "passed" and not formal_blockers,
+        "formal_blockers": formal_blockers,
+    }
 
 
 def _review_map(value: Any) -> dict[str, dict[str, Any]]:
@@ -503,6 +528,12 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
     validation = validate(root, run_id=run_id)
     if validation.get("status") != "passed":
         raise ValueError("MVG proposal/delta validation is blocked")
+    if validation.get("formal_applicable") is not True:
+        blockers = ",".join(str(value) for value in validation.get("formal_blockers", []))
+        raise ValueError(
+            "MVG proposal is structurally valid but not formally applicable: "
+            + (blockers or "unknown_formal_blocker")
+        )
     if file_sha(root / str(state["capabilities_path"])) != state.get("capabilities_sha256"):
         raise ValueError("selected Capability input changed after MVG planning prepare")
 
