@@ -786,7 +786,7 @@ Required sequence:
 4. `apply --confirm` creates the initial manifest or applies the reviewed cumulative delta through the same anti-weakening contract as `update_mvg_baseline.py`.
 5. Planning apply never claims runtime verification. Changed obligations require the applicable Chapter 5 milestone handoff/readiness binding before Chapter 6 consumes them.
 
-Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
+Owning Skill: `.agents/skills/plan-mvg/SKILL.md`. Capability/MVG production acceptance and AC01-AC26 evidence are tracked in [Capability and MVG planning acceptance](docs/workflows/capability-mvg-planning-acceptance.md).
 
 ## 6. Phase 4: Single Task Daily Loop
 
