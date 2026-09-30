@@ -177,8 +177,8 @@ def execute(
     mvg_validation = load_json(
         fixture_root / f"logs/ci/mvg-planning/{mvg_run}/validation.json", {}
     )
-    if mvg_validation.get("status") != "passed":
-        raise RuntimeError(f"MVG production proposal failed validation: {mvg_validation}")
+    if mvg_validation.get("status") != "passed" or mvg_validation.get("formal_applicable") is not True:
+        raise RuntimeError(f"MVG production proposal failed formal validation: {mvg_validation}")
 
     proposal_path = fixture_root / f"logs/ci/mvg-planning/{mvg_run}/proposal.json"
     execution_path = fixture_root / f"logs/ci/mvg-planning/{mvg_run}/model-execution.json"
