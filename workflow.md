@@ -223,9 +223,21 @@ Choose one route:
 
 #### 3.0a Frozen Existing-Task Reconciliation
 
-This repository is currently in frozen reconciliation mode. The authoritative task scope is exactly T1-T133; Chapter 3 must repair mappings and derived structure without creating new Taskmaster IDs. The current Chapter 3 GDD is the task-derived baseline at `docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`; it is the only active GDD source for this route. Use `docs/workflows/chapter3-task-scope.json` and the frozen reconciliation scripts (`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py`, and `compile_task_triplet.py`) as the guarded entry path. Chapter 7 task creation is likewise rejected while this scope is present, and its new UI board defaults to `docs/planning/chapter7/ui-wiring-board.md`.
+Normal runs use `init` or `add`. A scope at `docs/workflows/chapter3-task-scope.json` is an explicit reconciliation restriction: repair existing identities without creating tasks. It is not a milestone task-count ceiling.
 
-Frozen mode is a repository configuration, not a temporary run flag. Before consuming a new milestone GDD, explicitly update the task-scope file, active Chapter 3 source set, Knowledge GDD paths, and Chapter 7 policy; only then may the workflow switch back to normal task creation.
+For an explicitly temporary reconciliation, finish mapping repair and reviewed task diffs, promote the validated topology, then complete closeout in the same repair task:
+
+```powershell
+py -3 scripts/python/chapter3_closeout.py begin --run-id <repair-run-id> --temporary
+py -3 scripts/python/chapter3_closeout.py preview
+py -3 scripts/python/chapter3_closeout.py resume
+```
+
+The tracked `docs/workflows/chapter3-closeout.json` points to a durable phase/evidence record. After scope removal, incomplete closeout blocks direct and wrapped task writers. Resume reuses successful stages, validates current task triplet/topology and tests ordinary creation in isolated repositories. Input drift stops closeout without overwriting edits. Permanent scopes are never automatically released.
+
+Successful closeout removes the temporary scope, preserves active/retired sources and restores normal `add` and Chapter 7 creation. It does not register a new GDD, regenerate Capability/MVG, refresh task readiness or publish Knowledge. Register the next GDD through the normal cumulative source declaration. Chapter 7 output is configured independently by `chapter7-profile.json.ui_document_path`; retired source paths stay read-only.
+
+`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py` and `build_gdd_from_task_baseline.py` are explicit historical replay/repair tools for the old task-derived baseline, never the default new-GDD route. See [closeout contract](docs/workflows/chapter3-closeout.md).
 
 在读取/解析本次来源前，先按 3.9 记录 run-start Attempt（交互式 `refresh-knowledge --begin-run` 或脚本化 `run-chapter3-guarded`）；3.9 的标题表示结束刷新位置，不表示把开始记录推迟到最后。
 

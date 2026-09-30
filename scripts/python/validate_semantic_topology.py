@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from _knowledge_catalog_builder import GitSnapshot
+from _knowledge_catalog_builder import DirectorySnapshot, GitSnapshot
 from _project_health_tasks import task_details
 from _semantic_topology import TOPOLOGY_ARTIFACTS, load_topology_from_snapshot
 
@@ -20,6 +20,7 @@ def main(argv=None) -> int:
         help="Git ref to validate when topology artifacts exist (default: current checkout HEAD).",
     )
     parser.add_argument("--require-available", action="store_true")
+    parser.add_argument("--worktree", action="store_true", help="Validate current files, not committed Git artifacts")
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
 
@@ -48,7 +49,12 @@ def main(argv=None) -> int:
         }, ensure_ascii=False))
         return 1
 
-    snapshot = GitSnapshot(root, args.authority_ref)
+    if args.worktree:
+        ledger = json.loads((root / TOPOLOGY_ARTIFACTS["source_blocks"]).read_text(encoding="utf-8"))
+        sources = sorted({row["source_path"] for row in ledger.get("blocks", [])})
+        snapshot = DirectorySnapshot(root, ["docs/planning/semantic-topology", ".taskmaster/tasks", *sources])
+    else:
+        snapshot = GitSnapshot(root, args.authority_ref)
     view = load_topology_from_snapshot(snapshot, task_details(snapshot), identity_kind="checkout")
     blocking = list(view.get("problems", []))
     status = "passed" if view.get("fresh") and not blocking else "blocked"

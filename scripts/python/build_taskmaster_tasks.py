@@ -488,6 +488,11 @@ def build_taskmaster_tasks(args: argparse.Namespace) -> None:
         marked = mark_exported(src_file)
         if marked is not None:
             updates.append((src_file, marked))
+    current_scope = load_scope(ROOT)
+    if current_scope is not None:
+        current_ids = validate_master(ROOT, current_scope)
+        if {row["id"] for row in root_obj[args.tag]["tasks"]} != current_ids:
+            raise ValueError("Frozen Chapter 3 scope rejects changed task identities")
     _atomic_write_many(updates)
     print(f"Wrote Task Master tasks file to: {TASKMASTER_TASKS_FILE}")
 

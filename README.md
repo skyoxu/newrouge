@@ -12,6 +12,7 @@
 ## Quick Links
 
 - Workflow and chapter order: `workflow.md`
+- Temporary Chapter 3 reconciliation closeout: `docs/workflows/chapter3-closeout.md`
 - Task-scoped routing: `AGENTS.md`
 - Agents index: `docs/agents/00-index.md`
 - Session recovery: `docs/agents/01-session-recovery.md`
