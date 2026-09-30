@@ -778,7 +778,7 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         "changed_task_ids": changed_tasks,
         "readiness_rebind": rebind,
         "capabilities_sha256": state["applied_capabilities_sha256"],
-        "mvq_formal_planning_allowed": all(row.get("status") in {"rebound", "missing"} for row in rebind),
+        "mvg_formal_planning_allowed": all(row.get("status") == "rebound" for row in rebind),
     })
     return load_json(run_dir / "apply-summary.json", {})
 
