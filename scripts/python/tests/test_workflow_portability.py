@@ -14,7 +14,9 @@ if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
 from _chapter7_profile import bucket_names, load_chapter7_profile
-from normalize_task_intents import build_intents
+from _planning_skill_common import _write_model_batches
+from build_taskmaster_tasks import merge_numeric_view_group
+from normalize_task_intents import build_intents, semantic_to_anchors
 from update_mvg_baseline import _canonical_sha, apply_delta
 
 
@@ -89,6 +91,170 @@ class WorkflowPortabilityTests(unittest.TestCase):
         self.assertEqual(first["intents"][0]["id"], second["intents"][0]["id"])
         self.assertEqual(first["intents"][0]["intent_key"], second["intents"][0]["intent_key"])
         self.assertEqual(["CAP-B"], second["intents"][0]["capability_refs"])
+
+    def test_second_project_fixture_supports_sparse_ids_different_semantics_and_no_capability(self) -> None:
+        source_blocks = {
+            "blocks": [
+                {
+                    "block_id": "SB-ALCHEMY",
+                    "source_path": "docs/gdd/alchemy-game.md",
+                    "line_start": 12,
+                    "heading_path": ["Potion Craft"],
+                },
+                {
+                    "block_id": "SB-AUDIT",
+                    "source_path": "docs/gdd/alchemy-game.md",
+                    "line_start": 48,
+                    "heading_path": ["Auditability"],
+                },
+                {
+                    "block_id": "SB-GLOBAL",
+                    "source_path": "docs/gdd/alchemy-game.md",
+                    "line_start": 80,
+                    "heading_path": ["Legal"],
+                },
+            ]
+        }
+        semantics = {
+            "requirements": [
+                {
+                    "requirement_id": "RQ-ALCHEMY",
+                    "status": "active",
+                    "delivery_relevant": True,
+                    "kind": "functional",
+                    "statement": "Players combine ingredients into potions.",
+                    "source_block_ids": ["SB-ALCHEMY"],
+                    "external_task_number_for_fixture": 41,
+                },
+                {
+                    "requirement_id": "RQ-AUDIT",
+                    "status": "active",
+                    "delivery_relevant": True,
+                    "kind": "non_functional",
+                    "statement": "Recipe changes produce an auditable record.",
+                    "source_block_ids": ["SB-AUDIT"],
+                    "external_task_number_for_fixture": 41,
+                },
+                {
+                    "requirement_id": "RQ-LEGAL",
+                    "status": "active",
+                    "delivery_relevant": True,
+                    "kind": "constraint",
+                    "statement": "Legal notices are maintained as a global compliance obligation.",
+                    "source_block_ids": ["SB-GLOBAL"],
+                    "sink_policy": "global_constraint",
+                    "non_task_sinks": [{"type": "policy", "id": "legal-notice"}],
+                },
+            ]
+        }
+        anchors = semantic_to_anchors(semantics, source_blocks, {"capabilities": []})
+        by_requirement = {row["requirement_id"]: row for row in anchors}
+        self.assertEqual({"RQ-ALCHEMY", "RQ-AUDIT"}, set(by_requirement))
+        self.assertEqual("core", by_requirement["RQ-ALCHEMY"]["layer_hint"])
+        self.assertEqual("ci", by_requirement["RQ-AUDIT"]["layer_hint"])
+        self.assertEqual([], by_requirement["RQ-ALCHEMY"]["capability_ids"])
+        self.assertEqual([], by_requirement["RQ-AUDIT"]["capability_ids"])
+
+        intents = build_intents({"anchors": anchors}, "add", "ALT", 8)
+        self.assertEqual(2, len(intents["intents"]))
+        self.assertTrue(all(not row.get("capability_refs") for row in intents["intents"]))
+
+        sparse_a = merge_numeric_view_group([
+            {"id": "ALT-BACK-0002", "taskmaster_id": 2, "status": "pending", "title": "Craft potion"},
+            {"id": "ALT-GAME-0002", "taskmaster_id": 2, "status": "pending", "title": "Craft potion"},
+        ], 2)
+        sparse_b = merge_numeric_view_group([
+            {"id": "ALT-BACK-0107", "taskmaster_id": 107, "status": "pending", "title": "Audit recipes"},
+            {"id": "ALT-GAME-0107", "taskmaster_id": 107, "status": "pending", "title": "Audit recipes"},
+        ], 107)
+        self.assertEqual(2, sparse_a["taskmaster_id"])
+        self.assertEqual(107, sparse_b["taskmaster_id"])
+        self.assertEqual(2, len(sparse_a["source_view_ids"]))
+        self.assertEqual(2, len(sparse_b["source_view_ids"]))
+
+    def test_dynamic_batching_is_not_six_and_oversize_block_is_not_truncated(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            blocks = [
+                {
+                    "block_id": f"SB-{index}",
+                    "source_path": "docs/gdd/other-game.md",
+                    "raw_text": (chr(64 + index) * 1800),
+                }
+                for index in range(1, 6)
+            ]
+            ledger = {"schema_version": "newrouge.source-blocks.v1", "blocks": blocks}
+            semantics = {
+                "schema_version": "newrouge.semantic-requirements.v1",
+                "requirements": [
+                    {
+                        "requirement_id": f"RQ-{index}",
+                        "source_block_ids": [f"SB-{index}"],
+                    }
+                    for index in range(1, 6)
+                ],
+            }
+            index = _write_model_batches(
+                out,
+                ledger=ledger,
+                semantics=semantics,
+                char_budget=1000,
+            )
+            self.assertEqual(5, index["batch_count"])
+            self.assertNotEqual(6, index["batch_count"])
+            self.assertEqual(5, index["block_count"])
+            self.assertTrue(all(row["oversize_blocks"] for row in index["batches"]))
+            for row in index["batches"]:
+                payload = json.loads((out / row["path"]).read_text(encoding="utf-8"))
+                self.assertEqual(1, len(payload["blocks"]))
+                self.assertEqual(1800, len(payload["blocks"][0]["raw_text"]))
+
+    def test_chapter7_profile_rejects_duplicate_assignment_and_view_id_collision(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            path = root / "docs/workflows/chapter7-profile.json"
+            path.parent.mkdir(parents=True)
+
+            duplicate = {
+                "bucket_order": ["a", "b"],
+                "fallback_bucket": "a",
+                "buckets": {
+                    "a": {"feature_task_ids": [2]},
+                    "b": {"feature_task_ids": [2]},
+                },
+            }
+            path.write_text(json.dumps(duplicate), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "multiple buckets"):
+                load_chapter7_profile(repo_root=root)
+
+            collision = {
+                "bucket_order": ["a"],
+                "fallback_bucket": "a",
+                "task_creation": {"view_id_templates": {"NG": "NG-CONSTANT"}},
+                "buckets": {
+                    "a": {"feature_task_ids": [2, 107]},
+                },
+            }
+            path.write_text(json.dumps(collision), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "template collision"):
+                load_chapter7_profile(repo_root=root)
+
+    def test_current_full_mvg_blockers_match_task_status_instead_of_historical_ids(self) -> None:
+        tasks = json.loads((ROOT / ".taskmaster/tasks/tasks.json").read_text(encoding="utf-8"))
+        by_id = {
+            int(row["id"]): row
+            for row in tasks.get("master", {}).get("tasks", [])
+            if isinstance(row, dict) and type(row.get("id")) is int
+        }
+        manifest = json.loads((ROOT / "docs/testing/mvg/m1-full.json").read_text(encoding="utf-8"))
+        blockers = set(manifest.get("coverage", {}).get("blocking_task_ids", []))
+        for task_id in blockers:
+            self.assertIn(task_id, by_id)
+            self.assertNotEqual("done", str(by_id[task_id].get("status") or "").lower())
+        self.assertEqual("done", str(by_id[59]["status"]).lower())
+        self.assertEqual("done", str(by_id[60]["status"]).lower())
+        self.assertNotIn(59, blockers)
+        self.assertNotIn(60, blockers)
 
     def _mvg_fixture(self, root: Path) -> dict:
         tasks = root / ".taskmaster/tasks"

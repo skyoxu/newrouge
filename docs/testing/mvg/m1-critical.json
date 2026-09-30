@@ -11,8 +11,8 @@
     ],
     "blocking_task_ids": [],
     "excluded_claims": [
-      "New Run -> Difficulty -> Character -> Map is tracked in m1-full and remains blocked by non-done Task 59.",
-      "Map -> owned node flow is tracked in m1-full and remains blocked by non-done Task 60.",
+      "New Run -> Difficulty -> Character -> Map is tracked in m1-full and is outside the m1-critical scope.",
+      "Map -> owned node flow is tracked in m1-full and is outside the m1-critical scope.",
       "Human gameplay approval, balance quality, OS-native mouse geometry and focus-navigation quality remain separate."
     ]
   },

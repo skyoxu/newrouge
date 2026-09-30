@@ -237,7 +237,7 @@ The tracked `docs/workflows/chapter3-closeout.json` points to a durable phase/ev
 
 Successful closeout removes the temporary scope, preserves active/retired sources and restores normal `add` and Chapter 7 creation. It does not register a new GDD, regenerate Capability/MVG, refresh task readiness or publish Knowledge. Register the next GDD through the normal cumulative source declaration. Chapter 7 output is configured independently by `chapter7-profile.json.ui_document_path`; retired source paths stay read-only.
 
-`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py` and `build_gdd_from_task_baseline.py` are explicit historical replay/repair tools for the old task-derived baseline, never the default new-GDD route. See [closeout contract](docs/workflows/chapter3-closeout.md).
+`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py` and `build_gdd_from_task_baseline.py` are explicit historical replay/repair tools for the old task-derived baseline, never the default new-GDD route. See [closeout contract](docs/workflows/chapter3-closeout.md). Portability disposal and AC evidence are tracked in [workflow portability acceptance](docs/workflows/workflow-portability-acceptance.md).
 
 Cross-project portability acceptance and the consumer migration matrix are tracked in [workflow portability acceptance](docs/workflows/workflow-portability-acceptance.md). The matrix is evidence/indexing only; it does not create a second task, readiness, Capability, or MVG authority.
 
