@@ -402,6 +402,42 @@ class PlanningAuditRepairTests(unittest.TestCase):
         state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
         self.assertEqual(3, len(state["generation_attempts"]))
 
+    def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
+        run = selected_cap(self.root)
+        candidate = load_json(run / "candidates/candidate-1.json")
+        calls = []
+        def invoke(*args, **kwargs):
+            calls.append(kwargs["workspace"])
+            if len(calls) == 1:
+                raise RuntimeError("actual model identity not exposed")
+            atomic_json(kwargs["output_path"], candidate)
+            model = "different-model" if len(calls) == 3 else "fixture-model"
+            return {"model": model, "model_tools": []}
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "auto"}), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            result = cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        self.assertEqual("complete", result["status"])
+        self.assertEqual(5, len(calls))
+        state = load_json(run / "run.json")
+        self.assertEqual("fixture-model", state["actual_model"])
+        self.assertEqual("", state["candidate_attempts"]["candidate-1"]["attempts"][0]["model"])
+        self.assertIn("actual_model_mismatch:different-model!=fixture-model",
+            state["candidate_attempts"]["candidate-2"]["attempts"][0]["validation_errors"])
+        self.assertEqual({"fixture-model"},
+            {row["final_meta"]["model"] for row in state["candidate_attempts"].values()})
+
+    def test_capability_missing_actual_receipt_cannot_accept_configured_model(self):
+        run = selected_cap(self.root)
+        candidate = load_json(run / "candidates/candidate-1.json")
+        def invoke(*args, **kwargs):
+            atomic_json(kwargs["output_path"], candidate)
+            return {}
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "configured-model"}), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            with self.assertRaisesRegex(ValueError, "actual_model_identity_missing"):
+                cap.generate(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        self.assertNotIn("actual_model", load_json(run / "run.json"))
+
     def test_generation_corrects_planned_work_misclassified_as_upstream_gap(self):
         _, proposal, _ = prepared_mvg(self.root)
         prompts = []

@@ -520,13 +520,17 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             _record_runner_activity(
                 state, label=label, elapsed_sec=elapsed, receipt=receipt
             )
-            actual_model = str((receipt or {}).get("model") or runner_info.get("model") or "").strip()
+            actual_model = str((receipt or {}).get("model") or "").strip()
+            if actual_model.lower() in {"auto", "automatic"}:
+                actual_model = ""
+            if not actual_model and not errors:
+                errors.append("actual_model_identity_missing")
             expected_actual_model = str(state.get("actual_model") or "").strip()
-            if expected_actual_model and actual_model != expected_actual_model:
+            if actual_model and expected_actual_model and actual_model != expected_actual_model:
                 errors.append(
                     f"actual_model_mismatch:{actual_model}!={expected_actual_model}"
                 )
-            elif actual_model:
+            elif actual_model and not errors:
                 state["actual_model"] = actual_model
             meta = {
                 "candidate": label,

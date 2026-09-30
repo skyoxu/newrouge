@@ -18,6 +18,7 @@ Design cumulative player-journey integration coverage after Capability planning.
 - Planned entrypoints may target not-yet-created implementation paths only when a real owner task, target symbol/path, inputs/state/assertions and implementation acceptance are explicit.
 - Existing verified entrypoints must point to files that exist now.
 - `implemented` means a test implementation exists. This Skill never writes `passed` or `runtime_verified`.
+- `coverage.blocking_task_ids` comes from the prepared Taskmaster master table, including the existing dedicated integration-owner exclusion. Planned entrypoints/tests and absent runtime evidence never change task status or invent task blockers. Dotnet selectors are class names, not filter expressions.
 - Reserve `gaps` for unresolved upstream semantics, real owners, Acceptance or required real contracts. Valid planned entrypoints/tests and absent runtime evidence are implementation/manual obligations, not upstream gaps. Preserve them as planned and document their boundary; never disguise a genuine gap to approve a plan.
 - Existing cumulative flows/tests remain unless a reviewed specification explicitly authorizes update/retire/coverage weakening. The same guarded `update_mvg_baseline.py` contract is used for apply.
 
