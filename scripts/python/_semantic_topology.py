@@ -304,7 +304,10 @@ def _validate_source_hashes(snapshot: Any, source_blocks: list[dict[str, Any]],
             problems.append({"kind": "source_block_missing_source_hash",
                              "source_block_id": block_id, "path": path})
             continue
-        actual = snapshot.digest(path)
+        # Source ledgers hash UTF-8 text read with universal newlines. Artifact
+        # bindings above remain byte-exact; only source text follows this contract.
+        text = snapshot.read_bytes(path).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+        actual = _sha256(text.encode("utf-8"))
         if expected.removeprefix("sha256:") != actual:
             problems.append({"kind": "source_hash_mismatch", "source_block_id": block_id,
                              "path": path, "expected": expected, "actual": actual})

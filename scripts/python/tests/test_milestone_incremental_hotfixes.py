@@ -168,7 +168,8 @@ class MilestoneHotfixTests(unittest.TestCase):
             save(handoff, payload)
             self.assertEqual("milestone_handoff_projection_drift", handoff_mod.validate_task_handoff(root, handoff, "NG-1")[1])
         with self.assertRaisesRegex(ValueError, "authority_ref"):
-            baseline_mod._apply_rows([{"id": "old", "min_tests": 10}], [{"id": "old", "action": "update", "reason": "weaken", "field_updates": {"min_tests": 1}}], "flow")
+            with tempfile.TemporaryDirectory() as td:
+                baseline_mod._apply_rows([{"id": "old", "min_tests": 10}], [{"id": "old", "action": "update", "reason": "weaken", "field_updates": {"min_tests": 1}}], "flow", root=Path(td))
 
     def test_glob_source_set_requires_explicit_retirement_of_removed_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

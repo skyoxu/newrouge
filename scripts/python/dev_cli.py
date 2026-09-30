@@ -827,7 +827,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument(
         "--stage",
         required=True,
-        choices=["prepare", "generate", "validate", "apply", "rebind-handoff", "status"],
+        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status"],
     )
     p_mvg_plan.add_argument("--repo-root", default=".")
     p_mvg_plan.add_argument("--run-id", required=True)
@@ -837,6 +837,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--allow-unready-draft", action="store_true")
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
     p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
+    p_mvg_plan.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")
     p_mvg_plan.add_argument("--confirm", action="store_true")
     p_mvg_plan.add_argument("--change-plan", default="")
     p_mvg_plan.add_argument("--handoff-out", default="")

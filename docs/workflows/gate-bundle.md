@@ -87,6 +87,7 @@ py -3 scripts/python/remind_overlay_task_drift.py --write --overlay-index docs/a
 - `Semantic topology unittest coverage`（结构投影、Main/Workspace identity、Project Health topology HTTP；随 `obligations_unittest` 一并阻断）
 - `Chapter 3 semantic conservation unittest coverage`（完整 Source Ledger、显式 Semantic Projection accounting、sink/complexity、attempt/stable refresh、增量 block identity；随 `obligations_unittest` 一并阻断）
 - `validate_semantic_topology.py`
+- `validate_semantic_topology.py` (current worktree validation; source text uses the ledger's universal-newline hashing contract)
 - `check_gate_bundle_consistency.py`
 - `check_workflow_gate_enforcement.py`
 - `validate_chapter7_ui_wiring.py` (profile-aware when invoked with `--chapter7-profile-path`)

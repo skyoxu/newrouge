@@ -88,12 +88,13 @@ def _repository_identity(root: Path) -> dict[str, Any]:
         }
 
 
-def _readiness_summary(root: Path, task_ids: list[str], *, allow_unready: bool) -> dict[str, Any]:
+def _readiness_summary(root: Path, task_ids: list[str], *, allow_unready: bool,
+                       scope: dict[str, Any]) -> dict[str, Any]:
     from chapter5_semantic_reconciliation import load_task_readiness, readiness_path_for_task
 
     rows = []
-    all_ready = True
-    for task_id in task_ids:
+    all_ready = not scope["errors"]
+    for task_id in sorted(set(task_ids + ([scope["global_chapter5_witness"]] if scope.get("global_chapter5_witness") else []))):
         ok, payload, reason = load_task_readiness(root, task_id)
         readiness_path = readiness_path_for_task(root, task_id)
         rows.append({
@@ -109,17 +110,15 @@ def _readiness_summary(root: Path, task_ids: list[str], *, allow_unready: bool) 
             ),
         })
         all_ready = all_ready and ok
-    if not task_ids:
-        all_ready = False
-        rows.append({"task_id": None, "ready": False, "reason": "explicit_task_scope_required"})
     if not all_ready and not allow_unready:
-        reasons = ", ".join(str(row["reason"]) for row in rows if not row["ready"])
+        reasons = ", ".join(scope["errors"] + [str(row["reason"]) for row in rows if not row["ready"]])
         raise ValueError(f"Chapter 5 scope is not ready: {reasons}")
     return {
         "schema_version": "newrouge.capability-planning-readiness-summary.v1",
         "formal_ready": all_ready,
         "allow_unready_draft": bool(allow_unready),
         "tasks": rows,
+        "round_scope": scope,
     }
 
 
@@ -141,7 +140,11 @@ def prepare(
 ) -> dict[str, Any]:
     run_dir = _run_dir(root, run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
-    readiness = _readiness_summary(root, task_ids, allow_unready=allow_unready)
+    if (run_dir / "run.json").is_file():
+        raise ValueError("Capability run already exists; resume its incomplete stage or use a new run ID")
+    from _planning_scope import round_scope
+    scope = round_scope(root, task_ids, ledger, semantics)
+    readiness = _readiness_summary(root, task_ids, allow_unready=allow_unready, scope=scope)
     analysis_dir = run_dir / "analysis-input"
     index = build_blinded_analysis_bundle(
         root,
@@ -1074,7 +1077,9 @@ def _task_capability_refs(task_rows: list[dict[str, Any]], cap_by_req: dict[str,
     return out, changed
 
 
-def _rebind_readiness(root: Path, task_id: str, run_id: str) -> dict[str, Any]:
+def _rebind_readiness(root: Path, task_id: str, run_id: str, *,
+                      task_rows: list[dict[str, Any]] | None = None,
+                      pending_targets: dict[Path, Any] | None = None) -> dict[str, Any]:
     from chapter5_semantic_reconciliation import (
         DEFAULT_CH3_SEMANTICS,
         DEFAULT_EXTRACTION_SNAPSHOT,
@@ -1100,7 +1105,7 @@ def _rebind_readiness(root: Path, task_id: str, run_id: str) -> dict[str, Any]:
     old = reconciliation.get("input_fingerprint")
     if not isinstance(old, dict):
         return {"task_id": task_id, "status": "blocked", "reason": "missing_old_fingerprint"}
-    task = _task_bundle(_load_task_rows(root), task_id)
+    task = _task_bundle(task_rows if task_rows is not None else _load_task_rows(root), task_id)
     authority_scope, errors = build_task_authority_scope(root, task)
     if errors:
         return {"task_id": task_id, "status": "blocked", "reason": "authority_scope_invalid"}
@@ -1153,11 +1158,15 @@ def _rebind_readiness(root: Path, task_id: str, run_id: str) -> dict[str, Any]:
         "current_capability_refs": new_caps,
         "rebound_at_utc": now(),
     }
-    atomic_json(reconciliation_path, reconciliation)
     readiness["input_fingerprint"] = new
     readiness["reconciliation_sha256"] = "sha256:" + _canonical_sha(reconciliation)
     readiness["capability_rebind"] = reconciliation["capability_rebind"]
-    atomic_json(readiness_path, readiness)
+    if pending_targets is None:
+        atomic_json(reconciliation_path, reconciliation)
+        atomic_json(readiness_path, readiness)
+    else:
+        pending_targets[reconciliation_path] = reconciliation
+        pending_targets[readiness_path] = readiness
     return {"task_id": task_id, "status": "rebound", "capability_refs": new_caps}
 
 
@@ -1166,8 +1175,26 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         raise ValueError("Capability apply requires --confirm")
     run_path, state = _load_run(root, run_id)
     run_dir = run_path.parent
+    from _planning_apply_journal import create_journal, resume_journal
+    journal_path = run_dir / "apply-journal.json"
+    pending_path = root / "docs/planning/semantic-topology/capability-apply.pending.json"
+    if journal_path.is_file():
+        journal = load_json(journal_path, {})
+        if journal.get("status") != "complete":
+            atomic_json(pending_path, {"run_id": run_id, "journal_path": relative(root, journal_path)})
+        result = resume_journal(root, journal_path, atomic_json)
+        state.update(phase="applied", applied=True, changed_task_ids=result["changed_task_ids"],
+                     readiness_rebind=result["readiness_rebind"], applied_capabilities_sha256=result["capabilities_sha256"])
+        atomic_json(run_path, state)
+        atomic_json(run_dir / "apply-summary.json", result)
+        pending_path.unlink(missing_ok=True)
+        return result
+    if pending_path.is_file():
+        raise ValueError("another Capability apply is pending; recover its recorded run first")
     if state.get("review_status") != "selected":
         raise ValueError("Capability apply requires a selected independent review winner")
+    if state.get("formal_ready") is not True:
+        raise ValueError("Capability draft run cannot be formally applied")
     review = load_json(run_dir / "review/review.json", {})
     freshness = _validate_snapshot_freshness(root, run_dir)
     candidate = _selected_candidate(run_dir, state)
@@ -1193,6 +1220,11 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     back, changed_back = _task_capability_refs(load_json(back_path, []), cap_by_req)
     gameplay, changed_game = _task_capability_refs(load_json(gameplay_path, []), cap_by_req)
     changed_tasks = sorted(changed_back | changed_game, key=lambda value: int(value) if value.isdigit() else value)
+    from chapter5_semantic_reconciliation import load_task_readiness
+    for task_id in changed_tasks:
+        ready, _, reason = load_task_readiness(root, task_id)
+        if not ready:
+            raise ValueError(f"Capability apply readiness preflight blocked:{task_id}:{reason}")
 
     edges_path = root / FORMAL_EDGES
     edges_doc = load_json(edges_path, {})
@@ -1259,57 +1291,57 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     log_capabilities = root / "logs/ci/task-generation/capabilities.v1.json"
     if log_capabilities.parent.exists():
         targets[log_capabilities] = formal
-    snapshots = {path: path.read_bytes() if path.is_file() else None for path in targets}
+    # Compute the entire reviewed projection, including Chapter 5 evidence,
+    # before the first formal write. Recovery never re-generates this projection.
+    from chapter5_semantic_reconciliation import _load_task_rows
+    projected_rows = _load_task_rows(root)
+    by_view = {"tasks_back": back, "tasks_gameplay": gameplay}
+    for item in projected_rows:
+        rows = by_view[item["view"]]
+        item["row"] = next(row for row in rows if str(row.get("taskmaster_id")) == item["task_id"])
+    rebind = [_rebind_readiness(root, task_id, run_id, task_rows=projected_rows, pending_targets=targets)
+              for task_id in changed_tasks]
+    if any(row.get("status") != "rebound" for row in rebind):
+        raise ValueError("Capability readiness rebind preflight blocked: " + str(rebind))
     manifest_path = root / FORMAL_MANIFEST
-    manifest_snapshot = manifest_path.read_bytes() if manifest_path.is_file() else None
-    try:
-        for path, payload in targets.items():
-            atomic_json(path, payload)
-        manifest = load_json(manifest_path, {})
-        artifacts = dict(manifest.get("artifacts") or {})
-        for rel_path in (
-            "docs/planning/semantic-topology/source-blocks.v1.json",
-            "docs/planning/semantic-topology/semantic-requirements.v1.json",
-            FORMAL_CAPABILITIES.as_posix(),
-            FORMAL_EDGES.as_posix(),
-        ):
-            path = root / rel_path
-            if not path.is_file():
-                raise ValueError(f"missing topology artifact while updating manifest: {rel_path}")
+    manifest = load_json(manifest_path, {})
+    artifacts = dict(manifest.get("artifacts") or {})
+    for rel_path in (
+        "docs/planning/semantic-topology/source-blocks.v1.json",
+        "docs/planning/semantic-topology/semantic-requirements.v1.json",
+        FORMAL_CAPABILITIES.as_posix(), FORMAL_EDGES.as_posix(),
+    ):
+        path = root / rel_path
+        if path in targets:
+            artifacts[rel_path] = text_sha(json.dumps(targets[path], ensure_ascii=False, indent=2) + "\n")
+        elif path.is_file():
             artifacts[rel_path] = file_sha(path)
-        manifest["artifacts"] = artifacts
-        manifest["generator_revision"] = "post-chapter5-capability-planning-v1"
-        atomic_json(manifest_path, manifest)
-    except Exception:
-        for path, snapshot in snapshots.items():
-            if snapshot is None:
-                path.unlink(missing_ok=True)
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(snapshot)
-        if manifest_snapshot is None:
-            manifest_path.unlink(missing_ok=True)
         else:
-            manifest_path.write_bytes(manifest_snapshot)
-        raise
-
-    rebind = [_rebind_readiness(root, task_id, run_id) for task_id in changed_tasks]
-    state["phase"] = "applied"
-    state["applied"] = True
-    state["changed_task_ids"] = changed_tasks
-    state["readiness_rebind"] = rebind
-    state["applied_capabilities_sha256"] = file_sha(root / FORMAL_CAPABILITIES)
-    atomic_json(run_path, state)
-    atomic_json(run_dir / "apply-summary.json", {
-        "run_id": run_id,
-        "status": "applied",
-        "changed_task_ids": changed_tasks,
+            raise ValueError(f"missing topology artifact while updating manifest: {rel_path}")
+    manifest["artifacts"] = artifacts
+    manifest["generator_revision"] = "post-chapter5-capability-planning-v1"
+    targets[manifest_path] = manifest
+    result = {
+        "run_id": run_id, "status": "applied", "changed_task_ids": changed_tasks,
         "readiness_rebind": rebind,
-        "capabilities_sha256": state["applied_capabilities_sha256"],
+        "capabilities_sha256": text_sha(json.dumps(formal, ensure_ascii=False, indent=2) + "\n"),
         "generation_readiness_sha256": file_sha(run_dir / "analysis-input/readiness-summary.json"),
-        "mvg_formal_planning_allowed": all(row.get("status") == "rebound" for row in rebind),
-    })
-    return load_json(run_dir / "apply-summary.json", {})
+        "mvg_formal_planning_allowed": True,
+    }
+    authority = dict(load_json(run_dir / "analysis-input/analysis-index.json", {})["authority_inputs"])
+    from chapter5_semantic_reconciliation import DEFAULT_EXTRACTION_SNAPSHOT
+    extraction = root / DEFAULT_EXTRACTION_SNAPSHOT
+    authority[relative(root, extraction)] = file_sha(extraction)
+    for task_id in changed_tasks:
+        from chapter5_semantic_reconciliation import reconciliation_path_for_task
+        reconciliation = load_json(reconciliation_path_for_task(root, task_id), {})
+        for kind in ("contracts", "adrs"):
+            for row in (reconciliation.get("authority_scope") or {}).get(kind, []):
+                path = repo_path(root, row["path"])
+                authority[relative(root, path)] = file_sha(path)
+    create_journal(root, journal_path, targets, authority, result)
+    atomic_json(pending_path, {"run_id": run_id, "journal_path": relative(root, journal_path)})
+    return apply(root, run_id=run_id, alignment_override=alignment_override, confirm=True)
 
 
 def main(argv: list[str] | None = None) -> int:

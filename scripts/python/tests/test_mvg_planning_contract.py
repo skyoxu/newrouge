@@ -6,13 +6,14 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-import plan_mvg
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PYTHON = ROOT / "scripts" / "python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
+
+import plan_mvg
 
 from plan_mvg import SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal
 from update_mvg_baseline import apply_delta
@@ -81,6 +82,14 @@ class MvgPlanningContractTests(unittest.TestCase):
             }],
         }
 
+    def accounting(self) -> dict:
+        return {"coverage_table": [{"requirement_id": "RQ-1", "capability_ref": "CAP-A", "task_id": 1,
+            "flow_id": "flow-a", "coverage": "Observable result through the real contract"}],
+            "entrypoints": [{"status": "planned", "owner_task": tid,
+                "path": f"Game.Core/Tasks/Fixture{tid}.cs", "symbol": "Run", "inputs": ["request"],
+                "state": "result", "assertions": ["result visible"], "implementation_acceptance": ["flow-a"]}
+                for tid in (1, 2)]}
+
     def test_llm_backend_module_is_resolved_from_tool_installation_not_target_repo(self) -> None:
         source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
         self.assertIn('Path(__file__).resolve().parents[1] / "sc"', source)
@@ -113,6 +122,7 @@ class MvgPlanningContractTests(unittest.TestCase):
                 "manifest_candidate": self.manifest(),
                 "entrypoints": [],
                 "gaps": [],
+                **self.accounting(),
             }
             draft = dict(base, planning_status="draft")
             result = validate_proposal(root, state, draft)
@@ -183,7 +193,10 @@ class MvgPlanningContractTests(unittest.TestCase):
             readiness_path.write_text(json.dumps({"schema_version": "newrouge.chapter5-readiness.v1"}), encoding="utf-8")
             change_plan = root / "logs/change-plan.json"
             change_plan.parent.mkdir(parents=True, exist_ok=True)
-            change_plan.write_text("{}\n", encoding="utf-8")
+            change_plan.write_text(json.dumps({"baseline_manifest": "docs/testing/mvg/fixture.json"}), encoding="utf-8")
+            trace = root / "docs/testing/mvg/planning/run-1.json"
+            trace.parent.mkdir(parents=True)
+            trace.write_text(json.dumps({"applied_manifest_sha256": run_state["applied_manifest_sha256"]}), encoding="utf-8")
             out = root / "logs/handoff.json"
             handoff = {"schema_version": "newrouge.milestone-task-handoff.v1", "task_id": "1"}
 

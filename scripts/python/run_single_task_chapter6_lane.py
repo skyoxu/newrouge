@@ -908,6 +908,19 @@ def main() -> int:
         return handoff.exit_code
 
     milestone_handoff_payload: dict[str, Any] = {}
+    from _mvg_obligations import check_task_obligations
+    obligations_ok, obligations_reason, obligations = check_task_obligations(_repo_root(), task_id)
+    if not obligations_ok:
+        _write_json(out_dir / "summary.json", {"cmd": "run-single-task-chapter6", "task_id": task_id,
+            "status": "blocked", "stop_reason": obligations_reason, "blocked_by": "mvg_obligations", "steps": []})
+        print(f"SINGLE_TASK_CHAPTER6 status=blocked task={task_id} stop={obligations_reason}")
+        return 2
+    bound_handoffs = obligations.get("milestone_handoff_paths", [])
+    if len(bound_handoffs) > 1 or (bound_handoffs and args.milestone_handoff and str(args.milestone_handoff) not in bound_handoffs):
+        _write_json(out_dir / "summary.json", {"status": "blocked", "stop_reason": "mvg_milestone_handoff_scope_mismatch", "steps": []})
+        return 2
+    if bound_handoffs:
+        args.milestone_handoff = bound_handoffs[0]
     if str(args.milestone_handoff or "").strip():
         milestone_path = (_repo_root() / str(args.milestone_handoff)).resolve()
         ok, reason, milestone_handoff_payload = validate_task_handoff(_repo_root(), milestone_path, task_id)

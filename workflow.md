@@ -758,11 +758,11 @@ py -3 scripts/python/dev_cli.py plan-capabilities --stage prepare --run-id <id> 
 
 Required sequence:
 
-1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and explicit Chapter 5 readiness.
+1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and current Chapter 5 readiness. The supplied task IDs must include every task sink of the ledger source round; legitimate non-task sinks are checked separately.
 2. `generate` requires an isolation runner that proves workspace-only reads, a fresh model session per invocation and no outside-workspace access. It produces exactly three same-model candidates. Without that boundary, formal generation fails closed.
 3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order.
 4. `preview-alignment` reuses historical Capability IDs only for exact Requirement-membership matches. Changed membership is unresolved until explicit reviewed alignment.
-5. `apply --confirm` may update derived Capability artifacts, `capability_refs`, Capability topology edges and a capability-only Chapter 5 fingerprint rebind. It must not change Task IDs/status, Acceptance, Requirement text or Task intent identity.
+5. `apply --confirm` journals the full derived projection and capability-only Chapter 5 rebind before writing. Re-running this stage recovers interrupted writes without replacing later user edits. A pending transaction blocks downstream readiness. Task IDs/status, Acceptance, Requirement text and Task intent identity remain protected.
 
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
 
@@ -782,9 +782,10 @@ Required sequence:
 
 1. `prepare` binds the exact Capability hash plus source/Requirement/task/Acceptance/contract evidence and the explicit Chapter 5-ready task scope.
 2. `generate` produces a cumulative player-journey MVG proposal. Flows may cross many Capabilities; Capability is not a one-flow-per-node template.
-3. `validate` verifies real Task IDs, source paths, contracts, tests, Requirement/Capability refs and entrypoint truthfulness. Existing manifests are converted to a guarded `newrouge.mvg-baseline-delta.v1`.
-4. `apply --confirm` creates the initial manifest or applies the reviewed cumulative delta through the same anti-weakening contract as `update_mvg_baseline.py`.
-5. Planning apply never claims runtime verification. Changed obligations require the applicable Chapter 5 milestone handoff/readiness binding before Chapter 6 consumes them.
+3. `review --runner <isolated-runner>` independently checks semantic conservation, Requirement verification accounting, player journeys, handoffs and evidence truthfulness in a fresh no-tools session.
+4. `validate` requires that review plus complete Requirement accounting and entrypoints for every flow task. Deltas bind the prepared manifest copy; live source/task/contract/test/readiness drift blocks formal apply.
+5. `apply --confirm` creates the initial manifest or applies the reviewed delta through the existing anti-weakening contract. The durable trace blocks both Chapter 6 entrypoints until final obligations are rebound.
+6. `rebind-handoff --task-id <id>` resolves ordinary applicability and binds current readiness without fabricating a milestone handoff. An actual milestone owner must also supply `--change-plan <path> --handoff-out <path>`; its handoff binds the applied manifest hash. Planning never claims runtime verification.
 
 Owning Skill: `.agents/skills/plan-mvg/SKILL.md`. Capability/MVG production acceptance and AC01-AC26 evidence are tracked in [Capability and MVG planning acceptance](docs/workflows/capability-mvg-planning-acceptance.md).
 

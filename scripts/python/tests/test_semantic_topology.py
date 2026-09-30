@@ -34,6 +34,9 @@ class FakeSnapshot:
     def read_text(self, path):
         return self.docs[path]
 
+    def read_bytes(self, path):
+        return self.docs[path].encode("utf-8")
+
     def digest(self, path):
         return hashlib.sha256(self.docs[path].encode("utf-8")).hexdigest()
 

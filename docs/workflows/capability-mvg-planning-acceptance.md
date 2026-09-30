@@ -2,11 +2,11 @@
 
 Requirement: `REQ-CAPABILITY-MVG-SKILLS-001`
 
-Status: implemented and production-accepted on PR #251.
+Status: implementation repaired; current-revision production acceptance is tracked on PR #251. The earlier production run below predates the six-defect audit and is not proof of those repairs.
 
 This document maps the implementation to AC01-AC26 and records the controlled real-model acceptance required by the requirement. It does not claim gameplay runtime acceptance, human playtest approval, or KCP publication.
 
-## Controlled production-model acceptance
+## Historical production-model acceptance (before audit repair)
 
 GitHub Actions run: `Planning Production Acceptance #36734641027`
 
@@ -36,7 +36,7 @@ Observed evidence from the run:
 | AC | Result | Evidence |
 | --- | --- | --- |
 | AC01 Chapter 3-5 without new Capability | PASS | Harbor fixture builds Source Blocks, reviewed Requirements, task triplet and real Chapter 5 readiness before any Capability file exists. |
-| AC02 partial Chapter 5 scope | PASS | Capability `prepare/generate` require an explicit ready task scope; draft mode is separately marked and formal generation refuses an unready scope. |
+| AC02 partial Chapter 5 scope | PASS | Both prepare entrypoints derive the full current source round and reject missing task sinks; valid non-task sinks remain supported without requiring unrelated historical tasks. Production-entry fixtures cover omission of task 42 despite task 7 being ready. |
 | AC03 three-process isolation | PASS | Isolated runner contract requires workspace-only input, fresh session per invocation, no outside reads and `model_tools=[]`; real acceptance produced three valid candidates under that contract. |
 | AC04 large GDD / complete accounting | PASS | Capability input batching accounts for every Source Block and Requirement, records batch hashes, never truncates an oversized block, and requires a continuation-capable runner for multiple batches. Portability tests cover non-six dynamic batches and oversized input. |
 | AC05 candidate failure / no valid winner | PASS | Candidate generation has bounded retries and budgets; invalid candidates stay attempts only. Review supports `no_valid_winner` and never fabricates a winner. |
@@ -49,7 +49,7 @@ Observed evidence from the run:
 | AC12 missing task/contract/test | PASS | Unknown task/capability/requirement refs and nonexistent verified entrypoints block; planned entrypoints/gaps remain draft and tests are never promoted to passed by planning. |
 | AC13 evidence truthfulness | PASS | Planning input includes referenced production/test/contract files; evidence levels remain distinct; plan validation does not create `runtime_verified`. Real acceptance explicitly reports `runtime_verified=false`. |
 | AC14 refresh layering | PASS | Task/status/reference edits do not automatically rerun Capability/MVG; source/semantic changes are handled by explicit impact/replanning paths and runtime revision changes invalidate runtime evidence separately. |
-| AC15 interruption/drift/retry | PASS | Durable run state preserves valid candidates/stages, stale input identity blocks apply, retry budgets inherit prior use, and partial/invalid outputs never overwrite formal artifacts. |
+| AC15 interruption/drift/retry | PASS | Capability apply journals all target and readiness projections before writing, blocks consumers while pending, resumes process termination, and rejects subsequent external target edits. MVG validates all original authority/bundle/baseline identities before any manifest write. Existing run IDs cannot reset budgets by prepare. |
 | AC16 UI/publication separation | PASS | Formal Capability writes semantic-topology artifacts only; Workspace/Main and planned/runtime publication boundaries remain owned by existing topology/KCP consumers. Planning does not publish KCP or claim runtime success. |
 | AC17 cross-project | PASS | Harbor Relay acceptance fixture uses a different game domain and non-contiguous IDs 7/42, with no newrouge task-number semantics. |
 | AC18 post-apply readiness rebind | PASS | Capability apply performs capability-only fingerprint rebind and blocks when anything beyond Capability refs changes. Real production acceptance verifies both fixture tasks remain current/READY. |
@@ -58,9 +58,15 @@ Observed evidence from the run:
 | AC21 old/new consumer migration | PASS | Portability acceptance documents legacy replay isolation and current consumers; semantic topology, Chapter 5, task normalizer and Knowledge continue to consume the current relation shape without frozen replay overriding it. |
 | AC22 blinding / review order | PASS | Prior derived `capability_ref(s)/id/title` fields are scrubbed from analysis inputs; authoritative source classification remains visible. Anonymous review order is hash-seeded and reproducible while the alias mapping stays outside the review workspace. |
 | AC23 budget exhaustion / recovery | PASS | Candidate/review retry limits, per-candidate and total active-time budgets, observable request limit, process-tree timeout termination and persisted budget state are implemented. When exact request/cost accounting is unavailable it is reported unavailable instead of invented. |
-| AC24 final handoff after MVG apply | PASS | MVG apply records involved tasks and blocks Chapter 6 by default. `rebind-handoff` rebuilds an applicable milestone handoff only against the applied manifest hash and fresh Chapter 5 readiness, then validates it with the existing handoff contract. Ordinary non-milestone tasks do not get fake handoffs. |
+| AC24 final handoff after MVG apply | PASS | Both Chapter 6 entrypoints consume the durable applied trace, require current obligation bindings, and cannot bypass by omitting the flag. The lane consumes its bound real milestone handoff; the handoff itself hashes the applied manifest. An ordinary binding resolves applicability and current readiness without a fake milestone handoff. |
 | AC25 source-authored Capability classification | PASS | Authoritative source text is copied unchanged into the blinded bundle and classification signals are retained; only old derived answers are removed. |
 | AC26 real MVG production path | PASS | Run #36734641027 consumed the actual selected/applied Capability, generated a real MVG proposal with Copilot CLI, and passed the existing plan/formal validator. No mock/preloaded manifest substituted for this chain. |
+
+## Six-defect audit repair verification
+
+`scripts/python/tests/test_planning_audit_repair.py` reproduces the original six failures and verifies their corrected production entrypoints. Additional cases cover false membership, missing/stale independent review, source/task/master/contract/test/readiness/manifest drift, ordinary versus milestone applicability, omitted handoff flags, manifest-bound handoff staleness, interruption during topology/readiness writes, idempotent resume and preservation of subsequent user edits.
+
+The clean CRLF checkout passes `validate_semantic_topology.py --worktree --require-available` for 139 source blocks and 127 active Requirements. Both Git and worktree topology checks are in the hard bundle. The current production workflow includes an independent isolated MVG semantic reviewer before formal validation. Read its current-revision outcome from PR #251 and retained Actions artifacts; the historical run above is not new repair evidence.
 
 ## Implementation surfaces
 

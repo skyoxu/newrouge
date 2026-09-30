@@ -166,6 +166,11 @@ def execute(
         env=env, timeout_sec=timeout_sec + 120,
     ))
     stages.append(_run(
+        evidence_dir, "08-mvg-independent-review",
+        [*mvg_base, "review", "--run-id", mvg_run, "--runner", str(runner), "--timeout-sec", str(timeout_sec)],
+        env=env, timeout_sec=timeout_sec + 120,
+    ))
+    stages.append(_run(
         evidence_dir, "08-mvg-validate",
         [*mvg_base, "validate", "--run-id", mvg_run],
         env=env, timeout_sec=180,
@@ -212,6 +217,7 @@ def execute(
         raise RuntimeError("Capability application/readiness rebind is incomplete")
 
     mvg_state = _read_mvg_run(fixture_root, mvg_run)
+    mvg_review_execution = load_json(fixture_root / f"logs/ci/mvg-planning/{mvg_run}/semantic-review-execution.json", {})
     mvg_validation = load_json(
         fixture_root / f"logs/ci/mvg-planning/{mvg_run}/validation.json", {}
     )
@@ -257,6 +263,8 @@ def execute(
             "proposal_sha256": file_sha(proposal_path),
             "validation": mvg_validation,
             "model_request_count": mvg_request_count,
+            "independent_semantic_review_model": (mvg_review_execution.get("receipt") or {}).get("model"),
+            "independent_semantic_review_sha256": file_sha(fixture_root / f"logs/ci/mvg-planning/{mvg_run}/semantic-review.json"),
             "manifest_applied": False,
             "runtime_verified": False,
         },

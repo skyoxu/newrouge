@@ -24,6 +24,7 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
 1. Prepare a blinded, hash-bound analysis bundle:
    `py -3 scripts/python/plan_capabilities.py prepare --run-id <id> --task-id <id> [--task-id <id> ...]`
 2. Inspect `logs/ci/capability-planning/<id>/analysis-input/analysis-index.json`. A draft may use `--allow-unready-draft`, but formal candidate generation refuses an unready scope.
+   Prepare checks every task sink of the current ledger source round, including active Requirement mappings and legitimate non-task sinks. A single ready task cannot hide another task of that round. Unrelated unchanged historical sources do not become an unconditional readiness task list; the model input remains cumulative.
 3. Generate three candidates through the configured isolation runner:
    `py -3 scripts/python/dev_cli.py plan-capabilities --stage generate --run-id <id>`
 4. Run independent anonymous review:
@@ -56,6 +57,8 @@ The runner may use Codex, an OpenAI-hosted sandbox, WSL/container isolation, or 
 ## Recovery and cost
 
 Run state is durable under `logs/ci/capability-planning/<run-id>/`. Re-run the incomplete stage only. Existing valid candidates are evidence and should not be discarded just because a later stage failed. Candidate retries and total active-time budgets are operator-configured by the runner; never claim model-request counts or monetary cost when the runner cannot observe them.
+
+Do not prepare over an existing run ID. Before apply, the complete formal projection and readiness rebind are persisted in `apply-journal.json`. A pending pointer blocks Chapter 5/6 consumers during incomplete writes. Resume by re-running the same `apply --confirm`; it accepts only original or journal-owned target bytes and unchanged authority inputs, preserves subsequent external edits, and never regenerates candidates/review/alignment. A completed apply is idempotent. Keep the run directory until recovery completes; do not delete the pending pointer to bypass the gate.
 
 ## Upstream correction
 

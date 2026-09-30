@@ -19,6 +19,7 @@ from _planning_skill_common import (
     file_sha,
     inspect_isolated_runner,
     load_json,
+    parse_model_json,
     repo_path,
     run_isolated_model,
 )
@@ -82,10 +83,13 @@ def _task_view_rows(root: Path) -> list[dict[str, Any]]:
 
 def _task_readiness(root: Path, task_ids: list[str], allow_unready: bool) -> dict[str, Any]:
     from chapter5_semantic_reconciliation import load_task_readiness
+    from _planning_scope import round_scope
+
+    scope = round_scope(root, task_ids, root / LEDGER, root / SEMANTICS)
 
     rows = []
-    all_ready = True
-    for task_id in task_ids:
+    all_ready = not scope["errors"]
+    for task_id in sorted(set(task_ids + ([scope["global_chapter5_witness"]] if scope.get("global_chapter5_witness") else []))):
         ok, payload, reason = load_task_readiness(root, task_id)
         rows.append({
             "task_id": task_id,
@@ -94,9 +98,6 @@ def _task_readiness(root: Path, task_ids: list[str], allow_unready: bool) -> dic
             "readiness": payload.get("readiness") if isinstance(payload, dict) else None,
         })
         all_ready = all_ready and ok
-    if not task_ids:
-        all_ready = False
-        rows.append({"task_id": None, "ready": False, "reason": "explicit_task_scope_required"})
     if not all_ready and not allow_unready:
         raise ValueError(
             "MVG formal planning requires current Chapter 5 readiness for the explicit task scope"
@@ -106,6 +107,7 @@ def _task_readiness(root: Path, task_ids: list[str], allow_unready: bool) -> dic
         "formal_ready": all_ready,
         "allow_unready_draft": bool(allow_unready),
         "tasks": rows,
+        "round_scope": scope,
     }
 
 
@@ -122,6 +124,8 @@ def prepare(
     if capabilities.get("schema_version") != "newrouge.capabilities.v1":
         raise ValueError("explicit Capability input is missing or invalid")
     run_dir = _run_dir(root, run_id)
+    if (run_dir / "run.json").is_file():
+        raise ValueError("MVG run already exists; resume its incomplete stage or use a new run ID")
     bundle = run_dir / "analysis-input"
     if bundle.exists():
         shutil.rmtree(bundle)
@@ -129,6 +133,7 @@ def prepare(
     readiness = _task_readiness(root, task_ids, allow_unready)
 
     files: dict[str, str] = {}
+    authority: dict[str, str | None] = {}
     files["capabilities.v1.json"] = _copy_file(root, capabilities_path, bundle, "capabilities.v1.json")
     files["source-manifest.v1.json"] = _copy_file(root, root / SOURCE_MANIFEST, bundle, "source-manifest.v1.json")
     files["source-blocks.v1.json"] = _copy_file(root, root / LEDGER, bundle, "source-blocks.v1.json")
@@ -178,12 +183,38 @@ def prepare(
         "capabilities_sha256": file_sha(capabilities_path),
         "files": files,
         "task_scope": task_ids,
+        "authority_inputs": authority,
         "existing_manifest": (
             {"path": manifest_path.resolve().relative_to(root.resolve()).as_posix(), "sha256": file_sha(manifest_path)}
             if manifest_path is not None and manifest_path.is_file()
             else None
         ),
     }
+    # Bind original authority paths as well as their copies. The prepared
+    # baseline includes absence, so an initial plan cannot overwrite a newly
+    # introduced manifest at apply time.
+    originals = [capabilities_path, root / SOURCE_MANIFEST, root / LEDGER, root / SEMANTICS,
+                 root / ".taskmaster/tasks/tasks.json", *(root / p for p in TASK_VIEWS)]
+    originals.extend(repo_path(root, str(row["path"])) for row in manifest.get("sources", []))
+    originals.extend(repo_path(root, value) for value in referenced)
+    from chapter5_semantic_reconciliation import (
+        DEFAULT_EXTRACTION_SNAPSHOT, readiness_path_for_task, reconciliation_path_for_task,
+    )
+    originals.append(root / DEFAULT_EXTRACTION_SNAPSHOT)
+    for task_id in [row["task_id"] for row in readiness["tasks"]]:
+        originals.extend([readiness_path_for_task(root, task_id), reconciliation_path_for_task(root, task_id)])
+        reconciliation = load_json(reconciliation_path_for_task(root, task_id), {})
+        for kind in ("contracts", "adrs"):
+            for row in (reconciliation.get("authority_scope") or {}).get(kind, []):
+                path = repo_path(root, str(row["path"]))
+                originals.append(path)
+                rel = path.relative_to(root).as_posix()
+                if path.is_file() and f"references/{rel}" not in files:
+                    files[f"references/{rel}"] = _copy_file(root, path, bundle, f"references/{rel}")
+    if manifest_path is not None:
+        originals.append(manifest_path)
+    for path in originals:
+        authority[path.relative_to(root).as_posix()] = file_sha(path) if path.is_file() else None
     index["analysis_identity_sha256"] = canonical_sha(index)
     atomic_json(bundle / "analysis-index.json", index)
 
@@ -237,11 +268,14 @@ entrypoints rows use status existing_verified or planned. existing_verified must
 
 Tests may be planned or implemented using the existing MVG schema. implemented means implementation exists, not passed. Do not set runtime_verified and do not claim any plan validation is a runtime run.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
+
+coverage_table must account for EVERY active delivery-relevant Requirement. Each flow row requires requirement_id, capability_ref, integer task_id, flow_id, and non-empty coverage rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
 """
 
 
 def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
+    _validate_input_freshness(root, run_path.parent, state)
     if state.get("formal_ready") is not True:
         raise ValueError("formal MVG planning is blocked until the explicit Chapter 5 scope is ready")
     if llm_backend not in SUPPORTED_LLM_BACKENDS:
@@ -456,6 +490,8 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         if isinstance(row, dict)
     }
     known_tasks = _task_ids(root)
+    from _mvg_planning_review import coverage_errors
+    errors.extend(coverage_errors(root, proposal, semantics, capabilities, _task_view_rows(root)))
     for flow in manifest.get("flows", []):
         if not isinstance(flow, dict):
             continue
@@ -489,7 +525,18 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                 else:
                     if not resolved.is_file():
                         errors.append(f"verified_entrypoint_missing:{path}")
+                    else:
+                        prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
+                        if not any((prepared / prefix / path).is_file() for prefix in ("references", "sources")):
+                            errors.append(f"verified_entrypoint_not_prepared:{path}")
+                        symbol = str(row.get("symbol") or "").strip()
+                        if not symbol or symbol.split(".")[-1] not in resolved.read_text(encoding="utf-8"):
+                            errors.append(f"verified_entrypoint_symbol_missing:{path}")
         elif status == "planned":
+            if not path:
+                errors.append(f"planned_entrypoint_missing_path:{owner}")
+            else:
+                repo_path(root, path)
             for field in ("symbol", "inputs", "state", "assertions", "implementation_acceptance"):
                 value = row.get(field)
                 if value in (None, "", [], {}):
@@ -510,6 +557,55 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         "formal_applicable": status == "passed" and not formal_blockers,
         "formal_blockers": formal_blockers,
     }
+
+
+def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
+    """Run a fresh text-only reviewer against sources and the fixed proposal."""
+    run_path, state = _load_run(root, run_id)
+    run_dir = run_path.parent
+    _validate_input_freshness(root, run_dir, state)
+    proposal = load_json(run_dir / "proposal.json", {})
+    if validate_proposal(root, state, proposal)["status"] != "passed":
+        raise ValueError("MVG semantic review requires a structurally valid proposal")
+    runner_info = inspect_isolated_runner(runner)
+    workspace = run_dir / "semantic-review-workspace"
+    if workspace.exists():
+        shutil.rmtree(workspace)
+    workspace.mkdir(parents=True)
+    shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
+    atomic_json(workspace / "proposal.json", proposal)
+    prompt = f'''Independently review proposal.json against ALL prepared source text, reviewed Requirements,
+Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
+You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
+cross-system handoffs, every Requirement's flow/other-verification/deferred accounting, entrypoint inputs/state/assertions,
+test evidence levels and feasibility. Planned entrypoints/tests are legitimate future obligations, not runtime proof.
+Do not require their implementation or claim runtime_verified. Do not approve invented refs, missing obligations,
+mechanical one-flow-per-Capability grouping, unsupported deferral or baseline weakening.
+Return JSON only: schema_version="newrouge.mvg-semantic-review.v1",
+analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256="{canonical_sha(proposal)}",
+verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
+requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"..."}}]
+with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
+flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
+Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
+'''
+    prompt_path = workspace / "prompt.txt"
+    prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
+    output = workspace / "review.json"
+    receipt = run_isolated_model(runner, workspace=workspace, prompt_path=prompt_path,
+        output_path=output, timeout_sec=timeout_sec)
+    result = parse_model_json(output)
+    atomic_json(run_dir / "semantic-review.json", result)
+    atomic_json(run_dir / "semantic-review-execution.json", {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
+        "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal)})
+    from _mvg_planning_review import semantic_review_errors
+    errors = semantic_review_errors(state, proposal, result,
+        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+    state["phase"] = "reviewed" if not errors else "review-blocked"
+    atomic_json(run_path, state)
+    if errors:
+        raise ValueError("MVG independent semantic review blocked: " + ";".join(errors))
+    return {"status": "approved", "proposal_sha256": canonical_sha(proposal), "runtime_verified": False}
 
 
 def _review_map(value: Any) -> dict[str, dict[str, Any]]:
@@ -594,12 +690,30 @@ def build_delta(existing: dict[str, Any], proposal: dict[str, Any]) -> dict[str,
 def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     run_dir = run_path.parent
+    _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
+    from _mvg_planning_review import semantic_review_errors
+    review_errors = semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
+        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+    execution = load_json(run_dir / "semantic-review-execution.json", {})
+    from _planning_skill_common import validate_runner_description
+    try:
+        validate_runner_description(execution.get("runner_info") or {})
+    except ValueError:
+        review_errors.append("independent_semantic_review_isolation_missing")
+    receipt = execution.get("receipt") or {}
+    if (execution.get("proposal_sha256") != canonical_sha(proposal)
+        or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
+        or receipt.get("model_tools") != [] or not receipt.get("model")):
+        review_errors.append("independent_semantic_review_execution_identity_invalid")
+    if review_errors:
+        result["formal_applicable"] = False
+        result["formal_blockers"].extend(review_errors)
     if result["status"] == "passed":
-        manifest_path = root / str(state["manifest_path"]) if state.get("manifest_path") else None
-        if manifest_path is not None and manifest_path.is_file():
-            existing = load_json(manifest_path, {})
+        baseline = run_dir / "analysis-input/existing-manifest.json"
+        if baseline.is_file():
+            existing = load_json(baseline, {})
             delta = build_delta(existing, proposal)
             atomic_json(run_dir / "delta.json", delta)
             from update_mvg_baseline import apply_delta
@@ -616,6 +730,28 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     state["phase"] = "validated" if result["status"] == "passed" else "validation-blocked"
     atomic_json(run_path, state)
     return result
+
+
+def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
+    index = load_json(run_dir / "analysis-input/analysis-index.json", {})
+    identity = index.pop("analysis_identity_sha256", None)
+    if canonical_sha(index) != identity or identity != state.get("analysis_identity_sha256"):
+        raise ValueError("MVG prepared analysis identity changed")
+    authority = index.get("authority_inputs")
+    if not isinstance(authority, dict) or not authority:
+        raise ValueError("MVG original authority identity is incomplete; prepare again")
+    drift = []
+    for rel, expected in authority.items():
+        path = repo_path(root, rel)
+        if (file_sha(path) if path.is_file() else None) != expected:
+            drift.append(rel)
+    for rel, expected in index["files"].items():
+        path = repo_path(run_dir / "analysis-input", rel)
+        if not path.is_file() or file_sha(path) != expected:
+            drift.append("analysis-input/" + rel)
+    atomic_json(run_dir / "input-freshness.json", {"status": "blocked" if drift else "current", "drift": drift})
+    if drift:
+        raise ValueError("MVG input drift: " + ",".join(drift))
 
 
 def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
@@ -644,20 +780,22 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         from update_mvg_baseline import apply_delta
         existing = load_json(manifest_path, {})
         updated = apply_delta(existing, load_json(run_dir / "delta.json", {}), root=root, validate_final=True)
-        atomic_json(manifest_path, updated)
     else:
         errors = validate_manifest(root, candidate, executable=False)
         if errors:
             raise ValueError("initial MVG manifest invalid: " + "; ".join(errors))
-        atomic_json(manifest_path, candidate)
+        updated = candidate
 
     trace = deepcopy(proposal)
     trace["applied_manifest_path"] = manifest_path.resolve().relative_to(root.resolve()).as_posix()
-    trace["applied_manifest_sha256"] = file_sha(manifest_path)
+    trace["applied_manifest_sha256"] = __import__("_planning_skill_common").text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
     trace["capabilities_sha256"] = state["capabilities_sha256"]
     trace["applied_at_utc"] = now()
     trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
+    trace["handoff_bindings"] = {}
+    # Persist the execution blocker before introducing new manifest obligations.
     atomic_json(trace_path, trace)
+    atomic_json(manifest_path, updated)
 
     involved = sorted({
         str(task_id)
@@ -692,10 +830,7 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         "runtime_verified": False,
         "chapter6_ready": False,
         "handoff_review_required_tasks": involved,
-        "handoff_note": (
-            "Only milestone-owned tasks require milestone handoff rebind. "
-            "Use rebind-handoff for each applicable task; ordinary tasks continue through current Chapter 5 readiness."
-        ),
+        "handoff_note": "Bind current Chapter 5 readiness for ordinary tasks; actual milestone owners also require the existing manifest-bound milestone handoff.",
         "post_apply_task_readiness": readiness,
     }
     atomic_json(run_dir / "apply-summary.json", result)
@@ -707,8 +842,8 @@ def rebind_handoff(
     *,
     run_id: str,
     task_id: str,
-    change_plan_path: Path,
-    out_path: Path,
+    change_plan_path: Path | None,
+    out_path: Path | None,
 ) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     if state.get("applied") is not True:
@@ -739,48 +874,48 @@ def rebind_handoff(
         )
     readiness_path = readiness_path_for_task(root, canonical_task)
 
-    from milestone_incremental_handoff import (
-        build_task_handoff,
-        validate_task_handoff,
-    )
-    handoff = build_task_handoff(
-        root,
-        plan_path=change_plan_path,
-        task_id=canonical_task,
-        readiness_path=readiness_path,
-    )
-    atomic_json(out_path, handoff)
-    ok, validation_reason, validated = validate_task_handoff(
-        root, out_path, canonical_task
-    )
-    if not ok:
-        out_path.unlink(missing_ok=True)
-        raise ValueError(
-            f"rebuilt milestone handoff is invalid for task {canonical_task}: "
-            f"{validation_reason}"
-        )
-
-    bindings = dict(state.get("handoff_bindings") or {})
-    bindings[canonical_task] = {
-        "status": "valid",
-        "path": out_path.relative_to(root).as_posix(),
-        "sha256": file_sha(out_path),
-        "change_plan_path": change_plan_path.relative_to(root).as_posix(),
+    from _mvg_obligations import applicable_milestone_plans
+    plans = applicable_milestone_plans(root, canonical_task, manifest_ref)
+    validated = {}
+    binding = {
+        "status": "valid", "kind": "ordinary",
         "chapter5_readiness_path": readiness_path.relative_to(root).as_posix(),
-        "manifest_path": manifest_ref,
-        "manifest_sha256": expected_manifest_sha,
+        "chapter5_readiness_sha256": file_sha(readiness_path),
+        "manifest_path": manifest_ref, "manifest_sha256": expected_manifest_sha,
     }
+    if change_plan_path is None:
+        if plans:
+            raise ValueError("applicable milestone plan requires a real --change-plan and --out handoff")
+    else:
+        if out_path is None:
+            raise ValueError("milestone handoff rebind requires --out")
+        plan = load_json(change_plan_path, {})
+        if str(plan.get("baseline_manifest") or "") != manifest_ref:
+            raise ValueError("milestone change plan must name the applied MVG manifest")
+        if plans and any(p.resolve() != change_plan_path.resolve() for p in plans):
+            raise ValueError("multiple applicable milestone plans require upstream resolution")
+        from milestone_incremental_handoff import build_task_handoff, validate_task_handoff
+        handoff = build_task_handoff(root, plan_path=change_plan_path,
+            task_id=canonical_task, readiness_path=readiness_path)
+        atomic_json(out_path, handoff)
+        ok, validation_reason, validated = validate_task_handoff(root, out_path, canonical_task)
+        if not ok:
+            raise ValueError("rebuilt milestone handoff is invalid: " + validation_reason)
+        binding.update(kind="milestone", path=out_path.relative_to(root).as_posix(), sha256=file_sha(out_path),
+            change_plan_path=change_plan_path.relative_to(root).as_posix())
+    trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
+    trace = load_json(trace_path, {})
+    if trace.get("applied_manifest_sha256") != expected_manifest_sha:
+        raise ValueError("MVG durable applied trace is missing or stale")
+    bindings = dict(trace.get("handoff_bindings") or {})
+    bindings[canonical_task] = binding
+    trace["handoff_bindings"] = bindings
+    atomic_json(trace_path, trace)
     state["handoff_bindings"] = bindings
     atomic_json(run_path, state)
-    return {
-        "status": "bound",
-        "task_id": canonical_task,
-        "handoff_path": out_path.relative_to(root).as_posix(),
-        "handoff_sha256": file_sha(out_path),
-        "chapter6_handoff_ready": True,
-        "runtime_verified": False,
-        "handoff": validated,
-    }
+    return {"status": "bound", "task_id": canonical_task, "binding_kind": binding["kind"],
+        "handoff_path": binding.get("path"), "handoff_sha256": binding.get("sha256"),
+        "chapter6_handoff_ready": True, "runtime_verified": False, "handoff": validated}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -800,6 +935,11 @@ def main(argv: list[str] | None = None) -> int:
     p_generate.add_argument("--timeout-sec", type=int, default=1800)
     p_generate.add_argument("--llm-backend", default="codex-cli")
 
+    p_review = sub.add_parser("review")
+    p_review.add_argument("--run-id", required=True)
+    p_review.add_argument("--runner", required=True)
+    p_review.add_argument("--timeout-sec", type=int, default=1800)
+
     for name in ("validate", "status"):
         p = sub.add_parser(name)
         p.add_argument("--run-id", required=True)
@@ -814,8 +954,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_handoff.add_argument("--run-id", required=True)
     p_handoff.add_argument("--task-id", required=True)
-    p_handoff.add_argument("--change-plan", required=True)
-    p_handoff.add_argument("--out", required=True)
+    p_handoff.add_argument("--change-plan", default="")
+    p_handoff.add_argument("--out", default="")
 
     args = parser.parse_args(argv)
     root = Path(args.repo_root).resolve()
@@ -837,6 +977,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "validate":
             result = validate(root, run_id=args.run_id)
+        elif args.command == "review":
+            result = review(root, run_id=args.run_id, runner=Path(args.runner).resolve(), timeout_sec=args.timeout_sec)
         elif args.command == "apply":
             result = apply(root, run_id=args.run_id, confirm=bool(args.confirm))
         elif args.command == "rebind-handoff":
@@ -844,8 +986,8 @@ def main(argv: list[str] | None = None) -> int:
                 root,
                 run_id=args.run_id,
                 task_id=str(args.task_id),
-                change_plan_path=repo_path(root, args.change_plan),
-                out_path=repo_path(root, args.out),
+                change_plan_path=repo_path(root, args.change_plan) if args.change_plan else None,
+                out_path=repo_path(root, args.out) if args.out else None,
             )
         else:
             _path, result = _load_run(root, args.run_id)

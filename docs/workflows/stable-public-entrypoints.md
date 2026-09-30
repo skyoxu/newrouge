@@ -239,10 +239,12 @@ Use when:
 - you need player-journey flows, entrypoint plans, task/contract/test ownership and anti-weakening validation
 
 Why this is stable:
-- the exact Capability file hash is part of the run identity
+- every original source/task/contract/test/readiness input and the prepared manifest (including absence) is hash-bound
+- use `--stage review --runner <isolated-runner>` for an independent semantic review before formal validation/apply
 - an existing manifest evolves through `update_mvg_baseline.py` semantics instead of replacement
 - planned entrypoints cannot masquerade as existing files, and planning never claims runtime verification
-- Chapter 6 remains blocked until changed milestone handoff/readiness bindings are valid
+- both Chapter 6 entrypoints consume the durable trace and require current final obligation bindings; the lane automatically consumes its bound milestone handoff even when the optional flag is omitted
+- ordinary tasks use `--stage rebind-handoff --task-id <id>` to bind current readiness and resolve applicability without creating a fake milestone handoff
 - for a task that is actually owned by a milestone change plan, use `--stage rebind-handoff --task-id <id> --change-plan <path> --handoff-out <path>`; this reuses the existing milestone handoff contract instead of inventing a planning-owned handoff
 
 Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.

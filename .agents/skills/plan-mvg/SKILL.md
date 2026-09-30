@@ -24,16 +24,21 @@ Design cumulative player-journey integration coverage after Capability planning.
 
 1. Prepare the exact input identity:
    `py -3 scripts/python/plan_mvg.py prepare --run-id <id> --capabilities docs/planning/semantic-topology/capabilities.v1.json --manifest docs/testing/mvg/<manifest>.json --task-id <id> [...]`
-2. If the explicit task scope is not currently Chapter-5-ready, formal prepare blocks. `--allow-unready-draft` may be used only to inspect gaps.
+2. Include every actual task sink of the current source round. Prepare derives the round from added/changed ledger sources (all sources for a cumulative re-plan with no delta), checks active delivery Requirements and legitimate non-task sinks, and requires current Chapter 5 evidence. An omitted task blocks even when every supplied task is ready. `--allow-unready-draft` is for gap inspection only.
 3. Generate the proposal:
    `py -3 scripts/python/plan_mvg.py generate --run-id <id> --llm-backend codex-cli`
-4. Deterministically validate real tasks/contracts/tests, Requirement/Capability refs, entrypoint truthfulness, and the actual initial manifest or cumulative delta:
+4. Run a new isolated semantic reviewer against the fixed proposal and full prepared inputs:
+   `py -3 scripts/python/plan_mvg.py review --run-id <id> --runner scripts/python/openai_isolated_model_runner.py`
+   Use `copilot_isolated_model_runner.py` when that is the configured backend. Never substitute the generating session's self-review. A blocked review preserves the proposal; repair the specific stage and review again.
+5. Deterministically validate complete Requirement-to-flow/other-verification/reviewed-deferral accounting, every flow task's entrypoint, real task/Capability membership, and the original initial manifest or cumulative delta:
    `py -3 scripts/python/plan_mvg.py validate --run-id <id>`
-5. Apply only after validation:
+6. Apply only after independent review and validation. Source, task master/views, Acceptance, referenced contracts/tests/ADRs, Chapter 5 evidence and original manifest identities must still match prepare:
    `py -3 scripts/python/plan_mvg.py apply --run-id <id> --confirm`
-6. For each task that is actually owned by a milestone change plan, rebuild the existing Chapter 5→6 handoff against the current readiness and the applied MVG manifest:
+7. Resolve final obligation bindings before Chapter 6. Keep current milestone change plans under `docs/planning/milestones/`. For each actual milestone owner, rebuild the existing Chapter 5→6 handoff against current readiness and the applied MVG manifest:
    `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task> --change-plan <reviewed-plan.json> --out <handoff.json>`
-   Do not invent a handoff for tasks outside the milestone handoff lifecycle. An ordinary task continues through its current Chapter 5 readiness route.
+   For an ordinary task, verify applicability and bind its current Chapter 5 readiness without creating a milestone handoff:
+   `py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <id> --task-id <task>`
+   This ordinary route fails closed if an applicable milestone plan exists.
 
 For an existing manifest, the Skill computes a reviewed delta and passes it through `update_mvg_baseline.py` logic; it does not overwrite the old baseline directly. For a first manifest, it validates the same runner schema before creation.
 
@@ -41,8 +46,10 @@ For an existing manifest, the Skill computes a reviewed delta and passes it thro
 
 The durable run is under `logs/ci/mvg-planning/<run-id>/`. The applied trace sidecar is under `docs/testing/mvg/planning/<run-id>.json`; it is planning provenance, not another runtime-test state authority.
 
-After apply, always inspect current Chapter 5 readiness for involved tasks. The apply summary lists `handoff_review_required_tasks`; that list means “review applicability”, not “fabricate a handoff for every task”. If a task is owned by a milestone change plan, run `rebind-handoff`; it reuses `milestone_incremental_handoff.py`, binds the current Chapter 5 readiness and the exact applied MVG manifest, and fails closed if either drifted. Tasks outside the milestone-handoff lifecycle keep their ordinary Chapter 5 route. Planning and handoff rebind both keep `runtime_verified=false`; runtime evidence still belongs to the MVG runner/Chapter 6 acceptance path.
+The applied trace records per-task obligation bindings and is consumed by both `chapter6-route` and the single-task lane. Omitting `--milestone-handoff` cannot bypass pending obligations. A milestone handoff itself binds the baseline manifest hash; later manifest/readiness/plan changes invalidate the binding. Ordinary bindings use current Chapter 5 readiness and create no synthetic milestone handoff. Planning and rebind keep `runtime_verified=false`; runtime evidence belongs to the MVG runner/Chapter 6 acceptance path.
 
 ## Refresh rules
 
 Task status or small reference edits do not automatically regenerate Capability or MVG planning. A new code revision invalidates runtime evidence when appropriate, not the planning manifest by itself. Capability rename/regrouping triggers MVG reference/behavior impact review, not automatic wholesale flow regeneration.
+
+Never prepare over an existing run ID: resume its incomplete stage, or choose a new ID for changed source inputs. Deltas are computed against the prepared manifest copy, never silently rebased onto a later manifest.

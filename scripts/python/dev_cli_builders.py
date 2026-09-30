@@ -676,16 +676,16 @@ def build_plan_mvg_cmd(args) -> list[str]:
             cmd.append("--allow-unready-draft")
     elif args.stage == "generate":
         cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
+    elif args.stage == "review":
+        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", args.runner]
     elif args.stage == "apply" and args.confirm:
         cmd.append("--confirm")
     elif args.stage == "rebind-handoff":
         if not args.task_id or len(args.task_id) != 1:
             raise ValueError("plan-mvg rebind-handoff requires exactly one --task-id")
-        if not args.change_plan or not args.handoff_out:
-            raise ValueError("plan-mvg rebind-handoff requires --change-plan and --handoff-out")
-        cmd += [
-            "--task-id", args.task_id[0],
-            "--change-plan", args.change_plan,
-            "--out", args.handoff_out,
-        ]
+        if bool(args.change_plan) != bool(args.handoff_out):
+            raise ValueError("milestone rebind requires both --change-plan and --handoff-out")
+        cmd += ["--task-id", args.task_id[0]]
+        if args.change_plan:
+            cmd += ["--change-plan", args.change_plan, "--out", args.handoff_out]
     return cmd
