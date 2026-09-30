@@ -82,6 +82,7 @@ def _chat(messages: list[dict[str, str]], *, timeout_sec: float) -> tuple[str, d
         data=json.dumps({
             "model": model_name(),
             "messages": messages,
+            "stream": False,
         }).encode("utf-8"),
         headers={
             "Accept": "application/json",
