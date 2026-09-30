@@ -109,7 +109,7 @@ def execute(
     stages.append(_run(
         evidence_dir, "01-capability-prepare",
         [*base, "prepare", "--run-id", cap_run, "--task-id", "7", "--task-id", "42",
-         "--model-batch-char-budget", "12000", "--candidate-retry-limit", "1",
+         "--model-batch-char-budget", "12000", "--candidate-retry-limit", "5",
          "--review-retry-limit", "1", "--candidate-budget-sec", str(timeout_sec),
          "--total-budget-sec", str(timeout_sec * 6), "--request-limit", "50"],
         env=env, timeout_sec=120,
@@ -259,6 +259,10 @@ def execute(
             "model_request_count": mvg_request_count,
             "manifest_applied": False,
             "runtime_verified": False,
+        },
+        "acceptance_retry_policy": {
+            "candidate_retry_limit": 5,
+            "reason": "Copilot auto routing may expose multiple internal models; mismatched-model attempts are discarded so the three accepted candidates still use one actual model.",
         },
         "cost": {
             "amount_available": False,
