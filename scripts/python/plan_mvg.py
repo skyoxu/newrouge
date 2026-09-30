@@ -261,6 +261,22 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
         timeout_sec=timeout_sec,
         codex_configs=["model_reasoning_effort=high"],
     )
+    execution = {
+        "schema_version": "newrouge.mvg-planning-model-execution.v1",
+        "backend": llm_backend,
+        "backend_info": info,
+        "command": cmd,
+        "returncode": rc,
+    }
+    try:
+        trace = json.loads(stdout)
+    except json.JSONDecodeError:
+        trace = None
+    if isinstance(trace, dict):
+        execution["trace"] = trace
+    else:
+        execution["stdout_tail"] = stdout[-4000:]
+    atomic_json(run_dir / "model-execution.json", execution)
     if rc != 0:
         raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
     text = output.read_text(encoding="utf-8").strip()
