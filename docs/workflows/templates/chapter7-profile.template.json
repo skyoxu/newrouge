@@ -1,7 +1,7 @@
 {
   "_instructions": [
     "Copy this file to docs/workflows/chapter7-profile.json, or pass it via --chapter7-profile-path.",
-    "Only override the fields you need. The scripts merge this file over built-in defaults."
+    "Project business sections replace generic defaults. Define bucket/task mappings explicitly; task_creation may inherit generic structural defaults."
   ],
   "bucket_order": [
     "entry",
