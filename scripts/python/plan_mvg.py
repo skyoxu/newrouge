@@ -13,11 +13,19 @@ from pathlib import Path
 from typing import Any
 
 from _mvg_manifest import validate_manifest
-from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, repo_path, run_isolated_model
+from _planning_skill_common import (
+    atomic_json,
+    canonical_sha,
+    file_sha,
+    inspect_isolated_runner,
+    load_json,
+    repo_path,
+    run_isolated_model,
+)
 
 RUN_SCHEMA = "newrouge.mvg-planning-run.v1"
 PROPOSAL_SCHEMA = "newrouge.mvg-planning-proposal.v1"
-SUPPORTED_LLM_BACKENDS = {"codex-cli", "openai-api"}
+SUPPORTED_LLM_BACKENDS = {"codex-cli", "openai-api", "github-models"}
 DEFAULT_RUN_ROOT = Path("logs/ci/mvg-planning")
 FORMAL_TRACE_ROOT = Path("docs/testing/mvg/planning")
 TASK_VIEWS = (
@@ -252,15 +260,16 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
         sys.path.insert(0, str(tool_sc_dir))
     from _llm_backend import inspect_llm_backend, run_llm_exec
 
-    info = inspect_llm_backend(llm_backend)
-    if info.get("available") is not True:
-        reasons = "; ".join(str(value) for value in info.get("blocking_errors", []))
-        raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
-
-    if llm_backend == "openai-api":
+    if llm_backend in {"openai-api", "github-models"}:
+        runner_name = (
+            "openai_isolated_model_runner.py"
+            if llm_backend == "openai-api"
+            else "github_models_isolated_runner.py"
+        )
+        runner = Path(__file__).resolve().with_name(runner_name)
+        info = inspect_isolated_runner(runner)
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(PROMPT, encoding="utf-8", newline="\n")
-        runner = Path(__file__).resolve().with_name("openai_isolated_model_runner.py")
         receipt = run_isolated_model(
             runner,
             workspace=workspace,
@@ -277,6 +286,10 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             "receipt": receipt,
         }
     else:
+        info = inspect_llm_backend(llm_backend)
+        if info.get("available") is not True:
+            reasons = "; ".join(str(value) for value in info.get("blocking_errors", []))
+            raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
         rc, stdout, cmd = run_llm_exec(
             backend=llm_backend,
             root=workspace,
