@@ -416,7 +416,7 @@ def _valid_candidate_reusable(
         and not meta.get("validation_errors")
         and meta.get("analysis_identity_sha256") == state.get("analysis_identity_sha256")
         and meta.get("prompt_sha256") == prompt_sha
-        and meta.get("model") == runner_info.get("model")
+        and meta.get("runner_contract_model") == runner_info.get("model")
         and path.is_file()
         and meta.get("output_sha256") == file_sha(path)
     )
@@ -517,10 +517,19 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             _record_runner_activity(
                 state, label=label, elapsed_sec=elapsed, receipt=receipt
             )
+            actual_model = str((receipt or {}).get("model") or runner_info.get("model") or "").strip()
+            expected_actual_model = str(state.get("actual_model") or "").strip()
+            if expected_actual_model and actual_model != expected_actual_model:
+                errors.append(
+                    f"actual_model_mismatch:{actual_model}!={expected_actual_model}"
+                )
+            elif actual_model:
+                state["actual_model"] = actual_model
             meta = {
                 "candidate": label,
                 "attempt": attempt_no,
-                "model": runner_info.get("model"),
+                "model": actual_model,
+                "runner_contract_model": runner_info.get("model"),
                 "runner": runner_info,
                 "prompt_sha256": prompt_sha,
                 "analysis_identity_sha256": state["analysis_identity_sha256"],
@@ -782,9 +791,18 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         _record_runner_activity(
             state, label=None, elapsed_sec=elapsed, receipt=receipt
         )
+        actual_model = str((receipt or {}).get("model") or runner_info.get("model") or "").strip()
+        expected_actual_model = str(state.get("actual_model") or "").strip()
+        if expected_actual_model and actual_model != expected_actual_model:
+            errors.append(
+                f"review_actual_model_mismatch:{actual_model}!={expected_actual_model}"
+            )
+        elif actual_model:
+            state["actual_model"] = actual_model
         meta = {
             "attempt": attempt_no,
-            "model": runner_info.get("model"),
+            "model": actual_model,
+            "runner_contract_model": runner_info.get("model"),
             "prompt_sha256": text_sha(REVIEW_PROMPT),
             "analysis_identity_sha256": state["analysis_identity_sha256"],
             "elapsed_active_sec": elapsed,

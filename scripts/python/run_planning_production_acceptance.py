@@ -95,7 +95,7 @@ def execute(
         if not str(env.get("GITHUB_TOKEN") or env.get("COPILOT_GITHUB_TOKEN") or "").strip():
             raise ValueError("GITHUB_TOKEN/COPILOT_GITHUB_TOKEN is required for Copilot acceptance")
         runner = COPILOT_RUNNER
-        env["SC_COPILOT_MODEL"] = model
+        env["SC_COPILOT_MODEL"] = model or "auto"
         mvg_backend = "copilot-cli"
     else:
         raise ValueError(f"unsupported production acceptance backend: {selected_backend}")
@@ -177,15 +177,33 @@ def execute(
     attempts = cap_state.get("candidate_attempts", {})
     if sorted(attempts) != ["candidate-1", "candidate-2", "candidate-3"]:
         raise RuntimeError("Capability acceptance did not retain exactly three candidate records")
+    actual_models: set[str] = set()
     for label, record in attempts.items():
         if not isinstance(record, dict) or not record.get("valid_attempt"):
             raise RuntimeError(f"Capability candidate is not valid: {label}")
         final_meta = record.get("final_meta") or {}
-        if final_meta.get("model") != model:
-            raise RuntimeError(f"Capability candidate model mismatch: {label}")
+        actual_model = str(final_meta.get("model") or "").strip()
+        if not actual_model:
+            raise RuntimeError(f"Capability candidate model identity missing: {label}")
+        actual_models.add(actual_model)
         runner = final_meta.get("runner") or {}
         if runner.get("fresh_session_per_invocation") is not True or runner.get("model_tools") != []:
             raise RuntimeError(f"Capability candidate isolation contract failed: {label}")
+    review_attempts = [
+        row for row in cap_state.get("review_attempts", [])
+        if isinstance(row, dict) and not row.get("validation_errors")
+    ]
+    if not review_attempts:
+        raise RuntimeError("Capability acceptance has no valid independent review attempt")
+    review_model = str(review_attempts[-1].get("model") or "").strip()
+    if review_model:
+        actual_models.add(review_model)
+    if len(actual_models) != 1:
+        raise RuntimeError(
+            "Capability candidate/review sessions did not use one actual model: "
+            + ",".join(sorted(actual_models))
+        )
+    actual_model = next(iter(actual_models))
 
     cap_apply = load_json(
         fixture_root / f"logs/ci/capability-planning/{cap_run}/apply-summary.json", {}
@@ -217,7 +235,8 @@ def execute(
         "schema_version": "newrouge.planning-production-acceptance.v1",
         "status": "passed",
         "fixture": fixture,
-        "model": model,
+        "model": actual_model,
+        "requested_model": model,
         "backend": selected_backend,
         "capability": {
             "run_id": cap_run,
@@ -271,7 +290,7 @@ def main() -> int:
         ):
             model = str(os.environ.get("SC_OPENAI_MODEL") or "gpt-5")
         else:
-            model = str(os.environ.get("SC_COPILOT_MODEL") or "gpt-5.4")
+            model = str(os.environ.get("SC_COPILOT_MODEL") or "auto")
         summary = execute(
             fixture_root=fixture_root,
             evidence_dir=evidence_dir,

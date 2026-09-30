@@ -19,8 +19,48 @@ def model_name() -> str:
     return str(
         os.environ.get("SC_COPILOT_MODEL")
         or os.environ.get("COPILOT_MODEL")
-        or "gpt-5.4"
-    ).strip() or "gpt-5.4"
+        or "auto"
+    ).strip() or "auto"
+
+
+def parse_copilot_json_stream(raw: str) -> tuple[str, str]:
+    messages: list[str] = []
+    actual_model = ""
+    for line in raw.splitlines():
+        text = line.strip()
+        if not text.startswith("{"):
+            continue
+        try:
+            event = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        event_type = str(event.get("type") or "")
+        data = event.get("data")
+        if event_type == "assistant.message" and isinstance(data, dict):
+            tool_requests = data.get("toolRequests")
+            if isinstance(tool_requests, list) and tool_requests:
+                raise ValueError("Copilot acceptance runner forbids model tool requests")
+            content = str(data.get("content") or "").strip()
+            phase = str(data.get("phase") or "response").strip().lower()
+            if content and phase != "thinking":
+                messages.append(content)
+        if event_type == "session.usage_checkpoint" and isinstance(data, dict):
+            last = str(data.get("lastActiveModel") or "").strip()
+            if last:
+                actual_model = last
+            rows = data.get("modelCacheState")
+            if not actual_model and isinstance(rows, list):
+                for row in reversed(rows):
+                    if isinstance(row, dict) and str(row.get("modelId") or "").strip():
+                        actual_model = str(row["modelId"]).strip()
+                        break
+    if not messages:
+        raise ValueError("Copilot JSON stream contained no assistant.message response")
+    if not actual_model:
+        raise ValueError("Copilot JSON stream did not expose the actual model identity")
+    return messages[-1], actual_model
 
 
 def description() -> dict[str, object]:
@@ -83,8 +123,9 @@ def run(args: argparse.Namespace) -> int:
     env["NO_COLOR"] = "1"
     command = [
         executable,
-        "-s",
+        "-p", payload,
         "--model", model_name(),
+        "--output-format", "json",
         "--no-ask-user",
         "--available-tools=ask_user",
         "--allow-all-paths",
@@ -96,7 +137,6 @@ def run(args: argparse.Namespace) -> int:
         command,
         cwd=workspace,
         env=env,
-        input=payload,
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -109,18 +149,20 @@ def run(args: argparse.Namespace) -> int:
         raise RuntimeError(f"Copilot CLI failed rc={proc.returncode}: {raw[-4000:]}")
     if not raw:
         raise RuntimeError("Copilot CLI returned empty output")
+    content, actual_model = parse_copilot_json_stream(raw)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(raw.rstrip() + "\n", encoding="utf-8", newline="\n")
+    output_path.write_text(content.rstrip() + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
-        "model": model_name(),
+        "model": actual_model,
+        "requested_model": model_name(),
         "transport": "github-copilot-cli-prompt-only",
         "model_tools": [],
         "runner_invocations": 1,
         "model_request_count": None,
         "request_count_observable": False,
-        "output_chars": len(raw),
+        "output_chars": len(content),
         "workspace": workspace.as_posix(),
     }, ensure_ascii=False))
     return 0

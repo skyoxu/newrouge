@@ -28,7 +28,7 @@ jobs:
       COPILOT_GITHUB_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-5' }}
-      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || '' }}
+      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || 'auto' }}
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
     steps:
@@ -46,25 +46,10 @@ jobs:
       - name: Install GitHub Copilot CLI
         run: npm install -g @github/copilot@latest
 
-      - name: Resolve one available fixed Copilot model
-        id: copilot_model
-        if: ${{ env.OPENAI_API_KEY == '' }}
-        run: |
-          python scripts/python/resolve_copilot_acceptance_model.py \
-            ${SC_COPILOT_MODEL:+--candidate "$SC_COPILOT_MODEL"} \
-            --candidate mai-code-1.1-flash \
-            --candidate gpt-5.3-codex \
-            --candidate claude-haiku-4.5 \
-            --candidate gemini-3.5-flash \
-            --candidate gemini-3.6-flash \
-            --candidate gemini-3.7-flash
-
       - name: Deterministic acceptance fixture smoke
         run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract -v
 
       - name: Run real Capability to MVG production acceptance
-        env:
-          SC_COPILOT_MODEL: ${{ steps.copilot_model.outputs.model || env.SC_COPILOT_MODEL }}
         run: |
           if [ -n "$OPENAI_API_KEY" ]; then
             python scripts/python/run_planning_production_acceptance.py --backend openai-api --timeout-sec 900
