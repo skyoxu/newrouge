@@ -268,6 +268,7 @@ Every flow in manifest_candidate may use additional requirement_ids and capabili
 entrypoints rows use status existing_verified or planned. existing_verified must point to an input file actually present in references/ or sources/. planned must name a real owner_task plus target path/symbol, inputs, state, assertions and implementation acceptance; it must not claim the file exists.
 
 Tests may be planned or implemented using the existing MVG schema. implemented means implementation exists, not passed. Do not set runtime_verified and do not claim any plan validation is a runtime run.
+Reserve gaps for unresolved upstream design, Requirement, ownership, Acceptance or required real-contract evidence. A correctly specified planned entrypoint/test is a future implementation obligation, not an upstream gap. Missing runtime execution is expected at this planning stage, not a gap. Record those boundaries in notes/manual_obligations and keep the entrypoint/test state planned. Use planning_status=ready_for_validation with gaps=[] when all upstream evidence and planning obligations are complete; use draft for a genuine unresolved upstream gap. Never erase or disguise a genuine gap just to make validation pass.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
 
 coverage_table must account for EVERY active delivery-relevant Requirement. Each flow row requires requirement_id, capability_ref, integer task_id, flow_id, and non-empty coverage rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
@@ -437,9 +438,12 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         record.update(execution, status="completed")
         atomic_json(run_path, state)
         atomic_json(run_dir / f"proposal-attempt-{attempt}.json", proposal)
-        if validation.get("status") == "passed":
+        ready_with_gaps = validation.get("planning_status") == "ready_for_validation" and validation.get("unresolved_gap_count", 0) > 0
+        if validation.get("status") == "passed" and not ready_with_gaps:
             break
         errors = validation.get("errors") or []
+        if ready_with_gaps:
+            errors = errors + ["unresolved_gaps contradict ready_for_validation. Preserve true upstream gaps as draft. Correctly specified planned implementation/tests and absent runtime evidence belong in notes/manual_obligations, not gaps. Return a full consistent proposal; do not hide genuine upstream uncertainty."]
         prompt = (
             PROMPT
             + "\n"

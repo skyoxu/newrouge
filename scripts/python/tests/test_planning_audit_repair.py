@@ -402,6 +402,23 @@ class PlanningAuditRepairTests(unittest.TestCase):
         state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
         self.assertEqual(3, len(state["generation_attempts"]))
 
+    def test_generation_corrects_planned_work_misclassified_as_upstream_gap(self):
+        _, proposal, _ = prepared_mvg(self.root)
+        prompts = []
+        def invoke(*args, **kwargs):
+            prompts.append(kwargs["prompt_path"].read_text())
+            value = deepcopy(proposal)
+            if len(prompts) == 1:
+                value["gaps"] = [{"kind": "test_implementation", "detail": "Planned tests are not yet implemented."}]
+            atomic_json(kwargs["output_path"], value)
+            return {"model": "fixture-generator", "model_tools": []}
+        with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
+             patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            mvg.generate(self.root, run_id="repair", timeout_sec=1, llm_backend="copilot-cli")
+        self.assertEqual(2, len(prompts))
+        self.assertIn("unresolved_gaps contradict", prompts[1])
+        self.assertIn("do not hide genuine upstream uncertainty", prompts[1])
+
 
 if __name__ == "__main__":
     unittest.main()
