@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from openai_isolated_model_runner import DEFAULT_MAX_BYTES, workspace_payload
@@ -112,10 +113,7 @@ def run(args: argparse.Namespace) -> int:
     if not token:
         raise ValueError("GITHUB_TOKEN/COPILOT_GITHUB_TOKEN is unavailable")
 
-    runtime_home = workspace / ".copilot-isolated-runtime"
-    if runtime_home.exists():
-        shutil.rmtree(runtime_home)
-    runtime_home.mkdir(parents=True)
+    runtime_home = Path(tempfile.mkdtemp(prefix="copilot-isolated-runtime-"))
 
     env = dict(os.environ)
     env["COPILOT_GITHUB_TOKEN"] = token
@@ -144,6 +142,7 @@ def run(args: argparse.Namespace) -> int:
         stderr=subprocess.STDOUT,
         timeout=max(1, int(args.timeout_sec)),
     )
+    shutil.rmtree(runtime_home, ignore_errors=True)
     raw = (proc.stdout or "").strip()
     if proc.returncode != 0:
         raise RuntimeError(f"Copilot CLI failed rc={proc.returncode}: {raw[-4000:]}")
