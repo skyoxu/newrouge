@@ -847,6 +847,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
     p.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
     p.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
+    p.add_argument("--model-batch-char-budget", type=int, default=160000)
+    p.add_argument("--candidate-retry-limit", type=int, default=1)
+    p.add_argument("--review-retry-limit", type=int, default=1)
+    p.add_argument("--candidate-budget-sec", type=int, default=1800)
+    p.add_argument("--total-budget-sec", type=int, default=7200)
+    p.add_argument("--request-limit", type=int, default=50)
 
     for name in ("generate", "review"):
         p_stage = sub.add_parser(name)
@@ -881,6 +887,12 @@ def main(argv: list[str] | None = None) -> int:
                 source_manifest=repo_path(root, args.source_manifest),
                 ledger=repo_path(root, args.ledger),
                 semantics=repo_path(root, args.semantics),
+                model_batch_char_budget=args.model_batch_char_budget,
+                candidate_retry_limit=args.candidate_retry_limit,
+                review_retry_limit=args.review_retry_limit,
+                candidate_budget_sec=args.candidate_budget_sec,
+                total_budget_sec=args.total_budget_sec,
+                request_limit=args.request_limit,
             )
         elif args.command == "generate":
             result = generate(root, run_id=args.run_id, runner=Path(args.runner).resolve(), timeout_sec=args.timeout_sec)
