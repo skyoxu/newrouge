@@ -16,6 +16,7 @@ if str(PYTHON) not in sys.path:
 from _chapter7_profile import load_chapter7_profile
 from _planning_skill_common import _write_model_batches
 from compile_task_triplet import build_change_plan
+from collect_ui_wiring_inputs import build_summary
 from dev_cli import build_parser
 from normalize_task_intents import build_intents, semantic_to_anchors
 
@@ -174,6 +175,45 @@ class WorkflowPortabilityAcceptanceTests(unittest.TestCase):
             }), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "template collision"):
                 load_chapter7_profile(repo_root=root)
+
+    def test_ac07_excluded_tasks_are_visible_and_unknown_profile_ids_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            tasks = root / ".taskmaster/tasks"
+            tasks.mkdir(parents=True)
+            (tasks / "tasks.json").write_text(json.dumps({
+                "master": {"tasks": [
+                    {"id": 7, "title": "Outside range", "status": "done"},
+                    {"id": 42, "title": "Inside range", "status": "done"},
+                ]}
+            }), encoding="utf-8")
+            (tasks / "tasks_back.json").write_text("[]\n", encoding="utf-8")
+            (tasks / "tasks_gameplay.json").write_text(json.dumps([
+                {"id": "GM-0042", "taskmaster_id": 42, "status": "done", "labels": []}
+            ]), encoding="utf-8")
+            profile_path = root / "docs/workflows/chapter7-profile.json"
+            profile_path.parent.mkdir(parents=True)
+            profile_path.write_text(json.dumps({
+                "bucket_order": ["custom"],
+                "fallback_bucket": "custom",
+                "task_scope": {"min_task_id": 10, "max_task_id": 100},
+                "buckets": {
+                    "custom": {
+                        "feature_task_ids": [42],
+                        "feature_families": [],
+                    }
+                },
+            }), encoding="utf-8")
+            summary = build_summary(repo_root=root)
+            self.assertEqual(1, summary["excluded_completed_tasks_count"])
+            self.assertEqual(7, summary["excluded_completed_tasks"][0]["task_id"])
+            self.assertEqual("outside_chapter7_task_scope", summary["excluded_completed_tasks"][0]["reason"])
+
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+            profile["buckets"]["custom"]["feature_task_ids"].append(99)
+            profile_path.write_text(json.dumps(profile), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "unknown Taskmaster IDs"):
+                build_summary(repo_root=root)
 
     def test_ac12_default_public_cli_does_not_expose_historical_replay_as_normal_route(self) -> None:
         parser = build_parser()

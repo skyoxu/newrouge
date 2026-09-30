@@ -239,6 +239,8 @@ Successful closeout removes the temporary scope, preserves active/retired source
 
 `review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py` and `build_gdd_from_task_baseline.py` are explicit historical replay/repair tools for the old task-derived baseline, never the default new-GDD route. See [closeout contract](docs/workflows/chapter3-closeout.md).
 
+Cross-project portability acceptance and the consumer migration matrix are tracked in [workflow portability acceptance](docs/workflows/workflow-portability-acceptance.md). The matrix is evidence/indexing only; it does not create a second task, readiness, Capability, or MVG authority.
+
 在读取/解析本次来源前，先按 3.9 记录 run-start Attempt（交互式 `refresh-knowledge --begin-run` 或脚本化 `run-chapter3-guarded`）；3.9 的标题表示结束刷新位置，不表示把开始记录推迟到最后。
 
 ### 3.1 Declare Authoritative Planning Inputs
