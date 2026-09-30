@@ -44,6 +44,7 @@ A custom runner may be supplied, but it must answer `--describe` with schema `ne
 - `filesystem_scope = workspace_only`
 - `fresh_session_per_invocation = true`
 - `can_read_outside_workspace = false`
+- `model_tools = []`
 - exact `model`
 
 Invocation contract:
