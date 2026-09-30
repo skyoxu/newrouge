@@ -129,6 +129,7 @@ class CapabilityPlanningContractTests(unittest.TestCase):
             "fresh_session_per_invocation": True,
             "can_read_outside_workspace": False,
             "model": "same-model",
+            "model_tools": [],
         })
 
 
