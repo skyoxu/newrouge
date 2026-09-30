@@ -1,7 +1,7 @@
 {
   "_instructions": [
     "Copy this file to docs/workflows/chapter7-profile.json in a business repo when you only need the most common Chapter 7 overrides.",
-    "Keep only the fields you actually need. The scripts merge this file over built-in defaults."
+    "Keep only task_creation fields you want to override, but define complete project business bucket sections when using them; business mappings do not inherit hidden task ids."
   ],
   "task_creation": {
     "adr_refs": [
