@@ -807,7 +807,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
     p_cap.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
     p_cap.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
-    p_cap.add_argument("--runner", default="")
+    p_cap.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")
     p_cap.add_argument("--timeout-sec", type=int, default=1800)
     p_cap.add_argument("--alignment-override", default="")
     p_cap.add_argument("--candidate", default="")
