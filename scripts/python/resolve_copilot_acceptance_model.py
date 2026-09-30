@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 DEFAULT_CANDIDATES = (
+    "mai-code-1.1-flash",
     "gpt-5.3-codex",
     "claude-haiku-4.5",
     "gemini-3.5-flash",

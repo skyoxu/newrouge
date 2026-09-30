@@ -52,6 +52,7 @@ jobs:
         run: |
           python scripts/python/resolve_copilot_acceptance_model.py \
             ${SC_COPILOT_MODEL:+--candidate "$SC_COPILOT_MODEL"} \
+            --candidate mai-code-1.1-flash \
             --candidate gpt-5.3-codex \
             --candidate claude-haiku-4.5 \
             --candidate gemini-3.5-flash \
