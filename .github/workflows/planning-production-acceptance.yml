@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      GITHUB_TOKEN: ${{ github.token }}
+      COPILOT_GITHUB_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-5' }}
       SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || 'gpt-5.4' }}
