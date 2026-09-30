@@ -98,9 +98,34 @@ def resolve_model(
                 "model": name,
                 "attempts": attempts,
             }
+    # Diagnostic only: GitHub may allow auto selection even when named models
+    # are hidden by entitlement. Capture structured output so a later revision
+    # can bind and verify the actual model identity; never treat auto as resolved.
+    auto = subprocess.run(
+        [
+            exe,
+            "-p", "Reply with exactly OK.",
+            "--model", "auto",
+            "--output-format", "json",
+            "--no-ask-user",
+            "--available-tools=ask_user",
+            "--no-custom-instructions",
+            "--no-auto-update",
+            "--no-color",
+        ],
+        env=resolved_env,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=90,
+    )
+    auto_detail = (auto.stdout or "").strip()[-4000:]
     raise ValueError(
         "no fixed Copilot model is available; attempts="
         + json.dumps(attempts, ensure_ascii=False)
+        + f"; auto_probe_rc={auto.returncode}; auto_probe={auto_detail}"
     )
 
 
