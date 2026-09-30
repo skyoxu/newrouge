@@ -6,7 +6,7 @@ This file maps REQ-CAPABILITY-MVG-SKILLS-001 to executable evidence. It is an ac
 
 - Deterministic implementation/contract acceptance: implemented and exercised by the PR CI.
 - Cross-project fixture: Harbor Relay, Taskmaster IDs 7 and 42, real Chapter 5 Extraction B/reconciliation/readiness path.
-- Controlled real-model production acceptance: **blocked until the repository provides `OPENAI_API_KEY`**. The workflow intentionally fails at the credential gate and must not be interpreted as a semantic pass.
+- Controlled real-model production acceptance: **blocked until the repository provides `OPENAI_API_KEY`**. GitHub Models cannot be used as a substitute because GitHub retired its standalone model inference API on 2026-07-30. The workflow intentionally fails at the credential gate and must not be interpreted as a semantic pass.
 - A passing real-model run must execute the complete chain in `.github/workflows/planning-production-acceptance.yml`; mock output, a pre-seeded Capability, or a pre-seeded MVG manifest does not satisfy the requirement.
 
 ## Acceptance mapping

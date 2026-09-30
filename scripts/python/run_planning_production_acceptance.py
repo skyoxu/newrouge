@@ -19,8 +19,7 @@ from planning_acceptance_fixture import TASK_IDS, build_fixture
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CAP_SCRIPT = REPO_ROOT / "scripts/python/plan_capabilities.py"
 MVG_SCRIPT = REPO_ROOT / "scripts/python/plan_mvg.py"
-OPENAI_RUNNER = REPO_ROOT / "scripts/python/openai_isolated_model_runner.py"
-GITHUB_MODELS_RUNNER = REPO_ROOT / "scripts/python/github_models_isolated_runner.py"
+RUNNER = REPO_ROOT / "scripts/python/openai_isolated_model_runner.py"
 
 
 def _run(
@@ -73,31 +72,13 @@ def execute(
     evidence_dir: Path,
     model: str,
     timeout_sec: int,
-    backend: str = "auto",
 ) -> dict[str, Any]:
+    if not str(os.environ.get("OPENAI_API_KEY") or "").strip():
+        raise ValueError("OPENAI_API_KEY is required for real-model planning acceptance")
     fixture = build_fixture(fixture_root)
     env = dict(os.environ)
-    selected_backend = backend
-    if selected_backend == "auto":
-        selected_backend = (
-            "openai-api"
-            if str(env.get("OPENAI_API_KEY") or "").strip()
-            else "github-models"
-        )
-    if selected_backend == "openai-api":
-        if not str(env.get("OPENAI_API_KEY") or "").strip():
-            raise ValueError("OPENAI_API_KEY is required for openai-api acceptance")
-        runner = OPENAI_RUNNER
-        env["SC_OPENAI_MODEL"] = model
-        env["OPENAI_MODEL"] = model
-    elif selected_backend == "github-models":
-        if not str(env.get("GITHUB_MODELS_TOKEN") or env.get("GITHUB_TOKEN") or "").strip():
-            raise ValueError("GitHub Models token is required for github-models acceptance")
-        runner = GITHUB_MODELS_RUNNER
-        env["SC_GITHUB_MODEL"] = model
-        env["GITHUB_MODELS_MODEL"] = model
-    else:
-        raise ValueError(f"unsupported production acceptance backend: {selected_backend}")
+    env["SC_OPENAI_MODEL"] = model
+    env["OPENAI_MODEL"] = model
     env["PYTHONUTF8"] = "1"
 
     cap_run = "production-capability"
@@ -115,13 +96,13 @@ def execute(
     ))
     stages.append(_run(
         evidence_dir, "02-capability-generate",
-        [*base, "generate", "--run-id", cap_run, "--runner", str(runner),
+        [*base, "generate", "--run-id", cap_run, "--runner", str(RUNNER),
          "--timeout-sec", str(timeout_sec)],
         env=env, timeout_sec=timeout_sec * 4,
     ))
     stages.append(_run(
         evidence_dir, "03-capability-review",
-        [*base, "review", "--run-id", cap_run, "--runner", str(runner),
+        [*base, "review", "--run-id", cap_run, "--runner", str(RUNNER),
          "--timeout-sec", str(timeout_sec)],
         env=env, timeout_sec=timeout_sec * 2,
     ))
@@ -161,7 +142,7 @@ def execute(
     stages.append(_run(
         evidence_dir, "07-mvg-generate",
         [*mvg_base, "generate", "--run-id", mvg_run,
-         "--llm-backend", selected_backend, "--timeout-sec", str(timeout_sec)],
+         "--llm-backend", "openai-api", "--timeout-sec", str(timeout_sec)],
         env=env, timeout_sec=timeout_sec + 120,
     ))
     stages.append(_run(
@@ -217,7 +198,6 @@ def execute(
         "status": "passed",
         "fixture": fixture,
         "model": model,
-        "backend": selected_backend,
         "capability": {
             "run_id": cap_run,
             "analysis_identity_sha256": cap_state.get("analysis_identity_sha256"),
@@ -253,8 +233,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", default="logs/ci/planning-production-acceptance/workspace")
     parser.add_argument("--evidence-dir", default="logs/ci/planning-production-acceptance/evidence")
-    parser.add_argument("--backend", choices=("auto", "openai-api", "github-models"), default="auto")
-    parser.add_argument("--model", default="")
+    parser.add_argument("--model", default=os.environ.get("SC_OPENAI_MODEL") or "gpt-5")
     parser.add_argument("--timeout-sec", type=int, default=900)
     args = parser.parse_args()
     fixture_root = (REPO_ROOT / args.workspace).resolve()
@@ -262,19 +241,11 @@ def main() -> int:
     if evidence_dir.exists():
         shutil.rmtree(evidence_dir)
     try:
-        backend = str(args.backend)
-        if args.model:
-            model = str(args.model)
-        elif backend == "openai-api" or (backend == "auto" and str(os.environ.get("OPENAI_API_KEY") or "").strip()):
-            model = str(os.environ.get("SC_OPENAI_MODEL") or "gpt-5")
-        else:
-            model = str(os.environ.get("SC_GITHUB_MODEL") or "openai/gpt-4o")
         summary = execute(
             fixture_root=fixture_root,
             evidence_dir=evidence_dir,
-            model=model,
+            model=str(args.model),
             timeout_sec=int(args.timeout_sec),
-            backend=backend,
         )
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -282,7 +253,7 @@ def main() -> int:
             "schema_version": "newrouge.planning-production-acceptance.v1",
             "status": "blocked",
             "reason": str(exc),
-            "model": str(args.model or os.environ.get("SC_GITHUB_MODEL") or os.environ.get("SC_OPENAI_MODEL") or ""),
+            "model": str(args.model),
         })
         print(json.dumps({"status": "blocked", "reason": str(exc)}, ensure_ascii=False))
         return 2

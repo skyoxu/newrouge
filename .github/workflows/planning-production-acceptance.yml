@@ -9,7 +9,6 @@ on:
       - 'scripts/python/plan_capabilities.py'
       - 'scripts/python/plan_mvg.py'
       - 'scripts/python/openai_isolated_model_runner.py'
-      - 'scripts/python/github_models_isolated_runner.py'
       - 'scripts/python/_planning_skill_common.py'
       - 'scripts/python/planning_acceptance_fixture.py'
       - 'scripts/python/run_planning_production_acceptance.py'
@@ -17,7 +16,6 @@ on:
 
 permissions:
   contents: read
-  models: read
 
 jobs:
   real-model-chain:
@@ -26,8 +24,6 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-5' }}
-      GITHUB_MODELS_TOKEN: ${{ github.token }}
-      SC_GITHUB_MODEL: ${{ vars.SC_GITHUB_MODEL || 'openai/gpt-4o' }}
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
     steps:
@@ -45,8 +41,16 @@ jobs:
       - name: Deterministic acceptance fixture smoke
         run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract -v
 
+      - name: Require configured OpenAI credential
+        shell: bash
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "OPENAI_API_KEY repository secret is not configured for this same-repository PR."
+            exit 2
+          fi
+
       - name: Run real Capability to MVG production acceptance
-        run: python scripts/python/run_planning_production_acceptance.py --backend auto --timeout-sec 900
+        run: python scripts/python/run_planning_production_acceptance.py --timeout-sec 900
 
       - name: Upload planning acceptance evidence
         if: always()
