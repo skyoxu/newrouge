@@ -744,6 +744,46 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs
 py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs/ci/<date>/sc-llm-obligations-jitter-batch5x3-raw.json --require-judgable --require-freeze-pass --approve-promote
 ```
 
+### 5.3 Post-Chapter-5 Capability Planning
+
+Capability is generated only after the explicitly affected Chapter 5 task scope is current and closable. It is a derived navigation/grouping layer, not a Taskmaster lifecycle.
+
+Stable entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py plan-capabilities --stage prepare --run-id <id> --task-id <task-id>
+```
+
+Required sequence:
+
+1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and explicit Chapter 5 readiness.
+2. `generate` requires an isolation runner that proves workspace-only reads, a fresh model session per invocation and no outside-workspace access. It produces exactly three same-model candidates. Without that boundary, formal generation fails closed.
+3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order.
+4. `preview-alignment` reuses historical Capability IDs only for exact Requirement-membership matches. Changed membership is unresolved until explicit reviewed alignment.
+5. `apply --confirm` may update derived Capability artifacts, `capability_refs`, Capability topology edges and a capability-only Chapter 5 fingerprint rebind. It must not change Task IDs/status, Acceptance, Requirement text or Task intent identity.
+
+Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
+
+### 5.4 Independent MVG Planning
+
+MVG Planning is a separate lifecycle. It consumes one explicit Capability file/version and never invokes Capability generation.
+
+Stable entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py plan-mvg --stage prepare --run-id <id> --capabilities docs/planning/semantic-topology/capabilities.v1.json --manifest docs/testing/mvg/<manifest>.json --task-id <task-id>
+```
+
+Required sequence:
+
+1. `prepare` binds the exact Capability hash plus source/Requirement/task/Acceptance/contract evidence and the explicit Chapter 5-ready task scope.
+2. `generate` produces a cumulative player-journey MVG proposal. Flows may cross many Capabilities; Capability is not a one-flow-per-node template.
+3. `validate` verifies real Task IDs, source paths, contracts, tests, Requirement/Capability refs and entrypoint truthfulness. Existing manifests are converted to a guarded `newrouge.mvg-baseline-delta.v1`.
+4. `apply --confirm` creates the initial manifest or applies the reviewed cumulative delta through the same anti-weakening contract as `update_mvg_baseline.py`.
+5. Planning apply never claims runtime verification. Changed obligations require the applicable Chapter 5 milestone handoff/readiness binding before Chapter 6 consumes them.
+
+Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
+
 ## 6. Phase 4: Single Task Daily Loop
 
 MVG 集成补充：单任务期间逐步实现链路测试；MVG 收尾对整合提交运行完整清单，保存运行证据。沿用本章 review 与门禁。见 [MVG 集成验收](docs/workflows/mvg-integration-acceptance.md)。
