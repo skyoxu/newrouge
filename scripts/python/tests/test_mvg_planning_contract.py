@@ -96,6 +96,45 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("openai-api", SUPPORTED_LLM_BACKENDS)
         self.assertIn("codex-cli", SUPPORTED_LLM_BACKENDS)
 
+    def test_draft_or_unresolved_gaps_cannot_be_formally_applied(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            state = {
+                "analysis_identity_sha256": "sha256:x",
+                "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json",
+            }
+            base = {
+                "schema_version": "newrouge.mvg-planning-proposal.v1",
+                "analysis_identity_sha256": "sha256:x",
+                "manifest_candidate": self.manifest(),
+                "entrypoints": [],
+                "gaps": [],
+            }
+            draft = dict(base, planning_status="draft")
+            result = validate_proposal(root, state, draft)
+            self.assertEqual("passed", result["status"])
+            self.assertFalse(result["formal_applicable"])
+            self.assertIn("planning_status_not_ready", result["formal_blockers"])
+
+            gap = dict(
+                base,
+                planning_status="ready_for_validation",
+                gaps=[{"kind": "missing_owner"}],
+            )
+            result = validate_proposal(root, state, gap)
+            self.assertEqual("passed", result["status"])
+            self.assertFalse(result["formal_applicable"])
+            self.assertIn("unresolved_gaps", result["formal_blockers"])
+
+            ready = dict(base, planning_status="ready_for_validation")
+            result = validate_proposal(root, state, ready)
+            self.assertTrue(result["formal_applicable"])
+
+    def test_openai_generation_state_does_not_depend_on_codex_command_variable(self) -> None:
+        source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
+        self.assertIn('"runner": execution.get("runner")', source)
+        self.assertNotIn('state["model_command"] = cmd', source)
+
     def test_proposal_rejects_unknown_capability(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             root = self._root(folder)
@@ -108,8 +147,10 @@ class MvgPlanningContractTests(unittest.TestCase):
             proposal = {
                 "schema_version": "newrouge.mvg-planning-proposal.v1",
                 "analysis_identity_sha256": "sha256:x",
+                "planning_status": "ready_for_validation",
                 "manifest_candidate": manifest,
                 "entrypoints": [],
+                "gaps": [],
             }
             result = validate_proposal(root, state, proposal)
             self.assertIn("unknown_capability_ref:CAP-MISSING", result["errors"])
