@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import os
 import json
+import tempfile
+import argparse
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[3]
 PYTHON = ROOT / "scripts" / "python"
@@ -13,7 +17,7 @@ if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
 from _planning_skill_common import validate_runner_description
-from copilot_isolated_model_runner import description, parse_copilot_json_stream
+from copilot_isolated_model_runner import description, parse_copilot_json_stream, runtime_model_events, run
 
 
 class CopilotIsolatedRunnerTests(unittest.TestCase):
@@ -71,6 +75,61 @@ class CopilotIsolatedRunnerTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(ValueError, "did not expose the actual model identity"):
             parse_copilot_json_stream(raw)
+
+    def test_private_runtime_supplies_missing_stdout_model_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            runtime = Path(folder)
+            path = runtime / "session-state/fresh-session/events.jsonl"
+            path.parent.mkdir(parents=True)
+            events = [
+                {"type": "assistant.message", "data": {"content": "Do not retain message or reasoning text."}},
+                {"type": "assistant.reasoning", "data": {"content": "Do not retain reasoning."}},
+                {"type": "session.shutdown", "data": {"modelMetrics": {
+                    "actual-model": {"requests": {"count": 1}}}}},
+            ]
+            path.write_text('\n'.join(json.dumps(event) for event in events), encoding="utf-8")
+            model_events, shapes = runtime_model_events(runtime)
+            self.assertNotIn("Do not retain", model_events)
+            self.assertEqual(3, len(shapes))
+            stdout = json.dumps({"type": "assistant.message", "data": {"content": "answer"}})
+            self.assertEqual(("answer", "actual-model"), parse_copilot_json_stream(stdout + '\n' + model_events))
+
+    def test_private_runtime_never_selects_latest_of_multiple_sessions(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            runtime = Path(folder)
+            for name in ("a", "b"):
+                path = runtime / "session-state" / name / "events.jsonl"
+                path.parent.mkdir(parents=True)
+                path.write_text('', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "multiple session event logs"):
+                runtime_model_events(runtime)
+
+    def test_cached_model_without_execution_evidence_is_rejected(self) -> None:
+        raw = '\n'.join(json.dumps(event) for event in [
+            {"type": "assistant.message", "data": {"content": "answer"}},
+            {"type": "session.usage_checkpoint", "data": {"modelCacheState": [{"modelId": "cached-model"}]}},
+        ])
+        with self.assertRaisesRegex(ValueError, "did not expose the actual model identity"):
+            parse_copilot_json_stream(raw)
+
+    def test_timeout_cleans_only_owned_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            workspace = Path(folder) / "workspace"
+            workspace.mkdir()
+            prompt = workspace / "prompt.txt"
+            prompt.write_text("Return JSON only.", encoding="utf-8")
+            runtime = Path(folder) / "owned-runtime"
+            runtime.mkdir()
+            args = argparse.Namespace(workspace=str(workspace), prompt_file=str(prompt),
+                output=str(workspace / "output.json"), timeout_sec=1, max_bytes=10000)
+            with patch.dict(os.environ, {"GITHUB_TOKEN": "fixture-token"}, clear=True), \
+                 patch("copilot_isolated_model_runner.shutil.which", return_value="copilot"), \
+                 patch("copilot_isolated_model_runner.tempfile.mkdtemp", return_value=str(runtime)), \
+                 patch("copilot_isolated_model_runner.subprocess.run", side_effect=subprocess.TimeoutExpired("copilot", 1)):
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    run(args)
+            self.assertFalse(runtime.exists())
+            self.assertTrue(prompt.is_file())
 
     def test_description_satisfies_no_tools_isolation_contract(self) -> None:
         old = os.environ.get("SC_COPILOT_MODEL")

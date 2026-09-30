@@ -76,12 +76,6 @@ def parse_copilot_json_stream(raw: str) -> tuple[str, str]:
             last = identity(data.get("lastActiveModel"))
             if last:
                 actual_model = last
-            rows = data.get("modelCacheState")
-            if not actual_model and isinstance(rows, list):
-                for row in reversed(rows):
-                    if isinstance(row, dict) and str(row.get("modelId") or "").strip():
-                        actual_model = identity(row["modelId"])
-                        break
     if not messages:
         raise ValueError("Copilot JSON stream contained no assistant.message response")
     if len(execution_models) > 1:
@@ -105,6 +99,31 @@ def description() -> dict[str, object]:
         "request_accounting": "copilot-cli-invocation-only",
         "supports_batched_session": False,
     }
+
+
+def runtime_model_events(runtime_home: Path) -> tuple[str, list[dict[str, object]]]:
+    """Read model events only from this invocation's newly created runtime."""
+    paths = sorted((runtime_home / "session-state").glob("*/events.jsonl"))
+    if len(paths) > 1:
+        raise ValueError("Copilot isolated invocation created multiple session event logs")
+    events = []
+    shapes = []
+    for path in paths:
+        if not path.resolve().is_relative_to(runtime_home.resolve()):
+            raise ValueError("Copilot session event path escapes this invocation's runtime")
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict):
+                continue
+            data = event.get("data")
+            shapes.append({"type": event.get("type"), "keys": sorted(event),
+                "data_keys": sorted(data) if isinstance(data, dict) else []})
+            if event.get("type") in {"assistant.usage", "session.usage_checkpoint", "session.shutdown"}:
+                events.append({"type": event["type"], "data": data})
+    return "\n".join(json.dumps(event) for event in events), shapes
 
 
 def run(args: argparse.Namespace) -> int:
@@ -160,24 +179,34 @@ def run(args: argparse.Namespace) -> int:
         "--no-auto-update",
         "--no-color",
     ]
-    proc = subprocess.run(
-        command,
-        cwd=workspace,
-        env=env,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=max(1, int(args.timeout_sec)),
-    )
-    shutil.rmtree(runtime_home, ignore_errors=True)
-    raw = (proc.stdout or "").strip()
-    if proc.returncode != 0:
-        raise RuntimeError(f"Copilot CLI failed rc={proc.returncode}: {raw[-4000:]}")
-    if not raw:
-        raise RuntimeError("Copilot CLI returned empty output")
-    content, actual_model = parse_copilot_json_stream(raw)
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=workspace,
+            env=env,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=max(1, int(args.timeout_sec)),
+        )
+        raw = (proc.stdout or "").strip()
+        if proc.returncode != 0:
+            raise RuntimeError(f"Copilot CLI failed rc={proc.returncode}: {raw[-4000:]}")
+        if not raw:
+            raise RuntimeError("Copilot CLI returned empty output")
+        runtime_events, event_shapes = runtime_model_events(runtime_home)
+        combined = raw + "\n" + runtime_events
+        evidence = {"schema_version": "newrouge.copilot-model-evidence.v1",
+            "runtime_event_shapes": event_shapes, "model_events": runtime_events}
+        serialized = json.dumps(evidence, ensure_ascii=False, indent=2)
+        # Never retain the authentication token in diagnostic evidence.
+        (workspace / "copilot-model-evidence.json").write_text(
+            serialized.replace(token, "[REDACTED]") + "\n", encoding="utf-8", newline="\n")
+        content, actual_model = parse_copilot_json_stream(combined)
+    finally:
+        shutil.rmtree(runtime_home, ignore_errors=True)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content.rstrip() + "\n", encoding="utf-8", newline="\n")
