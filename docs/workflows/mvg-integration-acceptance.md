@@ -55,7 +55,7 @@
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode plan
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode recommend --base origin/main
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot commit --revision HEAD --godot-bin $env:GODOT_BIN --challenge-input
-# 目标 full scope：T59/T60 未 done 时只能 plan，run 必须 fail-closed：
+# 目标 full scope：先以 manifest 当前 blocking_task_ids 和 required_flow_ids 做 plan；任何阻断存在时 run 必须 fail-closed：
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --manifest docs/testing/mvg/m1-full.json --mode plan --snapshot commit --revision HEAD
 # 开发中的未提交改动：
 py -3 scripts/python/dev_cli.py run-mvg-acceptance --mode run --snapshot workspace --godot-bin $env:GODOT_BIN
