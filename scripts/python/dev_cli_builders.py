@@ -639,6 +639,14 @@ def build_plan_capabilities_cmd(args) -> list[str]:
         if args.allow_unready_draft:
             cmd.append("--allow-unready-draft")
         cmd += ["--source-manifest", args.source_manifest, "--ledger", args.ledger, "--semantics", args.semantics]
+        cmd += [
+            "--model-batch-char-budget", str(args.model_batch_char_budget),
+            "--candidate-retry-limit", str(args.candidate_retry_limit),
+            "--review-retry-limit", str(args.review_retry_limit),
+            "--candidate-budget-sec", str(args.candidate_budget_sec),
+            "--total-budget-sec", str(args.total_budget_sec),
+            "--request-limit", str(args.request_limit),
+        ]
     elif args.stage in {"generate", "review"}:
         if args.runner:
             cmd += ["--runner", args.runner]
