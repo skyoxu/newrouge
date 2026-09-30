@@ -254,6 +254,7 @@ def build_blinded_analysis_bundle(
     task_view_paths: list[Path],
     readiness_summary: dict[str, Any],
     model_batch_char_budget: int = 160000,
+    repository_identity: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     manifest = load_json(source_manifest_path, {})
     ledger = load_json(ledger_path, {})
@@ -341,9 +342,19 @@ def build_blinded_analysis_bundle(
 
     atomic_json(out_dir / "readiness-summary.json", readiness_summary)
     files["readiness-summary.json"] = file_sha(out_dir / "readiness-summary.json")
+    for row in readiness_summary.get("tasks", []):
+        if not isinstance(row, dict):
+            continue
+        rel_path = str(row.get("readiness_path") or "").strip()
+        if not rel_path:
+            continue
+        path = repo_path(root, rel_path)
+        if path.is_file():
+            authority_inputs[rel_path] = file_sha(path)
     index = {
         "schema_version": "newrouge.planning-analysis-input.v1",
         "source_revision": ledger.get("source_revision") or manifest.get("source_revision"),
+        "repository_identity": dict(repository_identity or {}),
         "source_manifest_sha256": ledger.get("source_manifest_sha256") or manifest.get("manifest_sha256"),
         "files": files,
         "blinded_fields": sorted(SENSITIVE_CAPABILITY_KEYS),
