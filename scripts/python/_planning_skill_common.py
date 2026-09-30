@@ -70,16 +70,171 @@ def relative(root: Path, path: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
 
 
-def scrub_capability_answers(value: Any) -> Any:
+def scrub_capability_answers_with_paths(
+    value: Any,
+    *,
+    path: str = "$",
+) -> tuple[Any, list[str]]:
+    removed: list[str] = []
     if isinstance(value, list):
-        return [scrub_capability_answers(item) for item in value]
+        output = []
+        for index, item in enumerate(value):
+            scrubbed, nested = scrub_capability_answers_with_paths(
+                item, path=f"{path}[{index}]"
+            )
+            output.append(scrubbed)
+            removed.extend(nested)
+        return output, removed
     if isinstance(value, dict):
-        return {
-            key: scrub_capability_answers(item)
-            for key, item in value.items()
-            if str(key) not in SENSITIVE_CAPABILITY_KEYS
-        }
-    return value
+        output: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(key)
+            child_path = f"{path}.{key_text}"
+            if key_text in SENSITIVE_CAPABILITY_KEYS:
+                removed.append(child_path)
+                continue
+            scrubbed, nested = scrub_capability_answers_with_paths(
+                item, path=child_path
+            )
+            output[key_text] = scrubbed
+            removed.extend(nested)
+        return output, removed
+    return value, removed
+
+
+def scrub_capability_answers(value: Any) -> Any:
+    scrubbed, _removed = scrub_capability_answers_with_paths(value)
+    return scrubbed
+
+
+def _write_model_batches(
+    out_dir: Path,
+    *,
+    ledger: dict[str, Any],
+    semantics: dict[str, Any],
+    char_budget: int,
+) -> dict[str, Any]:
+    if char_budget < 1000:
+        raise ValueError("Capability model batch char budget must be at least 1000")
+    batches_dir = out_dir / "model-batches"
+    batches_dir.mkdir(parents=True, exist_ok=True)
+    clean_ledger = scrub_capability_answers(ledger)
+    clean_semantics = scrub_capability_answers(semantics)
+    requirements = [
+        row for row in clean_semantics.get("requirements", [])
+        if isinstance(row, dict) and str(row.get("requirement_id") or "").strip()
+    ]
+    by_block: dict[str, list[dict[str, Any]]] = {}
+    for row in requirements:
+        for block_id in row.get("source_block_ids", []):
+            by_block.setdefault(str(block_id), []).append(row)
+
+    payloads: list[dict[str, Any]] = []
+    current_blocks: list[dict[str, Any]] = []
+    current_requirements: dict[str, dict[str, Any]] = {}
+    current_chars = 0
+    seen_requirements: set[str] = set()
+
+    def flush(*, oversize_blocks: list[str] | None = None) -> None:
+        nonlocal current_blocks, current_requirements, current_chars
+        if not current_blocks and not current_requirements:
+            return
+        payloads.append({
+            "schema_version": "newrouge.capability-model-batch.v1",
+            "blocks": current_blocks,
+            "requirements": list(current_requirements.values()),
+            "oversize_blocks": list(oversize_blocks or []),
+        })
+        current_blocks = []
+        current_requirements = {}
+        current_chars = 0
+
+    for block in clean_ledger.get("blocks", []):
+        if not isinstance(block, dict):
+            continue
+        block_id = str(block.get("block_id") or "")
+        linked = by_block.get(block_id, [])
+        item = {"block": block, "requirements": linked}
+        item_chars = len(json.dumps(item, ensure_ascii=False))
+        if current_blocks and current_chars + item_chars > char_budget:
+            flush()
+        if item_chars > char_budget:
+            current_blocks = [block]
+            current_requirements = {
+                str(row["requirement_id"]): row for row in linked
+            }
+            seen_requirements.update(current_requirements)
+            current_chars = item_chars
+            flush(oversize_blocks=[block_id])
+            continue
+        current_blocks.append(block)
+        current_chars += item_chars
+        for row in linked:
+            rid = str(row["requirement_id"])
+            current_requirements[rid] = row
+            seen_requirements.add(rid)
+    flush()
+
+    remaining = [
+        row for row in requirements
+        if str(row["requirement_id"]) not in seen_requirements
+    ]
+    current: list[dict[str, Any]] = []
+    current_chars = 0
+    for row in remaining:
+        row_chars = len(json.dumps(row, ensure_ascii=False))
+        if current and current_chars + row_chars > char_budget:
+            payloads.append({
+                "schema_version": "newrouge.capability-model-batch.v1",
+                "blocks": [],
+                "requirements": current,
+                "oversize_blocks": [],
+            })
+            current = []
+            current_chars = 0
+        current.append(row)
+        current_chars += row_chars
+    if current:
+        payloads.append({
+            "schema_version": "newrouge.capability-model-batch.v1",
+            "blocks": [],
+            "requirements": current,
+            "oversize_blocks": [],
+        })
+
+    rows = []
+    for index, payload in enumerate(payloads, 1):
+        payload["batch_index"] = index
+        payload["batch_count"] = len(payloads)
+        path = batches_dir / f"batch-{index:03d}.json"
+        atomic_json(path, payload)
+        rows.append({
+            "path": f"model-batches/{path.name}",
+            "sha256": file_sha(path),
+            "block_ids": [
+                str(row.get("block_id") or "")
+                for row in payload["blocks"]
+                if str(row.get("block_id") or "").strip()
+            ],
+            "requirement_ids": sorted({
+                str(row.get("requirement_id") or "")
+                for row in payload["requirements"]
+                if str(row.get("requirement_id") or "").strip()
+            }),
+            "oversize_blocks": payload["oversize_blocks"],
+        })
+    index = {
+        "schema_version": "newrouge.capability-model-batch-index.v1",
+        "char_budget": char_budget,
+        "batch_count": len(rows),
+        "block_count": len([
+            row for row in clean_ledger.get("blocks", []) if isinstance(row, dict)
+        ]),
+        "requirement_count": len(requirements),
+        "batches": rows,
+    }
+    atomic_json(out_dir / "model-batches" / "batch-index.json", index)
+    return index
 
 
 def source_classification_signal(text: str) -> dict[str, Any]:
@@ -96,6 +251,7 @@ def build_blinded_analysis_bundle(
     semantics_path: Path,
     task_view_paths: list[Path],
     readiness_summary: dict[str, Any],
+    model_batch_char_budget: int = 160000,
 ) -> dict[str, Any]:
     manifest = load_json(source_manifest_path, {})
     ledger = load_json(ledger_path, {})
@@ -112,6 +268,8 @@ def build_blinded_analysis_bundle(
     out_dir.mkdir(parents=True)
     files: dict[str, str] = {}
     classification: dict[str, Any] = {}
+    authority_inputs: dict[str, str] = {}
+    transformations: list[dict[str, Any]] = []
 
     for row in manifest.get("sources", []):
         if not isinstance(row, dict):
@@ -126,26 +284,58 @@ def build_blinded_analysis_bundle(
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
         files[f"sources/{value}"] = file_sha(target)
+        authority_inputs[value] = file_sha(source)
         classification[value] = source_classification_signal(
             source.read_text(encoding="utf-8", errors="replace")
         )
 
-    for name, payload in (
-        ("source-manifest.v1.json", manifest),
-        ("source-blocks.v1.json", ledger),
-        ("semantic-requirements.v1.json", semantics),
+    for name, source, payload in (
+        ("source-manifest.v1.json", source_manifest_path, manifest),
+        ("source-blocks.v1.json", ledger_path, ledger),
+        ("semantic-requirements.v1.json", semantics_path, semantics),
     ):
         target = out_dir / name
-        atomic_json(target, scrub_capability_answers(payload))
+        scrubbed, removed = scrub_capability_answers_with_paths(payload)
+        atomic_json(target, scrubbed)
         files[name] = file_sha(target)
+        authority_inputs[relative(root, source)] = file_sha(source)
+        transformations.append({
+            "source_path": relative(root, source),
+            "analysis_path": name,
+            "source_sha256": file_sha(source),
+            "analysis_sha256": files[name],
+            "removed_fields": removed,
+        })
 
     task_dir = out_dir / "task-views"
     task_dir.mkdir(parents=True, exist_ok=True)
     for source in task_view_paths:
         payload = load_json(source, [])
         target = task_dir / source.name
-        atomic_json(target, scrub_capability_answers(payload))
-        files[f"task-views/{source.name}"] = file_sha(target)
+        scrubbed, removed = scrub_capability_answers_with_paths(payload)
+        atomic_json(target, scrubbed)
+        analysis_name = f"task-views/{source.name}"
+        files[analysis_name] = file_sha(target)
+        authority_inputs[relative(root, source)] = file_sha(source)
+        transformations.append({
+            "source_path": relative(root, source),
+            "analysis_path": analysis_name,
+            "source_sha256": file_sha(source),
+            "analysis_sha256": files[analysis_name],
+            "removed_fields": removed,
+        })
+
+    batch_index = _write_model_batches(
+        out_dir,
+        ledger=ledger,
+        semantics=semantics,
+        char_budget=model_batch_char_budget,
+    )
+    files["model-batches/batch-index.json"] = file_sha(
+        out_dir / "model-batches" / "batch-index.json"
+    )
+    for row in batch_index["batches"]:
+        files[str(row["path"])] = str(row["sha256"])
 
     atomic_json(out_dir / "readiness-summary.json", readiness_summary)
     files["readiness-summary.json"] = file_sha(out_dir / "readiness-summary.json")
@@ -155,6 +345,9 @@ def build_blinded_analysis_bundle(
         "source_manifest_sha256": ledger.get("source_manifest_sha256") or manifest.get("manifest_sha256"),
         "files": files,
         "blinded_fields": sorted(SENSITIVE_CAPABILITY_KEYS),
+        "blinding_transformations": transformations,
+        "authority_inputs": authority_inputs,
+        "model_batch_index": batch_index,
         "source_declared_classification": classification,
     }
     index["analysis_identity_sha256"] = canonical_sha(index)
