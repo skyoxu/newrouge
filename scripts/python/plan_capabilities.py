@@ -10,6 +10,8 @@ import json
 import random
 import re
 import shutil
+import subprocess
+import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -63,18 +65,44 @@ def _load_run(root: Path, run_id: str) -> tuple[Path, dict[str, Any]]:
     return path, payload
 
 
+def _repository_identity(root: Path) -> dict[str, Any]:
+    try:
+        revision = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True, timeout=15,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"],
+            capture_output=True, text=True, check=True, timeout=15,
+        ).stdout
+        return {
+            "revision": revision,
+            "workspace_dirty": bool(status.strip()),
+            "workspace_status_sha256": text_sha(status),
+        }
+    except (OSError, subprocess.SubprocessError):
+        return {
+            "revision": None,
+            "workspace_dirty": None,
+            "workspace_status_sha256": None,
+        }
+
+
 def _readiness_summary(root: Path, task_ids: list[str], *, allow_unready: bool) -> dict[str, Any]:
-    from chapter5_semantic_reconciliation import load_task_readiness
+    from chapter5_semantic_reconciliation import load_task_readiness, readiness_path_for_task
 
     rows = []
     all_ready = True
     for task_id in task_ids:
         ok, payload, reason = load_task_readiness(root, task_id)
+        readiness_path = readiness_path_for_task(root, task_id)
         rows.append({
             "task_id": str(task_id),
             "ready": bool(ok),
             "reason": reason,
             "readiness": payload.get("readiness") if isinstance(payload, dict) else None,
+            "readiness_path": relative(root, readiness_path) if readiness_path.is_file() else None,
+            "readiness_sha256": file_sha(readiness_path) if readiness_path.is_file() else None,
             "input_fingerprint_sha256": (
                 (payload.get("input_fingerprint") or {}).get("sha256")
                 if isinstance(payload, dict) else None
@@ -104,6 +132,12 @@ def prepare(
     source_manifest: Path,
     ledger: Path,
     semantics: Path,
+    model_batch_char_budget: int,
+    candidate_retry_limit: int,
+    review_retry_limit: int,
+    candidate_budget_sec: int,
+    total_budget_sec: int,
+    request_limit: int,
 ) -> dict[str, Any]:
     run_dir = _run_dir(root, run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -117,6 +151,8 @@ def prepare(
         semantics_path=semantics,
         task_view_paths=[root / value for value in TASK_VIEWS],
         readiness_summary=readiness,
+        model_batch_char_budget=model_batch_char_budget,
+        repository_identity=_repository_identity(root),
     )
     state = {
         "schema_version": RUN_SCHEMA,
@@ -128,7 +164,23 @@ def prepare(
         "analysis_index_path": relative(root, analysis_dir / "analysis-index.json"),
         "task_scope": [str(value) for value in task_ids],
         "candidate_attempts": {},
+        "review_attempts": [],
         "selected_candidate": None,
+        "final_candidate_path": None,
+        "budget": {
+            "candidate_retry_limit": int(candidate_retry_limit),
+            "review_retry_limit": int(review_retry_limit),
+            "candidate_budget_sec": int(candidate_budget_sec),
+            "total_budget_sec": int(total_budget_sec),
+            "request_limit": int(request_limit),
+            "activity_sec": 0.0,
+            "runner_invocations": 0,
+            "model_requests_observed": 0,
+            "request_count_complete": True,
+            "candidate_activity_sec": {},
+            "review_activity_sec": 0.0,
+        },
+        "model_batch_count": int((index.get("model_batch_index") or {}).get("batch_count") or 0),
         "applied": False,
     }
     atomic_json(run_dir / "run.json", state)
@@ -137,7 +189,7 @@ def prepare(
 
 CANDIDATE_PROMPT = """You are producing one independent cumulative Capability proposal for a game repository.
 
-Read every file under analysis-input/. The source files, source-block ledger, reviewed semantic requirements, sanitized task views, and readiness summary are the complete allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
+Use the complete prepared analysis-input. The runner may stream authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches; every batch belongs to this same fresh candidate session and no block may be truncated. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
 
 Return JSON only with schema_version = "newrouge.capability-candidate.v1".
 Required top-level fields:
