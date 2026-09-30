@@ -567,7 +567,18 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             blocked.append(label)
     if blocked:
         state["phase"] = "generation-blocked"
-        state["stop_reason"] = "invalid_or_budget_exhausted_candidates:" + ",".join(blocked)
+        details = []
+        by_label = {str(row.get("candidate")): row for row in outputs if isinstance(row, dict)}
+        for label in blocked:
+            errors = by_label.get(label, {}).get("errors", [])
+            first = str(errors[0])[:1200] if isinstance(errors, list) and errors else "no_error_detail"
+            details.append(f"{label}={first}")
+        state["stop_reason"] = (
+            "invalid_or_budget_exhausted_candidates:"
+            + ",".join(blocked)
+            + "; "
+            + " | ".join(details)
+        )
         atomic_json(run_path, state)
         raise ValueError(state["stop_reason"])
     state["phase"] = "candidates-generated"
