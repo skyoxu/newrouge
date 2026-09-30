@@ -645,14 +645,16 @@ def build_intents(
     reserved_ids: set[str] | None = None,
     previous_intents: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    grouped: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    grouped: dict[tuple[str, str, str, str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     previous_partition = _previous_requirement_partitions(previous_intents)
     for anchor in index.get("anchors", []):
         topic, layer, owner = choose_topic(anchor)
         preferred_id = ""
+        preferred_key = ""
         previous = previous_partition.get(str(anchor.get("requirement_id") or ""))
         if previous is not None:
             preferred_id = str(previous.get("id") or "").strip()
+            preferred_key = str(previous.get("intent_key") or "").strip()
             layer = str(previous.get("layer") or layer)
             owner = str(previous.get("owner") or owner)
             grouping_stem = f"existing-intent:{preferred_id}"
@@ -665,6 +667,7 @@ def build_intents(
             topic,
             grouping_stem,
             preferred_id,
+            preferred_key,
         )
         grouped[key].append(anchor)
 
@@ -694,7 +697,7 @@ def build_intents(
             allocated_ids.add(candidate)
             used_ids.add(candidate)
             return candidate
-    for (kind, layer, owner, topic, stem, preferred_id), anchors in sorted(grouped.items(), key=lambda item: item[0]):
+    for (kind, layer, owner, topic, stem, preferred_id, preferred_key), anchors in sorted(grouped.items(), key=lambda item: item[0]):
         anchors = sorted(anchors, key=lambda a: (str(a.get("source_path", "")), int(a.get("line", 0))))
         chunk_size = (
             len(anchors)
@@ -707,7 +710,7 @@ def build_intents(
             refs = sorted({ref for a in group for ref in a.get("refs", []) if isinstance(ref, str)})
             phrase = title_phrase(group, topic)
             title_split_index = split_index if len(anchors) > chunk_size else 0
-            intent_key = f"{kind}:{layer}:{owner}:{topic}:{stem}:{split_index}"
+            intent_key = preferred_key or f"{kind}:{layer}:{owner}:{topic}:{stem}:{split_index}"
             current_id = allocate_id(intent_key, preferred_id)
             dependency_key = (owner, layer)
             depends_on = [previous_by_owner_layer[dependency_key]] if dependency_key in previous_by_owner_layer else []
