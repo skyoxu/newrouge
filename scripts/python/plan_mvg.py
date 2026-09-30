@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from _mvg_manifest import validate_manifest
-from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, repo_path
+from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, repo_path, run_isolated_model
 
 RUN_SCHEMA = "newrouge.mvg-planning-run.v1"
 PROPOSAL_SCHEMA = "newrouge.mvg-planning-proposal.v1"
@@ -252,33 +252,56 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
 
     info = inspect_llm_backend(llm_backend)
     if info.get("available") is not True:
-        raise ValueError("codex-cli backend is unavailable")
-    rc, stdout, cmd = run_llm_exec(
-        backend=llm_backend,
-        root=workspace,
-        prompt=PROMPT,
-        output_last_message=output,
-        timeout_sec=timeout_sec,
-        codex_configs=["model_reasoning_effort=high"],
-    )
-    execution = {
-        "schema_version": "newrouge.mvg-planning-model-execution.v1",
-        "backend": llm_backend,
-        "backend_info": info,
-        "command": cmd,
-        "returncode": rc,
-    }
-    try:
-        trace = json.loads(stdout)
-    except json.JSONDecodeError:
-        trace = None
-    if isinstance(trace, dict):
-        execution["trace"] = trace
+        reasons = "; ".join(str(value) for value in info.get("blocking_errors", []))
+        raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
+
+    if llm_backend == "openai-api":
+        prompt_path = workspace / "prompt.txt"
+        prompt_path.write_text(PROMPT, encoding="utf-8", newline="\n")
+        runner = Path(__file__).resolve().with_name("openai_isolated_model_runner.py")
+        receipt = run_isolated_model(
+            runner,
+            workspace=workspace,
+            prompt_path=prompt_path,
+            output_path=output,
+            timeout_sec=timeout_sec,
+        )
+        execution = {
+            "schema_version": "newrouge.mvg-planning-model-execution.v1",
+            "backend": llm_backend,
+            "backend_info": info,
+            "runner": runner.as_posix(),
+            "returncode": 0,
+            "receipt": receipt,
+        }
     else:
-        execution["stdout_tail"] = stdout[-4000:]
+        rc, stdout, cmd = run_llm_exec(
+            backend=llm_backend,
+            root=workspace,
+            prompt=PROMPT,
+            output_last_message=output,
+            timeout_sec=timeout_sec,
+            codex_configs=["model_reasoning_effort=high"],
+        )
+        execution = {
+            "schema_version": "newrouge.mvg-planning-model-execution.v1",
+            "backend": llm_backend,
+            "backend_info": info,
+            "command": cmd,
+            "returncode": rc,
+        }
+        try:
+            trace = json.loads(stdout)
+        except json.JSONDecodeError:
+            trace = None
+        if isinstance(trace, dict):
+            execution["trace"] = trace
+        else:
+            execution["stdout_tail"] = stdout[-4000:]
+        if rc != 0:
+            atomic_json(run_dir / "model-execution.json", execution)
+            raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
     atomic_json(run_dir / "model-execution.json", execution)
-    if rc != 0:
-        raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
     text = output.read_text(encoding="utf-8").strip()
     if text.startswith("```"):
         lines = text.splitlines()[1:]

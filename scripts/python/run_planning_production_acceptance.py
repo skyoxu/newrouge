@@ -184,12 +184,14 @@ def execute(
     execution_path = fixture_root / f"logs/ci/mvg-planning/{mvg_run}/model-execution.json"
     execution = load_json(execution_path, {})
     trace = execution.get("trace") if isinstance(execution, dict) else {}
+    receipt = execution.get("receipt") if isinstance(execution, dict) else {}
     request_count = int((cap_state.get("budget") or {}).get("model_requests_observed") or 0)
-    mvg_request_count = (
-        int(trace.get("request_count") or 0)
-        if isinstance(trace, dict) and str(trace.get("request_count") or "").isdigit()
-        else None
-    )
+    if isinstance(receipt, dict) and type(receipt.get("model_request_count")) is int:
+        mvg_request_count = int(receipt["model_request_count"])
+    elif isinstance(trace, dict) and type(trace.get("request_count")) is int:
+        mvg_request_count = int(trace["request_count"])
+    else:
+        mvg_request_count = None
 
     summary = {
         "schema_version": "newrouge.planning-production-acceptance.v1",

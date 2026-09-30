@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import plan_mvg
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -79,6 +80,12 @@ class MvgPlanningContractTests(unittest.TestCase):
                 "min_tests": 1,
             }],
         }
+
+    def test_openai_api_generation_routes_through_text_only_workspace_runner(self) -> None:
+        source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
+        self.assertIn("run_isolated_model(", source)
+        self.assertIn("openai_isolated_model_runner.py", source)
+        self.assertIn('prompt_path = workspace / "prompt.txt"', source)
 
     def test_openai_api_is_a_supported_real_planning_backend(self) -> None:
         self.assertIn("openai-api", SUPPORTED_LLM_BACKENDS)
