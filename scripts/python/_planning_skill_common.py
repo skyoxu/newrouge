@@ -211,6 +211,8 @@ def validate_runner_description(payload: dict[str, Any]) -> None:
         raise ValueError("formal Capability generation rejects runners that can read outside the workspace")
     if not str(payload.get("model") or "").strip():
         raise ValueError("isolation runner must report the model identity")
+    if payload.get("model_tools") != []:
+        raise ValueError("formal Capability generation requires a no-tools model session")
 
 
 def run_isolated_model(
