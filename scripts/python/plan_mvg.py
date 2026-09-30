@@ -22,6 +22,7 @@ from _planning_skill_common import (
     parse_model_json,
     repo_path,
     run_isolated_model,
+    text_sha,
 )
 
 RUN_SCHEMA = "newrouge.mvg-planning-run.v1"
@@ -568,12 +569,17 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     if validate_proposal(root, state, proposal)["status"] != "passed":
         raise ValueError("MVG semantic review requires a structurally valid proposal")
     runner_info = inspect_isolated_runner(runner)
-    workspace = run_dir / "semantic-review-workspace"
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
-    shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
-    atomic_json(workspace / "proposal.json", proposal)
+    from _mvg_planning_review import semantic_review_errors
+    existing = load_json(run_dir / "semantic-review.json", {})
+    if (existing.get("schema_version") == "newrouge.mvg-semantic-review.v1"
+        and existing.get("proposal_sha256") == canonical_sha(proposal)
+        and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]
+        and existing.get("verdict") == "blocked"):
+        raise ValueError("existing independent semantic review is blocked; resolve its findings before reviewing a revised proposal")
+    if not semantic_review_errors(state, proposal, existing,
+            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})):
+        if validate(root, run_id=run_id).get("formal_applicable") is True:
+            return {"status": "approved", "proposal_sha256": canonical_sha(proposal), "runtime_verified": False}
     prompt = f'''Independently review proposal.json against ALL prepared source text, reviewed Requirements,
 Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
@@ -589,15 +595,44 @@ with exactly one explicit non-empty rationale per active delivery-relevant Requi
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
 '''
-    prompt_path = workspace / "prompt.txt"
-    prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
-    output = workspace / "review.json"
-    receipt = run_isolated_model(runner, workspace=workspace, prompt_path=prompt_path,
-        output_path=output, timeout_sec=timeout_sec)
-    result = parse_model_json(output)
+    import time
+    attempts = state.setdefault("semantic_review_attempts", [])
+    receipt = None
+    result = None
+    while len(attempts) < 3:
+        number = len(attempts) + 1
+        workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
+        workspace.mkdir(parents=True, exist_ok=False)
+        shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
+        atomic_json(workspace / "proposal.json", proposal)
+        prompt_path = workspace / "prompt.txt"
+        prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
+        output = workspace / "review.json"
+        record = {"attempt": number, "status": "running", "proposal_sha256": canonical_sha(proposal)}
+        attempts.append(record)
+        atomic_json(run_path, state)  # Count even an interrupted invocation.
+        started = time.monotonic()
+        try:
+            receipt = run_isolated_model(runner, workspace=workspace, prompt_path=prompt_path,
+                output_path=output, timeout_sec=timeout_sec)
+            if receipt.get("model_tools") != [] or not receipt.get("model"):
+                raise ValueError("independent reviewer execution identity is incomplete")
+            result = parse_model_json(output)
+            record.update(status="completed", receipt=receipt)
+        except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
+            record.update(status="execution-failed", error=str(exc))
+            state["phase"] = "review-execution-blocked"
+        finally:
+            record["activity_sec"] = time.monotonic() - started
+            atomic_json(run_path, state)
+        if result is not None:
+            break
+    if result is None:
+        raise ValueError("MVG independent review execution attempt budget exhausted; upstream proposal is preserved")
     atomic_json(run_dir / "semantic-review.json", result)
     atomic_json(run_dir / "semantic-review-execution.json", {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
-        "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal)})
+        "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
+        "attempt_count": len(attempts)})
     from _mvg_planning_review import semantic_review_errors
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
@@ -759,6 +794,19 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         raise ValueError("MVG planning apply requires --confirm")
     run_path, state = _load_run(root, run_id)
     run_dir = run_path.parent
+    from _planning_apply_journal import create_journal, resume_journal
+    journal_path = run_dir / "apply-journal.json"
+    if journal_path.is_file():
+        result = resume_journal(root, journal_path, atomic_json)
+        state.update(phase="applied", applied=True, applied_manifest_sha256=result["manifest_sha256"],
+            post_apply_task_readiness=result["post_apply_task_readiness"],
+            involved_task_ids=result["handoff_review_required_tasks"],
+            handoff_review_required_tasks=result["handoff_review_required_tasks"])
+        trace = load_json(root / result["trace_path"], {})
+        state["handoff_bindings"] = dict(trace.get("handoff_bindings") or {})
+        atomic_json(run_path, state)
+        atomic_json(run_dir / "apply-summary.json", result)
+        return result
     proposal = load_json(run_dir / "proposal.json", {})
     validation = validate(root, run_id=run_id)
     if validation.get("status") != "passed":
@@ -788,14 +836,12 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
 
     trace = deepcopy(proposal)
     trace["applied_manifest_path"] = manifest_path.resolve().relative_to(root.resolve()).as_posix()
-    trace["applied_manifest_sha256"] = __import__("_planning_skill_common").text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
+    trace["applied_manifest_sha256"] = text_sha(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
     trace["capabilities_sha256"] = state["capabilities_sha256"]
     trace["applied_at_utc"] = now()
     trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
     trace["handoff_bindings"] = {}
     # Persist the execution blocker before introducing new manifest obligations.
-    atomic_json(trace_path, trace)
-    atomic_json(manifest_path, updated)
 
     involved = sorted({
         str(task_id)
@@ -813,18 +859,10 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
             "reason": reason,
             "readiness": payload.get("readiness") if isinstance(payload, dict) else None,
         })
-    state["phase"] = "applied"
-    state["applied"] = True
-    state["applied_manifest_sha256"] = file_sha(manifest_path)
-    state["post_apply_task_readiness"] = readiness
-    state["involved_task_ids"] = involved
-    state["handoff_bindings"] = dict(state.get("handoff_bindings") or {})
-    state["handoff_review_required_tasks"] = involved
-    atomic_json(run_path, state)
     result = {
         "status": "applied",
         "manifest_path": state["manifest_path"],
-        "manifest_sha256": state["applied_manifest_sha256"],
+        "manifest_sha256": trace["applied_manifest_sha256"],
         "trace_path": trace_path.resolve().relative_to(root.resolve()).as_posix(),
         "planning_complete": True,
         "runtime_verified": False,
@@ -833,8 +871,10 @@ def apply(root: Path, *, run_id: str, confirm: bool) -> dict[str, Any]:
         "handoff_note": "Bind current Chapter 5 readiness for ordinary tasks; actual milestone owners also require the existing manifest-bound milestone handoff.",
         "post_apply_task_readiness": readiness,
     }
-    atomic_json(run_dir / "apply-summary.json", result)
-    return result
+    authority = load_json(run_dir / "analysis-input/analysis-index.json", {})["authority_inputs"]
+    create_journal(root, journal_path, {trace_path: trace, manifest_path: updated}, authority, result,
+        mutable_json_keys={trace_path: ["handoff_bindings"]})
+    return apply(root, run_id=run_id, confirm=True)
 
 
 def rebind_handoff(

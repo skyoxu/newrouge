@@ -53,3 +53,5 @@ The applied trace records per-task obligation bindings and is consumed by both `
 Task status or small reference edits do not automatically regenerate Capability or MVG planning. A new code revision invalidates runtime evidence when appropriate, not the planning manifest by itself. Capability rename/regrouping triggers MVG reference/behavior impact review, not automatic wholesale flow regeneration.
 
 Never prepare over an existing run ID: resume its incomplete stage, or choose a new ID for changed source inputs. Deltas are computed against the prepared manifest copy, never silently rebased onto a later manifest.
+
+Apply also journals the approved trace and manifest together. Re-running the same apply recovers interruption and preserves subsequent legitimate obligation bindings. Independent review execution has at most three persisted fresh invocations per run; transport/identity/JSON failures may retry, but an actual blocked semantic verdict stops without seeking another approving reviewer. Re-running an already valid review reuses its evidence.

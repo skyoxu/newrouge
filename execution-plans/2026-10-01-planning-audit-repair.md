@@ -9,9 +9,9 @@ Owner: PR #251. Starting revision: 86164cfff58046f121038e2fe0409e1f1af818cb.
 - Goal: Close the six production-entry defects in the three-document implementation audit.
 - Scope: Planning validation, durable apply recovery and Chapter 6 obligation gates; no business-source/task changes.
 - Current step: Run repository checks and current-revision production acceptance.
-- Last completed step: All six original defects reproduce in RED and pass after repair; 160 targeted regression tests pass.
+- Last completed step: All six original defects reproduce in RED and pass; 18 focused repair tests and the final 47-test topology/planning set pass.
 - Stop-loss: Preserve user edits and prepared identities; never bypass pending transactions, semantic review or stale handoffs.
-- Next action: Push the repaired implementation to PR 251 and inspect its CI jobs and acceptance artifact.
+- Next action: Inspect CI for the next repaired revision; the first repair production run 36754458273 blocked on missing Copilot model identity at MVG review. Retry remains bounded and never weakens the identity check.
 - Recovery command: `py -3 -m unittest scripts.python.tests.test_planning_audit_repair -v`
 - Open questions: None; Windows runtime validation uses existing CI because this workspace has no .NET/Godot binaries.
 - Exit criteria: Current implementation passes repository gates and the real isolated Capability-to-MVG production chain.

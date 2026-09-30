@@ -337,6 +337,60 @@ class PlanningAuditRepairTests(unittest.TestCase):
                 self.assertTrue(load_task_readiness(root, "42")[0])
                 self.assertEqual(master, (root / ".taskmaster/tasks/tasks.json").read_bytes())
 
+    def test_completed_capability_run_cannot_clear_another_pending_owner(self):
+        selected_cap(self.root)
+        cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
+        pending = self.root / "docs/planning/semantic-topology/capability-apply.pending.json"
+        atomic_json(pending, {"run_id": "another-run"})
+        with self.assertRaisesRegex(ValueError, "another Capability"):
+            cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
+        self.assertEqual("another-run", load_json(pending)["run_id"])
+
+    def test_mvg_apply_recovers_manifest_write_and_preserves_final_binding(self):
+        from _mvg_obligations import check_task_obligations
+        _, _, dest = prepared_mvg(self.root)
+        original = mvg.atomic_json
+        def interrupt(path, payload):
+            original(path, payload)
+            if path == dest:
+                raise SystemExit("terminated after manifest write")
+        with patch.object(mvg, "atomic_json", side_effect=interrupt), self.assertRaises(SystemExit):
+            mvg.apply(self.root, run_id="repair", confirm=True)
+        self.assertFalse(check_task_obligations(self.root, "7")[0])
+        result = mvg.apply(self.root, run_id="repair", confirm=True)
+        self.assertEqual("applied", result["status"])
+        mvg.rebind_handoff(self.root, run_id="repair", task_id="7", change_plan_path=None, out_path=None)
+        self.assertEqual(result, mvg.apply(self.root, run_id="repair", confirm=True))
+        self.assertTrue(check_task_obligations(self.root, "7")[0])
+
+    def test_review_retries_execution_only_and_reuses_approved_evidence(self):
+        prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        result = load_json(run / "semantic-review.json")
+        info = load_json(run / "semantic-review-execution.json")["runner_info"]
+        (run / "semantic-review.json").unlink()
+        (run / "semantic-review-execution.json").unlink()
+        calls = []
+        def invoke(*args, **kwargs):
+            calls.append(kwargs["workspace"])
+            if len(calls) == 1:
+                raise RuntimeError("model identity not exposed")
+            atomic_json(kwargs["output_path"], result)
+            return {"model": "fixture-reviewer", "model_tools": []}
+        with patch.object(mvg, "inspect_isolated_runner", return_value=info), patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+            mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        self.assertEqual(2, len(calls))
+        self.assertNotEqual(calls[0], calls[1])
+        self.assertEqual(2, len(load_json(run / "run.json")["semantic_review_attempts"]))
+        result["verdict"] = "blocked"
+        result["findings"] = ["Resolve a semantic gap."]
+        atomic_json(run / "semantic-review.json", result)
+        with patch.object(mvg, "inspect_isolated_runner", return_value=info), patch.object(mvg, "run_isolated_model") as invoke:
+            with self.assertRaisesRegex(ValueError, "resolve its findings"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+            invoke.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

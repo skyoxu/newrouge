@@ -1178,6 +1178,8 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     from _planning_apply_journal import create_journal, resume_journal
     journal_path = run_dir / "apply-journal.json"
     pending_path = root / "docs/planning/semantic-topology/capability-apply.pending.json"
+    if pending_path.is_file() and load_json(pending_path, {}).get("run_id") != run_id:
+        raise ValueError("another Capability apply is pending; recover its recorded run first")
     if journal_path.is_file():
         journal = load_json(journal_path, {})
         if journal.get("status") != "complete":
