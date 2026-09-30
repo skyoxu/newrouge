@@ -247,7 +247,9 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
     workspace.mkdir(parents=True)
     shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
     output = workspace / "proposal.json"
-    sys.path.insert(0, str(root / "scripts/sc"))
+    tool_sc_dir = Path(__file__).resolve().parents[1] / "sc"
+    if str(tool_sc_dir) not in sys.path:
+        sys.path.insert(0, str(tool_sc_dir))
     from _llm_backend import inspect_llm_backend, run_llm_exec
 
     info = inspect_llm_backend(llm_backend)

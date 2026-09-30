@@ -81,6 +81,11 @@ class MvgPlanningContractTests(unittest.TestCase):
             }],
         }
 
+    def test_llm_backend_module_is_resolved_from_tool_installation_not_target_repo(self) -> None:
+        source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
+        self.assertIn('Path(__file__).resolve().parents[1] / "sc"', source)
+        self.assertNotIn('str(root / "scripts/sc")', source)
+
     def test_openai_api_generation_routes_through_text_only_workspace_runner(self) -> None:
         source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
         self.assertIn("run_isolated_model(", source)
