@@ -284,11 +284,13 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             "MVG planning requires one of: " + ", ".join(sorted(SUPPORTED_LLM_BACKENDS))
         )
     run_dir = run_path.parent
-    workspace = run_dir / "model-workspace"
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
-    shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
+    existing_proposal = load_json(run_dir / "proposal.json", {})
+    if state.get("model_execution") and validate_proposal(root, state, existing_proposal)["status"] == "passed":
+        return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
+                "attempt_count": state["model_execution"]["attempt_count"]}
+    workspace_base = run_dir / "model-workspace"
+    workspace = workspace_base
+    workspace_base.mkdir(parents=True, exist_ok=True)
     tool_sc_dir = Path(__file__).resolve().parents[1] / "sc"
     if str(tool_sc_dir) not in sys.path:
         sys.path.insert(0, str(tool_sc_dir))
@@ -399,11 +401,26 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
 """
 
     prompt = PROMPT + "\n" + strict_contract
-    attempts: list[dict[str, Any]] = []
+    attempts: list[dict[str, Any]] = state.setdefault("generation_attempts", [])
     proposal: dict[str, Any] | None = None
     validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
     for attempt in (1, 2, 3):
-        output, execution = invoke(prompt, attempt)
+        if attempt <= len(attempts):
+            continue
+        workspace = workspace_base / f"attempt-{attempt}"
+        workspace.mkdir(parents=True, exist_ok=False)
+        shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
+        record = {"attempt": attempt, "status": "running", "backend": llm_backend}
+        attempts.append(record)
+        atomic_json(run_path, state)
+        try:
+            output, execution = invoke(prompt, attempt)
+        except (RuntimeError, TimeoutError, OSError) as exc:
+            record.update(status="execution-failed", error=str(exc))
+            state["phase"] = "generation-execution-blocked"
+            atomic_json(run_path, state)
+            atomic_json(run_dir / "model-execution.json", {"backend": llm_backend, "attempts": attempts})
+            continue
         text_value = output.read_text(encoding="utf-8").strip()
         if text_value.startswith("```"):
             lines = text_value.splitlines()[1:]
@@ -417,7 +434,8 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         validation = validate_proposal(root, state, proposal)
         execution["proposal_sha256"] = canonical_sha(proposal)
         execution["deterministic_validation"] = validation
-        attempts.append(execution)
+        record.update(execution, status="completed")
+        atomic_json(run_path, state)
         atomic_json(run_dir / f"proposal-attempt-{attempt}.json", proposal)
         if validation.get("status") == "passed":
             break
@@ -433,7 +451,7 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         )
 
     if proposal is None:
-        raise ValueError("MVG proposal was not produced")
+        raise ValueError("MVG proposal execution attempt budget exhausted; prepared inputs are preserved")
     atomic_json(run_dir / "proposal.json", proposal)
     atomic_json(run_dir / "model-execution.json", {
         "schema_version": "newrouge.mvg-planning-model-execution.v1",

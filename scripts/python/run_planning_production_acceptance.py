@@ -163,7 +163,7 @@ def execute(
         evidence_dir, "07-mvg-generate",
         [*mvg_base, "generate", "--run-id", mvg_run,
          "--llm-backend", mvg_backend, "--timeout-sec", str(timeout_sec)],
-        env=env, timeout_sec=timeout_sec + 120,
+        env=env, timeout_sec=timeout_sec * 3 + 120,
     ))
     stages.append(_run(
         evidence_dir, "08-mvg-independent-review",

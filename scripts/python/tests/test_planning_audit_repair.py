@@ -391,6 +391,17 @@ class PlanningAuditRepairTests(unittest.TestCase):
                 mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
             invoke.assert_not_called()
 
+    def test_generation_execution_budget_survives_stage_retry(self):
+        prepared_mvg(self.root)
+        with patch.object(mvg, "inspect_isolated_runner", return_value={"available": True}), \
+             patch.object(mvg, "run_isolated_model", side_effect=RuntimeError("missing actual model identity")) as invoke:
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, "attempt budget exhausted"):
+                    mvg.generate(self.root, run_id="repair", timeout_sec=1, llm_backend="copilot-cli")
+            self.assertEqual(3, invoke.call_count)
+        state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
+        self.assertEqual(3, len(state["generation_attempts"]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,3 +55,5 @@ Task status or small reference edits do not automatically regenerate Capability 
 Never prepare over an existing run ID: resume its incomplete stage, or choose a new ID for changed source inputs. Deltas are computed against the prepared manifest copy, never silently rebased onto a later manifest.
 
 Apply also journals the approved trace and manifest together. Re-running the same apply recovers interruption and preserves subsequent legitimate obligation bindings. Independent review execution has at most three persisted fresh invocations per run; transport/identity/JSON failures may retry, but an actual blocked semantic verdict stops without seeking another approving reviewer. Re-running an already valid review reuses its evidence.
+
+Generation execution also has three persisted fresh attempts. Identity/transport failures do not consume downstream review or regenerate Capability, and re-invoking the stage cannot reset that budget. Preserve a valid generated proposal and resume review/validation/apply only.
