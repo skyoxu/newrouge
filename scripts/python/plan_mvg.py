@@ -209,13 +209,13 @@ def prepare(
             for row in (reconciliation.get("authority_scope") or {}).get(kind, []):
                 path = repo_path(root, str(row["path"]))
                 originals.append(path)
-                rel = path.relative_to(root).as_posix()
+                rel = path.resolve().relative_to(root.resolve()).as_posix()
                 if path.is_file() and f"references/{rel}" not in files:
                     files[f"references/{rel}"] = _copy_file(root, path, bundle, f"references/{rel}")
     if manifest_path is not None:
         originals.append(manifest_path)
     for path in originals:
-        authority[path.relative_to(root).as_posix()] = file_sha(path) if path.is_file() else None
+        authority[path.resolve().relative_to(root.resolve()).as_posix()] = file_sha(path) if path.is_file() else None
     index["analysis_identity_sha256"] = canonical_sha(index)
     atomic_json(bundle / "analysis-index.json", index)
 

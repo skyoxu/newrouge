@@ -126,7 +126,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name) / "fixture"
+        self.root = (Path(self.temp.name) / "fixture").resolve()
         build_fixture(self.root)
 
     def test_crlf_workspace_uses_ledger_text_hash_and_detects_real_edit(self):
@@ -201,7 +201,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
             "logs/ci/chapter5/readiness/task-7.json", "docs/testing/mvg/repair.json"]
         for i, rel in enumerate(paths):
             with self.subTest(path=rel):
-                root = Path(self.temp.name) / f"drift-{i}"
+                root = (Path(self.temp.name) / f"drift-{i}").resolve()
                 build_fixture(root)
                 _, _, dest = prepared_mvg(root)
                 target = root / rel
@@ -319,7 +319,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
             Path("logs/ci/chapter5/reconciliation/task-7.json"), Path("logs/ci/chapter5/readiness/task-7.json")]
         for i, rel in enumerate(checkpoints):
             with self.subTest(checkpoint=str(rel)):
-                root = Path(self.temp.name) / f"interrupt-{i}"
+                root = (Path(self.temp.name) / f"interrupt-{i}").resolve()
                 build_fixture(root)
                 selected_cap(root)
                 master = (root / ".taskmaster/tasks/tasks.json").read_bytes()
