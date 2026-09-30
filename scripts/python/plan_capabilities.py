@@ -366,7 +366,7 @@ def _remaining_attempt_budget(
             raise ValueError(f"{label} active-time budget exhausted")
         remaining = min(remaining, candidate_remaining)
     estimated = _estimated_requests(state, runner_info)
-    if estimated is not None:
+    if estimated is not None and budget.get("request_count_complete") is True:
         observed = int(budget.get("model_requests_observed") or 0)
         if observed + estimated > int(budget["request_limit"]):
             raise ValueError(
@@ -433,6 +433,30 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     outputs = []
     blocked: list[str] = []
     max_attempts = 1 + int(_budget(state).get("candidate_retry_limit") or 0)
+    estimated = _estimated_requests(state, runner_info)
+    budget = _budget(state)
+    if estimated is not None and budget.get("request_count_complete") is True:
+        remaining_initial = sum(
+            1
+            for index in range(1, 4)
+            if not _valid_candidate_reusable(
+                run_dir,
+                state,
+                f"candidate-{index}",
+                prompt_sha=prompt_sha,
+                runner_info=runner_info,
+            )
+        )
+        observed = int(budget.get("model_requests_observed") or 0)
+        required = remaining_initial * estimated
+        if observed + required > int(budget["request_limit"]):
+            state["phase"] = "generation-blocked"
+            state["stop_reason"] = (
+                f"initial candidate request estimate exceeds budget: "
+                f"{observed}+{required}>{budget['request_limit']}"
+            )
+            atomic_json(run_path, state)
+            raise ValueError(state["stop_reason"])
     for index in range(1, 4):
         label = f"candidate-{index}"
         if _valid_candidate_reusable(
