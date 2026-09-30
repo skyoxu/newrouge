@@ -48,5 +48,9 @@
       ],
       "wiring_task_id": 41
     }
-  }
+  },
+  "bucket_order": [
+    "entry"
+  ],
+  "fallback_bucket": "entry"
 }
