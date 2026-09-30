@@ -139,6 +139,52 @@ def write_text(path: str, content: str) -> None:
         f.write(content)
 
 
+def _post_success_engine_shutdown_crash(rc: int, output: str, parsed: dict) -> bool:
+    """Recognize a crash that happens only after GdUnit has completed successfully.
+
+    This is intentionally narrow. A passing XML report alone is not enough when
+    strict exit handling is enabled: GdUnit must also have printed its own
+    successful exit marker and finalized before Godot's crash handler starts.
+    """
+    if rc == 0 or not isinstance(parsed, dict):
+        return False
+    if int(parsed.get("tests") or 0) <= 0:
+        return False
+    if int(parsed.get("failures") or 0) != 0 or int(parsed.get("errors") or 0) != 0:
+        return False
+    exit_marker = output.find("Exit code: 0")
+    finalize_marker = output.find("Finallize .. done")
+    if finalize_marker < 0:
+        finalize_marker = output.find("Finalize .. done")
+    crash_marker = output.find("CrashHandlerException: Program crashed with signal 11")
+    return (
+        exit_marker >= 0
+        and finalize_marker > exit_marker
+        and crash_marker > finalize_marker
+    )
+
+
+def normalize_gdunit_exit_code(
+    rc: int,
+    output: str,
+    parsed: dict,
+    *,
+    strict_exit: bool,
+) -> tuple[int, bool]:
+    report_passed = (
+        isinstance(parsed, dict)
+        and int(parsed.get("tests") or 0) > 0
+        and int(parsed.get("failures") or 0) == 0
+        and int(parsed.get("errors") or 0) == 0
+    )
+    post_success_shutdown_crash = _post_success_engine_shutdown_crash(
+        rc, output, parsed
+    )
+    if rc != 0 and report_passed and (not strict_exit or post_success_shutdown_crash):
+        return 0, post_success_shutdown_crash
+    return rc, post_success_shutdown_crash
+
+
 def ensure_tests_project_junction(repo_root: str, project_abs: str, out_dir: str) -> None:
     """
     Hard gate: ensure Tests.Godot/Game.Godot is a Junction to the real Game.Godot.
@@ -297,15 +343,25 @@ def main():
         parsed = _parse_results_xml(latest_results)
 
     strict_exit = (os.environ.get("GDUNIT_STRICT_EXIT_CODE") or "0").strip() == "1"
-    normalized_rc = rc
-    if not strict_exit and rc != 0 and parsed and parsed.get("failures") == 0 and parsed.get("errors") == 0:
-        normalized_rc = 0
+    normalized_rc, post_success_shutdown_crash = normalize_gdunit_exit_code(
+        rc, out, parsed, strict_exit=strict_exit
+    )
+    if post_success_shutdown_crash:
+        print(
+            "GDUNIT_POST_SUCCESS_ENGINE_SHUTDOWN_CRASH "
+            f"raw_rc={rc} normalized_rc={normalized_rc}"
+        )
 
     # Write a small summary json for CI
     summary = {
         'rc': rc,
         'normalized_rc': normalized_rc,
         'strict_exit_code': strict_exit,
+        'post_success_engine_shutdown_crash': post_success_shutdown_crash,
+        'normalization_reason': (
+            'gdunit_exit_0_then_engine_shutdown_signal_11'
+            if post_success_shutdown_crash else ''
+        ),
         'project': proj,
         'added': args.add,
         'timeout_sec': args.timeout_sec,
