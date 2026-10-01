@@ -136,7 +136,6 @@ Same-implementation [Windows Quality](https://github.com/skyoxu/newrouge/actions
 
 Documentation-only closeout `75eca5ce` triggers another fresh production chain. Run `36849699351` correctly rejects an approved semantic report whose proposal hash omits two characters; artifact `11154659573`, digest `sha256:973041ef538f25ceb8a9b18c9286f94fe5e9b1b6e63abf119c9a979138bfd022`, preserves the raw report and single consumed review. The reviewer prompt now requires verbatim copying of both host-supplied identities. Two negative identity regressions preserve the invalid report and consumed budget at publication/completed-attempt recovery boundaries without another invocation. Validation remains strict; no identity is repaired after review. Final local recovery/core counts are 32/276. Final-head CI evidence is recorded in PR #255 and the delivery report.
 
-Controlled CI acceptance queries the authenticated account model inventory without creating an inference session, then requests one enabled fixed Copilot model. `SC_PLANNING_COPILOT_MODEL` (or the existing `SC_COPILOT_MODEL`) may name an enabled selector; unset/auto configuration uses a deterministic preference among available models. An unavailable explicit selector or no enabled selector blocks before creating any planning run. Selection and inventory are retained in the CI artifact; an actual auto execution label is not assumed to be directly selectable. Public runner `auto` support remains available. Auto-routing run 36851834049/artifact 11155669475 exhausts the unchanged candidate budget because its actual models differ; that bounded stop is retained rather than rerun. Actual receipt identity still decides whether all accepted candidates/reviewer use the same model. The acceptance-only discovery avoids relying on random routing convergence and does not relax identity, semantic or budget gates.
 
 ## Implementation surfaces
 
@@ -152,8 +151,8 @@ Controlled CI acceptance queries the authenticated account model inventory witho
 - `scripts/python/planning_acceptance_fixture.py`
 - `scripts/python/run_planning_production_acceptance.py`
 - `.github/workflows/planning-production-acceptance.yml`
-- `scripts/ci/select_planning_copilot_model.cjs`
-- `scripts/ci/tests/select_planning_copilot_model.test.cjs`
+
+The acceptance account rejects explicit `gpt-6-luna` selection and its SDK model inventory is empty, although `auto` can execute observed real models. The attempted fixed-model default/catalog prerequisite is removed: an unavailable catalog cannot become a new blocker for an already supported auto path. The unchanged original bounded auto chain still rejects mismatched actual models; its routing cannot be made deterministic by relabeling receipts or raising budgets. The two workflow repairs have real production PASS at 0e531c08; final-head results and routing limitations remain explicit in PR #255.
 
 ## Completion boundary
 
