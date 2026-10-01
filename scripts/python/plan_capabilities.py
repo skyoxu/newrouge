@@ -910,7 +910,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         raise ValueError("review must use the same runner identity as candidate generation")
     seed_hex, anonymous = _anonymous_candidates(state)
     candidate_hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in labels}
-    from _planning_review_publication import prepare_publication, resume_publication, serialized_sha
+    from _planning_review_publication import completed_output, prepare_publication, resume_publication, serialized_sha
     publication = run_dir / "review/publication.json"
     publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
         "candidate_sha256": candidate_hashes, "prompt_sha256": text_sha(REVIEW_PROMPT), "runner": runner_info}
@@ -931,6 +931,22 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     final_meta: dict[str, Any] | None = None
     corrected_candidate: dict[str, Any] | None = None
     last_error = ""
+    restored = completed_output(attempts, run_dir / "isolated-workspaces/review" / f"attempt-{len(attempts)}" / "review.json")
+    if restored:
+        record, final_result = restored
+        final_meta = load_json(run_dir / "review/attempts" / f"review-attempt-{len(attempts)}.meta.json", {})
+        if (not final_meta or final_meta.get("validation_errors") != []
+            or any(record.get(key) != value for key, value in final_meta.items())
+            or validate_review_report(final_result, run_dir)):
+            raise ValueError("Completed Capability review metadata identity changed or result invalid")
+        if final_result.get("status") == "selected":
+            corrected_candidate = apply_review_corrections(load_json(run_dir / "candidates" /
+                f"{anonymous[str(final_result['selected'])]}.json", {}), final_result.get("corrections", []))
+            errors = validate_candidate(corrected_candidate,
+                load_json(run_dir / "analysis-input/source-blocks.v1.json", {}),
+                load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}), state["analysis_identity_sha256"])
+            if errors:
+                raise ValueError("Completed Capability review correction invalid: " + ";".join(errors))
     while len(attempts) < max_attempts and final_result is None:
         attempt_no = len(attempts) + 1
         attempt_timeout = _remaining_attempt_budget(
@@ -1050,6 +1066,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             final_candidate_path = "review/corrected-candidate.json"
     prepare_publication(publication, publication_identity, payloads, atomic_json)
     resume_publication(publication, publication_identity, atomic_json)
+    _read_valid_review(run_dir, state)
     state["phase"] = "reviewed"
     state["selected_candidate"] = selected_label
     state["final_candidate_path"] = final_candidate_path
@@ -1065,6 +1082,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         "status": final_result.get("status"),
         "selected_candidate": selected_label,
         "corrected": bool(final_result.get("corrections")),
+        "reused": bool(restored),
         "budget": state["budget"],
     }
 

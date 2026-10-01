@@ -110,7 +110,8 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
         self.assertFalse((run / "apply-journal.json").exists())
         self.assertFalse((self.root / cap.FORMAL_CAPABILITIES).exists())
 
-    def _cap_publication(self, *, boundary, no_winner=False, corrections=False, checkpoint_status=None, drift=None):
+    def _cap_publication(self, *, boundary, no_winner=False, corrections=False, checkpoint_status=None,
+                         drift=None, completed_attempt=False):
         run = audit_fixes.PlanningMainAuditFixesTests.candidates(self)
         report = audit_fixes.review_report(run)
         if no_winner:
@@ -125,7 +126,8 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             return {"model": "fixture-model", "model_tools": []}
         def interrupt(path, payload):
             writer(path, payload)
-            if path == run / boundary and (checkpoint_status is None or payload.get("status") == checkpoint_status):
+            accepted = not completed_attempt or any(a.get("status") == "completed" for a in payload.get("review_attempts", []))
+            if path == run / boundary and accepted and (checkpoint_status is None or payload.get("status") == checkpoint_status):
                 raise KeyboardInterrupt("loss after committed publication write")
         with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
              patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
@@ -170,6 +172,13 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
     def test_capability_completed_publication_recovers_run_state(self):
         self._cap_publication(boundary="review/publication.json", checkpoint_status="complete")
 
+    def test_capability_completed_attempt_recovers_before_publication_checkpoint(self):
+        self._cap_publication(boundary="run.json", completed_attempt=True, corrections=True)
+
+    def test_capability_completed_attempt_output_drift_cannot_trigger_model_retry(self):
+        self._cap_publication(boundary="run.json", completed_attempt=True,
+            drift=lambda run: atomic_json(run / "isolated-workspaces/review/attempt-1/review.json", {"external": "edit"}))
+
     def test_capability_checkpoint_corruption_blocks_without_writes(self):
         def corrupt(run):
             path = run / "review/publication.json"
@@ -182,13 +191,22 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
         self._cap_publication(boundary="review/review.json",
             drift=lambda run: atomic_json(run / "review/review.json", {"external": "edit"}))
 
+    def test_completed_checkpoint_status_edit_cannot_authorize_deleted_target_restore(self):
+        def corrupt(run):
+            path = run / "review/publication.json"
+            payload = load_json(path)
+            payload["status"] = "pending"
+            atomic_json(path, payload)
+            (run / "review/review.json").unlink()
+        self._cap_publication(boundary="review/publication.json", checkpoint_status="complete", drift=corrupt)
+
     def test_capability_no_winner_publication_recovers_without_model(self):
         self._cap_publication(boundary="review/review.json", no_winner=True)
         with self.assertRaises(ValueError):
             cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
 
     def _mvg_publication(self, boundary, *, blocked=False, malformed=False, draft=False,
-                         checkpoint_status=None, revise_pending=False):
+                         checkpoint_status=None, revise_pending=False, completed_attempt=False):
         prepared_mvg(self.root)
         run = self.root / "logs/ci/mvg-planning/repair"
         report = load_json(run / "semantic-review.json")
@@ -213,7 +231,8 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
         def interrupt(path, payload):
             writer(path, payload)
             checkpoint = boundary == "checkpoint" and path.name.startswith("semantic-review-publication-")
-            if (path == run / boundary or checkpoint) and (checkpoint_status is None or payload.get("status") == checkpoint_status):
+            accepted = not completed_attempt or any(a.get("status") == "completed" for a in payload.get("semantic_review_attempts", []))
+            if (path == run / boundary or checkpoint) and accepted and (checkpoint_status is None or payload.get("status") == checkpoint_status):
                 raise KeyboardInterrupt("loss after semantic review publication write")
         with patch.object(mvg, "inspect_isolated_runner", return_value=info), \
              patch.object(mvg, "run_isolated_model", side_effect=invoke) as model:
@@ -254,8 +273,14 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
     def test_mvg_completed_publication_recovers_run_state(self):
         self._mvg_publication("checkpoint", checkpoint_status="complete")
 
+    def test_mvg_completed_attempt_recovers_before_publication_checkpoint(self):
+        self._mvg_publication("run.json", completed_attempt=True)
+
     def test_mvg_pending_publication_cannot_be_bypassed_by_revising_proposal(self):
         self._mvg_publication("semantic-review.json", revise_pending=True)
+
+    def test_mvg_completed_unpublished_attempt_cannot_be_bypassed_by_revision(self):
+        self._mvg_publication("run.json", completed_attempt=True, revise_pending=True)
 
     def test_mvg_external_receipt_edit_blocks_without_model_or_overwrite(self):
         run, info, _ = self._mvg_publication("semantic-review.json")

@@ -617,14 +617,19 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         raise ValueError("MVG semantic review requires a structurally valid proposal")
     runner_info = inspect_isolated_runner(runner)
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
-    from _planning_review_publication import prepare_publication, resume_publication
+    from _planning_review_publication import completed_output, prepare_publication, publication_complete, resume_publication
     proposal_sha = canonical_sha(proposal)
     publication = run_dir / f"semantic-review-publication-{proposal_sha.removeprefix('sha256:')}.json"
     publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
         "proposal_sha256": proposal_sha, "runner": runner_info}
     for recorded in run_dir.glob("semantic-review-publication-*.json"):
-        if recorded != publication and load_json(recorded, {}).get("status") != "complete":
+        if recorded != publication and not publication_complete(recorded):
             raise ValueError("MVG review publication is pending; recover the original proposal before revising it")
+    settled = state.get("semantic_review_attempts") or []
+    if settled and settled[-1].get("status") == "completed" and settled[-1].get("proposal_sha256") != proposal_sha:
+        prior_sha = str(settled[-1].get("proposal_sha256") or "").removeprefix("sha256:")
+        if not (run_dir / f"semantic-review-publication-{prior_sha}.json").is_file():
+            raise ValueError("Completed MVG review is unpublished; recover the original proposal before revising it")
     published = resume_publication(publication, publication_identity, atomic_json)
     existing = load_json(run_dir / "semantic-review.json", {})
     if published or (existing.get("proposal_sha256") == proposal_sha
@@ -659,7 +664,14 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     attempts = state.setdefault("semantic_review_attempts", [])
     receipt = None
     result = None
-    while len(attempts) < 3:
+    if attempts and attempts[-1].get("proposal_sha256") == proposal_sha:
+        restored = completed_output(attempts, run_dir / "semantic-review-workspace" / f"attempt-{len(attempts)}" / "review.json")
+        if restored:
+            record, result = restored
+            if record.get("runner_info") != runner_info or record.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:
+                raise ValueError("Completed MVG review execution identity changed")
+            receipt = record["receipt"]
+    while len(attempts) < 3 and result is None:
         number = len(attempts) + 1
         workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
         workspace.mkdir(parents=True, exist_ok=False)
@@ -668,7 +680,8 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
-        record = {"attempt": number, "status": "running", "proposal_sha256": canonical_sha(proposal)}
+        record = {"attempt": number, "status": "running", "proposal_sha256": proposal_sha,
+            "runner_info": runner_info, "analysis_identity_sha256": state["analysis_identity_sha256"]}
         attempts.append(record)
         atomic_json(run_path, state)  # Count even an interrupted invocation.
         started = time.monotonic()
@@ -678,7 +691,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             if receipt.get("model_tools") != [] or not receipt.get("model"):
                 raise ValueError("independent reviewer execution identity is incomplete")
             result = parse_model_json(output)
-            record.update(status="completed", receipt=receipt)
+            record.update(status="completed", receipt=receipt, output_sha256=file_sha(output))
         except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
             record.update(status="execution-failed", error=str(exc))
             state["phase"] = "review-execution-blocked"
