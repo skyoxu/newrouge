@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from chapter3_task_scope import load_scope
+
 from _chapter7_profile import (
     default_story_ids,
     layer_for_bucket,
@@ -335,6 +337,8 @@ def create_tasks(
     back_story_id: str = DEFAULT_STORY_ID_BACK,
     gameplay_story_id: str = DEFAULT_STORY_ID_GAMEPLAY,
 ) -> tuple[int, dict[str, Any]]:
+    if load_scope(repo_root) is not None:
+        raise ValueError("Frozen task scope rejects Chapter 7 task creation")
     tasks_json_path = _resolve_path(tasks_json_path)
     tasks_back_path = _resolve_path(tasks_back_path)
     tasks_gameplay_path = _resolve_path(tasks_gameplay_path)
@@ -494,6 +498,8 @@ def create_tasks(
         "gameplay_story_id": effective_gameplay_story_id,
     }
     if not dry_run:
+        if load_scope(repo_root) is not None:
+            raise ValueError("Frozen task scope rejects Chapter 7 task creation")
         _write_json(resolved_tasks_json_path, tasks_payload)
         _write_json(tasks_back_path if tasks_back_path.is_absolute() else (repo_root / tasks_back_path), back_tasks)
         _write_json(tasks_gameplay_path if tasks_gameplay_path.is_absolute() else (repo_root / tasks_gameplay_path), gameplay_tasks)

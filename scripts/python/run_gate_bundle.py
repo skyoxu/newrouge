@@ -365,6 +365,12 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
                 "scripts.python.tests.test_chapter3_task_generation",
                 "scripts.python.tests.test_chapter3_semantic_conservation",
                 "scripts.python.tests.test_chapter5_semantic_reconciliation",
+                "scripts.python.tests.test_capability_planning_contract",
+                "scripts.python.tests.test_copilot_isolated_model_runner",
+                "scripts.python.tests.test_openai_isolated_model_runner",
+                "scripts.python.tests.test_mvg_planning_contract",
+                "scripts.python.tests.test_planning_audit_repair",
+                "scripts.python.tests.test_planning_dev_cli",
                 "scripts.python.tests.test_chapter6_route",
                 "scripts.python.tests.test_chapter7_ui_wiring",
                 "scripts.sc.tests.test_generate_knowledge_links",
@@ -379,6 +385,10 @@ def _hard_gate_commands(task_files: list[str], task_links_max_warnings: int = -1
         {
             "name": "semantic_topology_validate",
             "cmd": ["py", "-3", "scripts/python/validate_semantic_topology.py"],
+        },
+        {
+            "name": "semantic_topology_worktree_validate",
+            "cmd": ["py", "-3", "scripts/python/validate_semantic_topology.py", "--worktree"],
         },
         {
             "name": "check_gate_bundle_consistency",

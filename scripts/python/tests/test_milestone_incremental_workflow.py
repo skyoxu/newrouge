@@ -263,7 +263,8 @@ class MilestoneIncrementalWorkflowTests(unittest.TestCase):
             "coverage_updates": {"required_flow_ids": []},
         }
         with self.assertRaisesRegex(ValueError, "authority_ref"):
-            baseline_mod.apply_delta(manifest, bad_retire)
+            with tempfile.TemporaryDirectory() as td:
+                baseline_mod.apply_delta(manifest, bad_retire, root=Path(td))
 
 
 if __name__ == "__main__":

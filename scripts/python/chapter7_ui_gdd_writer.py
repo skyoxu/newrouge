@@ -12,6 +12,7 @@ from typing import Any
 from _chapter7_profile import bucket_names, bucket_profile, feature_bucket, load_chapter7_profile
 from collect_ui_wiring_inputs import OVERLAY_ROOT, TASKS_BACK, TASKS_GAMEPLAY, TASKS_JSON, UI_GDD_FLOW, build_summary
 from chapter3_task_scope import load_scope
+from chapter7_output_policy import output_path, validate_output
 
 
 def _today() -> str:
@@ -436,7 +437,7 @@ def render_ui_gdd_flow(*, repo_root: Path, summary: dict[str, Any], profile: dic
         "Encoding: UTF-8",
         "Applies-To:",
         "  - .taskmaster/tasks/tasks.json",
-        ("  - docs/planning/chapter7/ui-wiring-board.md" if load_scope(repo_root) is not None else "  - docs/gdd/ui-gdd-flow.md"),
+        "  - " + output_path(repo_root),
         "ADR-Refs:",
     ]
     if adr_refs:
@@ -564,18 +565,15 @@ def write_ui_gdd_flow(
     *,
     repo_root: Path,
     summary: dict[str, Any],
-    ui_gdd_flow_path: Path = UI_GDD_FLOW,
+    ui_gdd_flow_path: Path | None = None,
     tasks_json_path: Path | None = None,
     tasks_back_path: Path | None = None,
     tasks_gameplay_path: Path | None = None,
     overlay_root_path: Path | None = None,
     chapter7_profile_path: Path | None = None,
 ) -> Path:
-    if load_scope(repo_root) is not None:
-        retired = (repo_root / UI_GDD_FLOW).resolve()
-        requested = (ui_gdd_flow_path if ui_gdd_flow_path.is_absolute() else repo_root / ui_gdd_flow_path).resolve()
-        if requested == retired:
-            raise ValueError("The retired Chapter 7 GDD reference is read-only")
+    ui_gdd_flow_path = ui_gdd_flow_path if ui_gdd_flow_path is not None else Path(output_path(repo_root))
+    validate_output(repo_root, ui_gdd_flow_path)
     profile = load_chapter7_profile(repo_root=repo_root, profile_path=chapter7_profile_path)
     out = ui_gdd_flow_path if ui_gdd_flow_path.is_absolute() else (repo_root / ui_gdd_flow_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -597,10 +595,7 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = Path(args.repo_root).resolve()
     if not args.ui_gdd_flow_path:
-        args.ui_gdd_flow_path = (
-            "docs/planning/chapter7/ui-wiring-board.md"
-            if load_scope(repo_root) is not None else str(UI_GDD_FLOW)
-        )
+        args.ui_gdd_flow_path = output_path(repo_root)
     summary = build_summary(
         repo_root=repo_root,
         tasks_json_path=Path(args.tasks_json_path),

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _mvg_manifest import validate_manifest, recommend
 from _mvg_execution import read_test_evidence
 from run_mvg_acceptance import register_arguments, run
+from run_gdunit import normalize_gdunit_exit_code
 
 
 class MvgAcceptanceTests(unittest.TestCase):
@@ -46,6 +47,55 @@ class MvgAcceptanceTests(unittest.TestCase):
                        'evidence_level': 'domain-integration',
                        'path': 'Game.Core.Tests/A.cs',
                        'selector': 'Game.Core.Tests.A', 'min_tests': 1}]}
+
+    def test_strict_gdunit_exit_allows_only_proven_post_success_shutdown_crash(self):
+        parsed = {"tests": 78, "failures": 0, "errors": 0}
+        output = (
+            "Statistics: 78 test cases | 0 errors | 0 failures | PASSED\n"
+            "Overall Summary: 78 test cases | 0 errors | 0 failures\n"
+            "Exit code: 0\n"
+            "Finallize .. done\n"
+            "CrashHandlerException: Program crashed with signal 11\n"
+        )
+        normalized, classified = normalize_gdunit_exit_code(
+            3221225477, output, parsed, strict_exit=True
+        )
+        self.assertEqual(0, normalized)
+        self.assertTrue(classified)
+
+        for bad_output, bad_parsed in [
+            (
+                "CrashHandlerException: Program crashed with signal 11\n"
+                "Exit code: 0\nFinallize .. done\n",
+                parsed,
+            ),
+            (
+                "Exit code: 0\nFinallize .. done\n"
+                "CrashHandlerException: Program crashed with signal 11\n",
+                {"tests": 78, "failures": 1, "errors": 0},
+            ),
+            (
+                "Finallize .. done\n"
+                "CrashHandlerException: Program crashed with signal 11\n",
+                parsed,
+            ),
+        ]:
+            with self.subTest(output=bad_output, parsed=bad_parsed):
+                normalized, classified = normalize_gdunit_exit_code(
+                    3221225477, bad_output, bad_parsed, strict_exit=True
+                )
+                self.assertEqual(3221225477, normalized)
+                self.assertFalse(classified)
+
+    def test_non_strict_gdunit_exit_keeps_legacy_report_normalization(self):
+        normalized, classified = normalize_gdunit_exit_code(
+            7,
+            "runner returned nonzero without a shutdown crash marker",
+            {"tests": 3, "failures": 0, "errors": 0},
+            strict_exit=False,
+        )
+        self.assertEqual(0, normalized)
+        self.assertFalse(classified)
 
     def test_coverage_contract_rejects_missing_or_mismatched_scope(self):
         for mutate in [

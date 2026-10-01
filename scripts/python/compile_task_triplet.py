@@ -308,6 +308,9 @@ def main() -> int:
         current_gameplay = load_json(gameplay_path, [])
         if canonical_sha(current_back) != patch["source_fingerprints"]["tasks_back"] or canonical_sha(current_gameplay) != patch["source_fingerprints"]["tasks_gameplay"]:
             raise SystemExit("task view changed after preview calculation; regenerate patch")
+        current_scope = load_scope(root)
+        if current_scope is not None:
+            validate_candidate_operations(back_ops + gameplay_ops, validate_master(root, current_scope))
         atomic_write_many([(back_path, back_updated), (gameplay_path, gameplay_updated)])
         print(f"wrote back_ops={len(back_ops)} gameplay_ops={len(gameplay_ops)}")
     print(

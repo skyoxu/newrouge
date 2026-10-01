@@ -216,6 +216,39 @@ Why this is stable:
 - `--dry-run` lets you preview all operations without writing
 - it records an explicit summary of applied and failed operations
 
+### `py -3 scripts/python/dev_cli.py plan-capabilities --stage <stage> --run-id <id>`
+
+Use when:
+- the affected Chapter 5 scope is stable and you need the formal derived Capability map
+- you need three isolated same-model candidates plus independent anonymous selection
+- you need historical Capability ID alignment and controlled `capability_refs` rebinding
+
+Why this is stable:
+- formal generation fails closed unless the external runner proves workspace-only fresh-session isolation
+- candidates are bound to one blinded analysis identity
+- the review is a separate anonymous A/B/C run
+- apply is restricted to derived Capability surfaces and capability-only Chapter 5 rebinds
+
+Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
+
+### `py -3 scripts/python/dev_cli.py plan-mvg --stage <stage> --run-id <id>`
+
+Use when:
+- one explicit Capability version has been selected/applied
+- you need an initial MVG manifest or a cumulative reviewed delta
+- you need player-journey flows, entrypoint plans, task/contract/test ownership and anti-weakening validation
+
+Why this is stable:
+- every original source/task/contract/test/readiness input and the prepared manifest (including absence) is hash-bound
+- use `--stage review --runner <isolated-runner>` for an independent semantic review before formal validation/apply
+- an existing manifest evolves through `update_mvg_baseline.py` semantics instead of replacement
+- planned entrypoints cannot masquerade as existing files, and planning never claims runtime verification
+- both Chapter 6 entrypoints consume the durable trace and require current final obligation bindings; the lane automatically consumes its bound milestone handoff even when the optional flag is omitted
+- ordinary tasks use `--stage rebind-handoff --task-id <id>` to bind current readiness and resolve applicability without creating a fake milestone handoff
+- for a task that is actually owned by a milestone change plan, use `--stage rebind-handoff --task-id <id> --change-plan <path> --handoff-out <path>`; this reuses the existing milestone handoff contract instead of inventing a planning-owned handoff
+
+Owning Skill: `.agents/skills/plan-mvg/SKILL.md`.
+
 ## Task Delivery Loop
 
 ### `py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <id> --godot-bin "$env:GODOT_BIN" --delivery-profile <profile>`

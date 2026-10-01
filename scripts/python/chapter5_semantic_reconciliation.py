@@ -1572,6 +1572,8 @@ def validate_chapter5_evidence_freshness(
 
 
 def load_task_readiness(root: Path, task_id: str) -> tuple[bool, dict[str, Any], str]:
+    if (root / "docs/planning/semantic-topology/capability-apply.pending.json").is_file():
+        return False, {}, "capability_apply_pending_recovery"
     path = readiness_path_for_task(root, task_id)
     payload = _load_json(path, {})
     if not path.is_file():

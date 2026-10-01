@@ -32,6 +32,8 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 | Chapter 3 | `workflow.md` 第 3 章 | `.agents/skills/workflow-chapter3-task-triplet-baseline/SKILL.md`；本次 PRD/GDD/planning sources |
 | Chapter 4 | `workflow.md` 第 4 章 | `.agents/skills/workflow-chapter4-overlays-contracts-baseline/SKILL.md`；任务三联、相关 Overlay/Contract |
 | Chapter 5 | `workflow.md` 第 5 章 | `.agents/skills/workflow-chapter5-semantics-stabilization/SKILL.md`；当前 reconciliation/readiness |
+| Capability Planning | `workflow.md` 5.3 | `.agents/skills/plan-capabilities/SKILL.md`；显式 Chapter 5 ready task scope |
+| MVG Planning | `workflow.md` 5.4 | `.agents/skills/plan-mvg/SKILL.md`；显式 Capability 文件/version 与目标 manifest |
 | Chapter 6 新任务 | `workflow.md` 6.0、6.3；`run-single-task-chapter6` | `.agents/skills/workflow-chapter6-single-task-daily-loop/SKILL.md`；当前 Task/Acceptance、有效 Chapter 5 readiness 与相关权威 |
 | Chapter 6 恢复 | `resume-task --recommendation-only` | `chapter6-route --recommendation-only`；仅在决策需要时展开该 run 的 sidecars/events |
 | Chapter 7 | `workflow.md` 第 7 章；`docs/gdd/ui-gdd-flow.md` | Chapter 7 Skill、profile guide 与当前 backlog/capability |
@@ -79,6 +81,8 @@ Context Reset 后先读取本文件，再按当前任务范围选择首要入口
 
 根文件只保留稳定入口；Chapter 3–7、Prototype、MVG 与维护命令的完整参数和阶段说明按上表读取 owning docs，不在这里重复维护。
 
+- Capability Planning：`py -3 scripts/python/dev_cli.py plan-capabilities --stage prepare --run-id <id> --task-id <task-id>`
+- MVG Planning：`py -3 scripts/python/dev_cli.py plan-mvg --stage prepare --run-id <id> --capabilities docs/planning/semantic-topology/capabilities.v1.json --manifest docs/testing/mvg/<manifest>.json --task-id <task-id>`
 - Chapter 6 新任务：`py -3 scripts/python/dev_cli.py run-single-task-chapter6 --task-id <task-id> --godot-bin <godot-bin> --delivery-profile <profile>`
 - Chapter 6 恢复：`py -3 scripts/python/dev_cli.py resume-task --task-id <task-id> --recommendation-only`
 - Chapter 6 路由：`py -3 scripts/python/dev_cli.py chapter6-route --task-id <task-id> --recommendation-only`

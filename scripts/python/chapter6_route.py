@@ -265,6 +265,14 @@ def route_chapter6(
 ) -> tuple[int, dict[str, Any]]:
     root = Path(repo_root).resolve()
     readiness_ok, readiness, readiness_reason = load_task_readiness(root, str(task_id or "").strip())
+    from _mvg_obligations import check_task_obligations
+    obligations_ok, obligations_reason, obligations = check_task_obligations(root, str(task_id or "").strip())
+    if not obligations_ok:
+        return 3, {"task_id": str(task_id), "execution_allowed": False, "preferred_lane": "blocked",
+            "blocked_by": "mvg_obligations", "latest_reason": obligations_reason,
+            "recommended_action": "rebind_mvg_obligations", "mvg_obligations": obligations,
+            "recommended_command": "py -3 scripts/python/plan_mvg.py rebind-handoff --run-id <applied-run> --task-id " + str(task_id),
+            "forbidden_commands": ["Chapter 6 RED/GREEN/REFACTOR"]}
     payload: dict[str, Any] = {}
     has_existing_run = False
     try:

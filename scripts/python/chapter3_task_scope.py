@@ -1,4 +1,4 @@
-"""Repository-specific guard for a frozen Chapter 3 task identity set."""
+"""Guard configured reconciliation identities and incomplete closeout."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ CONFIG = Path("docs/workflows/chapter3-task-scope.json")
 
 
 def load_scope(root: Path) -> dict[str, Any] | None:
+    from chapter3_closeout import guard
+    guard(root)
     path = root / CONFIG
     if not path.is_file():
         return None
@@ -21,9 +23,14 @@ def load_scope(root: Path) -> dict[str, Any] | None:
 
 def allowed_ids(scope: dict[str, Any]) -> set[int]:
     bounds = scope["allowed_numeric_task_ids"]
-    result = set(range(int(bounds["first"]), int(bounds["last"]) + 1))
+    if isinstance(bounds, list):
+        if any(type(value) is not int or value <= 0 for value in bounds) or len(set(bounds)) != len(bounds):
+            raise ValueError("Frozen task IDs must be unique positive integers")
+        result = set(bounds)
+    else:
+        result = set(range(int(bounds["first"]), int(bounds["last"]) + 1))
     if len(result) != int(scope["expected_master_task_count"]):
-        raise ValueError("Frozen task scope count does not match ID bounds")
+        raise ValueError("Frozen task scope count does not match configured IDs")
     return result
 
 

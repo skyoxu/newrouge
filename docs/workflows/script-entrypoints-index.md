@@ -83,6 +83,9 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/enrich_task_candidates.py`: enriches normalized candidates with ADR, chapter, overlay, contract event, test, evidence, owner/layer, acceptance, and duplicate-candidate signals.
 - `scripts/python/audit_task_candidate_coverage.py`: audits candidate coverage against requirement anchors and blocks missing P0/P1 coverage.
 - `scripts/python/compile_task_triplet.py`: compiles enriched candidates into a reviewable triplet patch, or writes task view files with `--write`.
+- `scripts/python/plan_capabilities.py`: post-Chapter-5 Capability stage machine (prepare, isolated three-candidate generation, anonymous review, identity alignment, controlled apply). Prefer `dev_cli.py plan-capabilities`.
+- `scripts/python/openai_isolated_model_runner.py`: default text-only OpenAI API isolation runner for formal Capability candidate/review sessions; model-visible input is limited to the prepared workspace snapshot.
+- `scripts/python/plan_mvg.py`: independent post-Capability MVG planning stage machine for initial manifests or guarded cumulative deltas. Prefer `dev_cli.py plan-mvg`.
 
 ### Taskmaster / semantics / overlay
 
@@ -1738,7 +1741,9 @@ Helper modules below are referenced directly by at least two included entry scri
 ### Milestone incremental workflow
 
 - `scripts/python/milestone_incremental_handoff.py`: validates reviewed new/extend/reuse/replace/retire/unresolved decisions and produces a task-local handoff bound to Chapter 5 readiness.
-- `scripts/python/update_mvg_baseline.py`: previews or applies a hash-bound cumulative MVG manifest delta; retirement requires authority evidence.
+- `scripts/python/update_mvg_baseline.py`: previews or applies a hash-bound cumulative MVG manifest delta; retirement and deterministic weakening require reviewed repository authority.
+- `scripts/python/plan_capabilities.py`: owns the formal derived Capability lifecycle after Chapter 5; formal three-candidate generation requires a verifiable isolated runner.
+- `scripts/python/plan_mvg.py`: consumes one explicit Capability version and plans initial/cumulative MVG obligations without invoking Capability generation.
 - `scripts/python/build_source_ledger.py`: add mode also consumes `docs/workflows/chapter3-source-set.json`; source retirement is explicit.
 - `scripts/python/compile_task_triplet.py`: emits v2 explicit task operations and an affected-id export file for lossless Taskmaster export.
 

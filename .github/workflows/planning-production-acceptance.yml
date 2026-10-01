@@ -1,0 +1,75 @@
+name: Planning Production Acceptance
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [synchronize, opened, reopened]
+    paths:
+      - '.github/workflows/planning-production-acceptance.yml'
+      - 'scripts/python/plan_capabilities.py'
+      - 'scripts/python/plan_mvg.py'
+      - 'scripts/python/openai_isolated_model_runner.py'
+      - 'scripts/python/copilot_isolated_model_runner.py'
+      - 'scripts/python/_planning_skill_common.py'
+      - 'scripts/python/_planning_scope.py'
+      - 'scripts/python/_planning_apply_journal.py'
+      - 'scripts/python/_mvg_planning_review.py'
+      - 'scripts/python/_mvg_obligations.py'
+      - 'scripts/python/tests/test_planning_audit_repair.py'
+      - 'scripts/python/planning_acceptance_fixture.py'
+      - 'scripts/python/run_planning_production_acceptance.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  copilot-requests: write
+
+jobs:
+  real-model-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      COPILOT_GITHUB_TOKEN: ${{ github.token }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-5' }}
+      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || 'auto' }}
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install OpenAI SDK
+        run: python -m pip install --disable-pip-version-check 'openai>=1.0.0'
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot@latest
+
+      - name: Deterministic acceptance fixture smoke
+        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract scripts.python.tests.test_planning_audit_repair scripts.python.tests.test_copilot_isolated_model_runner scripts.python.tests.test_openai_isolated_model_runner -v
+
+      - name: Run real Capability to MVG production acceptance
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            python scripts/python/run_planning_production_acceptance.py --backend openai-api --timeout-sec 900
+          else
+            python scripts/python/run_planning_production_acceptance.py --backend copilot-cli --model "$SC_COPILOT_MODEL" --timeout-sec 900
+          fi
+
+      - name: Upload planning acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: planning-production-acceptance-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            logs/ci/planning-production-acceptance/evidence/**
+            logs/ci/planning-production-acceptance/workspace/logs/ci/capability-planning/**
+            logs/ci/planning-production-acceptance/workspace/logs/ci/mvg-planning/**
+          if-no-files-found: warn
+          retention-days: 30

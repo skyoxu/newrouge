@@ -40,6 +40,8 @@ from dev_cli_builders import (
     build_run_chapter7_ui_wiring_cmd,
     build_run_prototype_tdd_cmd,
     build_run_prototype_workflow_cmd,
+    build_plan_capabilities_cmd,
+    build_plan_mvg_cmd,
     build_quality_gates_cmd,
     build_run_dotnet_cmd,
     build_run_gdunit_full_cmd,
@@ -367,6 +369,16 @@ def cmd_run_single_task_chapter6(args: argparse.Namespace) -> int:
     """Run the Chapter 6 single-task orchestrator."""
 
     return run(build_run_single_task_chapter6_cmd(args))
+
+
+def cmd_plan_capabilities(args: argparse.Namespace) -> int:
+    """Run the post-Chapter-5 Capability planning stage machine."""
+    return run(build_plan_capabilities_cmd(args))
+
+
+def cmd_plan_mvg(args: argparse.Namespace) -> int:
+    """Run the independent post-Capability MVG planning stage machine."""
+    return run(build_plan_mvg_cmd(args))
 
 
 def cmd_run_chapter7_ui_wiring(args: argparse.Namespace) -> int:
@@ -779,6 +791,57 @@ def build_parser() -> argparse.ArgumentParser:
     p_ch6.add_argument("--milestone-regression-summary", default="")
     p_ch6.add_argument("--self-check", action="store_true")
     p_ch6.set_defaults(func=cmd_run_single_task_chapter6)
+
+    p_cap = sub.add_parser(
+        "plan-capabilities",
+        help="run post-Chapter-5 Capability prepare/generate/review/alignment/apply stages",
+    )
+    p_cap.add_argument("--stage", required=True, choices=[
+        "prepare", "generate", "review", "preview-alignment",
+        "apply", "validate-candidate", "status",
+    ])
+    p_cap.add_argument("--repo-root", default=".")
+    p_cap.add_argument("--run-id", required=True)
+    p_cap.add_argument("--task-id", action="append", default=[])
+    p_cap.add_argument("--allow-unready-draft", action="store_true")
+    p_cap.add_argument("--source-manifest", default="logs/ci/task-generation/source-manifest.v1.json")
+    p_cap.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
+    p_cap.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
+    p_cap.add_argument("--model-batch-char-budget", type=int, default=160000)
+    p_cap.add_argument("--candidate-retry-limit", type=int, default=1)
+    p_cap.add_argument("--review-retry-limit", type=int, default=1)
+    p_cap.add_argument("--candidate-budget-sec", type=int, default=1800)
+    p_cap.add_argument("--total-budget-sec", type=int, default=7200)
+    p_cap.add_argument("--request-limit", type=int, default=50)
+    p_cap.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")
+    p_cap.add_argument("--timeout-sec", type=int, default=1800)
+    p_cap.add_argument("--alignment-override", default="")
+    p_cap.add_argument("--candidate", default="")
+    p_cap.add_argument("--confirm", action="store_true")
+    p_cap.set_defaults(func=cmd_plan_capabilities)
+
+    p_mvg_plan = sub.add_parser(
+        "plan-mvg",
+        help="run independent MVG planning from an explicit Capability version",
+    )
+    p_mvg_plan.add_argument(
+        "--stage",
+        required=True,
+        choices=["prepare", "generate", "review", "validate", "apply", "rebind-handoff", "status"],
+    )
+    p_mvg_plan.add_argument("--repo-root", default=".")
+    p_mvg_plan.add_argument("--run-id", required=True)
+    p_mvg_plan.add_argument("--capabilities", default="")
+    p_mvg_plan.add_argument("--manifest", default="")
+    p_mvg_plan.add_argument("--task-id", action="append", default=[])
+    p_mvg_plan.add_argument("--allow-unready-draft", action="store_true")
+    p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)
+    p_mvg_plan.add_argument("--llm-backend", default="codex-cli")
+    p_mvg_plan.add_argument("--runner", default="scripts/python/openai_isolated_model_runner.py")
+    p_mvg_plan.add_argument("--confirm", action="store_true")
+    p_mvg_plan.add_argument("--change-plan", default="")
+    p_mvg_plan.add_argument("--handoff-out", default="")
+    p_mvg_plan.set_defaults(func=cmd_plan_mvg)
 
 
 

@@ -1,9 +1,10 @@
-"""Regression checks for the current-stage Taskmaster identity freeze."""
+"""Regression checks for configured reconciliation identity protection."""
 
 from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,7 +13,6 @@ PYTHON = ROOT / "scripts/python"
 if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
-import build_gdd_from_task_baseline as gdd
 from _knowledge_catalog_builder import _excluded
 from chapter3_task_scope import load_scope, validate_candidate_operations, validate_master
 from reconcile_frozen_task_candidates import reconcile
@@ -24,32 +24,24 @@ from validate_semantic_conservation import closure_checks
 
 class FrozenTaskScopeTests(unittest.TestCase):
     def test_master_contains_exactly_original_task_ids(self) -> None:
-        scope = load_scope(ROOT)
-        self.assertIsNotNone(scope)
-        self.assertEqual(set(range(1, 134)), validate_master(ROOT, scope))
-
-    def test_master_has_no_pending_tasks_after_status_reconciliation(self) -> None:
-        rows = json.loads((ROOT / ".taskmaster/tasks/tasks.json").read_text(encoding="utf-8"))["master"]["tasks"]
-        self.assertEqual([], [row["id"] for row in rows if row.get("status") == "pending"])
-        self.assertEqual(133, len(rows))
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            scope = {"master_path": "tasks.json", "allowed_numeric_task_ids": [2, 8], "expected_master_task_count": 2}
+            (root / "tasks.json").write_text(json.dumps({"master": {"tasks": [{"id": 2}, {"id": 8}]}}), encoding="utf-8")
+            self.assertEqual({2, 8}, validate_master(root, scope))
+            (root / "tasks.json").write_text(json.dumps({"master": {"tasks": [{"id": 2}, {"id": 9}]}}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "differ"):
+                validate_master(root, scope)
 
     def test_create_operation_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "rejects new task"):
-            validate_candidate_operations([{"id": "INT-0134", "action": "create"}], set(range(1, 134)))
+            validate_candidate_operations([{"id": "INT-0010", "action": "create"}], {2, 8})
 
-    def test_gdd_matches_task_triplet(self) -> None:
-        path = ROOT / gdd.OUTPUT
-        self.assertEqual(gdd.render(ROOT), path.read_text(encoding="utf-8"))
-
-    def test_reconciliation_reuses_only_active_master_ids(self) -> None:
-        result = reconcile(ROOT, ROOT / "docs/planning/semantic-topology")
-        candidates = result["candidates"]
-        self.assertEqual(127, len({row["taskmaster_id"] for row in candidates}))
-        self.assertTrue(all(row["change_action"] == "update" for row in candidates))
-        self.assertFalse({117, 118, 119, 120, 121, 122} & {row["taskmaster_id"] for row in candidates})
-        self.assertTrue(all(set(row["field_updates"]) == {
-            "semantic_refs", "requirement_ids", "source_refs", "complexity_score", "capability_refs"
-        } for row in candidates))
+    def test_historical_reconciliation_cannot_run_as_normal_add(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with self.assertRaisesRegex(ValueError, "scope is required"):
+                reconcile(root)
 
     def test_cancelled_candidate_is_not_a_semantic_sink(self) -> None:
         candidates = {
@@ -86,7 +78,6 @@ class FrozenTaskScopeTests(unittest.TestCase):
             "docs/gdd/ui-gdd-flow.md",
         }
         self.assertTrue(historical.issubset({row["path"] for row in source_set["retirements"]}))
-        self.assertTrue(all((ROOT / path).is_file() for path in historical))
         exclusions = json.loads((ROOT / "knowledge/policies/source-exclusions.v1.json").read_text(encoding="utf-8"))
         self.assertTrue(all(_excluded(path, exclusions) for path in historical))
         self.assertFalse(_excluded(current, exclusions))
@@ -100,8 +91,13 @@ class FrozenTaskScopeTests(unittest.TestCase):
             )
 
     def test_chapter7_cannot_create_tasks_under_frozen_scope(self) -> None:
-        with self.assertRaisesRegex(SystemExit, "rejects Chapter 7 task creation"):
-            run_chapter7(["--repo-root", str(ROOT), "--create-tasks", "--self-check"])
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            config = root / "docs/workflows/chapter3-task-scope.json"
+            config.parent.mkdir(parents=True)
+            config.write_text(json.dumps({"schema_version": "chapter3.task-scope.v1", "mode": "reconcile-existing-only"}), encoding="utf-8")
+            with self.assertRaisesRegex(SystemExit, "rejects Chapter 7 task creation"):
+                run_chapter7(["--repo-root", str(root), "--create-tasks", "--self-check"])
 
 
 if __name__ == "__main__":

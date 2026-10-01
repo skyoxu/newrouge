@@ -223,9 +223,23 @@ Choose one route:
 
 #### 3.0a Frozen Existing-Task Reconciliation
 
-This repository is currently in frozen reconciliation mode. The authoritative task scope is exactly T1-T133; Chapter 3 must repair mappings and derived structure without creating new Taskmaster IDs. The current Chapter 3 GDD is the task-derived baseline at `docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`; it is the only active GDD source for this route. Use `docs/workflows/chapter3-task-scope.json` and the frozen reconciliation scripts (`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py`, and `compile_task_triplet.py`) as the guarded entry path. Chapter 7 task creation is likewise rejected while this scope is present, and its new UI board defaults to `docs/planning/chapter7/ui-wiring-board.md`.
+Normal runs use `init` or `add`. A scope at `docs/workflows/chapter3-task-scope.json` is an explicit reconciliation restriction: repair existing identities without creating tasks. It is not a milestone task-count ceiling.
 
-Frozen mode is a repository configuration, not a temporary run flag. Before consuming a new milestone GDD, explicitly update the task-scope file, active Chapter 3 source set, Knowledge GDD paths, and Chapter 7 policy; only then may the workflow switch back to normal task creation.
+For an explicitly temporary reconciliation, finish mapping repair and reviewed task diffs, promote the validated topology, then complete closeout in the same repair task:
+
+```powershell
+py -3 scripts/python/chapter3_closeout.py begin --run-id <repair-run-id> --temporary
+py -3 scripts/python/chapter3_closeout.py preview
+py -3 scripts/python/chapter3_closeout.py resume
+```
+
+The tracked `docs/workflows/chapter3-closeout.json` points to a durable phase/evidence record. After scope removal, incomplete closeout blocks direct and wrapped task writers. Resume reuses successful stages, validates current task triplet/topology and tests ordinary creation in isolated repositories. Input drift stops closeout without overwriting edits. Permanent scopes are never automatically released.
+
+Successful closeout removes the temporary scope, preserves active/retired sources and restores normal `add` and Chapter 7 creation. It does not register a new GDD, regenerate Capability/MVG, refresh task readiness or publish Knowledge. Register the next GDD through the normal cumulative source declaration. Chapter 7 output is configured independently by `chapter7-profile.json.ui_document_path`; retired source paths stay read-only.
+
+`review_frozen_task_projection.py`, `reconcile_frozen_task_candidates.py` and `build_gdd_from_task_baseline.py` are explicit historical replay/repair tools for the old task-derived baseline, never the default new-GDD route. See [closeout contract](docs/workflows/chapter3-closeout.md). Portability disposal and AC evidence are tracked in [workflow portability acceptance](docs/workflows/workflow-portability-acceptance.md).
+
+Cross-project portability acceptance and the consumer migration matrix are tracked in [workflow portability acceptance](docs/workflows/workflow-portability-acceptance.md). The matrix is evidence/indexing only; it does not create a second task, readiness, Capability, or MVG authority.
 
 在读取/解析本次来源前，先按 3.9 记录 run-start Attempt（交互式 `refresh-knowledge --begin-run` 或脚本化 `run-chapter3-guarded`）；3.9 的标题表示结束刷新位置，不表示把开始记录推迟到最后。
 
@@ -731,6 +745,49 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs
 ```powershell
 py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs/ci/<date>/sc-llm-obligations-jitter-batch5x3-raw.json --require-judgable --require-freeze-pass --approve-promote
 ```
+
+### 5.3 Post-Chapter-5 Capability Planning
+
+Capability is generated only after the explicitly affected Chapter 5 task scope is current and closable. It is a derived navigation/grouping layer, not a Taskmaster lifecycle.
+
+Stable entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py plan-capabilities --stage prepare --run-id <id> --task-id <task-id>
+```
+
+Required sequence:
+
+1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and current Chapter 5 readiness. The supplied task IDs must include every task sink of the ledger source round; legitimate non-task sinks are checked separately.
+2. `generate` requires an isolation runner that proves workspace-only reads, a fresh model session per invocation and no outside-workspace access. It produces exactly three same-model candidates. Without that boundary, formal generation fails closed.
+3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order.
+4. `preview-alignment` reuses historical Capability IDs only for exact Requirement-membership matches. Changed membership is unresolved until explicit reviewed alignment.
+5. `apply --confirm` journals the full derived projection and capability-only Chapter 5 rebind before writing. Re-running this stage recovers interrupted writes without replacing later user edits. A pending transaction blocks downstream readiness. Task IDs/status, Acceptance, Requirement text and Task intent identity remain protected.
+
+Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
+
+Default isolation runner: `scripts/python/openai_isolated_model_runner.py`; it requires `OPENAI_API_KEY` and sends only prepared workspace text with no model tools.
+
+### 5.4 Independent MVG Planning
+
+MVG Planning is a separate lifecycle. It consumes one explicit Capability file/version and never invokes Capability generation.
+
+Stable entrypoint:
+
+```powershell
+py -3 scripts/python/dev_cli.py plan-mvg --stage prepare --run-id <id> --capabilities docs/planning/semantic-topology/capabilities.v1.json --manifest docs/testing/mvg/<manifest>.json --task-id <task-id>
+```
+
+Required sequence:
+
+1. `prepare` binds the exact Capability hash plus source/Requirement/task/Acceptance/contract evidence and the explicit Chapter 5-ready task scope.
+2. `generate` produces a cumulative player-journey MVG proposal. Flows may cross many Capabilities; Capability is not a one-flow-per-node template.
+3. `review --runner <isolated-runner>` independently checks semantic conservation, Requirement verification accounting, player journeys, handoffs and evidence truthfulness in a fresh no-tools session.
+4. `validate` requires that review plus complete Requirement accounting and entrypoints for every flow task. Deltas bind the prepared manifest copy; live source/task/contract/test/readiness drift blocks formal apply.
+5. `apply --confirm` creates the initial manifest or applies the reviewed delta through the existing anti-weakening contract. The durable trace blocks both Chapter 6 entrypoints until final obligations are rebound.
+6. `rebind-handoff --task-id <id>` resolves ordinary applicability and binds current readiness without fabricating a milestone handoff. An actual milestone owner must also supply `--change-plan <path> --handoff-out <path>`; its handoff binds the applied manifest hash. Planning never claims runtime verification.
+
+Owning Skill: `.agents/skills/plan-mvg/SKILL.md`. Capability/MVG production acceptance and AC01-AC26 evidence are tracked in [Capability and MVG planning acceptance](docs/workflows/capability-mvg-planning-acceptance.md).
 
 ## 6. Phase 4: Single Task Daily Loop
 

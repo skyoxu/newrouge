@@ -18,7 +18,6 @@ Operate Chapter 3 idempotently for a business repository. Preserve the existing 
 - Do not use one prompt/context window as proof that a large GDD was read completely.
 - Do not reopen engine, architecture, or technology-stack selection.
 - Capability is optional grouping only and has no Taskmaster status.
-- When the active source is the frozen task-baseline GDD (`docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md`), the reviewed semantic projection must use model semantic analysis of each GDD task title/design scope to create Capability nodes and attach each active Requirement to its Capability. Persist the selected, source-hash-bound review in `docs/planning/semantic-topology/capability-review.v1.json` as a derived projection for deterministic replay; task-number ranges alone are not semantic analysis. Preserve justified multiple memberships. Source drift requires renewed review, not a silent regrouping. This does not authorize new Tasks or change frozen Taskmaster identity/status.
 - Chapter 3 dependencies are provisional skeletons; Chapter 5 must validate or correct them.
 - Do not rerun expensive steps before reading existing recovery artifacts.
 
@@ -32,7 +31,11 @@ Every source block must be accounted for. Every active delivery Requirement must
 
 ### Frozen existing-task mode
 
-When `docs/workflows/chapter3-task-scope.json` is present with `mode: reconcile-existing-only`, the repository is intentionally frozen to its declared numeric task range. Chapter 3 repairs the existing triplet only: the task-derived GDD is the active design baseline, candidates must target existing view rows, and `create` operations are blocked. Use the repository's frozen projection/reconciliation entry points and committed `docs/planning/semantic-topology/*.v1.json` artifacts for clean-checkout tests; do not require `logs/**` run output as test input. Chapter 7 task creation remains blocked until the scope file and active source/Knowledge configuration are explicitly updated for the next milestone.
+A configured `reconcile-existing-only` scope restricts repair to its explicit numeric identity set; creation is rejected in Chapter 3 and direct/wrapped Chapter 7 entrypoints. It does not require a task-derived GDD or a specific batch count. Original declared sources remain semantic authority.
+
+For authorized temporary repair, verify the reviewed mapping changes and promote current topology, then run `chapter3_closeout.py begin --run-id <repair-run-id> --temporary`, inspect `preview`, and run `resume` in the same task. The scope is removed only after actual triplet/topology checks pass. Durable incomplete-closeout evidence blocks creation until isolated recovery checks pass. On drift or failure, preserve the record and edits and report the exact stage; resume without deleting the pointer. An explicitly permanent scope remains frozen.
+
+Read the closeout contract through the repository root path `docs/workflows/chapter3-closeout.md`. Ordinary `add` does not call historical frozen projection/reconciliation scripts. Preserve cumulative source declarations and retirements; closeout does not implicitly add GDDs or publish Knowledge.
 
 ## Required Reading
 
@@ -49,7 +52,6 @@ When `docs/workflows/chapter3-task-scope.json` is present with `mode: reconcile-
 4. Prepare deterministic semantic batches with `py -3 scripts/python/project_semantics_from_sources.py prepare`. Batches are bounded by both block count and `--max-chars-per-batch`; a single oversized Source Block fails instead of being truncated. The batch index must cover every Source Block exactly once as primary ownership.
    - In `add` mode, a prior candidate may be reused only for ledger `unchanged` blocks whose `content_hash` still matches and whose prior result was fully reviewed. Cross-block atoms are reusable only when every referenced Source Block is unchanged. Changed/added blocks remain `review_required`; removed blocks and stale capabilities are not carried forward.
 5. The approved Chapter 3 model/Skill reads **every batch file** and fills `semantic-projection.candidate.json`. The template intentionally starts with blank disposition, `delivery_potential=null`, and `output_accounted_count=0`; these are not defaults the model may leave untouched. For every owned Source Block, explicitly set delivery potential and emit one or more semantic atoms or exactly one explicit disposition, then reconcile the batch output count. Never delete a `block_result` to make a batch pass.
-   - For the frozen task-baseline GDD, semantically review the task title and design-scope fields, write `candidate.capabilities`, and preserve the Requirement-to-Capability mapping through compile, normalization, and topology refresh. Do not invent capability nodes from retired sources or create Tasks as a side effect. The frozen projection producer consumes the reviewed mapping rather than hardcoded Capability groups. For a Capability-only rerun, preserve Requirement statements and Task state, replace obsolete Capability edges, verify bidirectional refs, and refresh affected topology artifact hashes; do not widen the run to unrelated generation or publication.
 6. Compile Projection A with `py -3 scripts/python/project_semantics_from_sources.py compile`.
 7. Run `py -3 scripts/python/validate_semantic_conservation.py --stage projection`. Stop on unaccounted source blocks, source hash drift, invalid semantic refs, or unresolved delivery-potential blocks without an explicit owner decision and rationale.
 8. Normalize coarse task intents from validated semantics with `py -3 scripts/python/normalize_task_intents.py --mode <init|add>`, then run `audit_task_intents_quality.py`.

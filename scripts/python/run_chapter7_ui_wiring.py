@@ -12,6 +12,7 @@ from typing import Any
 
 from _chapter7_profile import bucket_names, bucket_profile, load_chapter7_profile, surface_aliases
 from chapter3_task_scope import load_scope
+from chapter7_output_policy import output_path, validate_output
 
 
 def _today() -> str:
@@ -890,12 +891,9 @@ def main(argv: list[str] | None = None) -> int:
     if load_scope(repo_root) is not None and args.create_tasks:
         raise SystemExit('Frozen task scope rejects Chapter 7 task creation')
     if not args.ui_gdd_flow_path:
-        args.ui_gdd_flow_path = (
-            'docs/planning/chapter7/ui-wiring-board.md'
-            if load_scope(repo_root) is not None else 'docs/gdd/ui-gdd-flow.md'
-        )
-    if load_scope(repo_root) is not None and Path(args.ui_gdd_flow_path).as_posix() == 'docs/gdd/ui-gdd-flow.md' and args.write_doc:
-        raise SystemExit('The retired Chapter 7 GDD reference is read-only; select a planning output path')
+        args.ui_gdd_flow_path = output_path(repo_root)
+    if args.write_doc:
+        validate_output(repo_root, Path(args.ui_gdd_flow_path))
     if args.self_check:
         planned_steps = ['collect']
         if args.write_doc:

@@ -627,3 +627,65 @@ def build_serve_project_health_cmd(args) -> list[str]:
     if port > 0:
         cmd += ["--port", str(port)]
     return cmd
+
+
+def build_plan_capabilities_cmd(args) -> list[str]:
+    cmd = ["py", "-3", "scripts/python/plan_capabilities.py", "--repo-root", args.repo_root, args.stage]
+    if args.run_id:
+        cmd += ["--run-id", args.run_id]
+    if args.stage == "prepare":
+        for task_id in args.task_id:
+            cmd += ["--task-id", task_id]
+        if args.allow_unready_draft:
+            cmd.append("--allow-unready-draft")
+        cmd += ["--source-manifest", args.source_manifest, "--ledger", args.ledger, "--semantics", args.semantics]
+        cmd += [
+            "--model-batch-char-budget", str(args.model_batch_char_budget),
+            "--candidate-retry-limit", str(args.candidate_retry_limit),
+            "--review-retry-limit", str(args.review_retry_limit),
+            "--candidate-budget-sec", str(args.candidate_budget_sec),
+            "--total-budget-sec", str(args.total_budget_sec),
+            "--request-limit", str(args.request_limit),
+        ]
+    elif args.stage in {"generate", "review"}:
+        if args.runner:
+            cmd += ["--runner", args.runner]
+        cmd += ["--timeout-sec", str(args.timeout_sec)]
+    elif args.stage == "apply":
+        if args.alignment_override:
+            cmd += ["--alignment-override", args.alignment_override]
+        if args.confirm:
+            cmd.append("--confirm")
+    elif args.stage == "validate-candidate" and args.candidate:
+        cmd += ["--candidate", args.candidate]
+    return cmd
+
+
+def build_plan_mvg_cmd(args) -> list[str]:
+    cmd = ["py", "-3", "scripts/python/plan_mvg.py", "--repo-root", args.repo_root, args.stage]
+    if args.run_id:
+        cmd += ["--run-id", args.run_id]
+    if args.stage == "prepare":
+        if args.capabilities:
+            cmd += ["--capabilities", args.capabilities]
+        if args.manifest:
+            cmd += ["--manifest", args.manifest]
+        for task_id in args.task_id:
+            cmd += ["--task-id", task_id]
+        if args.allow_unready_draft:
+            cmd.append("--allow-unready-draft")
+    elif args.stage == "generate":
+        cmd += ["--timeout-sec", str(args.timeout_sec), "--llm-backend", args.llm_backend]
+    elif args.stage == "review":
+        cmd += ["--timeout-sec", str(args.timeout_sec), "--runner", args.runner]
+    elif args.stage == "apply" and args.confirm:
+        cmd.append("--confirm")
+    elif args.stage == "rebind-handoff":
+        if not args.task_id or len(args.task_id) != 1:
+            raise ValueError("plan-mvg rebind-handoff requires exactly one --task-id")
+        if bool(args.change_plan) != bool(args.handoff_out):
+            raise ValueError("milestone rebind requires both --change-plan and --handoff-out")
+        cmd += ["--task-id", args.task_id[0]]
+        if args.change_plan:
+            cmd += ["--change-plan", args.change_plan, "--out", args.handoff_out]
+    return cmd

@@ -331,6 +331,10 @@ def build_task_handoff(
         "source_identity": dict(plan.get("source_identity") or {}),
         "change_plan_path": plan_path.relative_to(root).as_posix(),
         "change_plan_sha256": _file_sha(plan_path),
+        "baseline_manifest_path": plan.get("baseline_manifest"),
+        "baseline_manifest_sha256": (
+            _file_sha(root / str(plan["baseline_manifest"])) if plan.get("baseline_manifest") else None
+        ),
         "chapter5_readiness_path": readiness_path.relative_to(root).as_posix(),
         "chapter5_readiness_sha256": _file_sha(readiness_path),
         "chapter5_input_fingerprint": readiness.get("input_fingerprint"),
