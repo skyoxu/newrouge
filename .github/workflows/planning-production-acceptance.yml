@@ -37,7 +37,7 @@ jobs:
       COPILOT_GITHUB_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-5' }}
-      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || 'auto' }}
+      SC_COPILOT_MODEL: ${{ vars.SC_PLANNING_COPILOT_MODEL || 'gpt-6-luna' }}
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
     steps:
