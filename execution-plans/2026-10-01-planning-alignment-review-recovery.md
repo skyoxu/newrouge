@@ -1,17 +1,17 @@
 # Capability alignment and review publication recovery
 
 - Title: planning-alignment-review-recovery
-- Status: Completed
+- Status: Implemented; final CI tracked in PR #255
 - Branch: fix/planning-alignment-review-recovery
-- Git Head: a67a048e88599268fb181a0422785114d02c5a14
+- Git Head: 75eca5cecd0419aa69ba33a347c41f04eb500ed9 (parent of final identity-copy repair)
 - Goal: Repair R01 (P1 ambiguous stable identity) and R02 (P2 interrupted review publication) from the merged-main three-document re-audit.
 - Scope: Derived Capability alignment/preflight and Capability/MVG review publication; isolated acceptance fixture metadata and owning instructions.
-- Current step: Complete; executable changes pass all four workflows at the recorded Git Head. This closeout changes evidence documentation only.
+- Current step: Validate the final identity-copy prompt repair; preserve every prior production result and record final CI in PR #255 without another documentation-only synchronization.
 - Last completed step: Verified 30 new/274 core regressions, Windows hard gates and fresh real-model approval plus retained-result consumer replay.
 - Stop-loss: Preserve business/source/Taskmaster authority, blocked verdicts and consumed attempts; do not reset budgets or weaken gates.
-- Next action: Review PR #255 for merge; no implementation repair remains.
+- Next action: Verify final-head workflows before review for merge.
 - Recovery command: `py -3 -m unittest scripts.python.tests.test_planning_review_recovery -v`
-- Open questions: None; final platform and real-model validation are complete at the recorded executable revision.
+- Open questions: Final-head actual-model validation is required after the identity-copy repair.
 - Exit criteria: Both findings pass negative and positive recovery paths, all three-document regressions pass, Windows and real-model CI pass.
 - Related ADRs: n/a (implements existing identity and recovery contracts)
 - Related decision logs: n/a (no authority or budget policy change)
@@ -33,7 +33,7 @@ Baseline: main squash merge #253, tree d51ed81447ef411a1099f686fe1358cf05177908.
 
 Responsibility split: new alignment and review-publication helpers remain below 400 lines and reduce existing oversized planners. The fixture correction uses the production topology-manifest schema and identity fields; it changes no fictional contract, reviewed obligation or reviewer rule.
 
-Local validation: 269 core tests pass. Both semantic-topology validations pass for 139 blocks and 127 active delivery Requirements with zero issues. The unified local harness initially stops before any gate because Linux has no Windows `py` launcher; an external scratch launcher then executes the real Python checks. Existing Windows-only unit behavior (`cmd`, `ctypes.windll`, Windows path/rollback) and historical absolute Windows recovery-evidence paths block the Linux hard bundle. No gate/test is disabled. The new execution plan validates independently. The existing Windows workflows provide platform/.NET/Godot evidence; the production workflow provides fresh actual-model evidence.
+Local validation: 274 core tests pass. Both semantic-topology validations pass for 139 blocks and 127 active delivery Requirements with zero issues. The unified local harness initially stops before any gate because Linux has no Windows `py` launcher; an external scratch launcher then executes the real Python checks. Existing Windows-only unit behavior (`cmd`, `ctypes.windll`, Windows path/rollback) and historical absolute Windows recovery-evidence paths block the Linux hard bundle. No gate/test is disabled. The new execution plan validates independently. The existing Windows workflows provide platform/.NET/Godot evidence; the production workflow provides fresh actual-model evidence.
 
 Initial implementation c1c67678 passed real production, MVG integration and Windows smoke. Supplementary regressions then found the adjacent settled-attempt/pre-publication window: Capability and MVG both called another reviewer despite retaining the completed output. `completed-attempt-red.log` preserves those failures. Recovery now requires the original output hash and execution metadata, reuses the same receipt/result/corrections, and preserves the already settled budget. Final validation/CI must use the strengthened implementation rather than treating the first pass as final evidence.
 
@@ -44,3 +44,5 @@ Run 36846454889 at afb78d86 preserves the required source roles but correctly ex
 Final implementation a67a048e: all four workflows PASS. Windows Quality runs 968 Python tests with zero failures and hard bundle 0/25 failures; Smoke and MVG Integration PASS. Production run 36847620516 passes all 103 deterministic smoke tests and the actual model chain. Artifact 11154531435, digest sha256:02bcd1ebb81a40510f7b94e49b1101c76b4cededb17f4e370450e39b13caad73. Three fresh valid Capability candidates and their anonymous reviewer use actual gpt-6-luna; candidate-1 is selected. Both fixture Tasks 7/42 remain Chapter 5 READY after apply. MVG generation uses two bounded attempts; a separate fresh gpt-6-luna semantic reviewer approves in one invocation. Final validation has zero errors/gaps and formal_applicable=true. Manifest application/runtime verification remain outside this planning acceptance (both false).
 
 Downloaded Capability review/publication replay succeeds without a model call or budget change; MVG review identity/accounting and completed publication replay pass with no writes. This is a retained-consumer replay, not a full freshness replay of the original CI workspace, whose original authority files are not all included in the artifact. Both blocked production artifacts remain preserved; no reviewing run or budget was reset. Final local core suite passes 274 tests. This closeout edits only this plan and the owning acceptance record; executable code remains at a67a048e.
+
+Documentation-only closeout 75eca5ce triggers a fresh chain because pull-request path filters consider the whole PR diff. Run 36849699351 correctly blocks the independent reviewer's mistyped proposal hash: sha256:c5b342... instead of the prompt's sha256:c5c2b342.... Artifact 11154659573 (digest sha256:973041ef538f25ceb8a9b18c9286f94fe5e9b1b6e63abf119c9a979138bfd022) preserves the approved semantic content, invalid identity and single consumed review attempt. The prompt now explicitly requires verbatim copying of both host-supplied identities. Two negative regressions cover analysis/proposal identity mistakes at publication and completed-attempt boundaries, preserving the raw invalid report, blocking formal approval and making no repeat invocation. No identity normalization, verdict correction, validator change or budget reset is introduced. Final CI evidence is maintained in the PR and delivery report to avoid triggering another fresh production chain solely to record its result.

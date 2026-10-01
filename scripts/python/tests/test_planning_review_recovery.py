@@ -206,7 +206,7 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             cap.apply(self.root, run_id="repair", alignment_override=None, confirm=True)
 
     def _mvg_publication(self, boundary, *, blocked=False, malformed=False, draft=False,
-                         checkpoint_status=None, revise_pending=False, completed_attempt=False):
+                         checkpoint_status=None, revise_pending=False, completed_attempt=False, identity_field=None):
         prepared_mvg(self.root)
         run = self.root / "logs/ci/mvg-planning/repair"
         report = load_json(run / "semantic-review.json")
@@ -221,11 +221,20 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             proposal["planning_status"] = "draft"
             atomic_json(run / "proposal.json", proposal)
             report["proposal_sha256"] = canonical_sha(proposal)
+        if identity_field:
+            report[identity_field] = report[identity_field].replace("sha256:", "sha256:missing-", 1)
+        invalid = blocked or malformed or bool(identity_field)
         info = {"schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture-model",
             "fresh_session_per_invocation": True, "filesystem_scope": "workspace_only",
             "can_read_outside_workspace": False, "model_tools": []}
         writer = mvg.atomic_json
         def invoke(*args, **kwargs):
+            if identity_field:
+                prompt = kwargs["prompt_path"].read_text(encoding="utf-8")
+                self.assertIn("Copy both identity values verbatim", prompt)
+                self.assertIn("do not compute, shorten, or edit", prompt)
+                self.assertIn(load_json(run / "run.json")["analysis_identity_sha256"], prompt)
+                self.assertIn(canonical_sha(load_json(run / "proposal.json")), prompt)
             atomic_json(kwargs["output_path"], report)
             return {"model": "fixture-model", "model_tools": []}
         def interrupt(path, payload):
@@ -249,7 +258,7 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
                 self.assertEqual(1, model.call_count)
                 self.assertEqual(before, load_json(run / "run.json")["semantic_review_attempts"])
                 return
-            if blocked or malformed:
+            if invalid:
                 with self.assertRaisesRegex(ValueError, "blocked"):
                     mvg.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
             else:
@@ -258,7 +267,8 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             self.assertEqual(1, model.call_count)
             self.assertEqual(before, load_json(run / "run.json")["semantic_review_attempts"])
             self.assertTrue((run / "semantic-review-execution.json").is_file())
-            self.assertEqual("review-blocked" if blocked or malformed else "reviewed", load_json(run / "run.json")["phase"])
+            self.assertEqual(report, load_json(run / "semantic-review.json"))
+            self.assertEqual("review-blocked" if invalid else "reviewed", load_json(run / "run.json")["phase"])
         return run, info, report
 
     def test_mvg_final_report_loss_recovers_without_model(self):
@@ -303,6 +313,12 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
 
     def test_mvg_invalid_semantic_accounting_cannot_trigger_approval_retry(self):
         self._mvg_publication("semantic-review.json", malformed=True)
+
+    def test_mvg_mistyped_proposal_identity_stays_blocked_without_retry(self):
+        self._mvg_publication("semantic-review.json", identity_field="proposal_sha256")
+
+    def test_mvg_mistyped_analysis_identity_stays_blocked_without_retry(self):
+        self._mvg_publication("run.json", completed_attempt=True, identity_field="analysis_identity_sha256")
 
     def test_mvg_draft_review_recovers_without_regeneration_or_formal_apply(self):
         self._mvg_publication("semantic-review.json", draft=True)

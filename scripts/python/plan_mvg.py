@@ -657,6 +657,8 @@ Do not require their implementation or claim runtime_verified. Do not approve in
 mechanical one-flow-per-Capability grouping, unsupported deferral or baseline weakening.
 Return JSON only: schema_version="newrouge.mvg-semantic-review.v1",
 analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256="{canonical_sha(proposal)}",
+Copy both identity values verbatim from this prompt; do not compute, shorten, or edit their sha256 strings.
+They are fixed host-supplied input identities, not semantic judgments. Check their exact characters before returning JSON.
 verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
 requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"..."}}]
 with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
