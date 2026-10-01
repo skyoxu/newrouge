@@ -8,6 +8,7 @@
 - Scope: Local authenticated planning endpoints, committed main execution input, page controls and bounded result feedback.
 - Current step: Complete; publish the reviewed branch and PR.
 - Last completed step: Implemented both buttons and verified 243 related regressions plus encoding and workflow gates.
+- Stop-loss: Fix deterministic gate failures before rerunning the full Windows pipeline; preserve planning attempts and do not repeat model generation while source identity or Chapter 3/5 evidence is invalid.
 - Next action: Merge the reviewed PR, update local main, and restart the Project Health service.
 - Recovery command: py -3 -m unittest scripts.python.tests.test_project_health_planning -v
 - Open questions: None; local generated views retain source main revision and explicit unpublished planning provenance.

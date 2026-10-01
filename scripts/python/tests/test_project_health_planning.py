@@ -51,6 +51,16 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.assertFalse((checkout / 'docs/gdd/untracked.md').exists())
         validate_checkout(self.root, checkout, self.revision)
 
+    def test_evidence_hydration_accepts_relative_repository_root(self):
+        checkout = self.root / 'logs/ci/test-checkout'
+        with contextlib.chdir(self.temp.name):
+            prepare_checkout(Path('repo'), checkout, self.revision)
+            validate_checkout(Path('repo'), checkout, self.revision)
+        for family in ('readiness', 'reconciliation'):
+            evidence = Path(f'logs/ci/chapter5/{family}/task-7.json')
+            self.assertTrue((checkout / evidence).is_file())
+            self.assertEqual((self.root / evidence).read_bytes(), (checkout / evidence).read_bytes())
+
     def test_no_git_or_main_has_no_snapshot_fallback(self):
         with self.assertRaisesRegex(ValueError, 'committed main'):
             main_revision(Path(self.temp.name))

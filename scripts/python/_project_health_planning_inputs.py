@@ -40,6 +40,8 @@ def require_main(root: Path, revision: str) -> None:
 
 def hydrate_evidence(source: Path, checkout: Path) -> None:
     """Evidence is a gate, never a replacement for committed design/task inputs."""
+    # repo_path resolves directories, including Windows short-name aliases.
+    source = source.resolve()
     for name in ('source-blocks.v1.json', 'semantic-requirements.v1.json'):
         evidence = repo_path(source, f'{SOURCE_ROOT}/{name}')
         committed = repo_path(checkout, f'{TOPOLOGY_ROOT}/{name}')
