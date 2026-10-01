@@ -70,10 +70,10 @@ def _base_files(root: Path) -> None:
         """# Harbor Relay
 
 ## Launch relay
-When the player presses Launch, the harbor console validates the selected relay route and starts one drone transfer. The launch surface must show the accepted route or a visible rejection reason.
+When the player presses Launch, the harbor console validates the selected relay route and starts one drone transfer. The selected route supplies RouteId and CargoUnits. For each accepted transfer in this scoped journey, the launcher constructs RelayHandoff from those values with RetryAllowed=true because recovery is required. A rejected route creates no transfer or handoff. The launch surface must show the accepted route or a visible rejection reason.
 
 ## Resolve delivery
-After a valid launch, the relay service hands the transfer to the score terminal through the RelayHandoff contract. The terminal must show delivered cargo and a retryable failure state when the handoff cannot complete.
+After a valid launch, the relay service hands the transfer to the score terminal through the RelayHandoff contract. The relay service reports a completion or failure signal separately from the request data; the terminal consumes that signal with the original request. Completion displays the request's CargoUnits as delivered cargo. Failure displays a retryable failure state and permits retry of the same request. RetryAllowed=false is outside the accepted-transfer scope of this journey and must not weaken its required retryable failure outcome. The result/failure entrypoint remains an owned implementation obligation rather than an existing member of RelayHandoff.
 """,
     )
     _write_text(

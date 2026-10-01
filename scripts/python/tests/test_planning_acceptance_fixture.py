@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +13,7 @@ if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
 from planning_acceptance_fixture import build_fixture
-from chapter5_semantic_reconciliation import load_task_readiness
+from chapter5_semantic_reconciliation import load_task_readiness, DEFAULT_EXTRACTION_SNAPSHOT
 
 
 class PlanningAcceptanceFixtureTests(unittest.TestCase):
@@ -38,6 +39,28 @@ class PlanningAcceptanceFixtureTests(unittest.TestCase):
             )
             task_text = (root / ".taskmaster/tasks/tasks_gameplay.json").read_text(encoding="utf-8")
             self.assertIn('"capability_refs": []', task_text)
+
+    def test_handoff_inputs_result_and_retry_rule_reach_reviewed_task_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "harbor"
+            build_fixture(root)
+            semantics = json.loads((root / "logs/ci/task-generation/semantic-requirements.v1.json").read_text(encoding="utf-8"))
+            reqs = {r["requirement_id"]: r for r in semantics["requirements"]}
+            launch, delivery = reqs["RQ-HARBOR-001"], reqs["RQ-HARBOR-002"]
+            for field in ("RouteId", "CargoUnits", "RetryAllowed=true"):
+                self.assertIn(field, launch["statement"])
+            for obligation in ("completion or failure signal", "original request", "retryable failure", "outside the accepted-transfer scope"):
+                self.assertIn(obligation, delivery["statement"])
+            tasks = json.loads((root / ".taskmaster/tasks/tasks_gameplay.json").read_text(encoding="utf-8"))
+            snapshot = json.loads((root / DEFAULT_EXTRACTION_SNAPSHOT).read_text(encoding="utf-8"))
+            for task_id, requirement in ((7, launch), (42, delivery)):
+                task = next(t for t in tasks if str(t["taskmaster_id"]) == str(task_id))
+                self.assertIn(requirement["requirement_id"], task["semantic_refs"])
+                self.assertTrue(any(requirement["requirement_id"] in str(a) for a in task["acceptance"]))
+                self.assertTrue(any(o["statement"] == requirement["statement"] for o in snapshot["semantic_inventory"]))
+                ok, readiness, reason = load_task_readiness(root, str(task_id))
+                self.assertTrue(ok, reason)
+                self.assertTrue(readiness["closure_allowed"])
 
 
 if __name__ == "__main__":
