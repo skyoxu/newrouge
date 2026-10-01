@@ -3,7 +3,7 @@
 - Title: planning-alignment-review-recovery
 - Status: Implemented; final CI tracked in PR #255
 - Branch: fix/planning-alignment-review-recovery
-- Git Head: 75eca5cecd0419aa69ba33a347c41f04eb500ed9 (parent of final identity-copy repair)
+- Git Head: 0e531c08ce397b8fc86b108cafef4259fc16d1a2
 - Goal: Repair R01 (P1 ambiguous stable identity) and R02 (P2 interrupted review publication) from the merged-main three-document re-audit.
 - Scope: Derived Capability alignment/preflight and Capability/MVG review publication; isolated acceptance fixture metadata and owning instructions.
 - Current step: Validate the final identity-copy prompt repair; preserve every prior production result and record final CI in PR #255 without another documentation-only synchronization.
