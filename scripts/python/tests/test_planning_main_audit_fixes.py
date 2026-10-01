@@ -17,6 +17,7 @@ from _mvg_obligations import check_task_obligations
 from _mvg_manifest import manifest_sha256
 import plan_capabilities as cap
 import plan_mvg as mvg
+import _planning_skill_common as common
 
 
 def review_report(run):
@@ -112,6 +113,35 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
         self.assertEqual(2, state["budget"]["runner_invocations"])
         self.assertGreater(state["budget"]["activity_sec"], 0)
         self.assertTrue(all(a["status"] == "interrupted" for a in state["candidate_attempts"]["candidate-1"]["attempts"]))
+
+    def test_interrupted_runner_terminates_and_reaps_real_child(self):
+        runner = self.root / "sleeping-runner.py"
+        runner.write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
+        real_popen = common.subprocess.Popen
+        children = []
+        def launch(command, **kwargs):
+            proc = real_popen(command, **kwargs)
+            if command[0] != sys.executable:
+                return proc
+            children.append(proc)
+            self.addCleanup(lambda: common._terminate_process_tree(proc))
+            communicate = proc.communicate
+            calls = 0
+            def interrupt_once(*args, **kw):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    self.assertIsNone(proc.poll())
+                    raise KeyboardInterrupt("interrupt a live runner")
+                return communicate(*args, **kw)
+            proc.communicate = interrupt_once
+            return proc
+        with patch.object(common.subprocess, "Popen", side_effect=launch):
+            with self.assertRaises(KeyboardInterrupt):
+                common.run_isolated_model(runner, workspace=self.root,
+                    prompt_path=self.root / "prompt.txt", output_path=self.root / "output.json", timeout_sec=10)
+        self.assertEqual(1, len(children))
+        self.assertIsNotNone(children[0].poll())
 
     def test_process_loss_keeps_reservation_and_consumes_attempt(self):
         prepare_cap(self.root)
