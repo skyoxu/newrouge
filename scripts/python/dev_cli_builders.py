@@ -672,6 +672,8 @@ def build_plan_mvg_cmd(args) -> list[str]:
             cmd += ["--manifest", args.manifest]
         for task_id in args.task_id:
             cmd += ["--task-id", task_id]
+        for ref in getattr(args, "evidence_ref", []):
+            cmd += ["--evidence-ref", ref]
         if args.allow_unready_draft:
             cmd.append("--allow-unready-draft")
     elif args.stage == "generate":

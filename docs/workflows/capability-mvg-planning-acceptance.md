@@ -2,7 +2,7 @@
 
 Requirement: `REQ-CAPABILITY-MVG-SKILLS-001`
 
-Status: **complete**. Audit-repair code revision `5271f65ef7c906f224f39aa50e41183b50e6b4de` passes real production-model acceptance, Windows Quality, Windows Smoke and MVG Integration. The historical run below predates the audit repairs.
+Status: **complete**. The merged-main follow-up implementation `741badf84fcf8fe8bd9c664fbef8a1ff328a7b21` passes Windows Quality, Windows Smoke, MVG Integration and real production-model acceptance. PR #253 closes the one P1 and four P2 defects found against main `75346cbda0ce96ed801fe05242ef7f04e2af056c`. Historical acceptance records below remain scoped to their original revisions.
 
 This document maps the implementation to AC01-AC26 and records the controlled real-model acceptance required by the requirement. It does not claim gameplay runtime acceptance, human playtest approval, or KCP publication.
 
@@ -58,14 +58,14 @@ Repository gates for the same code revision: [Windows Quality](https://github.co
 | AC03 three-process isolation | PASS | Isolated runner contract requires workspace-only input, fresh session per invocation, no outside reads and `model_tools=[]`; real acceptance produced three valid candidates under that contract. |
 | AC04 large GDD / complete accounting | PASS | Capability input batching accounts for every Source Block and Requirement, records batch hashes, never truncates an oversized block, and requires a continuation-capable runner for multiple batches. Portability tests cover non-six dynamic batches and oversized input. |
 | AC05 candidate failure / no valid winner | PASS | Candidate generation has bounded retries and budgets; invalid candidates stay attempts only. Review supports `no_valid_winner` and never fabricates a winner. |
-| AC06 independent anonymous review | PASS | A fourth fresh runner invocation receives reproducibly shuffled aliases A/B/C, not original candidate order; one complete winner is selected, with bounded evidence-based corrections only. |
+| AC06 independent anonymous review | PASS | A fourth fresh same-actual-model invocation receives reproducibly shuffled aliases A/B/C; complete findings/comparison and resolvable source refs are required. Selected/no-winner reports and bounded corrections are identity-bound and reused without another call; corrupt evidence blocks reuse/apply. |
 | AC07 Capability apply / later add identity | PASS | Stable exact-membership IDs are reused; changed membership requires explicit alignment. Apply only updates derived Capability refs/topology and guarded readiness rebind. Task-intent portability tests prove regrouping does not change mature intent ID/key. |
 | AC08 upstream omission / multi-membership | PASS | Candidate validation requires every active delivery Requirement to be grouped or explicitly ungrouped, requires rationale for multi-membership, and reports upstream gaps rather than mutating Requirements. |
 | AC09 MVG independent execution | PASS | `plan_mvg.py` consumes an explicit Capability path and has no Capability-generation call. The real acceptance invoked MVG only after Capability had already been applied. |
 | AC10 flow many-to-many / coverage | PASS | MVG prompt and validation allow flows across multiple Capabilities and Capabilities across multiple flows, with Requirement coverage, non-journey obligations and explicit gaps; one-Capability-one-flow conversion is forbidden. |
 | AC11 initial / cumulative planning | PASS | Initial candidate is validated with the normal manifest validator; existing manifests are converted to guarded add/update/retain/retire deltas and preserve old obligations by default. |
 | AC12 missing task/contract/test | PASS | Unknown task/capability/requirement refs and nonexistent verified entrypoints block; complete planned entrypoints/tests remain implementation obligations, genuine unresolved upstream gaps remain draft, and tests are never promoted to passed by planning. |
-| AC13 evidence truthfulness | PASS | Planning input includes referenced production/test/contract files; evidence levels remain distinct; plan validation does not create `runtime_verified`. Real acceptance explicitly reports `runtime_verified=false`. |
+| AC13 evidence truthfulness | PASS | Every claimed existing source/contract/test/entrypoint/verification/authority must be readable and hash-bound in prepared input, including explicit additional refs and baseline dependencies. Missing copies/drift block formal apply. Planned paths remain legal and never create `runtime_verified`. |
 | AC14 refresh layering | PASS | Task/status/reference edits do not automatically rerun Capability/MVG; source/semantic changes are handled by explicit impact/replanning paths and runtime revision changes invalidate runtime evidence separately. |
 | AC15 interruption/drift/retry | PASS | Capability apply journals all target and readiness projections before writing, blocks consumers while pending, resumes process termination, and rejects subsequent external target edits. MVG validates all original authority/bundle/baseline identities before any manifest write. Existing run IDs cannot reset budgets by prepare. |
 | AC16 UI/publication separation | PASS | Formal Capability writes semantic-topology artifacts only; Workspace/Main and planned/runtime publication boundaries remain owned by existing topology/KCP consumers. Planning does not publish KCP or claim runtime success. |
@@ -75,8 +75,8 @@ Repository gates for the same code revision: [Windows Quality](https://github.co
 | AC20 planned entrypoint before Chapter 6 | PASS | Planned entrypoint requires real owner task, target path/symbol, inputs, state, assertions and implementation acceptance; nonexistent files cannot be marked `existing_verified`. |
 | AC21 old/new consumer migration | PASS | Portability acceptance documents legacy replay isolation and current consumers; semantic topology, Chapter 5, task normalizer and Knowledge continue to consume the current relation shape without frozen replay overriding it. |
 | AC22 blinding / review order | PASS | Prior derived `capability_ref(s)/id/title` fields are scrubbed from analysis inputs; authoritative source classification remains visible. Anonymous review order is hash-seeded and reproducible while the alias mapping stays outside the review workspace. |
-| AC23 budget exhaustion / recovery | PASS | Candidate/review retry limits, per-candidate and total active-time budgets, observable request limit, process-tree timeout termination and persisted budget state are implemented. When exact request/cost accounting is unavailable it is reported unavailable instead of invented. |
-| AC24 final handoff after MVG apply | PASS | Both Chapter 6 entrypoints consume the durable applied trace, require current obligation bindings, and cannot bypass by omitting the flag. The lane consumes its bound real milestone handoff; the handoff itself hashes the applied manifest. An ordinary binding resolves applicability and current readiness without a fake milestone handoff. |
+| AC23 budget exhaustion / recovery | PASS | Durable attempts and active-time/request reservations precede candidate/review calls. Caught interruption terminates/reaps the runner and settles observed time; hard loss retains unknown reservations and consumed attempts. Limits survive resume; valid review reuse costs no new call. Unavailable request/billing counts remain explicitly unavailable. |
+| AC24 final handoff after MVG apply | PASS | Both Chapter 6 entrypoints consume current durable applied obligations and require real milestone or ordinary readiness bindings. Manifest/plan/handoff hashes share runtime newline normalization; Git LF/CRLF preserves binding, real content edits block. Snapshot/readiness/apply-journal checks remain byte-exact. |
 | AC25 source-authored Capability classification | PASS | Authoritative source text is copied unchanged into the blinded bundle and classification signals are retained; only old derived answers are removed. |
 | AC26 real MVG production path | PASS | Audit-repair run #36765025379 consumes the actual selected/applied Capability, independently generates a real MVG proposal, performs a separate fresh semantic review and passes deterministic/formal validation. No mock/preloaded manifest substitutes for this chain. |
 
@@ -89,6 +89,33 @@ The final three-document regression set contains 215 passing tests, including 23
 The Copilot adapter also reads documented `assistant.usage` and executed `session.shutdown.modelMetrics` evidence. A selected/configured model alone cannot prove execution, and multiple executed models in one invocation are rejected. CI acceptance artifacts include the workflow attempt number to retain separate attempts. When CLI stdout omits identity, the adapter reads only this invocation's fresh private session event log before cleanup, retains model-event diagnostics without message/reasoning text, and rejects multiple session logs. Cached/selected model names alone cannot prove execution. Runtime cleanup also covers timeouts. Event authority: https://github.com/github/copilot-sdk/blob/main/docs/features/streaming-events.md; session-log authority: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference.
 
 The clean CRLF checkout passes `validate_semantic_topology.py --worktree --require-available` for 139 source blocks and 127 active Requirements. Both Git and worktree topology checks are in the hard bundle. The repaired production workflow's independent isolated MVG semantic reviewer and final validator passed in run #36765025379; the historical run above is not new repair evidence.
+
+## Merged-main audit follow-up
+
+Verified implementation: `741badf84fcf8fe8bd9c664fbef8a1ff328a7b21`, [PR #253](https://github.com/skyoxu/newrouge/pull/253).
+
+Production run [36819370222](https://github.com/skyoxu/newrouge/actions/runs/36819370222): **PASS**. Artifact `planning-production-acceptance-36819370222-attempt-1`, ID `11142329584`, digest `sha256:5477067f5a0e3c78a7455a83b53639d40eb16d982c49778baffe2728f66cb7bc`.
+
+- Three valid fresh no-tools candidates use actual model `gpt-6-luna`; accepted attempts are 1/1/2. The independent anonymous review uses the same actual model, selects alias B / `candidate-3`, and applies bounded corrections. The downloaded report, all candidate hashes, runner/receipt identities and corrected candidate pass replay validation without another model call.
+- Capability apply preserves real Chapter 5 READY evidence for fixture Tasks 7/42. Exact model-request count and billing remain unavailable rather than invented; observed active time and consumed runner attempts are retained separately.
+- Independent MVG generation uses three bounded attempts. Proposal file SHA-256 is `sha256:0812036f17906d8d7642efc0a0c40f687ea534e8c16dc000c982678e2f731fe6`. A separate fresh reviewer using `mai-code-1.1-flash` approves with zero findings; review SHA-256 is `sha256:ad489c85f7f3bbe6d823ea36a8b1a1f0fbadc8820c1909780596fb49e6c9afb2`. Downloaded identity/accounting replay returns zero errors.
+- Final deterministic validation returns `formal_applicable=true`, zero errors and zero unresolved gaps. This controlled acceptance does not apply the MVG manifest and records `runtime_verified=false`; apply/obligation recovery is tested by production-entry deterministic fixtures.
+
+Same-revision gates: [Windows Quality](https://github.com/skyoxu/newrouge/actions/runs/36819370219) **PASS** (938 Python tests, hard bundle 0/25 failures), [Windows Smoke](https://github.com/skyoxu/newrouge/actions/runs/36819370226) **PASS**, [MVG Integration](https://github.com/skyoxu/newrouge/actions/runs/36819370213) **PASS**. Local three-document core: 232 passing tests, including 16 new main-audit tests and a source-to-reviewed-semantics fixture regression.
+
+Earlier blocked model evidence is retained in the execution plan with artifact IDs and digests. The specific repairs resolve qualified evidence IDs and clarify the isolated fictional fixture's payload origin/result/retry source semantics. No blocked semantic reviewer is rerun to seek a different approval; no test/gate or budget is disabled/reset. The newrouge business GDD, source declarations, Taskmaster IDs/statuses and game code are unchanged.
+
+The current repair addresses five production-boundary gaps, with counterexamples and positive recovery paths in `scripts/python/tests/test_planning_main_audit_fixes.py`:
+
+| Finding | Priority | Corrected behavior | Requirement coverage |
+| --- | --- | --- | --- |
+| F01 existing verification outside prepared input | P1 | Every claimed existing source/contract/test/entrypoint/verification/authority must be copied and hash-bound at prepare. Existing baseline dependencies are copied automatically; repeated `--evidence-ref` prepares additional files. Missing copies or post-review drift block formal apply. Planned absent paths remain legal. | AC13, AC15 |
+| F02 lost candidate/review attempts on interruption | P2 | Durable attempts and budget reservations precede invocation. Caught interruption settles observed time; hard process loss preserves conservative reservations. Request reservations survive unavailable receipts without being reported as observed requests or billing. | AC23 |
+| F03 repeated valid review consumes another call | P2 | Valid selected/no-winner reports are reused with exact candidate, analysis, prompt, mapping, runner, receipt and correction identities. Corruption blocks instead of requesting another approval. Apply rechecks the bound result. | AC06, AC15, AC23 |
+| F04 Git line endings invalidate final obligations | P2 | Manifest, milestone-plan and handoff content identities share the runtime runner's LF normalization. LF/CRLF checkout conversion passes; actual content changes block. Snapshot/readiness/journal bytes retain strict checks. | AC24; portability AC11 |
+| F05 incomplete review report can select | P2 | Require all five findings arrays, nonempty comparative tradeoffs/rationale, corrections and resolvable authoritative evidence refs, including correction refs. Empty findings arrays are accepted. | AC06 |
+
+Local focused and three-document regression results are recorded in the execution plan. New regressions run in both the hard gate bundle and the real-model workflow's deterministic smoke stage. Mocked runner receipts in unit fixtures prove deterministic consumers only; the separate CI chain is required for production-model evidence.
 
 ## Implementation surfaces
 
@@ -105,4 +132,4 @@ The clean CRLF checkout passes `validate_semantic_topology.py --worktree --requi
 
 ## Completion boundary
 
-The executable implementation is complete at the explicitly recorded revision, where production acceptance and all repository gates pass. The final documentation checkpoint records those results without changing executable implementation or business authorities. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
+The merged-main follow-up is complete at the recorded implementation revision with all four workflows passing. The final evidence checkpoint changes documentation only. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.

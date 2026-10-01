@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import plan_capabilities as cap
 import plan_mvg as mvg
-from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json
+from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, text_sha
 from planning_acceptance_fixture import build_fixture, GDD_PATH, CONTRACT_PATH
 from chapter5_semantic_reconciliation import load_task_readiness
 
@@ -44,8 +44,28 @@ def selected_cap(root):
             "disposition": "capability" if any(b["block_id"] in c["source_block_ids"] for c in caps) else "context",
             "capability_ids": [c["capability_id"] for c in caps if b["block_id"] in c["source_block_ids"]],
             "rationale": "Source obligation or heading context."} for b in ledger["blocks"]]}
-    atomic_json(run / "candidates/candidate-1.json", candidate)
-    atomic_json(run / "review/review.json", {"schema_version": cap.REVIEW_SCHEMA, "corrections": []})
+    for label in ("candidate-1", "candidate-2", "candidate-3"):
+        atomic_json(run / f"candidates/{label}.json", candidate)
+    state["runner"] = {"model": "fixture-reviewer"}
+    state["actual_model"] = "fixture-reviewer"
+    _, mapping = cap._anonymous_candidates(state)
+    selected = next(alias for alias, label in mapping.items() if label == "candidate-1")
+    # Deterministic consumer fixture; no real model execution is claimed.
+    atomic_json(run / "review/review.json", {"schema_version": cap.REVIEW_SCHEMA,
+        "status": "selected", "selected": selected, "corrections": [],
+        "source_fidelity_findings": ["Relay launch and delivery obligations are preserved."],
+        "cohesion_findings": [], "boundary_findings": [], "multi_membership_findings": [],
+        "navigation_findings": [], "tradeoffs": ["Equivalent scope; choose the first source-faithful fixture."],
+        "evidence_refs": ["analysis-input/source-blocks.v1.json", f"candidates/{selected}.json"],
+        "rationale": "Select the full relay delivery proposal."})
+    atomic_json(run / "review/review.meta.json", {
+        "analysis_identity_sha256": state["analysis_identity_sha256"],
+        "prompt_sha256": text_sha(cap.REVIEW_PROMPT), "runner_contract_model": "fixture-reviewer",
+        "runner": state["runner"], "model": "fixture-reviewer",
+        "output_sha256": file_sha(run / "review/review.json"),
+        "candidate_sha256": {label: file_sha(run / f"candidates/{label}.json") for label in mapping.values()},
+        "anonymous_mapping_sha256": canonical_sha(mapping),
+        "receipt": {"model": "fixture-reviewer", "model_tools": []}})
     state.update(phase="reviewed", review_status="selected", selected_candidate="candidate-1")
     atomic_json(run / "run.json", state)
     return run
@@ -405,6 +425,9 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        state = load_json(run / "run.json")
+        state.pop("actual_model")  # Exercise fresh generation, not the synthetic review fixture.
+        atomic_json(run / "run.json", state)
         calls = []
         def invoke(*args, **kwargs):
             calls.append(kwargs["workspace"])
@@ -429,6 +452,9 @@ class PlanningAuditRepairTests(unittest.TestCase):
     def test_capability_missing_actual_receipt_cannot_accept_configured_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
+        state = load_json(run / "run.json")
+        state.pop("actual_model")  # Exercise fresh generation without an accepted receipt.
+        atomic_json(run / "run.json", state)
         def invoke(*args, **kwargs):
             atomic_json(kwargs["output_path"], candidate)
             return {}

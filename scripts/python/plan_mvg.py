@@ -17,6 +17,7 @@ from _planning_skill_common import (
     atomic_json,
     canonical_sha,
     file_sha,
+    normalized_file_sha,
     inspect_isolated_runner,
     load_json,
     parse_model_json,
@@ -120,6 +121,7 @@ def prepare(
     task_ids: list[str],
     manifest_path: Path | None,
     allow_unready: bool,
+    evidence_refs: list[str] | None = None,
 ) -> dict[str, Any]:
     capabilities = load_json(capabilities_path, {})
     if capabilities.get("schema_version") != "newrouge.capabilities.v1":
@@ -150,6 +152,19 @@ def prepare(
     files["task-master.json"] = _copy_file(root, root / ".taskmaster/tasks/tasks.json", bundle, "task-master.json")
 
     referenced: set[str] = set()
+    existing_manifest = None
+    if manifest_path is not None and manifest_path.is_file():
+        existing_manifest = load_json(manifest_path, {})
+        files["existing-manifest.json"] = _copy_file(root, manifest_path, bundle, "existing-manifest.json")
+        for flow in existing_manifest.get("flows", []):
+            referenced.update(str(p) for p in flow.get("source_paths", []))
+            referenced.update(str(h["contract_ref"]) for h in flow.get("handoffs", []))
+        referenced.update(str(t["path"]) for t in existing_manifest.get("tests", []))
+    for ref in evidence_refs or []:
+        path = repo_path(root, ref)
+        if not path.is_file():
+            raise ValueError(f"explicit MVG evidence file is missing:{ref}")
+        referenced.add(path.relative_to(root.resolve()).as_posix())
     for row in _task_view_rows(root):
         for field in ("overlay_refs", "contractRefs", "test_refs"):
             for value in row.get(field, []):
@@ -172,11 +187,6 @@ def prepare(
             continue
         if path.is_file():
             files[f"references/{value}"] = _copy_file(root, path, bundle, f"references/{value}")
-
-    existing_manifest = None
-    if manifest_path is not None and manifest_path.is_file():
-        existing_manifest = load_json(manifest_path, {})
-        files["existing-manifest.json"] = _copy_file(root, manifest_path, bundle, "existing-manifest.json")
 
     atomic_json(bundle / "readiness-summary.json", readiness)
     files["readiness-summary.json"] = file_sha(bundle / "readiness-summary.json")
@@ -268,7 +278,9 @@ Every flow in manifest_candidate may use additional requirement_ids and capabili
 
 entrypoints rows use status existing_verified or planned. existing_verified must point to an input file actually present in references/ or sources/. planned must name a real owner_task plus target path/symbol, inputs, state, assertions and implementation acceptance; it must not claim the file exists.
 
-Tests may be planned or implemented using the existing MVG schema. implemented means implementation exists, not passed. Do not set runtime_verified and do not claim any plan validation is a runtime run.
+For every handoff success/failure/recovery assertion, explicitly identify the producer request data, the consumer-observable result or failure signal, and the owned state transition that makes the assertion testable. Request/contract data alone is not proof of completion. A success-only input cannot exercise the failure branch. Explain how prepared recovery/retry/permission fields constrain the consumer's result and recovery state. A planned owned entrypoint may specify a proposed result callback or failure input as an implementation obligation, but must label it planned rather than invent an existing contract member. If an actual required contract or upstream semantic decision is missing, retain a genuine gap. Make these relationships explicit in inputs, state, assertions and implementation_acceptance so the independent reviewer can verify the whole handoff.
+
+Tests may be planned or implemented using the existing MVG schema. implemented means implementation exists in the prepared references/ or sources/, not passed. Every claimed existing source, contract, entrypoint, verification or reviewed authority must also be readable in this fixed bundle. If missing, report the dependency so the operator can prepare a new run with --evidence-ref; never validate a newly read repository file outside the prepared input. Do not set runtime_verified and do not claim any plan validation is a runtime run.
 Reserve gaps for unresolved upstream design, Requirement, ownership, Acceptance or required real-contract evidence. A correctly specified planned entrypoint/test is a future implementation obligation, not an upstream gap. Missing runtime execution is expected at this planning stage, not a gap. Record those boundaries in notes/manual_obligations and keep the entrypoint/test state planned. Use planning_status=ready_for_validation with gaps=[] when all upstream evidence and planning obligations are complete; use draft for a genuine unresolved upstream gap. Never erase or disguise a genuine gap just to make validation pass.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
 
@@ -524,8 +536,10 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         if isinstance(row, dict)
     }
     known_tasks = _task_ids(root)
-    from _mvg_planning_review import coverage_errors
+    from _mvg_planning_review import coverage_errors, prepared_evidence_errors
     errors.extend(coverage_errors(root, proposal, semantics, capabilities, _task_view_rows(root)))
+    errors.extend(prepared_evidence_errors(root, proposal,
+        _run_dir(root, str(state.get("run_id"))) / "analysis-input"))
     for flow in manifest.get("flows", []):
         if not isinstance(flow, dict):
             continue
@@ -926,7 +940,7 @@ def rebind_handoff(
         raise ValueError("MVG handoff rebind is missing the applied manifest path")
     manifest_path = repo_path(root, manifest_ref)
     expected_manifest_sha = str(state.get("applied_manifest_sha256") or "")
-    if not manifest_path.is_file() or file_sha(manifest_path) != expected_manifest_sha:
+    if not manifest_path.is_file() or normalized_file_sha(manifest_path) != expected_manifest_sha:
         raise ValueError("applied MVG manifest changed before handoff rebind")
 
     canonical_task = str(task_id).strip()
@@ -974,7 +988,7 @@ def rebind_handoff(
         ok, validation_reason, validated = validate_task_handoff(root, out_path, canonical_task)
         if not ok:
             raise ValueError("rebuilt milestone handoff is invalid: " + validation_reason)
-        binding.update(kind="milestone", path=out_path.relative_to(root).as_posix(), sha256=file_sha(out_path),
+        binding.update(kind="milestone", path=out_path.relative_to(root).as_posix(), sha256=normalized_file_sha(out_path),
             change_plan_path=change_plan_path.relative_to(root).as_posix())
     trace_path = root / FORMAL_TRACE_ROOT / f"{run_id}.json"
     trace = load_json(trace_path, {})
@@ -1001,6 +1015,8 @@ def main(argv: list[str] | None = None) -> int:
     p_prepare.add_argument("--capabilities", required=True)
     p_prepare.add_argument("--task-id", action="append", default=[])
     p_prepare.add_argument("--manifest", required=True)
+    p_prepare.add_argument("--evidence-ref", action="append", default=[],
+        help="additional existing verification file to include in the immutable input")
     p_prepare.add_argument("--allow-unready-draft", action="store_true")
 
     p_generate = sub.add_parser("generate")
@@ -1041,6 +1057,7 @@ def main(argv: list[str] | None = None) -> int:
                 task_ids=[str(value) for value in args.task_id],
                 manifest_path=repo_path(root, args.manifest),
                 allow_unready=bool(args.allow_unready_draft),
+                evidence_refs=args.evidence_ref,
             )
         elif args.command == "generate":
             result = generate(

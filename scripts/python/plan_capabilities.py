@@ -229,6 +229,8 @@ Return JSON only with schema_version = "newrouge.capability-review.v2" and:
 - corrections (empty unless a small explicit correction is required)
 - rationale
 
+All five findings fields must be arrays; use [] when there are no findings in that category. Provide nonempty comparative tradeoffs and a concrete selection/no-winner rationale. evidence_refs must be resolvable identifiers, preferably exact prepared file paths (analysis-input/... or candidates/A.json, B.json, C.json) without prose. Standalone Source Block/Requirement IDs are also supported. A ledger/semantic/model-batch file may qualify IDs as "file#ID" or "file: ID, ID" only when every ID belongs to that file. Put explanations in findings/rationale, not in the reference string. Include authoritative source/ledger/Requirement evidence, not only candidate refs. The same rules apply to correction evidence_refs.
+
 If corrections are needed, use at most 12 JSON-Pointer operations. Each item must contain op (add|replace|remove), path, reason, evidence_refs, and value when required. Corrections apply only to the selected candidate; never change schema_version, analysis_identity_sha256, capability_id, add/remove an entire Capability, or merge candidates into a fourth design.
 """
 
@@ -358,25 +360,29 @@ def _remaining_attempt_budget(
     runner_info: dict[str, Any],
 ) -> int:
     budget = _budget(state)
-    total_remaining = float(budget["total_budget_sec"]) - float(budget.get("activity_sec") or 0.0)
+    total_remaining = (float(budget["total_budget_sec"]) - float(budget.get("activity_sec") or 0.0)
+        - float(budget.get("activity_reserved_sec") or 0.0))
     if total_remaining <= 0:
         raise ValueError("Capability planning total active-time budget exhausted")
     remaining = total_remaining
     if label is not None:
         by_candidate = budget.setdefault("candidate_activity_sec", {})
-        candidate_remaining = float(budget["candidate_budget_sec"]) - float(by_candidate.get(label) or 0.0)
+        candidate_remaining = (float(budget["candidate_budget_sec"]) - float(by_candidate.get(label) or 0.0)
+            - float((budget.get("candidate_reserved_sec") or {}).get(label) or 0.0))
         if candidate_remaining <= 0:
             raise ValueError(f"{label} active-time budget exhausted")
         remaining = min(remaining, candidate_remaining)
     estimated = _estimated_requests(state, runner_info)
-    if estimated is not None and budget.get("request_count_complete") is True:
-        observed = int(budget.get("model_requests_observed") or 0)
+    if estimated is not None:
+        observed = int(budget.get("model_requests_observed") or 0) + int(budget.get("model_requests_reserved") or 0)
         if observed + estimated > int(budget["request_limit"]):
             raise ValueError(
                 f"Capability planning model request budget exhausted: "
                 f"{observed}+{estimated}>{budget['request_limit']}"
             )
-    return max(1, min(int(timeout_sec), int(remaining)))
+    if int(remaining) < 1 or int(timeout_sec) < 1:
+        raise ValueError("Capability planning active-time budget cannot fund another invocation")
+    return min(int(timeout_sec), int(remaining))
 
 
 def _record_runner_activity(
@@ -388,7 +394,6 @@ def _record_runner_activity(
 ) -> None:
     budget = _budget(state)
     budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + float(elapsed_sec)
-    budget["runner_invocations"] = int(budget.get("runner_invocations") or 0) + 1
     if label is not None:
         by_candidate = budget.setdefault("candidate_activity_sec", {})
         by_candidate[label] = float(by_candidate.get(label) or 0.0) + float(elapsed_sec)
@@ -401,6 +406,55 @@ def _record_runner_activity(
         )
     else:
         budget["request_count_complete"] = False
+
+
+def _begin_attempt(run_path: Path, state: dict[str, Any], attempts: list[dict[str, Any]],
+                   *, label: str | None, timeout_sec: int, runner_info: dict[str, Any]) -> dict[str, Any]:
+    """Reserve before starting: process loss cannot erase an invocation or its cap."""
+    reserved = float(timeout_sec)
+    requests = _estimated_requests(state, runner_info)
+    row = {"attempt": len(attempts) + 1, "status": "running", "started_at_utc": now(),
+        "reserved_active_sec": reserved, "reserved_requests": requests,
+        "candidate": label, "runner_contract_model": runner_info.get("model")}
+    attempts.append(row)
+    budget = _budget(state)
+    budget["activity_reserved_sec"] = float(budget.get("activity_reserved_sec") or 0.0) + reserved
+    if label is not None:
+        by_candidate = budget.setdefault("candidate_reserved_sec", {})
+        by_candidate[label] = float(by_candidate.get(label) or 0.0) + reserved
+    budget["model_requests_reserved"] = int(budget.get("model_requests_reserved") or 0) + int(requests or 0)
+    budget["runner_invocations"] = int(budget.get("runner_invocations") or 0) + 1
+    atomic_json(run_path, state)
+    return row
+
+
+def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: float,
+                    receipt: dict[str, Any] | None) -> None:
+    budget = _budget(state)
+    reserved = float(row["reserved_active_sec"])
+    budget["activity_reserved_sec"] = max(0.0, float(budget.get("activity_reserved_sec") or 0.0) - reserved)
+    label = row.get("candidate")
+    if label is not None:
+        by_candidate = budget.setdefault("candidate_reserved_sec", {})
+        by_candidate[label] = max(0.0, float(by_candidate.get(label) or 0.0) - reserved)
+    if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
+        budget["model_requests_reserved"] = max(0, int(budget.get("model_requests_reserved") or 0) - int(row.get("reserved_requests") or 0))
+    _record_runner_activity(state, label=label, elapsed_sec=elapsed_sec, receipt=receipt)
+    row.update(finished_at_utc=now(), elapsed_active_sec=elapsed_sec, reservation_settled=True)
+
+
+def _recover_interrupted_attempts(run_path: Path, state: dict[str, Any]) -> None:
+    attempts = list(state.get("review_attempts") or [])
+    attempts.extend(a for r in (state.get("candidate_attempts") or {}).values() for a in r.get("attempts", []))
+    changed = False
+    for row in attempts:
+        if row.get("status") == "running":
+            row.update(status="interrupted", error="process_lost_before_settlement",
+                reservation_note="Unknown active time remains reserved; it is not observed cost or paused wall time.")
+            _budget(state)["request_count_complete"] = False
+            changed = True
+    if changed:
+        atomic_json(run_path, state)
 
 
 def _valid_candidate_reusable(
@@ -427,6 +481,7 @@ def _valid_candidate_reusable(
 
 def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
+    _recover_interrupted_attempts(run_path, state)
     if state.get("formal_ready") is not True:
         raise ValueError("formal generation is blocked until the explicit Chapter 5 scope is ready")
     runner_info = inspect_isolated_runner(runner)
@@ -443,7 +498,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
     max_attempts = 1 + int(_budget(state).get("candidate_retry_limit") or 0)
     estimated = _estimated_requests(state, runner_info)
     budget = _budget(state)
-    if estimated is not None and budget.get("request_count_complete") is True:
+    if estimated is not None:
         remaining_initial = sum(
             1
             for index in range(1, 4)
@@ -455,7 +510,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 runner_info=runner_info,
             )
         )
-        observed = int(budget.get("model_requests_observed") or 0)
+        observed = int(budget.get("model_requests_observed") or 0) + int(budget.get("model_requests_reserved") or 0)
         required = remaining_initial * estimated
         if observed + required > int(budget["request_limit"]):
             state["phase"] = "generation-blocked"
@@ -499,6 +554,8 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             receipt: dict[str, Any] | None = None
             candidate: dict[str, Any] | None = None
             errors: list[str] = []
+            attempt_record = _begin_attempt(run_path, state, attempts, label=label,
+                timeout_sec=attempt_timeout, runner_info=runner_info)
             started = time.monotonic()
             try:
                 receipt = run_isolated_model(
@@ -516,10 +573,13 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 )
             except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
                 errors = [f"runner_or_output_failure:{exc}"]
+            except BaseException as exc:
+                _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+                attempt_record.update(status="interrupted", error=type(exc).__name__)
+                atomic_json(run_path, state)
+                raise
             elapsed = time.monotonic() - started
-            _record_runner_activity(
-                state, label=label, elapsed_sec=elapsed, receipt=receipt
-            )
+            _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
             actual_model = str((receipt or {}).get("model") or "").strip()
             if actual_model.lower() in {"auto", "automatic"}:
                 actual_model = ""
@@ -545,7 +605,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                 "receipt": receipt or {},
                 "output_sha256": file_sha(output) if output.is_file() else None,
             }
-            attempts.append(meta)
+            attempt_record.update(meta, status="completed" if not errors else "failed")
             atomic_json(
                 run_dir / "candidates" / "attempts" / f"{label}-attempt-{attempt_no}.meta.json",
                 meta,
@@ -705,8 +765,136 @@ def apply_review_corrections(
     return result
 
 
+def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
+    if not isinstance(result, dict):
+        return ["review_report_not_object"]
+    errors = []
+    if result.get("schema_version") != REVIEW_SCHEMA:
+        errors.append("invalid_review_schema")
+    status = result.get("status")
+    if not isinstance(status, str) or status not in {"selected", "no_valid_winner"}:
+        errors.append("invalid_review_status")
+    selected = result.get("selected")
+    if selected is not None and (not isinstance(selected, str) or selected not in {"A", "B", "C"}):
+        errors.append("unknown_selected_candidate")
+    if status == "selected" and selected is None:
+        errors.append("selected_review_missing_candidate")
+    if status == "no_valid_winner" and selected is not None:
+        errors.append("no_valid_winner_cannot_select_candidate")
+    for key in ("source_fidelity_findings", "cohesion_findings", "boundary_findings",
+                "multi_membership_findings", "navigation_findings", "tradeoffs"):
+        rows = result.get(key)
+        if not isinstance(rows, list) or any(not isinstance(r, (str, dict)) or not r
+            or (isinstance(r, str) and not r.strip()) for r in rows):
+            errors.append(f"review_report_invalid:{key}")
+    if not isinstance(result.get("corrections"), list):
+        errors.append("review_report_invalid:corrections")
+    if result.get("status") == "no_valid_winner" and result.get("corrections"):
+        errors.append("review_no_valid_winner_has_corrections")
+    if not result.get("tradeoffs") or not isinstance(result.get("rationale"), str) or not result["rationale"].strip():
+        errors.append("review_report_missing_comparison_or_rationale")
+    refs = result.get("evidence_refs")
+    if not isinstance(refs, list) or not refs:
+        return errors + ["review_evidence_refs_missing"]
+    refs = list(refs)
+    for correction in result.get("corrections") if isinstance(result.get("corrections"), list) else []:
+        if isinstance(correction, dict) and isinstance(correction.get("evidence_refs"), list):
+            refs.extend(correction["evidence_refs"])
+    index = load_json(run_dir / "analysis-input/analysis-index.json", {})
+    known_paths = {"analysis-input/" + p for p in index.get("files", {})}
+    known_paths.update(f"candidates/{a}.json" for a in ("A", "B", "C"))
+    ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
+    semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+    ids_by_path = {
+        "analysis-input/source-blocks.v1.json": {str(b["block_id"]) for b in ledger.get("blocks", [])},
+        "analysis-input/semantic-requirements.v1.json": {str(r["requirement_id"]) for r in semantics.get("requirements", [])},
+    }
+    for path in sorted(known_paths):
+        if path.startswith("analysis-input/model-batches/batch-") and path != "analysis-input/model-batches/batch-index.json":
+            batch = load_json(run_dir / path, {})
+            ids_by_path[path] = {str(b["block_id"]) for b in batch.get("blocks", [])}
+            ids_by_path[path].update(str(r["requirement_id"]) for r in batch.get("requirements", []))
+    source_ids = set().union(*ids_by_path.values())
+    has_source = False
+    for ref in refs:
+        if not isinstance(ref, str) or not ref.strip():
+            errors.append("review_evidence_ref_invalid")
+            continue
+        value = ref.strip()
+        if value in source_ids:
+            has_source = True
+            continue
+        separator = "#" if "#" in value else ":" if ":" in value else None
+        base, locator = value.split(separator, 1) if separator else (value, None)
+        base = base.strip()
+        resolved = base in known_paths
+        if locator is not None and base in ids_by_path:
+            requested = [token.strip() for token in locator.split(",")]
+            resolved &= bool(requested) and all(token in ids_by_path[base] for token in requested)
+        elif separator == ":":
+            resolved = False  # Only typed ledger/Requirement ID qualification is supported.
+        if not resolved:
+            errors.append(f"review_evidence_ref_unresolvable:{value}")
+        else:
+            has_source |= (base.startswith("analysis-input/sources/")
+                or base in ids_by_path)
+    if not has_source:
+        errors.append("review_authoritative_source_evidence_missing")
+    return errors
+
+
+def _anonymous_candidates(state: dict[str, Any]) -> tuple[str, dict[str, str]]:
+    seed = hashlib.sha256((str(state["analysis_identity_sha256"]) + ":" + state["run_id"]).encode("utf-8")).hexdigest()
+    labels = [f"candidate-{i}" for i in (1, 2, 3)]
+    random.Random(int(seed[:16], 16)).shuffle(labels)
+    return seed, dict(zip(("A", "B", "C"), labels))
+
+
+def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+    path = run_dir / "review/review.json"
+    result = load_json(path, {})
+    meta = load_json(run_dir / "review/review.meta.json", {})
+    if not isinstance(result, dict) or not isinstance(meta, dict):
+        raise ValueError("persisted Capability review must contain report and metadata objects")
+    _, anonymous = _anonymous_candidates(state)
+    hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in anonymous.values()}
+    errors = validate_review_report(result, run_dir)
+    index = load_json(run_dir / "analysis-input/analysis-index.json", {})
+    declared = index.get("analysis_identity_sha256")
+    content = {key: value for key, value in index.items() if key != "analysis_identity_sha256"}
+    if declared != state["analysis_identity_sha256"] or canonical_sha(content) != declared:
+        errors.append("review_analysis_index_identity_invalid")
+    for rel, expected in index.get("files", {}).items():
+        copied = repo_path(run_dir / "analysis-input", rel)
+        if not copied.is_file() or file_sha(copied) != expected:
+            errors.append(f"review_prepared_input_drift:{rel}")
+    receipt = meta.get("receipt") or {}
+    if not isinstance(receipt, dict):
+        receipt = {}
+    if (meta.get("output_sha256") != (file_sha(path) if path.is_file() else None)
+        or meta.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
+        or meta.get("prompt_sha256") != text_sha(REVIEW_PROMPT)
+        or meta.get("candidate_sha256") != hashes
+        or meta.get("anonymous_mapping_sha256") != canonical_sha(anonymous)
+        or meta.get("runner_contract_model") != (state.get("runner") or {}).get("model")
+        or meta.get("runner") != state.get("runner")
+        or not receipt.get("model") or str(receipt.get("model")).lower() in {"auto", "automatic"}
+        or receipt.get("model") != state.get("actual_model")
+        or meta.get("model") != receipt.get("model") or receipt.get("model_tools") != []):
+        errors.append("review_execution_or_input_identity_invalid")
+    if errors:
+        raise ValueError("persisted Capability review invalid: " + ";".join(errors))
+    selected = anonymous.get(str(result.get("selected")))
+    if selected and result.get("corrections"):
+        expected = apply_review_corrections(load_json(run_dir / "candidates" / f"{selected}.json", {}), result["corrections"])
+        if canonical_sha(load_json(run_dir / "review/corrected-candidate.json", {})) != canonical_sha(expected):
+            raise ValueError("persisted corrected Capability candidate identity changed")
+    return result, selected
+
+
 def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
+    _recover_interrupted_attempts(run_path, state)
     run_dir = run_path.parent
     labels = [f"candidate-{index}" for index in range(1, 4)]
     for label in labels:
@@ -716,15 +904,22 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             raise ValueError("all three candidates must be structurally valid before review")
         if not (run_dir / "candidates" / f"{label}.json").is_file():
             raise ValueError(f"missing candidate: {label}")
+        if file_sha(run_dir / "candidates" / f"{label}.json") != meta.get("output_sha256"):
+            raise ValueError(f"candidate execution identity changed:{label}")
     runner_info = inspect_isolated_runner(runner)
-    if state.get("runner", {}).get("model") != runner_info.get("model"):
-        raise ValueError("review must use the same model identity as candidate generation")
-    seed_hex = hashlib.sha256(
-        (str(state["analysis_identity_sha256"]) + ":" + run_id).encode("utf-8")
-    ).hexdigest()
-    shuffled = labels[:]
-    random.Random(int(seed_hex[:16], 16)).shuffle(shuffled)
-    anonymous = dict(zip(["A", "B", "C"], shuffled))
+    if state.get("runner") != runner_info:
+        raise ValueError("review must use the same runner identity as candidate generation")
+    seed_hex, anonymous = _anonymous_candidates(state)
+    candidate_hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in labels}
+    if any((run_dir / "review" / name).is_file() for name in ("review.json", "review.meta.json")):
+        result, selected = _read_valid_review(run_dir, state)
+        state.update(review_status=result["status"], selected_candidate=selected,
+            final_candidate_path="review/corrected-candidate.json" if result.get("corrections") else None)
+        if state.get("phase") != "applied":
+            state["phase"] = "reviewed"
+        atomic_json(run_path, state)
+        return {"run_id": run_id, "status": result["status"], "selected_candidate": selected,
+            "corrected": bool(result.get("corrections")), "reused": True, "budget": state["budget"]}
 
     max_attempts = 1 + int(_budget(state).get("review_retry_limit") or 0)
     attempts = state.setdefault("review_attempts", [])
@@ -754,6 +949,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         receipt: dict[str, Any] | None = None
         result: dict[str, Any] | None = None
         errors: list[str] = []
+        attempt_record = _begin_attempt(run_path, state, attempts, label=None,
+            timeout_sec=attempt_timeout, runner_info=runner_info)
         started = time.monotonic()
         try:
             receipt = run_isolated_model(
@@ -761,19 +958,9 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                 output_path=output, timeout_sec=attempt_timeout,
             )
             result = parse_model_json(output)
-            if result.get("schema_version") != REVIEW_SCHEMA:
-                errors.append("invalid_review_schema")
-            selected = result.get("selected")
-            if selected is not None and selected not in anonymous:
-                errors.append("unknown_selected_candidate")
-            if result.get("status") == "selected" and selected is None:
-                errors.append("selected_review_missing_candidate")
-            if result.get("status") == "no_valid_winner" and selected is not None:
-                errors.append("no_valid_winner_cannot_select_candidate")
-            if result.get("status") not in {"selected", "no_valid_winner"}:
-                errors.append("invalid_review_status")
+            errors.extend(validate_review_report(result, run_dir))
             if not errors and result.get("status") == "selected":
-                source_label = anonymous[str(selected)]
+                source_label = anonymous[str(result["selected"])]
                 source_candidate = load_json(
                     run_dir / "candidates" / f"{source_label}.json", {}
                 )
@@ -794,23 +981,33 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                     )
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             errors = [f"review_runner_or_output_failure:{exc}"]
+        except BaseException as exc:
+            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+            attempt_record.update(status="interrupted", error=type(exc).__name__)
+            atomic_json(run_path, state)
+            raise
         elapsed = time.monotonic() - started
-        _record_runner_activity(
-            state, label=None, elapsed_sec=elapsed, receipt=receipt
-        )
-        actual_model = str((receipt or {}).get("model") or runner_info.get("model") or "").strip()
+        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
+        actual_model = str((receipt or {}).get("model") or "").strip()
+        if not actual_model or actual_model.lower() in {"auto", "automatic"} or (receipt or {}).get("model_tools") != []:
+            errors.append("review_execution_identity_missing")
+        if actual_model and actual_model != state.get("actual_model"):
+            errors.append("review_actual_model_differs_from_candidates")
         meta = {
             "attempt": attempt_no,
             "model": actual_model,
             "runner_contract_model": runner_info.get("model"),
+            "runner": runner_info,
             "prompt_sha256": text_sha(REVIEW_PROMPT),
             "analysis_identity_sha256": state["analysis_identity_sha256"],
             "elapsed_active_sec": elapsed,
             "validation_errors": errors,
             "receipt": receipt or {},
             "output_sha256": file_sha(output) if output.is_file() else None,
+            "candidate_sha256": candidate_hashes,
+            "anonymous_mapping_sha256": canonical_sha(anonymous),
         }
-        attempts.append(meta)
+        attempt_record.update(meta, status="completed" if not errors else "failed")
         atomic_json(
             run_dir / "review" / "attempts" / f"review-attempt-{attempt_no}.meta.json",
             meta,
@@ -840,6 +1037,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         "mapping": anonymous,
     })
     atomic_json(review_dir / "review.json", final_result)
+    final_meta["output_sha256"] = file_sha(review_dir / "review.json")
     atomic_json(review_dir / "review.meta.json", final_meta)
     selected = final_result.get("selected")
     selected_label = anonymous.get(str(selected)) if selected is not None else None
@@ -1002,7 +1200,7 @@ def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
     budget = _budget(state)
     budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + elapsed
     budget["alignment_activity_sec"] = float(budget.get("alignment_activity_sec") or 0.0) + elapsed
-    if float(budget["activity_sec"]) > float(budget["total_budget_sec"]):
+    if float(budget["activity_sec"]) + float(budget.get("activity_reserved_sec") or 0.0) > float(budget["total_budget_sec"]):
         state["phase"] = "alignment-blocked"
         state["stop_reason"] = "Capability planning total active-time budget exhausted"
         atomic_json(run_path, state)
@@ -1201,7 +1399,12 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         raise ValueError("Capability apply requires a selected independent review winner")
     if state.get("formal_ready") is not True:
         raise ValueError("Capability draft run cannot be formally applied")
-    review = load_json(run_dir / "review/review.json", {})
+    review, reviewed_selected = _read_valid_review(run_dir, state)
+    if reviewed_selected != state.get("selected_candidate"):
+        raise ValueError("Capability selected candidate differs from the bound review")
+    expected_final = "review/corrected-candidate.json" if review.get("corrections") else None
+    if (state.get("final_candidate_path") or None) != expected_final:
+        raise ValueError("Capability final candidate path differs from the bound review")
     freshness = _validate_snapshot_freshness(root, run_dir)
     candidate = _selected_candidate(run_dir, state)
     ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})

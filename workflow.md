@@ -760,7 +760,7 @@ Required sequence:
 
 1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and current Chapter 5 readiness. The supplied task IDs must include every task sink of the ledger source round; legitimate non-task sinks are checked separately.
 2. `generate` requires an isolation runner that proves workspace-only reads, a fresh model session per invocation and no outside-workspace access. It produces exactly three same-model candidates. Without that boundary, formal generation fails closed.
-3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order.
+3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order. Require complete findings/comparison/source evidence. Resume reuses an identity-bound selected/no-winner report; corrupted evidence blocks. Candidate/review attempts and budget reservations are durable before invocation, so interruption cannot reset them. Unknown reservations are not observed cost or paused wall time.
 4. `preview-alignment` reuses historical Capability IDs only for exact Requirement-membership matches. Changed membership is unresolved until explicit reviewed alignment.
 5. `apply --confirm` journals the full derived projection and capability-only Chapter 5 rebind before writing. Re-running this stage recovers interrupted writes without replacing later user edits. A pending transaction blocks downstream readiness. Task IDs/status, Acceptance, Requirement text and Task intent identity remain protected.
 
@@ -780,12 +780,12 @@ py -3 scripts/python/dev_cli.py plan-mvg --stage prepare --run-id <id> --capabil
 
 Required sequence:
 
-1. `prepare` binds the exact Capability hash plus source/Requirement/task/Acceptance/contract evidence and the explicit Chapter 5-ready task scope.
+1. `prepare` binds the exact Capability hash plus source/Requirement/task/Acceptance/contract evidence and the explicit Chapter 5-ready task scope. Existing baseline dependencies are copied automatically. Use repeated `--evidence-ref <repo-file>` for additional existing verification/implementation/authority evidence; a claimed existing dependency outside the fixed bundle blocks formal apply.
 2. `generate` produces a cumulative player-journey MVG proposal. Flows may cross many Capabilities; Capability is not a one-flow-per-node template.
 3. `review --runner <isolated-runner>` independently checks semantic conservation, Requirement verification accounting, player journeys, handoffs and evidence truthfulness in a fresh no-tools session.
 4. `validate` requires that review plus complete Requirement accounting and entrypoints for every flow task. Deltas bind the prepared manifest copy; live source/task/contract/test/readiness drift blocks formal apply.
 5. `apply --confirm` creates the initial manifest or applies the reviewed delta through the existing anti-weakening contract. The durable trace blocks both Chapter 6 entrypoints until final obligations are rebound.
-6. `rebind-handoff --task-id <id>` resolves ordinary applicability and binds current readiness without fabricating a milestone handoff. An actual milestone owner must also supply `--change-plan <path> --handoff-out <path>`; its handoff binds the applied manifest hash. Planning never claims runtime verification.
+6. `rebind-handoff --task-id <id>` resolves ordinary applicability and binds current readiness without fabricating a milestone handoff. An actual milestone owner must also supply `--change-plan <path> --handoff-out <path>`; its handoff binds the applied manifest hash. Committed manifest/plan/handoff identities normalize Git LF/CRLF conversion as the MVG runner does; real content edits invalidate them. Prepared snapshots/readiness/apply journals retain exact byte checks. Planning never claims runtime verification.
 
 Owning Skill: `.agents/skills/plan-mvg/SKILL.md`. Capability/MVG production acceptance and AC01-AC26 evidence are tracked in [Capability and MVG planning acceptance](docs/workflows/capability-mvg-planning-acceptance.md).
 

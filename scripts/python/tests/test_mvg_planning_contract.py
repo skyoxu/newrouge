@@ -31,6 +31,15 @@ class MvgPlanningContractTests(unittest.TestCase):
         (root / "docs/gdd/spec.md").write_text("spec\n", encoding="utf-8")
         (root / "docs/contracts").mkdir(parents=True)
         (root / "docs/contracts/handoff.md").write_text("contract\n", encoding="utf-8")
+        bundle = root / "logs/ci/mvg-planning/contract/analysis-input"
+        files, authorities = {}, {}
+        for rel, prefix in (("docs/gdd/spec.md", "sources"), ("docs/contracts/handoff.md", "references")):
+            target = bundle / prefix / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((root / rel).read_bytes())
+            files[f"{prefix}/{rel}"] = plan_mvg.file_sha(target)
+            authorities[rel] = plan_mvg.file_sha(root / rel)
+        plan_mvg.atomic_json(bundle / "analysis-index.json", {"files": files, "authority_inputs": authorities})
         (root / "docs/planning/semantic-topology").mkdir(parents=True)
         (root / "docs/planning/semantic-topology/capabilities.v1.json").write_text(json.dumps({
             "schema_version": "newrouge.capabilities.v1",
@@ -113,6 +122,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = self._root(folder)
             state = {
+                "run_id": "contract",
                 "analysis_identity_sha256": "sha256:x",
                 "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json",
             }
@@ -154,6 +164,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = self._root(folder)
             state = {
+                "run_id": "contract",
                 "analysis_identity_sha256": "sha256:x",
                 "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json",
             }

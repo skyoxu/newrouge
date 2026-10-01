@@ -55,6 +55,12 @@ def file_sha(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def normalized_file_sha(path: Path) -> str:
+    """Use the MVG runner's content identity across Git newline conversions."""
+    from _mvg_manifest import manifest_sha256
+    return manifest_sha256(path.read_bytes())
+
+
 def text_sha(value: str) -> str:
     return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 
@@ -433,6 +439,9 @@ def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
                 timeout=15,
                 check=False,
             )
+            if proc.poll() is not None:
+                return
+            proc.kill()
             return
         except (OSError, subprocess.SubprocessError):
             proc.kill()
@@ -478,6 +487,10 @@ def run_isolated_model(
         raise TimeoutError(
             f"isolated model runner timed out after {timeout_sec}s: {stdout[-2000:]}"
         ) from exc
+    except BaseException:
+        _terminate_process_tree(proc)
+        proc.communicate(timeout=15)
+        raise
     if proc.returncode != 0:
         raise RuntimeError(f"isolated model runner failed: {stdout.strip()}")
     if not output_path.is_file():

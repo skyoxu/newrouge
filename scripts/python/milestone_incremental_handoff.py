@@ -10,6 +10,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from _planning_skill_common import normalized_file_sha
+
 CHANGE_PLAN_SCHEMA = "newrouge.milestone-change-plan.v1"
 HANDOFF_SCHEMA = "newrouge.milestone-task-handoff.v1"
 ACTIONS = {"new", "extend", "reuse", "replace", "retire", "unresolved"}
@@ -330,10 +332,10 @@ def build_task_handoff(
         "task_id": str(task_id),
         "source_identity": dict(plan.get("source_identity") or {}),
         "change_plan_path": plan_path.relative_to(root).as_posix(),
-        "change_plan_sha256": _file_sha(plan_path),
+        "change_plan_sha256": normalized_file_sha(plan_path),
         "baseline_manifest_path": plan.get("baseline_manifest"),
         "baseline_manifest_sha256": (
-            _file_sha(root / str(plan["baseline_manifest"])) if plan.get("baseline_manifest") else None
+            normalized_file_sha(root / str(plan["baseline_manifest"])) if plan.get("baseline_manifest") else None
         ),
         "chapter5_readiness_path": readiness_path.relative_to(root).as_posix(),
         "chapter5_readiness_sha256": _file_sha(readiness_path),
@@ -388,7 +390,8 @@ def validate_task_handoff(root: Path, path: Path, task_id: str) -> tuple[bool, s
             target.relative_to(root.resolve())
         except ValueError:
             return False, "milestone_handoff_path_escape", {}
-        if not target.is_file() or _file_sha(target) != str(payload.get(sha_key) or ""):
+        hash_file = normalized_file_sha if path_key == "change_plan_path" else _file_sha
+        if not target.is_file() or hash_file(target) != str(payload.get(sha_key) or ""):
             return False, f"milestone_handoff_stale_{path_key}", {}
     plan = _load(root / str(payload["change_plan_path"]))
     readiness = _load(root / str(payload["chapter5_readiness_path"]))
@@ -438,7 +441,7 @@ def validate_milestone_regressions(root: Path, handoff: dict[str, Any], summary_
         or evidence.get("status") != "passed"
         or evidence.get("runtime_verified") is not True
         or evidence.get("workspace_dirty")
-        or evidence.get("manifest_sha256") != _file_sha(manifest_path)
+        or evidence.get("manifest_sha256") != normalized_file_sha(manifest_path)
     ):
         return False, "milestone_regression_evidence_stale_or_unverified"
     try:

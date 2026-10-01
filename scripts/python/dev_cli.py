@@ -833,6 +833,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_mvg_plan.add_argument("--run-id", required=True)
     p_mvg_plan.add_argument("--capabilities", default="")
     p_mvg_plan.add_argument("--manifest", default="")
+    p_mvg_plan.add_argument("--evidence-ref", action="append", default=[])
     p_mvg_plan.add_argument("--task-id", action="append", default=[])
     p_mvg_plan.add_argument("--allow-unready-draft", action="store_true")
     p_mvg_plan.add_argument("--timeout-sec", type=int, default=1800)

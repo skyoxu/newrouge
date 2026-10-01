@@ -27,6 +27,7 @@ Design cumulative player-journey integration coverage after Capability planning.
 1. Prepare the exact input identity:
    `py -3 scripts/python/plan_mvg.py prepare --run-id <id> --capabilities docs/planning/semantic-topology/capabilities.v1.json --manifest docs/testing/mvg/<manifest>.json --task-id <id> [...]`
 2. Include every actual task sink of the current source round. Prepare derives the round from added/changed ledger sources (all sources for a cumulative re-plan with no delta), checks active delivery Requirements and legitimate non-task sinks, and requires current Chapter 5 evidence. An omitted task blocks even when every supplied task is ready. `--allow-unready-draft` is for gap inspection only.
+   Prepare copies existing baseline flow/contract/test dependencies and task refs. Add any other existing implementation, test, verification or reviewed authority with repeated `--evidence-ref <repo-file>`. Every claimed existing dependency must be readable in this fixed bundle and remain unchanged through apply. If a new dependency was omitted, prepare a new run with that explicit ref; never bind fresh evidence after review. Not-yet-created planned paths remain implementation obligations.
 3. Generate the proposal:
    `py -3 scripts/python/plan_mvg.py generate --run-id <id> --llm-backend codex-cli`
 4. Run a new isolated semantic reviewer against the fixed proposal and full prepared inputs:
@@ -49,6 +50,8 @@ For an existing manifest, the Skill computes a reviewed delta and passes it thro
 The durable run is under `logs/ci/mvg-planning/<run-id>/`. The applied trace sidecar is under `docs/testing/mvg/planning/<run-id>.json`; it is planning provenance, not another runtime-test state authority.
 
 The applied trace records per-task obligation bindings and is consumed by both `chapter6-route` and the single-task lane. Omitting `--milestone-handoff` cannot bypass pending obligations. A milestone handoff itself binds the baseline manifest hash; later manifest/readiness/plan changes invalidate the binding. Ordinary bindings use current Chapter 5 readiness and create no synthetic milestone handoff. Planning and rebind keep `runtime_verified=false`; runtime evidence belongs to the MVG runner/Chapter 6 acceptance path.
+
+Use the MVG runner's newline-normalized content hash for committed manifests, milestone plans and milestone handoffs. Git LF/CRLF conversion preserves those bindings; content edits invalidate them. Keep prepared authority snapshots, readiness and interrupted-apply journal checks byte-exact.
 
 ## Refresh rules
 
