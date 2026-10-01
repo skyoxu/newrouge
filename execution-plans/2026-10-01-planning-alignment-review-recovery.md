@@ -1,22 +1,22 @@
 # Capability alignment and review publication recovery
 
 - Title: planning-alignment-review-recovery
-- Status: In progress
+- Status: Completed
 - Branch: fix/planning-alignment-review-recovery
-- Git Head: 5bc0e670f8ffca520f4fb87b4f42dd8fe38101cf
+- Git Head: a67a048e88599268fb181a0422785114d02c5a14
 - Goal: Repair R01 (P1 ambiguous stable identity) and R02 (P2 interrupted review publication) from the merged-main three-document re-audit.
 - Scope: Derived Capability alignment/preflight and Capability/MVG review publication; isolated acceptance fixture metadata and owning instructions.
-- Current step: Submit the repair and verify Windows/real-model CI.
-- Last completed step: All 30 focused regressions pass, including completed-attempt recovery, original-output drift and unpublished-proposal revision guards.
+- Current step: Complete; executable changes pass all four workflows at the recorded Git Head. This closeout changes evidence documentation only.
+- Last completed step: Verified 30 new/274 core regressions, Windows hard gates and fresh real-model approval plus retained-result consumer replay.
 - Stop-loss: Preserve business/source/Taskmaster authority, blocked verdicts and consumed attempts; do not reset budgets or weaken gates.
-- Next action: Complete regressions, run the unified local hard-check harness once, submit a repair PR and inspect Windows/real-model CI.
+- Next action: Review PR #255 for merge; no implementation repair remains.
 - Recovery command: `py -3 -m unittest scripts.python.tests.test_planning_review_recovery -v`
-- Open questions: None; platform and production execution remain validation obligations.
+- Open questions: None; final platform and real-model validation are complete at the recorded executable revision.
 - Exit criteria: Both findings pass negative and positive recovery paths, all three-document regressions pass, Windows and real-model CI pass.
 - Related ADRs: n/a (implements existing identity and recovery contracts)
 - Related decision logs: n/a (no authority or budget policy change)
 - Related task id(s): n/a (workflow repair)
-- Related run id: PR #255; initial production 36844178194, Windows smoke 36844178146 and MVG integration 36844178280 PASS
+- Related run id: PR #255; production 36847620516, Windows quality 36847620638, Windows smoke 36847620738 and MVG integration 36847620559 PASS
 - Related latest.json: n/a (explicit repair evidence paths)
 - Related pipeline artifacts: `logs/ci/planning-review-recovery/**`
 
@@ -28,8 +28,8 @@ Baseline: main squash merge #253, tree d51ed81447ef411a1099f686fe1358cf05177908.
 - [x] Persist hash-bound multi-file review publication and recover the recorded verdict/receipt/corrections.
 - [x] Complete legal multi-membership, corruption, blocked/draft and revised-proposal regressions.
 - [x] Run three-document regressions and local checks; synchronize owning instructions.
-- [ ] Verify Windows/platform and real-model CI.
-- [ ] Publish the repair PR and final CI/evidence record.
+- [x] Verify Windows/platform and real-model CI.
+- [x] Publish the repair PR and final CI/evidence record.
 
 Responsibility split: new alignment and review-publication helpers remain below 400 lines and reduce existing oversized planners. The fixture correction uses the production topology-manifest schema and identity fields; it changes no fictional contract, reviewed obligation or reviewer rule.
 
@@ -40,3 +40,7 @@ Initial implementation c1c67678 passed real production, MVG integration and Wind
 Strengthened implementation fe3a2f9b passes 30 new/274 core regressions and production deterministic smoke (103 tests). Actual production run 36845534237 is correctly BLOCKED by the independent reviewer: the generated proposal preserves request/result/retry data but omits the source-required explicit relay-service-to-score-terminal interaction and its domain-integration test assertion. Artifact 11152719135 (digest sha256:08f9ae256ad4a62ab34b1728a7bcfc1b88a718ddb74f77ce3f58fb7fc0e520bc) retains the fixed proposal, single blocked verdict and execution evidence. The material repair adds a generic generator instruction to preserve source-named producer/consumer system roles, map each to real ownership even when roles share a task, and assert the same interaction in flows, entrypoints and planned test scenarios. Existing bounded-generation prompt-forwarding tests cover this instruction. Reviewer gates, input authority, contract and attempt budgets remain unchanged; a fresh chain must pass before closeout.
 
 Run 36846454889 at afb78d86 preserves the required source roles but correctly exhausts three generator attempts: each uses coverage_rationale rather than the validator's rationale field. Artifact 11154230470 (digest sha256:3a2ec6d50fc19a4b0e0f8869d59eedba07912a5257f45df9f42a633e8976fa54) retains all three outputs. The prompt's prose "coverage rationale" and the error label coverage_rationale_missing left the literal JSON field ambiguous. The narrow repair explicitly names rationale in both initial/correction prompts and explains the error label; validator acceptance and attempt limits stay unchanged. The existing bounded-generation regression now reproduces that wrong field and checks the exact schema instruction in every replacement prompt.
+
+Final implementation a67a048e: all four workflows PASS. Windows Quality runs 968 Python tests with zero failures and hard bundle 0/25 failures; Smoke and MVG Integration PASS. Production run 36847620516 passes all 103 deterministic smoke tests and the actual model chain. Artifact 11154531435, digest sha256:02bcd1ebb81a40510f7b94e49b1101c76b4cededb17f4e370450e39b13caad73. Three fresh valid Capability candidates and their anonymous reviewer use actual gpt-6-luna; candidate-1 is selected. Both fixture Tasks 7/42 remain Chapter 5 READY after apply. MVG generation uses two bounded attempts; a separate fresh gpt-6-luna semantic reviewer approves in one invocation. Final validation has zero errors/gaps and formal_applicable=true. Manifest application/runtime verification remain outside this planning acceptance (both false).
+
+Downloaded Capability review/publication replay succeeds without a model call or budget change; MVG review identity/accounting and completed publication replay pass with no writes. This is a retained-consumer replay, not a full freshness replay of the original CI workspace, whose original authority files are not all included in the artifact. Both blocked production artifacts remain preserved; no reviewing run or budget was reset. Final local core suite passes 274 tests. This closeout edits only this plan and the owning acceptance record; executable code remains at a67a048e.
