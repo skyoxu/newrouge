@@ -492,6 +492,8 @@ class PlanningAuditRepairTests(unittest.TestCase):
             value = deepcopy(proposal)
             if len(prompts) == 1:
                 value["manifest_candidate"]["coverage"]["blocking_task_ids"] = [7, 42]
+                for row in value["coverage_table"]:
+                    row["coverage_rationale"] = row.pop("coverage")
             elif len(prompts) == 2:
                 value["manifest_candidate"]["tests"][0]["selector"] = "FullyQualifiedName~RelayTests"
             atomic_json(kwargs["output_path"], value)
@@ -501,6 +503,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
             result = mvg.generate(self.root, run_id="repair", timeout_sec=1, llm_backend="copilot-cli")
         self.assertEqual(3, result["attempt_count"])
         self.assertIn("non-done scoped tasks []", prompts[1])
+        self.assertIn("coverage_rationale_missing", prompts[1])
         self.assertIn("selector must be a class name", prompts[2])
         for prompt in prompts:
             self.assertIn('"7": "done"', prompt)
@@ -509,6 +512,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
             self.assertIn("source-specified producer/consumer system roles", prompt)
             self.assertIn("roles share a task", prompt)
             self.assertIn("planned test scenarios/assertions", prompt)
+            self.assertIn('coverage_table rows require a nonempty "rationale" string', prompt)
         final = load_json(self.root / "logs/ci/mvg-planning/repair/proposal.json")
         self.assertEqual([], final["manifest_candidate"]["coverage"]["blocking_task_ids"])
         self.assertEqual("RelayTests", final["manifest_candidate"]["tests"][0]["selector"])
