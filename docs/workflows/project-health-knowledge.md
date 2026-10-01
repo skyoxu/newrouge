@@ -8,7 +8,7 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 - Workspace/Chapter-run topology is preview-only and uses a separate workspace/run identity. It cannot overwrite the main `latest.json`, KCP publication pointer, or runtime-verified main evidence.
 - Missing topology artifacts are a valid migration state and render as `legacy_unmapped`; the page does not infer or fabricate Requirement/Capability mappings.
 - Capability is optional grouping. Requirements may route directly to Task/global constraint/quality gate/ADR-owned sink.
-- The page is read-only and does not create or modify Requirement, Task or Acceptance.
+- Browsing does not edit Requirement, Task or Acceptance. Explicit generation actions use the existing governed planners and retain local results separately.
 - Scene details may display `Trace to design` through governed Task relationships. The trace is navigation/evidence only and does not convert static/runtime attachment into acceptance proof.
 - `Trace to design` entries are clickable node-level links into `/knowledge/topology?focus=<kind>:<id>`. Topology node details expose related-node links so Task/Capability/Requirement/Source Block navigation is reversible.
 - Existing task-view `acceptance[]` entries appear as read-only Acceptance nodes even before Chapter 5 semantic-origin edges exist; their `topology_origin` remains `unmapped` until an explicit governed edge is present.
@@ -16,6 +16,20 @@ The existing loopback service exposes a read-only `/knowledge/topology` view and
 - Knowledge query candidates that resolve a topology node display its node id/type, related Task ids and original authority source path/hash, with a link into the focused topology view.
 
 The registered structural source is `docs/planning/semantic-topology/**`.
+
+### 页面生成 Capability 与 MVG
+
+`/knowledge/topology` 的 Filters 提供 `Generate Capability from main`。按钮锁定点击时本地 `refs/heads/main` 的最后一次提交，在真实 Git detached worktree 中执行既有 `plan-capabilities` 的 prepare → generate → review → preview-alignment → apply。它不 fetch，不读取当前分支未提交文件，也不选择 Project Health/KCP 扫描快照、目录副本或归档作为输入。执行期间 main 变化即阻断。
+
+来源清单和语义记录必须与已提交 main 的正式拓扑一致；所需 Chapter 5 reconciliation/readiness 必须仍对该提交有效。Chapter 5 extraction 记录仅作为既有 readiness/apply 门控证据，不能替代 main 来源。三候选、独立评选、源保真校验和 ID 对齐仍由原规划器执行；有歧义的 ID 不自动批准。成功后页面切到 Main、Kind=Capability 并刷新数据，简短结果写入顶部 `topology-status`；失败保留旧数据并显示阶段及具体原因。
+
+`/knowledge/scenes` 的 `GDD versions and MVG` 视图提供 `Generate MVG from Capability`。它消费同一 main 提交已生成的 Capability；没有该结果时消费 main 中已提交的 `capabilities.v1.json`，不会隐式生成 Capability。目标为当前选定的 MVG scope，首次没有 manifest 时为 `docs/testing/mvg/m1-full.json`。执行既有 prepare → generate → review → validate → apply，保留累计 flow/test/owner 及显式退役门控；成功刷新 MVG scope，成功和失败结果均写顶部 `scene-status`。
+
+服务进程需要 `OPENAI_API_KEY` 和 OpenAI SDK，或已认证的 Copilot CLI。Capability 候选和独立评审自动选择对应 isolated runner；MVG 生成默认跟随这些凭据，可用 `SC_KNOWLEDGE_MVG_BACKEND=openai-api|copilot-cli|codex-cli` 显式选择。`SC_KNOWLEDGE_PLANNING_RUNNER` 可指定符合现有 isolated-runner 契约的评审/Capability runner。浏览器不接受任意 runner、命令、输入版本或输出路径。
+
+同一 action/main/manifest 再次点击会复用持久化 attempt，断开连接或重启后继续原阶段、候选与预算，已完成的同一结果直接返回。服务操作锁覆盖生成、扫描、查询及运行验证。证据和逐阶段日志保留在 `logs/ci/knowledge-planning/planning-<id>/`；生成文件在该任务的 `checkout/` 中（MVG 可复用 Capability 的 checkout）。
+
+成功数据带 `planning_result=true`、`publication_state=local_generated` 和确切来源 main SHA，尚未提交、发布或执行运行验证，不覆盖原工作区、main 扫描或 KCP 指针。可在保留的 checkout 中审阅 `git diff`，创建审阅分支、提交并走正常 PR；main 合并后重新扫描/生成。新生成的 MVG scope 在提交到 main 前不能使用 `Run selected MVG on main`；已有其他 scope 的运行验证保持原规则。详细模型日志不会追加到页面状态栏。
 
 ### Chapter 3 / Chapter 5 Workspace refresh
 

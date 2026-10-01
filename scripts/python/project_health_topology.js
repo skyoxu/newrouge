@@ -96,7 +96,10 @@ const stateHelp = {
 async function openSource(row) {
   if (!topology || topology.identity?.kind !== 'main') return;
   const path = row.source_path;
-  const response = await fetch('/api/knowledge/source?path=' + encodeURIComponent(path), {cache: 'no-store'});
+  const route = topology.planning_result
+    ? '/api/knowledge/planning-source?job_id=' + encodeURIComponent(topology.planning_job_id) + '&path='
+    : '/api/knowledge/source?path=';
+  const response = await fetch(route + encodeURIComponent(path), {cache: 'no-store'});
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.reason || 'Source request failed');
   if (payload.revision !== topology.identity.revision) throw new Error('Source snapshot changed; refresh topology before reading source.');
@@ -186,7 +189,9 @@ function render() {
   const stateHelpNode = byId('filter-state-help');
   if (stateControl && stateHelpNode) stateHelpNode.textContent = stateHelp[stateControl.value] || stateHelp[''];
   const identity = (topology && topology.identity) || {};
-  if (topology && topology.available) {
+  if (status.dataset?.result) {
+    // Filter rendering must not replace an action's compact outcome.
+  } else if (topology && topology.available) {
     const viewLabel = identity.kind === 'workspace' ? ' · ' + (topology.workspace_view || currentWorkspaceView()) : '';
     status.textContent = (identity.kind || 'unknown') + ' · ' + (identity.revision || 'no revision') + viewLabel + ' · ' + (topology.status || '');
   } else {
@@ -258,6 +263,7 @@ async function load() {
 ['filter-kind','filter-state','filter-task-status','filter-capability','filter-chapter','filter-source']
   .forEach(id => byId(id).addEventListener('input', render));
 byId('topology-identity').addEventListener('change', () => {
+  delete byId('topology-status').dataset.result;
   const params = new URLSearchParams(window.location.search);
   params.set('mode', currentMode());
   params.delete('view');
@@ -266,11 +272,28 @@ byId('topology-identity').addEventListener('change', () => {
   load().catch(e => byId('topology-status').textContent = e.message);
 });
 byId('workspace-view').addEventListener('change', () => {
+  delete byId('topology-status').dataset.result;
   const params = new URLSearchParams(window.location.search);
   params.set('mode', 'workspace');
   params.set('view', currentWorkspaceView());
   history.replaceState(null, '', window.location.pathname + '?' + params.toString());
   load().catch(e => byId('topology-status').textContent = e.message);
 });
-byId('topology-refresh').onclick = () => load().catch(e => byId('topology-status').textContent = e.message);
+byId('topology-refresh').onclick = () => {
+  delete byId('topology-status').dataset.result;
+  return load().catch(e => byId('topology-status').textContent = e.message);
+};
+byId('capability-generate').onclick = () => window.knowledgePlanning({
+  action: 'capability', button: byId('capability-generate'), status: byId('topology-status'),
+  refresh: async () => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('mode', 'main'); params.delete('view');
+    history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+    byId('topology-identity').value = 'main';
+    byId('filter-kind').value = 'capability';
+    ['filter-state', 'filter-task-status', 'filter-capability', 'filter-chapter', 'filter-source']
+      .forEach(id => byId(id).value = '');
+    await load();
+  }
+});
 load().catch(e => byId('topology-status').textContent = e.message);

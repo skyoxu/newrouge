@@ -1,4 +1,4 @@
-/* Read-only main snapshot navigation; render all repository text with textContent. */
+/* Main navigation and explicit planning actions; use textContent for repository text. */
 (() => {
   const get = id => document.getElementById(id);
   const item = (tag, content, parent) => { const node = document.createElement(tag); node.textContent = String(content ?? ''); parent.append(node); return node; };
@@ -16,7 +16,8 @@
     const manifest = selectedManifest();
     const button = get('mvg-run');
     button.textContent = manifest ? `Run ${manifest.mvg_id} on main` : 'Run selected MVG on main';
-    button.disabled = runInProgress || !manifest;
+    button.disabled = runInProgress || !manifest || manifest.planning_result === true;
+    button.title = manifest?.planning_result ? 'Commit the generated scope before main runtime verification.' : '';
   }
   function renderVersion() {
     const version = overview.versions.find(row => row.id === get('mvg-version-select').value);
@@ -53,7 +54,7 @@
     const flows = get('mvg-flow-detail'); flows.replaceChildren();
     if (!manifest) { item('p', 'No MVG manifest in the scanned main snapshot.', flows); return; }
     const coverage = manifest.coverage || {};
-    item('p', `${manifest.mvg_id} · ${coverage.mode || 'unknown'} · ${manifest.evidence.status} · blocking tasks: ${(coverage.blocking_task_ids || []).join(', ') || 'none'}`, flows);
+    item('p', `${manifest.mvg_id} · ${coverage.mode || 'unknown'} · ${manifest.planning_result ? 'local planning result · ' : ''}${manifest.evidence.status} · blocking tasks: ${(coverage.blocking_task_ids || []).join(', ') || 'none'}`, flows);
     item('p', `Runtime evidence: ${manifest.evidence.reason || manifest.evidence.run_id || 'none'} · manifest SHA-256: ${manifest.sha256}`, flows);
     if (coverage.blocking_task_ids?.length) item('p', 'The manifest declares blocking tasks. Full playable scope is not cleared by a partial run.', flows);
     for (const flow of manifest.flows) {
@@ -100,6 +101,20 @@
     help.hidden = expanded;
   });
   get('mvg-refresh').addEventListener('click', () => load().catch(error => { get('mvg-status').textContent = error.message; }));
+  get('mvg-generate').addEventListener('click', async () => {
+    if (runInProgress) return;
+    runInProgress = true;
+    updateRunButton();
+    get('mvg-manifest-select').disabled = true;
+    try {
+      await window.knowledgePlanning({action: 'mvg', manifest: selectedManifest()?.path,
+        button: get('mvg-generate'), status: get('scene-status'), refresh: load});
+    } finally {
+      runInProgress = false;
+      get('mvg-manifest-select').disabled = false;
+      updateRunButton();
+    }
+  });
   get('mvg-run').addEventListener('click', async () => {
     const manifest = selectedManifest();
     if (!manifest || runInProgress) return;

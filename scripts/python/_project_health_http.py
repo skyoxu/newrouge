@@ -18,6 +18,8 @@ from urllib.parse import parse_qs, urlsplit
 from project_health_knowledge import CONFIG, safe_file, write_json, validate_config, load_config, read_json, base_dir
 from _semantic_topology import load_workspace_topology
 from _project_health_mvg_versions import with_runtime_evidence
+from _project_health_planning import generated_view, planning_source, public_job, read_job, selected_result
+from _project_health_planning_http import start_planning
 
 
 def image_bytes(root, path, revision):
@@ -50,6 +52,9 @@ def run_mvg_manifest(root: Path, expected_revision: str, godot_bin: str,
     main_revision = git('rev-parse', 'refs/heads/main')
     if main_revision != expected_revision or git('rev-parse', 'HEAD') != main_revision:
         raise ValueError('Main revision changed; scan local main again before running MVG')
+    generated = selected_result(root, 'mvg')
+    if generated and generated.get('manifest') == manifest_path:
+        raise ValueError('Commit the generated MVG scope before main runtime verification')
     snapshot = base_dir(root) / 'latest.json'
     state = read_json(snapshot) if snapshot.exists() else {}
     overview = state.get('mvg_overview') or {}
@@ -155,7 +160,7 @@ def handler_factory(root: Path):
                     if mode == 'main':
                         snapshot = base_dir(root) / 'latest.json'
                         state = read_json(snapshot) if snapshot.exists() else {}
-                        topology = state.get('semantic_topology')
+                        topology = generated_view(root, 'capability') or state.get('semantic_topology')
                         if not isinstance(topology, dict):
                             topology = {
                                 'schema_version': 'newrouge.semantic-topology-view.v1',
@@ -191,11 +196,21 @@ def handler_factory(root: Path):
                 elif parsed.path == '/api/knowledge/mvg-overview':
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}
+                    generated = generated_view(root, 'mvg')
                     overview = state.get('mvg_overview')
+                    if generated:
+                        if isinstance(overview, dict) and overview.get('revision') == generated['revision']:
+                            generated = {**generated, 'versions': overview.get('versions', generated['versions'])}
+                        self.send(with_runtime_evidence(generated, root))
+                        return
                     if not isinstance(overview, dict) or overview.get('revision') != state.get('revision'):
                         self.send({'reason': 'Scan local main to build the GDD version and MVG view'}, 409)
                     else:
                         self.send(with_runtime_evidence(overview, root))
+                elif parsed.path == '/api/knowledge/planning':
+                    self.send(public_job(read_job(root, params.get('job_id', [''])[0])))
+                elif parsed.path == '/api/knowledge/planning-source':
+                    self.send(planning_source(root, params.get('job_id', [''])[0], params.get('path', [''])[0]))
                 elif parsed.path in ('/api/knowledge/godot/scene', '/api/knowledge/godot/script', '/api/knowledge/godot/unreachable'):
                     snapshot = base_dir(root) / 'latest.json'
                     state = read_json(snapshot) if snapshot.exists() else {}
@@ -246,6 +261,8 @@ def handler_factory(root: Path):
                     self.send(Path(__file__).with_name('project_health_mvg_versions.js').read_text(encoding='utf-8'), content_type='text/javascript')
                 elif parsed.path == '/knowledge/topology.js':
                     self.send(Path(__file__).with_name('project_health_topology.js').read_text(encoding='utf-8'), content_type='text/javascript')
+                elif parsed.path == '/knowledge/planning.js':
+                    self.send(Path(__file__).with_name('project_health_planning.js').read_text(encoding='utf-8'), content_type='text/javascript')
                 elif parsed.path == '/knowledge/treant.js':
                     self.send((Path(__file__).parent / 'vendor' / 'Treant.js').read_bytes(), content_type='text/javascript')
                 elif parsed.path == '/knowledge/raphael.js':
@@ -291,6 +308,8 @@ def handler_factory(root: Path):
                 path = urlsplit(self.path).path
                 if path == '/api/knowledge/scan':
                     self.cli('scan')
+                elif path == '/api/knowledge/planning':
+                    start_planning(self, root, request, operation, operation_guard, operation_state)
                 elif path == '/api/knowledge/mvg-run':
                     godot_bin = os.environ.get('GODOT_BIN')
                     if not godot_bin:
