@@ -616,17 +616,30 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     if validate_proposal(root, state, proposal)["status"] != "passed":
         raise ValueError("MVG semantic review requires a structurally valid proposal")
     runner_info = inspect_isolated_runner(runner)
-    from _mvg_planning_review import semantic_review_errors
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
+    from _planning_review_publication import prepare_publication, resume_publication
+    proposal_sha = canonical_sha(proposal)
+    publication = run_dir / f"semantic-review-publication-{proposal_sha.removeprefix('sha256:')}.json"
+    publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
+        "proposal_sha256": proposal_sha, "runner": runner_info}
+    for recorded in run_dir.glob("semantic-review-publication-*.json"):
+        if recorded != publication and load_json(recorded, {}).get("status") != "complete":
+            raise ValueError("MVG review publication is pending; recover the original proposal before revising it")
+    published = resume_publication(publication, publication_identity, atomic_json)
     existing = load_json(run_dir / "semantic-review.json", {})
-    if (existing.get("schema_version") == "newrouge.mvg-semantic-review.v1"
-        and existing.get("proposal_sha256") == canonical_sha(proposal)
-        and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]
-        and existing.get("verdict") == "blocked"):
-        raise ValueError("existing independent semantic review is blocked; resolve its findings before reviewing a revised proposal")
-    if not semantic_review_errors(state, proposal, existing,
-            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})):
-        if validate(root, run_id=run_id).get("formal_applicable") is True:
-            return {"status": "approved", "proposal_sha256": canonical_sha(proposal), "runtime_verified": False}
+    if published or (existing.get("proposal_sha256") == proposal_sha
+            and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]):
+        errors = semantic_review_errors(state, proposal, existing,
+            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+        errors.extend(review_execution_errors(state, proposal,
+            load_json(run_dir / "semantic-review-execution.json", {})))
+        if state.get("phase") != "applied":
+            state["phase"] = "review-blocked" if errors else "reviewed"
+        atomic_json(run_path, state)
+        if errors:
+            raise ValueError("existing independent semantic review is blocked; resolve findings before reviewing a revised proposal: "
+                + ";".join(errors))
+        return {"status": "approved", "proposal_sha256": proposal_sha, "runtime_verified": False}
     prompt = f'''Independently review proposal.json against ALL prepared source text, reviewed Requirements,
 Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
@@ -676,11 +689,12 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             break
     if result is None:
         raise ValueError("MVG independent review execution attempt budget exhausted; upstream proposal is preserved")
-    atomic_json(run_dir / "semantic-review.json", result)
-    atomic_json(run_dir / "semantic-review-execution.json", {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
+    execution = {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
-        "attempt_count": len(attempts)})
-    from _mvg_planning_review import semantic_review_errors
+        "attempt_count": len(attempts)}
+    prepare_publication(publication, publication_identity,
+        {"semantic-review.json": result, "semantic-review-execution.json": execution}, atomic_json)
+    resume_publication(publication, publication_identity, atomic_json)
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
     state["phase"] = "reviewed" if not errors else "review-blocked"
@@ -775,20 +789,11 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
-    from _mvg_planning_review import semantic_review_errors
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
     review_errors = semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
-    execution = load_json(run_dir / "semantic-review-execution.json", {})
-    from _planning_skill_common import validate_runner_description
-    try:
-        validate_runner_description(execution.get("runner_info") or {})
-    except ValueError:
-        review_errors.append("independent_semantic_review_isolation_missing")
-    receipt = execution.get("receipt") or {}
-    if (execution.get("proposal_sha256") != canonical_sha(proposal)
-        or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
-        or receipt.get("model_tools") != [] or not receipt.get("model")):
-        review_errors.append("independent_semantic_review_execution_identity_invalid")
+    review_errors.extend(review_execution_errors(state, proposal,
+        load_json(run_dir / "semantic-review-execution.json", {})))
     if review_errors:
         result["formal_applicable"] = False
         result["formal_blockers"].extend(review_errors)

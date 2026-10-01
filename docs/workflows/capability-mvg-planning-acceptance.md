@@ -117,6 +117,17 @@ The current repair addresses five production-boundary gaps, with counterexamples
 
 Local focused and three-document regression results are recorded in the execution plan. New regressions run in both the hard gate bundle and the real-model workflow's deterministic smoke stage. Mocked runner receipts in unit fixtures prove deterministic consumers only; the separate CI chain is required for production-model evidence.
 
+## Alignment and review-publication re-audit repair
+
+Baseline: merged main `5bc0e670f8ffca520f4fb87b4f42dd8fe38101cf` (#253). The controlling three documents are unchanged. The re-audit identified R01 (P1, ambiguous identical-member nodes could collide on one stable ID) and R02 (P2, loss between final verdict and metadata publication could block Capability recovery or rerun MVG review).
+
+| Finding | Repaired boundary | Regression evidence |
+| --- | --- | --- |
+| R01 / AC07 | Auto-reuse requires one candidate and one historical membership match. Reviewed overrides must name known, unique decisions; candidate stable IDs must be unique and historical retain/retire choices consistent. Apply validates the complete projected topology before creating a formal-write journal. | Same-member ambiguity, colliding/unknown/duplicate overrides and invalid topology block; explicit historical retention/retirement with legal multi-membership applies successfully. |
+| R02 / AC15, AC23 | Persist verdict, receipt, private mapping and corrections before multi-file publication. Resume recorded writes without another reviewer or budget reset; unknown target/checkpoint edits block. MVG keeps separate immutable completed records for revised proposals and shares the original three-invocation limit. | Publication interruptions before/after final report, metadata, corrections and checkpoint completion recover; no-winner, blocked verdict, malformed accounting and draft boundaries persist; a pending record cannot be bypassed by revising a proposal. |
+
+The initial ten-test run fails on unmodified merged main (six failures, three errors); all 25 current regressions pass in `logs/ci/planning-review-recovery/green.log`. They run in the hard gate bundle and deterministic production smoke. The isolated acceptance fixture's topology manifest now uses the real production schema/identity fields without changing its contract or source obligations. Platform and fresh real-model evidence are recorded in `execution-plans/2026-10-01-planning-alignment-review-recovery.md` when CI completes.
+
 ## Implementation surfaces
 
 - `.agents/skills/plan-capabilities/SKILL.md`
@@ -124,6 +135,8 @@ Local focused and three-document regression results are recorded in the executio
 - `scripts/python/plan_capabilities.py`
 - `scripts/python/plan_mvg.py`
 - `scripts/python/_planning_skill_common.py`
+- `scripts/python/_capability_alignment.py`
+- `scripts/python/_planning_review_publication.py`
 - `scripts/python/openai_isolated_model_runner.py`
 - `scripts/python/copilot_isolated_model_runner.py`
 - `scripts/python/planning_acceptance_fixture.py`

@@ -13,10 +13,13 @@ on:
       - 'scripts/python/_planning_skill_common.py'
       - 'scripts/python/_planning_scope.py'
       - 'scripts/python/_planning_apply_journal.py'
+      - 'scripts/python/_capability_alignment.py'
+      - 'scripts/python/_planning_review_publication.py'
       - 'scripts/python/_mvg_planning_review.py'
       - 'scripts/python/_mvg_obligations.py'
       - 'scripts/python/tests/test_planning_audit_repair.py'
       - 'scripts/python/tests/test_planning_main_audit_fixes.py'
+      - 'scripts/python/tests/test_planning_review_recovery.py'
       - 'scripts/python/planning_acceptance_fixture.py'
       - 'scripts/python/run_planning_production_acceptance.py'
   workflow_dispatch:
@@ -53,7 +56,7 @@ jobs:
         run: npm install -g @github/copilot@latest
 
       - name: Deterministic acceptance fixture smoke
-        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract scripts.python.tests.test_planning_audit_repair scripts.python.tests.test_planning_main_audit_fixes scripts.python.tests.test_copilot_isolated_model_runner scripts.python.tests.test_openai_isolated_model_runner -v
+        run: python -m unittest scripts.python.tests.test_planning_acceptance_fixture scripts.python.tests.test_capability_planning_contract scripts.python.tests.test_mvg_planning_contract scripts.python.tests.test_planning_audit_repair scripts.python.tests.test_planning_main_audit_fixes scripts.python.tests.test_planning_review_recovery scripts.python.tests.test_copilot_isolated_model_runner scripts.python.tests.test_openai_isolated_model_runner -v
 
       - name: Run real Capability to MVG production acceptance
         run: |

@@ -407,7 +407,7 @@ class PlanningAuditRepairTests(unittest.TestCase):
         result["findings"] = ["Resolve a semantic gap."]
         atomic_json(run / "semantic-review.json", result)
         with patch.object(mvg, "inspect_isolated_runner", return_value=info), patch.object(mvg, "run_isolated_model") as invoke:
-            with self.assertRaisesRegex(ValueError, "resolve its findings"):
+            with self.assertRaisesRegex(ValueError, "resolve.*findings|semantic-review.*identity drift"):
                 mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
             invoke.assert_not_called()
 
