@@ -2,7 +2,7 @@
 
 Requirement: `REQ-CAPABILITY-MVG-SKILLS-001`
 
-Status: **complete**. Audit-repair code revision `5271f65ef7c906f224f39aa50e41183b50e6b4de` passes real production-model acceptance, Windows Quality, Windows Smoke and MVG Integration. The historical run below predates the audit repairs.
+Status: **main-audit follow-up in verification**. The accepted historical audit-repair revision is recorded below. Reconciliation against merged main `75346cbda0ce96ed801fe05242ef7f04e2af056c` found one P1 and four P2 defects; branch `fix/planning-main-audit` repairs them. Completion of this follow-up requires Windows and real production-model CI on its implementation tree.
 
 This document maps the implementation to AC01-AC26 and records the controlled real-model acceptance required by the requirement. It does not claim gameplay runtime acceptance, human playtest approval, or KCP publication.
 
@@ -90,6 +90,20 @@ The Copilot adapter also reads documented `assistant.usage` and executed `sessio
 
 The clean CRLF checkout passes `validate_semantic_topology.py --worktree --require-available` for 139 source blocks and 127 active Requirements. Both Git and worktree topology checks are in the hard bundle. The repaired production workflow's independent isolated MVG semantic reviewer and final validator passed in run #36765025379; the historical run above is not new repair evidence.
 
+## Merged-main audit follow-up
+
+The current repair addresses five production-boundary gaps, with counterexamples and positive recovery paths in `scripts/python/tests/test_planning_main_audit_fixes.py`:
+
+| Finding | Priority | Corrected behavior | Requirement coverage |
+| --- | --- | --- | --- |
+| F01 existing verification outside prepared input | P1 | Every claimed existing source/contract/test/entrypoint/verification/authority must be copied and hash-bound at prepare. Existing baseline dependencies are copied automatically; repeated `--evidence-ref` prepares additional files. Missing copies or post-review drift block formal apply. Planned absent paths remain legal. | AC13, AC15 |
+| F02 lost candidate/review attempts on interruption | P2 | Durable attempts and budget reservations precede invocation. Caught interruption settles observed time; hard process loss preserves conservative reservations. Request reservations survive unavailable receipts without being reported as observed requests or billing. | AC23 |
+| F03 repeated valid review consumes another call | P2 | Valid selected/no-winner reports are reused with exact candidate, analysis, prompt, mapping, runner, receipt and correction identities. Corruption blocks instead of requesting another approval. Apply rechecks the bound result. | AC06, AC15, AC23 |
+| F04 Git line endings invalidate final obligations | P2 | Manifest, milestone-plan and handoff content identities share the runtime runner's LF normalization. LF/CRLF checkout conversion passes; actual content changes block. Snapshot/readiness/journal bytes retain strict checks. | AC24; portability AC11 |
+| F05 incomplete review report can select | P2 | Require all five findings arrays, nonempty comparative tradeoffs/rationale, corrections and resolvable authoritative evidence refs, including correction refs. Empty findings arrays are accepted. | AC06 |
+
+Local focused and three-document regression results are recorded in the execution plan. New regressions run in both the hard gate bundle and the real-model workflow's deterministic smoke stage. Mocked runner receipts in unit fixtures prove deterministic consumers only; the separate CI chain is required for production-model evidence.
+
 ## Implementation surfaces
 
 - `.agents/skills/plan-capabilities/SKILL.md`
@@ -105,4 +119,4 @@ The clean CRLF checkout passes `validate_semantic_topology.py --worktree --requi
 
 ## Completion boundary
 
-The executable implementation is complete at the explicitly recorded revision, where production acceptance and all repository gates pass. The final documentation checkpoint records those results without changing executable implementation or business authorities. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
+Historical acceptance remains scoped to its recorded revision. The merged-main follow-up is complete only after its own production acceptance and repository gates pass. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.

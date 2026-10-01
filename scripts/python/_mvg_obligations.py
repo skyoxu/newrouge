@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any
 
-from _planning_skill_common import file_sha, load_json, repo_path
+from _planning_skill_common import file_sha, normalized_file_sha, load_json, repo_path
 
 TRACE_ROOT = Path("docs/testing/mvg/planning")
 
@@ -32,7 +32,7 @@ def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[st
         ref = str(trace.get("applied_manifest_path") or "")
         if ref:
             path = repo_path(root, ref)
-            if path.is_file() and file_sha(path) == trace.get("applied_manifest_sha256"):
+            if path.is_file() and normalized_file_sha(path) == trace.get("applied_manifest_sha256"):
                 active[ref] = trace.get("applied_manifest_sha256")
     for trace in traces:
         ref = str(trace.get("applied_manifest_path") or "")
@@ -44,7 +44,7 @@ def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[st
         if str(task_id) not in involved:
             continue
         path = repo_path(root, ref)
-        if not path.is_file() or file_sha(path) != trace.get("applied_manifest_sha256"):
+        if not path.is_file() or normalized_file_sha(path) != trace.get("applied_manifest_sha256"):
             return False, "mvg_applied_manifest_drift", trace
         binding = (trace.get("handoff_bindings") or {}).get(str(task_id), {})
         if binding.get("manifest_sha256") != trace.get("applied_manifest_sha256"):
@@ -61,7 +61,7 @@ def check_task_obligations(root: Path, task_id: str) -> tuple[bool, str, dict[st
         elif binding.get("kind") == "milestone":
             from milestone_incremental_handoff import validate_task_handoff
             handoff_path = repo_path(root, str(binding.get("path") or ""))
-            if not handoff_path.is_file() or file_sha(handoff_path) != binding.get("sha256"):
+            if not handoff_path.is_file() or normalized_file_sha(handoff_path) != binding.get("sha256"):
                 return False, "mvg_milestone_handoff_stale", trace
             ok, reason, handoff = validate_task_handoff(root, handoff_path, task_id)
             if not ok or handoff.get("baseline_manifest_sha256") != trace.get("applied_manifest_sha256"):

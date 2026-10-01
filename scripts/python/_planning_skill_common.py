@@ -55,6 +55,12 @@ def file_sha(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def normalized_file_sha(path: Path) -> str:
+    """Use the MVG runner's content identity across Git newline conversions."""
+    from _mvg_manifest import manifest_sha256
+    return manifest_sha256(path.read_bytes())
+
+
 def text_sha(value: str) -> str:
     return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 

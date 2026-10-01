@@ -2,7 +2,50 @@
 from pathlib import Path
 from typing import Any
 
-from _planning_skill_common import canonical_sha, repo_path
+from _planning_skill_common import canonical_sha, file_sha, load_json, repo_path
+
+
+def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path) -> list[str]:
+    """Every claimed existing verification dependency must be readable and bound."""
+    index = load_json(prepared / "analysis-index.json", {})
+    files = index.get("files") or {}
+    authority = index.get("authority_inputs") or {}
+    dependencies = set()
+    manifest = proposal.get("manifest_candidate") or {}
+    for flow in manifest.get("flows", []):
+        if not isinstance(flow, dict):
+            continue
+        dependencies.update(str(p) for p in flow.get("source_paths", []))
+        dependencies.update(str(h.get("contract_ref") or "") for h in flow.get("handoffs", []) if isinstance(h, dict))
+    dependencies.update(str(t.get("path") or "") for t in manifest.get("tests", [])
+        if isinstance(t, dict) and t.get("state") == "implemented")
+    dependencies.update(str(e.get("path") or "") for e in proposal.get("entrypoints", [])
+        if isinstance(e, dict) and e.get("status") == "existing_verified")
+    rows = [r for key in ("coverage_table", "change_reviews", "retirement_reviews")
+        for r in proposal.get(key, []) if isinstance(r, dict)]
+    if isinstance(proposal.get("coverage_review"), dict):
+        rows.append(proposal["coverage_review"])
+    for row in rows:
+        for key in ("verification_ref", "authority_ref"):
+            if row.get(key):
+                dependencies.add(str(row[key]).split("#", 1)[0])
+    errors = []
+    for ref in sorted(dependencies):
+        try:
+            path = repo_path(root, ref)
+            rel = path.relative_to(root.resolve()).as_posix()
+        except ValueError:
+            errors.append(f"verification_dependency_invalid_path:{ref}")
+            continue
+        copies = [f"{prefix}/{rel}" for prefix in ("sources", "references")]
+        matched = [key for key in copies if key in files and (prepared / key).is_file()]
+        expected = authority.get(rel)
+        if not expected or not matched:
+            errors.append(f"verification_dependency_not_prepared:{rel}")
+        elif (not path.is_file() or file_sha(path) != expected
+              or any(file_sha(prepared / key) != files[key] or files[key] != expected for key in matched)):
+            errors.append(f"verification_dependency_drift:{rel}")
+    return errors
 
 
 def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, Any],

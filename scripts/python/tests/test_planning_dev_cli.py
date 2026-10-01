@@ -53,12 +53,17 @@ class PlanningDevCliTests(unittest.TestCase):
             "--capabilities", "docs/planning/semantic-topology/capabilities.v1.json",
             "--manifest", "docs/testing/mvg/m2.json",
             "--task-id", "15",
+            "--evidence-ref", "Game.Core.Tests/Tasks/ExistingTests.cs",
+            "--evidence-ref", "docs/contracts/extra.md",
         ])
         cmd = build_plan_mvg_cmd(args)
         self.assertIn("--capabilities", cmd)
         self.assertIn("docs/planning/semantic-topology/capabilities.v1.json", cmd)
         self.assertIn("--manifest", cmd)
         self.assertIn("docs/testing/mvg/m2.json", cmd)
+        self.assertEqual(2, cmd.count("--evidence-ref"))
+        self.assertIn("Game.Core.Tests/Tasks/ExistingTests.cs", cmd)
+        self.assertIn("docs/contracts/extra.md", cmd)
 
 
 if __name__ == "__main__":

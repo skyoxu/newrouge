@@ -58,6 +58,10 @@ The runner may use Codex, an OpenAI-hosted sandbox, WSL/container isolation, or 
 
 Run state is durable under `logs/ci/capability-planning/<run-id>/`. Re-run the incomplete stage only. Existing valid candidates are evidence and should not be discarded just because a later stage failed. Candidate retries and total active-time budgets are operator-configured by the runner; never claim model-request counts or monetary cost when the runner cannot observe them.
 
+Persist each candidate/review attempt and its active-time/request reservation before invocation. A caught interruption settles observed active time; process loss keeps the unknown invocation's reservation and consumed attempt. Reservations constrain later calls but are not observed cost, billing or paused wall time. Never reset them on resume.
+
+Re-running review reuses a valid report bound to the original analysis bundle, all three candidate hashes, prompt, anonymous mapping, runner and execution receipt. Preserve `no_valid_winner` as well as a selected winner. A changed report, input, receipt or corrected candidate blocks reuse and apply; do not invoke another reviewer to bypass it. Require all five findings arrays, comparative tradeoffs, rationale, corrections and resolvable authoritative evidence refs. Empty findings arrays are legal; missing findings fields are not.
+
 Do not prepare over an existing run ID. Before apply, the complete formal projection and readiness rebind are persisted in `apply-journal.json`. A pending pointer blocks Chapter 5/6 consumers during incomplete writes. Resume by re-running the same `apply --confirm`; it accepts only original or journal-owned target bytes and unchanged authority inputs, preserves subsequent external edits, and never regenerates candidates/review/alignment. A completed apply is idempotent. Keep the run directory until recovery completes; do not delete the pending pointer to bypass the gate.
 
 ## Upstream correction
