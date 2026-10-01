@@ -14,6 +14,7 @@ Design cumulative player-journey integration coverage after Capability planning.
 - GDD and reviewed Requirements remain semantic authority; Capability is a derived navigation index.
 - Require an explicit Capability path and explicit target manifest path. Never select “latest” implicitly.
 - A flow may span many Capabilities; a Capability may participate in many flows. Do not mechanically create one flow per Capability.
+- Preserve source-named sending/receiving systems and map their real task owners, including shared ownership. Assert the same interaction in flows, entrypoints and planned tests; task labels alone do not establish a system boundary.
 - Real task IDs, owners, contracts and existing tests must be verified from repository inputs. Missing objects become gaps; never invent them.
 - Planned entrypoints may target not-yet-created implementation paths only when a real owner task, target symbol/path, inputs/state/assertions and implementation acceptance are explicit.
 - Existing verified entrypoints must point to files that exist now.
@@ -60,5 +61,7 @@ Task status or small reference edits do not automatically regenerate Capability 
 Never prepare over an existing run ID: resume its incomplete stage, or choose a new ID for changed source inputs. Deltas are computed against the prepared manifest copy, never silently rebased onto a later manifest.
 
 Apply also journals the approved trace and manifest together. Re-running the same apply recovers interruption and preserves subsequent legitimate obligation bindings. Independent review execution has at most three persisted fresh invocations per run; transport/identity/JSON failures may retry, but an actual blocked semantic verdict stops without seeking another approving reviewer. Re-running an already valid review reuses its evidence.
+
+Each fixed proposal has a hash-bound `semantic-review-publication-<proposal-sha256>.json` checkpoint containing its verdict and execution receipt. Re-run review to finish interrupted publication without another invocation. Before that checkpoint exists, require the completed attempt's original output hash, runner/analysis identities and receipt to match before reuse. Unknown target edits or corrupt checkpoints block recovery. Completed records preserve earlier blocked verdicts when a repaired proposal is reviewed within the same three-attempt limit. Finish any pending publication against its original proposal before revision. Drafts and invalid semantic accounting never gain formal approval by replaying publication.
 
 Generation execution also has three persisted fresh attempts. Identity/transport failures do not consume downstream review or regenerate Capability, and re-invoking the stage cannot reset that budget. Preserve a valid generated proposal and resume review/validation/apply only.

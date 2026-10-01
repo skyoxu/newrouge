@@ -145,3 +145,18 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
         if any(not isinstance(r, dict) or r.get("verdict") not in verdicts or not str(r.get("rationale") or "").strip() for r in rows):
             errors.append(f"semantic_review_invalid_verdict:{key}")
     return errors
+
+
+def review_execution_errors(state: dict[str, Any], proposal: dict[str, Any], execution: dict[str, Any]) -> list[str]:
+    from _planning_skill_common import validate_runner_description
+    errors = []
+    try:
+        validate_runner_description(execution.get("runner_info") or {})
+    except ValueError:
+        errors.append("independent_semantic_review_isolation_missing")
+    receipt = execution.get("receipt") or {}
+    if (execution.get("proposal_sha256") != canonical_sha(proposal)
+        or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
+        or receipt.get("model_tools") != [] or not receipt.get("model")):
+        errors.append("independent_semantic_review_execution_identity_invalid")
+    return errors

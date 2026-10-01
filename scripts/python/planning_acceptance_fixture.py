@@ -345,8 +345,10 @@ def _write_topology_seed(root: Path, ledger: dict[str, Any], semantics: dict[str
     ):
         artifacts[rel] = file_sha(root / rel)
     atomic_json(topology_root / "topology-manifest.v1.json", {
-        "schema_version": "newrouge.topology-manifest.v1",
+        "schema_version": "newrouge.semantic-topology-manifest.v1",
         "source_revision": ledger.get("source_revision"),
+        "source_manifest_sha256": file_sha(root / MANIFEST_PATH),
+        "schema_revision": "v1",
         "generator_revision": "planning-acceptance-fixture-v1",
         "artifacts": artifacts,
     })

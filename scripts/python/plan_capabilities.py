@@ -16,6 +16,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from _capability_alignment import (
+    apply_alignment_override as _apply_alignment_override,
+    build_alignment, slug, validate_alignment, validate_formal_projection,
+)
 from _planning_skill_common import (
     atomic_json,
     build_blinded_analysis_bundle,
@@ -46,11 +50,6 @@ TASK_VIEWS = (
 
 def now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
-
-
-def slug(value: str) -> str:
-    parts = re.findall(r"[A-Za-z0-9]+", value.upper())
-    return "-".join(parts)[:72] or "UNNAMED"
 
 
 def _run_dir(root: Path, run_id: str) -> Path:
@@ -911,6 +910,11 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         raise ValueError("review must use the same runner identity as candidate generation")
     seed_hex, anonymous = _anonymous_candidates(state)
     candidate_hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in labels}
+    from _planning_review_publication import completed_output, prepare_publication, resume_publication, serialized_sha
+    publication = run_dir / "review/publication.json"
+    publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
+        "candidate_sha256": candidate_hashes, "prompt_sha256": text_sha(REVIEW_PROMPT), "runner": runner_info}
+    resume_publication(publication, publication_identity, atomic_json)
     if any((run_dir / "review" / name).is_file() for name in ("review.json", "review.meta.json")):
         result, selected = _read_valid_review(run_dir, state)
         state.update(review_status=result["status"], selected_candidate=selected,
@@ -927,6 +931,22 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     final_meta: dict[str, Any] | None = None
     corrected_candidate: dict[str, Any] | None = None
     last_error = ""
+    restored = completed_output(attempts, run_dir / "isolated-workspaces/review" / f"attempt-{len(attempts)}" / "review.json")
+    if restored:
+        record, final_result = restored
+        final_meta = load_json(run_dir / "review/attempts" / f"review-attempt-{len(attempts)}.meta.json", {})
+        if (not final_meta or final_meta.get("validation_errors") != []
+            or any(record.get(key) != value for key, value in final_meta.items())
+            or validate_review_report(final_result, run_dir)):
+            raise ValueError("Completed Capability review metadata identity changed or result invalid")
+        if final_result.get("status") == "selected":
+            corrected_candidate = apply_review_corrections(load_json(run_dir / "candidates" /
+                f"{anonymous[str(final_result['selected'])]}.json", {}), final_result.get("corrections", []))
+            errors = validate_candidate(corrected_candidate,
+                load_json(run_dir / "analysis-input/source-blocks.v1.json", {}),
+                load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}), state["analysis_identity_sha256"])
+            if errors:
+                raise ValueError("Completed Capability review correction invalid: " + ";".join(errors))
     while len(attempts) < max_attempts and final_result is None:
         attempt_no = len(attempts) + 1
         attempt_timeout = _remaining_attempt_budget(
@@ -1032,13 +1052,9 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
 
     review_dir = run_dir / "review"
     review_dir.mkdir(parents=True, exist_ok=True)
-    atomic_json(review_dir / "anonymous-map.json", {
-        "seed_sha256": "sha256:" + seed_hex,
-        "mapping": anonymous,
-    })
-    atomic_json(review_dir / "review.json", final_result)
-    final_meta["output_sha256"] = file_sha(review_dir / "review.json")
-    atomic_json(review_dir / "review.meta.json", final_meta)
+    final_meta["output_sha256"] = serialized_sha(final_result)
+    payloads = {"anonymous-map.json": {"seed_sha256": "sha256:" + seed_hex, "mapping": anonymous},
+        "review.json": final_result, "review.meta.json": final_meta}
     selected = final_result.get("selected")
     selected_label = anonymous.get(str(selected)) if selected is not None else None
     final_candidate_path = None
@@ -1046,9 +1062,11 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         if corrected_candidate is None:
             raise ValueError("selected review did not materialize a final candidate")
         if final_result.get("corrections"):
-            path = review_dir / "corrected-candidate.json"
-            atomic_json(path, corrected_candidate)
+            payloads["corrected-candidate.json"] = corrected_candidate
             final_candidate_path = "review/corrected-candidate.json"
+    prepare_publication(publication, publication_identity, payloads, atomic_json)
+    resume_publication(publication, publication_identity, atomic_json)
+    _read_valid_review(run_dir, state)
     state["phase"] = "reviewed"
     state["selected_candidate"] = selected_label
     state["final_candidate_path"] = final_candidate_path
@@ -1064,76 +1082,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         "status": final_result.get("status"),
         "selected_candidate": selected_label,
         "corrected": bool(final_result.get("corrections")),
+        "reused": bool(restored),
         "budget": state["budget"],
-    }
-
-
-def build_alignment(candidate: dict[str, Any], existing: dict[str, Any]) -> dict[str, Any]:
-    old_rows = [
-        row for row in existing.get("capabilities", [])
-        if isinstance(row, dict) and str(row.get("capability_id") or "").strip()
-    ]
-    old_by_members = {
-        tuple(sorted(str(value) for value in row.get("requirement_ids", []))): row
-        for row in old_rows
-    }
-    used_old: set[str] = set()
-    decisions = []
-    first_run = not old_rows
-    allocated: set[str] = set()
-    for cap in candidate.get("capabilities", []):
-        temp_id = str(cap.get("capability_id") or "")
-        members = tuple(sorted(str(value) for value in cap.get("requirement_ids", [])))
-        old = old_by_members.get(members)
-        if old is not None:
-            stable_id = str(old["capability_id"])
-            used_old.add(stable_id)
-            decisions.append({
-                "candidate_id": temp_id,
-                "action": "reuse",
-                "stable_id": stable_id,
-                "reason": "exact Requirement membership match",
-                "resolved": True,
-            })
-            allocated.add(stable_id)
-            continue
-        if first_run:
-            base = "CAP-" + slug(str(cap.get("title") or temp_id))
-            stable_id = base
-            suffix = 2
-            while stable_id in allocated:
-                stable_id = f"{base}-{suffix}"
-                suffix += 1
-            allocated.add(stable_id)
-            decisions.append({
-                "candidate_id": temp_id,
-                "action": "add",
-                "stable_id": stable_id,
-                "reason": "first formal Capability baseline",
-                "resolved": True,
-            })
-        else:
-            decisions.append({
-                "candidate_id": temp_id,
-                "action": "unresolved",
-                "stable_id": None,
-                "reason": "membership changed; explicit reuse/add/split/merge/rename decision required",
-                "resolved": False,
-            })
-    for old in old_rows:
-        cid = str(old["capability_id"])
-        if cid not in used_old:
-            decisions.append({
-                "candidate_id": None,
-                "action": "unresolved-retirement",
-                "stable_id": cid,
-                "reason": "existing Capability has no exact-membership match",
-                "resolved": False,
-            })
-    return {
-        "schema_version": "newrouge.capability-alignment.v1",
-        "decisions": decisions,
-        "resolved": all(bool(row.get("resolved")) for row in decisions),
     }
 
 
@@ -1208,30 +1158,6 @@ def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
     atomic_json(run_dir / "alignment-preview.json", result)
     atomic_json(run_path, state)
     return result
-
-
-def _apply_alignment_override(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    rows = [dict(row) for row in base.get("decisions", []) if isinstance(row, dict)]
-    by_candidate = {
-        str(row.get("candidate_id")): row
-        for row in override.get("decisions", [])
-        if isinstance(row, dict) and row.get("candidate_id") is not None
-    }
-    by_stable = {
-        str(row.get("stable_id")): row
-        for row in override.get("decisions", [])
-        if isinstance(row, dict) and row.get("candidate_id") is None and row.get("stable_id")
-    }
-    out = []
-    for row in rows:
-        key = str(row.get("candidate_id")) if row.get("candidate_id") is not None else None
-        replacement = by_candidate.get(key) if key is not None else by_stable.get(str(row.get("stable_id")))
-        out.append(dict(replacement) if replacement is not None else row)
-    return {
-        "schema_version": "newrouge.capability-alignment.v1",
-        "decisions": out,
-        "resolved": all(bool(row.get("resolved")) for row in out),
-    }
 
 
 def _formal_payload(candidate: dict[str, Any], alignment: dict[str, Any], source_revision: str) -> tuple[dict[str, Any], dict[str, str]]:
@@ -1412,12 +1338,14 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     errors = validate_candidate(candidate, ledger, semantics, str(state["analysis_identity_sha256"]))
     if errors:
         raise ValueError("selected candidate is invalid: " + "; ".join(errors))
-    alignment = build_alignment(candidate, load_json(root / FORMAL_CAPABILITIES, {"capabilities": []}))
+    existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
+    alignment = build_alignment(candidate, existing)
     if alignment_override is not None:
         alignment = _apply_alignment_override(alignment, load_json(alignment_override, {}))
     if not alignment.get("resolved"):
         atomic_json(run_dir / "alignment-preview.json", alignment)
         raise ValueError("Capability identity alignment is unresolved; review alignment-preview.json")
+    validate_alignment(candidate, existing, alignment)
     formal, _mapping = _formal_payload(candidate, alignment, str(semantics.get("source_revision") or ""))
     cap_by_req: dict[str, set[str]] = {}
     for cap in formal["capabilities"]:
@@ -1474,6 +1402,9 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         "source_revision": formal["source_revision"],
         "edges": kept,
     }
+
+    projection = validate_formal_projection(root, formal, edges_doc, back, gameplay)
+    atomic_json(run_dir / "formal-projection-validation.json", projection)
 
     selection = {
         "schema_version": "newrouge.capability-selection.v1",

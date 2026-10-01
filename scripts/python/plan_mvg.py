@@ -280,11 +280,13 @@ entrypoints rows use status existing_verified or planned. existing_verified must
 
 For every handoff success/failure/recovery assertion, explicitly identify the producer request data, the consumer-observable result or failure signal, and the owned state transition that makes the assertion testable. Request/contract data alone is not proof of completion. A success-only input cannot exercise the failure branch. Explain how prepared recovery/retry/permission fields constrain the consumer's result and recovery state. A planned owned entrypoint may specify a proposed result callback or failure input as an implementation obligation, but must label it planned rather than invent an existing contract member. If an actual required contract or upstream semantic decision is missing, retain a genuine gap. Make these relationships explicit in inputs, state, assertions and implementation_acceptance so the independent reviewer can verify the whole handoff.
 
+Preserve the source-specified producer/consumer system roles for every required interaction and map each role to its real owning Task ID. Task IDs identify owners; they do not replace distinct services, terminals, UI surfaces or domain consumers named by the source. One task may own more than one such role, so do not collapse a required internal system boundary merely because its roles share a task. State which system sends which contract/request/result, which receiving system consumes it, and the receiving system's observable state change. Make the same named producer-to-consumer interaction explicit in the flow/handoff, owned entrypoints and planned test scenarios/assertions; generic producer/consumer task labels alone cannot substantiate domain-integration evidence. Preserve source roles without inventing new components or existing implementations.
+
 Tests may be planned or implemented using the existing MVG schema. implemented means implementation exists in the prepared references/ or sources/, not passed. Every claimed existing source, contract, entrypoint, verification or reviewed authority must also be readable in this fixed bundle. If missing, report the dependency so the operator can prepare a new run with --evidence-ref; never validate a newly read repository file outside the prepared input. Do not set runtime_verified and do not claim any plan validation is a runtime run.
 Reserve gaps for unresolved upstream design, Requirement, ownership, Acceptance or required real-contract evidence. A correctly specified planned entrypoint/test is a future implementation obligation, not an upstream gap. Missing runtime execution is expected at this planning stage, not a gap. Record those boundaries in notes/manual_obligations and keep the entrypoint/test state planned. Use planning_status=ready_for_validation with gaps=[] when all upstream evidence and planning obligations are complete; use draft for a genuine unresolved upstream gap. Never erase or disguise a genuine gap just to make validation pass.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
 
-coverage_table must account for EVERY active delivery-relevant Requirement. Each flow row requires requirement_id, capability_ref, integer task_id, flow_id, and non-empty coverage rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
+coverage_table must account for EVERY active delivery-relevant Requirement. Each flow row requires requirement_id, capability_ref, integer task_id, flow_id, and a nonempty string field named rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Use the literal JSON key rationale, not coverage_rationale or reason. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
 """
 
 
@@ -414,6 +416,7 @@ Deterministic validation reminders for the FULL replacement proposal:
 - gdunit tests require evidence_level=scene-method or engine-input and a Tests.Godot/tests/... .gd path.
 - source_paths and contract_ref values in the formal manifest are original repository-relative paths, never analysis-input/... paths.
 - Every planned entrypoint requires integer owner_task plus non-empty path, symbol, inputs, state, assertions, implementation_acceptance.
+- coverage_table rows require a nonempty "rationale" string. Write that exact JSON key. The validator error coverage_rationale_missing means rationale is missing; coverage_rationale is an error label, not the required output field.
 - Do not omit a required field merely because it can be inferred from prose.
 Known Taskmaster IDs for this planning input: {known_task_ids}
 Authoritative Taskmaster statuses (task ID to status): {json.dumps(task_statuses, sort_keys=True)}
@@ -616,17 +619,35 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     if validate_proposal(root, state, proposal)["status"] != "passed":
         raise ValueError("MVG semantic review requires a structurally valid proposal")
     runner_info = inspect_isolated_runner(runner)
-    from _mvg_planning_review import semantic_review_errors
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
+    from _planning_review_publication import completed_output, prepare_publication, publication_complete, resume_publication
+    proposal_sha = canonical_sha(proposal)
+    publication = run_dir / f"semantic-review-publication-{proposal_sha.removeprefix('sha256:')}.json"
+    publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
+        "proposal_sha256": proposal_sha, "runner": runner_info}
+    for recorded in run_dir.glob("semantic-review-publication-*.json"):
+        if recorded != publication and not publication_complete(recorded):
+            raise ValueError("MVG review publication is pending; recover the original proposal before revising it")
+    settled = state.get("semantic_review_attempts") or []
+    if settled and settled[-1].get("status") == "completed" and settled[-1].get("proposal_sha256") != proposal_sha:
+        prior_sha = str(settled[-1].get("proposal_sha256") or "").removeprefix("sha256:")
+        if not (run_dir / f"semantic-review-publication-{prior_sha}.json").is_file():
+            raise ValueError("Completed MVG review is unpublished; recover the original proposal before revising it")
+    published = resume_publication(publication, publication_identity, atomic_json)
     existing = load_json(run_dir / "semantic-review.json", {})
-    if (existing.get("schema_version") == "newrouge.mvg-semantic-review.v1"
-        and existing.get("proposal_sha256") == canonical_sha(proposal)
-        and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]
-        and existing.get("verdict") == "blocked"):
-        raise ValueError("existing independent semantic review is blocked; resolve its findings before reviewing a revised proposal")
-    if not semantic_review_errors(state, proposal, existing,
-            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})):
-        if validate(root, run_id=run_id).get("formal_applicable") is True:
-            return {"status": "approved", "proposal_sha256": canonical_sha(proposal), "runtime_verified": False}
+    if published or (existing.get("proposal_sha256") == proposal_sha
+            and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]):
+        errors = semantic_review_errors(state, proposal, existing,
+            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+        errors.extend(review_execution_errors(state, proposal,
+            load_json(run_dir / "semantic-review-execution.json", {})))
+        if state.get("phase") != "applied":
+            state["phase"] = "review-blocked" if errors else "reviewed"
+        atomic_json(run_path, state)
+        if errors:
+            raise ValueError("existing independent semantic review is blocked; resolve findings before reviewing a revised proposal: "
+                + ";".join(errors))
+        return {"status": "approved", "proposal_sha256": proposal_sha, "runtime_verified": False}
     prompt = f'''Independently review proposal.json against ALL prepared source text, reviewed Requirements,
 Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
@@ -636,6 +657,8 @@ Do not require their implementation or claim runtime_verified. Do not approve in
 mechanical one-flow-per-Capability grouping, unsupported deferral or baseline weakening.
 Return JSON only: schema_version="newrouge.mvg-semantic-review.v1",
 analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256="{canonical_sha(proposal)}",
+Copy both identity values verbatim from this prompt; do not compute, shorten, or edit their sha256 strings.
+They are fixed host-supplied input identities, not semantic judgments. Check their exact characters before returning JSON.
 verdict="approved" or "blocked", findings=[] ONLY if all checks pass (otherwise concrete findings),
 requirement_reviews=[{{"requirement_id":"...","verdict":"covered|other_verification|deferred|blocked","rationale":"..."}}]
 with exactly one explicit non-empty rationale per active delivery-relevant Requirement,
@@ -646,7 +669,14 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     attempts = state.setdefault("semantic_review_attempts", [])
     receipt = None
     result = None
-    while len(attempts) < 3:
+    if attempts and attempts[-1].get("proposal_sha256") == proposal_sha:
+        restored = completed_output(attempts, run_dir / "semantic-review-workspace" / f"attempt-{len(attempts)}" / "review.json")
+        if restored:
+            record, result = restored
+            if record.get("runner_info") != runner_info or record.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:
+                raise ValueError("Completed MVG review execution identity changed")
+            receipt = record["receipt"]
+    while len(attempts) < 3 and result is None:
         number = len(attempts) + 1
         workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
         workspace.mkdir(parents=True, exist_ok=False)
@@ -655,7 +685,8 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
-        record = {"attempt": number, "status": "running", "proposal_sha256": canonical_sha(proposal)}
+        record = {"attempt": number, "status": "running", "proposal_sha256": proposal_sha,
+            "runner_info": runner_info, "analysis_identity_sha256": state["analysis_identity_sha256"]}
         attempts.append(record)
         atomic_json(run_path, state)  # Count even an interrupted invocation.
         started = time.monotonic()
@@ -665,7 +696,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             if receipt.get("model_tools") != [] or not receipt.get("model"):
                 raise ValueError("independent reviewer execution identity is incomplete")
             result = parse_model_json(output)
-            record.update(status="completed", receipt=receipt)
+            record.update(status="completed", receipt=receipt, output_sha256=file_sha(output))
         except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
             record.update(status="execution-failed", error=str(exc))
             state["phase"] = "review-execution-blocked"
@@ -676,11 +707,12 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             break
     if result is None:
         raise ValueError("MVG independent review execution attempt budget exhausted; upstream proposal is preserved")
-    atomic_json(run_dir / "semantic-review.json", result)
-    atomic_json(run_dir / "semantic-review-execution.json", {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
+    execution = {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
-        "attempt_count": len(attempts)})
-    from _mvg_planning_review import semantic_review_errors
+        "attempt_count": len(attempts)}
+    prepare_publication(publication, publication_identity,
+        {"semantic-review.json": result, "semantic-review-execution.json": execution}, atomic_json)
+    resume_publication(publication, publication_identity, atomic_json)
     errors = semantic_review_errors(state, proposal, result,
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
     state["phase"] = "reviewed" if not errors else "review-blocked"
@@ -775,20 +807,11 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     _validate_input_freshness(root, run_dir, state)
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
-    from _mvg_planning_review import semantic_review_errors
+    from _mvg_planning_review import semantic_review_errors, review_execution_errors
     review_errors = semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
         load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
-    execution = load_json(run_dir / "semantic-review-execution.json", {})
-    from _planning_skill_common import validate_runner_description
-    try:
-        validate_runner_description(execution.get("runner_info") or {})
-    except ValueError:
-        review_errors.append("independent_semantic_review_isolation_missing")
-    receipt = execution.get("receipt") or {}
-    if (execution.get("proposal_sha256") != canonical_sha(proposal)
-        or execution.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
-        or receipt.get("model_tools") != [] or not receipt.get("model")):
-        review_errors.append("independent_semantic_review_execution_identity_invalid")
+    review_errors.extend(review_execution_errors(state, proposal,
+        load_json(run_dir / "semantic-review-execution.json", {})))
     if review_errors:
         result["formal_applicable"] = False
         result["formal_blockers"].extend(review_errors)

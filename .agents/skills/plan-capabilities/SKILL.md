@@ -31,7 +31,7 @@ Create the derived Capability organization after the relevant Chapter 3-5 scope 
    `py -3 scripts/python/dev_cli.py plan-capabilities --stage review --run-id <id>`
 5. Preview historical ID alignment:
    `py -3 scripts/python/plan_capabilities.py preview-alignment --run-id <id>`
-   Exact Requirement-membership matches reuse IDs automatically. Any changed membership is unresolved until an explicit reviewed alignment decision is supplied.
+   Reuse an exact Requirement-membership match automatically only when both the candidate and historical match are unique. Changed membership or multiple identical-member nodes requires explicit reviewed candidate decisions and historical retain/retire decisions. Legal Requirement multi-membership remains supported; stable IDs must be unique.
 6. Apply only after review/alignment:
    `py -3 scripts/python/plan_capabilities.py apply --run-id <id> --alignment-override <reviewed.json> --confirm`
 7. Validate semantic topology and inspect the per-task Chapter 5 rebind results. Any fingerprint change beyond `capability_refs` blocks automatic rebind and blocks formal MVG planning until the affected Chapter 5 task is reconciled normally.
@@ -62,7 +62,11 @@ Persist each candidate/review attempt and its active-time/request reservation be
 
 Re-running review reuses a valid report bound to the original analysis bundle, all three candidate hashes, prompt, anonymous mapping, runner and execution receipt. Preserve `no_valid_winner` as well as a selected winner. A changed report, input, receipt or corrected candidate blocks reuse and apply; do not invoke another reviewer to bypass it. Require all five findings arrays, comparative tradeoffs, rationale, corrections and resolvable authoritative evidence refs. Empty findings arrays are legal; missing findings fields are not.
 
+Review publishes its anonymous mapping, verdict, execution metadata and any corrected candidate through `review/publication.json`. Re-run review after interruption to finish that same recorded publication without another model call or resetting attempts/budgets. Before the publication checkpoint exists, reuse only a completed attempt whose original output and archived metadata still match their persisted identities. Unknown target edits or checkpoint drift block recovery; preserve the files for inspection. An unchanged no-winner verdict remains no-winner.
+
 Do not prepare over an existing run ID. Before apply, the complete formal projection and readiness rebind are persisted in `apply-journal.json`. A pending pointer blocks Chapter 5/6 consumers during incomplete writes. Resume by re-running the same `apply --confirm`; it accepts only original or journal-owned target bytes and unchanged authority inputs, preserves subsequent external edits, and never regenerates candidates/review/alignment. A completed apply is idempotent. Keep the run directory until recovery completes; do not delete the pending pointer to bypass the gate.
+
+Before creating the apply journal, validate all alignment decisions and the complete projected Source Block/Requirement/Capability/Task/Acceptance topology. Duplicate stable IDs, missing or contradictory historical decisions and invalid references block before any formal write. Inspect `formal-projection-validation.json` for a successful preflight.
 
 ## Upstream correction
 

@@ -117,6 +117,26 @@ The current repair addresses five production-boundary gaps, with counterexamples
 
 Local focused and three-document regression results are recorded in the execution plan. New regressions run in both the hard gate bundle and the real-model workflow's deterministic smoke stage. Mocked runner receipts in unit fixtures prove deterministic consumers only; the separate CI chain is required for production-model evidence.
 
+## Alignment and review-publication re-audit repair
+
+Baseline: merged main `5bc0e670f8ffca520f4fb87b4f42dd8fe38101cf` (#253). The controlling three documents are unchanged. The re-audit identified R01 (P1, ambiguous identical-member nodes could collide on one stable ID) and R02 (P2, loss between final verdict and metadata publication could block Capability recovery or rerun MVG review).
+
+| Finding | Repaired boundary | Regression evidence |
+| --- | --- | --- |
+| R01 / AC07 | Auto-reuse requires one candidate and one historical membership match. Reviewed overrides must name known, unique decisions; candidate stable IDs must be unique and historical retain/retire choices consistent. Apply validates the complete projected topology before creating a formal-write journal. | Same-member ambiguity, colliding/unknown/duplicate overrides and invalid topology block; explicit historical retention/retirement with legal multi-membership applies successfully. |
+| R02 / AC15, AC23 | Persist verdict, receipt, private mapping and corrections before multi-file publication. Resume recorded writes without another reviewer or budget reset; unknown target/checkpoint edits block. MVG keeps separate immutable completed records for revised proposals and shares the original three-invocation limit. | Publication interruptions before/after final report, metadata, corrections and checkpoint completion recover; no-winner, blocked verdict, malformed accounting and draft boundaries persist; a pending record cannot be bypassed by revising a proposal. |
+
+The initial ten-test run fails on unmodified merged main (six failures, three errors). Two additional counterexamples reproduce loss after a completed attempt but before publication exists; recovery now binds the original output/metadata and reuses it without another invocation. Publication status participates in the checkpoint checksum, so a forged pending marker cannot authorize restoration over subsequent target deletion. All current regressions run in the hard gate bundle and deterministic production smoke. The isolated acceptance fixture's topology manifest uses the real production schema/identity fields without changing its contract or source obligations. Platform and fresh real-model evidence are recorded in `execution-plans/2026-10-01-planning-alignment-review-recovery.md` when CI completes.
+
+The strengthened implementation passes 30 new/274 core tests. Production run 36845534237 preserves one blocked independent verdict: the generated plan omitted the explicit source-named service-to-terminal interaction and its test assertion. Artifact 11152719135, digest `sha256:08f9ae256ad4a62ab34b1728a7bcfc1b88a718ddb74f77ce3f58fb7fc0e520bc`, retains that evidence. The generator now preserves named sending/receiving systems and real task ownership even when roles share a task, and explicitly carries the same interaction into planned test scenarios. The source, real contract, reviewer and budgets are unchanged; approval requires a fresh materially corrected chain.
+
+Verified implementation before the final identity-copy repair: `a67a048e88599268fb181a0422785114d02c5a14`, [PR #255](https://github.com/skyoxu/newrouge/pull/255). [Production 36847620516](https://github.com/skyoxu/newrouge/actions/runs/36847620516) **PASS**, artifact `11154531435`, digest `sha256:02bcd1ebb81a40510f7b94e49b1101c76b4cededb17f4e370450e39b13caad73`. Three fresh Capability candidates and their anonymous review use actual `gpt-6-luna`, selecting `candidate-1`; Tasks 7/42 remain READY after apply. MVG generation uses two bounded attempts, followed by one separate fresh `gpt-6-luna` review: approved, zero errors/gaps, `formal_applicable=true`. No MVG manifest is applied and `runtime_verified=false`. Downloaded review/publication consumer replay succeeds without another model invocation, budget change or completed-publication write; it does not assert original-workspace freshness replay.
+
+Same-implementation [Windows Quality](https://github.com/skyoxu/newrouge/actions/runs/36847620638) **PASS** (968 Python tests, hard bundle 0/25 failures), [Windows Smoke](https://github.com/skyoxu/newrouge/actions/runs/36847620738) **PASS**, [MVG Integration](https://github.com/skyoxu/newrouge/actions/runs/36847620559) **PASS**. Production deterministic smoke has 103 passing tests; local core has 274. Generator run 36846454889/artifact 11154230470 retains all three wrong-field outputs; the prompt now names literal `rationale` and explains the `coverage_rationale_missing` error label. No validator accepts a new alias and no attempt budget is extended or reset. The execution plan preserves both specific blocked cases and their digests.
+
+Documentation-only closeout `75eca5ce` triggers another fresh production chain. Run `36849699351` correctly rejects an approved semantic report whose proposal hash omits two characters; artifact `11154659573`, digest `sha256:973041ef538f25ceb8a9b18c9286f94fe5e9b1b6e63abf119c9a979138bfd022`, preserves the raw report and single consumed review. The reviewer prompt now requires verbatim copying of both host-supplied identities. Two negative identity regressions preserve the invalid report and consumed budget at publication/completed-attempt recovery boundaries without another invocation. Validation remains strict; no identity is repaired after review. Final local recovery/core counts are 32/276. Final-head CI evidence is recorded in PR #255 and the delivery report.
+
+
 ## Implementation surfaces
 
 - `.agents/skills/plan-capabilities/SKILL.md`
@@ -124,12 +144,16 @@ Local focused and three-document regression results are recorded in the executio
 - `scripts/python/plan_capabilities.py`
 - `scripts/python/plan_mvg.py`
 - `scripts/python/_planning_skill_common.py`
+- `scripts/python/_capability_alignment.py`
+- `scripts/python/_planning_review_publication.py`
 - `scripts/python/openai_isolated_model_runner.py`
 - `scripts/python/copilot_isolated_model_runner.py`
 - `scripts/python/planning_acceptance_fixture.py`
 - `scripts/python/run_planning_production_acceptance.py`
 - `.github/workflows/planning-production-acceptance.yml`
 
+The acceptance account rejects explicit `gpt-6-luna` selection and its SDK model inventory is empty, although `auto` can execute observed real models. The attempted fixed-model default/catalog prerequisite is removed: an unavailable catalog cannot become a new blocker for an already supported auto path. The unchanged original bounded auto chain still rejects mismatched actual models; its routing cannot be made deterministic by relabeling receipts or raising budgets. The two workflow repairs have real production PASS at 0e531c08; final-head results and routing limitations remain explicit in PR #255.
+
 ## Completion boundary
 
-The merged-main follow-up is complete at the recorded implementation revision with all four workflows passing. The final evidence checkpoint changes documentation only. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
+R01/R02 and the final identity-copy prompt repair are implemented. The earlier recorded revision passes all four workflows; the final-head workflows must pass before merge. Final CI is recorded in PR #255 without another documentation-only synchronization. Planning completion does not imply gameplay runtime verification, human acceptance, or merge to `main`.
