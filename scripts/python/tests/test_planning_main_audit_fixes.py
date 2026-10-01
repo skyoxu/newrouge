@@ -337,6 +337,34 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
         self.assertNotEqual("selected", load_json(run / "run.json").get("review_status"))
 
+    def test_review_resolves_qualified_ids_and_rejects_wrong_file_membership(self):
+        run = self.candidates()
+        blocks = load_json(run / "analysis-input/source-blocks.v1.json")["blocks"]
+        requirements = load_json(run / "analysis-input/semantic-requirements.v1.json")["requirements"]
+        report = review_report(run)
+        report["evidence_refs"] = ["analysis-input/source-blocks.v1.json: " + ", ".join(b["block_id"] for b in blocks),
+            "analysis-input/semantic-requirements.v1.json: " + ", ".join(r["requirement_id"] for r in requirements),
+            "analysis-input/semantic-requirements.v1.json#" + requirements[0]["requirement_id"], "candidates/A.json"]
+        batch_path = "analysis-input/model-batches/batch-001.json"
+        batch = load_json(run / batch_path)
+        report["evidence_refs"].append(batch_path + ":" + batch["blocks"][0]["block_id"])
+        def invoke(*args, **kwargs):
+            atomic_json(kwargs["output_path"], report)
+            return {"model": "fixture-model", "model_tools": []}
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke) as model:
+            self.assertEqual("selected", cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)["status"])
+            self.assertTrue(cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)["reused"])
+            self.assertEqual(1, model.call_count)
+        for ref in ("analysis-input/source-blocks.v1.json: " + requirements[0]["requirement_id"],
+            "analysis-input/semantic-requirements.v1.json#RQ-NOT-PRESENT",
+            batch_path + ":SB-NOT-PRESENT",
+            "analysis-input/source-blocks.v1.json: " + blocks[0]["block_id"] + ", SB-NOT-PRESENT"):
+            with self.subTest(ref=ref):
+                invalid = deepcopy(report)
+                invalid["evidence_refs"] = [ref]
+                self.assertTrue(any("unresolvable" in e for e in cap.validate_review_report(invalid, run)))
+
     def test_review_interruption_is_recorded_and_cannot_reset_budget(self):
         run = self.candidates()
         with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \

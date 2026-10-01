@@ -229,6 +229,8 @@ Return JSON only with schema_version = "newrouge.capability-review.v2" and:
 - corrections (empty unless a small explicit correction is required)
 - rationale
 
+All five findings fields must be arrays; use [] when there are no findings in that category. Provide nonempty comparative tradeoffs and a concrete selection/no-winner rationale. evidence_refs must be resolvable identifiers, preferably exact prepared file paths (analysis-input/... or candidates/A.json, B.json, C.json) without prose. Standalone Source Block/Requirement IDs are also supported. A ledger/semantic/model-batch file may qualify IDs as "file#ID" or "file: ID, ID" only when every ID belongs to that file. Put explanations in findings/rationale, not in the reference string. Include authoritative source/ledger/Requirement evidence, not only candidate refs. The same rules apply to correction evidence_refs.
+
 If corrections are needed, use at most 12 JSON-Pointer operations. Each item must contain op (add|replace|remove), path, reason, evidence_refs, and value when required. Corrections apply only to the selected candidate; never change schema_version, analysis_identity_sha256, capability_id, add/remove an entire Capability, or merge candidates into a fourth design.
 """
 
@@ -803,8 +805,16 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
     known_paths.update(f"candidates/{a}.json" for a in ("A", "B", "C"))
     ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
     semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
-    source_ids = {str(b["block_id"]) for b in ledger.get("blocks", [])}
-    source_ids.update(str(r["requirement_id"]) for r in semantics.get("requirements", []))
+    ids_by_path = {
+        "analysis-input/source-blocks.v1.json": {str(b["block_id"]) for b in ledger.get("blocks", [])},
+        "analysis-input/semantic-requirements.v1.json": {str(r["requirement_id"]) for r in semantics.get("requirements", [])},
+    }
+    for path in sorted(known_paths):
+        if path.startswith("analysis-input/model-batches/batch-") and path != "analysis-input/model-batches/batch-index.json":
+            batch = load_json(run_dir / path, {})
+            ids_by_path[path] = {str(b["block_id"]) for b in batch.get("blocks", [])}
+            ids_by_path[path].update(str(r["requirement_id"]) for r in batch.get("requirements", []))
+    source_ids = set().union(*ids_by_path.values())
     has_source = False
     for ref in refs:
         if not isinstance(ref, str) or not ref.strip():
@@ -814,12 +824,20 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
         if value in source_ids:
             has_source = True
             continue
-        base = value.split("#", 1)[0]
-        if base not in known_paths:
+        separator = "#" if "#" in value else ":" if ":" in value else None
+        base, locator = value.split(separator, 1) if separator else (value, None)
+        base = base.strip()
+        resolved = base in known_paths
+        if locator is not None and base in ids_by_path:
+            requested = [token.strip() for token in locator.split(",")]
+            resolved &= bool(requested) and all(token in ids_by_path[base] for token in requested)
+        elif separator == ":":
+            resolved = False  # Only typed ledger/Requirement ID qualification is supported.
+        if not resolved:
             errors.append(f"review_evidence_ref_unresolvable:{value}")
         else:
             has_source |= (base.startswith("analysis-input/sources/")
-                or base in {"analysis-input/source-blocks.v1.json", "analysis-input/semantic-requirements.v1.json"})
+                or base in ids_by_path)
     if not has_source:
         errors.append("review_authoritative_source_evidence_missing")
     return errors
