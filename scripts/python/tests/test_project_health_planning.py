@@ -41,13 +41,14 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.revision = main_revision(self.root)
 
     def test_checkout_reads_latest_main_and_ignores_dirty_feature_files(self):
-        original = (self.root / GDD_PATH).read_bytes()
+        git(self.root, 'config', 'core.autocrlf', 'true')
+        original = (self.root / GDD_PATH).read_text(encoding='utf-8')
         git(self.root, 'checkout', '-b', 'feature')
         (self.root / GDD_PATH).write_text('Uncommitted replacement', encoding='utf-8')
         (self.root / 'docs/gdd/untracked.md').write_text('Untracked source', encoding='utf-8')
         checkout = self.root / 'logs/ci/test-checkout'
         prepare_checkout(self.root, checkout, self.revision)
-        self.assertEqual(original, (checkout / GDD_PATH).read_bytes())
+        self.assertEqual(original, (checkout / GDD_PATH).read_text(encoding='utf-8'))
         self.assertFalse((checkout / 'docs/gdd/untracked.md').exists())
         validate_checkout(self.root, checkout, self.revision)
 
