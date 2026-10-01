@@ -14,6 +14,7 @@ Design cumulative player-journey integration coverage after Capability planning.
 - GDD and reviewed Requirements remain semantic authority; Capability is a derived navigation index.
 - Require an explicit Capability path and explicit target manifest path. Never select “latest” implicitly.
 - A flow may span many Capabilities; a Capability may participate in many flows. Do not mechanically create one flow per Capability.
+- Preserve source-named sending/receiving systems and map their real task owners, including shared ownership. Assert the same interaction in flows, entrypoints and planned tests; task labels alone do not establish a system boundary.
 - Real task IDs, owners, contracts and existing tests must be verified from repository inputs. Missing objects become gaps; never invent them.
 - Planned entrypoints may target not-yet-created implementation paths only when a real owner task, target symbol/path, inputs/state/assertions and implementation acceptance are explicit.
 - Existing verified entrypoints must point to files that exist now.

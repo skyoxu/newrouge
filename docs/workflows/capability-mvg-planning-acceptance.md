@@ -128,6 +128,8 @@ Baseline: merged main `5bc0e670f8ffca520f4fb87b4f42dd8fe38101cf` (#253). The con
 
 The initial ten-test run fails on unmodified merged main (six failures, three errors). Two additional counterexamples reproduce loss after a completed attempt but before publication exists; recovery now binds the original output/metadata and reuses it without another invocation. Publication status participates in the checkpoint checksum, so a forged pending marker cannot authorize restoration over subsequent target deletion. All current regressions run in the hard gate bundle and deterministic production smoke. The isolated acceptance fixture's topology manifest uses the real production schema/identity fields without changing its contract or source obligations. Platform and fresh real-model evidence are recorded in `execution-plans/2026-10-01-planning-alignment-review-recovery.md` when CI completes.
 
+The strengthened implementation passes 30 new/274 core tests. Production run 36845534237 preserves one blocked independent verdict: the generated plan omitted the explicit source-named service-to-terminal interaction and its test assertion. Artifact 11152719135, digest `sha256:08f9ae256ad4a62ab34b1728a7bcfc1b88a718ddb74f77ce3f58fb7fc0e520bc`, retains that evidence. The generator now preserves named sending/receiving systems and real task ownership even when roles share a task, and explicitly carries the same interaction into planned test scenarios. The source, real contract, reviewer and budgets are unchanged; approval requires a fresh materially corrected chain.
+
 ## Implementation surfaces
 
 - `.agents/skills/plan-capabilities/SKILL.md`
