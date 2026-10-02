@@ -60,7 +60,10 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
         if digest != str(row.get('sha256', '')).removeprefix('sha256:'):
             raise ValueError(f'Chapter 3 source evidence is stale or uncommitted: {path}')
     top_manifest = load_json(checkout / TOPOLOGY_ROOT / 'topology-manifest.v1.json', {})
-    if top_manifest.get('source_manifest_sha256') != file_sha(manifest):
+    source_manifest = load_json(manifest, {})
+    bound_hash = top_manifest.get('source_manifest_sha256')
+    valid_hashes = {file_sha(manifest), source_manifest.get('manifest_sha256')}
+    if bound_hash not in valid_hashes:
         raise ValueError('Chapter 3 source manifest is not bound to committed main topology')
     paths = [f'{SOURCE_ROOT}/{name}' for name in (
         'source-manifest.v1.json', 'source-blocks.v1.json', 'semantic-requirements.v1.json')]

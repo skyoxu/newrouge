@@ -62,6 +62,18 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertTrue((checkout / evidence).is_file())
             self.assertEqual((self.root / evidence).read_bytes(), (checkout / evidence).read_bytes())
 
+    def test_evidence_hydration_accepts_logical_source_manifest_hash(self):
+        topology_path = self.root / 'docs/planning/semantic-topology/topology-manifest.v1.json'
+        topology = load_json(topology_path)
+        source_manifest = load_json(self.root / 'logs/ci/task-generation/source-manifest.v1.json')
+        topology['source_manifest_sha256'] = source_manifest['manifest_sha256']
+        atomic_json(topology_path, topology)
+        git(self.root, 'add', topology_path.as_posix())
+        git(self.root, 'commit', '-m', 'fixture: bind topology to logical source manifest')
+        self.revision = main_revision(self.root)
+
+        prepare_checkout(self.root, self.root / 'logs/ci/logical-hash-checkout', self.revision)
+
     def test_no_git_or_main_has_no_snapshot_fallback(self):
         with self.assertRaisesRegex(ValueError, 'committed main'):
             main_revision(Path(self.temp.name))
