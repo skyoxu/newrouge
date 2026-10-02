@@ -255,12 +255,24 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.assertEqual('completed', result['status'], result)
         self.assertEqual(4, len(invocations))
 
-    def test_error_is_compact_and_same_attempt_is_retained(self):
+    def test_error_is_compact_and_unstarted_prepare_attempt_can_be_retried(self):
         job = planning.create_job(self.root, 'capability')
         with patch.object(planning, 'runner_path', side_effect=ValueError('Useful reason\n' + 'x' * 2000)):
             result = planning.run_job(self.root, job)
         self.assertLessEqual(len(result['message']), 370)
-        self.assertEqual(job['job_id'], planning.create_job(self.root, 'capability')['job_id'])
+        retried = planning.create_job(self.root, 'capability')
+        self.assertNotEqual(job['job_id'], retried['job_id'])
+
+    def test_prepare_failure_creates_a_fresh_attempt_on_retry(self):
+        failed = planning.create_job(self.root, 'capability')
+        failed.update(status='failed', stage='prepare', message='Git checkout failed')
+        atomic_json(planning.job_path(self.root, failed['job_id']), failed)
+
+        retried = planning.create_job(self.root, 'capability')
+
+        self.assertNotEqual(failed['job_id'], retried['job_id'])
+        self.assertEqual('queued', retried['status'])
+        self.assertEqual(self.revision, retried['revision'])
 
     def test_api_backend_follows_configured_credentials(self):
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'fixture-only'}, clear=True):

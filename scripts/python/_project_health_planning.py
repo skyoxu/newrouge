@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -61,7 +62,11 @@ def selected_result(root: Path, action: str) -> dict | None:
 
 def execution_root(root: Path, job: dict) -> Path:
     checkout_id = job.get('checkout_job_id') or job['job_id']
-    return job_path(root, checkout_id).parent / 'checkout'
+    # Keep the Git worktree outside the repository's long logs path. Windows
+    # checkout can otherwise fail on tracked execution-plan filenames before
+    # the planner gets a chance to read its actual inputs.
+    checkout_root = Path(os.environ.get('SC_KNOWLEDGE_PLANNING_CHECKOUT_ROOT', tempfile.gettempdir()))
+    return checkout_root / 'newrouge-planning' / checkout_id
 
 
 def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
@@ -83,7 +88,13 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
     if pointer.get('job_id'):
         prior = read_job(root, pointer['job_id'])
         if prior['revision'] == revision and prior.get('manifest') == manifest:
-            return prior
+            # Resume interrupted planner stages, but never keep retrying a
+            # prepare failure that happened before the planner created its
+            # durable run state (for example, Git could not create the worktree).
+            family = 'capability-planning' if action == 'capability' else 'mvg-planning'
+            run_state = execution_root(root, prior) / 'logs/ci' / family / prior['job_id'] / 'run.json'
+            if prior.get('status') != 'failed' or run_state.is_file():
+                return prior
     job_id = 'planning-' + uuid.uuid4().hex
     job = {'schema_version': 'newrouge.knowledge-planning-job.v1', 'job_id': job_id,
            'action': action, 'revision': revision, 'manifest': manifest, 'stage': 'prepare',
