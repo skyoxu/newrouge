@@ -77,6 +77,41 @@ def _trim_workspace_context(base: str) -> str:
     return "\n".join(kept)
 
 
+def _coverage_checklist(workspace: Path) -> str:
+    """Append compact machine-readable IDs for the model's final audit."""
+    try:
+        semantics = json.loads(
+            (workspace / "analysis-input/semantic-requirements.v1.json")
+            .read_text(encoding="utf-8")
+        )
+        ledger = json.loads(
+            (workspace / "analysis-input/source-blocks.v1.json")
+            .read_text(encoding="utf-8")
+        )
+        requirements = [
+            str(row.get("requirement_id"))
+            for row in semantics.get("requirements", [])
+            if isinstance(row, dict)
+            and row.get("status", "active") == "active"
+            and row.get("delivery_relevant") is True
+        ]
+        blocks = [
+            str(row.get("block_id"))
+            for row in ledger.get("blocks", [])
+            if isinstance(row, dict) and row.get("block_id")
+        ]
+        return (
+            "\n\nFINAL COVERAGE AUDIT (machine-generated IDs; do not omit):\n"
+            "Before returning JSON, verify every active delivery Requirement appears "
+            "exactly once in capabilities or ungrouped_requirements. Verify every "
+            "Source Block ID appears exactly once in source_accounting.\n"
+            "REQUIREMENT_IDS=" + ",".join(requirements) + "\n"
+            "SOURCE_BLOCK_IDS=" + ",".join(blocks) + "\n"
+        )
+    except (OSError, ValueError, json.JSONDecodeError, TypeError):
+        return ""
+
+
 def description() -> dict[str, object]:
     return {
         "schema_version": SCHEMA,
@@ -110,6 +145,7 @@ def run(args: argparse.Namespace) -> int:
             prompt_path.read_text(encoding="utf-8").rstrip(),
             base.rstrip(),
             *[part for _name, part in batches],
+            _coverage_checklist(workspace),
         ]) + "\n"
     else:
         payload = workspace_payload(
