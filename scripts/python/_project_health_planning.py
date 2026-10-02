@@ -66,7 +66,11 @@ def execution_root(root: Path, job: dict) -> Path:
     # checkout can otherwise fail on tracked execution-plan filenames before
     # the planner gets a chance to read its actual inputs.
     checkout_root = Path(os.environ.get('SC_KNOWLEDGE_PLANNING_CHECKOUT_ROOT', tempfile.gettempdir()))
-    return checkout_root / 'newrouge-planning' / checkout_id
+    # Keep the per-job directory short as well; the full UUID is retained in
+    # logs and job metadata, while the checkout only needs a collision-safe
+    # prefix to stay below Windows path limits.
+    short_id = checkout_id.removeprefix('planning-')[:12]
+    return checkout_root / 'nrp' / short_id
 
 
 def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
