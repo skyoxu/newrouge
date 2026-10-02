@@ -93,6 +93,10 @@ docs/workflows/contracts-catalog-prd-*.md
 docs/workflows/generated/
 docs/workflows/generated/**
 
+# Local derived knowledge artifacts
+docs/knowledge/catalog/godot-elements.json
+docs/planning/semantic-topology/capability-definitions.md
+
 # Logs
 logs
 *.log
