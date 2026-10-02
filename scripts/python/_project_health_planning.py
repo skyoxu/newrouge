@@ -220,7 +220,7 @@ def run_job(root: Path, job: dict) -> dict:
                 args += task_args
                 if action == 'mvg':
                     args += ['--capabilities', f'{TOPOLOGY_ROOT}/capabilities.v1.json', '--manifest', job['manifest']]
-            elif stage in ('generate', 'review', 'alignment'):
+            elif stage in ('generate', 'review', 'align'):
                 if action == 'mvg' and stage == 'generate':
                     args += ['--llm-backend', mvg_backend()]
                 else:
