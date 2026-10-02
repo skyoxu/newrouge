@@ -134,18 +134,20 @@ def runner_path() -> Path:
     configured = os.environ.get('SC_KNOWLEDGE_PLANNING_RUNNER')
     if configured:
         return Path(configured).resolve()
-    if os.environ.get('OPENAI_API_KEY'):
-        return Path(__file__).with_name('openai_isolated_model_runner.py')
     import shutil
+    if shutil.which('codex'):
+        return Path(__file__).with_name('codex_isolated_model_runner.py')
     if shutil.which('copilot'):
         return Path(__file__).with_name('copilot_isolated_model_runner.py')
-    raise ValueError('Configure OPENAI_API_KEY or an authenticated Copilot CLI for planning')
+    if os.environ.get('OPENAI_API_KEY'):
+        return Path(__file__).with_name('openai_isolated_model_runner.py')
+    raise ValueError('Configure an authenticated Codex/Copilot CLI or explicit OpenAI API runner for planning')
 
 
 def mvg_backend() -> str:
     backend = os.environ.get('SC_KNOWLEDGE_MVG_BACKEND')
     if not backend:
-        backend = 'openai-api' if os.environ.get('OPENAI_API_KEY') else 'copilot-cli'
+        backend = 'codex-cli'
     if backend not in ('codex-cli', 'openai-api', 'copilot-cli'):
         raise ValueError('Unsupported MVG planning backend')
     return backend

@@ -30,8 +30,8 @@ def model_name() -> str:
     return str(
         os.environ.get("SC_OPENAI_MODEL")
         or os.environ.get("OPENAI_MODEL")
-        or "gpt-5"
-    ).strip() or "gpt-5"
+        or "gpt-6-sol"
+    ).strip() or "gpt-6-sol"
 
 
 def description() -> dict[str, object]:

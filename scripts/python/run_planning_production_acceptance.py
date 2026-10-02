@@ -301,7 +301,7 @@ def main() -> int:
         elif backend == "openai-api" or (
             backend == "auto" and str(os.environ.get("OPENAI_API_KEY") or "").strip()
         ):
-            model = str(os.environ.get("SC_OPENAI_MODEL") or "gpt-5")
+            model = str(os.environ.get("SC_OPENAI_MODEL") or "gpt-6-sol")
         else:
             model = str(os.environ.get("SC_COPILOT_MODEL") or "auto")
         summary = execute(

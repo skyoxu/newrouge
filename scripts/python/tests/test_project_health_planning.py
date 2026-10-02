@@ -287,10 +287,10 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         self.assertEqual(self.revision, retried['revision'])
 
     def test_api_backend_follows_configured_credentials(self):
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'fixture-only'}, clear=True):
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'fixture-only', 'SC_KNOWLEDGE_MVG_BACKEND': 'openai-api'}, clear=True):
             self.assertEqual('openai-api', planning.mvg_backend())
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual('copilot-cli', planning.mvg_backend())
+            self.assertEqual('codex-cli', planning.mvg_backend())
         with patch.dict(os.environ, {'SC_KNOWLEDGE_MVG_BACKEND': 'shell'}, clear=True):
             with self.assertRaisesRegex(ValueError, 'Unsupported'):
                 planning.mvg_backend()
