@@ -569,6 +569,12 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             if attempts:
                 previous = attempts[-1].get("validation_errors") or []
                 if previous:
+                    missing = [
+                        item.split(":", 1)[1]
+                        for item in previous
+                        if item.startswith("delivery_requirements_unaccounted:")
+                    ]
+                    missing_requirements = ",".join(missing)
                     retry_guidance = (
                         "\n\nRETRY CORRECTION REQUIRED:\n"
                         "The previous candidate was rejected by deterministic validation. "
@@ -577,6 +583,12 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
                         + "\n".join(f"- {item}" for item in previous[:20])
                         + "\n"
                     )
+                    if missing_requirements:
+                        retry_guidance += (
+                            "The following active delivery Requirement IDs were not covered. "
+                            "You MUST assign each one exactly once before returning JSON: "
+                            + missing_requirements + "\n"
+                        )
             prompt_path.write_text(CANDIDATE_PROMPT + retry_guidance, encoding="utf-8", newline="\n")
             output = workspace / "candidate.json"
             receipt: dict[str, Any] | None = None
@@ -1559,7 +1571,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ledger", default="logs/ci/task-generation/source-blocks.v1.json")
     p.add_argument("--semantics", default="logs/ci/task-generation/semantic-requirements.v1.json")
     p.add_argument("--model-batch-char-budget", type=int, default=160000)
-    p.add_argument("--candidate-retry-limit", type=int, default=1)
+    p.add_argument("--candidate-retry-limit", type=int, default=2)
     p.add_argument("--review-retry-limit", type=int, default=1)
     p.add_argument("--candidate-budget-sec", type=int, default=1800)
     p.add_argument("--total-budget-sec", type=int, default=7200)
