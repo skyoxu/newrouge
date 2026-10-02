@@ -554,7 +554,19 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             workspace.mkdir(parents=True)
             _copy_analysis(run_dir, workspace)
             prompt_path = workspace / "prompt.txt"
-            prompt_path.write_text(CANDIDATE_PROMPT, encoding="utf-8", newline="\n")
+            retry_guidance = ""
+            if attempts:
+                previous = attempts[-1].get("validation_errors") or []
+                if previous:
+                    retry_guidance = (
+                        "\n\nRETRY CORRECTION REQUIRED:\n"
+                        "The previous candidate was rejected by deterministic validation. "
+                        "Preserve all valid content, but correct every listed issue before returning JSON. "
+                        "Do not omit any Requirement or Source Block while repairing.\n"
+                        + "\n".join(f"- {item}" for item in previous[:20])
+                        + "\n"
+                    )
+            prompt_path.write_text(CANDIDATE_PROMPT + retry_guidance, encoding="utf-8", newline="\n")
             output = workspace / "candidate.json"
             receipt: dict[str, Any] | None = None
             candidate: dict[str, Any] | None = None
