@@ -7,6 +7,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import os
 from pathlib import Path
 
 from openai_isolated_model_runner import (
@@ -16,6 +17,22 @@ from openai_isolated_model_runner import (
 )
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
+
+
+def _codex_executable() -> str:
+    for name in ("codex", "codex.cmd"):
+        found = shutil.which(name)
+        if found:
+            return found
+    package_root = str(os.environ.get("CODEX_MANAGED_PACKAGE_ROOT") or "").strip()
+    if package_root:
+        npm_wrapper = Path(package_root).parents[2] / "codex.cmd"
+        if npm_wrapper.is_file():
+            return str(npm_wrapper)
+        candidate = Path(package_root) / "bin" / "codex.js"
+        if candidate.is_file():
+            return str(candidate)
+    raise ValueError("Codex CLI is unavailable; set CODEX_MANAGED_PACKAGE_ROOT or add codex to PATH")
 
 
 def description() -> dict[str, object]:
@@ -58,9 +75,7 @@ def run(args: argparse.Namespace) -> int:
             output_path=output_path,
             max_bytes=args.max_bytes,
         )
-    executable = shutil.which("codex")
-    if not executable:
-        raise ValueError("Codex CLI is unavailable")
+    executable = _codex_executable()
     command = [
         executable,
         "exec",

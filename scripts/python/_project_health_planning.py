@@ -135,7 +135,7 @@ def runner_path() -> Path:
     if configured:
         return Path(configured).resolve()
     import shutil
-    if shutil.which('codex'):
+    if shutil.which('codex') or shutil.which('codex.cmd') or os.environ.get('CODEX_MANAGED_PACKAGE_ROOT'):
         return Path(__file__).with_name('codex_isolated_model_runner.py')
     if shutil.which('copilot'):
         return Path(__file__).with_name('copilot_isolated_model_runner.py')
