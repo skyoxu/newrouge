@@ -134,6 +134,20 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         def model(_runner, **kwargs):
             workspace = kwargs['workspace']
             invocations.append(str(workspace))
+            prompt = Path(kwargs['prompt_path']).read_text(encoding='utf-8')
+            if 'Capability identity alignment reviewer' in prompt:
+                base = json.loads(prompt.split('BASE_ALIGNMENT=', 1)[1].split('\nCANDIDATE=', 1)[0])
+                decisions = []
+                for row in base['decisions']:
+                    item = dict(row)
+                    if item.get('candidate_id') is not None:
+                        item.update(action='add', stable_id='CAP-' + str(item['candidate_id']).removeprefix('TMP-CAP-'), resolved=True,
+                                    reason='Fixture alignment decision')
+                    else:
+                        item.update(action='retire', resolved=True, reason='Fixture historical retirement')
+                    decisions.append(item)
+                atomic_json(kwargs['output_path'], {'decisions': decisions})
+                return {'model': RUNNER['model'], 'model_tools': []}
             index = load_json(workspace / 'analysis-input/analysis-index.json')
             if (workspace / 'candidates/A.json').exists():
                 payload = review_report(workspace)
@@ -196,7 +210,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             cap_job = planning.create_job(self.root, 'capability')
             result = planning.run_job(self.root, cap_job)
             self.assertEqual('completed', result['status'], result)
-            self.assertEqual(4, len(invocations))
+            self.assertEqual(5, len(invocations))
             topology = planning.generated_view(self.root, 'capability')
             self.assertEqual(2, len(topology['nodes']['capabilities']))
             self.assertEqual(self.revision, topology['identity']['revision'])
@@ -205,7 +219,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual(cap_job['job_id'], mvg_job['checkout_job_id'])
             result = planning.run_job(self.root, mvg_job)
             self.assertEqual('completed', result['status'], result)
-            self.assertEqual(6, len(invocations))
+            self.assertEqual(7, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertEqual(1, len(overview['manifests']))
             self.assertEqual('docs/testing/mvg/m1-full.json', overview['manifests'][0]['path'])
@@ -224,7 +238,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(6, len(invocations))
+            self.assertEqual(7, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
         self.assertIsNone(planning.generated_view(self.root, 'capability'))
         self.assertIsNone(planning.generated_view(self.root, 'mvg'))
@@ -265,7 +279,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual(job['job_id'], resumed['job_id'])
             result = planning.run_job(self.root, resumed)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(4, len(invocations))
+        self.assertEqual(5, len(invocations))
 
     def test_error_is_compact_and_unstarted_prepare_attempt_can_be_retried(self):
         job = planning.create_job(self.root, 'capability')
