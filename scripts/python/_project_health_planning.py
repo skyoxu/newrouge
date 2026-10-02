@@ -210,7 +210,7 @@ def run_job(root: Path, job: dict) -> dict:
         task_args = [value for tid in task_scope(checkout) for value in ('--task-id', tid)]
         run_id = job['job_id']
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
-        stages = ['prepare', 'generate', 'review', 'preview-alignment', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
+        stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
         for stage in stages[stages.index(job['stage']):]:
             validate_checkout(root, checkout, job['revision'])
             job['stage'] = stage
@@ -220,7 +220,7 @@ def run_job(root: Path, job: dict) -> dict:
                 args += task_args
                 if action == 'mvg':
                     args += ['--capabilities', f'{TOPOLOGY_ROOT}/capabilities.v1.json', '--manifest', job['manifest']]
-            elif stage in ('generate', 'review'):
+            elif stage in ('generate', 'review', 'alignment'):
                 if action == 'mvg' and stage == 'generate':
                     args += ['--llm-backend', mvg_backend()]
                 else:
@@ -236,7 +236,7 @@ def run_job(root: Path, job: dict) -> dict:
                 raise ValueError(result.get('reason') or '; '.join(str(error) for error in errors[:3]) or 'Planning stage blocked')
             if stage == 'review' and result.get('status') == 'no_valid_winner':
                 raise ValueError('Capability review found no valid winner; inspect the retained review')
-            if stage == 'preview-alignment' and result.get('resolved') is not True:
+            if stage == 'align' and result.get('resolved') is not True:
                 raise ValueError('Capability ID alignment needs explicit reviewed decisions; existing data is preserved')
         validate_checkout(root, checkout, job['revision'])
         result = build_result(checkout, job)

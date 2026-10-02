@@ -239,6 +239,17 @@ All five findings fields must be arrays; use [] when there are no findings in th
 If corrections are needed, use at most 12 JSON-Pointer operations. Each item must contain op (add|replace|remove), path, reason, evidence_refs, and value when required. Corrections apply only to the selected candidate; never change schema_version, analysis_identity_sha256, capability_id, add/remove an entire Capability, or merge candidates into a fourth design.
 """
 
+ALIGNMENT_PROMPT = """You are the Capability identity alignment reviewer.
+Return JSON only with one top-level field `decisions`, containing exactly the
+same candidate and historical rows as alignment-preview.json. Decide each
+temporary Capability as add, reuse, rename, split, or merge, and each old
+stable Capability as retain or retire. Use requirement membership, title,
+description, and boundary rationale as evidence. Reuse/rename must point to
+an existing stable ID; add must use a new stable CAP-* ID. Every decision must
+set resolved=true and include a concrete reason. Do not change Capability
+content or invent requirements.
+"""
+
 
 def validate_candidate(candidate: dict[str, Any], ledger: dict[str, Any], semantics: dict[str, Any], analysis_sha: str) -> list[str]:
     errors: list[str] = []
@@ -1164,6 +1175,9 @@ def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
     candidate = _selected_candidate(run_dir, state)
     existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
     result = build_alignment(candidate, existing)
+    # Alignment is an LLM-reviewed comparison, not a manual-only gate. The
+    # durable HTTP orchestrator supplies the isolated runner and applies its
+    # reviewed decisions before the apply stage.
     elapsed = time.monotonic() - started
     budget = _budget(state)
     budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + elapsed
@@ -1176,6 +1190,33 @@ def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
     atomic_json(run_dir / "alignment-preview.json", result)
     atomic_json(run_path, state)
     return result
+
+
+def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
+    run_path, state = _load_run(root, run_id)
+    run_dir = _run_dir(root, run_id)
+    candidate = _selected_candidate(run_dir, state)
+    existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
+    base = build_alignment(candidate, existing)
+    workspace = run_dir / "alignment-workspace"
+    if workspace.exists():
+        shutil.rmtree(workspace)
+    workspace.mkdir(parents=True)
+    (workspace / "prompt.txt").write_text(
+        ALIGNMENT_PROMPT + "\nBASE_ALIGNMENT=" + json.dumps(base, ensure_ascii=False)
+        + "\nCANDIDATE=" + json.dumps(candidate, ensure_ascii=False)
+        + "\nEXISTING=" + json.dumps(existing, ensure_ascii=False) + "\n",
+        encoding="utf-8", newline="\n",
+    )
+    output = workspace / "alignment.json"
+    run_isolated_model(runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
+                       output_path=output, timeout_sec=timeout_sec)
+    override = parse_model_json(output)
+    alignment = _apply_alignment_override(base, override)
+    validate_alignment(candidate, existing, alignment)
+    atomic_json(run_dir / "alignment-preview.json", alignment)
+    atomic_json(run_path, state)
+    return alignment
 
 
 def _formal_payload(candidate: dict[str, Any], alignment: dict[str, Any], source_revision: str) -> tuple[dict[str, Any], dict[str, str]]:
@@ -1530,6 +1571,11 @@ def main(argv: list[str] | None = None) -> int:
     p_preview = sub.add_parser("preview-alignment")
     p_preview.add_argument("--run-id", required=True)
 
+    p_align = sub.add_parser("align")
+    p_align.add_argument("--run-id", required=True)
+    p_align.add_argument("--runner", required=True)
+    p_align.add_argument("--timeout-sec", type=int, default=1800)
+
     p_apply = sub.add_parser("apply")
     p_apply.add_argument("--run-id", required=True)
     p_apply.add_argument("--alignment-override", default="")
@@ -1567,6 +1613,8 @@ def main(argv: list[str] | None = None) -> int:
             result = review(root, run_id=args.run_id, runner=Path(args.runner).resolve(), timeout_sec=args.timeout_sec)
         elif args.command == "preview-alignment":
             result = preview_alignment(root, run_id=args.run_id)
+        elif args.command == "align":
+            result = align_with_llm(root, run_id=args.run_id, runner=Path(args.runner).resolve(), timeout_sec=args.timeout_sec)
         elif args.command == "apply":
             override = repo_path(root, args.alignment_override) if args.alignment_override else None
             result = apply(root, run_id=args.run_id, alignment_override=override, confirm=bool(args.confirm))
