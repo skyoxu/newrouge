@@ -136,9 +136,18 @@ def invoke(checkout: Path, script: str, arguments: list[str], log: Path) -> dict
     command = [sys.executable, str(Path(__file__).with_name(script)), '--repo-root', str(checkout), *arguments]
     # Planners retain their original per-attempt/time gates and process cleanup.
     # No outer timeout abandons a still-active model child or resets its budget.
-    with log.open('w', encoding='utf-8') as output:
+    # The planner emits JSON with human-readable (possibly non-ASCII) reasons.
+    # A redirected Windows stdout otherwise uses the active code page even
+    # though the log file itself is opened as UTF-8, producing mixed/invalid
+    # bytes when the log is read back below.
+    child_env = {
+        **os.environ,
+        'PYTHONUNBUFFERED': '1',
+        'PYTHONIOENCODING': 'utf-8',
+    }
+    with log.open('w', encoding='utf-8', newline='\n') as output:
         result = subprocess.run(command, cwd=checkout, stdout=output, stderr=subprocess.STDOUT,
-                                text=True, encoding='utf-8', env={**os.environ, 'PYTHONUNBUFFERED': '1'})
+                                text=True, encoding='utf-8', env=child_env)
     text = log.read_text(encoding='utf-8')
     if result.returncode:
         raise ValueError(compact_error(text))
