@@ -1217,18 +1217,33 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
     if workspace.exists():
         shutil.rmtree(workspace)
     workspace.mkdir(parents=True)
-    (workspace / "prompt.txt").write_text(
-        ALIGNMENT_PROMPT + "\nBASE_ALIGNMENT=" + json.dumps(base, ensure_ascii=False)
-        + "\nCANDIDATE=" + json.dumps(candidate, ensure_ascii=False)
-        + "\nEXISTING=" + json.dumps(existing, ensure_ascii=False) + "\n",
-        encoding="utf-8", newline="\n",
-    )
+    prompt = ALIGNMENT_PROMPT + "\nBASE_ALIGNMENT=" + json.dumps(base, ensure_ascii=False)
+    prompt += "\nCANDIDATE=" + json.dumps(candidate, ensure_ascii=False)
+    prompt += "\nEXISTING=" + json.dumps(existing, ensure_ascii=False) + "\n"
     output = workspace / "alignment.json"
-    run_isolated_model(runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
-                       output_path=output, timeout_sec=timeout_sec)
-    override = parse_model_json(output)
-    alignment = _apply_alignment_override(base, override)
-    validate_alignment(candidate, existing, alignment)
+    last_error: Exception | None = None
+    for attempt in range(1, 3):
+        correction = ""
+        if last_error is not None:
+            correction = (
+                "\n\nALIGNMENT CORRECTION REQUIRED:\n"
+                "The previous alignment was rejected. Re-evaluate every decision and return a complete JSON object. "
+                "Candidate stable IDs must be globally unique. Historical retain/retire rows must also be globally unique, "
+                "and no historical ID may duplicate a candidate stable_id.\n"
+                f"Deterministic validation error: {last_error}\n"
+            )
+        (workspace / "prompt.txt").write_text(prompt + correction, encoding="utf-8", newline="\n")
+        try:
+            run_isolated_model(runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
+                               output_path=output, timeout_sec=timeout_sec)
+            override = parse_model_json(output)
+            alignment = _apply_alignment_override(base, override)
+            validate_alignment(candidate, existing, alignment)
+            break
+        except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt == 2:
+                raise
     atomic_json(run_dir / "alignment-preview.json", alignment)
     atomic_json(run_path, state)
     return alignment
