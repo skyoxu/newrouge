@@ -830,6 +830,9 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
             refs.extend(correction["evidence_refs"])
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     known_paths = {"analysis-input/" + p for p in index.get("files", {})}
+    # The analysis index is itself authoritative provenance and is explicitly
+    # permitted by REVIEW_PROMPT. Keep it resolvable as an evidence reference.
+    known_paths.add("analysis-input/analysis-index.json")
     known_paths.update(f"candidates/{a}.json" for a in ("A", "B", "C"))
     ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
     semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
