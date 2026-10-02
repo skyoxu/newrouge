@@ -6,7 +6,7 @@ window.installKnowledgeOperationLock = function ({root = document.querySelector(
   overlay.hidden = true;
   overlay.setAttribute('role', 'status');
   overlay.setAttribute('aria-live', 'polite');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#132d42cc;color:white;display:grid;place-items:center;padding:24px';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#132d42cc;color:white;display:none;place-items:center;padding:24px';
   const card = document.createElement('div');
   card.style.cssText = 'width:min(520px,100%);background:#fff;color:#192c3b;border:2px solid #17899a;border-radius:8px;padding:24px;box-shadow:0 18px 48px #0006';
   const title = document.createElement('strong'); title.textContent = 'Operation in progress';
@@ -16,6 +16,7 @@ window.installKnowledgeOperationLock = function ({root = document.querySelector(
     const active = Boolean(state?.active);
     root.inert = active;
     overlay.hidden = !active;
+    overlay.style.display = active ? 'grid' : 'none';
     if (active) {
       const action = state.action || 'Another operation';
       detail.textContent = `${action} is running. This page is locked until it finishes.`;
