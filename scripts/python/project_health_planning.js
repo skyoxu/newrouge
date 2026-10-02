@@ -1,4 +1,37 @@
 'use strict';
+window.installKnowledgeOperationLock = function ({root = document.querySelector('main')} = {}) {
+  if (!root || document.querySelector('[data-knowledge-operation-lock]')) return;
+  const overlay = document.createElement('div');
+  overlay.dataset.knowledgeOperationLock = 'true';
+  overlay.hidden = true;
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#132d42cc;color:white;display:grid;place-items:center;padding:24px';
+  const card = document.createElement('div');
+  card.style.cssText = 'width:min(520px,100%);background:#fff;color:#192c3b;border:2px solid #17899a;border-radius:8px;padding:24px;box-shadow:0 18px 48px #0006';
+  const title = document.createElement('strong'); title.textContent = 'Operation in progress';
+  const detail = document.createElement('p'); detail.style.marginBottom = '0';
+  card.append(title, detail); overlay.append(card); document.body.append(overlay);
+  const update = state => {
+    const active = Boolean(state?.active);
+    root.inert = active;
+    overlay.hidden = !active;
+    if (active) {
+      const action = state.action || 'Another operation';
+      detail.textContent = `${action} is running. This page is locked until it finishes.`;
+    }
+  };
+  const poll = async () => {
+    try {
+      const response = await fetch('/api/knowledge/operation', {cache: 'no-store'});
+      if (response.ok) update(await response.json());
+    } catch (_) { /* keep the current lock state during transient disconnects */ }
+  };
+  poll();
+  const timer = window.setInterval(poll, 1000);
+  window.addEventListener('pagehide', () => window.clearInterval(timer), {once: true});
+};
+
 // Both pages use the same authenticated async job and compact result contract.
 window.knowledgePlanning = async function ({action, manifest, button, status, refresh}) {
   const message = (text, state) => {

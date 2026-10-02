@@ -161,7 +161,22 @@ async function loadGraph() {
   if (structureButton.getAttribute('aria-pressed') === 'true') renderStructure();
 }
 el('scene-graph-refresh').onclick = () => loadGraph().catch(error => { el('scene-status').textContent = error.message; });
-el('scene-probe').onclick = async () => { el('scene-status').textContent = 'Restarting deterministic probe...'; const session = await (await fetch('/api/knowledge/session')).json(); const response = await fetch('/api/knowledge/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Origin': location.origin, 'X-Project-Health-Token': session.token }, body: '{}' }); if (!response.ok) throw new Error('Probe failed'); await loadGraph(); };
+let probeInProgress = false;
+el('scene-probe').onclick = async () => {
+  if (probeInProgress) return;
+  probeInProgress = true; el('scene-probe').disabled = true;
+  el('scene-status').textContent = 'Restarting deterministic probe...';
+  try {
+    const sessionResponse = await fetch('/api/knowledge/session', {cache: 'no-store'});
+    if (!sessionResponse.ok) throw new Error('Unable to start a verified session');
+    const session = await sessionResponse.json();
+    const response = await fetch('/api/knowledge/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Origin': location.origin, 'X-Project-Health-Token': session.token }, body: '{}' });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.reason || 'Probe failed');
+    await loadGraph();
+  } catch (error) { el('scene-status').textContent = error.message; }
+  finally { probeInProgress = false; el('scene-probe').disabled = false; }
+};
 loadGraph().catch(error => { el('scene-status').textContent = error.message; });
 
 const graphHost = el('scene-graph');

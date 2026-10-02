@@ -296,4 +296,5 @@ byId('capability-generate').onclick = () => window.knowledgePlanning({
     await load();
   }
 });
+window.installKnowledgeOperationLock({root: document.querySelector('main')});
 load().catch(e => byId('topology-status').textContent = e.message);

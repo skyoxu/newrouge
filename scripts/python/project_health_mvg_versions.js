@@ -1,5 +1,6 @@
 /* Main navigation and explicit planning actions; use textContent for repository text. */
 (() => {
+  window.installKnowledgeOperationLock({root: document.querySelector('main')});
   const get = id => document.getElementById(id);
   const item = (tag, content, parent) => { const node = document.createElement(tag); node.textContent = String(content ?? ''); parent.append(node); return node; };
   const source = (path, parent) => { const link = item('a', path, parent); link.href = '/api/knowledge/source?path=' + encodeURIComponent(path); link.target = '_blank'; link.rel = 'noopener'; return link; };
