@@ -97,7 +97,26 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
             # durable run state (for example, Git could not create the worktree).
             family = 'capability-planning' if action == 'capability' else 'mvg-planning'
             run_state = execution_root(root, prior) / 'logs/ci' / family / prior['job_id'] / 'run.json'
-            if prior.get('status') != 'failed' or run_state.is_file():
+            # A failed generation run may have exhausted all candidate retry
+            # slots under an older runner (for example OpenAI API).  Reusing
+            # it after the runner configuration changes leaves no slot for the
+            # current runner and reports an empty error.  Prepare failures are
+            # still resumable because they have not consumed model attempts.
+            if prior.get('status') == 'failed' and prior.get('stage') == 'generate':
+                # Resume an interrupted run only when it persisted at least
+                # one reusable candidate.  A run whose candidates all failed
+                # must start fresh so a changed runner gets new retry slots.
+                state = load_json(run_state, {}) if run_state.is_file() else {}
+                candidates = state.get('candidate_attempts') or {}
+                reusable = any(
+                    isinstance(row, dict) and row.get('final_meta')
+                    for row in candidates.values()
+                )
+                if not reusable:
+                    pass
+                else:
+                    return prior
+            elif prior.get('status') != 'failed' or run_state.is_file():
                 return prior
     job_id = 'planning-' + uuid.uuid4().hex
     job = {'schema_version': 'newrouge.knowledge-planning-job.v1', 'job_id': job_id,
