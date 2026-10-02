@@ -49,6 +49,29 @@ def _trim_workspace_context(base: str) -> str:
     for section in sections:
         match = re.match(r"===== FILE: ([^ ]+) =====", section)
         if match and "/analysis-input/task-views/" in "/" + match.group(1):
+            # Keep only the identity and semantic cross-reference fields. The
+            # full views duplicate long descriptions/acceptance text already
+            # represented by the prepared requirements and source blocks.
+            try:
+                payload = json.loads(section.split("\n", 1)[1].rsplit("\n===== END FILE:", 1)[0])
+                if isinstance(payload, list):
+                    fields = {
+                        "id", "taskmaster_id", "title", "status", "priority",
+                        "semantic_refs", "requirement_ids", "source_refs",
+                    }
+                    compact = [
+                        {key: value for key, value in row.items() if key in fields}
+                        for row in payload if isinstance(row, dict)
+                    ]
+                    rel = match.group(1)
+                    kept.append(
+                        f"===== FILE: {rel} (compact semantic view) =====\n"
+                        + json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
+                        + f"\n===== END FILE: {rel} (compact semantic view) ====="
+                    )
+                    continue
+            except (ValueError, json.JSONDecodeError, IndexError):
+                pass
             continue
         kept.append(section)
     return "\n".join(kept)
