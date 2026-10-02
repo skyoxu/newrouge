@@ -112,6 +112,10 @@ def with_runtime_evidence(overview: dict, root: Path) -> dict:
     for manifest in overview.get('manifests', []):
         copy = dict(manifest)
         copy['evidence'] = {'status': 'not_verified', 'reason': 'No run matched this main revision and manifest content.'}
+        if manifest.get('planning_result'):
+            copy['evidence']['reason'] = 'Local generated plan; commit it before running main verification.'
+            result['manifests'].append(copy)
+            continue
         for path in runs:
             try:
                 summary = json.loads(path.read_text(encoding='utf-8'))
