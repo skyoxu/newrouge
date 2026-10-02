@@ -8,6 +8,7 @@ import json
 import shutil
 import subprocess
 import os
+import re
 from pathlib import Path
 
 from openai_isolated_model_runner import (
@@ -33,6 +34,24 @@ def _codex_executable() -> str:
         if candidate.is_file():
             return str(candidate)
     raise ValueError("Codex CLI is unavailable; set CODEX_MANAGED_PACKAGE_ROOT or add codex to PATH")
+
+
+def _trim_workspace_context(base: str) -> str:
+    """Keep Codex input below its 1 MiB turn limit.
+
+    The complete task-view JSON is already projected into the semantic
+    requirements and makes the otherwise valid two-batch prompt exceed the
+    Codex CLI limit.  Capability generation must use the requirements/source
+    evidence, so omit only those duplicated raw views.
+    """
+    sections = re.split(r"(?=^===== FILE: )", base, flags=re.MULTILINE)
+    kept = []
+    for section in sections:
+        match = re.match(r"===== FILE: ([^ ]+) =====", section)
+        if match and "/analysis-input/task-views/" in "/" + match.group(1):
+            continue
+        kept.append(section)
+    return "\n".join(kept)
 
 
 def description() -> dict[str, object]:
@@ -63,6 +82,7 @@ def run(args: argparse.Namespace) -> int:
             output_path=output_path,
             max_bytes=args.max_bytes,
         )
+        base = _trim_workspace_context(base)
         payload = "\n\n".join([
             prompt_path.read_text(encoding="utf-8").rstrip(),
             base.rstrip(),
