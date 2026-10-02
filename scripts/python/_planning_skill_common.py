@@ -383,7 +383,13 @@ def parse_model_json(path: Path) -> dict[str, Any]:
         if lines and (lines[-1].strip().startswith("~~~") or lines[-1].strip().startswith("```")):
             lines = lines[:-1]
         text = "\n".join(lines).strip()
-    payload = json.loads(text)
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        preview = " ".join(text.split())[:240]
+        raise ValueError(
+            f"model output is not valid JSON at line {exc.lineno}, column {exc.colno}: {preview}"
+        ) from exc
     if not isinstance(payload, dict):
         raise ValueError("model output must be a JSON object")
     return payload

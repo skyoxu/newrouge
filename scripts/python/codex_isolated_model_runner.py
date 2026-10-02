@@ -100,6 +100,10 @@ def _coverage_checklist(workspace: Path) -> str:
             for row in ledger.get("blocks", [])
             if isinstance(row, dict) and row.get("block_id")
         ]
+        batch_index = json.loads(
+            (workspace / "analysis-input/model-batches/batch-index.json")
+            .read_text(encoding="utf-8")
+        )
         return (
             "\n\nFINAL COVERAGE AUDIT (machine-generated IDs; do not omit):\n"
             "Before returning JSON, verify every active delivery Requirement appears "
@@ -107,6 +111,9 @@ def _coverage_checklist(workspace: Path) -> str:
             "Source Block ID appears exactly once in source_accounting.\n"
             "REQUIREMENT_IDS=" + ",".join(requirements) + "\n"
             "SOURCE_BLOCK_IDS=" + ",".join(blocks) + "\n"
+            "EXPECTED_BATCH_COUNT=" + str(batch_index.get("batch_count") or len(batch_index.get("batches", []))) + "\n"
+            "EXPECTED_SOURCE_BLOCK_COUNT=" + str(batch_index.get("block_count") or len(blocks)) + "\n"
+            "EXPECTED_REQUIREMENT_COUNT=" + str(batch_index.get("requirement_count") or len(requirements)) + "\n"
         )
     except (OSError, ValueError, json.JSONDecodeError, TypeError):
         return ""
