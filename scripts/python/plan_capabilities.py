@@ -208,6 +208,12 @@ Every source block in source-blocks.v1.json must appear exactly once in source_a
 Every active delivery-relevant Requirement must either belong to one or more capabilities or appear in ungrouped_requirements with a reason.
 If a Requirement belongs to multiple capabilities, add multi_membership_rationales at top level mapping that Requirement ID to a non-empty rationale.
 Do not modify or invent Requirements, Tasks, Acceptance, contracts, or source text. Report upstream gaps in questions instead.
+
+Mandatory completion procedure (do this before writing the final JSON):
+1. Copy the complete active delivery-relevant Requirement ID set from semantic-requirements.v1.json into a private checklist.
+2. Assign each checklist ID to a capability, or put it in ungrouped_requirements with a concrete reason. Never drop an ID because it appears difficult, redundant, or UI-related.
+3. Compare the checklist against the union of every capability.requirement_ids and every ungrouped_requirements entry; repeat until the difference is empty.
+4. Perform the same exact-once comparison for source_accounting.block_id against source-blocks.v1.json. The final answer is invalid if either comparison is incomplete or duplicated.
 """
 
 
