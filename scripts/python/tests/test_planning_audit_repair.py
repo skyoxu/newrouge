@@ -79,6 +79,13 @@ def prepared_mvg(root):
         task_ids=["7", "42"], manifest_path=dest, allow_unready=False)
     caps = load_json(root / cap.FORMAL_CAPABILITIES)["capabilities"]
     reqs = [c["requirement_ids"][0] for c in caps]
+    gameplay = load_json(root / ".taskmaster/tasks/tasks_gameplay.json")
+    requirement_tasks = {
+        str(requirement): int(row["taskmaster_id"])
+        for row in gameplay
+        for requirement in row.get("semantic_refs", [])
+        if str(requirement) in reqs
+    }
     proposal = {"schema_version": mvg.PROPOSAL_SCHEMA,
         "analysis_identity_sha256": state["analysis_identity_sha256"],
         "planning_status": "ready_for_validation", "gaps": [],
@@ -94,8 +101,9 @@ def prepared_mvg(root):
                 "path": "Game.Core.Tests/Tasks/RelayTests.cs", "selector": "RelayTests",
                 "evidence_level": "domain-integration", "min_tests": 1}]},
         "coverage_table": [{"requirement_id": rid, "capability_ref": caps[i]["capability_id"],
-            "task_id": tid, "flow_id": "relay-delivery", "coverage": "Launch or resolve relay"}
-            for i, (rid, tid) in enumerate(zip(reqs, (7, 42)))],
+            "task_id": requirement_tasks[rid], "flow_id": "relay-delivery",
+            "coverage": "Launch or resolve relay", "rationale": "Fixture requirement is observed by its owning task."}
+            for i, rid in enumerate(reqs)],
         "entrypoints": [{"status": "planned", "owner_task": tid, "path": f"Game.Core/Tasks/Relay{tid}.cs",
             "symbol": f"Relay{tid}.Run", "inputs": ["route"], "state": "cargo transfer",
             "assertions": ["accepted or retry visible"], "implementation_acceptance": ["relay journey"]}
@@ -124,6 +132,10 @@ def milestone_plan(root, proposal, dest):
     by_block = {bid: [r["requirement_id"] for r in semantics["requirements"] if bid in r["source_block_ids"]]
         for bid in [b["block_id"] for b in ledger["blocks"]]}
     test_ids = [t["id"] for t in proposal["manifest_candidate"]["tests"]]
+    coverage_by_task = {
+        str(task_id): next(row for row in proposal["coverage_table"] if str(row["task_id"]) == str(task_id))
+        for task_id in (7, 42)
+    }
     plan = {"schema_version": "newrouge.milestone-change-plan.v1",
         "source_identity": {"source_revision": ledger["source_revision"]},
         "baseline_manifest": dest.relative_to(root).as_posix(),
@@ -133,7 +145,7 @@ def milestone_plan(root, proposal, dest):
             "non_delivery_rationale": "Heading context."} for b in ledger["blocks"]],
         "changes": [{"change_id": f"relay-{tid}", "action": "reuse", "target_task_id": str(tid),
             "owner_task_id": str(tid), "reason": "Owns milestone integration acceptance.",
-            "requirement_ids": [proposal["coverage_table"][i]["requirement_id"]],
+            "requirement_ids": [coverage_by_task[str(tid)]["requirement_id"]],
             "impact": {"tasks": ["7", "42"], "contracts": [CONTRACT_PATH]},
             "verification": {"required_regressions": test_ids, "planned_tests": test_ids}}
             for i, tid in enumerate((7, 42))]}

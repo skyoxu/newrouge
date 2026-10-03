@@ -158,6 +158,17 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             elif (workspace / 'analysis-input/capabilities.v1.json').exists():
                 payload = deepcopy(proposal_template)
                 payload['analysis_identity_sha256'] = index['analysis_identity_sha256']
+                formal = load_json(workspace / 'analysis-input/capabilities.v1.json')
+                actual_ids = [str(row['capability_id']) for row in formal.get('capabilities', [])]
+                req_to_cap = {
+                    str(requirement): str(row['capability_id'])
+                    for row in formal.get('capabilities', [])
+                    for requirement in row.get('requirement_ids', [])
+                }
+                for flow in payload.get('manifest_candidate', {}).get('flows', []):
+                    flow['capability_refs'] = actual_ids
+                for row in payload.get('coverage_table', []):
+                    row['capability_ref'] = req_to_cap.get(str(row['requirement_id']), actual_ids[0] if actual_ids else '')
             else:
                 reqs = load_json(workspace / 'analysis-input/semantic-requirements.v1.json')['requirements']
                 blocks = load_json(workspace / 'analysis-input/source-blocks.v1.json')['blocks']
