@@ -236,6 +236,12 @@ def run_job(root: Path, job: dict) -> dict:
                     args += ['--runner', str(runner)]
             elif stage == 'apply':
                 args += ['--confirm']
+                if action == 'capability':
+                    # The align stage is LLM-reviewed. Apply must consume
+                    # that exact reviewed artifact instead of rebuilding the
+                    # unresolved deterministic preview from the candidate.
+                    args += ['--alignment-override',
+                             f'logs/ci/capability-planning/{run_id}/alignment-preview.json']
             run_state = checkout / 'logs/ci' / ('capability-planning' if action == 'capability' else 'mvg-planning') / run_id / 'run.json'
             if stage == 'prepare' and run_state.is_file():
                 continue
