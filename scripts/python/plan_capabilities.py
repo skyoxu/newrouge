@@ -247,7 +247,13 @@ stable Capability as retain or retire. Use requirement membership, title,
 description, and boundary rationale as evidence. Reuse/rename must point to
 an existing stable ID; add must use a new stable CAP-* ID. Every decision must
 set resolved=true and include a concrete reason. Do not change Capability
-content or invent requirements.
+content or invent requirements. Stable IDs across all candidate decisions
+must be unique. Historical IDs must each appear exactly once as retain or
+retire. A historical ID mapped by a candidate cannot also appear in a
+historical disposition. For split/merge, use one existing stable ID as the
+surviving anchor when applicable and retire every superseded historical ID;
+never retain an ID unless a candidate maps to it or preserves its distinct
+requirement membership.
 """
 
 
@@ -1249,7 +1255,9 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
                 "\n\nALIGNMENT CORRECTION REQUIRED:\n"
                 "The previous alignment was rejected. Re-evaluate every decision and return a complete JSON object. "
                 "Candidate stable IDs must be globally unique. Historical retain/retire rows must also be globally unique, "
-                "and no historical ID may duplicate a candidate stable_id.\n"
+                "and no historical ID may duplicate a candidate stable_id. A split or merge decision must use an existing "
+                "stable ID as the surviving anchor and explicitly retire superseded historical identities; it cannot leave "
+                "an identity as retain when no candidate maps to it.\n"
                 f"Deterministic validation error: {last_error}\n"
             )
         (workspace / "prompt.txt").write_text(prompt + correction, encoding="utf-8", newline="\n")
