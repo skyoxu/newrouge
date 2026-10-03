@@ -455,8 +455,12 @@ def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: 
         by_candidate[label] = max(0.0, float(by_candidate.get(label) or 0.0) - reserved)
     if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
         budget["model_requests_reserved"] = max(0, int(budget.get("model_requests_reserved") or 0) - int(row.get("reserved_requests") or 0))
-    _record_runner_activity(state, label=label, elapsed_sec=elapsed_sec, receipt=receipt)
-    row.update(finished_at_utc=now(), elapsed_active_sec=elapsed_sec, reservation_settled=True)
+    # A killed/hung child can outlive the runner timeout while process-tree
+    # cleanup completes. Never charge wall-clock cleanup time against the
+    # persisted active-time budget; the reservation is the authoritative cap.
+    accounted = min(max(0.0, float(elapsed_sec)), reserved)
+    _record_runner_activity(state, label=label, elapsed_sec=accounted, receipt=receipt)
+    row.update(finished_at_utc=now(), elapsed_active_sec=accounted, reservation_settled=True)
 
 
 def _recover_interrupted_attempts(run_path: Path, state: dict[str, Any]) -> None:

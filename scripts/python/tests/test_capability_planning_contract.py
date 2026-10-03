@@ -11,10 +11,20 @@ if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
 from _planning_skill_common import scrub_capability_answers, validate_runner_description
-from plan_capabilities import build_alignment, validate_candidate
+from plan_capabilities import build_alignment, validate_candidate, _finish_attempt
 
 
 class CapabilityPlanningContractTests(unittest.TestCase):
+    def test_attempt_activity_is_capped_at_reserved_budget(self):
+        state = {"budget": {"activity_sec": 0.0, "activity_reserved_sec": 30.0,
+                             "candidate_reserved_sec": {"candidate-1": 30.0},
+                             "candidate_activity_sec": {}}}
+        row = {"reserved_active_sec": 30.0, "candidate": "candidate-1",
+               "reserved_requests": 0}
+        _finish_attempt(state, row, elapsed_sec=30000.0, receipt={})
+        self.assertEqual(30.0, state["budget"]["activity_sec"])
+        self.assertEqual(30.0, row["elapsed_active_sec"])
+
     def setUp(self) -> None:
         self.ledger = {
             "schema_version": "newrouge.source-blocks.v1",
