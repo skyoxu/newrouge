@@ -857,6 +857,18 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
             refs.extend(correction["evidence_refs"])
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     known_paths = {"analysis-input/" + p for p in index.get("files", {})}
+    # The model can quote an authoritative source using its repository path
+    # (for example ``docs/gdd/...``) even though the blinded workspace exposes
+    # it below ``analysis-input/sources/``.  Keep both spellings bound to the
+    # prepared file; do not accept arbitrary repository paths.
+    source_aliases: dict[str, str] = {}
+    for analysis_path in index.get("files", {}):
+        prefix = "sources/"
+        if isinstance(analysis_path, str) and analysis_path.startswith(prefix):
+            original = analysis_path[len(prefix):]
+            prepared = "analysis-input/" + analysis_path
+            source_aliases[original] = prepared
+            known_paths.add(original)
     # The analysis index is itself authoritative provenance and is explicitly
     # permitted by REVIEW_PROMPT. Keep it resolvable as an evidence reference.
     known_paths.add("analysis-input/analysis-index.json")
@@ -885,17 +897,18 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
         separator = "#" if "#" in value else ":" if ":" in value else None
         base, locator = value.split(separator, 1) if separator else (value, None)
         base = base.strip()
+        prepared_base = source_aliases.get(base, base)
         resolved = base in known_paths
-        if locator is not None and base in ids_by_path:
+        if locator is not None and prepared_base in ids_by_path:
             requested = [token.strip() for token in locator.split(",")]
-            resolved &= bool(requested) and all(token in ids_by_path[base] for token in requested)
+            resolved &= bool(requested) and all(token in ids_by_path[prepared_base] for token in requested)
         elif separator == ":":
             resolved = False  # Only typed ledger/Requirement ID qualification is supported.
         if not resolved:
             errors.append(f"review_evidence_ref_unresolvable:{value}")
         else:
-            has_source |= (base.startswith("analysis-input/sources/")
-                or base in ids_by_path)
+            has_source |= (prepared_base.startswith("analysis-input/sources/")
+                or prepared_base in ids_by_path)
     if not has_source:
         errors.append("review_authoritative_source_evidence_missing")
     return errors

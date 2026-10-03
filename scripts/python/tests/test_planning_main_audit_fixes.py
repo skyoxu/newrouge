@@ -365,6 +365,27 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
                 invalid["evidence_refs"] = [ref]
                 self.assertTrue(any("unresolvable" in e for e in cap.validate_review_report(invalid, run)))
 
+    def test_review_resolves_bound_original_source_path(self):
+        run = self.candidates()
+        report = review_report(run)
+        index = load_json(run / "analysis-input/analysis-index.json")
+        source = next(path[len("sources/"):] for path in index["files"] if path.startswith("sources/"))
+        report["evidence_refs"] = [source, "candidates/A.json"]
+        def invoke(*args, **kwargs):
+            atomic_json(kwargs["output_path"], report)
+            return {"model": "fixture-model", "model_tools": []}
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            result = cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+        self.assertEqual("selected", result["status"])
+
+    def test_review_does_not_accept_unbound_original_source_path(self):
+        run = self.candidates()
+        report = review_report(run)
+        report["evidence_refs"] = ["docs/gdd/not-prepared.md", "candidates/A.json"]
+        errors = cap.validate_review_report(report, run)
+        self.assertIn("review_evidence_ref_unresolvable:docs/gdd/not-prepared.md", errors)
+
     def test_review_interruption_is_recorded_and_cannot_reset_budget(self):
         run = self.candidates()
         with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
