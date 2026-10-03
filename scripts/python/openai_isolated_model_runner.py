@@ -27,11 +27,14 @@ DEFAULT_MAX_BYTES = 8 * 1024 * 1024
 
 
 def model_name() -> str:
+    # Do not select a concrete model in repository code. The backend resolves
+    # the environment default; this value is only reported for a controlled
+    # run when the operator explicitly provides one.
     return str(
         os.environ.get("SC_OPENAI_MODEL")
         or os.environ.get("OPENAI_MODEL")
-        or "gpt-6-sol"
-    ).strip() or "gpt-6-sol"
+        or "auto"
+    ).strip() or "auto"
 
 
 def description() -> dict[str, object]:

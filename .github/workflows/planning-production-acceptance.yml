@@ -36,8 +36,8 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       COPILOT_GITHUB_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL || 'gpt-6-sol' }}
-      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL || 'auto' }}
+      SC_OPENAI_MODEL: ${{ vars.SC_OPENAI_MODEL }}
+      SC_COPILOT_MODEL: ${{ vars.SC_COPILOT_MODEL }}
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
     steps:
@@ -63,7 +63,7 @@ jobs:
           if [ -n "$OPENAI_API_KEY" ]; then
             python scripts/python/run_planning_production_acceptance.py --backend openai-api --timeout-sec 900
           else
-            python scripts/python/run_planning_production_acceptance.py --backend copilot-cli --model "$SC_COPILOT_MODEL" --timeout-sec 900
+            python scripts/python/run_planning_production_acceptance.py --backend copilot-cli --timeout-sec 900
           fi
 
       - name: Upload planning acceptance evidence

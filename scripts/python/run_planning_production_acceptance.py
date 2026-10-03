@@ -88,14 +88,22 @@ def execute(
         if not str(env.get("OPENAI_API_KEY") or "").strip():
             raise ValueError("OPENAI_API_KEY is required for openai-api acceptance")
         runner = OPENAI_RUNNER
-        env["SC_OPENAI_MODEL"] = model
-        env["OPENAI_MODEL"] = model
+        if model:
+            env["SC_OPENAI_MODEL"] = model
+            env["OPENAI_MODEL"] = model
+        else:
+            env.pop("SC_OPENAI_MODEL", None)
+            env.pop("OPENAI_MODEL", None)
         mvg_backend = "openai-api"
     elif selected_backend == "copilot-cli":
         if not str(env.get("GITHUB_TOKEN") or env.get("COPILOT_GITHUB_TOKEN") or "").strip():
             raise ValueError("GITHUB_TOKEN/COPILOT_GITHUB_TOKEN is required for Copilot acceptance")
         runner = COPILOT_RUNNER
-        env["SC_COPILOT_MODEL"] = model or "auto"
+        if model:
+            env["SC_COPILOT_MODEL"] = model
+        else:
+            env.pop("SC_COPILOT_MODEL", None)
+            env.pop("COPILOT_MODEL", None)
         mvg_backend = "copilot-cli"
     else:
         raise ValueError(f"unsupported production acceptance backend: {selected_backend}")
@@ -301,9 +309,11 @@ def main() -> int:
         elif backend == "openai-api" or (
             backend == "auto" and str(os.environ.get("OPENAI_API_KEY") or "").strip()
         ):
-            model = str(os.environ.get("SC_OPENAI_MODEL") or "gpt-6-sol")
+            model = str(os.environ.get("SC_OPENAI_MODEL") or os.environ.get("OPENAI_MODEL") or "")
         else:
-            model = str(os.environ.get("SC_COPILOT_MODEL") or "auto")
+            # Copilot's auto route is the environment default; do not select a
+            # named candidate here.
+            model = str(os.environ.get("SC_COPILOT_MODEL") or "")
         summary = execute(
             fixture_root=fixture_root,
             evidence_dir=evidence_dir,
