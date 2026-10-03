@@ -63,6 +63,14 @@ def apply_alignment_override(base: dict[str, Any], override: dict[str, Any]) -> 
         if identity not in known or identity in replacements:
             raise ValueError("Capability alignment override has unknown or duplicate decision")
         replacements[identity] = dict(row)
+    missing = known - set(replacements)
+    if missing:
+        candidate_missing = sum(identity[0] == "candidate" for identity in missing)
+        historical_missing = sum(identity[0] == "historical" for identity in missing)
+        raise ValueError(
+            "Capability alignment requires a decision for every candidate and historical ID "
+            f"(missing_candidates={candidate_missing}, missing_historical={historical_missing})"
+        )
     result = [replacements.get(key(row), dict(row)) for row in rows]
     return {"schema_version": "newrouge.capability-alignment.v1", "decisions": result,
         "resolved": all(row.get("resolved") is True for row in result)}

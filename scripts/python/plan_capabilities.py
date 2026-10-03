@@ -253,7 +253,9 @@ retire. A historical ID mapped by a candidate cannot also appear in a
 historical disposition. For split/merge, use one existing stable ID as the
 surviving anchor when applicable and retire every superseded historical ID;
 never retain an ID unless a candidate maps to it or preserves its distinct
-requirement membership.
+requirement membership. The decisions array MUST contain every row from
+BASE_ALIGNMENT, including every candidate_id=null historical row; omitting
+historical rows is invalid even when all candidate rows are present.
 """
 
 
