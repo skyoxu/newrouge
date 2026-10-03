@@ -685,7 +685,10 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
         })
         if not valid:
             blocked.append(label)
-    if blocked:
+    valid_labels = [str(row.get("candidate")) for row in outputs if row.get("valid")]
+    # Independent LLM review only needs two structurally valid alternatives.
+    # A single stubborn candidate must not discard otherwise valid LLM work.
+    if blocked and len(valid_labels) < 2:
         state["phase"] = "generation-blocked"
         details = []
         by_label = {str(row.get("candidate")): row for row in outputs if isinstance(row, dict)}
@@ -892,7 +895,14 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
 
 def _anonymous_candidates(state: dict[str, Any]) -> tuple[str, dict[str, str]]:
     seed = hashlib.sha256((str(state["analysis_identity_sha256"]) + ":" + state["run_id"]).encode("utf-8")).hexdigest()
-    labels = [f"candidate-{i}" for i in (1, 2, 3)]
+    records = state.get("candidate_attempts") or {}
+    labels = [
+        f"candidate-{i}" for i in (1, 2, 3)
+        if not records
+        or (isinstance(records.get(f"candidate-{i}"), dict)
+            and isinstance(records.get(f"candidate-{i}", {}).get("final_meta"), dict)
+            and not records.get(f"candidate-{i}", {}).get("final_meta", {}).get("validation_errors"))
+    ]
     random.Random(int(seed[:16], 16)).shuffle(labels)
     return seed, dict(zip(("A", "B", "C"), labels))
 
@@ -943,7 +953,13 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     run_path, state = _load_run(root, run_id)
     _recover_interrupted_attempts(run_path, state)
     run_dir = run_path.parent
-    labels = [f"candidate-{index}" for index in range(1, 4)]
+    labels = [
+        f"candidate-{index}" for index in range(1, 4)
+        if isinstance(_candidate_record(state, f"candidate-{index}").get("final_meta"), dict)
+        and not _candidate_record(state, f"candidate-{index}").get("final_meta", {}).get("validation_errors")
+    ]
+    if len(labels) < 2:
+        raise ValueError("at least two structurally valid candidates are required before review")
     for label in labels:
         record = _candidate_record(state, label)
         meta = record.get("final_meta")
