@@ -3,12 +3,12 @@
   "source_revision": "source-set:68d145756705834e7b664fcc",
   "source_manifest_sha256": "sha256:68d145756705834e7b664fcc7302224513887404e4fcab7d8873992bde08ccf1",
   "schema_revision": "v1",
-  "generator_revision": "chapter3-semantic-conservation-v1",
+  "generator_revision": "post-chapter5-capability-planning-v1",
   "artifacts": {
-    "docs/planning/semantic-topology/source-blocks.v1.json": "sha256:9cc8d3579ede472a1a0d0dd6225b75038cee1f778911641ee723f4e7d07d9f13",
+    "docs/planning/semantic-topology/source-blocks.v1.json": "sha256:438684315b44ad09ebe0e9c79cf01b9a633898c0ec797852b57d0f0a9dccdfa7",
     "docs/planning/semantic-topology/semantic-requirements.v1.json": "sha256:ce6c5fa1848ef0c9e694a9f9899a0beaa321c607fe173a57ad70a12284521f47",
-    "docs/planning/semantic-topology/capabilities.v1.json": "sha256:ebb4309d0293bd7c1554ef12fb62e824306653da9707d2a31740bca47d17fe16",
-    "docs/planning/semantic-topology/topology-edges.v1.json": "sha256:525725457aad9195e691c296b648d64fab6090eabd47becc5ffaaa2e724eb222"
+    "docs/planning/semantic-topology/capabilities.v1.json": "sha256:53b0edba89e636312447599147a3982d3a4644dafd6dcbb3bf1e67fa8fe6b61e",
+    "docs/planning/semantic-topology/topology-edges.v1.json": "sha256:c2a377c39bd0f1b456544e07d5229ea6ded9469f50e2b84081cea8cd342b5edb"
   },
   "source_repository_revision": "4ddc682be3747793230d7d21ff73e1ea50bf8e40"
 }

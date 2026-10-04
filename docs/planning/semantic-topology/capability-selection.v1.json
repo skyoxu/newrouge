@@ -1,0 +1,196 @@
+{
+  "schema_version": "newrouge.capability-selection.v1",
+  "run_id": "planning-50e086f378b14137b8740ab6883d0f24",
+  "analysis_identity_sha256": "sha256:b79ea97d046fbc95a165f2d0886d9feae71ca18b16bea3add640df1426be6624",
+  "selected_candidate": "candidate-2",
+  "selected_candidate_sha256": "sha256:d2e38c5ac9e5025fda66bfe08a31870018b9743add1683aeaa7a37fccb82efbe",
+  "review_sha256": "sha256:4bdd2feba6a8d41accd4947507d8440dafd2cede263b9c8f58265cb9280921b0",
+  "final_candidate_sha256": "sha256:d2e38c5ac9e5025fda66bfe08a31870018b9743add1683aeaa7a37fccb82efbe",
+  "corrections_applied": false,
+  "alignment": {
+    "schema_version": "newrouge.capability-alignment.v1",
+    "decisions": [
+      {
+        "candidate_id": "TMP-CAP-FOUNDATION",
+        "action": "add",
+        "stable_id": "CAP-CORE-FOUNDATION",
+        "reason": "完整历史行必须单独处置且不得与候选映射重叠，因此使用新 ID。12 项需求延续共享契约、确定性基础与组合根边界；原 CAP-FOUNDATION 的 FR-T0012 转由运行连续性承接。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-RUN-CONTINUITY",
+        "action": "add",
+        "stable_id": "CAP-RUN-CONTINUITY",
+        "reason": "使用新 ID 避免与必填历史处置行冲突。9 项需求承接 CAP-PERSISTENCE 的保存、Continue、恢复与确定性续局边界，将结算展示、交付控制和战斗重放需求交给各自候选。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-COMBAT-RUNTIME",
+        "action": "add",
+        "stable_id": "CAP-COMBAT-EXECUTION",
+        "reason": "使用新 ID 避免与必填历史处置行冲突。21 项需求包含 CAP-CARD-DECK 的全部 9 项需求、原战斗运行时的执行职责及 NFR-T0049，形成卡组进入、出牌、回合结算与战斗结束的统一边界。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-ENEMY-INTENT",
+        "action": "add",
+        "stable_id": "CAP-ENEMY-INTENT",
+        "reason": "9 项需求从 CAP-CONTENT-DATA 和 CAP-COMBAT-RUNTIME 汇集敌人定义、意图预览、行动执行及无效定义处理；历史中没有独立承载这一完整敌人生命周期的 ID。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-MAP-ROUTE",
+        "action": "add",
+        "stable_id": "CAP-RUN-MAP-ROUTING",
+        "reason": "使用新 ID 避免与必填历史处置行冲突。14 项需求结合原玩家入口、路线图职责、FR-T0028 Act 配置及 CAP-DIFFICULTY-RULES 的 FR-T0026、FR-T0027，以新局配置到合法地图遍历为边界。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-NODE-REWARD",
+        "action": "add",
+        "stable_id": "CAP-NODE-EXPERIENCES",
+        "reason": "使用新 ID 避免与必填历史处置行冲突。17 项需求承接奖励选择和卡池定义，并覆盖商店、休息、事件及返回地图交接；原 CAP-REWARD 的 FR-T0035 由战斗执行承接。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-COMBAT-UX",
+        "action": "add",
+        "stable_id": "CAP-COMBAT-INTERACTION",
+        "reason": "11 项需求从原玩家流程、战斗运行时及结算分组中形成独立的战斗展示、目标选择、状态反馈与输入边界，包括 FR-T0045 和 FR-T0101；历史中没有对应的独立交互身份。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-RELIC-PARTICIPANTS",
+        "action": "add",
+        "stable_id": "CAP-RELIC-POWER-POTION",
+        "reason": "使用新 ID 避免与必填历史处置行冲突。9 项需求包含旧参与者身份的 FR-T0129，并结合内容定义及战斗触发需求，覆盖遗物获取、展示、运行触发和药水参与的完整生命周期。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-SETTLEMENT",
+        "action": "add",
+        "stable_id": "CAP-RUN-SUMMARY",
+        "reason": "完整历史处置行与候选映射必须互斥，因此以新 ID 接续结算身份。FR-T0066、FR-T0091、FR-T0107、FR-T0113、FR-T0130 保持存储数据驱动的局后展示边界，FR-T0045 和 FR-T0101 转入战斗交互。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-QUALITY-GOVERNANCE",
+        "action": "add",
+        "stable_id": "CAP-DELIVERY-GOVERNANCE",
+        "reason": "完整历史处置行与候选映射必须互斥，因此以新 ID 接续治理身份。16 项需求保留质量、安全、追溯和审查控制；旧分组中的 NFR-T0044、NFR-T0049、NFR-T0065、NFR-T0068 分别归入连续性、战斗执行和本地化可访问性。",
+        "resolved": true
+      },
+      {
+        "candidate_id": "TMP-CAP-LOCALIZATION-ACCESSIBILITY",
+        "action": "add",
+        "stable_id": "CAP-LOCALIZATION-ACCESSIBILITY",
+        "reason": "FR-T0023、FR-T0039 与 NFR-T0065、NFR-T0068 从内容、玩家流程和治理分组汇成独立的跨界面翻译、文本完整性及焦点输入边界，历史中没有对应的独立身份。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-FOUNDATION",
+        "reason": "12 项基础需求由 CAP-CORE-FOUNDATION 接续，FR-T0012 由 CAP-RUN-CONTINUITY 承接；没有剩余的独立需求成员。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-PLAYER-FLOW",
+        "reason": "入口与地图需求归入 CAP-RUN-MAP-ROUTING，节点交互归入 CAP-NODE-EXPERIENCES，战斗反馈、Continue、结算及可访问性分别归入对应新身份；原跨界面分组没有独立成员残留。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-CARD-DECK",
+        "reason": "全部 9 项需求均由 CAP-COMBAT-EXECUTION 承接，卡组生命周期已纳入完整战斗执行边界，没有需单独保留的成员。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-CONTENT-DATA",
+        "reason": "FR-T0023、FR-T0039 归本地化，FR-T0028 归地图配置，卡池归节点奖励，遗物归参与者，敌人和意图归敌人生命周期；全部成员均有对应候选承接。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-COMBAT-RUNTIME",
+        "reason": "原成员分别由 CAP-CORE-FOUNDATION、CAP-COMBAT-EXECUTION、CAP-ENEMY-INTENT、CAP-COMBAT-INTERACTION 和 CAP-RELIC-POWER-POTION 承接；共享基础、执行、敌人、交互和参与者已形成各自边界。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-PERSISTENCE",
+        "reason": "保存恢复成员归 CAP-RUN-CONTINUITY，FR-T0066、FR-T0107、FR-T0113 归 CAP-RUN-SUMMARY，NFR-T0049 归战斗执行，审计与交付控制归治理；全部原成员已承接。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-REWARD",
+        "reason": "除 FR-T0035 归 CAP-COMBAT-EXECUTION 外，其余 9 项需求全部归 CAP-NODE-EXPERIENCES；奖励身份被节点选择、确认和返回地图边界覆盖。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-ROUTE",
+        "reason": "地图与遍历成员归 CAP-RUN-MAP-ROUTING，FR-T0062、FR-T0067、FR-T0069 归节点体验，FR-T0087、FR-T0098 归运行连续性；没有未承接的独立路线成员。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-QUALITY-GOVERNANCE",
+        "reason": "16 项治理需求由 CAP-DELIVERY-GOVERNANCE 接续，NFR-T0044 归连续性，NFR-T0049 归战斗执行，NFR-T0065、NFR-T0068 归本地化可访问性；全部成员已有明确归属。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-SETTLEMENT",
+        "reason": "5 项局后展示需求由 CAP-RUN-SUMMARY 接续，FR-T0045 和 FR-T0101 由 CAP-COMBAT-INTERACTION 承接；旧身份没有独立成员残留。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-DIFFICULTY-RULES",
+        "reason": "全部成员 FR-T0026、FR-T0027 已纳入 CAP-RUN-MAP-ROUTING 的新局选择和配置边界，没有剩余的独立难度需求。",
+        "resolved": true
+      },
+      {
+        "candidate_id": null,
+        "action": "retire",
+        "stable_id": "CAP-RELIC-COMBAT-PARTICIPANTS",
+        "reason": "唯一成员 FR-T0129 已由 CAP-RELIC-POWER-POTION 承接，并与遗物定义、获取及共享触发需求形成完整参与者生命周期。",
+        "resolved": true
+      }
+    ],
+    "resolved": true
+  },
+  "input_freshness": {
+    "schema_version": "newrouge.capability-input-freshness.v1",
+    "analysis_identity_sha256": "sha256:b79ea97d046fbc95a165f2d0886d9feae71ca18b16bea3add640df1426be6624",
+    "authority_input_drift": [],
+    "prepared_repository_identity": {
+      "revision": "970884ac63b3bbda4cd4444cda92274f515b5e61",
+      "workspace_dirty": false,
+      "workspace_status_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "current_repository_identity": {
+      "revision": "970884ac63b3bbda4cd4444cda92274f515b5e61",
+      "workspace_dirty": false,
+      "workspace_status_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "repository_revision_changed": false,
+    "status": "current"
+  },
+  "generation_readiness_sha256": "sha256:bcfdc0e69e2f510a3d29733884a5e44c0aeb4f714d8f817fdf1e659af53cd999",
+  "applied_at_utc": "2026-10-04T07:19:53.651912+00:00"
+}
