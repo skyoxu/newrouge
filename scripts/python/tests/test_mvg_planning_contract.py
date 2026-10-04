@@ -15,11 +15,53 @@ if str(PYTHON) not in sys.path:
 
 import plan_mvg
 
-from plan_mvg import SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal
+from plan_mvg import (
+    SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal,
+    build_coverage_skeleton, build_entrypoint_skeleton, correction_prompt,
+    apply_restricted_patch, is_restricted_patch,
+)
 from update_mvg_baseline import apply_delta
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+    def test_coverage_skeleton_accounts_for_every_delivery_requirement(self):
+        semantics = {"requirements": [
+            {"requirement_id": "FR-1", "delivery_relevant": True, "status": "active", "source_block_ids": ["SB-1"]},
+            {"requirement_id": "NFR-1", "delivery_relevant": True, "status": "active", "source_block_ids": ["SB-2"]},
+        ]}
+        views = [{"taskmaster_id": 7, "semantic_refs": ["FR-1", "NFR-1"], "capability_refs": ["CAP-A"]}]
+        result = build_coverage_skeleton(semantics, views)
+        self.assertEqual(["FR-1", "NFR-1"], [row["requirement_id"] for row in result])
+        self.assertTrue(all(row["disposition"] == "flow" for row in result))
+
+    def test_entrypoint_skeleton_has_one_owner_per_flow_task(self):
+        result = build_entrypoint_skeleton([7, 42])
+        self.assertEqual([7, 42], [row["owner_task"] for row in result])
+        self.assertTrue(all(row["status"] == "planned" for row in result))
+
+    def test_correction_prompt_requests_restricted_patch(self):
+        prompt = correction_prompt(["coverage_requirement_missing:FR-1"])
+        self.assertIn("patch", prompt.lower())
+        self.assertIn("coverage_additions", prompt)
+        self.assertNotIn("completely corrected FULL proposal", prompt)
+
+    def test_generation_prompt_mentions_non_droppable_skeleton(self):
+        self.assertIn("coverage-skeleton.json", plan_mvg.PROMPT)
+        self.assertIn("must not delete", plan_mvg.PROMPT)
+
+    def test_restricted_patch_preserves_existing_flow_and_adds_coverage(self):
+        base = {"coverage_table": [{"requirement_id": "FR-1", "flow_id": "flow-a"}],
+                "manifest_candidate": {"flows": [{"id": "flow-a"}]},
+                "entrypoints": []}
+        patched = apply_restricted_patch(base, {
+            "coverage_additions": [{"requirement_id": "FR-2", "flow_id": "flow-a"}],
+            "flow_updates": [], "handoff_updates": [], "entrypoint_additions": []})
+        self.assertEqual(["flow-a"], [row["id"] for row in patched["manifest_candidate"]["flows"]])
+        self.assertEqual(["FR-1", "FR-2"], [row["requirement_id"] for row in patched["coverage_table"]])
+
+    def test_correction_attempt_rejects_full_replacement_shape(self):
+        self.assertTrue(is_restricted_patch({"coverage_additions": []}))
+        self.assertFalse(is_restricted_patch({"schema_version": "newrouge.mvg-planning-proposal.v1"}))
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"
@@ -236,7 +278,8 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("task_ids and every handoff", source)
         self.assertIn("JSON integers", source)
         self.assertIn("coverage is mandatory", source)
-        self.assertIn("completely corrected FULL proposal", source)
+        self.assertIn("correction_prompt(errors)", source)
+        self.assertIn("apply_restricted_patch", source)
         self.assertIn("Known Taskmaster IDs for this planning input", source)
         self.assertIn("Declared authoritative source paths", source)
         self.assertIn("Existing reviewed contract refs", source)

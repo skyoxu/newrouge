@@ -40,6 +40,80 @@ LEDGER = Path("logs/ci/task-generation/source-blocks.v1.json")
 SEMANTICS = Path("logs/ci/task-generation/semantic-requirements.v1.json")
 
 
+def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Create non-droppable Requirement rows before semantic flow planning."""
+    task_by_requirement: dict[str, tuple[int | None, str | None]] = {}
+    for row in task_views:
+        try:
+            task_id = int(row.get("taskmaster_id"))
+        except (TypeError, ValueError):
+            continue
+        capability_refs = [str(value) for value in row.get("capability_refs", []) if str(value).strip()]
+        for requirement_id in row.get("semantic_refs", row.get("requirement_ids", [])):
+            task_by_requirement.setdefault(str(requirement_id), (task_id, capability_refs[0] if capability_refs else None))
+    result = []
+    for requirement in semantics.get("requirements", []):
+        if (not isinstance(requirement, dict)
+                or requirement.get("delivery_relevant", True) is not True
+                or requirement.get("status", "active") != "active"):
+            continue
+        requirement_id = str(requirement.get("requirement_id") or "").strip()
+        task_id, capability_ref = task_by_requirement.get(requirement_id, (None, None))
+        result.append({"requirement_id": requirement_id, "disposition": "flow",
+            "flow_id": None, "capability_ref": capability_ref, "task_id": task_id,
+            "rationale": "Pending LLM journey assignment; Requirement retained in coverage ledger."})
+    return result
+
+
+def build_entrypoint_skeleton(task_ids: list[int]) -> list[dict[str, Any]]:
+    return [{"status": "planned", "owner_task": int(task_id),
+        "path": f"Game.Godot/Planned/Task{int(task_id)}Entry.cs",
+        "symbol": f"Task{int(task_id)}Entry", "inputs": "planned flow inputs",
+        "state": "planned transition", "assertions": "observable result",
+        "implementation_acceptance": "implement the planned integration entrypoint"}
+        for task_id in sorted(set(task_ids))]
+
+
+def correction_prompt(errors: list[str]) -> str:
+    return ("Return a JSON patch only, not a replacement proposal. Allowed arrays are: "
+            "coverage_additions, flow_updates, handoff_updates, entrypoint_additions. "
+            "Do not remove or rewrite valid existing data. Preserve all IDs and Requirement rows. "
+            "Fix only these validator errors:\n- " + "\n- ".join(str(value) for value in errors))
+
+
+RESTRICTED_PATCH_KEYS = {"coverage_additions", "flow_updates", "handoff_updates", "entrypoint_additions"}
+
+
+def is_restricted_patch(value: dict[str, Any]) -> bool:
+    return bool(value) and set(value).issubset(RESTRICTED_PATCH_KEYS)
+
+
+def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    """Merge only additive/update patch fields while preserving the valid proposal."""
+    result = json.loads(json.dumps(base))
+    coverage = result.setdefault("coverage_table", [])
+    existing_requirements = {str(row.get("requirement_id")) for row in coverage if isinstance(row, dict)}
+    coverage.extend(row for row in (patch.get("coverage_additions") or [])
+                    if isinstance(row, dict) and str(row.get("requirement_id")) not in existing_requirements)
+    manifest = result.setdefault("manifest_candidate", {})
+    flows = {str(row.get("id")): row for row in manifest.get("flows", []) if isinstance(row, dict)}
+    for update in (patch.get("flow_updates") or []):
+        row = flows.get(str(update.get("id")))
+        if row:
+            row.update({key: value for key, value in update.items() if key != "id"})
+    handoffs = {(str(flow.get("id")), str(handoff.get("contract_ref"))): handoff
+                for flow in manifest.get("flows", []) if isinstance(flow, dict)
+                for handoff in flow.get("handoffs", []) if isinstance(handoff, dict)}
+    for update in (patch.get("handoff_updates") or []):
+        key = (str(update.get("flow_id")), str(update.get("contract_ref")))
+        if key in handoffs:
+            handoffs[key].update({key: value for key, value in update.items() if key not in {"flow_id"}})
+    existing = {str(row.get("owner_task")) for row in result.setdefault("entrypoints", []) if isinstance(row, dict)}
+    result["entrypoints"].extend(row for row in (patch.get("entrypoint_additions") or [])
+                                  if str(row.get("owner_task")) not in existing)
+    return result
+
+
 def now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
@@ -190,6 +264,14 @@ def prepare(
 
     atomic_json(bundle / "readiness-summary.json", readiness)
     files["readiness-summary.json"] = file_sha(bundle / "readiness-summary.json")
+    skeleton = build_coverage_skeleton(load_json(root / SEMANTICS, {}), _task_view_rows(root))
+    atomic_json(bundle / "coverage-skeleton.json", {"schema_version": "newrouge.mvg-coverage-skeleton.v1", "rows": skeleton})
+    files["coverage-skeleton.json"] = file_sha(bundle / "coverage-skeleton.json")
+    entrypoint_tasks = sorted({int(row.get("taskmaster_id")) for row in _task_view_rows(root)
+                               if str(row.get("taskmaster_id", "")).isdigit()})
+    atomic_json(bundle / "entrypoint-skeleton.json", {"schema_version": "newrouge.mvg-entrypoint-skeleton.v1",
+        "rows": build_entrypoint_skeleton(entrypoint_tasks)})
+    files["entrypoint-skeleton.json"] = file_sha(bundle / "entrypoint-skeleton.json")
     index = {
         "schema_version": "newrouge.mvg-planning-input.v1",
         "capabilities_sha256": file_sha(capabilities_path),
@@ -255,7 +337,7 @@ def prepare(
 
 PROMPT = """You are planning cumulative MVG integration scope after Capability planning.
 
-Read every file under analysis-input/. The exact Capability file is an explicit input and must not be modified. Authoritative design semantics remain the GDD/source and reviewed Requirements. Existing task/Acceptance/contracts/tests and an existing manifest, when present, are evidence.
+Read every file under analysis-input/. The exact Capability file is an explicit input and must not be modified. `coverage-skeleton.json` is a non-droppable ledger: every active delivery Requirement must remain represented; you must not delete or silently omit its rows. Authoritative design semantics remain the GDD/source and reviewed Requirements. Existing task/Acceptance/contracts/tests and an existing manifest, when present, are evidence.
 
 Return JSON only with schema_version = "newrouge.mvg-planning-proposal.v1".
 Required fields:
@@ -286,7 +368,7 @@ Tests may be planned or implemented using the existing MVG schema. implemented m
 Reserve gaps for unresolved upstream design, Requirement, ownership, Acceptance or required real-contract evidence. A correctly specified planned entrypoint/test is a future implementation obligation, not an upstream gap. Missing runtime execution is expected at this planning stage, not a gap. Record those boundaries in notes/manual_obligations and keep the entrypoint/test state planned. Use planning_status=ready_for_validation with gaps=[] when all upstream evidence and planning obligations are complete; use draft for a genuine unresolved upstream gap. Never erase or disguise a genuine gap just to make validation pass.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
 
-coverage_table must account for EVERY active delivery-relevant Requirement. Each flow row requires requirement_id, capability_ref, integer task_id, flow_id, and a nonempty string field named rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Use the literal JSON key rationale, not coverage_rationale or reason. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
+coverage_table must account for EVERY active delivery-relevant Requirement. Start from coverage-skeleton.json and preserve every row; assign flow_id and rationale without deleting rows. Every flow row requires requirement_id, capability_ref, integer task_id, flow_id, and a nonempty string field named rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Use the literal JSON key rationale, not coverage_rationale or reason. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Start entrypoints from entrypoint-skeleton.json; every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
 """
 
 
@@ -457,6 +539,18 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         parsed = json.loads(text_value)
         if not isinstance(parsed, dict):
             raise ValueError("MVG proposal must be an object")
+        if attempt > 1:
+            if not is_restricted_patch(parsed):
+                execution["proposal_sha256"] = canonical_sha(parsed)
+                execution["deterministic_validation"] = {"status": "blocked", "errors": ["restricted_patch_required"]}
+                record.update(execution, status="completed")
+                atomic_json(run_path, state)
+                atomic_json(run_dir / f"proposal-attempt-{attempt}.json", parsed)
+                validation = execution["deterministic_validation"]
+                prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(["restricted_patch_required"])
+                continue
+            base = proposal or load_json(run_dir / "proposal.json", {})
+            parsed = apply_restricted_patch(base, parsed)
         proposal = parsed
         validation = validate_proposal(root, state, proposal)
         execution["proposal_sha256"] = canonical_sha(proposal)
@@ -470,15 +564,7 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         errors = validation.get("errors") or []
         if ready_with_gaps:
             errors = errors + ["unresolved_gaps contradict ready_for_validation. Preserve true upstream gaps as draft. Correctly specified planned implementation/tests and absent runtime evidence belong in notes/manual_obligations, not gaps. Return a full consistent proposal; do not hide genuine upstream uncertainty."]
-        prompt = (
-            PROMPT
-            + "\n"
-            + strict_contract
-            + "\nYour previous FULL proposal failed deterministic validation. "
-              "Do not patch fragments; return a completely corrected FULL proposal JSON. "
-              "These validator errors must all be fixed without inventing task, contract, source, or test evidence:\n- "
-            + "\n- ".join(str(value) for value in errors)
-        )
+        prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(errors)
 
     if proposal is None:
         raise ValueError("MVG proposal execution attempt budget exhausted; prepared inputs are preserved")

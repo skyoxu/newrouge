@@ -105,6 +105,10 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 `run-mvg-acceptance` 的 summary 记录精确 `manifest_sha256` 和可选 `baseline_lineage`。单任务 Chapter 6 只运行任务声明的测试、受影响旧回归与必要冒烟；里程碑收尾则运行当前累计必测范围和本轮新增组合测试的同一整合版本。planned 新测试、blocking task 或人工义务仍未完成时只能报告 partial/blocked，不能把稳定子集绿色改写为 milestone passed。
 
+### MVG planning generation safeguards
+
+MVG generation separates deterministic completeness from LLM semantics. `plan_mvg prepare` writes immutable `coverage-skeleton.json` for every active delivery Requirement and `entrypoint-skeleton.json` for planned owners. The model assigns journeys, flows, handoffs and rationale, but cannot delete skeleton rows. The first generation attempt returns a full proposal; later correction attempts return restricted additive patches for coverage, flow, handoff and entrypoint fields. The planner merges patches into the last proposal before validation, preventing a local correction from discarding previously valid coverage. This does not replace independent semantic review or runtime MVG execution.
+
 
 ### Incremental harness regression (T26)
 
