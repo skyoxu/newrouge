@@ -107,7 +107,7 @@ py -3 scripts/python/run_mvg_mutation_probe.py --snapshot commit --revision HEAD
 
 ### MVG planning generation safeguards
 
-MVG generation separates deterministic completeness from LLM semantics. `plan_mvg prepare` writes immutable `coverage-skeleton.json` for every active delivery Requirement and `entrypoint-skeleton.json` for planned owners. The model assigns journeys, flows, handoffs and rationale, but cannot delete skeleton rows. The first generation attempt returns a full proposal; later correction attempts return restricted additive patches for coverage, flow, handoff and entrypoint fields. The planner merges patches into the last proposal before validation, preventing a local correction from discarding previously valid coverage. This does not replace independent semantic review or runtime MVG execution.
+MVG generation separates deterministic completeness from LLM semantics. `plan_mvg prepare` writes immutable `coverage-skeleton.json` for every active delivery Requirement and `entrypoint-skeleton.json` for planned owners. The model assigns journeys, flows, handoffs and rationale, but cannot delete skeleton rows. Segmented generation first designs bounded flows, then assigns coverage in Requirement batches and supplies entrypoint/test sections using the reviewed flow IDs. The planner merges sections into the skeleton before validation; retries preserve earlier valid rows. Each segment is run with the environment-default Codex model in an ephemeral context, so attempts do not share stale session state. This does not replace independent semantic review or runtime MVG execution.
 
 
 ### Incremental harness regression (T26)

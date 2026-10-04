@@ -62,9 +62,12 @@ class LlmBackendTests(unittest.TestCase):
         self.assertEqual(["codex"], cmd)
 
     def test_run_llm_exec_should_invoke_codex_cli(self) -> None:
-        proc = subprocess.CompletedProcess(args=["codex"], returncode=0, stdout="ok", stderr="")
+        proc = mock.Mock()
+        proc.pid = 1234
+        proc.returncode = 0
+        proc.communicate.return_value = ("ok", None)
         with mock.patch.object(llm_backend.shutil, "which", return_value="codex"), mock.patch.object(
-            llm_backend.subprocess, "run", return_value=proc
+            llm_backend.subprocess, "Popen", return_value=proc
         ) as run_mock:
             rc, out, cmd = llm_backend.run_llm_exec(
                 backend="codex-cli",
@@ -78,9 +81,29 @@ class LlmBackendTests(unittest.TestCase):
         self.assertEqual(0, rc)
         self.assertEqual("ok", out)
         self.assertIn("codex", cmd[0])
+        self.assertIn("--ephemeral", cmd)
         self.assertIn("-c", cmd)
         self.assertIn('model_reasoning_effort="low"', cmd)
         run_mock.assert_called_once()
+
+    def test_run_llm_exec_timeout_kills_windows_process_tree(self) -> None:
+        proc = mock.Mock()
+        proc.pid = 4321
+        proc.communicate.side_effect = subprocess.TimeoutExpired(["codex"], 1)
+        proc.wait.return_value = None
+        with mock.patch.object(llm_backend.shutil, "which", return_value="codex"), \
+            mock.patch.object(llm_backend.subprocess, "Popen", return_value=proc), \
+            mock.patch.object(llm_backend.subprocess, "run") as kill_mock, \
+            mock.patch.object(llm_backend.os, "name", "nt"):
+            rc, out, _cmd = llm_backend.run_llm_exec(
+                backend="codex-cli", root=REPO_ROOT, prompt="hello",
+                output_last_message=REPO_ROOT / "tmp.md", timeout_sec=1,
+            )
+
+        self.assertEqual(124, rc)
+        self.assertIn("timeout", out)
+        kill_mock.assert_called_once()
+        self.assertEqual(["taskkill", "/PID", "4321", "/T", "/F"], kill_mock.call_args.args[0])
 
     def test_run_llm_exec_should_invoke_openai_backend_and_write_output(self) -> None:
         class _FakeResponses:

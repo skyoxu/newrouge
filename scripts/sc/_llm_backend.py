@@ -162,6 +162,7 @@ def run_llm_exec(
     cmd = [
         exe,
         "exec",
+        "--ephemeral",
         *extra_config_args,
         "-s",
         "read-only",
@@ -172,19 +173,35 @@ def run_llm_exec(
         "-",
     ]
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            input=prompt,
+            stdin=subprocess.PIPE,
             text=True,
             encoding="utf-8",
             errors="ignore",
             cwd=str(root),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=timeout_sec,
         )
-    except subprocess.TimeoutExpired:
-        return 124, "codex exec timeout\n", cmd
+        try:
+            stdout, _ = proc.communicate(input=prompt, timeout=timeout_sec)
+        except subprocess.TimeoutExpired:
+            if os.name == "nt":
+                # codex-cli starts a node/native child tree. Killing only the
+                # wrapper leaves inherited stdout open and blocks the caller.
+                subprocess.run(
+                    ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT,
+                    check=False,
+                )
+            else:
+                proc.kill()
+            try:
+                proc.wait(timeout=5)
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+            return 124, "codex exec timeout\n", cmd
     except Exception as exc:  # noqa: BLE001
         return 1, f"codex exec failed to start: {exc}\n", cmd
-    return proc.returncode or 0, proc.stdout or "", cmd
+    return proc.returncode or 0, stdout or "", cmd

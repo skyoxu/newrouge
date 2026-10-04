@@ -19,6 +19,8 @@ from plan_mvg import (
     SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal,
     build_coverage_skeleton, build_entrypoint_skeleton, correction_prompt,
     apply_restricted_patch, is_restricted_patch, validate_restricted_patch_identity,
+    SEGMENT_SCHEMA, segment_prompt, validate_segment_identity, merge_planning_segments,
+    build_manifest_skeleton, build_flow_scopes,
 )
 from update_mvg_baseline import apply_delta
 
@@ -73,6 +75,104 @@ class MvgPlanningContractTests(unittest.TestCase):
             "analysis_identity_sha256": "sha256:expected"}, state))
         self.assertIn("restricted_patch_analysis_identity_mismatch",
                       validate_restricted_patch_identity({"analysis_identity_sha256": "sha256:other"}, state))
+
+    def test_segment_prompt_is_bounded_and_identity_bound(self):
+        prompt = segment_prompt(section="coverage", identity="sha256:x", requirements=["FR-1"], task_ids=[7])
+        self.assertIn(SEGMENT_SCHEMA, prompt)
+        self.assertIn("FR-1", prompt)
+        self.assertIn("return JSON only", prompt)
+        self.assertNotIn("Read every file under analysis-input", prompt)
+        self.assertIn("inline", prompt.lower())
+        self.assertIn("Do not call shell/tools", prompt)
+        self.assertIn("available_*_paths", prompt)
+        self.assertIn("report a gap", prompt)
+
+    def test_segment_prompt_requires_flow_assignment_for_coverage(self):
+        prompt = segment_prompt(section="coverage", identity="sha256:x", requirements=["FR-1"],
+                                task_ids=[7], flow_context=[{"id": "run-entry"}])
+        self.assertIn("run-entry", prompt)
+        self.assertIn("never leave it null", prompt)
+
+    def test_segment_identity_rejects_wrong_section_or_run(self):
+        value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x", "section": "flows"}
+        self.assertEqual([], validate_segment_identity(value, section="flows", identity="sha256:x"))
+        self.assertIn("segment_section_mismatch", validate_segment_identity(value, section="coverage", identity="sha256:x"))
+        self.assertIn("segment_analysis_identity_mismatch", validate_segment_identity(value, section="flows", identity="sha256:y"))
+
+    def test_segment_merge_preserves_existing_rows(self):
+        base = {
+            "manifest_candidate": {"flows": [{"id": "flow-a", "outcome": "old"}]},
+            "coverage_table": [{"requirement_id": "FR-1", "flow_id": "flow-a"}],
+            "entrypoints": [{"owner_task": 7}],
+            "tests": [{"id": "test-a"}],
+        }
+        merged = merge_planning_segments(base, [{
+            "flows": [{"id": "flow-a", "outcome": "updated"}, {"id": "flow-b"}],
+            "coverage_table": [{"requirement_id": "FR-2", "flow_id": "flow-b"}],
+            "entrypoints": [{"owner_task": 8}],
+            "tests": [{"id": "test-b"}],
+        }])
+        self.assertEqual("updated", merged["manifest_candidate"]["flows"][0]["outcome"])
+        self.assertEqual(["flow-a", "flow-b"], [row["id"] for row in merged["manifest_candidate"]["flows"]])
+        self.assertEqual(["FR-1", "FR-2"], [row["requirement_id"] for row in merged["coverage_table"]])
+        self.assertEqual([7, 8], [row["owner_task"] for row in merged["entrypoints"]])
+
+    def test_segment_merge_updates_skeleton_placeholders(self):
+        merged = merge_planning_segments(
+            {"coverage_table": [{"requirement_id": "FR-1", "flow_id": None, "rationale": "pending"}]},
+            [{"coverage_table": [{"requirement_id": "FR-1", "flow_id": "flow-a", "rationale": "assigned"}]}],
+        )
+        self.assertEqual("flow-a", merged["coverage_table"][0]["flow_id"])
+        self.assertEqual("assigned", merged["coverage_table"][0]["rationale"])
+
+    def test_manifest_skeleton_has_required_envelope_and_real_blockers(self):
+        flows = [{"id": "flow-a", "task_ids": [1, 2], "handoffs": [{
+            "producer_task": 1, "consumer_task": 2, "owner_task": 2,
+        }]}]
+        result = build_manifest_skeleton("Run-ID", flows, {"1": "done", "2": "pending"})
+        self.assertEqual("newrouge.mvg-integration.v1", result["schema_version"])
+        self.assertEqual("run-id", result["mvg_id"])
+        self.assertEqual([2], result["coverage"]["blocking_task_ids"])
+        self.assertEqual(["flow-a"], result["coverage"]["required_flow_ids"])
+
+    def test_flow_scopes_use_prepared_capability_membership_and_bound_tasks(self):
+        semantics = {"requirements": [
+            {"requirement_id": "RQ-1", "statement": "foundation", "capability_ids": ["CAP-OLD"],
+             "delivery_relevant": True, "status": "active"},
+            {"requirement_id": "RQ-2", "statement": "runtime", "capability_ids": ["CAP-OLD"],
+             "delivery_relevant": True, "status": "active"},
+            {"requirement_id": "RQ-3", "statement": "inactive", "capability_ids": ["CAP-A"],
+             "delivery_relevant": False, "status": "active"},
+        ]}
+        capabilities = {"capabilities": [
+            {"capability_id": "CAP-A", "title": "A", "description": "a",
+             "requirement_ids": ["RQ-1"], "boundary_rationale": "shared"},
+            {"capability_id": "CAP-B", "title": "B", "description": "b",
+             "requirement_ids": ["RQ-2"], "boundary_rationale": "runtime"},
+        ]}
+        views = [
+            {"taskmaster_id": 7, "semantic_refs": ["RQ-1"]},
+            {"taskmaster_id": 8, "semantic_refs": ["RQ-2"]},
+            {"taskmaster_id": 99, "semantic_refs": ["RQ-1"]},
+        ]
+        scopes = build_flow_scopes(semantics, capabilities, views, [7, 8], batch_size=16)
+        self.assertEqual(["cap-a-01", "cap-b-01"], [scope["scope_id"] for scope in scopes])
+        self.assertEqual([["RQ-1"], ["RQ-2"]], [scope["requirement_ids"] for scope in scopes])
+        self.assertEqual([[7], [8]], [scope["task_ids"] for scope in scopes])
+        self.assertEqual([["CAP-A"], ["CAP-B"]], [
+            [row["capability_id"] for row in scope["capabilities"]] for scope in scopes])
+
+    def test_flow_scopes_partition_each_active_requirement_once(self):
+        requirements = [{"requirement_id": f"RQ-{index}", "delivery_relevant": True,
+                         "status": "active", "capability_ids": ["CAP-A"]}
+                        for index in range(5)]
+        scopes = build_flow_scopes(
+            {"requirements": requirements},
+            {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": [f"RQ-{i}" for i in range(5)]}]},
+            [], [], batch_size=2)
+        ids = [rid for scope in scopes for rid in scope["requirement_ids"]]
+        self.assertEqual([f"RQ-{index}" for index in range(5)], ids)
+        self.assertEqual(3, len(scopes))
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"
@@ -161,7 +261,8 @@ class MvgPlanningContractTests(unittest.TestCase):
         source = Path(plan_mvg.__file__).read_text(encoding="utf-8")
         self.assertIn("run_isolated_model(", source)
         self.assertIn("openai_isolated_model_runner.py", source)
-        self.assertIn('prompt_path = workspace / f"prompt-attempt-{attempt}.txt"', source)
+        self.assertIn('llm_workspace = workspace / "llm-sandbox"', source)
+        self.assertIn('prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"', source)
         self.assertIn('"proposal-attempt-{attempt}.json"', source)
 
     def test_copilot_cli_is_a_supported_real_planning_backend(self) -> None:

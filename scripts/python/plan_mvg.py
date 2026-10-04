@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime as dt
 import json
+import re
 import shutil
 import sys
 from copy import deepcopy
@@ -124,6 +126,532 @@ def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[
     result["entrypoints"].extend(row for row in (patch.get("entrypoint_additions") or [])
                                   if str(row.get("owner_task")) not in existing)
     return result
+
+
+SEGMENT_SCHEMA = "newrouge.mvg-planning-segment.v1"
+
+
+def segment_prompt(*, section: str, identity: str, requirements: list[str], task_ids: list[int],
+                   flow_context: list[dict[str, Any]] | None = None,
+                   scope_id: str = "", flow_id_prefix: str = "", test_id_prefix: str = "") -> str:
+    """Build a bounded LLM request for one MVG planning section.
+
+    The model returns only the requested section. Deterministic code owns the
+    final proposal envelope and the non-droppable skeleton accounting.
+    """
+    scope = json.dumps({"requirement_ids": requirements, "task_ids": task_ids,
+                        "flow_ids": [str(row.get("id")) for row in (flow_context or [])]}, ensure_ascii=False)
+    scope_label = scope_id or "unscoped"
+    flow_rule = (f"Every new flow id must start with {flow_id_prefix!r}." if flow_id_prefix
+                 else "Use stable lowercase kebab-case flow ids.")
+    test_rule = (f"Every new test id must start with {test_id_prefix!r}." if test_id_prefix
+                 else "Use stable lowercase kebab-case test ids.")
+    return f"""You are producing one bounded section of an MVG integration plan.
+Use only the prepared evidence needed for this section and return JSON only, with no markdown, shell commands, or commentary.
+schema_version must be {SEGMENT_SCHEMA!r}.
+analysis_identity_sha256 must be exactly {identity!r}.
+section must be {section!r}.
+scope_id must be {scope_label!r}; this request is independent from every other scope.
+scope is {scope}.
+The section is one patch to a deterministic proposal skeleton. Do not emit the full proposal envelope.
+Return only fields needed for this section:
+- flows: for section=flows, one or two complete player-journey flow objects for this scope only. Prefer one coherent journey when the evidence supports it; split only when the slice contains distinct observable outcomes. Each flow must include id, outcome, requirement_ids, capability_refs, task_ids, source_paths, handoffs, and test_ids. {flow_rule}
+- coverage_table: for section=coverage, rows for the supplied requirements only;
+- entrypoints: for section=entrypoints, planned/existing entrypoint rows for supplied task IDs;
+- tests: for section=tests, test objects only. Every supplied flow must receive at least one test id, and each test id must be used by exactly one supplied flow. {test_rule}
+For coverage rows, assign flow_id to an actual flow id from the supplied flow context; never leave it null.
+The required bounded context is included inline in this prompt. Do not call shell/tools or scan files.
+For section=tests, the inline context includes the prepared test refs; do not load full task views.
+For entrypoints and tests, use only the specific prepared references named by that context. Do not scan unrelated files.
+Do not invent repository paths, contracts, tasks, or capabilities. Use prepared evidence only.
+For source_paths and contract_ref, use only paths listed in the inline available_*_paths arrays. If a required real object is not listed, report a gap instead of inventing a path.
+"""
+
+
+def validate_segment_identity(value: dict[str, Any], *, section: str, identity: str) -> list[str]:
+    errors: list[str] = []
+    if value.get("schema_version") != SEGMENT_SCHEMA:
+        errors.append("segment_schema_mismatch")
+    if value.get("analysis_identity_sha256") != identity:
+        errors.append("segment_analysis_identity_mismatch")
+    if value.get("section") != section:
+        errors.append("segment_section_mismatch")
+    return errors
+
+
+def _active_delivery_requirements(semantics: dict[str, Any]) -> list[dict[str, Any]]:
+    return [row for row in semantics.get("requirements", [])
+            if isinstance(row, dict)
+            and row.get("delivery_relevant", True) is True
+            and row.get("status", "active") == "active"
+            and str(row.get("requirement_id") or "").strip()]
+
+
+def _bounded_text(value: Any, limit: int = 480) -> str:
+    text = str(value or "").strip()
+    return text if len(text) <= limit else text[:limit - 3].rstrip() + "..."
+
+
+def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: int = 3) -> list[str]:
+    """Reduce contract evidence to paths plausibly owned by this task slice."""
+    selected: list[str] = []
+    for ref in sorted(contract_refs):
+        tokens = {token.lower() for token in str(ref).replace(".", " ").replace("_", " ").split()
+                  if len(token) > 2 and token.lower() not in {"core", "event"}}
+        matches = []
+        for path in paths:
+            stem = Path(path).stem.replace("-", " ").replace("_", " ")
+            stem_tokens = {
+                token.lower() for token in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+", stem)
+            }
+            if tokens.intersection(stem_tokens):
+                matches.append(path)
+        selected.extend(matches[:limit])
+    return sorted(set(selected))
+
+
+def _flow_summaries(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{key: row.get(key) for key in (
+        "id", "outcome", "requirement_ids", "capability_refs", "task_ids", "test_ids")}
+            for row in rows if isinstance(row, dict)]
+
+
+def _capability_membership(capabilities: dict[str, Any]) -> tuple[list[str], dict[str, dict[str, Any]], dict[str, list[str]]]:
+    order: list[str] = []
+    rows: dict[str, dict[str, Any]] = {}
+    members: dict[str, list[str]] = {}
+    for row in capabilities.get("capabilities", []):
+        if not isinstance(row, dict):
+            continue
+        capability_id = str(row.get("capability_id") or "").strip()
+        if not capability_id:
+            continue
+        order.append(capability_id)
+        rows[capability_id] = row
+        for requirement_id in row.get("requirement_ids", []):
+            rid = str(requirement_id).strip()
+            if rid:
+                members.setdefault(rid, []).append(capability_id)
+    return order, rows, members
+
+
+def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
+                      task_views: list[dict[str, Any]], task_ids: list[int],
+                      *, batch_size: int = 24) -> list[dict[str, Any]]:
+    """Partition flow evidence by reviewed Capability membership.
+
+    Capability membership in the prepared Capability file is authoritative for
+    this partition. This also handles legacy Requirement capability labels that
+    differ from the current Capability IDs without making the model guess.
+    """
+    cap_order, cap_rows, cap_members = _capability_membership(capabilities)
+    task_id_set = {int(value) for value in task_ids}
+    task_by_requirement: dict[str, set[int]] = {}
+    for row in task_views:
+        if not isinstance(row, dict):
+            continue
+        try:
+            task_id = int(row.get("taskmaster_id"))
+        except (TypeError, ValueError):
+            continue
+        if task_id not in task_id_set:
+            continue
+        for requirement_id in row.get("semantic_refs", row.get("requirement_ids", [])):
+            task_by_requirement.setdefault(str(requirement_id), set()).add(task_id)
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for requirement in _active_delivery_requirements(semantics):
+        rid = str(requirement["requirement_id"])
+        capability_refs = cap_members.get(rid, [])
+        if not capability_refs:
+            capability_refs = [str(value) for value in requirement.get("capability_ids", [])
+                               if str(value).strip()]
+        anchor = capability_refs[0] if capability_refs else "unassigned"
+        grouped.setdefault(anchor, []).append({
+            "requirement_id": rid,
+            "statement": str(requirement.get("statement") or "").strip(),
+            "priority": requirement.get("priority"),
+            "owner_hint": requirement.get("owner_hint"),
+            "capability_refs": capability_refs,
+            "task_ids": sorted(task_by_requirement.get(rid, set())),
+        })
+
+    order_index = {value: index for index, value in enumerate(cap_order)}
+    anchors = sorted(grouped, key=lambda value: (order_index.get(value, len(order_index)), value))
+    scopes: list[dict[str, Any]] = []
+    for anchor in anchors:
+        rows = grouped[anchor]
+        for chunk_index in range(0, len(rows), max(1, batch_size)):
+            chunk = rows[chunk_index:chunk_index + max(1, batch_size)]
+            scope_id = f"{anchor.lower().replace('_', '-')}-{chunk_index // max(1, batch_size) + 1:02d}"
+            capability_ids = sorted({capability_id for row in chunk
+                                     for capability_id in row["capability_refs"]})
+            scopes.append({
+                "scope_id": scope_id,
+                "requirements": [{**row, "statement": _bounded_text(row.get("statement"))}
+                                 for row in chunk],
+                "requirement_ids": [row["requirement_id"] for row in chunk],
+                "task_ids": sorted({task_id for row in chunk for task_id in row["task_ids"]}),
+                "capabilities": [{key: cap_rows[capability_id].get(key) for key in (
+                    "capability_id", "title", "description", "requirement_ids", "boundary_rationale")}
+                                  for capability_id in capability_ids if capability_id in cap_rows],
+            })
+    return scopes
+
+
+def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge bounded model sections without allowing replacement or deletion."""
+    result = json.loads(json.dumps(base))
+    manifest = result.setdefault("manifest_candidate", {})
+    flows = manifest.setdefault("flows", [])
+    flow_map = {str(row.get("id")): row for row in flows if isinstance(row, dict)}
+    for segment in segments:
+        for row in segment.get("flows", []) or []:
+            if not isinstance(row, dict) or not str(row.get("id") or "").strip():
+                continue
+            existing = flow_map.get(str(row["id"]))
+            if existing is None:
+                flows.append(row)
+                flow_map[str(row["id"])] = row
+            else:
+                existing.update(row)
+        for key in ("coverage_table", "entrypoints", "tests"):
+            target = result.setdefault(key, [])
+            identity_key = "requirement_id" if key == "coverage_table" else "id" if key == "tests" else "owner_task"
+            by_identity = {str(row.get(identity_key)): row for row in target if isinstance(row, dict)}
+            for row in segment.get(key, []) or []:
+                if not isinstance(row, dict):
+                    continue
+                value = str(row.get(identity_key) or "")
+                if value and value in by_identity:
+                    by_identity[value].update(row)
+                elif value:
+                    target.append(row)
+                    by_identity[value] = row
+    return result
+
+
+def build_segment_scope(semantics: dict[str, Any], task_ids: list[int], *, batch_size: int = 24) -> list[dict[str, Any]]:
+    requirements = [str(row.get("requirement_id")) for row in _active_delivery_requirements(semantics)]
+    scopes = []
+    for start in range(0, len(requirements), max(1, batch_size)):
+        scopes.append({"requirements": requirements[start:start + batch_size], "task_ids": task_ids})
+    return scopes
+
+
+def build_manifest_skeleton(run_id: str, flows: list[dict[str, Any]],
+                            task_statuses: dict[str, str]) -> dict[str, Any]:
+    """Create only the structural manifest envelope; journey semantics stay LLM-owned."""
+    flow_ids = [str(row.get("id")) for row in flows if isinstance(row, dict)]
+    flow_tasks = {
+        int(task_id)
+        for flow in flows if isinstance(flow, dict)
+        for task_id in flow.get("task_ids", [])
+        if type(task_id) is int
+    }
+
+    role_tasks = {
+        int(task_id)
+        for flow in flows if isinstance(flow, dict)
+        for handoff in flow.get("handoffs", []) if isinstance(handoff, dict)
+        for task_id in (handoff.get("producer_task"), handoff.get("consumer_task"))
+        if type(task_id) is int
+    }
+    blockers = sorted(task_id for task_id in flow_tasks & role_tasks
+                      if str(task_statuses.get(str(task_id), "")).lower() != "done")
+    return {
+        "schema_version": "newrouge.mvg-integration.v1",
+        "mvg_id": str(run_id).lower(),
+        "coverage": {
+            "mode": "pilot",
+            "scope_id": str(run_id).lower(),
+            "required_flow_ids": flow_ids,
+            "blocking_task_ids": blockers,
+            "excluded_claims": ["Planning does not establish runtime verification."],
+        },
+        "flows": flows,
+        "tests": [],
+    }
+
+
+def write_model_context(run_dir: Path, workspace: Path, semantics: dict[str, Any],
+                        task_ids: list[int]) -> Path:
+    """Write a bounded, derived context view without changing prepared identity."""
+    input_dir = run_dir / "analysis-input"
+    capabilities = load_json(input_dir / "capabilities.v1.json", {})
+    master = load_json(input_dir / "task-master.json", {})
+    task_id_set = set(task_ids)
+    task_rows = [row for row in (master.get("master", {}) or {}).get("tasks", [])
+                 if isinstance(row, dict) and int(row.get("id", -1)) in task_id_set]
+    views = []
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(input_dir / "task-views" / name, [])
+        for row in payload:
+            if not isinstance(row, dict) or int(row.get("taskmaster_id", -1)) not in task_id_set:
+                continue
+            views.append({key: row.get(key) for key in (
+                "taskmaster_id", "semantic_refs", "capability_refs",
+                "contractRefs", "source_refs", "test_refs")})
+    test_views = []
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(input_dir / "task-views" / name, [])
+        for row in payload:
+            if not isinstance(row, dict) or int(row.get("taskmaster_id", -1)) not in task_id_set:
+                continue
+            test_views.append({"taskmaster_id": row.get("taskmaster_id"),
+                               "test_refs": row.get("test_refs", [])})
+    context = {
+        "schema_version": "newrouge.mvg-model-context.v1",
+        "requirements": [{key: row.get(key) for key in (
+            "requirement_id", "kind", "statement", "capability_ids", "priority", "owner_hint")}
+                          for row in semantics.get("requirements", [])
+                          if isinstance(row, dict) and row.get("delivery_relevant", True) is True
+                          and row.get("status", "active") == "active"],
+        "capabilities": [{key: row.get(key) for key in (
+            "capability_id", "title", "description", "requirement_ids", "boundary_rationale")}
+                         for row in capabilities.get("capabilities", []) if isinstance(row, dict)],
+        "task_master": [{key: row.get(key) for key in ("id", "title", "status")}
+                        for row in task_rows],
+        "task_views": views,
+        "declared_contract_refs": sorted({str(value) for row in views for value in row.get("contractRefs", []) if str(value).strip()}),
+    }
+    path = workspace / "model-context.json"
+    atomic_json(path, context)
+    atomic_json(workspace / "test-context.json", {
+        "schema_version": "newrouge.mvg-test-context.v1",
+        "task_views": test_views,
+        "declared_test_refs": sorted({str(value) for row in test_views for value in row.get("test_refs", []) if str(value).strip()}),
+    })
+    return path
+
+
+def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt: int,
+                     full_prompt: str, workspace: Path, *, semantics: dict[str, Any],
+                     task_ids: list[int], base_proposal: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+    """Run bounded section requests and assemble a proposal-shaped document.
+
+    Each request is bounded to one Capability slice or one small accounting
+    batch. Local code owns only identity, deduplication and skeleton retention;
+    journey semantics, handoffs and test choices remain model-owned.
+    """
+    identity = str(state.get("analysis_identity_sha256") or "")
+    segment_dir = workspace / "segments"
+    segment_dir.mkdir(parents=True, exist_ok=True)
+    write_model_context(run_dir, workspace, semantics, task_ids)
+    model_context = load_json(workspace / "model-context.json", {})
+    test_context = load_json(workspace / "test-context.json", {})
+    segments: list[dict[str, Any]] = []
+    receipts: list[dict[str, Any]] = []
+
+    task_views: list[dict[str, Any]] = []
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(run_dir / "analysis-input/task-views" / name, [])
+        if isinstance(payload, list):
+            task_views.extend(row for row in payload if isinstance(row, dict))
+    capabilities = load_json(run_dir / "analysis-input/capabilities.v1.json", {})
+    _, _, capability_members = _capability_membership(capabilities)
+    flow_scopes = build_flow_scopes(semantics, capabilities, task_views, task_ids)
+    model_context = load_json(workspace / "model-context.json", {})
+    all_task_views = model_context.get("task_views", [])
+    all_test_views = load_json(workspace / "test-context.json", {}).get("task_views", [])
+    prepared = run_dir / "analysis-input"
+    source_paths = sorted({"docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md"}
+                          | {str(value).split(":", 1)[0] for row in all_task_views
+                             if int(row.get("taskmaster_id", -1)) in set(task_ids)
+                             for value in row.get("source_refs", []) if str(value).strip()})
+    contract_paths = sorted(
+        path.relative_to(prepared / "references").as_posix()
+        for path in (prepared / "references" / "Game.Core" / "Contracts").rglob("*.cs")
+        if path.is_file()
+    ) if (prepared / "references" / "Game.Core" / "Contracts").is_dir() else []
+    declared_contract_refs = set(model_context.get("declared_contract_refs", []))
+
+    requests: list[dict[str, Any]] = []
+    for scope in flow_scopes:
+        requests.append({"section": "flows", "scope_id": scope["scope_id"],
+                         "requirements": scope["requirements"],
+                         "requirement_ids": scope["requirement_ids"],
+                         "task_ids": scope["task_ids"],
+                         "capabilities": scope["capabilities"]})
+
+    # Flow coverage is accounted for in small Requirement batches after all
+    # flow IDs are known. A batch contains only its own Requirement statements.
+    active_rows = _active_delivery_requirements(semantics)
+    requirement_context = {
+        str(row["requirement_id"]): row for row in active_rows
+    }
+    for scope in build_segment_scope(semantics, task_ids, batch_size=24):
+        selected_requirements = set(scope["requirements"])
+        scoped_tasks = sorted({int(row.get("taskmaster_id")) for row in task_views
+                               if isinstance(row, dict)
+                               and str(row.get("taskmaster_id") or "").isdigit()
+                               and int(row.get("taskmaster_id")) in set(task_ids)
+                               and selected_requirements.intersection(
+                                   {str(value) for value in row.get("semantic_refs", row.get("requirement_ids", []))})})
+        coverage_rows = []
+        for rid in scope["requirements"]:
+            row = requirement_context.get(rid)
+            if not row:
+                continue
+            bounded = {key: row.get(key) for key in (
+                "requirement_id", "kind", "statement", "priority", "owner_hint", "non_task_sinks")}
+            bounded["capability_refs"] = capability_members.get(rid, [])
+            coverage_rows.append(bounded)
+        requests.append({"section": "coverage", "scope_id": f"coverage-{len(requests) + 1:02d}",
+                         "requirements": coverage_rows,
+                         "requirement_ids": scope["requirements"],
+                         "task_ids": scoped_tasks})
+
+    # Only tasks actually referenced by a flow need an LLM-owned entrypoint
+    # refinement. The deterministic skeleton still retains all prepared owners.
+    flow_task_ids = sorted({task_id for scope in flow_scopes for task_id in scope["task_ids"]})
+    for start in range(0, len(flow_task_ids), 32):
+        scoped_tasks = flow_task_ids[start:start + 32]
+        requests.append({"section": "entrypoints", "scope_id": f"entrypoints-{start // 32 + 1:02d}",
+                         "requirements": [], "requirement_ids": [], "task_ids": scoped_tasks})
+
+    for start in range(0, len(flow_scopes), 3):
+        scoped_scopes = flow_scopes[start:start + 3]
+        requests.append({"section": "tests", "scope_id": f"tests-{start // 3 + 1:02d}",
+                         "requirements": [], "requirement_ids": [],
+                         "task_ids": sorted({task_id for scope in scoped_scopes for task_id in scope["task_ids"]}),
+                         "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes]})
+
+    def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
+        section = request["section"]
+        requirements = request["requirement_ids"]
+        scoped_tasks = request["task_ids"]
+        flow_context = [row for segment in segments for row in (segment.get("flows", []) or [])
+                        if isinstance(row, dict)]
+        flow_prefix = f"{request['scope_id']}-" if section == "flows" else ""
+        test_prefix = f"{request['scope_id']}-" if section == "tests" else ""
+        section_prompt_text = segment_prompt(
+            section=section, identity=identity,
+            requirements=requirements, task_ids=scoped_tasks,
+            flow_context=flow_context,
+            scope_id=request["scope_id"], flow_id_prefix=flow_prefix, test_id_prefix=test_prefix,
+        )
+        if flow_context:
+            selected_flow_rows = flow_context
+            if request.get("flow_scope_ids"):
+                selected_flow_rows = [row for row in flow_context
+                                      if any(str(row.get("id", "")).startswith(scope_id + "-")
+                                             for scope_id in request["flow_scope_ids"])]
+            section_prompt_text += "\nUse these already prepared flow objects as the only flow context:\n"
+            section_prompt_text += json.dumps(
+                _flow_summaries(selected_flow_rows), ensure_ascii=False)
+        if section == "flows":
+            scoped_refs = {str(value) for row in all_task_views
+                           if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
+                           for value in row.get("contractRefs", []) if str(value).strip()}
+            section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
+                "requirements": request["requirements"],
+                "capabilities": request.get("capabilities", []),
+                "task_views": [row for row in all_task_views
+                               if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
+                "available_source_paths": source_paths,
+                "available_contract_paths": _contract_candidates(scoped_refs, contract_paths),
+                "declared_contract_refs": sorted(scoped_refs),
+            }, ensure_ascii=False)
+        elif section == "coverage":
+            section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
+                "requirements": request["requirements"],
+                "capabilities": [{key: row.get(key) for key in (
+                    "capability_id", "title", "requirement_ids")}
+                                 for row in request.get("capabilities", [])],
+            }, ensure_ascii=False)
+        elif section == "entrypoints":
+            section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
+                "task_master": [row for row in model_context.get("task_master", [])
+                                if int(row.get("id", -1)) in set(scoped_tasks)],
+                "task_views": [row for row in all_task_views
+                               if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
+                "available_source_paths": source_paths,
+            }, ensure_ascii=False)
+        elif section == "tests":
+            section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
+                "task_views": [row for row in all_test_views
+                               if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
+                "available_test_paths": sorted({str(value) for row in all_test_views
+                                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
+                                                for value in row.get("test_refs", []) if str(value).strip()}),
+            }, ensure_ascii=False)
+        output, receipt = invoke(
+            section_prompt_text, attempt,
+            output_name=f"segments/{index:03d}-{section}.json",
+        )
+        parsed = json.loads(output.read_text(encoding="utf-8"))
+        if not isinstance(parsed, dict):
+            raise ValueError(f"MVG segment {section} must be a JSON object")
+        errors = validate_segment_identity(parsed, section=section, identity=identity)
+        if errors:
+            raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
+        return index, parsed, {"section": section, "index": index, "receipt": receipt}
+
+    def execute_batch(batch: list[tuple[int, dict[str, Any]]], flow_context: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
+        if not batch:
+            return []
+        # Parallelize independent bounded LLM calls while keeping the flow
+        # stage as a barrier for coverage/tests that need stable flow IDs.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(batch))) as executor:
+            futures = [executor.submit(execute_request, index, request, flow_context)
+                       for index, request in batch]
+            return sorted((future.result() for future in futures), key=lambda row: row[0])
+
+    indexed_requests = list(enumerate(requests, start=1))
+    flow_batch = [(index, request) for index, request in indexed_requests if request["section"] == "flows"]
+    flow_results = execute_batch(flow_batch, [])
+    segments.extend(parsed for _, parsed, _ in flow_results)
+    receipts.extend(receipt for _, _, receipt in flow_results)
+    flow_context = [row for _, parsed, _ in flow_results
+                    for row in (parsed.get("flows", []) or []) if isinstance(row, dict)]
+    other_batch = [(index, request) for index, request in indexed_requests if request["section"] != "flows"]
+    other_results = execute_batch(other_batch, flow_context)
+    segments.extend(parsed for _, parsed, _ in other_results)
+    receipts.extend(receipt for _, _, receipt in other_results)
+
+    flow_rows = [row for segment in segments if segment.get("section") == "flows"
+                 for row in (segment.get("flows", []) or []) if isinstance(row, dict)]
+    status_payload = load_json(run_dir / "analysis-input/task-master.json", {})
+    task_statuses = {
+        str(row.get("id")): str(row.get("status", "")).lower()
+        for row in (status_payload.get("master", {}) or {}).get("tasks", [])
+        if isinstance(row, dict)
+    }
+    existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
+    if isinstance(existing_manifest, dict):
+        manifest_base = existing_manifest
+    else:
+        manifest_base = build_manifest_skeleton(str(state.get("run_id")), flow_rows, task_statuses)
+    base = {
+        "schema_version": PROPOSAL_SCHEMA,
+        "analysis_identity_sha256": identity,
+        "planning_status": "ready_for_validation",
+        "manifest_candidate": manifest_base,
+        "coverage_table": [], "entrypoints": [], "gaps": [],
+        "manual_obligations": [], "change_reviews": [], "retirement_reviews": [],
+        "coverage_review": {}, "notes": [],
+    }
+    if base_proposal:
+        base = merge_planning_segments(base_proposal, [])
+    assembled = merge_planning_segments(base, segments)
+    # Preserve the non-droppable prepared skeleton even if an individual
+    # section returns an incomplete subset. Semantic assignments still belong
+    # to the model and are validated in the normal proposal pass.
+    skeleton_coverage = load_json(run_dir / "coverage-skeleton.json", [])
+    skeleton_entrypoints = load_json(run_dir / "entrypoint-skeleton.json", [])
+    assembled["coverage_table"] = merge_planning_segments(
+        {"coverage_table": skeleton_coverage},
+        [{"coverage_table": assembled.get("coverage_table", [])}],
+    ).get("coverage_table", skeleton_coverage)
+    assembled["entrypoints"] = merge_planning_segments(
+        {"entrypoints": skeleton_entrypoints},
+        [{"entrypoints": assembled.get("entrypoints", [])}],
+    ).get("entrypoints", skeleton_entrypoints)
+    assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
+    output = workspace / f"proposal-attempt-{attempt}.json"
+    atomic_json(output, assembled)
+    return output, {"attempt": attempt, "segmented": True, "segments": receipts}
 
 
 def now() -> str:
@@ -384,7 +912,7 @@ coverage_table must account for EVERY active delivery-relevant Requirement. Star
 """
 
 
-def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> dict[str, Any]:
+def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, segmented: bool = True) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     _validate_input_freshness(root, run_path.parent, state)
     if state.get("formal_ready") is not True:
@@ -422,14 +950,22 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             reasons = "; ".join(str(value) for value in backend_info.get("blocking_errors", []))
             raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
 
-    def invoke(prompt: str, attempt: int) -> tuple[Path, dict[str, Any]]:
-        output = workspace / f"proposal-attempt-{attempt}.json"
+    def invoke(prompt: str, attempt: int, *, output_name: str | None = None) -> tuple[Path, dict[str, Any]]:
+        relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
+        prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
+        # Keep the model's cwd empty and segment-local. The prepared evidence
+        # remains immutable under attempt/analysis-input, but is supplied only
+        # through the bounded inline prompt. This prevents Codex from spending
+        # its budget recursively scanning the entire evidence bundle.
+        llm_workspace = workspace / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
+        llm_workspace.mkdir(parents=True, exist_ok=True)
+        output = llm_workspace / relative_output.name
         if runner is not None:
-            prompt_path = workspace / f"prompt-attempt-{attempt}.txt"
+            prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
             prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
             receipt = run_isolated_model(
                 runner,
-                workspace=workspace,
+                workspace=llm_workspace,
                 prompt_path=prompt_path,
                 output_path=output,
                 timeout_sec=timeout_sec,
@@ -444,11 +980,14 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str) -> 
             }
         rc, stdout, cmd = run_llm_exec(
             backend=llm_backend,
-            root=workspace,
+            root=llm_workspace,
             prompt=prompt,
             output_last_message=output,
             timeout_sec=timeout_sec,
-            codex_configs=["model_reasoning_effort=high"],
+            # Let Codex use the environment-default model and reasoning policy.
+            # MVG segmentation controls scope; it should not hard-code a model
+            # or override the user's CLI defaults.
+            codex_configs=[],
         )
         execution: dict[str, Any] = {
             "attempt": attempt,
@@ -522,6 +1061,8 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
 """
 
     prompt = PROMPT + "\n" + strict_contract
+    state["generation_strategy"] = "segmented" if segmented else "single-proposal"
+    atomic_json(run_path, state)
     attempts: list[dict[str, Any]] = state.setdefault("generation_attempts", [])
     proposal: dict[str, Any] | None = None
     validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
@@ -535,8 +1076,19 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         attempts.append(record)
         atomic_json(run_path, state)
         try:
-            output, execution = invoke(prompt, attempt)
-        except (RuntimeError, TimeoutError, OSError) as exc:
+            # Keep each model response bounded. The final proposal is assembled
+            # locally from section outputs and then subjected to the existing
+            # full deterministic validator.
+            if segmented:
+                output, execution = invoke_segmented(
+                    invoke, run_dir, state, attempt, prompt, workspace,
+                    semantics=load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
+                    task_ids=[int(value) for value in state.get("task_scope", [])],
+                    base_proposal=proposal,
+                )
+            else:
+                output, execution = invoke(prompt, attempt)
+        except (RuntimeError, TimeoutError, OSError, ValueError) as exc:
             record.update(status="execution-failed", error=str(exc))
             state["phase"] = "generation-execution-blocked"
             atomic_json(run_path, state)
@@ -548,10 +1100,17 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
             if lines and lines[-1].strip().startswith("```"):
                 lines = lines[:-1]
             text_value = "\n".join(lines)
-        parsed = json.loads(text_value)
+        try:
+            parsed = json.loads(text_value)
+        except (TypeError, ValueError) as exc:
+            record.update(status="execution-failed", error=f"model output is not valid JSON: {exc}")
+            state["phase"] = "generation-execution-blocked"
+            atomic_json(run_path, state)
+            atomic_json(run_dir / "model-execution.json", {"backend": llm_backend, "attempts": attempts})
+            continue
         if not isinstance(parsed, dict):
             raise ValueError("MVG proposal must be an object")
-        if attempt > 1:
+        if attempt > 1 and not segmented:
             patch_errors = [] if is_restricted_patch(parsed) else ["restricted_patch_required"]
             patch_errors.extend(validate_restricted_patch_identity(parsed, state))
             if patch_errors:
