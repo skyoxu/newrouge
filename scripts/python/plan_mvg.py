@@ -148,7 +148,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict
             "analysis_identity_sha256": {"type": "string", "const": identity},
             "section": {"type": "string", "const": section},
             "scope_id": {"type": "string", "const": scope_id},
-            payload_key: {"type": "array"},
+            payload_key: {"type": "array", "items": {"type": "object"}},
         },
         "additionalProperties": False,
     }
