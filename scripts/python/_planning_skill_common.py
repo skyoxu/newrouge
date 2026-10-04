@@ -350,6 +350,9 @@ def build_blinded_analysis_bundle(
     atomic_json(out_dir / "readiness-summary.json", readiness_summary)
     files["readiness-summary.json"] = file_sha(out_dir / "readiness-summary.json")
     if capability_reference_path is not None:
+        # Explicit diagnostics are retained for migration/research callers, but
+        # the normal Capability workflow deliberately omits this input so a
+        # previous project's grouping cannot anchor a new project's model.
         reference = load_json(capability_reference_path, {})
         if reference.get("schema_version") != "newrouge.capabilities.v1":
             raise ValueError("invalid capability reference")

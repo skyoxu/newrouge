@@ -155,7 +155,6 @@ def prepare(
         readiness_summary=readiness,
         model_batch_char_budget=model_batch_char_budget,
         repository_identity=_repository_identity(root),
-        capability_reference_path=root / "docs/planning/semantic-topology/capabilities.v1.json",
     )
     state = {
         "schema_version": RUN_SCHEMA,
@@ -194,7 +193,7 @@ CANDIDATE_PROMPT = """You are producing one independent cumulative Capability pr
 
 Use the complete prepared analysis-input. The runner may stream authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches; every batch belongs to this same fresh candidate session and no block may be truncated. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
 
-The prepared workspace may include capability-reference.v1.json containing only historical titles and Requirement membership as a granularity reference. Treat it as a reference only, never as a template or authority: use current Source Blocks and Requirements as authoritative. Preserve coherent independently deliverable boundaries where supported, but split or merge when current evidence requires it. Do not optimize for a fixed Capability count. Avoid oversized buckets that combine unrelated lifecycle, runtime, persistence, UI, or governance responsibilities. A Capability should normally represent one cohesive responsibility that can be navigated, assigned, and reviewed independently. Explain major departures from the reference in generation_notes.
+The prepared workspace may include capability-reference.v1.json. It is an optional cross-project diagnostic only, never a template, authority, target shape, or ID source. Do not copy its count, titles, membership, or boundaries. Start from current user-visible outcomes and end-to-end journey handoffs, then use current Source Blocks and Requirements as authoritative. Split when there is a distinct user outcome, owner, lifecycle, or independently reviewable journey handoff; merge when several requirements are only implementation steps of one outcome. Do not optimize for a fixed Capability count, historical count, Requirement count, or symmetry. Avoid oversized buckets that combine unrelated lifecycle, runtime, persistence, UI, or governance responsibilities, and avoid one-Requirement atoms unless that Requirement has a genuinely independent outcome or boundary. A Capability should normally represent one cohesive responsibility that a human can understand and that MVG can use as a meaningful journey stage or handoff. Explain any use of the diagnostic and all major split/merge decisions in generation_notes.
 
 Return JSON only with schema_version = "newrouge.capability-candidate.v1".
 Required top-level fields:
@@ -222,7 +221,7 @@ Mandatory completion procedure (do this before writing the final JSON):
 
 REVIEW_PROMPT = """You are the independent Capability proposal reviewer.
 
-Read the complete analysis-input/ and all candidate files under candidates/. Candidate names are anonymous A/B/C and reveal no generation order. Reject structurally invalid or source-unfaithful options rather than averaging them. Select one complete candidate; do not merge the three by default.
+Read the complete analysis-input/ and all candidate files under candidates/. Candidate names are anonymous A/B/C and reveal no generation order. Reject structurally invalid or source-unfaithful options rather than averaging them. Select one complete candidate; do not merge the three by default. Evaluate candidates in this order: (1) user-visible outcomes and coherent end-to-end journey stages, (2) clear ownership, lifecycle, and handoff boundaries, (3) source/Requirement fidelity and complete accounting, and (4) human/MVG navigation cost. Requirement density, historical similarity, and raw Capability count are diagnostics only and must never be used as an optimization target or tie-breaker. Penalize both oversized mixed-responsibility buckets and fragmented one-Requirement atoms without independent outcomes. The selected candidate must be explainable for a new project whose domain and scale differ from this repository.
 
 Return JSON only with schema_version = "newrouge.capability-review.v2" and:
 - selected: "A" | "B" | "C" | null

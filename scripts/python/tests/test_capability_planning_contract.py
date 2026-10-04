@@ -11,7 +11,13 @@ if str(PYTHON) not in sys.path:
     sys.path.insert(0, str(PYTHON))
 
 from _planning_skill_common import scrub_capability_answers, validate_runner_description
-from plan_capabilities import build_alignment, validate_candidate, _finish_attempt
+from plan_capabilities import (
+    CANDIDATE_PROMPT,
+    REVIEW_PROMPT,
+    build_alignment,
+    validate_candidate,
+    _finish_attempt,
+)
 
 
 class CapabilityPlanningContractTests(unittest.TestCase):
@@ -123,6 +129,15 @@ class CapabilityPlanningContractTests(unittest.TestCase):
         blinded = scrub_capability_answers(payload)
         self.assertNotIn("capability_ids", blinded["requirements"][0])
         self.assertNotIn("capability_ref", blinded["requirements"][0]["nested"])
+
+    def test_generation_policy_is_project_neutral_and_mvg_oriented(self) -> None:
+        self.assertIn("Do not optimize for a fixed Capability count", CANDIDATE_PROMPT)
+        self.assertIn("user-visible outcomes", CANDIDATE_PROMPT)
+        self.assertIn("end-to-end journey handoffs", CANDIDATE_PROMPT)
+        self.assertIn("never a template, authority, target shape, or ID source", CANDIDATE_PROMPT)
+        self.assertIn("raw Capability count are diagnostics only", REVIEW_PROMPT)
+        self.assertIn("human/MVG navigation cost", REVIEW_PROMPT)
+        self.assertIn("new project whose domain and scale differ", REVIEW_PROMPT)
 
     def test_formal_runner_rejects_read_anywhere_boundary(self) -> None:
         with self.assertRaisesRegex(ValueError, "workspace-only"):

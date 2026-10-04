@@ -49,6 +49,10 @@ Artifact: `planning-production-acceptance-36765025379-attempt-1`, ID `1112006266
 
 Repository gates for the same code revision: [Windows Quality](https://github.com/skyoxu/newrouge/actions/runs/36765023945) **PASS**, [Windows Smoke](https://github.com/skyoxu/newrouge/actions/runs/36765023968) **PASS**, [MVG Integration](https://github.com/skyoxu/newrouge/actions/runs/36765023912) **PASS**. This completion record changes documentation only; executable implementation and business authorities remain at the verified revision.
 
+## Portable Capability granularity
+
+Capability count is deliberately not an acceptance metric. Candidates must be generated from the current project's user-visible outcomes, lifecycle boundaries, ownership, and MVG journey handoffs. Historical Capability files may be used only for explicit post-generation identity alignment or migration diagnostics; they are not supplied as a default granularity template. Review must reject both mixed-responsibility mega-buckets and fragmented one-Requirement atoms without an independent outcome, while allowing legitimate singleton cross-cutting capabilities. Capability remains a derived reading/planning layer and does not gate runtime execution.
+
 ## AC01-AC26
 
 | AC | Result | Evidence |

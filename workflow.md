@@ -748,7 +748,9 @@ py -3 scripts/python/run_obligations_freeze_pipeline.py --skip-jitter --raw logs
 
 ### 5.3 Post-Chapter-5 Capability Planning
 
-Capability is generated only after the explicitly affected Chapter 5 task scope is current and closable. It is a derived navigation/grouping layer, not a Taskmaster lifecycle.
+Capability is generated only after the explicitly affected Chapter 5 task scope is current and closable. It is a human-readable navigation/grouping layer for MVG planning, not a Taskmaster lifecycle or runtime gate. It never blocks game execution.
+
+Capability granularity is evidence-driven and portable across projects. The generator must not target a fixed count or copy a previous project's Capability shape. Candidates start from user-visible outcomes and end-to-end journey handoffs; they split on distinct outcomes, owners, lifecycles, or independently reviewable handoffs, and merge implementation-only steps. Requirement density, singleton nodes, and raw count are review signals only. The independent reviewer selects on source fidelity, cohesion, human comprehension, journey continuity, and handoff cost.
 
 Stable entrypoint:
 
@@ -761,7 +763,7 @@ Required sequence:
 1. `prepare` creates a hash-bound blinded analysis bundle from cumulative source/GDD, Source Blocks, reviewed Requirements, sanitized task views and current Chapter 5 readiness. The supplied task IDs must include every task sink of the ledger source round; legitimate non-task sinks are checked separately.
 2. `generate` requires an isolation runner that proves workspace-only reads, a fresh model session per invocation and no outside-workspace access. It produces exactly three same-model candidates. Without that boundary, formal generation fails closed.
 3. `review` is a fourth fresh same-model session and receives anonymous A/B/C candidates in a reproducibly shuffled order. Require complete findings/comparison/source evidence. Resume reuses an identity-bound selected/no-winner report; corrupted evidence blocks. Candidate/review attempts and budget reservations are durable before invocation, so interruption cannot reset them. Unknown reservations are not observed cost or paused wall time.
-4. `preview-alignment` reuses historical Capability IDs only for exact Requirement-membership matches. Changed membership is unresolved until explicit reviewed alignment.
+4. `preview-alignment` aligns stable IDs only after generation. Exact Requirement-membership reuse is an identity-preservation optimization, not a generation target; changed membership is unresolved until explicit reviewed alignment.
 5. `apply --confirm` journals the full derived projection and capability-only Chapter 5 rebind before writing. Re-running this stage recovers interrupted writes without replacing later user edits. A pending transaction blocks downstream readiness. Task IDs/status, Acceptance, Requirement text and Task intent identity remain protected.
 
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.

@@ -7,14 +7,24 @@ description: Generate and apply post-Chapter-5 Capability grouping from authorit
 
 ## Role
 
-Create the derived Capability organization after the relevant Chapter 3-5 scope has converged. Capability is navigation and grouping only; it never owns Taskmaster status and never edits Requirement statements.
+Create the derived Capability organization after the relevant Chapter 3-5 scope has converged. Capability is a human-readable navigation and grouping layer for MVG planning; it never owns Taskmaster status, never edits Requirement statements, and never blocks game/runtime execution.
+
+## Portable granularity policy
+
+- Do not target a fixed Capability count or copy another project's count, titles, IDs, or boundaries.
+- Generate from current user-visible outcomes and end-to-end journey handoffs first.
+- Split when a distinct outcome, owner, lifecycle, or independently reviewable handoff is evidenced.
+- Merge when multiple Requirements are only implementation steps of one outcome.
+- Treat Requirement density, singleton Capabilities, and large buckets as review signals, not automatic errors.
+- A one-Requirement Capability is valid only when the Requirement has an independently meaningful outcome or boundary.
+- Review must compare human comprehension, journey continuity, source fidelity, and handoff cost; quantity is never a score or tie-breaker.
 
 ## Hard boundaries
 
 - Authoritative inputs are the cumulative source set, full Source Block Ledger, reviewed Requirements, task/Acceptance/contract semantics, and explicit Chapter 5 readiness scope.
 - The three initial candidates must use fresh sessions, the same model, the same prompt bytes, and the same blinded analysis bundle.
 - Formal generation requires an isolation runner that reports workspace-only reads and no outside-workspace access. If no such runner exists, stop after prepare/validation; never emulate independence in one chat.
-- Old formal Capability answers and task `capability_refs` are excluded from the candidate analysis view. Capability/module organization that is present in the authoritative GDD remains visible.
+- Old formal Capability answers and task `capability_refs` are excluded from the candidate analysis view. Capability/module organization that is present in the authoritative GDD remains visible. An explicitly supplied diagnostic reference may be used only to explain migration differences; it must not anchor a new project's grouping.
 - The review is a fourth fresh isolated session. It sees anonymous A/B/C candidates in a reproducible shuffled order and never sees the private mapping.
 - Do not merge the three by default. A valid outcome may be `no_valid_winner`.
 - Applying Capability may update only derived Capability artifacts, task `capability_refs`, Capability topology edges, topology hashes, and a capability-only Chapter 5 fingerprint rebind. It must not change task IDs, statuses, Acceptance, subtasks, Requirement text, or task intent identity.
