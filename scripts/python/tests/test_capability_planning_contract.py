@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import sys
+import hashlib
 import unittest
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -17,6 +19,7 @@ from plan_capabilities import (
     build_alignment,
     validate_candidate,
     _finish_attempt,
+    _manifest_artifact_sha,
 )
 
 
@@ -156,6 +159,33 @@ class CapabilityPlanningContractTests(unittest.TestCase):
             "model": "same-model",
             "model_tools": [],
         })
+
+    def test_manifest_artifact_hash_is_stable_across_crlf_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "source-blocks.v1.json"
+            path.write_bytes(b'{\r\n  "blocks": []\r\n}\r\n')
+            expected = "sha256:" + hashlib.sha256(
+                b'{\n  "blocks": []\n}\n'
+            ).hexdigest()
+            self.assertEqual(expected, _manifest_artifact_sha(path))
+
+    def test_topology_artifact_validation_is_stable_across_crlf_checkout(self) -> None:
+        from _knowledge_catalog_builder import DirectorySnapshot
+        from _semantic_topology import _validate_artifact_hashes
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "artifact.json"
+            path.write_bytes(b'{\r\n  "blocks": []\r\n}\r\n')
+            snapshot = DirectorySnapshot(root, ["artifact.json"])
+            expected = hashlib.sha256(b'{\n  "blocks": []\n}\n').hexdigest()
+            problems = []
+            from _semantic_topology import TOPOLOGY_ARTIFACTS
+            bindings = {path: expected for path in TOPOLOGY_ARTIFACTS.values()}
+            bindings["artifact.json"] = expected
+            snapshot.paths = tuple(list(snapshot.paths) + list(TOPOLOGY_ARTIFACTS.values()))
+            snapshot._cache.update({path: b"{}" for path in TOPOLOGY_ARTIFACTS.values()})
+            _validate_artifact_hashes(snapshot, {"artifacts": bindings}, problems)
+            self.assertNotIn({"kind": "artifact_hash_mismatch", "path": "artifact.json"}, problems)
 
 
 if __name__ == "__main__":

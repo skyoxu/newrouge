@@ -5,7 +5,7 @@
   "schema_revision": "v1",
   "generator_revision": "post-chapter5-capability-planning-v1",
   "artifacts": {
-    "docs/planning/semantic-topology/source-blocks.v1.json": "sha256:438684315b44ad09ebe0e9c79cf01b9a633898c0ec797852b57d0f0a9dccdfa7",
+    "docs/planning/semantic-topology/source-blocks.v1.json": "sha256:9cc8d3579ede472a1a0d0dd6225b75038cee1f778911641ee723f4e7d07d9f13",
     "docs/planning/semantic-topology/semantic-requirements.v1.json": "sha256:ce6c5fa1848ef0c9e694a9f9899a0beaa321c607fe173a57ad70a12284521f47",
     "docs/planning/semantic-topology/capabilities.v1.json": "sha256:53b0edba89e636312447599147a3982d3a4644dafd6dcbb3bf1e67fa8fe6b61e",
     "docs/planning/semantic-topology/topology-edges.v1.json": "sha256:c2a377c39bd0f1b456544e07d5229ea6ded9469f50e2b84081cea8cd342b5edb"

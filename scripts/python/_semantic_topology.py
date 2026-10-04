@@ -281,7 +281,10 @@ def _validate_artifact_hashes(snapshot: Any, manifest: dict[str, Any],
         if path not in getattr(snapshot, "paths", ()):
             problems.append({"kind": "missing_artifact", "path": path})
             continue
-        actual = snapshot.digest(path)
+        data = snapshot.read_bytes(path)
+        if path.lower().endswith(".json"):
+            data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        actual = _sha256(data)
         if expected.removeprefix("sha256:") != actual:
             problems.append({"kind": "artifact_hash_mismatch", "path": path,
                              "expected": expected, "actual": actual})

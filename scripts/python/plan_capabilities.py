@@ -31,6 +31,7 @@ from _planning_skill_common import (
     relative,
     repo_path,
     run_isolated_model,
+    normalized_file_sha,
     text_sha,
 )
 
@@ -46,6 +47,11 @@ TASK_VIEWS = (
     Path(".taskmaster/tasks/tasks_back.json"),
     Path(".taskmaster/tasks/tasks_gameplay.json"),
 )
+
+
+def _manifest_artifact_sha(path: Path) -> str:
+    """Return a Git-newline-stable identity for text topology artifacts."""
+    return normalized_file_sha(path)
 
 
 def now() -> str:
@@ -1589,7 +1595,7 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
         if path in targets:
             artifacts[rel_path] = text_sha(json.dumps(targets[path], ensure_ascii=False, indent=2) + "\n")
         elif path.is_file():
-            artifacts[rel_path] = file_sha(path)
+            artifacts[rel_path] = _manifest_artifact_sha(path)
         else:
             raise ValueError(f"missing topology artifact while updating manifest: {rel_path}")
     manifest["artifacts"] = artifacts
