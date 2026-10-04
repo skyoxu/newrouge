@@ -130,6 +130,29 @@ def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[
 
 SEGMENT_SCHEMA = "newrouge.mvg-planning-segment.v1"
 
+def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict[str, Any]:
+    """Build the CLI-enforced envelope for one routed segment request."""
+    payload_key = {
+        "flows": "flows",
+        "coverage": "coverage_table",
+        "entrypoints": "entrypoints",
+        "tests": "tests",
+    }.get(section)
+    if payload_key is None:
+        raise ValueError(f"unsupported MVG segment section: {section}")
+    return {
+        "type": "object",
+        "required": ["schema_version", "analysis_identity_sha256", "section", "scope_id", payload_key],
+        "properties": {
+            "schema_version": {"type": "string", "const": SEGMENT_SCHEMA},
+            "analysis_identity_sha256": {"type": "string", "const": identity},
+            "section": {"type": "string", "const": section},
+            "scope_id": {"type": "string", "const": scope_id},
+            payload_key: {"type": "array"},
+        },
+        "additionalProperties": False,
+    }
+
 
 def segment_prompt(*, section: str, identity: str, requirements: list[str], task_ids: list[int],
                    flow_context: list[dict[str, Any]] | None = None,
@@ -168,15 +191,52 @@ For source_paths and contract_ref, use only paths listed in the inline available
 """
 
 
-def validate_segment_identity(value: dict[str, Any], *, section: str, identity: str) -> list[str]:
+def validate_segment_identity(value: dict[str, Any], *, section: str, identity: str,
+                             scope_id: str | None = None) -> list[str]:
     errors: list[str] = []
+    payload_key = {"flows": "flows", "coverage": "coverage_table",
+                   "entrypoints": "entrypoints", "tests": "tests"}.get(section)
+    if payload_key is None:
+        errors.append("segment_section_unknown")
     if value.get("schema_version") != SEGMENT_SCHEMA:
         errors.append("segment_schema_mismatch")
     if value.get("analysis_identity_sha256") != identity:
         errors.append("segment_analysis_identity_mismatch")
     if value.get("section") != section:
         errors.append("segment_section_mismatch")
+    if scope_id is not None and value.get("scope_id") != scope_id:
+        errors.append("segment_scope_mismatch")
+    if payload_key is not None and not isinstance(value.get(payload_key), list):
+        errors.append(f"segment_{payload_key}_missing")
     return errors
+
+
+def load_reusable_segment(run_dir: Path, *, current_attempt: int, index: int,
+                          section: str, identity: str, scope_id: str) -> dict[str, Any] | None:
+    """Load only a prior segment whose route and payload envelope are valid."""
+    payload_key = {"flows": "flows", "coverage": "coverage_table",
+                   "entrypoints": "entrypoints", "tests": "tests"}.get(section)
+    if payload_key is None:
+        return None
+    for prior_attempt in range(current_attempt - 1, 0, -1):
+        path = (run_dir / "model-workspace" / f"attempt-{prior_attempt}" / "llm-sandbox"
+                / f"attempt-{prior_attempt}" / f"segments-{index:03d}-{section}"
+                / f"{index:03d}-{section}.json")
+        if not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if validate_segment_identity(payload, section=section, identity=identity,
+                                     scope_id=scope_id):
+            continue
+        if not isinstance(payload.get(payload_key), list):
+            continue
+        return payload
+    return None
 
 
 def _active_delivery_requirements(semantics: dict[str, Any]) -> list[dict[str, Any]]:
@@ -576,27 +636,66 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                                 if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
                                                 for value in row.get("test_refs", []) if str(value).strip()}),
             }, ensure_ascii=False)
-        output, receipt = invoke(
-            section_prompt_text, attempt,
-            output_name=f"segments/{index:03d}-{section}.json",
-        )
-        parsed = json.loads(output.read_text(encoding="utf-8"))
-        if not isinstance(parsed, dict):
-            raise ValueError(f"MVG segment {section} must be a JSON object")
-        errors = validate_segment_identity(parsed, section=section, identity=identity)
-        if errors:
-            raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
-        return index, parsed, {"section": section, "index": index, "receipt": receipt}
+        output_name = f"segments/{index:03d}-{section}.json"
+        last_error = ""
+        for retry in range(1, 4):
+            try:
+                output, receipt = invoke(section_prompt_text, attempt,
+                                         output_name=output_name,
+                                         output_schema_path=workspace / "segment-schemas" / f"{index:03d}-{section}.json",
+                                         output_schema=segment_output_schema(
+                                             section=section,
+                                             identity=identity,
+                                             scope_id=request["scope_id"],
+                                         ))
+                parsed = json.loads(output.read_text(encoding="utf-8"))
+                if not isinstance(parsed, dict):
+                    raise ValueError(f"MVG segment {section} must be a JSON object")
+                errors = validate_segment_identity(parsed, section=section, identity=identity,
+                                                   scope_id=request["scope_id"])
+                if errors:
+                    raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
+                return index, parsed, {"section": section, "index": index, "retry": retry, "receipt": receipt}
+            except (json.JSONDecodeError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
+                last_error = str(exc)
+                section_prompt_text += (
+                    "\nThe previous response failed deterministic routing/schema validation. "
+                    "Retry this exact scope and return the required envelope fields; do not return a bare section payload."
+                )
+        raise ValueError(last_error or f"MVG segment {section} failed after retries")
 
     def execute_batch(batch: list[tuple[int, dict[str, Any]]], flow_context: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
         if not batch:
             return []
+        reusable: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
+        pending: list[tuple[int, dict[str, Any]]] = []
+        for index, request in batch:
+            cached = load_reusable_segment(
+                run_dir,
+                current_attempt=attempt,
+                index=index,
+                section=request["section"],
+                identity=identity,
+                scope_id=request["scope_id"],
+            )
+            if cached is None:
+                pending.append((index, request))
+            else:
+                reusable.append((index, cached, {
+                    "section": request["section"],
+                    "index": index,
+                    "reused_from_prior_attempt": True,
+                }))
         # Parallelize independent bounded LLM calls while keeping the flow
         # stage as a barrier for coverage/tests that need stable flow IDs.
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(batch))) as executor:
-            futures = [executor.submit(execute_request, index, request, flow_context)
-                       for index, request in batch]
-            return sorted((future.result() for future in futures), key=lambda row: row[0])
+        if pending:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(pending))) as executor:
+                futures = [executor.submit(execute_request, index, request, flow_context)
+                           for index, request in pending]
+                generated = [future.result() for future in futures]
+        else:
+            generated = []
+        return sorted(reusable + generated, key=lambda row: row[0])
 
     indexed_requests = list(enumerate(requests, start=1))
     flow_batch = [(index, request) for index, request in indexed_requests if request["section"] == "flows"]
@@ -950,7 +1049,9 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
             reasons = "; ".join(str(value) for value in backend_info.get("blocking_errors", []))
             raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
 
-    def invoke(prompt: str, attempt: int, *, output_name: str | None = None) -> tuple[Path, dict[str, Any]]:
+    def invoke(prompt: str, attempt: int, *, output_name: str | None = None,
+               output_schema_path: Path | None = None,
+               output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
         relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
         prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
         # Keep the model's cwd empty and segment-local. The prepared evidence
@@ -960,6 +1061,8 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
         llm_workspace = workspace / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
         llm_workspace.mkdir(parents=True, exist_ok=True)
         output = llm_workspace / relative_output.name
+        if output_schema_path is not None and output_schema is not None:
+            atomic_json(output_schema_path, output_schema)
         if runner is not None:
             prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
             prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
@@ -988,6 +1091,7 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
             # MVG segmentation controls scope; it should not hard-code a model
             # or override the user's CLI defaults.
             codex_configs=[],
+            output_schema=output_schema_path,
         )
         execution: dict[str, Any] = {
             "attempt": attempt,

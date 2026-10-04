@@ -76,6 +76,7 @@ class LlmBackendTests(unittest.TestCase):
                 output_last_message=REPO_ROOT / "tmp.md",
                 timeout_sec=10,
                 codex_configs=['model_reasoning_effort="low"'],
+                output_schema=REPO_ROOT / "segment-schema.json",
             )
 
         self.assertEqual(0, rc)
@@ -84,6 +85,8 @@ class LlmBackendTests(unittest.TestCase):
         self.assertIn("--ephemeral", cmd)
         self.assertIn("-c", cmd)
         self.assertIn('model_reasoning_effort="low"', cmd)
+        self.assertIn("--output-schema", cmd)
+        self.assertIn(str(REPO_ROOT / "segment-schema.json"), cmd)
         run_mock.assert_called_once()
 
     def test_run_llm_exec_timeout_kills_windows_process_tree(self) -> None:

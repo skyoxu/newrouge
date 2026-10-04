@@ -20,7 +20,7 @@ from plan_mvg import (
     build_coverage_skeleton, build_entrypoint_skeleton, correction_prompt,
     apply_restricted_patch, is_restricted_patch, validate_restricted_patch_identity,
     SEGMENT_SCHEMA, segment_prompt, validate_segment_identity, merge_planning_segments,
-    build_manifest_skeleton, build_flow_scopes,
+    build_manifest_skeleton, build_flow_scopes, load_reusable_segment, segment_output_schema,
 )
 from update_mvg_baseline import apply_delta
 
@@ -94,10 +94,41 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("never leave it null", prompt)
 
     def test_segment_identity_rejects_wrong_section_or_run(self):
-        value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x", "section": "flows"}
-        self.assertEqual([], validate_segment_identity(value, section="flows", identity="sha256:x"))
+        value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x", "section": "flows",
+                 "flows": []}
+        value["scope_id"] = "flow-a"
+        self.assertEqual([], validate_segment_identity(value, section="flows", identity="sha256:x", scope_id="flow-a"))
         self.assertIn("segment_section_mismatch", validate_segment_identity(value, section="coverage", identity="sha256:x"))
         self.assertIn("segment_analysis_identity_mismatch", validate_segment_identity(value, section="flows", identity="sha256:y"))
+        self.assertIn("segment_scope_mismatch", validate_segment_identity(value, section="flows", identity="sha256:x", scope_id="flow-b"))
+
+    def test_segment_schema_binds_route_and_payload(self):
+        schema = segment_output_schema(section="tests", identity="sha256:x", scope_id="tests-01")
+        self.assertEqual(["schema_version", "analysis_identity_sha256", "section", "scope_id", "tests"],
+                         schema["required"])
+        self.assertEqual("tests-01", schema["properties"]["scope_id"]["const"])
+        self.assertEqual("tests", schema["properties"]["section"]["const"])
+        self.assertEqual("string", schema["properties"]["section"]["type"])
+        self.assertTrue(schema["additionalProperties"] is False)
+
+    def test_reusable_segment_requires_matching_route_identity(self):
+        with tempfile.TemporaryDirectory() as folder:
+            run_dir = Path(folder)
+            output = run_dir / "model-workspace/attempt-1/llm-sandbox/attempt-1/segments-001-flows/001-flows.json"
+            output.parent.mkdir(parents=True)
+            output.write_text(json.dumps({
+                "schema_version": SEGMENT_SCHEMA,
+                "analysis_identity_sha256": "sha256:x",
+                "section": "flows",
+                "scope_id": "flow-a",
+                "flows": [],
+            }), encoding="utf-8")
+            self.assertIsNotNone(load_reusable_segment(
+                run_dir, current_attempt=2, index=1, section="flows",
+                identity="sha256:x", scope_id="flow-a"))
+            self.assertIsNone(load_reusable_segment(
+                run_dir, current_attempt=2, index=1, section="flows",
+                identity="sha256:x", scope_id="flow-b"))
 
     def test_segment_merge_preserves_existing_rows(self):
         base = {

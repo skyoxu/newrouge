@@ -105,6 +105,7 @@ def run_llm_exec(
     output_last_message: Path,
     timeout_sec: int,
     codex_configs: list[str] | None = None,
+    output_schema: Path | None = None,
 ) -> tuple[int, str, list[str]]:
     backend_name = resolve_llm_backend(backend)
     if backend_name == "openai-api":
@@ -170,8 +171,10 @@ def run_llm_exec(
         str(root),
         "--output-last-message",
         str(output_last_message),
-        "-",
     ]
+    if output_schema is not None:
+        cmd.extend(["--output-schema", str(output_schema)])
+    cmd.append("-")
     try:
         proc = subprocess.Popen(
             cmd,
