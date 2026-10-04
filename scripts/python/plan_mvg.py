@@ -140,6 +140,51 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict
     }.get(section)
     if payload_key is None:
         raise ValueError(f"unsupported MVG segment section: {section}")
+
+    def nullable(schema: dict[str, Any]) -> dict[str, Any]:
+        return {"anyOf": [schema, {"type": "null"}]}
+
+    def array(item: dict[str, Any]) -> dict[str, Any]:
+        return {"type": "array", "items": item}
+
+    def strict_object(properties: dict[str, Any]) -> dict[str, Any]:
+        return {"type": "object", "properties": properties,
+                "required": list(properties), "additionalProperties": False}
+
+    string = {"type": "string"}
+    integer = {"type": "integer"}
+    handoff = strict_object({
+        "producer_task": nullable(integer), "consumer_task": nullable(integer),
+        "owner_task": nullable(integer), "contract_ref": nullable(string),
+        "contract_refs": nullable(array(string)), "behavior": nullable(string),
+        "test_ids": nullable(array(string)), "from": nullable(string), "to": nullable(string),
+    })
+    flow = strict_object({
+        "id": string, "outcome": string, "requirement_ids": array(string),
+        "capability_refs": array(string), "task_ids": array(integer),
+        "source_paths": array(string),
+        "handoffs": array({"anyOf": [handoff, string]}),
+        "test_ids": array(string),
+    })
+    coverage = strict_object({
+        "requirement_id": string, "flow_id": nullable(string),
+        "capability_ref": nullable(string), "task_id": nullable(integer),
+        "disposition": nullable(string), "rationale": nullable(string),
+    })
+    flexible_text = {"anyOf": [string, array(string), {"type": "null"}]}
+    entrypoint = strict_object({
+        "status": string, "owner_task": integer, "path": string, "symbol": string,
+        "inputs": flexible_text, "state": flexible_text, "assertions": flexible_text,
+        "implementation_acceptance": flexible_text,
+    })
+    test = strict_object({
+        "id": string, "flow_id": nullable(string), "test_refs": nullable(array(string)),
+        "kind": nullable(string), "state": nullable(string), "path": nullable(string),
+        "selector": nullable(string), "evidence_level": nullable(string),
+        "min_tests": nullable(integer),
+    })
+    item_schema = {"flows": flow, "coverage_table": coverage,
+                   "entrypoints": entrypoint, "tests": test}[payload_key]
     return {
         "type": "object",
         "required": ["schema_version", "analysis_identity_sha256", "section", "scope_id", payload_key],
@@ -148,7 +193,7 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict
             "analysis_identity_sha256": {"type": "string", "const": identity},
             "section": {"type": "string", "const": section},
             "scope_id": {"type": "string", "const": scope_id},
-            payload_key: {"type": "array", "items": {"type": "object"}},
+            payload_key: array(item_schema),
         },
         "additionalProperties": False,
     }

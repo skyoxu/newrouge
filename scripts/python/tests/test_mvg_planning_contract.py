@@ -110,6 +110,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual("tests", schema["properties"]["section"]["const"])
         self.assertEqual("string", schema["properties"]["section"]["type"])
         self.assertEqual("object", schema["properties"]["tests"]["items"]["type"])
+        self.assertFalse(schema["properties"]["tests"]["items"]["additionalProperties"])
         self.assertTrue(schema["additionalProperties"] is False)
 
     def test_reusable_segment_requires_matching_route_identity(self):
