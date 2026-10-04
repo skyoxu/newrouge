@@ -354,8 +354,21 @@ def build_blinded_analysis_bundle(
         if reference.get("schema_version") != "newrouge.capabilities.v1":
             raise ValueError("invalid capability reference")
         target = out_dir / "capability-reference.v1.json"
-        scrubbed, _ = scrub_capability_answers_with_paths(reference)
-        atomic_json(target, scrubbed)
+        # Keep only granularity signals. Full historical descriptions and
+        # source mappings consume model context and invite copying stale IDs.
+        compact = {
+            "schema_version": "newrouge.capability-reference.v1",
+            "reference_capabilities": [
+                {
+                    "capability_id": row.get("capability_id"),
+                    "title": row.get("title"),
+                    "requirement_ids": row.get("requirement_ids", []),
+                }
+                for row in reference.get("capabilities", [])
+                if isinstance(row, dict)
+            ],
+        }
+        atomic_json(target, compact)
         files["capability-reference.v1.json"] = file_sha(target)
         authority_inputs[relative(root, capability_reference_path)] = file_sha(capability_reference_path)
     for row in readiness_summary.get("tasks", []):
