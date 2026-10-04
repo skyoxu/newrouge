@@ -82,10 +82,22 @@ def correction_prompt(errors: list[str]) -> str:
 
 
 RESTRICTED_PATCH_KEYS = {"coverage_additions", "flow_updates", "handoff_updates", "entrypoint_additions"}
+PATCH_IDENTITY_KEYS = {"schema_version", "analysis_identity_sha256"}
 
 
 def is_restricted_patch(value: dict[str, Any]) -> bool:
-    return bool(value) and set(value).issubset(RESTRICTED_PATCH_KEYS)
+    return (bool(value)
+            and set(value).issubset(RESTRICTED_PATCH_KEYS | PATCH_IDENTITY_KEYS)
+            and any(key in value for key in RESTRICTED_PATCH_KEYS))
+
+
+def validate_restricted_patch_identity(value: dict[str, Any], state: dict[str, Any]) -> list[str]:
+    errors = []
+    if value.get("schema_version") not in (None, PROPOSAL_SCHEMA):
+        errors.append("restricted_patch_schema_mismatch")
+    if value.get("analysis_identity_sha256") not in (None, state.get("analysis_identity_sha256")):
+        errors.append("restricted_patch_analysis_identity_mismatch")
+    return errors
 
 
 def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
@@ -540,14 +552,16 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
         if not isinstance(parsed, dict):
             raise ValueError("MVG proposal must be an object")
         if attempt > 1:
-            if not is_restricted_patch(parsed):
+            patch_errors = [] if is_restricted_patch(parsed) else ["restricted_patch_required"]
+            patch_errors.extend(validate_restricted_patch_identity(parsed, state))
+            if patch_errors:
                 execution["proposal_sha256"] = canonical_sha(parsed)
-                execution["deterministic_validation"] = {"status": "blocked", "errors": ["restricted_patch_required"]}
+                execution["deterministic_validation"] = {"status": "blocked", "errors": patch_errors}
                 record.update(execution, status="completed")
                 atomic_json(run_path, state)
                 atomic_json(run_dir / f"proposal-attempt-{attempt}.json", parsed)
                 validation = execution["deterministic_validation"]
-                prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(["restricted_patch_required"])
+                prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(patch_errors)
                 continue
             base = proposal or load_json(run_dir / "proposal.json", {})
             parsed = apply_restricted_patch(base, parsed)

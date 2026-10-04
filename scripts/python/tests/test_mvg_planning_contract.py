@@ -18,7 +18,7 @@ import plan_mvg
 from plan_mvg import (
     SUPPORTED_LLM_BACKENDS, build_delta, rebind_handoff, validate_proposal,
     build_coverage_skeleton, build_entrypoint_skeleton, correction_prompt,
-    apply_restricted_patch, is_restricted_patch,
+    apply_restricted_patch, is_restricted_patch, validate_restricted_patch_identity,
 )
 from update_mvg_baseline import apply_delta
 
@@ -61,7 +61,18 @@ class MvgPlanningContractTests(unittest.TestCase):
 
     def test_correction_attempt_rejects_full_replacement_shape(self):
         self.assertTrue(is_restricted_patch({"coverage_additions": []}))
+        self.assertTrue(is_restricted_patch({"schema_version": "newrouge.mvg-planning-proposal.v1",
+                                             "analysis_identity_sha256": "sha256:x",
+                                             "coverage_additions": []}))
         self.assertFalse(is_restricted_patch({"schema_version": "newrouge.mvg-planning-proposal.v1"}))
+
+    def test_restricted_patch_identity_is_bound_to_prepared_run(self):
+        state = {"analysis_identity_sha256": "sha256:expected"}
+        self.assertEqual([], validate_restricted_patch_identity({
+            "schema_version": "newrouge.mvg-planning-proposal.v1",
+            "analysis_identity_sha256": "sha256:expected"}, state))
+        self.assertIn("restricted_patch_analysis_identity_mismatch",
+                      validate_restricted_patch_identity({"analysis_identity_sha256": "sha256:other"}, state))
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"
