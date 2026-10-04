@@ -261,6 +261,7 @@ def build_blinded_analysis_bundle(
     readiness_summary: dict[str, Any],
     model_batch_char_budget: int = 160000,
     repository_identity: dict[str, Any] | None = None,
+    capability_reference_path: Path | None = None,
 ) -> dict[str, Any]:
     manifest = load_json(source_manifest_path, {})
     ledger = load_json(ledger_path, {})
@@ -348,6 +349,15 @@ def build_blinded_analysis_bundle(
 
     atomic_json(out_dir / "readiness-summary.json", readiness_summary)
     files["readiness-summary.json"] = file_sha(out_dir / "readiness-summary.json")
+    if capability_reference_path is not None:
+        reference = load_json(capability_reference_path, {})
+        if reference.get("schema_version") != "newrouge.capabilities.v1":
+            raise ValueError("invalid capability reference")
+        target = out_dir / "capability-reference.v1.json"
+        scrubbed, _ = scrub_capability_answers_with_paths(reference)
+        atomic_json(target, scrubbed)
+        files["capability-reference.v1.json"] = file_sha(target)
+        authority_inputs[relative(root, capability_reference_path)] = file_sha(capability_reference_path)
     for row in readiness_summary.get("tasks", []):
         if not isinstance(row, dict):
             continue

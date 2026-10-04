@@ -155,6 +155,7 @@ def prepare(
         readiness_summary=readiness,
         model_batch_char_budget=model_batch_char_budget,
         repository_identity=_repository_identity(root),
+        capability_reference_path=root / "docs/planning/semantic-topology/capabilities.v1.json",
     )
     state = {
         "schema_version": RUN_SCHEMA,
@@ -192,6 +193,8 @@ def prepare(
 CANDIDATE_PROMPT = """You are producing one independent cumulative Capability proposal for a game repository.
 
 Use the complete prepared analysis-input. The runner may stream authoritative Source Block raw text and reviewed Requirements in ordered batches from analysis-input/model-batches; every batch belongs to this same fresh candidate session and no block may be truncated. Sanitized task views and readiness context are also part of the allowed input. Do not infer or search for any prior Capability answer. Preserve any capability/module organization written in the authoritative GDD itself; that source organization is evidence, not a derived answer to hide.
+
+The prepared workspace may include capability-reference.v1.json containing a historical human-reviewed organization. Treat it as a granularity reference only, not a template to copy. Preserve coherent independently deliverable boundaries from it where supported by current evidence, but split or merge when the Requirements require it. Do not optimize for a fixed Capability count. Avoid oversized buckets that combine unrelated lifecycle, runtime, persistence, UI, or governance responsibilities. A Capability should normally represent one cohesive responsibility that can be navigated, assigned, and reviewed independently. Explain major departures from the reference in generation_notes.
 
 Return JSON only with schema_version = "newrouge.capability-candidate.v1".
 Required top-level fields:
