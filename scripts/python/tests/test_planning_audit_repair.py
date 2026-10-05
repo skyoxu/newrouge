@@ -434,6 +434,32 @@ class PlanningAuditRepairTests(unittest.TestCase):
         state = load_json(self.root / "logs/ci/mvg-planning/repair/run.json")
         self.assertEqual(3, len(state["generation_attempts"]))
 
+    def test_mvg_review_execution_failures_use_ten_attempts_and_record_error_type(self):
+        _state, _proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        (run / "semantic-review.json").unlink()
+        (run / "semantic-review-execution.json").unlink()
+        runner_info = load_json(run / "run.json").get("runner_info") or {
+            "schema_version": "newrouge.isolated-model-runner.v1",
+            "model": "fixture-reviewer",
+            "fresh_session_per_invocation": True,
+            "filesystem_scope": "workspace_only",
+            "can_read_outside_workspace": False,
+            "model_tools": [],
+        }
+        with patch.object(mvg, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(mvg, "run_isolated_model", side_effect=RuntimeError(
+                 "isolated model runner failed: Input exceeds the maximum length of 1048576 characters"
+             )):
+            with self.assertRaisesRegex(ValueError, "attempts=10"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        state = load_json(run / "run.json")
+        attempts = state["semantic_review_attempts"]
+        self.assertEqual(10, state["semantic_review_attempt_limit"])
+        self.assertEqual(10, len(attempts))
+        self.assertTrue(all(row["error_type"] == "runner_input_too_large" for row in attempts))
+        self.assertTrue(all(len(row["error"]) < 2000 for row in attempts))
+
     def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")

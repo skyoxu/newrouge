@@ -24,7 +24,14 @@ def compact_error(value: str) -> str:
     try:
         payload = json.loads(value)
         if isinstance(payload, dict) and payload.get('reason'):
-            value = str(payload['reason'])
+            details = [str(payload['reason'])]
+            if payload.get('error_type'):
+                details.append(f"error_type={payload['error_type']}")
+            if payload.get('attempts_used') is not None and payload.get('attempt_limit') is not None:
+                details.append(f"attempts={payload['attempts_used']}/{payload['attempt_limit']}")
+            if payload.get('last_error'):
+                details.append(f"last_error={str(payload['last_error'])[:320]}")
+            value = '; '.join(details)
     except (ValueError, TypeError):
         pass
     lines = [line.strip() for line in str(value).splitlines() if line.strip()]

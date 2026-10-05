@@ -595,6 +595,17 @@ class ProjectHealthPlanningTests(unittest.TestCase):
     def test_failed_cli_json_reports_only_the_specific_reason(self):
         self.assertEqual('Readiness expired', planning.compact_error('{"status":"blocked","reason":"Readiness expired"}'))
 
+    def test_failed_cli_json_preserves_error_type_and_attempt_budget(self):
+        message = planning.compact_error(json.dumps({
+            "status": "blocked",
+            "reason": "MVG independent review execution attempt budget exhausted; upstream proposal is preserved",
+            "error_type": "runner_input_too_large",
+            "attempts_used": 10,
+            "attempt_limit": 10,
+        }))
+        self.assertIn("error_type=runner_input_too_large", message)
+        self.assertIn("attempts=10/10", message)
+
 
 if __name__ == '__main__':
     unittest.main()

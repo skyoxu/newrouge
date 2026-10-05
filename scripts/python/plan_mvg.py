@@ -40,6 +40,61 @@ TASK_VIEWS = (
 SOURCE_MANIFEST = Path("logs/ci/task-generation/source-manifest.v1.json")
 LEDGER = Path("logs/ci/task-generation/source-blocks.v1.json")
 SEMANTICS = Path("logs/ci/task-generation/semantic-requirements.v1.json")
+MVG_REVIEW_ATTEMPT_LIMIT = 10
+MVG_ERROR_MESSAGE_LIMIT = 2000
+
+
+def _compact_exception_message(value: Any, limit: int = MVG_ERROR_MESSAGE_LIMIT) -> str:
+    """Keep durable attempt logs diagnostic without persisting runner payloads."""
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    suffix = " ...[truncated]"
+    available = max(0, limit - len(suffix))
+    markers = (
+        "Input exceeds the maximum length",
+        "maximum context length",
+        "stream disconnected",
+        "timed out",
+    )
+    for marker in markers:
+        index = text.lower().find(marker.lower())
+        if index >= 0:
+            start = max(0, index - 240)
+            return (text[start:start + available] + suffix).strip()
+    return text[:available].rstrip() + suffix
+
+
+def classify_review_error(exc: BaseException) -> str:
+    """Return a stable machine-readable class for one isolated review failure."""
+    text = str(exc)
+    lowered = text.lower()
+    if "input exceeds the maximum length" in lowered or "maximum context length" in lowered:
+        return "runner_input_too_large"
+    if "stream disconnected" in lowered or "connection reset" in lowered:
+        return "runner_stream_disconnected"
+    if isinstance(exc, TimeoutError) or "timed out" in lowered or "timeout" in lowered:
+        return "runner_timeout"
+    if "json" in lowered or "model output" in lowered:
+        return "runner_invalid_json"
+    if "identity" in lowered:
+        return "runner_identity_invalid"
+    return "runner_execution_failed"
+
+
+class MVGReviewAttemptBudgetError(ValueError):
+    """Terminal review retry error carrying the diagnostic that exhausted retries."""
+
+    def __init__(self, *, error_type: str, attempts_used: int, attempt_limit: int, last_error: str):
+        self.error_type = error_type
+        self.attempts_used = attempts_used
+        self.attempt_limit = attempt_limit
+        self.last_error = last_error
+        super().__init__(
+            "MVG independent review execution attempt budget exhausted; upstream proposal is preserved; "
+            f"error_type={error_type}; attempts={attempts_used}/{attempt_limit}; "
+            f"last_error={_compact_exception_message(last_error)}"
+        )
 
 
 def _list_field(row: dict[str, Any], key: str) -> list[Any]:
@@ -1880,6 +1935,8 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
 '''
     import time
     attempts = state.setdefault("semantic_review_attempts", [])
+    state["semantic_review_attempt_limit"] = MVG_REVIEW_ATTEMPT_LIMIT
+    atomic_json(run_path, state)
     receipt = None
     result = None
     if attempts and attempts[-1].get("proposal_sha256") == proposal_sha:
@@ -1889,7 +1946,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             if record.get("runner_info") != runner_info or record.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:
                 raise ValueError("Completed MVG review execution identity changed")
             receipt = record["receipt"]
-    while len(attempts) < 3 and result is None:
+    while len(attempts) < MVG_REVIEW_ATTEMPT_LIMIT and result is None:
         number = len(attempts) + 1
         workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
         workspace.mkdir(parents=True, exist_ok=False)
@@ -1898,7 +1955,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
-        record = {"attempt": number, "status": "running", "proposal_sha256": proposal_sha,
+        record = {"stage": "review", "attempt": number, "status": "running", "proposal_sha256": proposal_sha,
             "runner_info": runner_info, "analysis_identity_sha256": state["analysis_identity_sha256"]}
         attempts.append(record)
         atomic_json(run_path, state)  # Count even an interrupted invocation.
@@ -1911,7 +1968,8 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
             result = parse_model_json(output)
             record.update(status="completed", receipt=receipt, output_sha256=file_sha(output))
         except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
-            record.update(status="execution-failed", error=str(exc))
+            record.update(status="execution-failed", error=_compact_exception_message(exc),
+                          error_type=classify_review_error(exc))
             state["phase"] = "review-execution-blocked"
         finally:
             record["activity_sec"] = time.monotonic() - started
@@ -1919,7 +1977,13 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         if result is not None:
             break
     if result is None:
-        raise ValueError("MVG independent review execution attempt budget exhausted; upstream proposal is preserved")
+        last = attempts[-1] if attempts else {}
+        raise MVGReviewAttemptBudgetError(
+            error_type=str(last.get("error_type") or "runner_execution_failed"),
+            attempts_used=len(attempts),
+            attempt_limit=MVG_REVIEW_ATTEMPT_LIMIT,
+            last_error=str(last.get("error") or "no review attempt completed"),
+        )
     execution = {"runner": runner.as_posix(), "runner_info": runner_info, "receipt": receipt,
         "analysis_identity_sha256": state["analysis_identity_sha256"], "proposal_sha256": canonical_sha(proposal),
         "attempt_count": len(attempts)}
@@ -2320,7 +2384,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
-        print(json.dumps({"status": "blocked", "reason": str(exc)}, ensure_ascii=False))
+        payload = {"status": "blocked", "reason": str(exc)}
+        if isinstance(exc, MVGReviewAttemptBudgetError):
+            payload.update({"stage": "review", "error_type": exc.error_type,
+                "attempts_used": exc.attempts_used, "attempt_limit": exc.attempt_limit,
+                "last_error": exc.last_error, "proposal_preserved": True})
+        print(json.dumps(payload, ensure_ascii=False))
         return 2
 
 
