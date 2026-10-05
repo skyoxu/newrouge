@@ -38,7 +38,10 @@ def job_path(root: Path, job_id: str) -> Path:
 
 
 def public_job(job: dict) -> dict:
-    return {key: job.get(key) for key in ('job_id', 'action', 'status', 'stage', 'revision', 'message', 'count')}
+    return {key: job.get(key) for key in (
+        'job_id', 'action', 'status', 'stage', 'revision', 'message', 'count',
+        'recoverable_stage',
+    )}
 
 
 def read_job(root: Path, job_id: str) -> dict:
@@ -206,10 +209,114 @@ def build_result(checkout: Path, job: dict) -> dict:
     return {'topology': topology, 'overview': overview}
 
 
+def _capability_valid_candidates(run_dir: Path, state: dict) -> list[str]:
+    """Return candidate labels whose persisted artifacts passed validation.
+
+    This deliberately checks the durable final metadata and byte identity rather
+    than merely counting attempt records.  A recoverable HTTP job must never
+    skip back to review on the strength of a partial or stale model output.
+    """
+    valid: list[str] = []
+    for label, record in (state.get('candidate_attempts') or {}).items():
+        if not isinstance(record, dict):
+            continue
+        meta = record.get('final_meta')
+        path = run_dir / 'candidates' / f'{label}.json'
+        if not isinstance(meta, dict) or meta.get('validation_errors') or not path.is_file():
+            continue
+        if meta.get('output_sha256') != file_sha(path):
+            continue
+        try:
+            candidate_payload = load_json(path, None)
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(candidate_payload, dict):
+            continue
+        valid.append(str(label))
+    return sorted(valid)
+
+
+def _capability_review_artifacts_available(run_dir: Path, state: dict) -> bool:
+    """Return whether an independent selected review is durably readable."""
+    if state.get('review_status') != 'selected' or not state.get('selected_candidate'):
+        return False
+    review = run_dir / 'review'
+    candidate = run_dir / 'candidates' / f"{state['selected_candidate']}.json"
+    report = review / 'review.json'
+    try:
+        report_payload = load_json(report, None)
+        metadata = load_json(review / 'review.meta.json', {})
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+    return (
+        report.is_file()
+        and isinstance(report_payload, dict)
+        and isinstance(metadata, dict)
+        and metadata.get('output_sha256') == file_sha(report)
+        and candidate.is_file()
+    )
+
+
+def _capability_recovery_stage(root: Path, checkout: Path, job: dict, failed_stage: str) -> str | None:
+    """Find the earliest durable Capability stage that can be resumed.
+
+    The planner writes evidence before each stage returns.  If the outer worker
+    is interrupted after that write (or an Apply journal is left pending), the
+    HTTP layer must expose a resumable job instead of converting the completed
+    prefix into a terminal failure.  Main revision drift remains a hard stop.
+    """
+    if job.get('action') != 'capability':
+        return None
+    try:
+        if main_revision(root) != job.get('revision'):
+            return None
+    except (OSError, ValueError):
+        return None
+    run_state = checkout / 'logs/ci/capability-planning' / job['job_id'] / 'run.json'
+    try:
+        state = load_json(run_state, {})
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    if not state:
+        return None
+    run_dir = run_state.parent
+    valid_candidates = _capability_valid_candidates(run_dir, state)
+    review_available = _capability_review_artifacts_available(run_dir, state)
+
+    if failed_stage in {'generate', 'review'}:
+        # `no_valid_winner` is an intentional independent-review verdict, not
+        # a transport or persistence interruption. Preserve it as terminal
+        # evidence instead of silently paying for another review.
+        if failed_stage == 'review' and state.get('review_status') == 'no_valid_winner':
+            return None
+        if review_available:
+            return 'align'
+        if len(valid_candidates) >= 2:
+            return 'review'
+    if failed_stage == 'align' and review_available:
+        return 'align'
+    if failed_stage == 'apply' and review_available:
+        try:
+            journal = load_json(run_dir / 'apply-journal.json', {})
+            alignment = load_json(run_dir / 'alignment-preview.json', {})
+        except (OSError, ValueError, json.JSONDecodeError):
+            return None
+        if journal and journal.get('status') != 'complete':
+            return 'apply'
+        if alignment.get('resolved') is True:
+            return 'apply'
+        # Apply can fail before alignment is resolved (for example when an
+        # older manually supplied override was rejected). Resume the missing
+        # LLM alignment stage instead of invoking Apply repeatedly.
+        return 'align'
+    return None
+
+
 def run_job(root: Path, job: dict) -> dict:
     directory = job_path(root, job['job_id']).parent
     checkout = execution_root(root, job)
     stage, action = job['stage'], job['action']
+    invoked_stage: str | None = None
     try:
         job.update(status='running', message=f'Generating {action} from main {job["revision"][:12]}')
         atomic_json(directory / 'job.json', job)
@@ -221,6 +328,7 @@ def run_job(root: Path, job: dict) -> dict:
         script = 'plan_capabilities.py' if action == 'capability' else 'plan_mvg.py'
         stages = ['prepare', 'generate', 'review', 'align', 'apply'] if action == 'capability' else ['prepare', 'generate', 'review', 'validate', 'apply']
         for stage in stages[stages.index(job['stage']):]:
+            invoked_stage = None
             validate_checkout(root, checkout, job['revision'])
             job['stage'] = stage
             atomic_json(directory / 'job.json', job)
@@ -245,6 +353,7 @@ def run_job(root: Path, job: dict) -> dict:
             run_state = checkout / 'logs/ci' / ('capability-planning' if action == 'capability' else 'mvg-planning') / run_id / 'run.json'
             if stage == 'prepare' and run_state.is_file():
                 continue
+            invoked_stage = stage
             result = invoke(checkout, script, args, directory / f'{stage}.log')
             if result.get('status') in ('blocked', 'failed') or result.get('formal_applicable') is False:
                 errors = result.get('errors') or result.get('formal_blockers') or []
@@ -253,6 +362,11 @@ def run_job(root: Path, job: dict) -> dict:
                 raise ValueError('Capability review found no valid winner; inspect the retained review')
             if stage == 'align' and result.get('resolved') is not True:
                 raise ValueError('Capability ID alignment needs explicit reviewed decisions; existing data is preserved')
+        # Errors while building or publishing the read-only result are not an
+        # invocation-stage interruption.  Keep that distinction so durable
+        # model evidence is never mistaken for a safe Apply retry.
+        invoked_stage = None
+        stage = 'publish'
         validate_checkout(root, checkout, job['revision'])
         result = build_result(checkout, job)
         atomic_json(directory / 'result.json', result)
@@ -261,13 +375,32 @@ def run_job(root: Path, job: dict) -> dict:
         job['result_sha256'] = file_sha(directory / 'result.json')
         job['count'] = len(result['topology']['nodes']['capabilities']) if action == 'capability' else len(next(
             row['flows'] for row in result['overview']['manifests'] if row['path'] == job['manifest']))
+        job.pop('recoverable_stage', None)
         job.update(status='completed', stage='complete', message=f'{action.title()} generated: {job["count"]} '
                    + ('capabilities' if action == 'capability' else 'flows') + f' · main {job["revision"][:12]} · local planning result')
         atomic_json(directory / 'job.json', job)
         require_main(root, job['revision'])
         atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
     except Exception as exc:
-        job.update(status='failed', message=f'{action.title()} failed ({stage}): {compact_error(str(exc))}')
+        error = compact_error(str(exc))
+        recovery_stage = (
+            _capability_recovery_stage(root, checkout, job, stage)
+            if invoked_stage is not None and invoked_stage == stage
+            else None
+        )
+        if recovery_stage:
+            job.update(
+                status='recoverable',
+                stage=recovery_stage,
+                recoverable_stage=recovery_stage,
+                message=(
+                    f'Capability {recovery_stage} needs retry '
+                    f'(durable planning evidence preserved): {error}'
+                ),
+            )
+        else:
+            job.pop('recoverable_stage', None)
+            job.update(status='failed', message=f'{action.title()} failed ({stage}): {error}')
         atomic_json(directory / 'job.json', job)
     return public_job(job)
 

@@ -107,6 +107,17 @@ class ProjectHealthPlanningHttpTests(unittest.TestCase):
         worker.assert_not_called()
         self.assertFalse(self.request('/api/knowledge/operation')[1]['active'])
 
+    def test_recoverable_alignment_result_is_reported_without_losing_the_job(self):
+        job = planning.create_job(self.root, 'capability')
+        job.update(status='recoverable', stage='align', recoverable_stage='align',
+                   message='Capability alignment needs retry: fixture rejection')
+        atomic_json(planning.job_path(self.root, job['job_id']), job)
+        code, payload = self.request('/api/knowledge/planning?job_id=' + job['job_id'])
+        self.assertEqual(200, code)
+        self.assertEqual('recoverable', payload['status'])
+        self.assertEqual('align', payload['recoverable_stage'])
+        self.assertIn('retry', payload['message'])
+
     def test_generated_views_refresh_while_same_revision_gdd_navigation_is_retained(self):
         old_version = {'id': 'existing-version'}
         write_json(base_dir(self.root) / 'latest.json', {'revision': self.revision,

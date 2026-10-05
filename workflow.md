@@ -766,6 +766,8 @@ Required sequence:
 4. `preview-alignment` aligns stable IDs only after generation. Exact Requirement-membership reuse is an identity-preservation optimization, not a generation target; changed membership is unresolved until explicit reviewed alignment.
 5. `apply --confirm` journals the full derived projection and capability-only Chapter 5 rebind before writing. Re-running this stage recovers interrupted writes without replacing later user edits. A pending transaction blocks downstream readiness. Task IDs/status, Acceptance, Requirement text and Task intent identity remain protected.
 
+网页入口保留已完成的候选、评审和 Apply journal：后续阶段中断时返回 `recoverable`，下一次同 action 从最早缺失的 `review`、`align` 或 `apply` 继续，不重新生成已通过校验的候选。主分支漂移、输入/证据身份变化和 `no_valid_winner` 仍为硬失败；评审耗尽本次调用重试次数后，可在同一累计预算内由下一次恢复获得一个新的独立评审尝试。
+
 Owning Skill: `.agents/skills/plan-capabilities/SKILL.md`.
 
 Default isolation runner: `scripts/python/openai_isolated_model_runner.py`; it requires `OPENAI_API_KEY` and sends only prepared workspace text with no model tools.

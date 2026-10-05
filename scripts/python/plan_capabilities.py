@@ -19,6 +19,7 @@ from typing import Any
 from _capability_alignment import (
     apply_alignment_override as _apply_alignment_override,
     build_alignment, slug, validate_alignment, validate_formal_projection,
+    normalize_alignment_override,
 )
 from _planning_skill_common import (
     atomic_json,
@@ -173,11 +174,13 @@ def prepare(
         "task_scope": [str(value) for value in task_ids],
         "candidate_attempts": {},
         "review_attempts": [],
+        "alignment_attempts": [],
         "selected_candidate": None,
         "final_candidate_path": None,
         "budget": {
             "candidate_retry_limit": int(candidate_retry_limit),
             "review_retry_limit": int(review_retry_limit),
+            "alignment_retry_limit": 1,
             "candidate_budget_sec": int(candidate_budget_sec),
             "total_budget_sec": int(total_budget_sec),
             "request_limit": int(request_limit),
@@ -376,6 +379,35 @@ def _candidate_record(state: dict[str, Any], label: str) -> dict[str, Any]:
     return row
 
 
+def _candidate_retry_mode(errors: list[str]) -> str:
+    """Choose whether a failed candidate can be repaired from its parsed JSON.
+
+    Transport, parsing, and model-identity failures do not establish a trustworthy
+    candidate artifact. Deterministic schema/accounting failures do, so the next
+    isolated session may use that artifact as a narrowly scoped repair seed.
+    """
+    clean_markers = (
+        "runner_or_output_failure:",
+        "analysis_identity_mismatch",
+        "actual_model_identity_missing",
+        "actual_model_mismatch:",
+    )
+    if any(any(str(error).startswith(marker) for marker in clean_markers) for error in errors):
+        return "clean"
+    return "repair"
+
+
+def _latest_candidate_attempt_path(run_dir: Path, label: str, attempts: list[dict[str, Any]]) -> Path | None:
+    """Return the most recent parsed candidate artifact for a failed attempt."""
+    for row in reversed(attempts):
+        attempt_no = row.get("attempt")
+        if isinstance(attempt_no, int):
+            path = run_dir / "candidates" / "attempts" / f"{label}-attempt-{attempt_no}.json"
+            if path.is_file():
+                return path
+    return None
+
+
 def _estimated_requests(state: dict[str, Any], runner_info: dict[str, Any]) -> int | None:
     if runner_info.get("request_accounting") != "exact_per_runner_invocation":
         return None
@@ -423,6 +455,7 @@ def _record_runner_activity(
     label: str | None,
     elapsed_sec: float,
     receipt: dict[str, Any] | None,
+    activity_key: str | None = None,
 ) -> None:
     budget = _budget(state)
     budget["activity_sec"] = float(budget.get("activity_sec") or 0.0) + float(elapsed_sec)
@@ -430,7 +463,8 @@ def _record_runner_activity(
         by_candidate = budget.setdefault("candidate_activity_sec", {})
         by_candidate[label] = float(by_candidate.get(label) or 0.0) + float(elapsed_sec)
     else:
-        budget["review_activity_sec"] = float(budget.get("review_activity_sec") or 0.0) + float(elapsed_sec)
+        key = f"{activity_key or 'review'}_activity_sec"
+        budget[key] = float(budget.get(key) or 0.0) + float(elapsed_sec)
     if isinstance(receipt, dict) and receipt.get("request_count_observable") is True:
         budget["model_requests_observed"] = (
             int(budget.get("model_requests_observed") or 0)
@@ -441,13 +475,18 @@ def _record_runner_activity(
 
 
 def _begin_attempt(run_path: Path, state: dict[str, Any], attempts: list[dict[str, Any]],
-                   *, label: str | None, timeout_sec: int, runner_info: dict[str, Any]) -> dict[str, Any]:
+                   *, label: str | None, timeout_sec: int, runner_info: dict[str, Any],
+                   metadata: dict[str, Any] | None = None,
+                   activity_key: str | None = None) -> dict[str, Any]:
     """Reserve before starting: process loss cannot erase an invocation or its cap."""
     reserved = float(timeout_sec)
     requests = _estimated_requests(state, runner_info)
     row = {"attempt": len(attempts) + 1, "status": "running", "started_at_utc": now(),
         "reserved_active_sec": reserved, "reserved_requests": requests,
         "candidate": label, "runner_contract_model": runner_info.get("model")}
+    if activity_key:
+        row["activity_key"] = activity_key
+    row.update(metadata or {})
     attempts.append(row)
     budget = _budget(state)
     budget["activity_reserved_sec"] = float(budget.get("activity_reserved_sec") or 0.0) + reserved
@@ -475,13 +514,15 @@ def _finish_attempt(state: dict[str, Any], row: dict[str, Any], *, elapsed_sec: 
     # cleanup completes. Never charge wall-clock cleanup time against the
     # persisted active-time budget; the reservation is the authoritative cap.
     accounted = min(max(0.0, float(elapsed_sec)), reserved)
-    _record_runner_activity(state, label=label, elapsed_sec=accounted, receipt=receipt)
+    _record_runner_activity(state, label=label, elapsed_sec=accounted, receipt=receipt,
+                            activity_key=row.get("activity_key"))
     row.update(finished_at_utc=now(), elapsed_active_sec=accounted, reservation_settled=True)
 
 
 def _recover_interrupted_attempts(run_path: Path, state: dict[str, Any]) -> None:
     attempts = list(state.get("review_attempts") or [])
     attempts.extend(a for r in (state.get("candidate_attempts") or {}).values() for a in r.get("attempts", []))
+    attempts.extend(state.get("alignment_attempts") or [])
     changed = False
     for row in attempts:
         if row.get("status") == "running":
@@ -586,23 +627,56 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             _copy_analysis(run_dir, workspace)
             prompt_path = workspace / "prompt.txt"
             retry_guidance = ""
+            retry_mode = "clean"
+            repair_seed_path: Path | None = None
+            repair_seed_sha256: str | None = None
             if attempts:
                 previous = attempts[-1].get("validation_errors") or []
                 if previous:
+                    retry_mode = _candidate_retry_mode(previous)
+                    if retry_mode == "repair":
+                        repair_seed_path = _latest_candidate_attempt_path(run_dir, label, attempts)
+                        if repair_seed_path is not None:
+                            seed_target = workspace / "previous-candidate.json"
+                            shutil.copyfile(repair_seed_path, seed_target)
+                            repair_seed_sha256 = file_sha(seed_target)
+                        else:
+                            # A deterministic error without a durable parsed
+                            # artifact cannot be repaired safely; start clean.
+                            retry_mode = "clean"
                     missing = [
                         item.split(":", 1)[1]
                         for item in previous
                         if item.startswith("delivery_requirements_unaccounted:")
                     ]
                     missing_requirements = ",".join(missing)
-                    retry_guidance = (
-                        "\n\nRETRY CORRECTION REQUIRED:\n"
-                        "The previous candidate was rejected by deterministic validation. "
-                        "Preserve all valid content, but correct every listed issue before returning JSON. "
-                        "Do not omit any Requirement or Source Block while repairing.\n"
-                        + "\n".join(f"- {item}" for item in previous[:20])
-                        + "\n"
-                    )
+                    if retry_mode == "repair":
+                        retry_guidance = (
+                            "\n\nRETRY CORRECTION REQUIRED:\n"
+                            "The previous candidate was rejected by deterministic validation. "
+                            "Preserve all valid content, but correct every listed issue before returning JSON. "
+                            "Do not omit any Requirement or Source Block while repairing.\n"
+                        )
+                    else:
+                        retry_guidance = (
+                            "\n\nRETRY CLEAN GENERATION REQUIRED:\n"
+                            "The previous invocation did not establish a trustworthy candidate artifact. "
+                            "Regenerate the complete candidate from analysis-input in this fresh session.\n"
+                        )
+                    retry_guidance += "\n".join(f"- {item}" for item in previous[:20]) + "\n"
+                    if retry_mode == "repair" and repair_seed_path is not None:
+                        retry_guidance += (
+                            "A parsed copy of the previous candidate is available at "
+                            "previous-candidate.json. Use it as the repair seed in this new isolated "
+                            "session: preserve correct content and change only what is required by the "
+                            "deterministic errors above. Return the complete candidate JSON to the "
+                            "normal output path; do not change schema, analysis identity, or capability IDs.\n"
+                        )
+                    elif retry_mode == "clean":
+                        retry_guidance += (
+                            "This is a clean retry. Do not rely on any prior candidate output; regenerate "
+                            "the complete candidate from analysis-input.\n"
+                        )
                     if missing_requirements:
                         retry_guidance += (
                             "The following active delivery Requirement IDs were not covered. "
@@ -615,7 +689,11 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             candidate: dict[str, Any] | None = None
             errors: list[str] = []
             attempt_record = _begin_attempt(run_path, state, attempts, label=label,
-                timeout_sec=attempt_timeout, runner_info=runner_info)
+                timeout_sec=attempt_timeout, runner_info=runner_info, metadata={
+                    "retry_mode": retry_mode,
+                    "repair_seed_path": relative(root, repair_seed_path) if repair_seed_path is not None else None,
+                    "repair_seed_sha256": repair_seed_sha256,
+                })
             started = time.monotonic()
             try:
                 receipt = run_isolated_model(
@@ -643,7 +721,7 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             actual_model = str((receipt or {}).get("model") or "").strip()
             if actual_model.lower() in {"auto", "automatic"}:
                 actual_model = ""
-            if not actual_model and not errors:
+            if not actual_model:
                 errors.append("actual_model_identity_missing")
             expected_actual_model = str(state.get("actual_model") or "").strip()
             if actual_model and expected_actual_model and actual_model != expected_actual_model:
@@ -655,6 +733,9 @@ def generate(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict
             meta = {
                 "candidate": label,
                 "attempt": attempt_no,
+                "retry_mode": retry_mode,
+                "repair_seed_path": relative(root, repair_seed_path) if repair_seed_path is not None else None,
+                "repair_seed_sha256": repair_seed_sha256,
                 "model": actual_model,
                 "runner_contract_model": runner_info.get("model"),
                 "runner": runner_info,
@@ -1018,8 +1099,16 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         return {"run_id": run_id, "status": result["status"], "selected_candidate": selected,
             "corrected": bool(result.get("corrections")), "reused": True, "budget": state["budget"]}
 
-    max_attempts = 1 + int(_budget(state).get("review_retry_limit") or 0)
     attempts = state.setdefault("review_attempts", [])
+    max_attempts = 1 + int(_budget(state).get("review_retry_limit") or 0)
+    # A review can fail deterministically after all candidates are already
+    # valid (for example an evidence reference emitted by the model is not
+    # resolvable).  The per-call retry limit must not turn that durable
+    # candidate prefix into a permanently dead run.  An explicit next review
+    # invocation gets one fresh isolated attempt, still charged to the same
+    # cumulative active-time/request budget; no budget is reset.
+    if state.get("phase") == "review-blocked" and attempts:
+        max_attempts = len(attempts) + 1
     final_result: dict[str, Any] | None = None
     final_meta: dict[str, Any] | None = None
     corrected_candidate: dict[str, Any] | None = None
@@ -1259,19 +1348,60 @@ def preview_alignment(root: Path, *, run_id: str) -> dict[str, Any]:
 def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[str, Any]:
     run_path, state = _load_run(root, run_id)
     run_dir = _run_dir(root, run_id)
+    _recover_interrupted_attempts(run_path, state)
     candidate = _selected_candidate(run_dir, state)
     existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
     base = build_alignment(candidate, existing)
-    workspace = run_dir / "alignment-workspace"
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
+    runner_info = inspect_isolated_runner(runner)
+    if state.get("runner") != runner_info:
+        raise ValueError("alignment must use the same runner identity as candidate generation")
+
     prompt = ALIGNMENT_PROMPT + "\nBASE_ALIGNMENT=" + json.dumps(base, ensure_ascii=False)
     prompt += "\nCANDIDATE=" + json.dumps(candidate, ensure_ascii=False)
     prompt += "\nEXISTING=" + json.dumps(existing, ensure_ascii=False) + "\n"
-    output = workspace / "alignment.json"
+    candidate_sha = canonical_sha(candidate)
+    existing_sha = canonical_sha(existing)
+    base_sha = canonical_sha(base)
+    prompt_sha = text_sha(prompt)
+    alignment_dir = run_dir / "alignment"
+    attempts_dir = alignment_dir / "attempts"
+    attempts_dir.mkdir(parents=True, exist_ok=True)
+    attempts = state.setdefault("alignment_attempts", [])
+
+    # A successful alignment is a durable checkpoint.  Reusing it makes a
+    # later apply retry idempotent and avoids another model invocation.
+    persisted = load_json(run_dir / "alignment-preview.json", {})
+    persisted_meta = load_json(run_dir / "alignment.meta.json", {})
+    if (
+        persisted_meta.get("status") == "completed"
+        and persisted_meta.get("candidate_sha256") == candidate_sha
+        and persisted_meta.get("existing_sha256") == existing_sha
+        and persisted_meta.get("base_sha256") == base_sha
+        and persisted_meta.get("prompt_sha256") == prompt_sha
+        and persisted_meta.get("runner_contract_model") == runner_info.get("model")
+        and persisted_meta.get("alignment_sha256") == canonical_sha(persisted)
+    ):
+        validate_alignment(candidate, existing, persisted)
+        state["phase"] = "aligned"
+        state["stop_reason"] = None
+        atomic_json(run_path, state)
+        return persisted
+
+    max_attempts = 1 + int(_budget(state).get("alignment_retry_limit") or 0)
     last_error: Exception | None = None
-    for attempt in range(1, 3):
+    final_alignment: dict[str, Any] | None = None
+    final_meta: dict[str, Any] | None = None
+    attempts_this_call = 0
+    while attempts_this_call < max_attempts and final_alignment is None:
+        attempt_no = len(attempts) + 1
+        attempts_this_call += 1
+        attempt_timeout = _remaining_attempt_budget(
+            state, label=None, timeout_sec=timeout_sec, runner_info=runner_info,
+        )
+        workspace = run_dir / "alignment-workspace" / f"attempt-{attempt_no}"
+        if workspace.exists():
+            shutil.rmtree(workspace)
+        workspace.mkdir(parents=True)
         correction = ""
         if last_error is not None:
             correction = (
@@ -1283,21 +1413,108 @@ def align_with_llm(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -
                 "an identity as retain when no candidate maps to it.\n"
                 f"Deterministic validation error: {last_error}\n"
             )
+            previous_outputs = sorted(attempts_dir.glob("alignment-attempt-*.json"))
+            if previous_outputs:
+                seed_target = workspace / "previous-alignment.json"
+                shutil.copyfile(previous_outputs[-1], seed_target)
+                correction += (
+                    "A parsed copy of the previous alignment is available at "
+                    "previous-alignment.json. Preserve valid decisions and correct only the rejected "
+                    "identity or completeness issues before returning the complete override.\n"
+                )
         (workspace / "prompt.txt").write_text(prompt + correction, encoding="utf-8", newline="\n")
+        output = workspace / "alignment.json"
+        receipt: dict[str, Any] | None = None
+        override: dict[str, Any] | None = None
+        alignment: dict[str, Any] | None = None
+        normalization: dict[str, Any] = {"ignored_unknown_historical_ids": [], "admitted_existing_historical_ids": []}
+        errors: list[str] = []
+        attempt_record = _begin_attempt(
+            run_path, state, attempts, label=None, timeout_sec=attempt_timeout,
+            runner_info=runner_info, activity_key="alignment",
+        )
+        started = time.monotonic()
         try:
-            run_isolated_model(runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
-                               output_path=output, timeout_sec=timeout_sec)
+            receipt = run_isolated_model(
+                runner, workspace=workspace, prompt_path=workspace / "prompt.txt",
+                output_path=output, timeout_sec=attempt_timeout,
+            )
             override = parse_model_json(output)
-            alignment = _apply_alignment_override(base, override)
+            normalized_base, normalized_override, normalization = normalize_alignment_override(
+                base, override, existing,
+            )
+            alignment = _apply_alignment_override(normalized_base, normalized_override)
             validate_alignment(candidate, existing, alignment)
-            break
         except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            errors = [f"alignment_runner_or_output_failure:{exc}"]
             last_error = exc
-            if attempt == 2:
-                raise
-    atomic_json(run_dir / "alignment-preview.json", alignment)
+        except BaseException as exc:
+            _finish_attempt(state, attempt_record, elapsed_sec=time.monotonic() - started, receipt=receipt)
+            attempt_record.update(status="interrupted", error=type(exc).__name__)
+            atomic_json(run_path, state)
+            raise
+        elapsed = time.monotonic() - started
+        _finish_attempt(state, attempt_record, elapsed_sec=elapsed, receipt=receipt)
+        actual_model = str((receipt or {}).get("model") or "").strip()
+        if actual_model.lower() in {"auto", "automatic"}:
+            actual_model = ""
+        if not actual_model:
+            errors.append("alignment_execution_identity_missing")
+        expected_actual_model = str(state.get("actual_model") or "").strip()
+        if actual_model and expected_actual_model and actual_model != expected_actual_model:
+            errors.append(f"alignment_actual_model_differs:{actual_model}!={expected_actual_model}")
+        elif actual_model and not errors:
+            state["actual_model"] = actual_model
+        if errors and last_error is None:
+            last_error = ValueError(";".join(errors))
+        meta = {
+            "attempt": attempt_no,
+            "model": actual_model,
+            "runner_contract_model": runner_info.get("model"),
+            "runner": runner_info,
+            "prompt_sha256": text_sha(prompt + correction),
+            "candidate_sha256": candidate_sha,
+            "existing_sha256": existing_sha,
+            "base_sha256": base_sha,
+            "elapsed_active_sec": min(max(0.0, elapsed), float(attempt_record["reserved_active_sec"])),
+            "validation_errors": errors,
+            "receipt": receipt or {},
+            "output_sha256": file_sha(output) if output.is_file() else None,
+        }
+        attempt_record.update(meta, status="completed" if not errors and alignment is not None else "failed")
+        atomic_json(attempts_dir / f"alignment-attempt-{attempt_no}.meta.json", meta)
+        if override is not None:
+            atomic_json(attempts_dir / f"alignment-attempt-{attempt_no}.json", override)
+        elif output.is_file():
+            shutil.copyfile(output, attempts_dir / f"alignment-attempt-{attempt_no}.raw.txt")
+        if not errors and alignment is not None:
+            final_alignment = alignment
+            final_meta = meta
+            atomic_json(run_dir / "alignment-normalization.json", {
+                "schema_version": "newrouge.capability-alignment-normalization.v1",
+                "run_id": run_id,
+                "ignored_unknown_historical_ids": normalization["ignored_unknown_historical_ids"],
+                "admitted_existing_historical_ids": normalization.get("admitted_existing_historical_ids", []),
+                "override_sha256": canonical_sha(override),
+                "normalized_override_sha256": canonical_sha(normalized_override),
+            })
+        elif errors:
+            last_error = ValueError(";".join(errors))
+        atomic_json(run_path, state)
+
+    if final_alignment is None or final_meta is None:
+        state["phase"] = "alignment-blocked"
+        state["stop_reason"] = str(last_error or "alignment_attempt_budget_exhausted")
+        atomic_json(run_path, state)
+        raise ValueError(state["stop_reason"])
+    atomic_json(run_dir / "alignment-preview.json", final_alignment)
+    final_meta["status"] = "completed"
+    final_meta["alignment_sha256"] = canonical_sha(final_alignment)
+    atomic_json(run_dir / "alignment.meta.json", final_meta)
+    state["phase"] = "aligned"
+    state["stop_reason"] = None
     atomic_json(run_path, state)
-    return alignment
+    return final_alignment
 
 
 def _formal_payload(candidate: dict[str, Any], alignment: dict[str, Any], source_revision: str) -> tuple[dict[str, Any], dict[str, str]]:
@@ -1481,7 +1698,16 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     existing = load_json(root / FORMAL_CAPABILITIES, {"capabilities": []})
     alignment = build_alignment(candidate, existing)
     if alignment_override is not None:
-        alignment = _apply_alignment_override(alignment, load_json(alignment_override, {}))
+        override = load_json(alignment_override, {})
+        normalized_base, normalized_override, normalization = normalize_alignment_override(
+            alignment, override, existing,
+        )
+        if normalization.get("ignored_unknown_historical_ids"):
+            raise ValueError(
+                "Capability alignment override contains unknown historical IDs: "
+                + ",".join(normalization["ignored_unknown_historical_ids"])
+            )
+        alignment = _apply_alignment_override(normalized_base, normalized_override)
     if not alignment.get("resolved"):
         atomic_json(run_dir / "alignment-preview.json", alignment)
         raise ValueError("Capability identity alignment is unresolved; review alignment-preview.json")

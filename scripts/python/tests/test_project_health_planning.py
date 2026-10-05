@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -148,6 +149,136 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                     decisions.append(item)
                 atomic_json(kwargs['output_path'], {'decisions': decisions})
                 return {'model': RUNNER['model'], 'model_tools': []}
+            # MVG generation uses a deliberately empty, segment-local model
+            # workspace.  Consume the bounded context embedded in the prompt
+            # instead of assuming the immutable analysis bundle is mounted
+            # inside that sandbox.
+            segment_match = re.search(r"section must be '([^']+)'", prompt)
+            if segment_match:
+                section = segment_match.group(1)
+                identity = re.search(
+                    r"analysis_identity_sha256 must be exactly '([^']+)'", prompt
+                ).group(1)
+                scope_id = re.search(r"scope_id must be '([^']+)'", prompt).group(1)
+                scope_match = re.search(r"scope is (\{[^\n]+\})", prompt)
+                scope = json.loads(scope_match.group(1)) if scope_match else {}
+                context = {}
+                context_marker = '\nInline bounded evidence context:\n'
+                if context_marker in prompt:
+                    context_text = prompt.split(context_marker, 1)[1].lstrip()
+                    context, _ = json.JSONDecoder().raw_decode(context_text)
+                flow_context = []
+                flow_marker = '\nUse these already prepared flow objects as the only flow context:\n'
+                if flow_marker in prompt:
+                    flow_text = prompt.split(flow_marker, 1)[1].lstrip()
+                    flow_context, _ = json.JSONDecoder().raw_decode(flow_text)
+                requirements = context.get('requirements', [])
+                requirement_ids = [str(value) for value in scope.get('requirement_ids', [])]
+                task_ids = [int(value) for value in scope.get('task_ids', [])]
+                capabilities = context.get('capabilities', [])
+                capability_by_requirement = {
+                    str(requirement): str(row.get('capability_id'))
+                    for row in capabilities
+                    for requirement in row.get('requirement_ids', [])
+                    if str(row.get('capability_id') or '').strip()
+                }
+                source_paths = context.get('available_source_paths') or [GDD_PATH.as_posix()]
+                contract_paths = context.get('available_contract_paths') or [
+                    'Game.Core/Contracts/RelayHandoff.cs'
+                ]
+                envelope = {
+                    'schema_version': mvg.SEGMENT_SCHEMA,
+                    'analysis_identity_sha256': identity,
+                    'section': section,
+                    'scope_id': scope_id,
+                }
+                if section == 'flows':
+                    scoped_requirements = [
+                        str(row.get('requirement_id')) for row in requirements
+                        if isinstance(row, dict) and row.get('requirement_id')
+                    ] or requirement_ids
+                    scoped_capabilities = [
+                        str(row.get('capability_id')) for row in capabilities
+                        if isinstance(row, dict) and row.get('capability_id')
+                    ] or [capability_by_requirement.get(rid, '') for rid in scoped_requirements]
+                    scoped_capabilities = [value for value in scoped_capabilities if value]
+                    scoped_tasks = task_ids or [7, 42]
+                    envelope['flows'] = [{
+                        'id': f'{scope_id}-delivery',
+                        'outcome': 'Relay delivery completes or exposes a retryable failure.',
+                        'requirement_ids': scoped_requirements,
+                        'capability_refs': scoped_capabilities,
+                        'task_ids': scoped_tasks,
+                        'source_paths': [str(source_paths[0]).replace('\\', '/')],
+                        'handoffs': [{
+                            'producer_task': scoped_tasks[0],
+                            'consumer_task': scoped_tasks[-1],
+                            'owner_task': scoped_tasks[-1],
+                            'contract_ref': str(contract_paths[0]).replace('\\', '/'),
+                            'contract_refs': None,
+                            'behavior': 'Deliver the transfer result or preserve a retryable failure state.',
+                            'test_ids': [f'{scope_id}-test'],
+                            'from': None,
+                            'to': None,
+                        }],
+                        'test_ids': [f'{scope_id}-test'],
+                    }]
+                elif section == 'coverage':
+                    flow_ids = [str(row.get('id')) for row in flow_context
+                                if isinstance(row, dict) and row.get('id')]
+                    rows = []
+                    for row in requirements:
+                        if not isinstance(row, dict) or not row.get('requirement_id'):
+                            continue
+                        rid = str(row['requirement_id'])
+                        matching_flow = next((flow for flow in flow_context
+                                              if isinstance(flow, dict)
+                                              and rid in {str(value) for value in flow.get('requirement_ids', [])}), None)
+                        flow_id = str(matching_flow.get('id')) if matching_flow else (flow_ids[0] if flow_ids else None)
+                        matching_tasks = (matching_flow or {}).get('task_ids') or task_ids
+                        rows.append({
+                            'requirement_id': rid,
+                            'flow_id': flow_id,
+                            'capability_ref': (row.get('capability_refs') or
+                                               [capability_by_requirement.get(rid)])[0],
+                            'task_id': matching_tasks[0] if matching_tasks else None,
+                            'disposition': 'flow',
+                            'rationale': 'The fixture flow observes this delivery requirement.',
+                            'sink_id': None,
+                            'verification_ref': None,
+                            'authority_ref': None,
+                            'authority_review': None,
+                        })
+                    envelope['coverage_table'] = rows
+                elif section == 'entrypoints':
+                    envelope['entrypoints'] = [{
+                        'status': 'planned',
+                        'owner_task': task_id,
+                        'path': f'Game.Core/Tasks/Relay{task_id}.cs',
+                        'symbol': f'Relay{task_id}.Run',
+                        'inputs': ['route'],
+                        'state': 'cargo transfer',
+                        'assertions': ['accepted or retry visible'],
+                        'implementation_acceptance': ['relay journey'],
+                    } for task_id in task_ids]
+                elif section == 'tests':
+                    flow_ids = [str(row.get('id')) for row in flow_context
+                                if isinstance(row, dict) and row.get('id')]
+                    envelope['tests'] = [{
+                        'id': f'{scope_id}-{index:02d}',
+                        'flow_id': flow_id,
+                        'test_refs': [],
+                        'kind': 'dotnet',
+                        'state': 'planned',
+                        'path': 'Game.Core.Tests/Tasks/PlanningAcceptanceTests.cs',
+                        'selector': 'PlanningAcceptanceTests',
+                        'evidence_level': 'domain-integration',
+                        'min_tests': 1,
+                    } for index, flow_id in enumerate(flow_ids, 1)]
+                else:
+                    raise AssertionError(f'Unexpected MVG segment section: {section}')
+                atomic_json(kwargs['output_path'], envelope)
+                return {'model': RUNNER['model'], 'model_tools': []}
             index = load_json(workspace / 'analysis-input/analysis-index.json')
             if (workspace / 'candidates/A.json').exists():
                 payload = review_report(workspace)
@@ -155,6 +286,22 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 proposal = load_json(workspace / 'proposal.json')
                 payload = deepcopy(review_template)
                 payload.update(analysis_identity_sha256=index['analysis_identity_sha256'], proposal_sha256=canonical_sha(proposal))
+                requirement_ids = {
+                    str(row.get('requirement_id'))
+                    for row in proposal.get('coverage_table', [])
+                    if isinstance(row, dict) and row.get('requirement_id')
+                }
+                payload['requirement_reviews'] = [
+                    {'requirement_id': requirement_id, 'verdict': 'covered',
+                     'rationale': 'The fixture proposal accounts for this requirement.'}
+                    for requirement_id in sorted(requirement_ids)
+                ]
+                flow_rows = proposal.get('manifest_candidate', {}).get('flows', [])
+                payload['flow_reviews'] = [
+                    {'flow_id': str(row.get('id')), 'verdict': 'sound',
+                     'rationale': 'The fixture flow has a prepared contract and planned test.'}
+                    for row in flow_rows if isinstance(row, dict) and row.get('id')
+                ]
             elif (workspace / 'analysis-input/capabilities.v1.json').exists():
                 payload = deepcopy(proposal_template)
                 payload['analysis_identity_sha256'] = index['analysis_identity_sha256']
@@ -230,7 +377,9 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual(cap_job['job_id'], mvg_job['checkout_job_id'])
             result = planning.run_job(self.root, mvg_job)
             self.assertEqual('completed', result['status'], result)
-            self.assertEqual(7, len(invocations))
+            # Capability uses five model calls; segmented MVG generation uses
+            # five section calls plus one independent review.
+            self.assertEqual(11, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertEqual(1, len(overview['manifests']))
             self.assertEqual('docs/testing/mvg/m1-full.json', overview['manifests'][0]['path'])
@@ -249,7 +398,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(7, len(invocations))
+            self.assertEqual(11, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
         self.assertIsNone(planning.generated_view(self.root, 'capability'))
         self.assertIsNone(planning.generated_view(self.root, 'mvg'))
@@ -266,7 +415,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotIn('checkout_job_id', job)
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(2, len(invocations))
+        self.assertEqual(6, len(invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):
@@ -284,12 +433,135 @@ class ProjectHealthPlanningTests(unittest.TestCase):
         with patch.object(planning, 'invoke', side_effect=disconnect), \
              patch.object(planning, 'runner_path', return_value=Path('fixture')):
             job = planning.create_job(self.root, 'capability')
-            self.assertEqual('failed', planning.run_job(self.root, job)['status'])
+            first = planning.run_job(self.root, job)
+            self.assertEqual('recoverable', first['status'])
+            self.assertEqual('review', first['stage'])
             self.assertEqual(3, len(invocations))
             resumed = planning.create_job(self.root, 'capability')
             self.assertEqual(job['job_id'], resumed['job_id'])
             result = planning.run_job(self.root, resumed)
         self.assertEqual('completed', result['status'], result)
+        self.assertEqual(5, len(invocations))
+
+    def test_alignment_failure_is_recoverable_and_resume_starts_at_alignment(self):
+        invoke, invocations = self._production_consumers()
+        stage_calls = []
+        fail_alignment_once = True
+
+        def alignment_interrupt(checkout, script, args, log):
+            nonlocal fail_alignment_once
+            stage_calls.append(args[0])
+            if args[0] == 'align' and fail_alignment_once:
+                fail_alignment_once = False
+                raise ValueError('Fixture alignment output rejected')
+            return invoke(checkout, script, args, log)
+
+        with patch.object(planning, 'invoke', side_effect=alignment_interrupt), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            job = planning.create_job(self.root, 'capability')
+            first = planning.run_job(self.root, job)
+            self.assertEqual('recoverable', first['status'], first)
+            self.assertEqual('align', first['stage'])
+            self.assertIn('retry', first['message'].lower())
+            self.assertEqual(['prepare', 'generate', 'review', 'align'], stage_calls)
+
+            resumed = planning.create_job(self.root, 'capability')
+            self.assertEqual(job['job_id'], resumed['job_id'])
+            second = planning.run_job(self.root, resumed)
+
+        self.assertEqual('completed', second['status'], second)
+        self.assertEqual(['prepare', 'generate', 'review', 'align', 'align', 'apply'], stage_calls)
+        # The resumed run must not pay for candidate generation or independent review again.
+        self.assertEqual(5, len(invocations))
+
+    def test_apply_failure_is_recoverable_and_resume_starts_at_apply(self):
+        invoke, invocations = self._production_consumers()
+        stage_calls = []
+        fail_apply_once = True
+
+        def apply_interrupt(checkout, script, args, log):
+            nonlocal fail_apply_once
+            stage_calls.append(args[0])
+            if args[0] == 'apply' and fail_apply_once:
+                fail_apply_once = False
+                raise ValueError('Fixture apply publication interruption')
+            return invoke(checkout, script, args, log)
+
+        with patch.object(planning, 'invoke', side_effect=apply_interrupt), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            job = planning.create_job(self.root, 'capability')
+            first = planning.run_job(self.root, job)
+            self.assertEqual('recoverable', first['status'], first)
+            self.assertEqual('apply', first['stage'])
+            self.assertEqual(['prepare', 'generate', 'review', 'align', 'apply'], stage_calls)
+
+            resumed = planning.create_job(self.root, 'capability')
+            self.assertEqual(job['job_id'], resumed['job_id'])
+            second = planning.run_job(self.root, resumed)
+
+        self.assertEqual('completed', second['status'], second)
+        self.assertEqual(['prepare', 'generate', 'review', 'align', 'apply', 'apply'], stage_calls)
+        self.assertEqual(5, len(invocations))
+
+    def test_unresolved_alignment_apply_failure_recovers_from_alignment(self):
+        invoke, invocations = self._production_consumers()
+        stage_calls = []
+        fail_apply_once = True
+
+        def apply_interrupt(checkout, script, args, log):
+            nonlocal fail_apply_once
+            stage_calls.append(args[0])
+            if args[0] == 'apply' and fail_apply_once:
+                fail_apply_once = False
+                atomic_json(
+                    checkout / 'logs/ci/capability-planning' / current_job['job_id'] /
+                    'alignment-preview.json',
+                    {'resolved': False},
+                )
+                raise ValueError('Fixture unresolved alignment')
+            return invoke(checkout, script, args, log)
+
+        with patch.object(planning, 'invoke', side_effect=apply_interrupt), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            current_job = planning.create_job(self.root, 'capability')
+            first = planning.run_job(self.root, current_job)
+            self.assertEqual('recoverable', first['status'], first)
+            self.assertEqual('align', first['stage'])
+
+            resumed = planning.create_job(self.root, 'capability')
+            second = planning.run_job(self.root, resumed)
+
+        self.assertEqual('completed', second['status'], second)
+        self.assertEqual(['prepare', 'generate', 'review', 'align', 'apply', 'align', 'apply'], stage_calls)
+        self.assertEqual(6, len(invocations))
+
+    def test_review_interruption_after_candidates_is_recoverable(self):
+        invoke, invocations = self._production_consumers()
+        stage_calls = []
+        fail_review_once = True
+
+        def review_interrupt(checkout, script, args, log):
+            nonlocal fail_review_once
+            stage_calls.append(args[0])
+            if args[0] == 'review' and fail_review_once:
+                fail_review_once = False
+                raise ValueError('Fixture review transport interruption')
+            return invoke(checkout, script, args, log)
+
+        with patch.object(planning, 'invoke', side_effect=review_interrupt), \
+             patch.object(planning, 'runner_path', return_value=Path('fixture')):
+            job = planning.create_job(self.root, 'capability')
+            first = planning.run_job(self.root, job)
+            self.assertEqual('recoverable', first['status'], first)
+            self.assertEqual('review', first['stage'])
+            self.assertEqual(['prepare', 'generate', 'review'], stage_calls)
+
+            resumed = planning.create_job(self.root, 'capability')
+            self.assertEqual(job['job_id'], resumed['job_id'])
+            second = planning.run_job(self.root, resumed)
+
+        self.assertEqual('completed', second['status'], second)
+        self.assertEqual(['prepare', 'generate', 'review', 'review', 'align', 'apply'], stage_calls)
         self.assertEqual(5, len(invocations))
 
     def test_error_is_compact_and_unstarted_prepare_attempt_can_be_retried(self):

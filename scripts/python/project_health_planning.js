@@ -59,6 +59,13 @@ window.knowledgePlanning = async function ({action, manifest, button, status, re
       result = await poll.json();
       if (!poll.ok) throw new Error(result.reason || 'Unable to read planning result');
     }
+    if (result.status === 'recoverable') {
+      // Candidate and review artifacts are durable.  Keep the result visible
+      // as resumable instead of presenting a terminal failure; clicking the
+      // same action again resumes from the reported stage.
+      message(result.message || 'Planning can be resumed', 'recoverable');
+      return;
+    }
     if (result.status !== 'completed') throw new Error(result.message || 'Planning failed');
     try {
       await refresh(result);

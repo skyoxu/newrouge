@@ -76,6 +76,67 @@ def apply_alignment_override(base: dict[str, Any], override: dict[str, Any]) -> 
         "resolved": all(row.get("resolved") is True for row in result)}
 
 
+def normalize_alignment_override(
+    base: dict[str, Any],
+    override: dict[str, Any],
+    existing: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Remove only extra historical rows that are outside the current base.
+
+    The base alignment is the authoritative identity set for this run. Exact
+    membership matches are represented by the candidate row itself, so a model
+    may explicitly replace that identity and retire the old stable ID. Existing
+    historical IDs are admitted as synthetic retirement rows for that case;
+    truly unknown historical IDs are discarded because they cannot affect this
+    run. Unknown candidate rows and duplicate known rows remain strict errors.
+    """
+    rows = override.get("decisions") if isinstance(override, dict) else None
+    if not isinstance(rows, list):
+        return base, override, {"ignored_unknown_historical_ids": []}
+    known_historical = {
+        str(row.get("stable_id") or "")
+        for row in base.get("decisions", [])
+        if isinstance(row, dict) and row.get("candidate_id") is None and str(row.get("stable_id") or "").strip()
+    }
+    existing_ids = {
+        str(row.get("capability_id") or "")
+        for row in (existing or {}).get("capabilities", [])
+        if isinstance(row, dict) and str(row.get("capability_id") or "").strip()
+    }
+    normalized_base = dict(base)
+    normalized_base["decisions"] = [dict(row) for row in base.get("decisions", [])]
+    kept: list[Any] = []
+    ignored: list[str] = []
+    admitted: list[str] = []
+    for row in rows:
+        if (
+            isinstance(row, dict)
+            and row.get("candidate_id") is None
+            and str(row.get("stable_id") or "").strip()
+            and str(row.get("stable_id")) not in known_historical
+        ):
+            stable_id = str(row["stable_id"])
+            if stable_id in existing_ids:
+                normalized_base["decisions"].append({
+                    "candidate_id": None,
+                    "action": "unresolved-retirement",
+                    "stable_id": stable_id,
+                    "reason": "Existing identity was omitted from the base because it was auto-reused; explicit reviewed retirement is allowed.",
+                    "resolved": False,
+                })
+                admitted.append(stable_id)
+            else:
+                ignored.append(stable_id)
+                continue
+        kept.append(row)
+    normalized = dict(override)
+    normalized["decisions"] = kept
+    return normalized_base, normalized, {
+        "ignored_unknown_historical_ids": sorted(set(ignored)),
+        "admitted_existing_historical_ids": sorted(set(admitted)),
+    }
+
+
 def validate_alignment(candidate: dict[str, Any], existing: dict[str, Any], alignment: dict[str, Any]) -> None:
     rows = alignment.get("decisions", [])
     candidate_ids = [str(c["capability_id"]) for c in candidate["capabilities"]]

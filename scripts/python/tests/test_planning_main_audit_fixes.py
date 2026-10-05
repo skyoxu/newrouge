@@ -337,6 +337,28 @@ class PlanningMainAuditFixesTests(unittest.TestCase):
                 cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
         self.assertNotEqual("selected", load_json(run / "run.json").get("review_status"))
 
+    def test_review_blocked_with_valid_candidates_gets_one_fresh_resume_attempt(self):
+        run = self.candidates()
+        invalid = review_report(run)
+        invalid["evidence_refs"] = ["analysis-input/not-present.md"]
+        valid = review_report(run)
+        calls = 0
+
+        def invoke(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            atomic_json(kwargs["output_path"], invalid if calls <= 2 else valid)
+            return {"model": "fixture-model", "model_tools": []}
+
+        with patch.object(cap, "inspect_isolated_runner", return_value={"model": "fixture-model"}), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            with self.assertRaisesRegex(ValueError, "evidence"):
+                cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+            result = cap.review(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=10)
+
+        self.assertEqual("selected", result["status"])
+        self.assertEqual(3, calls)
+
     def test_review_resolves_qualified_ids_and_rejects_wrong_file_membership(self):
         run = self.candidates()
         blocks = load_json(run / "analysis-input/source-blocks.v1.json")["blocks"]

@@ -42,6 +42,12 @@ LEDGER = Path("logs/ci/task-generation/source-blocks.v1.json")
 SEMANTICS = Path("logs/ci/task-generation/semantic-requirements.v1.json")
 
 
+def _list_field(row: dict[str, Any], key: str) -> list[Any]:
+    """Return a task-view list field without treating explicit null as iterable."""
+    value = row.get(key)
+    return value if isinstance(value, list) else []
+
+
 def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Create non-droppable Requirement rows before semantic flow planning."""
     task_by_requirement: dict[str, tuple[int | None, str | None]] = {}
@@ -50,8 +56,11 @@ def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str
             task_id = int(row.get("taskmaster_id"))
         except (TypeError, ValueError):
             continue
-        capability_refs = [str(value) for value in row.get("capability_refs", []) if str(value).strip()]
-        for requirement_id in row.get("semantic_refs", row.get("requirement_ids", [])):
+        capability_refs = [str(value) for value in _list_field(row, "capability_refs") if str(value).strip()]
+        requirement_values = (row.get("semantic_refs")
+                              if isinstance(row.get("semantic_refs"), list)
+                              else _list_field(row, "requirement_ids"))
+        for requirement_id in requirement_values:
             task_by_requirement.setdefault(str(requirement_id), (task_id, capability_refs[0] if capability_refs else None))
     result = []
     for requirement in semantics.get("requirements", []):
@@ -130,7 +139,9 @@ def apply_restricted_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[
 
 SEGMENT_SCHEMA = "newrouge.mvg-planning-segment.v1"
 
-def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict[str, Any]:
+def segment_output_schema(*, section: str, identity: str, scope_id: str,
+                          available_source_paths: list[str] | None = None,
+                          available_contract_paths: list[str] | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
         "flows": "flows",
@@ -151,38 +162,61 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str) -> dict
         return {"type": "object", "properties": properties,
                 "required": list(properties), "additionalProperties": False}
 
-    string = {"type": "string"}
+    nonempty_string = {"type": "string", "minLength": 1}
+
+    def bounded_path(paths: list[str] | None) -> dict[str, Any]:
+        values = sorted({str(path).replace("\\", "/") for path in (paths or []) if str(path).strip()})
+        return {"type": "string", "enum": values} if values else nonempty_string
+
+    source_path = bounded_path(available_source_paths)
+    contract_path = bounded_path(available_contract_paths)
     integer = {"type": "integer"}
     handoff = strict_object({
-        "producer_task": nullable(integer), "consumer_task": nullable(integer),
-        "owner_task": nullable(integer), "contract_ref": nullable(string),
-        "contract_refs": nullable(array(string)), "behavior": nullable(string),
-        "test_ids": nullable(array(string)), "from": nullable(string), "to": nullable(string),
+        "producer_task": integer, "consumer_task": integer, "owner_task": integer,
+        "contract_ref": contract_path, "contract_refs": nullable(array(nonempty_string)),
+        "behavior": nonempty_string, "test_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "from": nullable(nonempty_string), "to": nullable(nonempty_string),
     })
     flow = strict_object({
-        "id": string, "outcome": string, "requirement_ids": array(string),
-        "capability_refs": array(string), "task_ids": array(integer),
-        "source_paths": array(string),
-        "handoffs": array({"anyOf": [handoff, string]}),
-        "test_ids": array(string),
+        "id": nonempty_string, "outcome": nonempty_string,
+        "requirement_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "capability_refs": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "task_ids": {"type": "array", "items": integer, "minItems": 1},
+        "source_paths": {"type": "array", "items": source_path, "minItems": 1},
+        "handoffs": {"type": "array", "items": handoff, "minItems": 1},
+        "test_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
     })
     coverage = strict_object({
-        "requirement_id": string, "flow_id": nullable(string),
-        "capability_ref": nullable(string), "task_id": nullable(integer),
-        "disposition": nullable(string), "rationale": nullable(string),
+        "requirement_id": nonempty_string, "flow_id": nullable(nonempty_string),
+        "capability_ref": nullable(nonempty_string), "task_id": nullable(integer),
+        "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred"]},
+        "rationale": nonempty_string,
+        "sink_id": nullable(nonempty_string), "verification_ref": nullable(nonempty_string),
+        "authority_ref": nullable(nonempty_string),
+        "authority_review": nullable(strict_object({
+            "status": nonempty_string, "rationale": nonempty_string,
+        })),
     })
-    flexible_text = {"anyOf": [string, array(string), {"type": "null"}]}
+    flexible_text = {"anyOf": [nonempty_string, array(nonempty_string), {"type": "null"}]}
     entrypoint = strict_object({
-        "status": string, "owner_task": integer, "path": string, "symbol": string,
+        "status": {"type": "string", "enum": ["planned", "existing_verified"]},
+        "owner_task": integer, "path": nonempty_string, "symbol": nonempty_string,
         "inputs": flexible_text, "state": flexible_text, "assertions": flexible_text,
         "implementation_acceptance": flexible_text,
     })
-    test = strict_object({
-        "id": string, "flow_id": nullable(string), "test_refs": nullable(array(string)),
-        "kind": nullable(string), "state": nullable(string), "path": nullable(string),
-        "selector": nullable(string), "evidence_level": nullable(string),
-        "min_tests": nullable(integer),
-    })
+    test_common = {
+        "id": nonempty_string, "flow_id": nonempty_string, "test_refs": array(nonempty_string),
+        "state": {"type": "string", "enum": ["planned", "implemented"]},
+        "selector": nonempty_string, "min_tests": {"type": "integer", "minimum": 1},
+    }
+    test = {"anyOf": [
+        strict_object({**test_common, "kind": {"type": "string", "const": "dotnet"},
+                       "path": {"type": "string", "pattern": r"^Game\.Core\.Tests/.+\.cs$"},
+                       "evidence_level": {"type": "string", "const": "domain-integration"}}),
+        strict_object({**test_common, "kind": {"type": "string", "const": "gdunit"},
+                       "path": {"type": "string", "pattern": r"^Tests\.Godot/tests/.+\.gd$"},
+                       "evidence_level": {"type": "string", "enum": ["scene-method", "engine-input"]}}),
+    ]}
     item_schema = {"flows": flow, "coverage_table": coverage,
                    "entrypoints": entrypoint, "tests": test}[payload_key]
     return {
@@ -227,13 +261,185 @@ Return only fields needed for this section:
 - coverage_table: for section=coverage, rows for the supplied requirements only;
 - entrypoints: for section=entrypoints, planned/existing entrypoint rows for supplied task IDs;
 - tests: for section=tests, test objects only. Every supplied flow must receive at least one test id, and each test id must be used by exactly one supplied flow. {test_rule}
-For coverage rows, assign flow_id to an actual flow id from the supplied flow context; never leave it null.
+For coverage rows, assign flow_id to an actual flow id from the supplied flow context; never leave it null. The only valid disposition values are exactly flow, other_verification, or deferred; every row needs a non-empty rationale string.
+Coverage routing is strict: use only the supplied requirement_ids/task_ids/capability refs. A flow row must have verification_ref, authority_ref, and authority_review set to null; an other_verification row must have flow_id/authority_ref/authority_review null; a deferred row must have flow_id/verification_ref null and a reviewed authority_ref/authority_review.
+For entrypoints, status is exactly planned or existing_verified; use planned unless the prepared evidence proves a real existing entrypoint. Never use gap, existing, or unlisted. Planned rows require non-empty path, symbol, inputs, state, assertions, and implementation_acceptance.
+For tests, kind is exactly dotnet or gdunit, state is exactly planned or implemented, path is a repository-relative Game.Core.Tests/*.cs or Tests.Godot/tests/*.gd path, selector is non-empty, and evidence_level is domain-integration for dotnet or scene-method/engine-input for gdunit. Do not use acceptance, unit, integration, direct, or null for these fields.
+For flows, every handoff must be an object with integer producer_task, consumer_task, and owner_task, a real non-empty contract_ref from available_contract_paths, non-empty behavior, and a non-empty test_ids array.
+Do not use task IDs, flow IDs, or test IDs from another scope. Every flow id must start with the requested scope_id plus '-'; every flow task and every handoff role must be in this request's task_ids.
 The required bounded context is included inline in this prompt. Do not call shell/tools or scan files.
 For section=tests, the inline context includes the prepared test refs; do not load full task views.
 For entrypoints and tests, use only the specific prepared references named by that context. Do not scan unrelated files.
 Do not invent repository paths, contracts, tasks, or capabilities. Use prepared evidence only.
 For source_paths and contract_ref, use only paths listed in the inline available_*_paths arrays. If a required real object is not listed, report a gap instead of inventing a path.
 """
+
+
+def _prepared_reference(prepared: Path, value: str) -> Path | None:
+    try:
+        normalized = str(value or "").replace("\\", "/")
+        if not normalized or normalized.startswith("/") or ":" in normalized or ".." in Path(normalized).parts:
+            return None
+        for prefix in ("references", "sources"):
+            candidate = prepared / prefix / normalized
+            if candidate.is_file():
+                return candidate
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def validate_segment_references(value: dict[str, Any], *, section: str, prepared: Path,
+                                available_source_paths: list[str],
+                                available_contract_paths: list[str],
+                                available_test_paths: list[str] | None = None) -> list[str]:
+    """Reject references that are not present in the immutable prepared bundle."""
+    errors: list[str] = []
+    source_paths = {str(path).replace("\\", "/") for path in available_source_paths}
+    contract_paths = {str(path).replace("\\", "/") for path in available_contract_paths}
+    test_paths = {str(path).replace("\\", "/") for path in (available_test_paths or [])}
+    rows = value.get({"flows": "flows", "entrypoints": "entrypoints", "tests": "tests"}.get(section, ""), [])
+    if not isinstance(rows, list):
+        return errors
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if section == "flows":
+            for source in row.get("source_paths", []):
+                normalized = str(source).replace("\\", "/")
+                if normalized not in source_paths or _prepared_reference(prepared, normalized) is None:
+                    errors.append(f"segment_flow_source_unprepared:{normalized}")
+            for handoff in row.get("handoffs", []):
+                if not isinstance(handoff, dict):
+                    continue
+                contract = str(handoff.get("contract_ref") or "").replace("\\", "/")
+                if contract not in contract_paths or _prepared_reference(prepared, contract) is None:
+                    errors.append("segment_handoff_contract_unprepared")
+        elif section == "entrypoints" and row.get("status") == "existing_verified":
+            path = str(row.get("path") or "").replace("\\", "/")
+            target = _prepared_reference(prepared, path)
+            if target is None:
+                errors.append("segment_entrypoint_existing_unprepared")
+                continue
+            symbol = str(row.get("symbol") or "").strip()
+            try:
+                text = target.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                text = ""
+            if not symbol or symbol.split(".")[-1] not in text:
+                errors.append("segment_entrypoint_existing_symbol_missing")
+        elif section == "tests":
+            path = str(row.get("path") or "").replace("\\", "/")
+            if row.get("state") == "implemented" and (path not in test_paths
+                    or _prepared_reference(prepared, path) is None):
+                errors.append("segment_test_implemented_unprepared")
+    return errors
+
+
+def validate_segment_routing(value: dict[str, Any], *, section: str,
+                             request: dict[str, Any],
+                             flow_context: list[dict[str, Any]] | None = None) -> list[str]:
+    """Reject valid JSON that escaped the requested segment route.
+
+    JSON Schema can enforce shape and value domains, but it cannot know the
+    per-request Requirement/Task/Flow partition.  This validator is the local
+    routing gate used both after a fresh CLI response and before reusing a
+    previous segment.
+    """
+    errors: list[str] = []
+    rows = value.get({"flows": "flows", "coverage": "coverage_table",
+                      "entrypoints": "entrypoints", "tests": "tests"}.get(section, ""), [])
+    if not isinstance(rows, list):
+        return errors
+    allowed_requirements = {str(item) for item in request.get("requirement_ids", [])}
+    allowed_tasks = {int(item) for item in request.get("task_ids", []) if type(item) is int}
+    allowed_capabilities = {
+        str(row.get("capability_id"))
+        for row in request.get("capabilities", [])
+        if isinstance(row, dict) and str(row.get("capability_id") or "").strip()
+    }
+    for requirement in request.get("requirements", []):
+        if isinstance(requirement, dict):
+            allowed_capabilities.update(
+                str(item) for item in requirement.get("capability_refs", [])
+                if str(item).strip()
+            )
+    scope_id = str(request.get("scope_id") or "")
+    flow_scope_ids = {str(item) for item in request.get("flow_scope_ids", [])}
+    known_flow_ids = {str(row.get("id")) for row in (flow_context or [])
+                      if isinstance(row, dict) and str(row.get("id") or "").strip()}
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if section == "flows":
+            flow_id = str(row.get("id") or "")
+            if scope_id and not flow_id.startswith(scope_id + "-"):
+                errors.append("segment_flow_id_outside_scope")
+            requirement_ids = {str(item) for item in row.get("requirement_ids", [])}
+            if not requirement_ids or not requirement_ids <= allowed_requirements:
+                errors.append("segment_flow_requirements_outside_scope")
+            capability_refs = {str(item) for item in row.get("capability_refs", [])}
+            if not capability_refs or (allowed_capabilities and not capability_refs <= allowed_capabilities):
+                errors.append("segment_flow_capabilities_outside_scope")
+            task_values = row.get("task_ids", [])
+            if (not isinstance(task_values, list)
+                    or any(type(item) is not int or item not in allowed_tasks for item in task_values)):
+                errors.append("segment_flow_tasks_outside_scope")
+            for handoff in row.get("handoffs", []) if isinstance(row.get("handoffs"), list) else []:
+                if not isinstance(handoff, dict):
+                    continue
+                if any(type(handoff.get(key)) is not int
+                       or handoff.get(key) not in set(task_values)
+                       for key in ("producer_task", "consumer_task", "owner_task")):
+                    errors.append("segment_handoff_tasks_outside_flow")
+        elif section == "coverage":
+            rid = str(row.get("requirement_id") or "")
+            if rid not in allowed_requirements:
+                errors.append("segment_coverage_requirement_outside_scope")
+            task_id = row.get("task_id")
+            if task_id is not None and (type(task_id) is not int or task_id not in allowed_tasks):
+                errors.append("segment_coverage_task_outside_scope")
+            capability_ref = row.get("capability_ref")
+            if capability_ref is not None and str(capability_ref) not in allowed_capabilities:
+                errors.append("segment_coverage_capability_outside_scope")
+            disposition = row.get("disposition")
+            flow_id = row.get("flow_id")
+            verification_ref = row.get("verification_ref")
+            authority_ref = row.get("authority_ref")
+            if disposition == "flow":
+                if not isinstance(flow_id, str) or not flow_id.strip() or flow_id not in known_flow_ids:
+                    errors.append("segment_coverage_flow_route_invalid")
+                if verification_ref not in (None, "") or authority_ref not in (None, ""):
+                    errors.append("segment_coverage_flow_file_refs_forbidden")
+            elif disposition == "other_verification":
+                if flow_id not in (None, ""):
+                    errors.append("segment_coverage_other_verification_flow_forbidden")
+                if not isinstance(verification_ref, str) or not verification_ref.strip():
+                    errors.append("segment_coverage_verification_ref_missing")
+                if authority_ref not in (None, ""):
+                    errors.append("segment_coverage_other_verification_authority_forbidden")
+            elif disposition == "deferred":
+                if flow_id not in (None, ""):
+                    errors.append("segment_coverage_deferred_flow_forbidden")
+                if not isinstance(authority_ref, str) or not authority_ref.strip():
+                    errors.append("segment_coverage_authority_ref_missing")
+                if verification_ref not in (None, ""):
+                    errors.append("segment_coverage_deferred_verification_forbidden")
+        elif section == "entrypoints":
+            owner_task = row.get("owner_task")
+            if type(owner_task) is not int or owner_task not in allowed_tasks:
+                errors.append("segment_entrypoint_owner_outside_scope")
+        elif section == "tests":
+            flow_id = str(row.get("flow_id") or "")
+            if flow_scope_ids and not any(flow_id.startswith(scope + "-") for scope in flow_scope_ids):
+                errors.append("segment_test_flow_outside_scope")
+            if known_flow_ids and flow_id not in known_flow_ids:
+                errors.append("segment_test_flow_unknown")
+            test_id = str(row.get("id") or "")
+            if scope_id and not test_id.startswith(scope_id + "-"):
+                errors.append("segment_test_id_outside_scope")
+    return sorted(set(errors))
 
 
 def validate_segment_identity(value: dict[str, Any], *, section: str, identity: str,
@@ -253,11 +459,96 @@ def validate_segment_identity(value: dict[str, Any], *, section: str, identity: 
         errors.append("segment_scope_mismatch")
     if payload_key is not None and not isinstance(value.get(payload_key), list):
         errors.append(f"segment_{payload_key}_missing")
+    rows = value.get(payload_key) if payload_key is not None else []
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                errors.append(f"segment_{section}_item_invalid")
+                continue
+            if section == "coverage":
+                disposition = row.get("disposition")
+                if disposition not in {"flow", "other_verification", "deferred"}:
+                    errors.append("segment_disposition_invalid")
+                if not isinstance(row.get("rationale"), str) or not row.get("rationale", "").strip():
+                    errors.append("segment_coverage_rationale_missing")
+            elif section == "flows":
+                handoffs = row.get("handoffs")
+                if not isinstance(handoffs, list) or not handoffs:
+                    errors.append("segment_flow_handoffs_missing")
+                for handoff in handoffs if isinstance(handoffs, list) else []:
+                    if not isinstance(handoff, dict):
+                        errors.append("segment_flow_handoff_invalid")
+                        continue
+                    for field in ("producer_task", "consumer_task", "owner_task"):
+                        if type(handoff.get(field)) is not int:
+                            errors.append(f"segment_handoff_{field}_invalid")
+                    if not isinstance(handoff.get("contract_ref"), str) or not handoff.get("contract_ref", "").strip():
+                        errors.append("segment_handoff_contract_ref_missing")
+                    if not isinstance(handoff.get("behavior"), str) or not handoff.get("behavior", "").strip():
+                        errors.append("segment_handoff_behavior_missing")
+                    if not isinstance(handoff.get("test_ids"), list) or not handoff.get("test_ids"):
+                        errors.append("segment_handoff_test_ids_missing")
+            elif section == "entrypoints":
+                status = row.get("status")
+                if status not in {"planned", "existing_verified"}:
+                    errors.append("segment_entrypoint_status_invalid")
+                if status == "planned":
+                    for field in ("inputs", "state", "assertions", "implementation_acceptance"):
+                        if row.get(field) in (None, "", []):
+                            errors.append(f"segment_entrypoint_{field}_missing")
+            elif section == "tests":
+                kind = row.get("kind")
+                state = row.get("state")
+                evidence = row.get("evidence_level")
+                expected = {"dotnet": {"domain-integration"},
+                            "gdunit": {"scene-method", "engine-input"}}
+                if kind not in expected:
+                    errors.append("segment_test_kind_invalid")
+                elif evidence not in expected[kind]:
+                    errors.append("segment_test_evidence_invalid")
+                if state not in {"planned", "implemented"}:
+                    errors.append("segment_test_state_invalid")
+                if not isinstance(row.get("path"), str) or not row.get("path", "").strip():
+                    errors.append("segment_test_path_missing")
+                if not isinstance(row.get("selector"), str) or not row.get("selector", "").strip():
+                    errors.append("segment_test_selector_missing")
     return errors
 
 
+def bind_manifest_test_ids(proposal: dict[str, Any]) -> None:
+    """Bind flow and handoff coverage to the validated tests section by flow_id."""
+    manifest = proposal.get("manifest_candidate")
+    if not isinstance(manifest, dict):
+        return
+    tests = proposal.get("tests")
+    if not isinstance(tests, list):
+        return
+    by_flow: dict[str, list[str]] = {}
+    for row in tests:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("id") or "").strip()
+        flow_id = str(row.get("flow_id") or "").strip()
+        if test_id and flow_id:
+            by_flow.setdefault(flow_id, []).append(test_id)
+    for flow in manifest.get("flows", []):
+        if not isinstance(flow, dict):
+            continue
+        test_ids = list(dict.fromkeys(by_flow.get(str(flow.get("id") or ""), [])))
+        flow["test_ids"] = test_ids
+        for handoff in flow.get("handoffs", []):
+            if isinstance(handoff, dict):
+                handoff["test_ids"] = list(test_ids)
+
+
 def load_reusable_segment(run_dir: Path, *, current_attempt: int, index: int,
-                          section: str, identity: str, scope_id: str) -> dict[str, Any] | None:
+                          section: str, identity: str, scope_id: str,
+                          prepared: Path | None = None,
+                          available_source_paths: list[str] | None = None,
+                          available_contract_paths: list[str] | None = None,
+                          available_test_paths: list[str] | None = None,
+                          routing_request: dict[str, Any] | None = None,
+                          flow_context: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
     """Load only a prior segment whose route and payload envelope are valid."""
     payload_key = {"flows": "flows", "coverage": "coverage_table",
                    "entrypoints": "entrypoints", "tests": "tests"}.get(section)
@@ -277,6 +568,19 @@ def load_reusable_segment(run_dir: Path, *, current_attempt: int, index: int,
             continue
         if validate_segment_identity(payload, section=section, identity=identity,
                                      scope_id=scope_id):
+            continue
+        if routing_request is not None and validate_segment_routing(
+                payload, section=section, request=routing_request,
+                flow_context=flow_context):
+            continue
+        if prepared is not None and validate_segment_references(
+                payload,
+                section=section,
+                prepared=prepared,
+                available_source_paths=available_source_paths or [],
+                available_contract_paths=available_contract_paths or [],
+                available_test_paths=available_test_paths or [],
+        ):
             continue
         if not isinstance(payload.get(payload_key), list):
             continue
@@ -312,7 +616,12 @@ def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: in
             if tokens.intersection(stem_tokens):
                 matches.append(path)
         selected.extend(matches[:limit])
-    return sorted(set(selected))
+    if selected:
+        return sorted(set(selected))[:limit]
+    # Task views often carry event/contract identifiers rather than file
+    # paths. Keep a bounded real-path fallback so the model can choose an
+    # actual prepared contract instead of inventing a GAP pseudo-path.
+    return sorted(set(paths))[:limit]
 
 
 def _flow_summaries(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -333,7 +642,7 @@ def _capability_membership(capabilities: dict[str, Any]) -> tuple[list[str], dic
             continue
         order.append(capability_id)
         rows[capability_id] = row
-        for requirement_id in row.get("requirement_ids", []):
+        for requirement_id in _list_field(row, "requirement_ids"):
             rid = str(requirement_id).strip()
             if rid:
                 members.setdefault(rid, []).append(capability_id)
@@ -361,7 +670,10 @@ def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
             continue
         if task_id not in task_id_set:
             continue
-        for requirement_id in row.get("semantic_refs", row.get("requirement_ids", [])):
+        requirement_values = (row.get("semantic_refs")
+                              if isinstance(row.get("semantic_refs"), list)
+                              else _list_field(row, "requirement_ids"))
+        for requirement_id in requirement_values:
             task_by_requirement.setdefault(str(requirement_id), set()).add(task_id)
 
     grouped: dict[str, list[dict[str, Any]]] = {}
@@ -518,14 +830,14 @@ def write_model_context(run_dir: Path, workspace: Path, semantics: dict[str, Any
         "task_master": [{key: row.get(key) for key in ("id", "title", "status")}
                         for row in task_rows],
         "task_views": views,
-        "declared_contract_refs": sorted({str(value) for row in views for value in row.get("contractRefs", []) if str(value).strip()}),
+        "declared_contract_refs": sorted({str(value) for row in views for value in _list_field(row, "contractRefs") if str(value).strip()}),
     }
     path = workspace / "model-context.json"
     atomic_json(path, context)
     atomic_json(workspace / "test-context.json", {
         "schema_version": "newrouge.mvg-test-context.v1",
         "task_views": test_views,
-        "declared_test_refs": sorted({str(value) for row in test_views for value in row.get("test_refs", []) if str(value).strip()}),
+        "declared_test_refs": sorted({str(value) for row in test_views for value in _list_field(row, "test_refs") if str(value).strip()}),
     })
     return path
 
@@ -560,10 +872,16 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     all_task_views = model_context.get("task_views", [])
     all_test_views = load_json(workspace / "test-context.json", {}).get("task_views", [])
     prepared = run_dir / "analysis-input"
-    source_paths = sorted({"docs/gdd/GDD-NEWROUGE-TASK-BASELINE.md"}
+    source_manifest = load_json(prepared / "source-manifest.v1.json", {})
+    manifest_source_paths = {
+        str(row.get("path")).replace("\\", "/")
+        for row in source_manifest.get("sources", [])
+        if isinstance(row, dict) and str(row.get("path") or "").strip()
+    }
+    source_paths = sorted(manifest_source_paths
                           | {str(value).split(":", 1)[0] for row in all_task_views
                              if int(row.get("taskmaster_id", -1)) in set(task_ids)
-                             for value in row.get("source_refs", []) if str(value).strip()})
+                             for value in _list_field(row, "source_refs") if str(value).strip()})
     contract_paths = sorted(
         path.relative_to(prepared / "references").as_posix()
         for path in (prepared / "references" / "Game.Core" / "Contracts").rglob("*.cs")
@@ -592,7 +910,10 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                and str(row.get("taskmaster_id") or "").isdigit()
                                and int(row.get("taskmaster_id")) in set(task_ids)
                                and selected_requirements.intersection(
-                                   {str(value) for value in row.get("semantic_refs", row.get("requirement_ids", []))})})
+                                   {str(value) for value in (
+                                       row.get("semantic_refs")
+                                       if isinstance(row.get("semantic_refs"), list)
+                                       else _list_field(row, "requirement_ids"))})})
         coverage_rows = []
         for rid in scope["requirements"]:
             row = requirement_context.get(rid)
@@ -648,7 +969,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         if section == "flows":
             scoped_refs = {str(value) for row in all_task_views
                            if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
-                           for value in row.get("contractRefs", []) if str(value).strip()}
+                           for value in _list_field(row, "contractRefs") if str(value).strip()}
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
                 "requirements": request["requirements"],
                 "capabilities": request.get("capabilities", []),
@@ -679,7 +1000,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)],
                 "available_test_paths": sorted({str(value) for row in all_test_views
                                                 if int(row.get("taskmaster_id", -1)) in set(scoped_tasks)
-                                                for value in row.get("test_refs", []) if str(value).strip()}),
+                                                for value in _list_field(row, "test_refs") if str(value).strip()}),
             }, ensure_ascii=False)
         output_name = f"segments/{index:03d}-{section}.json"
         last_error = ""
@@ -692,12 +1013,29 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                              section=section,
                                              identity=identity,
                                              scope_id=request["scope_id"],
+                                             available_source_paths=source_paths,
+                                             available_contract_paths=contract_paths,
                                          ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
                 if not isinstance(parsed, dict):
                     raise ValueError(f"MVG segment {section} must be a JSON object")
                 errors = validate_segment_identity(parsed, section=section, identity=identity,
                                                    scope_id=request["scope_id"])
+                errors.extend(validate_segment_routing(
+                    parsed, section=section, request=request,
+                    flow_context=flow_context,
+                ))
+                errors.extend(validate_segment_references(
+                    parsed,
+                    section=section,
+                    prepared=prepared,
+                    available_source_paths=source_paths,
+                    available_contract_paths=contract_paths,
+                    available_test_paths=sorted({str(value).replace("\\", "/")
+                                                 for row in all_test_views
+                                                 for value in _list_field(row, "test_refs")
+                                                 if str(value).strip()}),
+                ))
                 if errors:
                     raise ValueError(f"MVG segment {section} identity invalid: {'; '.join(errors)}")
                 return index, parsed, {"section": section, "index": index, "retry": retry, "receipt": receipt}
@@ -722,6 +1060,15 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 section=request["section"],
                 identity=identity,
                 scope_id=request["scope_id"],
+                prepared=prepared,
+                available_source_paths=source_paths,
+                available_contract_paths=contract_paths,
+                available_test_paths=sorted({str(value).replace("\\", "/")
+                                             for row in all_test_views
+                                             for value in _list_field(row, "test_refs")
+                                             if str(value).strip()}),
+                routing_request=request,
+                flow_context=flow_context,
             )
             if cached is None:
                 pending.append((index, request))
@@ -792,6 +1139,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         {"entrypoints": skeleton_entrypoints},
         [{"entrypoints": assembled.get("entrypoints", [])}],
     ).get("entrypoints", skeleton_entrypoints)
+    bind_manifest_test_ids(assembled)
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)
@@ -910,6 +1258,15 @@ def prepare(
     files["task-master.json"] = _copy_file(root, root / ".taskmaster/tasks/tasks.json", bundle, "task-master.json")
 
     referenced: set[str] = set()
+    # Task views commonly store event/contract identifiers rather than file
+    # paths. Bind the real BCL-only contract sources into the immutable bundle
+    # so flow planning can select an actual prepared contract_ref.
+    contract_root = root / "Game.Core" / "Contracts"
+    if contract_root.is_dir():
+        referenced.update(
+            path.resolve().relative_to(root.resolve()).as_posix()
+            for path in contract_root.rglob("*.cs") if path.is_file()
+        )
     existing_manifest = None
     if manifest_path is not None and manifest_path.is_file():
         existing_manifest = load_json(manifest_path, {})
@@ -925,11 +1282,11 @@ def prepare(
         referenced.add(path.relative_to(root.resolve()).as_posix())
     for row in _task_view_rows(root):
         for field in ("overlay_refs", "contractRefs", "test_refs"):
-            for value in row.get(field, []):
+            for value in _list_field(row, field):
                 text = str(value).strip().replace("\\", "/")
                 if text:
                     referenced.add(text)
-        for acceptance in row.get("acceptance", []):
+        for acceptance in _list_field(row, "acceptance"):
             text = str(acceptance)
             if "Refs:" not in text:
                 continue
@@ -1173,13 +1530,13 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     known_contract_refs = sorted({
         str(value)
         for row in _task_view_rows(root)
-        for value in row.get("contractRefs", [])
+        for value in _list_field(row, "contractRefs")
         if str(value).strip()
     })
     known_test_refs = sorted({
         str(value)
         for row in _task_view_rows(root)
-        for value in row.get("test_refs", [])
+        for value in _list_field(row, "test_refs")
         if str(value).strip()
     })
     strict_contract = f"""

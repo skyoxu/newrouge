@@ -26,7 +26,19 @@ def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Pat
     if isinstance(proposal.get("coverage_review"), dict):
         rows.append(proposal["coverage_review"])
     for row in rows:
-        for key in ("verification_ref", "authority_ref"):
+        # A flow row is descriptive accounting and must not turn a model label
+        # into a repository dependency.  Only dispositions that explicitly
+        # claim an existing verification or authority file may contribute a
+        # prepared dependency.
+        disposition = str(row.get("disposition") or "")
+        keys = ("verification_ref",) if disposition == "other_verification" else (
+            ("authority_ref",) if disposition == "deferred" else ()
+        )
+        if not disposition:
+            # Change/retirement/coverage review rows use authority_ref when
+            # they explicitly carry a reviewed baseline decision.
+            keys = ("authority_ref", "verification_ref")
+        for key in keys:
             if row.get(key):
                 dependencies.add(str(row[key]).split("#", 1)[0])
     errors = []
@@ -89,6 +101,8 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
                 valid = False
             if not valid:
                 errors.append(f"coverage_flow_membership_invalid:{rid}")
+            if row.get("verification_ref") or row.get("authority_ref") or row.get("authority_review"):
+                errors.append(f"coverage_flow_file_ref_forbidden:{rid}")
         elif disposition == "other_verification":
             sink = str(row.get("sink_id") or "")
             if sink not in {str(s.get("id")) for s in requirements[rid].get("non_task_sinks", []) if isinstance(s, dict)}:
@@ -96,12 +110,16 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
             path = str(row.get("verification_ref") or "").split("#", 1)[0]
             if not path or not repo_path(root, path).is_file():
                 errors.append(f"coverage_verification_ref_missing:{rid}")
+            if row.get("authority_ref") or row.get("authority_review"):
+                errors.append(f"coverage_other_verification_authority_forbidden:{rid}")
         elif disposition == "deferred":
             from update_mvg_baseline import _reviewed_authority
             try:
                 _reviewed_authority(row, root)
             except ValueError as exc:
                 errors.append(f"coverage_deferral_unreviewed:{rid}:{exc}")
+            if row.get("verification_ref") or row.get("flow_id"):
+                errors.append(f"coverage_deferred_route_invalid:{rid}")
         else:
             errors.append(f"coverage_disposition_invalid:{rid}")
         accounted.add(rid)

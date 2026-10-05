@@ -21,6 +21,10 @@ from plan_mvg import (
     apply_restricted_patch, is_restricted_patch, validate_restricted_patch_identity,
     SEGMENT_SCHEMA, segment_prompt, validate_segment_identity, merge_planning_segments,
     build_manifest_skeleton, build_flow_scopes, load_reusable_segment, segment_output_schema,
+    bind_manifest_test_ids,
+    _contract_candidates,
+    validate_segment_references, validate_segment_routing,
+    _list_field,
 )
 from update_mvg_baseline import apply_delta
 
@@ -109,9 +113,164 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual("tests-01", schema["properties"]["scope_id"]["const"])
         self.assertEqual("tests", schema["properties"]["section"]["const"])
         self.assertEqual("string", schema["properties"]["section"]["type"])
-        self.assertEqual("object", schema["properties"]["tests"]["items"]["type"])
-        self.assertFalse(schema["properties"]["tests"]["items"]["additionalProperties"])
+        self.assertEqual(2, len(schema["properties"]["tests"]["items"]["anyOf"]))
+        self.assertTrue(all(item["type"] == "object" for item in schema["properties"]["tests"]["items"]["anyOf"]))
+        self.assertTrue(all(item["additionalProperties"] is False
+                            for item in schema["properties"]["tests"]["items"]["anyOf"]))
         self.assertTrue(schema["additionalProperties"] is False)
+
+    def test_segment_schema_binds_manifest_value_domains(self):
+        coverage = segment_output_schema(section="coverage", identity="sha256:x", scope_id="coverage-01")
+        coverage_item = coverage["properties"]["coverage_table"]["items"]
+        self.assertEqual(
+            ["flow", "other_verification", "deferred"],
+            coverage_item["properties"]["disposition"]["enum"],
+        )
+        self.assertEqual("string", coverage_item["properties"]["rationale"]["type"])
+
+        entrypoints = segment_output_schema(section="entrypoints", identity="sha256:x", scope_id="entrypoints-01")
+        entrypoint_item = entrypoints["properties"]["entrypoints"]["items"]
+        self.assertEqual(["planned", "existing_verified"], entrypoint_item["properties"]["status"]["enum"])
+
+        tests = segment_output_schema(section="tests", identity="sha256:x", scope_id="tests-01")
+        test_item = tests["properties"]["tests"]["items"]
+        self.assertEqual(2, len(test_item["anyOf"]))
+        self.assertTrue(all(item["additionalProperties"] is False for item in test_item["anyOf"]))
+
+        flow_item = segment_output_schema(section="flows", identity="sha256:x", scope_id="flow-01")[
+            "properties"]["flows"]["items"]
+        handoff_item = flow_item["properties"]["handoffs"]["items"]
+        self.assertEqual("object", handoff_item["type"])
+        self.assertEqual("string", handoff_item["properties"]["contract_ref"]["type"])
+        self.assertEqual("array", handoff_item["properties"]["test_ids"]["type"])
+
+    def test_segment_schema_binds_prepared_source_and_contract_paths(self):
+        schema = segment_output_schema(
+            section="flows", identity="sha256:x", scope_id="flow-01",
+            available_source_paths=["docs/gdd/spec.md"],
+            available_contract_paths=["Game.Core/Contracts/EventTypes.cs"],
+        )
+        flow_item = schema["properties"]["flows"]["items"]
+        handoff_item = flow_item["properties"]["handoffs"]["items"]
+        self.assertEqual(["docs/gdd/spec.md"], flow_item["properties"]["source_paths"]["items"]["enum"])
+        self.assertEqual(["Game.Core/Contracts/EventTypes.cs"], handoff_item["properties"]["contract_ref"]["enum"])
+
+    def test_segment_identity_rejects_invalid_manifest_value_domains(self):
+        value = {
+            "schema_version": SEGMENT_SCHEMA,
+            "analysis_identity_sha256": "sha256:x",
+            "section": "coverage",
+            "scope_id": "coverage-01",
+            "coverage_table": [{
+                "requirement_id": "FR-1", "flow_id": "flow-a", "capability_ref": "CAP-A",
+                "task_id": 7, "disposition": "covered", "rationale": "ok",
+            }],
+        }
+        self.assertIn("segment_disposition_invalid", validate_segment_identity(
+            value, section="coverage", identity="sha256:x", scope_id="coverage-01"))
+
+    def test_bind_manifest_test_ids_uses_test_flow_routes(self):
+        proposal = {"manifest_candidate": {"flows": [
+            {"id": "flow-a", "test_ids": ["stale-a"], "handoffs": [{"test_ids": ["stale-a"]}]},
+            {"id": "flow-b", "test_ids": [], "handoffs": []},
+        ], "tests": []}}
+        proposal["tests"] = [
+            {"id": "test-a", "flow_id": "flow-a"},
+            {"id": "test-b", "flow_id": "flow-b"},
+        ]
+        bind_manifest_test_ids(proposal)
+        self.assertEqual(["test-a"], proposal["manifest_candidate"]["flows"][0]["test_ids"])
+        self.assertEqual(["test-a"], proposal["manifest_candidate"]["flows"][0]["handoffs"][0]["test_ids"])
+        self.assertEqual(["test-b"], proposal["manifest_candidate"]["flows"][1]["test_ids"])
+
+    def test_contract_candidates_fall_back_to_real_paths_when_refs_are_event_ids(self):
+        self.assertEqual(
+            ["Game.Core/Contracts/EventTypes.cs"],
+            _contract_candidates({"core.combat.started"}, ["Game.Core/Contracts/EventTypes.cs"]),
+        )
+
+    def test_segment_references_reject_unprepared_contract_and_existing_symbol(self):
+        with tempfile.TemporaryDirectory() as folder:
+            prepared = Path(folder)
+            contract = prepared / "references/Game.Core/Contracts/EventTypes.cs"
+            contract.parent.mkdir(parents=True)
+            contract.write_text("class EventTypes {}", encoding="utf-8")
+            value = {
+                "flows": [{"source_paths": ["docs/gdd/spec.md"], "handoffs": [
+                    {"contract_ref": "GAP: missing", "behavior": "x", "test_ids": ["t"]}
+                ]}],
+                "entrypoints": [{"status": "existing_verified", "path": "Tests.Godot/tests/test.gd",
+                                 "symbol": "MissingSymbol"}],
+            }
+            errors = validate_segment_references(value, section="flows", prepared=prepared,
+                                                 available_source_paths=["docs/gdd/spec.md"],
+                                                 available_contract_paths=["Game.Core/Contracts/EventTypes.cs"])
+            self.assertIn("segment_handoff_contract_unprepared", errors)
+            errors = validate_segment_references(value, section="entrypoints", prepared=prepared,
+                                                 available_source_paths=[], available_contract_paths=[])
+            self.assertIn("segment_entrypoint_existing_unprepared", errors)
+
+    def test_segment_routing_rejects_cross_scope_tasks_and_flow_file_refs(self):
+        flow = {
+            "id": "cap-a-01-flow",
+            "requirement_ids": ["RQ-1"],
+            "capability_refs": ["CAP-A"],
+            "task_ids": [1, 2],
+            "handoffs": [{
+                "producer_task": 7,
+                "consumer_task": 2,
+                "owner_task": 2,
+                "contract_ref": "Game.Core/Contracts/EventTypes.cs",
+                "behavior": "handoff",
+                "test_ids": ["test-a"],
+            }],
+        }
+        errors = validate_segment_routing(flow | {"flows": [flow]}, section="flows", request={
+            "scope_id": "cap-a-01", "requirement_ids": ["RQ-1"], "task_ids": [1, 2],
+            "capabilities": [{"capability_id": "CAP-A"}],
+        })
+        self.assertIn("segment_handoff_tasks_outside_flow", errors)
+
+        coverage = {
+            "coverage_table": [{
+                "requirement_id": "RQ-1", "flow_id": "cap-a-01-flow",
+                "capability_ref": "CAP-A", "task_id": 1,
+                "disposition": "flow", "rationale": "covered",
+                "verification_ref": "task001-acceptance",
+            }],
+        }
+        errors = validate_segment_routing(coverage, section="coverage", request={
+            "scope_id": "coverage-01", "requirement_ids": ["RQ-1"], "task_ids": [1],
+            "requirements": [{"requirement_id": "RQ-1", "capability_refs": ["CAP-A"]}],
+        }, flow_context=[{"id": "cap-a-01-flow"}])
+        self.assertIn("segment_coverage_flow_file_refs_forbidden", errors)
+
+    def test_nullable_task_view_lists_are_treated_as_empty(self):
+        self.assertEqual([], _list_field({"source_refs": None}, "source_refs"))
+        self.assertEqual([], _list_field({"test_refs": "not-a-list"}, "test_refs"))
+
+    def test_reusable_segment_rejects_valid_json_from_wrong_route(self):
+        with tempfile.TemporaryDirectory() as folder:
+            run_dir = Path(folder)
+            output = run_dir / "model-workspace/attempt-1/llm-sandbox/attempt-1/segments-001-flows/001-flows.json"
+            output.parent.mkdir(parents=True)
+            output.write_text(json.dumps({
+                "schema_version": SEGMENT_SCHEMA,
+                "analysis_identity_sha256": "sha256:x",
+                "section": "flows",
+                "scope_id": "cap-a-01",
+                "flows": [{
+                    "id": "cap-a-01-flow", "outcome": "x",
+                    "requirement_ids": ["RQ-1"], "capability_refs": ["CAP-A"],
+                    "task_ids": [2], "source_paths": [], "handoffs": [], "test_ids": ["t"],
+                }],
+            }), encoding="utf-8")
+            self.assertIsNone(load_reusable_segment(
+                run_dir, current_attempt=2, index=1, section="flows",
+                identity="sha256:x", scope_id="cap-a-01",
+                routing_request={"scope_id": "cap-a-01", "requirement_ids": ["RQ-1"],
+                                 "task_ids": [1], "capabilities": [{"capability_id": "CAP-A"}]},
+            ))
 
     def test_reusable_segment_requires_matching_route_identity(self):
         with tempfile.TemporaryDirectory() as folder:

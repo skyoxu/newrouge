@@ -29,6 +29,8 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 
 同一 action/main/manifest 再次点击会复用持久化 attempt，断开连接或重启后继续原阶段、候选与预算，已完成的同一结果直接返回。服务操作锁覆盖生成、扫描、查询及运行验证。证据和逐阶段日志保留在 `logs/ci/knowledge-planning/planning-<id>/`；生成文件在该任务的 `checkout/` 中（MVG 可复用 Capability 的 checkout）。
 
+候选或独立评审已经成功而后续阶段中断时，任务显示 `recoverable`，保留已通过校验的候选、评审和 Apply journal；再次点击同一按钮只从最早仍缺失的阶段继续（`review`、`align` 或 `apply`），不重新生成候选或重复已经完成的评审。评审在已用尽本次调用的重试次数后仍失败，下一次恢复会获得一个新的独立评审尝试，仍受同一累计活动时间和请求预算限制。每次候选、评审和 Alignment 调用都保留输出、校验错误、hash、runner 身份及预算记录；恢复不重置累计预算。来源变更、证据损坏、主分支漂移和实际语义冲突仍然阻断，不能将候选成功当作整体成功，也不能把不可恢复的输入错误伪装成可重试。此恢复边界遵循 ADR-0005 的保留证据与不绕过校验原则。
+
 成功数据带 `planning_result=true`、`publication_state=local_generated` 和确切来源 main SHA，尚未提交、发布或执行运行验证，不覆盖原工作区、main 扫描或 KCP 指针。可在保留的 checkout 中审阅 `git diff`，创建审阅分支、提交并走正常 PR；main 合并后重新扫描/生成。新生成的 MVG scope 在提交到 main 前不能使用 `Run selected MVG on main`；已有其他 scope 的运行验证保持原规则。详细模型日志不会追加到页面状态栏。
 
 ### Chapter 3 / Chapter 5 Workspace refresh

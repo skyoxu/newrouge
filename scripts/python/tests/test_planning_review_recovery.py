@@ -96,6 +96,106 @@ class PlanningReviewRecoveryTests(unittest.TestCase):
             with self.subTest(decisions=decisions), self.assertRaisesRegex(ValueError, "unknown|duplicate"):
                 cap._apply_alignment_override(base, {"decisions": decisions})
 
+    def test_alignment_ignores_unknown_historical_rows_and_keeps_selected_candidate(self):
+        run = selected_cap(self.root)
+        base = cap.preview_alignment(self.root, run_id="repair")
+        override = {"decisions": deepcopy(base["decisions"])}
+        override["decisions"].append({
+            "candidate_id": None,
+            "action": "retire",
+            "stable_id": "CAP-HALLUCINATED-HISTORY",
+            "resolved": True,
+            "reason": "Unrelated historical identity.",
+        })
+
+        def invoke(*args, **kwargs):
+            atomic_json(kwargs["output_path"], override)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        runner_info = {"model": "fixture-reviewer"}
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            result = cap.align_with_llm(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=1)
+        self.assertTrue(result["resolved"])
+        self.assertEqual(len(base["decisions"]), len(result["decisions"]))
+        audit = load_json(run / "alignment-normalization.json")
+        self.assertEqual(["CAP-HALLUCINATED-HISTORY"], audit["ignored_unknown_historical_ids"])
+
+    def test_alignment_allows_reviewed_retirement_of_auto_reused_historical_id(self):
+        run = selected_cap(self.root)
+        candidate = load_json(run / "candidates/candidate-1.json")
+        old_id = "CAP-AUTO-REUSED"
+        atomic_json(self.root / cap.FORMAL_CAPABILITIES, {
+            "schema_version": "newrouge.capabilities.v1",
+            "capabilities": [{"capability_id": old_id, "title": "Historical exact match",
+                "description": "Historical capability", "boundary_rationale": "Historical boundary",
+                "requirement_ids": candidate["capabilities"][0]["requirement_ids"],
+                "source_block_ids": candidate["capabilities"][0]["source_block_ids"]}],
+        })
+        base = cap.preview_alignment(self.root, run_id="repair")
+        override = {"decisions": deepcopy(base["decisions"])}
+        row = next(item for item in override["decisions"] if item.get("candidate_id") == "TMP-CAP-1")
+        row.update(action="add", stable_id="CAP-REVIEWED-REPLACEMENT", resolved=True,
+                   reason="Reviewed boundary change replaces the old exact-match identity.")
+        for item in override["decisions"]:
+            if item.get("candidate_id") is not None and not item.get("stable_id"):
+                item.update(action="add", stable_id="CAP-SECONDARY", resolved=True,
+                            reason="Reviewed new Capability identity.")
+        override["decisions"].append({"candidate_id": None, "action": "retire", "stable_id": old_id,
+            "resolved": True, "reason": "Reviewed replacement retires the old identity."})
+
+        def invoke(*args, **kwargs):
+            atomic_json(kwargs["output_path"], override)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        runner_info = {"model": "fixture-reviewer"}
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            result = cap.align_with_llm(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=1)
+        self.assertTrue(result["resolved"])
+        self.assertEqual("CAP-REVIEWED-REPLACEMENT",
+                         next(item["stable_id"] for item in result["decisions"]
+                              if item.get("candidate_id") == "TMP-CAP-1"))
+        audit = load_json(run / "alignment-normalization.json")
+        self.assertEqual([old_id], audit["admitted_existing_historical_ids"])
+        applied = cap.apply(
+            self.root, run_id="repair", alignment_override=run / "alignment-preview.json", confirm=True,
+        )
+        self.assertEqual("applied", applied["status"])
+
+    def test_alignment_attempts_are_persisted_and_resumed_after_budgeted_rejection(self):
+        run = selected_cap(self.root)
+        base = cap.preview_alignment(self.root, run_id="repair")
+        valid = {"decisions": [dict(row) for row in base["decisions"]]}
+        calls = 0
+
+        def invoke(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            atomic_json(kwargs["output_path"], {"decisions": []} if calls <= 2 else valid)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        runner_info = {"model": "fixture-reviewer"}
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            with self.assertRaisesRegex(ValueError, "alignment"):
+                cap.align_with_llm(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=1)
+
+        state = load_json(run / "run.json")
+        self.assertEqual("alignment-blocked", state["phase"])
+        self.assertEqual(2, len(state["alignment_attempts"]))
+        self.assertTrue((run / "alignment/attempts/alignment-attempt-1.json").is_file())
+        self.assertTrue((run / "alignment/attempts/alignment-attempt-2.meta.json").is_file())
+
+        with patch.object(cap, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(cap, "run_isolated_model", side_effect=invoke):
+            result = cap.align_with_llm(self.root, run_id="repair", runner=Path("fixture"), timeout_sec=1)
+
+        self.assertTrue(result["resolved"])
+        self.assertEqual(3, calls)
+        self.assertEqual(3, len(load_json(run / "run.json")["alignment_attempts"]))
+        self.assertTrue((run / "alignment.meta.json").is_file())
+
     def test_invalid_complete_topology_blocks_before_transaction(self):
         run = selected_cap(self.root)
         path = self.root / cap.FORMAL_EDGES
