@@ -183,6 +183,50 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["test-a"], proposal["manifest_candidate"]["flows"][0]["handoffs"][0]["test_ids"])
         self.assertEqual(["test-b"], proposal["manifest_candidate"]["flows"][1]["test_ids"])
 
+    def test_bind_manifest_test_ids_preserves_unrouted_cumulative_baseline_flows(self):
+        proposal = {"manifest_candidate": {"flows": [
+            {"id": "baseline-flow", "test_ids": ["baseline-test"],
+             "handoffs": [{"test_ids": ["baseline-test"]}]},
+            {"id": "new-flow", "test_ids": ["model-only-test"], "handoffs": [{
+                "test_ids": ["model-only-test"]
+            }]},
+        ]}, "tests": [{"id": "baseline-test"}]}
+        proposal["tests"].append({"id": "new-test", "flow_id": "new-flow"})
+        bind_manifest_test_ids(proposal, preserve_flow_ids={"baseline-flow"})
+        flows = proposal["manifest_candidate"]["flows"]
+        self.assertEqual(["baseline-test"], flows[0]["test_ids"])
+        self.assertEqual(["baseline-test"], flows[0]["handoffs"][0]["test_ids"])
+        self.assertEqual(["new-test"], flows[1]["test_ids"])
+
+    def test_segment_merge_keeps_required_flow_ids_in_final_flow_order(self):
+        merged = merge_planning_segments(
+            {"manifest_candidate": {
+                "coverage": {"required_flow_ids": ["baseline-flow"]},
+                "flows": [{"id": "baseline-flow"}],
+            }},
+            [{"flows": [{"id": "new-flow"}]}],
+        )
+        self.assertEqual(
+            ["baseline-flow", "new-flow"],
+            merged["manifest_candidate"]["coverage"]["required_flow_ids"],
+        )
+
+    def test_cumulative_baseline_tests_are_seeded_into_proposal_top_level(self):
+        existing = {
+            "flows": [{"id": "baseline-flow", "test_ids": ["baseline-test"],
+                       "handoffs": [{"test_ids": ["baseline-test"]}]}],
+            "tests": [{"id": "baseline-test"}],
+            "coverage": {"required_flow_ids": ["baseline-flow"]},
+        }
+        seeded = merge_planning_segments(
+            {"manifest_candidate": existing},
+            [],
+        )
+        self.assertEqual(
+            ["baseline-test"],
+            [row["id"] for row in seeded["tests"]],
+        )
+
     def test_contract_candidates_fall_back_to_real_paths_when_refs_are_event_ids(self):
         self.assertEqual(
             ["Game.Core/Contracts/EventTypes.cs"],
@@ -244,6 +288,27 @@ class MvgPlanningContractTests(unittest.TestCase):
             "requirements": [{"requirement_id": "RQ-1", "capability_refs": ["CAP-A"]}],
         }, flow_context=[{"id": "cap-a-01-flow"}])
         self.assertIn("segment_coverage_flow_file_refs_forbidden", errors)
+
+    def test_segment_routing_rejects_coverage_that_misses_flow_membership(self):
+        coverage = {
+            "coverage_table": [{
+                "requirement_id": "RQ-1", "flow_id": "flow-a",
+                "capability_ref": "CAP-A", "task_id": 1,
+                "disposition": "flow", "rationale": "covered",
+                "verification_ref": None, "authority_ref": None,
+                "authority_review": None,
+            }],
+        }
+        errors = validate_segment_routing(coverage, section="coverage", request={
+            "scope_id": "coverage-01", "requirement_ids": ["RQ-1"],
+            "task_ids": [1], "requirements": [{
+                "requirement_id": "RQ-1", "capability_refs": ["CAP-A"],
+            }],
+        }, flow_context=[{
+            "id": "flow-a", "requirement_ids": ["RQ-2"],
+            "capability_refs": ["CAP-B"], "task_ids": [2],
+        }])
+        self.assertIn("segment_coverage_flow_membership_invalid", errors)
 
     def test_nullable_task_view_lists_are_treated_as_empty(self):
         self.assertEqual([], _list_field({"source_refs": None}, "source_refs"))

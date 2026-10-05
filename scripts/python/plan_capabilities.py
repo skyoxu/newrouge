@@ -128,6 +128,142 @@ def _readiness_summary(root: Path, task_ids: list[str], *, allow_unready: bool,
     }
 
 
+def _build_incumbent_candidate(
+    formal: dict[str, Any],
+    ledger: dict[str, Any],
+    semantics: dict[str, Any],
+    analysis_identity_sha256: str,
+) -> dict[str, Any]:
+    """Project the published Capability baseline into the review candidate schema.
+
+    The projection is deliberately isolated from candidate generation.  It gives the
+    reviewer a complete, hash-bound comparison option without teaching new candidate
+    sessions to copy the current grouping.
+    """
+    capabilities: list[dict[str, Any]] = []
+    stable_ids: dict[str, str] = {}
+    for index, row in enumerate(formal.get("capabilities", []), 1):
+        if not isinstance(row, dict):
+            continue
+        stable = str(row.get("capability_id") or "").strip()
+        if not stable:
+            continue
+        temporary = f"TMP-CAP-CURRENT-{slug(stable)}-{index}"
+        stable_ids[temporary] = stable
+        capabilities.append({
+            "capability_id": temporary,
+            "title": str(row.get("title") or stable),
+            "description": str(row.get("description") or "Published Capability baseline."),
+            "boundary_rationale": str(row.get("boundary_rationale") or "Preserved from the current published Capability baseline."),
+            "requirement_ids": sorted({str(value) for value in row.get("requirement_ids", [])}),
+            "source_block_ids": sorted({str(value) for value in row.get("source_block_ids", [])}),
+        })
+
+    known_blocks = {
+        str(row.get("block_id")) for row in ledger.get("blocks", [])
+        if isinstance(row, dict) and str(row.get("block_id") or "").strip()
+    }
+    by_block: dict[str, list[str]] = {}
+    for capability in capabilities:
+        for block_id in capability["source_block_ids"]:
+            by_block.setdefault(block_id, []).append(capability["capability_id"])
+    source_accounting = []
+    for block_id in sorted(known_blocks):
+        owners = sorted(set(by_block.get(block_id, [])))
+        source_accounting.append({
+            "block_id": block_id,
+            "disposition": "grouped" if owners else "unmapped_in_published_baseline",
+            "capability_ids": owners,
+            "rationale": (
+                "Preserved source ownership from the current published Capability baseline."
+                if owners else
+                "The current published baseline does not assign this source block to a Capability."
+            ),
+        })
+
+    requirement_rows = {
+        str(row.get("requirement_id")): row
+        for row in semantics.get("requirements", [])
+        if isinstance(row, dict) and str(row.get("requirement_id") or "").strip()
+    }
+    active_delivery = {
+        rid for rid, row in requirement_rows.items()
+        if str(row.get("status") or "active").casefold() == "active"
+        and row.get("delivery_relevant") is True
+    }
+    grouped = {rid for capability in capabilities for rid in capability["requirement_ids"]}
+    ungrouped = [
+        {"requirement_id": rid, "reason": "Not assigned by the current published Capability baseline."}
+        for rid in sorted(active_delivery - grouped)
+    ]
+    membership: dict[str, set[str]] = {}
+    for capability in capabilities:
+        for requirement_id in capability["requirement_ids"]:
+            membership.setdefault(requirement_id, set()).add(capability["capability_id"])
+    rationales = {
+        requirement_id: "Preserved multi-membership from the current published Capability baseline."
+        for requirement_id, owners in membership.items() if len(owners) > 1
+    }
+    mapping_status = (
+        "complete" if known_blocks and known_blocks.issubset(by_block)
+        else "partial" if by_block else "missing"
+    )
+    return {
+        "schema_version": CANDIDATE_SCHEMA,
+        "analysis_identity_sha256": analysis_identity_sha256,
+        "candidate_kind": "incumbent",
+        "incumbent_source_mapping": mapping_status,
+        "incumbent_stable_ids": stable_ids,
+        "capabilities": capabilities,
+        "ungrouped_requirements": ungrouped,
+        "multi_membership_rationales": rationales,
+        "source_accounting": source_accounting,
+        "questions": [],
+        "generation_notes": [
+            "This candidate is the frozen current published Capability baseline, projected for comparison only.",
+            "New candidate generation did not receive this projection as input.",
+        ],
+    }
+
+
+def _prepare_incumbent(root: Path, run_dir: Path, analysis_dir: Path, analysis_sha: str) -> dict[str, Any]:
+    """Capture a valid formal Capability file without making it a generation input."""
+    formal_path = root / FORMAL_CAPABILITIES
+    try:
+        formal = load_json(formal_path, {}) if formal_path.is_file() else {}
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {"incumbent_present": False, "incumbent_rejected": ["incumbent_unreadable"]}
+    if formal.get("schema_version") != "newrouge.capabilities.v1" or not isinstance(formal.get("capabilities"), list) or not formal["capabilities"]:
+        return {"incumbent_present": False}
+    # A legacy/partial derived file with no source ownership is not a safe
+    # comparison baseline. Treat it as absent so old three-candidate runs keep
+    # their original review identity and evidence contract.
+    if not any(isinstance(row, dict) and row.get("source_block_ids") for row in formal["capabilities"]):
+        return {"incumbent_present": False, "incumbent_rejected": ["incumbent_source_mapping_missing"]}
+    ledger = load_json(analysis_dir / "source-blocks.v1.json", {})
+    semantics = load_json(analysis_dir / "semantic-requirements.v1.json", {})
+    try:
+        candidate = _build_incumbent_candidate(formal, ledger, semantics, analysis_sha)
+    except (KeyError, TypeError, ValueError):
+        return {"incumbent_present": False, "incumbent_rejected": ["incumbent_projection_failed"]}
+    errors = validate_candidate(candidate, ledger, semantics, analysis_sha)
+    if errors:
+        return {"incumbent_present": False, "incumbent_rejected": errors}
+    snapshot = run_dir / "incumbent/current-capabilities.v1.json"
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(formal_path, snapshot)
+    candidate_path = run_dir / "candidates/__incumbent__.json"
+    candidate_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_json(candidate_path, candidate)
+    return {
+        "incumbent_present": True,
+        "incumbent_path": relative(root, snapshot),
+        "incumbent_sha256": file_sha(snapshot),
+        "incumbent_candidate_path": relative(root, candidate_path),
+        "incumbent_candidate_sha256": file_sha(candidate_path),
+    }
+
+
 def prepare(
     root: Path,
     *,
@@ -194,6 +330,7 @@ def prepare(
         "model_batch_count": int((index.get("model_batch_index") or {}).get("batch_count") or 0),
         "applied": False,
     }
+    state.update(_prepare_incumbent(root, run_dir, analysis_dir, state["analysis_identity_sha256"]))
     atomic_json(run_dir / "run.json", state)
     return state
 
@@ -249,6 +386,17 @@ All five findings fields must be arrays; use [] when there are no findings in th
 
 If corrections are needed, use at most 12 JSON-Pointer operations. Each item must contain op (add|replace|remove), path, reason, evidence_refs, and value when required. Corrections apply only to the selected candidate; never change schema_version, analysis_identity_sha256, capability_id, add/remove an entire Capability, or merge candidates into a fourth design.
 """
+
+REVIEW_PROMPT_WITH_INCUMBENT = REVIEW_PROMPT.replace(
+    "Candidate names are anonymous A/B/C and reveal no generation order.",
+    "A/B/C are independent new proposals and reveal no generation order. When candidates/D.json is present, D is the current published Capability baseline, not a new proposal. Compare it explicitly with A/B/C and allow D to win; never assume a newly generated proposal is better merely because it is new. If D is absent, use the original three-proposal review and select only A/B/C.",
+).replace(
+    '- selected: "A" | "B" | "C" | null',
+    '- selected: "A" | "B" | "C" | "D" | null',
+).replace(
+    'candidates/A.json, B.json, C.json',
+    'candidates/A.json, B.json, C.json, D.json',
+)
 
 ALIGNMENT_PROMPT = """You are the Capability identity alignment reviewer.
 Return JSON only with one top-level field `decisions`, containing exactly the
@@ -909,7 +1057,9 @@ def apply_review_corrections(
     return result
 
 
-def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
+def validate_review_report(
+    result: dict[str, Any], run_dir: Path, *, allow_incumbent: bool | None = None,
+) -> list[str]:
     if not isinstance(result, dict):
         return ["review_report_not_object"]
     errors = []
@@ -919,7 +1069,10 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
     if not isinstance(status, str) or status not in {"selected", "no_valid_winner"}:
         errors.append("invalid_review_status")
     selected = result.get("selected")
-    if selected is not None and (not isinstance(selected, str) or selected not in {"A", "B", "C"}):
+    if allow_incumbent is None:
+        allow_incumbent = (run_dir / "candidates/__incumbent__.json").is_file()
+    allowed_labels = {"A", "B", "C"} | ({"D"} if allow_incumbent else set())
+    if selected is not None and (not isinstance(selected, str) or selected not in allowed_labels):
         errors.append("unknown_selected_candidate")
     if status == "selected" and selected is None:
         errors.append("selected_review_missing_candidate")
@@ -962,6 +1115,8 @@ def validate_review_report(result: dict[str, Any], run_dir: Path) -> list[str]:
     # permitted by REVIEW_PROMPT. Keep it resolvable as an evidence reference.
     known_paths.add("analysis-input/analysis-index.json")
     known_paths.update(f"candidates/{a}.json" for a in ("A", "B", "C"))
+    if allow_incumbent:
+        known_paths.add("candidates/D.json")
     ledger = load_json(run_dir / "analysis-input/source-blocks.v1.json", {})
     semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
     ids_by_path = {
@@ -1013,8 +1168,18 @@ def _anonymous_candidates(state: dict[str, Any]) -> tuple[str, dict[str, str]]:
             and isinstance(records.get(f"candidate-{i}", {}).get("final_meta"), dict)
             and not records.get(f"candidate-{i}", {}).get("final_meta", {}).get("validation_errors"))
     ]
+    if state.get("incumbent_present") is True:
+        # Keep the incumbent's identity explicit so the reviewer can make an
+        # informed retain/rebuild decision.  Only the fresh proposals are
+        # shuffled; D is always the current published baseline.
+        random.Random(int(seed[:16], 16)).shuffle(labels)
+        return seed, dict(zip(("A", "B", "C"), labels)) | {"D": "__incumbent__"}
     random.Random(int(seed[:16], 16)).shuffle(labels)
     return seed, dict(zip(("A", "B", "C"), labels))
+
+
+def _review_prompt(state: dict[str, Any]) -> str:
+    return REVIEW_PROMPT_WITH_INCUMBENT if state.get("incumbent_present") is True else REVIEW_PROMPT
 
 
 def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
@@ -1025,7 +1190,7 @@ def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, 
         raise ValueError("persisted Capability review must contain report and metadata objects")
     _, anonymous = _anonymous_candidates(state)
     hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in anonymous.values()}
-    errors = validate_review_report(result, run_dir)
+    errors = validate_review_report(result, run_dir, allow_incumbent=state.get("incumbent_present") is True)
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     declared = index.get("analysis_identity_sha256")
     content = {key: value for key, value in index.items() if key != "analysis_identity_sha256"}
@@ -1040,7 +1205,7 @@ def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, 
         receipt = {}
     if (meta.get("output_sha256") != (file_sha(path) if path.is_file() else None)
         or meta.get("analysis_identity_sha256") != state["analysis_identity_sha256"]
-        or meta.get("prompt_sha256") != text_sha(REVIEW_PROMPT)
+        or meta.get("prompt_sha256") != text_sha(_review_prompt(state))
         or meta.get("candidate_sha256") != hashes
         or meta.get("anonymous_mapping_sha256") != canonical_sha(anonymous)
         or meta.get("runner_contract_model") != (state.get("runner") or {}).get("model")
@@ -1083,11 +1248,12 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     if state.get("runner") != runner_info:
         raise ValueError("review must use the same runner identity as candidate generation")
     seed_hex, anonymous = _anonymous_candidates(state)
-    candidate_hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in labels}
+    candidate_hashes = {label: file_sha(run_dir / "candidates" / f"{label}.json") for label in anonymous.values()}
+    review_prompt = _review_prompt(state)
     from _planning_review_publication import completed_output, prepare_publication, resume_publication, serialized_sha
     publication = run_dir / "review/publication.json"
     publication_identity = {"analysis_identity_sha256": state["analysis_identity_sha256"],
-        "candidate_sha256": candidate_hashes, "prompt_sha256": text_sha(REVIEW_PROMPT), "runner": runner_info}
+        "candidate_sha256": candidate_hashes, "prompt_sha256": text_sha(review_prompt), "runner": runner_info}
     resume_publication(publication, publication_identity, atomic_json)
     if any((run_dir / "review" / name).is_file() for name in ("review.json", "review.meta.json")):
         result, selected = _read_valid_review(run_dir, state)
@@ -1119,7 +1285,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         final_meta = load_json(run_dir / "review/attempts" / f"review-attempt-{len(attempts)}.meta.json", {})
         if (not final_meta or final_meta.get("validation_errors") != []
             or any(record.get(key) != value for key, value in final_meta.items())
-            or validate_review_report(final_result, run_dir)):
+            or validate_review_report(final_result, run_dir, allow_incumbent=state.get("incumbent_present") is True)):
             raise ValueError("Completed Capability review metadata identity changed or result invalid")
         if final_result.get("status") == "selected":
             corrected_candidate = apply_review_corrections(load_json(run_dir / "candidates" /
@@ -1146,7 +1312,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                 workspace / "candidates" / f"{alias}.json",
             )
         prompt_path = workspace / "prompt.txt"
-        prompt_path.write_text(REVIEW_PROMPT, encoding="utf-8", newline="\n")
+        prompt_path.write_text(review_prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
         receipt: dict[str, Any] | None = None
         result: dict[str, Any] | None = None
@@ -1160,7 +1326,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                 output_path=output, timeout_sec=attempt_timeout,
             )
             result = parse_model_json(output)
-            errors.extend(validate_review_report(result, run_dir))
+            errors.extend(validate_review_report(result, run_dir, allow_incumbent=state.get("incumbent_present") is True))
             if not errors and result.get("status") == "selected":
                 source_label = anonymous[str(result["selected"])]
                 source_candidate = load_json(
@@ -1200,7 +1366,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             "model": actual_model,
             "runner_contract_model": runner_info.get("model"),
             "runner": runner_info,
-            "prompt_sha256": text_sha(REVIEW_PROMPT),
+            "prompt_sha256": text_sha(review_prompt),
             "analysis_identity_sha256": state["analysis_identity_sha256"],
             "elapsed_active_sec": elapsed,
             "validation_errors": errors,
@@ -1296,6 +1462,18 @@ def _validate_snapshot_freshness(root: Path, run_dir: Path) -> dict[str, Any]:
                 "path": str(rel_path),
                 "expected_sha256": expected,
                 "actual_sha256": actual,
+            })
+    run_state = load_json(run_dir / "run.json", {})
+    if run_state.get("incumbent_present") is True:
+        current_path = root / FORMAL_CAPABILITIES
+        expected = run_state.get("incumbent_sha256")
+        actual = file_sha(current_path) if current_path.is_file() else None
+        if actual != expected:
+            drift.append({
+                "path": str(FORMAL_CAPABILITIES),
+                "expected_sha256": expected,
+                "actual_sha256": actual,
+                "reason": "incumbent_changed_after_prepare",
             })
     prepared_repo = index.get("repository_identity") or {}
     current_repo = _repository_identity(root)

@@ -408,8 +408,21 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             verification_ref = row.get("verification_ref")
             authority_ref = row.get("authority_ref")
             if disposition == "flow":
+                flow_row = next((flow for flow in (flow_context or [])
+                                 if isinstance(flow, dict)
+                                 and str(flow.get("id") or "") == str(flow_id or "")), None)
                 if not isinstance(flow_id, str) or not flow_id.strip() or flow_id not in known_flow_ids:
                     errors.append("segment_coverage_flow_route_invalid")
+                elif (str(row.get("requirement_id") or "") not in {
+                        str(value) for value in (flow_row or {}).get("requirement_ids", [])
+                    } or str(row.get("capability_ref") or "") not in {
+                        str(value) for value in (flow_row or {}).get("capability_refs", [])
+                    } or (type(row.get("task_id")) is not int
+                          or row.get("task_id") not in (flow_row or {}).get("task_ids", []))):
+                    # A valid flow ID is not sufficient: the routed
+                    # Requirement, Capability and owner Task must all belong
+                    # to that exact flow before the segment can be merged.
+                    errors.append("segment_coverage_flow_membership_invalid")
                 if verification_ref not in (None, "") or authority_ref not in (None, ""):
                     errors.append("segment_coverage_flow_file_refs_forbidden")
             elif disposition == "other_verification":
@@ -515,8 +528,15 @@ def validate_segment_identity(value: dict[str, Any], *, section: str, identity: 
     return errors
 
 
-def bind_manifest_test_ids(proposal: dict[str, Any]) -> None:
-    """Bind flow and handoff coverage to the validated tests section by flow_id."""
+def bind_manifest_test_ids(proposal: dict[str, Any], *,
+                           preserve_flow_ids: set[str] | None = None) -> None:
+    """Bind generated test routes without weakening cumulative baseline flows.
+
+    A cumulative proposal may add newly scoped flows while its test segment only
+    routes those new IDs.  Existing baseline flows are intentionally retained
+    when they have no route in this round; newly added flows must receive an
+    explicit route and otherwise remain invalid for deterministic retry.
+    """
     manifest = proposal.get("manifest_candidate")
     if not isinstance(manifest, dict):
         return
@@ -531,10 +551,17 @@ def bind_manifest_test_ids(proposal: dict[str, Any]) -> None:
         flow_id = str(row.get("flow_id") or "").strip()
         if test_id and flow_id:
             by_flow.setdefault(flow_id, []).append(test_id)
+    preserved = {str(value) for value in (preserve_flow_ids or set())}
     for flow in manifest.get("flows", []):
         if not isinstance(flow, dict):
             continue
-        test_ids = list(dict.fromkeys(by_flow.get(str(flow.get("id") or ""), [])))
+        flow_id = str(flow.get("id") or "")
+        routed = list(dict.fromkeys(by_flow.get(flow_id, [])))
+        if not routed and flow_id in preserved:
+            # No fresh test route is an allowed no-op for an existing
+            # cumulative flow.  Keep its handoff bindings byte-for-byte.
+            continue
+        test_ids = routed
         flow["test_ids"] = test_ids
         for handoff in flow.get("handoffs", []):
             if isinstance(handoff, dict):
@@ -720,6 +747,11 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
     """Merge bounded model sections without allowing replacement or deletion."""
     result = json.loads(json.dumps(base))
     manifest = result.setdefault("manifest_candidate", {})
+    if "tests" not in result and isinstance(manifest.get("tests"), list):
+        # Cumulative manifests carry their existing test inventory inside the
+        # manifest.  Promote it into the proposal's working section before
+        # merging new test segments so baseline flow references stay resolvable.
+        result["tests"] = json.loads(json.dumps(manifest["tests"]))
     flows = manifest.setdefault("flows", [])
     flow_map = {str(row.get("id")): row for row in flows if isinstance(row, dict)}
     for segment in segments:
@@ -745,6 +777,15 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
                 elif value:
                     target.append(row)
                     by_identity[value] = row
+    coverage = manifest.get("coverage")
+    if isinstance(coverage, dict):
+        # The manifest contract requires this sequence to be an exact ordered
+        # projection of the final flow list.  Keep the flow rows themselves
+        # model-owned; only repair this structural projection deterministically.
+        coverage["required_flow_ids"] = [
+            str(row.get("id")) for row in flows
+            if isinstance(row, dict) and str(row.get("id") or "").strip()
+        ]
     return result
 
 
@@ -1043,7 +1084,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 last_error = str(exc)
                 section_prompt_text += (
                     "\nThe previous response failed deterministic routing/schema validation. "
-                    "Retry this exact scope and return the required envelope fields; do not return a bare section payload."
+                    f"Exact errors: {last_error}. Correct every listed route or schema error "
+                    "in this retry; do not return a bare section payload or reuse a flow with "
+                    "a mismatched Requirement, Capability, or owner Task."
                 )
         raise ValueError(last_error or f"MVG segment {section} failed after retries")
 
@@ -1110,6 +1153,11 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         if isinstance(row, dict)
     }
     existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
+    baseline_flow_ids = {
+        str(row.get("id"))
+        for row in (existing_manifest or {}).get("flows", [])
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    } if isinstance(existing_manifest, dict) else set()
     if isinstance(existing_manifest, dict):
         manifest_base = existing_manifest
     else:
@@ -1139,7 +1187,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         {"entrypoints": skeleton_entrypoints},
         [{"entrypoints": assembled.get("entrypoints", [])}],
     ).get("entrypoints", skeleton_entrypoints)
-    bind_manifest_test_ids(assembled)
+    bind_manifest_test_ids(assembled, preserve_flow_ids=baseline_flow_ids)
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)

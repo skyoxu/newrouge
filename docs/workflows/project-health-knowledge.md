@@ -35,6 +35,13 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 
 ### Chapter 3 / Chapter 5 Workspace refresh
 
+Capability review incumbent rule: the topology entrypoint freezes a valid committed
+`docs/planning/semantic-topology/capabilities.v1.json` during `prepare` and exposes it
+to the independent reviewer as `D`. It is not included in the three new candidate
+generation sessions. The reviewer may retain `D` when no new proposal is demonstrably
+better. When no valid current file exists, the entrypoint uses the original A/B/C-only
+review and does not synthesize an incumbent.
+
 Registered closure producers use the unified Chapter Knowledge refresh hook rather than writing Project Health/KCP state ad hoc.
 
 - Chapter 3 records **Workspace → Last attempt** at run start through `refresh-knowledge --begin-run`, then refreshes it again at run end with available topology/gate evidence. An interrupted run therefore remains visible instead of silently leaving no attempt record.
