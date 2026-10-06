@@ -1005,7 +1005,10 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             if known_flow_ids and flow_id not in known_flow_ids:
                 errors.append("segment_test_flow_unknown")
             test_id = str(row.get("id") or "")
-            if scope_id and not test_id.startswith(scope_id + "-"):
+            exact_test_ids = {str(value) for value in request.get("test_ids", [])}
+            if scope_id and not (
+                    (request.get("allow_exact_test_id") and test_id in exact_test_ids)
+                    or test_id.startswith(scope_id + "-")):
                 errors.append("segment_test_id_outside_scope")
     return sorted(set(errors))
 
@@ -1599,6 +1602,10 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         for path in (prepared / "references" / "Game.Core" / "Contracts").rglob("*.cs")
         if path.is_file()
     ) if (prepared / "references" / "Game.Core" / "Contracts").is_dir() else []
+    if planning_scope is not None and planning_scope.get("contract_refs"):
+        contract_paths = sorted(set(contract_paths) & {
+            str(value).replace("\\", "/") for value in planning_scope["contract_refs"]
+        })
     declared_contract_refs = set(model_context.get("declared_contract_refs", []))
 
     requests: list[dict[str, Any]] = []
@@ -1656,7 +1663,9 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "requirements": [], "requirement_ids": [],
                          "task_ids": sorted({task_id for scope in scoped_scopes for task_id in scope["task_ids"]}),
                          "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
-                         "allow_exact_flow_id": planning_scope is not None})
+                         "allow_exact_flow_id": planning_scope is not None,
+                         "allow_exact_test_id": planning_scope is not None,
+                         "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else []})
 
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
@@ -1665,7 +1674,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         flow_context = [row for segment in segments for row in (segment.get("flows", []) or [])
                         if isinstance(row, dict)]
         flow_prefix = ("" if planning_scope is not None else f"{request['scope_id']}-") if section == "flows" else ""
-        test_prefix = f"{request['scope_id']}-" if section == "tests" else ""
+        test_prefix = (f"{request['scope_id']}-"
+                       if section == "tests" and planning_scope is None else "")
         section_prompt_text = segment_prompt(
             section=section, identity=identity,
             requirements=requirements, task_ids=scoped_tasks,
