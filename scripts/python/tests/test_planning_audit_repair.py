@@ -493,6 +493,66 @@ class PlanningAuditRepairTests(unittest.TestCase):
             mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
         self.assertLess(observed_sizes[0], 900_000)
 
+    def test_mvg_review_retries_structurally_invalid_output_before_semantic_verdict(self):
+        _state, _proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        report = load_json(run / "semantic-review.json")
+        (run / "semantic-review.json").unlink()
+        (run / "semantic-review-execution.json").unlink()
+        for path in run.glob("semantic-review-publication-*.json"):
+            path.unlink()
+        for path in (run / "semantic-review-workspace").glob("attempt-*"):
+            import shutil
+            shutil.rmtree(path)
+        journal = load_json(run / "run.json")
+        journal["semantic_review_attempts"] = []
+        atomic_json(run / "run.json", journal)
+        info = {
+            "schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture-reviewer",
+            "fresh_session_per_invocation": True, "filesystem_scope": "workspace_only",
+            "can_read_outside_workspace": False, "model_tools": [],
+        }
+        calls = []
+
+        def invoke(*args, **kwargs):
+            calls.append(kwargs.get("output_schema"))
+            atomic_json(kwargs["output_path"], {"schema_version": "wrong"} if len(calls) == 1 else report)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        with patch.object(mvg, "inspect_isolated_runner", return_value=info), \
+             patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            result = mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        self.assertEqual("approved", result["status"])
+        self.assertEqual(2, len(calls))
+        self.assertTrue(all(path is not None for path in calls))
+
+    def test_mvg_generation_normalizes_dotnet_selector_from_test_class(self):
+        _state, proposal, _dest = prepared_mvg(self.root)
+        proposal["manifest_candidate"]["tests"][0]["selector"] = "RelayTests*"
+        path = self.root / "Game.Core.Tests/Tasks/RelayTests.cs"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("namespace Fixture; public class RelayTests { }\n", encoding="utf-8")
+        proposal["manifest_candidate"]["tests"][0]["test_refs"] = [path.relative_to(self.root).as_posix()]
+        errors = mvg.validate_proposal(
+            self.root,
+            load_json(self.root / "logs/ci/mvg-planning/repair/run.json"),
+            proposal,
+        )
+        self.assertTrue(any("relay-contract: selector must be a class name" in value for value in errors["errors"]))
+        changed = mvg.normalize_dotnet_selectors(self.root, proposal)
+        self.assertEqual(1, changed)
+        self.assertEqual("RelayTests", proposal["manifest_candidate"]["tests"][0]["selector"])
+
+    def test_mvg_generation_does_not_guess_selector_when_test_file_has_multiple_classes(self):
+        _state, proposal, _dest = prepared_mvg(self.root)
+        proposal["manifest_candidate"]["tests"][0]["selector"] = "Relay*"
+        path = self.root / "Game.Core.Tests/Tasks/RelayTests.cs"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("public class RelayTests { } public class RelayFixture { }\n", encoding="utf-8")
+        changed = mvg.normalize_dotnet_selectors(self.root, proposal)
+        self.assertEqual(0, changed)
+        self.assertEqual("Relay*", proposal["manifest_candidate"]["tests"][0]["selector"])
+
     def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")

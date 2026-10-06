@@ -16,6 +16,7 @@ from openai_isolated_model_runner import (
     batched_workspace_parts,
     workspace_payload,
 )
+from _planning_skill_common import validate_output_schema
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 
@@ -139,6 +140,10 @@ def run(args: argparse.Namespace) -> int:
     output_path = Path(args.output).resolve()
     if not workspace.is_dir():
         raise ValueError("workspace directory is missing")
+    schema_value = getattr(args, "output_schema", "")
+    schema_path = Path(schema_value).resolve() if schema_value else None
+    if schema_path is not None and not schema_path.is_relative_to(workspace):
+        raise ValueError("output schema path must be inside workspace")
     batch_index = workspace / "analysis-input/model-batches/batch-index.json"
     if batch_index.is_file():
         base, batches = batched_workspace_parts(
@@ -168,6 +173,7 @@ def run(args: argparse.Namespace) -> int:
         "-s", "read-only",
         "-C", str(workspace),
         "--output-last-message", str(output_path),
+        *( ["--output-schema", str(schema_path)] if schema_path is not None else [] ),
         "-",
     ]
     proc = subprocess.run(
@@ -185,6 +191,8 @@ def run(args: argparse.Namespace) -> int:
         raise RuntimeError(f"Codex CLI failed rc={proc.returncode}: {(proc.stdout or '')[-4000:]}")
     if not output_path.is_file():
         raise RuntimeError("Codex CLI produced no output")
+    if schema_path is not None:
+        validate_output_schema(output_path, schema_path)
     print(json.dumps({
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
         "model": "codex-cli-default",
@@ -206,6 +214,7 @@ def main() -> int:
     parser.add_argument("--output")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--output-schema", default="")
     args = parser.parse_args()
     if args.describe:
         print(json.dumps(description(), ensure_ascii=False))

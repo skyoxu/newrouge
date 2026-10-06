@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from openai_isolated_model_runner import DEFAULT_MAX_BYTES, workspace_payload
+from _planning_skill_common import validate_output_schema
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 
@@ -132,6 +133,10 @@ def run(args: argparse.Namespace) -> int:
     output_path = Path(args.output).resolve()
     if not workspace.is_dir():
         raise ValueError("workspace directory is missing")
+    schema_value = getattr(args, "output_schema", "")
+    schema_path = Path(schema_value).resolve() if schema_value else None
+    if schema_path is not None and not schema_path.is_relative_to(workspace):
+        raise ValueError("output schema path must be inside workspace")
 
     batch_index_path = workspace / "analysis-input/model-batches/batch-index.json"
     if batch_index_path.is_file():
@@ -210,6 +215,8 @@ def run(args: argparse.Namespace) -> int:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content.rstrip() + "\n", encoding="utf-8", newline="\n")
+    if schema_path is not None:
+        validate_output_schema(output_path, schema_path)
     print(json.dumps({
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
         "model": actual_model,
@@ -233,6 +240,7 @@ def main() -> int:
     parser.add_argument("--output")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--output-schema", default="")
     args = parser.parse_args()
     if args.describe:
         print(json.dumps(description(), ensure_ascii=False))

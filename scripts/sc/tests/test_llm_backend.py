@@ -143,6 +143,33 @@ class LlmBackendTests(unittest.TestCase):
             self.assertEqual("review output\n", out_path.read_text(encoding="utf-8"))
             self.assertEqual(15.0, _FakeClient.last_timeout)
 
+    def test_run_llm_exec_passes_json_schema_to_openai_responses(self) -> None:
+        class _FakeResponses:
+            def create(self, **kwargs):
+                self.kwargs = dict(kwargs)
+                return type("Response", (), {"id": "resp_schema", "output_text": "{}"})()
+
+        class _FakeClient:
+            responses = _FakeResponses()
+
+            def __init__(self, *, timeout):  # noqa: ARG002
+                pass
+
+        fake_openai = type("FakeOpenAI", (), {"OpenAI": _FakeClient})
+        with tempfile.TemporaryDirectory() as td, \
+            mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "SC_OPENAI_MODEL": "auto"}, clear=False), \
+            mock.patch.object(llm_backend.importlib.util, "find_spec", return_value=object()), \
+            mock.patch.dict(sys.modules, {"openai": fake_openai}):
+            schema_path = Path(td) / "review-schema.json"
+            schema_path.write_text('{"type":"object","properties":{"ok":{"type":"boolean"}}}', encoding="utf-8")
+            rc, _out, _cmd = llm_backend.run_llm_exec(
+                backend="openai-api", root=REPO_ROOT, prompt="hello",
+                output_last_message=Path(td) / "out.json", timeout_sec=15,
+                output_schema=schema_path,
+            )
+            self.assertEqual(0, rc)
+            self.assertEqual("json_schema", _FakeClient.responses.kwargs["text"]["format"]["type"])
+
     def test_run_llm_exec_should_surface_openai_request_failures(self) -> None:
         class _FailingResponses:
             def create(self, **kwargs):  # noqa: ARG002

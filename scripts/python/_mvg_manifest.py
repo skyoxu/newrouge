@@ -133,7 +133,10 @@ def validate_manifest(root: Path, doc: dict, executable: bool = False) -> list[s
             if type(test['min_tests']) is not int or test['min_tests'] < 1:
                 errors.append(f'{label}: min_tests must be positive')
             if test['kind'] == 'dotnet' and not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.]+', test['selector']):
-                errors.append(f'{label}: selector must be a class name')
+                errors.append(
+                    f'{label}: selector must be a class name for {test["path"]}; '
+                    'use the declared C# class name only (no *, method filters, or wildcards)'
+                )
         used_tests = set()
         for flow in flows:
             label = flow['id']

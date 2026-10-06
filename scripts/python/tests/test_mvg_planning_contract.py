@@ -24,12 +24,65 @@ from plan_mvg import (
     bind_manifest_test_ids,
     _contract_candidates,
     validate_segment_references, validate_segment_routing,
-    _list_field,
+    validate_review_shape, _list_field,
+    normalize_proposal_format,
+    backfill_review_error_types,
 )
 from update_mvg_baseline import apply_delta
 
 
 class MvgPlanningContractTests(unittest.TestCase):
+    def test_review_shape_requires_complete_requirement_and_flow_rows(self):
+        state = {"analysis_identity_sha256": "sha256:analysis"}
+        proposal = {"schema_version": "newrouge.mvg-planning-proposal.v1",
+                    "manifest_candidate": {"flows": [{"id": "flow-a"}]}}
+        review = {
+            "schema_version": "newrouge.mvg-semantic-review.v1",
+            "analysis_identity_sha256": "sha256:analysis",
+            "proposal_sha256": plan_mvg.canonical_sha(proposal),
+            "verdict": "approved",
+            "findings": [],
+            "requirement_reviews": [],
+            "flow_reviews": [],
+        }
+        errors = validate_review_shape(
+            state, proposal, review, requirement_ids={"FR-1"}, flow_ids={"flow-a"}
+        )
+        self.assertIn("semantic_review_incomplete:requirement_reviews", errors)
+        self.assertIn("semantic_review_incomplete:flow_reviews", errors)
+
+    def test_review_output_schema_is_strict_and_identity_fields_are_required(self):
+        schema = plan_mvg.semantic_review_output_schema()
+        self.assertTrue(schema["additionalProperties"] is False)
+        self.assertIn("proposal_sha256", schema["required"])
+        self.assertEqual("object", schema["type"])
+        self.assertEqual("approved", schema["properties"]["verdict"]["enum"][0])
+
+    def test_normalize_proposal_format_repairs_only_unambiguous_scalars(self):
+        proposal = {
+            "manifest_candidate": {
+                "flows": [{"id": "flow-a", "task_ids": ["7"], "handoffs": [
+                    {"producer_task": "7", "consumer_task": "7", "owner_task": "7"}
+                ], "test_ids": "test-a"}],
+                "tests": [{"id": "test-a", "min_tests": "1"}],
+                "coverage": {"required_flow_ids": ["wrong"]},
+            }
+        }
+        changed = normalize_proposal_format(proposal)
+        self.assertGreater(changed, 0)
+        self.assertEqual([7], proposal["manifest_candidate"]["flows"][0]["task_ids"])
+        self.assertEqual(1, proposal["manifest_candidate"]["tests"][0]["min_tests"])
+        self.assertEqual(["flow-a"], proposal["manifest_candidate"]["coverage"]["required_flow_ids"])
+
+    def test_backfill_review_error_types_is_idempotent(self):
+        state = {"semantic_review_attempts": [{
+            "status": "execution-failed",
+            "error": "isolated model runner failed: Input exceeds the maximum length",
+        }]}
+        self.assertTrue(backfill_review_error_types(state))
+        self.assertEqual("runner_input_too_large", state["semantic_review_attempts"][0]["error_type"])
+        self.assertFalse(backfill_review_error_types(state))
+
     def test_coverage_skeleton_accounts_for_every_delivery_requirement(self):
         semantics = {"requirements": [
             {"requirement_id": "FR-1", "delivery_relevant": True, "status": "active", "source_block_ids": ["SB-1"]},
@@ -654,6 +707,11 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertIn("Existing reviewed contract refs", source)
         self.assertIn("Existing test refs", source)
         self.assertIn("for attempt in (1, 2, 3)", source)
+
+    def test_selector_validation_explains_exact_class_name_requirement(self) -> None:
+        source = Path(__import__("_mvg_manifest").__file__).read_text(encoding="utf-8")
+        self.assertIn("selector must be a class name for", source)
+        self.assertIn("no *, method filters, or wildcards", source)
 
     def test_delta_preserves_unchanged_rows(self) -> None:
         existing = self.manifest()

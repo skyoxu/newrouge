@@ -43,7 +43,7 @@ SEMANTICS = Path("logs/ci/task-generation/semantic-requirements.v1.json")
 MVG_REVIEW_ATTEMPT_LIMIT = 10
 MVG_ERROR_MESSAGE_LIMIT = 2000
 MVG_REVIEW_WORKSPACE_LIMIT = 850_000
-MVG_REVIEW_EVIDENCE_EXCERPT_CHARS = 600
+MVG_REVIEW_EVIDENCE_EXCERPT_CHARS = 2400
 
 
 def _compact_exception_message(value: Any, limit: int = MVG_ERROR_MESSAGE_LIMIT) -> str:
@@ -79,11 +79,122 @@ def classify_review_error(exc: BaseException) -> str:
         return "runner_stream_disconnected"
     if isinstance(exc, TimeoutError) or "timed out" in lowered or "timeout" in lowered:
         return "runner_timeout"
+    if "output schema" in lowered or "json schema" in lowered:
+        return "runner_output_schema_invalid"
     if "json" in lowered or "model output" in lowered:
         return "runner_invalid_json"
     if "identity" in lowered:
         return "runner_identity_invalid"
     return "runner_execution_failed"
+
+
+def validate_review_shape(state: dict[str, Any], proposal: dict[str, Any], review: dict[str, Any], *,
+                          requirement_ids: set[str], flow_ids: set[str],
+                          check_identity: bool = True, check_accounting: bool = True) -> list[str]:
+    """Validate the review envelope before treating it as a semantic verdict.
+
+    This is intentionally stricter than the semantic review gate: malformed or
+    incomplete model output is a runner/schema failure and may be retried. A
+    structurally valid ``blocked`` verdict remains a semantic finding and is
+    not retried automatically.
+    """
+    errors: list[str] = []
+    if review.get("schema_version") != "newrouge.mvg-semantic-review.v1":
+        errors.append("semantic_review_schema_mismatch")
+    if check_identity and review.get("analysis_identity_sha256") != state.get("analysis_identity_sha256"):
+        errors.append("semantic_review_analysis_identity_mismatch")
+    if check_identity and review.get("proposal_sha256") != canonical_sha(proposal):
+        errors.append("semantic_review_proposal_identity_mismatch")
+    if review.get("verdict") not in {"approved", "blocked"}:
+        errors.append("semantic_review_verdict_invalid")
+    findings = review.get("findings")
+    if not isinstance(findings, list):
+        errors.append("semantic_review_findings_not_array")
+    elif review.get("verdict") == "approved" and findings:
+        errors.append("semantic_review_approved_findings_nonempty")
+
+    def check_rows(key: str, id_key: str, expected: set[str], verdicts: set[str]) -> None:
+        rows = review.get(key)
+        if not isinstance(rows, list):
+            errors.append(f"semantic_review_invalid_array:{key}")
+            return
+        ids: list[str] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                errors.append(f"semantic_review_invalid_row:{key}")
+                continue
+            row_id = str(row.get(id_key) or "")
+            ids.append(row_id)
+            if row.get("verdict") not in verdicts:
+                errors.append(f"semantic_review_invalid_verdict:{key}")
+            if not isinstance(row.get("rationale"), str) or not row["rationale"].strip():
+                errors.append(f"semantic_review_rationale_missing:{key}:{row_id}")
+        if set(ids) != expected or len(ids) != len(expected):
+            errors.append(f"semantic_review_incomplete:{key}")
+
+    if check_accounting:
+        check_rows("requirement_reviews", "requirement_id", requirement_ids,
+                   {"covered", "other_verification", "deferred", "blocked"})
+        check_rows("flow_reviews", "flow_id", flow_ids, {"sound", "blocked"})
+    else:
+        for key in ("requirement_reviews", "flow_reviews"):
+            if not isinstance(review.get(key), list):
+                errors.append(f"semantic_review_invalid_array:{key}")
+    return sorted(set(errors))
+
+
+def backfill_review_error_types(state: dict[str, Any]) -> bool:
+    """Annotate pre-budget-error logs without changing their historical status."""
+    changed = False
+    for row in state.get("semantic_review_attempts", []) or []:
+        if not isinstance(row, dict) or row.get("error_type") or row.get("status") == "completed":
+            continue
+        error = str(row.get("error") or "")
+        if not error:
+            continue
+        row["error_type"] = classify_review_error(error)
+        changed = True
+    return changed
+
+
+def semantic_review_output_schema() -> dict[str, Any]:
+    """Return the transport-level JSON schema for an independent review."""
+    rationale = {"type": "string", "minLength": 1}
+    requirement = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["requirement_id", "verdict", "rationale"],
+        "properties": {
+            "requirement_id": {"type": "string", "minLength": 1},
+            "verdict": {"type": "string", "enum": ["covered", "other_verification", "deferred", "blocked"]},
+            "rationale": rationale,
+        },
+    }
+    flow = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["flow_id", "verdict", "rationale"],
+        "properties": {
+            "flow_id": {"type": "string", "minLength": 1},
+            "verdict": {"type": "string", "enum": ["sound", "blocked"]},
+            "rationale": rationale,
+        },
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["schema_version", "analysis_identity_sha256", "proposal_sha256",
+                      "verdict", "findings", "requirement_reviews", "flow_reviews"],
+        "properties": {
+            "schema_version": {"type": "string", "const": "newrouge.mvg-semantic-review.v1"},
+            "analysis_identity_sha256": {"type": "string", "minLength": 1},
+            "proposal_sha256": {"type": "string", "minLength": 1},
+            "verdict": {"type": "string", "enum": ["approved", "blocked"]},
+            "findings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "requirement_reviews": {"type": "array", "items": requirement},
+            "flow_reviews": {"type": "array", "items": flow},
+        },
+    }
 
 
 class MVGReviewAttemptBudgetError(ValueError):
@@ -218,6 +329,100 @@ def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str
         )
 
 
+def normalize_dotnet_selectors(root: Path, proposal: dict[str, Any]) -> int:
+    """Repair deterministic selector syntax when the referenced file has one class."""
+    changed = 0
+    manifest = proposal.get("manifest_candidate") or {}
+    for test in manifest.get("tests", []) if isinstance(manifest, dict) else []:
+        if not isinstance(test, dict) or test.get("kind") != "dotnet":
+            continue
+        selector = str(test.get("selector") or "")
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]+", selector):
+            continue
+        paths = [str(test.get("path") or "")]
+        paths.extend(str(value) for value in test.get("test_refs", []) if str(value).strip())
+        classes: set[str] = set()
+        for path in paths:
+            try:
+                target = repo_path(root, path)
+            except ValueError:
+                continue
+            if target.is_file():
+                classes.update(re.findall(r"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\b", target.read_text(encoding="utf-8")))
+        pattern = selector.replace("*", "")
+        matching = sorted(name for name in classes if name.startswith(pattern)) if "*" in selector else []
+        if len(matching) != 1:
+            continue
+        test["selector"] = matching[0]
+        changed += 1
+    return changed
+
+
+def normalize_proposal_format(proposal: dict[str, Any]) -> int:
+    """Apply only lossless formatting repairs before semantic validation.
+
+    This never invents IDs or routes. It normalizes legacy scalar encodings and
+    derives the required-flow ordering from the proposal's own flow list.
+    """
+    changed = 0
+    manifest = proposal.get("manifest_candidate")
+    if not isinstance(manifest, dict):
+        return changed
+    flows = manifest.get("flows")
+    if not isinstance(flows, list):
+        return changed
+    for flow in flows:
+        if not isinstance(flow, dict):
+            continue
+        task_ids = flow.get("task_ids")
+        if isinstance(task_ids, list):
+            converted = []
+            for value in task_ids:
+                if isinstance(value, str) and value.isdigit():
+                    converted.append(int(value))
+                    changed += 1
+                else:
+                    converted.append(value)
+            flow["task_ids"] = converted
+        test_ids = flow.get("test_ids")
+        if isinstance(test_ids, str) and test_ids.strip():
+            flow["test_ids"] = [test_ids.strip()]
+            changed += 1
+        for handoff in flow.get("handoffs", []) if isinstance(flow.get("handoffs"), list) else []:
+            if not isinstance(handoff, dict):
+                continue
+            for key in ("producer_task", "consumer_task", "owner_task"):
+                value = handoff.get(key)
+                if isinstance(value, str) and value.isdigit():
+                    handoff[key] = int(value)
+                    changed += 1
+    for test in manifest.get("tests", []) if isinstance(manifest.get("tests"), list) else []:
+        if not isinstance(test, dict):
+            continue
+        value = test.get("min_tests")
+        if isinstance(value, str) and value.isdigit():
+            test["min_tests"] = int(value)
+            changed += 1
+    coverage = manifest.get("coverage")
+    if isinstance(coverage, dict):
+        blockers = coverage.get("blocking_task_ids")
+        if isinstance(blockers, list):
+            converted_blockers = []
+            for value in blockers:
+                if isinstance(value, str) and value.isdigit():
+                    converted_blockers.append(int(value))
+                    changed += 1
+                else:
+                    converted_blockers.append(value)
+            coverage["blocking_task_ids"] = converted_blockers
+        required = [str(flow.get("id")) for flow in flows
+                    if isinstance(flow, dict) and str(flow.get("id") or "").strip()]
+        if coverage.get("required_flow_ids") != required:
+            coverage["required_flow_ids"] = required
+            changed += 1
+    return changed
+
+
 def _list_field(row: dict[str, Any], key: str) -> list[Any]:
     """Return a task-view list field without treating explicit null as iterable."""
     value = row.get(key)
@@ -265,7 +470,9 @@ def correction_prompt(errors: list[str]) -> str:
     return ("Return a JSON patch only, not a replacement proposal. Allowed arrays are: "
             "coverage_additions, flow_updates, handoff_updates, entrypoint_additions. "
             "Do not remove or rewrite valid existing data. Preserve all IDs and Requirement rows. "
-            "Fix only these validator errors:\n- " + "\n- ".join(str(value) for value in errors))
+            "For selector errors, update the existing manifest test object in-place using the exact C# class "
+            "declared by that test's path; the selector must be a class name and never contain *, a method "
+            "filter, or a wildcard. Fix only these validator errors:\n- " + "\n- ".join(str(value) for value in errors))
 
 
 RESTRICTED_PATCH_KEYS = {"coverage_additions", "flow_updates", "handoff_updates", "entrypoint_additions"}
@@ -1855,6 +2062,8 @@ Prefer these real refs instead of inventing alternatives. If a required real obj
             base = proposal or load_json(run_dir / "proposal.json", {})
             parsed = apply_restricted_patch(base, parsed)
         proposal = parsed
+        normalize_proposal_format(proposal)
+        normalize_dotnet_selectors(root, proposal)
         validation = validate_proposal(root, state, proposal)
         execution["proposal_sha256"] = canonical_sha(proposal)
         execution["deterministic_validation"] = validation
@@ -2018,6 +2227,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
         if recorded != publication and not publication_complete(recorded):
             raise ValueError("MVG review publication is pending; recover the original proposal before revising it")
     settled = state.get("semantic_review_attempts") or []
+    if backfill_review_error_types(state):
+        atomic_json(run_path, state)
     if settled and settled[-1].get("status") == "completed" and settled[-1].get("proposal_sha256") != proposal_sha:
         prior_sha = str(settled[-1].get("proposal_sha256") or "").removeprefix("sha256:")
         if not (run_dir / f"semantic-review-publication-{prior_sha}.json").is_file():
@@ -2056,6 +2267,18 @@ with exactly one explicit non-empty rationale per active delivery-relevant Requi
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
 '''
+    semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+    required_requirement_ids = {
+        str(row.get("requirement_id"))
+        for row in semantics.get("requirements", [])
+        if isinstance(row, dict) and row.get("status", "active") == "active"
+        and row.get("delivery_relevant", True)
+    }
+    manifest = proposal.get("manifest_candidate") or {}
+    required_flow_ids = {
+        str(row.get("id")) for row in manifest.get("flows", [])
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
     import time
     attempts = state.setdefault("semantic_review_attempts", [])
     state["semantic_review_attempt_limit"] = MVG_REVIEW_ATTEMPT_LIMIT
@@ -2065,10 +2288,24 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     if attempts and attempts[-1].get("proposal_sha256") == proposal_sha:
         restored = completed_output(attempts, run_dir / "semantic-review-workspace" / f"attempt-{len(attempts)}" / "review.json")
         if restored:
-            record, result = restored
+            record, restored_result = restored
             if record.get("runner_info") != runner_info or record.get("analysis_identity_sha256") != state["analysis_identity_sha256"]:
                 raise ValueError("Completed MVG review execution identity changed")
-            receipt = record["receipt"]
+            restored_errors = validate_review_shape(
+                state, proposal, restored_result,
+                requirement_ids=required_requirement_ids,
+                flow_ids=required_flow_ids,
+                check_identity=False,
+                check_accounting=False,
+            )
+            if restored_errors:
+                record.update(status="execution-failed",
+                              error="restored review output schema invalid: " + ";".join(restored_errors),
+                              error_type="runner_output_schema_invalid")
+                atomic_json(run_path, state)
+            else:
+                result = restored_result
+                receipt = record["receipt"]
     while len(attempts) < MVG_REVIEW_ATTEMPT_LIMIT and result is None:
         number = len(attempts) + 1
         workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
@@ -2077,6 +2314,8 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
         output = workspace / "review.json"
+        output_schema = workspace / "review-output-schema.json"
+        atomic_json(output_schema, semantic_review_output_schema())
         record = {"stage": "review", "attempt": number, "status": "running", "proposal_sha256": proposal_sha,
             "runner_info": runner_info, "analysis_identity_sha256": state["analysis_identity_sha256"]}
         attempts.append(record)
@@ -2085,12 +2324,24 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         try:
             _prepare_review_workspace(run_dir, workspace, proposal)
             receipt = run_isolated_model(runner, workspace=workspace, prompt_path=prompt_path,
-                output_path=output, timeout_sec=timeout_sec)
+                output_path=output, timeout_sec=timeout_sec, output_schema=output_schema)
             if receipt.get("model_tools") != [] or not receipt.get("model"):
                 raise ValueError("independent reviewer execution identity is incomplete")
             result = parse_model_json(output)
+            shape_errors = validate_review_shape(
+                state, proposal, result,
+                requirement_ids=required_requirement_ids,
+                flow_ids=required_flow_ids,
+                check_identity=False,
+                check_accounting=False,
+            )
+            if shape_errors:
+                raise ValueError("independent reviewer output schema invalid: " + ";".join(shape_errors))
             record.update(status="completed", receipt=receipt, output_sha256=file_sha(output))
         except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
+            # A parsed but schema-invalid response is not a usable result;
+            # clear it so the bounded retry loop actually executes.
+            result = None
             record.update(status="execution-failed", error=_compact_exception_message(exc),
                           error_type=classify_review_error(exc))
             state["phase"] = "review-execution-blocked"

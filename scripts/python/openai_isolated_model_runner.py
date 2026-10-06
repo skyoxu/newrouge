@@ -21,6 +21,7 @@ from _llm_backend import (  # noqa: E402
     inspect_llm_backend,
     run_llm_exec,
 )
+from _planning_skill_common import validate_output_schema  # noqa: E402
 
 SCHEMA = "newrouge.isolated-model-runner.v1"
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024
@@ -205,6 +206,7 @@ def _response(
     prompt: str,
     previous_response_id: str | None,
     timeout_sec: float,
+    output_schema: dict[str, Any] | None = None,
 ) -> Any:
     kwargs: dict[str, Any] = {
         "model": model_name(),
@@ -213,6 +215,11 @@ def _response(
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
+    if output_schema is not None:
+        kwargs["text"] = {"format": {
+            "type": "json_schema", "name": "newrouge_mvg_review",
+            "strict": True, "schema": output_schema,
+        }}
     request_client = client.with_options(timeout=max(1.0, timeout_sec))
     return request_client.responses.create(**kwargs)
 
@@ -224,6 +231,7 @@ def _run_batched_session(
     output_path: Path,
     timeout_sec: int,
     max_bytes: int,
+    output_schema_path: Path | None = None,
 ) -> dict[str, Any]:
     original_prompt = prompt_path.read_text(encoding="utf-8").rstrip()
     base, batches = batched_workspace_parts(
@@ -237,7 +245,7 @@ def _run_batched_session(
     previous_id: str | None = None
     request_count = 0
 
-    def call(text: str) -> Any:
+    def call(text: str, *, output_schema: dict[str, Any] | None = None) -> Any:
         nonlocal previous_id, request_count
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -247,6 +255,7 @@ def _run_batched_session(
             prompt=text,
             previous_response_id=previous_id,
             timeout_sec=remaining,
+            output_schema=output_schema,
         )
         request_count += 1
         response_id = str(getattr(response, "id", "") or "").strip()
@@ -274,12 +283,15 @@ def _run_batched_session(
         if not ack:
             raise RuntimeError(f"empty ingestion acknowledgement for {rel}")
 
+    schema = None
+    if output_schema_path is not None:
+        schema = json.loads(output_schema_path.read_text(encoding="utf-8"))
     final = call(
         "\n\n".join([
             "All ordered source batches are now loaded in this same session.",
             "Produce the final answer now, following the original instruction exactly.",
             "Return only the requested final JSON object; do not include ingestion acknowledgements or markdown fences.",
-        ])
+        ]), output_schema=schema
     )
     output_text = _extract_response_output_text(final)
     if not output_text:
@@ -306,6 +318,10 @@ def run(args: argparse.Namespace) -> int:
     output_path = Path(args.output).resolve()
     if not workspace.is_dir():
         raise ValueError("workspace directory is missing")
+    schema_value = getattr(args, "output_schema", "")
+    schema_path = Path(schema_value).resolve() if schema_value else None
+    if schema_path is not None and not schema_path.is_relative_to(workspace):
+        raise ValueError("output schema path must be inside workspace")
     backend = inspect_llm_backend("openai-api")
     if backend.get("available") is not True:
         reasons = "; ".join(str(value) for value in backend.get("blocking_errors", []))
@@ -318,6 +334,7 @@ def run(args: argparse.Namespace) -> int:
             output_path=output_path,
             timeout_sec=args.timeout_sec,
             max_bytes=args.max_bytes,
+            output_schema_path=schema_path,
         )
         print(json.dumps(receipt, ensure_ascii=False))
         return 0
@@ -335,10 +352,13 @@ def run(args: argparse.Namespace) -> int:
         output_last_message=output_path,
         timeout_sec=args.timeout_sec,
         codex_configs=["model_reasoning_effort=high"],
+        output_schema=schema_path,
     )
     if rc != 0:
         print(trace_text.rstrip())
         return rc
+    if schema_path is not None:
+        validate_output_schema(output_path, schema_path)
     trace = json.loads(trace_text)
     receipt = {
         "schema_version": "newrouge.isolated-model-runner-receipt.v1",
@@ -365,6 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default="")
     parser.add_argument("--timeout-sec", type=int, default=1800)
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--output-schema", default="")
     args = parser.parse_args(argv)
     if args.describe:
         print(json.dumps(description(), ensure_ascii=False))

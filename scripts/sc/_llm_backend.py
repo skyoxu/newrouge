@@ -128,6 +128,19 @@ def run_llm_exec(
             "model": model,
             "input": prompt,
         }
+        if output_schema is not None:
+            try:
+                schema = json.loads(output_schema.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                return 1, f"openai-api output schema could not be loaded: {exc}\n", [backend_name]
+            kwargs["text"] = {
+                "format": {
+                    "type": "json_schema",
+                    "name": "newrouge_mvg_review",
+                    "strict": True,
+                    "schema": schema,
+                }
+            }
         if reasoning_effort:
             kwargs["reasoning"] = {"effort": reasoning_effort}
         try:

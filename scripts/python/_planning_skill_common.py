@@ -421,6 +421,24 @@ def parse_model_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def validate_output_schema(output_path: Path, schema_path: Path) -> None:
+    """Reject a runner response that does not satisfy its host-supplied schema."""
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    try:
+        import jsonschema  # type: ignore
+    except ImportError:
+        required = schema.get("required", []) if isinstance(schema, dict) else []
+        if not isinstance(payload, dict) or any(key not in payload for key in required):
+            raise ValueError("model output does not satisfy required JSON schema fields")
+        return
+    errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(payload),
+                    key=lambda error: list(error.absolute_path))
+    if errors:
+        details = "; ".join(error.message for error in errors[:8])
+        raise ValueError(f"model output does not satisfy JSON schema: {details}")
+
+
 def _runner_prefix(executable: Path) -> list[str]:
     if executable.suffix.casefold() == ".py":
         return [sys.executable, str(executable)]
@@ -491,6 +509,7 @@ def run_isolated_model(
     prompt_path: Path,
     output_path: Path,
     timeout_sec: int,
+    output_schema: Path | None = None,
 ) -> dict[str, Any]:
     cmd = [
         *_runner_prefix(executable),
@@ -499,6 +518,8 @@ def run_isolated_model(
         "--output", str(output_path),
         "--timeout-sec", str(timeout_sec),
     ]
+    if output_schema is not None:
+        cmd.extend(["--output-schema", str(output_schema)])
     kwargs: dict[str, Any] = {
         "text": True,
         "encoding": "utf-8",
@@ -527,6 +548,8 @@ def run_isolated_model(
         raise RuntimeError(f"isolated model runner failed: {stdout.strip()}")
     if not output_path.is_file():
         raise RuntimeError("isolated model runner produced no output")
+    if output_schema is not None:
+        validate_output_schema(output_path, output_schema)
     receipt = {}
     for line in reversed(stdout.splitlines()):
         line = line.strip()
