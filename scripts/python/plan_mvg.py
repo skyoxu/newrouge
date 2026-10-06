@@ -42,6 +42,8 @@ LEDGER = Path("logs/ci/task-generation/source-blocks.v1.json")
 SEMANTICS = Path("logs/ci/task-generation/semantic-requirements.v1.json")
 MVG_REVIEW_ATTEMPT_LIMIT = 10
 MVG_ERROR_MESSAGE_LIMIT = 2000
+MVG_REVIEW_WORKSPACE_LIMIT = 850_000
+MVG_REVIEW_EVIDENCE_EXCERPT_CHARS = 600
 
 
 def _compact_exception_message(value: Any, limit: int = MVG_ERROR_MESSAGE_LIMIT) -> str:
@@ -69,7 +71,9 @@ def classify_review_error(exc: BaseException) -> str:
     """Return a stable machine-readable class for one isolated review failure."""
     text = str(exc)
     lowered = text.lower()
-    if "input exceeds the maximum length" in lowered or "maximum context length" in lowered:
+    if ("input exceeds the maximum length" in lowered
+            or "maximum context length" in lowered
+            or "bounded mvg review workspace exceeds" in lowered):
         return "runner_input_too_large"
     if "stream disconnected" in lowered or "connection reset" in lowered:
         return "runner_stream_disconnected"
@@ -94,6 +98,123 @@ class MVGReviewAttemptBudgetError(ValueError):
             "MVG independent review execution attempt budget exhausted; upstream proposal is preserved; "
             f"error_type={error_type}; attempts={attempts_used}/{attempt_limit}; "
             f"last_error={_compact_exception_message(last_error)}"
+        )
+
+
+def _review_reference_paths(proposal: dict[str, Any]) -> set[str]:
+    """Collect repository-relative evidence paths explicitly claimed by a proposal."""
+    refs: set[str] = set()
+    manifest = proposal.get("manifest_candidate") or {}
+    if not isinstance(manifest, dict):
+        return refs
+    for flow in manifest.get("flows", []):
+        if not isinstance(flow, dict):
+            continue
+        source_paths = flow.get("source_paths")
+        if isinstance(source_paths, list):
+            refs.update(str(value).replace("\\", "/") for value in source_paths if str(value).strip())
+        for handoff in flow.get("handoffs", []):
+            if isinstance(handoff, dict) and handoff.get("contract_ref"):
+                refs.add(str(handoff["contract_ref"]).split("#", 1)[0].replace("\\", "/"))
+            if isinstance(handoff, dict):
+                contract_refs = handoff.get("contract_refs")
+                if isinstance(contract_refs, list):
+                    refs.update(str(value).split("#", 1)[0].replace("\\", "/")
+                                for value in contract_refs if str(value).strip())
+    tests = manifest.get("tests")
+    if isinstance(tests, list):
+        for row in tests:
+            if isinstance(row, dict) and row.get("path"):
+                refs.add(str(row["path"]).split("#", 1)[0].replace("\\", "/"))
+    for row in proposal.get("entrypoints", []):
+        if isinstance(row, dict) and row.get("status") == "existing_verified" and row.get("path"):
+            refs.add(str(row["path"]).split("#", 1)[0].replace("\\", "/"))
+    return {value for value in refs if value}
+
+
+def _review_excerpt(path: Path, limit: int = MVG_REVIEW_EVIDENCE_EXCERPT_CHARS) -> tuple[str, bool]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return "", True
+    if len(text) <= limit:
+        return text, False
+    head = limit // 2
+    tail = limit - head
+    return text[:head] + "\n... [excerpt truncated; full file hash is retained] ...\n" + text[-tail:], True
+
+
+def _write_review_projection(path: Path, payload: Any) -> None:
+    """Write ephemeral model context without touching the durable run journal."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str, Any]) -> None:
+    """Create a bounded, hash-bound model projection without changing review inputs."""
+    source = run_dir / "analysis-input"
+    target = workspace / "analysis-input"
+    target.mkdir(parents=True, exist_ok=True)
+    excluded_files = {"task-master.json", "analysis-index.json"}
+    excluded_dirs = {"references", "task-views"}
+    for item in source.iterdir():
+        if item.name in excluded_files or item.name in excluded_dirs:
+            continue
+        destination = target / item.name
+        if item.is_dir():
+            shutil.copytree(item, destination)
+        elif item.is_file():
+            shutil.copy2(item, destination)
+
+    compact_fields = (
+        "taskmaster_id", "id", "status", "priority", "semantic_refs",
+        "requirement_ids", "capability_refs",
+    )
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(source / "task-views" / name, [])
+        compact = [{key: row.get(key) for key in compact_fields if key in row}
+                   for row in payload if isinstance(row, dict)]
+        _write_review_projection(target / "task-views" / name, compact)
+
+    master = load_json(source / "task-master.json", {})
+    tasks = (master.get("master") or {}).get("tasks", []) if isinstance(master, dict) else []
+    _write_review_projection(target / "task-master.json", {"master": {"tasks": [
+        {key: row.get(key) for key in ("id", "status", "priority") if key in row}
+        for row in tasks if isinstance(row, dict)
+    ]}})
+
+    index = load_json(source / "analysis-index.json", {})
+    _write_review_projection(target / "analysis-index.json", {
+        "schema_version": index.get("schema_version"),
+        "analysis_identity_sha256": index.get("analysis_identity_sha256"),
+        "source_revision": index.get("source_revision"),
+        "source_manifest_sha256": index.get("source_manifest_sha256"),
+        "authority_input_count": len(index.get("authority_inputs") or {}),
+        "prepared_file_count": len(index.get("files") or {}),
+    })
+
+    evidence = []
+    references = source / "references"
+    for rel in sorted(_review_reference_paths(proposal)):
+        candidate = references / rel
+        if not candidate.is_file():
+            candidate = source / "sources" / rel
+        if not candidate.is_file():
+            evidence.append({"path": rel, "status": "not_in_prepared_bundle"})
+            continue
+        excerpt, truncated = _review_excerpt(candidate)
+        evidence.append({"path": rel, "sha256": file_sha(candidate),
+                         "excerpt": excerpt, "excerpt_truncated": truncated})
+    _write_review_projection(target / "review-evidence.json", {
+        "schema_version": "newrouge.mvg-review-evidence.v1",
+        "note": "Bounded excerpts are for semantic review context; deterministic validation uses the complete immutable bundle.",
+        "files": evidence,
+    })
+
+    size = sum(path.stat().st_size for path in workspace.rglob("*") if path.is_file())
+    if size >= MVG_REVIEW_WORKSPACE_LIMIT:
+        raise ValueError(
+            f"bounded MVG review workspace exceeds {MVG_REVIEW_WORKSPACE_LIMIT} bytes: {size}"
         )
 
 
@@ -1916,12 +2037,14 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
             raise ValueError("existing independent semantic review is blocked; resolve findings before reviewing a revised proposal: "
                 + ";".join(errors))
         return {"status": "approved", "proposal_sha256": proposal_sha, "runtime_verified": False}
-    prompt = f'''Independently review proposal.json against ALL prepared source text, reviewed Requirements,
+    prompt = f'''Independently review proposal.json against the prepared source text and bounded review evidence,
 Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
 cross-system handoffs, every Requirement's flow/other-verification/deferred accounting, entrypoint inputs/state/assertions,
 test evidence levels and feasibility. Planned entrypoints/tests are legitimate future obligations, not runtime proof.
-Do not require their implementation or claim runtime_verified. Do not approve invented refs, missing obligations,
+Do not require their implementation or claim runtime_verified. The review-evidence.json file contains hash-bound
+excerpts of proposal-referenced contracts/tests; deterministic validation still uses the complete immutable bundle.
+Do not approve invented refs, missing obligations,
 mechanical one-flow-per-Capability grouping, unsupported deferral or baseline weakening.
 Return JSON only: schema_version="newrouge.mvg-semantic-review.v1",
 analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256="{canonical_sha(proposal)}",
@@ -1950,7 +2073,6 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         number = len(attempts) + 1
         workspace = run_dir / "semantic-review-workspace" / f"attempt-{number}"
         workspace.mkdir(parents=True, exist_ok=False)
-        shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
         atomic_json(workspace / "proposal.json", proposal)
         prompt_path = workspace / "prompt.txt"
         prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
@@ -1961,6 +2083,7 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         atomic_json(run_path, state)  # Count even an interrupted invocation.
         started = time.monotonic()
         try:
+            _prepare_review_workspace(run_dir, workspace, proposal)
             receipt = run_isolated_model(runner, workspace=workspace, prompt_path=prompt_path,
                 output_path=output, timeout_sec=timeout_sec)
             if receipt.get("model_tools") != [] or not receipt.get("model"):

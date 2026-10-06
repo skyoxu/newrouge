@@ -460,6 +460,39 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertTrue(all(row["error_type"] == "runner_input_too_large" for row in attempts))
         self.assertTrue(all(len(row["error"]) < 2000 for row in attempts))
 
+    def test_mvg_review_workspace_is_compacted_before_runner_invocation(self):
+        _state, _proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        report = load_json(run / "semantic-review.json")
+        proposal = load_json(run / "proposal.json")
+        proposal["manifest_candidate"]["flows"][0]["handoffs"][0]["contract_refs"] = None
+        atomic_json(run / "proposal.json", proposal)
+        report["proposal_sha256"] = canonical_sha(proposal)
+        atomic_json(run / "semantic-review.json", report)
+        (run / "semantic-review.json").unlink()
+        (run / "semantic-review-execution.json").unlink()
+        # An unreferenced prepared evidence file must not consume the Codex
+        # turn budget merely because it is present in the immutable bundle.
+        noise = run / "analysis-input/references/unused-large-evidence.txt"
+        noise.write_text("x" * 1_100_000, encoding="utf-8")
+        observed_sizes = []
+
+        def invoke(*args, **kwargs):
+            observed_sizes.append(sum(path.stat().st_size for path in kwargs["workspace"].rglob("*")
+                                      if path.is_file() and path != kwargs["output_path"]))
+            atomic_json(kwargs["output_path"], report)
+            return {"model": "fixture-reviewer", "model_tools": []}
+
+        runner_info = load_json(run / "semantic-review-execution.json") if (run / "semantic-review-execution.json").is_file() else {
+            "schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture-reviewer",
+            "fresh_session_per_invocation": True, "filesystem_scope": "workspace_only",
+            "can_read_outside_workspace": False, "model_tools": [],
+        }
+        with patch.object(mvg, "inspect_isolated_runner", return_value=runner_info), \
+             patch.object(mvg, "run_isolated_model", side_effect=invoke):
+            mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        self.assertLess(observed_sizes[0], 900_000)
+
     def test_capability_transport_failure_does_not_pin_auto_as_actual_model(self):
         run = selected_cap(self.root)
         candidate = load_json(run / "candidates/candidate-1.json")
