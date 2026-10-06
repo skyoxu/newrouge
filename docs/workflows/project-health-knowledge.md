@@ -19,7 +19,7 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 
 ### 页面生成 Capability 与 MVG
 
-`/knowledge/topology` 的 Filters 提供 `Generate Capability from main`。按钮锁定点击时本地 `refs/heads/main` 的最后一次提交，在真实 Git detached worktree 中执行既有 `plan-capabilities` 的 prepare → generate → review → preview-alignment → apply。它不 fetch，不读取当前分支未提交文件，也不选择 Project Health/KCP 扫描快照、目录副本或归档作为输入。执行期间 main 变化即阻断。
+`/knowledge/topology` 的 Filters 提供 `Generate Capability from main`。按钮在当前本地工作区的已提交输入上执行既有 `plan-capabilities` 的 prepare → generate → review → preview-alignment → apply。Capability、选择/审查结果和拓扑投影只保存在本地并被输入指纹保护，不由 Git 跟踪，也不因单纯的本地提交号变化而失效；GDD、Chapter 3 证据、任务三联和 Chapter 5 readiness 变化时才需要重新生成。
 
 来源清单和语义记录必须与已提交 main 的正式拓扑一致；所需 Chapter 5 reconciliation/readiness 必须仍对该提交有效。Chapter 5 extraction 记录仅作为既有 readiness/apply 门控证据，不能替代 main 来源。三候选、独立评选、源保真校验和 ID 对齐仍由原规划器执行；有歧义的 ID 不自动批准。成功后页面切到 Main、Kind=Capability 并刷新数据，简短结果写入顶部 `topology-status`；失败保留旧数据并显示阶段及具体原因。
 
@@ -34,6 +34,8 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 成功数据带 `planning_result=true`、`publication_state=local_generated` 和确切来源 main SHA，尚未提交、发布或执行运行验证，不覆盖原工作区、main 扫描或 KCP 指针。可在保留的 checkout 中审阅 `git diff`，创建审阅分支、提交并走正常 PR；main 合并后重新扫描/生成。新生成的 MVG scope 在提交到 main 前不能使用 `Run selected MVG on main`；已有其他 scope 的运行验证保持原规则。详细模型日志不会追加到页面状态栏。
 
 ### Chapter 3 / Chapter 5 Workspace refresh
+
+MVG generation uses the Capability file selected by the current local planning run as its sole Capability SSoT. It produces three fresh isolated candidate proposals, evaluates them with the current MVG incumbent when one is valid, and only then proceeds to the independent semantic review. GDD, task views, contracts, and tests provide supporting evidence; they cannot create or remap Capability membership.
 
 Capability review incumbent rule: the topology entrypoint freezes a valid committed
 `docs/planning/semantic-topology/capabilities.v1.json` during `prepare` and exposes it

@@ -27,8 +27,10 @@ from plan_mvg import (
     validate_review_shape, _list_field,
     normalize_proposal_format,
     backfill_review_error_types,
+    mvg_selection_output_schema, validate_mvg_selection,
 )
 from update_mvg_baseline import apply_delta
+from _planning_skill_common import atomic_json
 
 
 class MvgPlanningContractTests(unittest.TestCase):
@@ -107,6 +109,70 @@ class MvgPlanningContractTests(unittest.TestCase):
     def test_generation_prompt_mentions_non_droppable_skeleton(self):
         self.assertIn("coverage-skeleton.json", plan_mvg.PROMPT)
         self.assertIn("must not delete", plan_mvg.PROMPT)
+        self.assertIn("exclusive Capability SSoT", plan_mvg.PROMPT)
+
+    def test_mvg_selection_requires_all_candidates_and_allows_incumbent(self):
+        schema = mvg_selection_output_schema(incumbent_present=True)
+        self.assertEqual("newrouge.mvg-selection-review.v1", schema["properties"]["schema_version"]["const"])
+        valid = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": "D", "status": "selected",
+            "candidate_reviews": [
+                {"label": label, "verdict": "viable", "rationale": "Reviewed."}
+                for label in ("A", "B", "C", "D")
+            ],
+            "tradeoffs": ["The incumbent preserves cumulative obligations."],
+            "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "Retain the incumbent because the new proposals add no justified value.",
+        }
+        self.assertEqual([], validate_mvg_selection(valid,
+            candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=True))
+        invalid = dict(valid, candidate_reviews=valid["candidate_reviews"][:-1])
+        self.assertIn("mvg_selection_review_incomplete", validate_mvg_selection(
+            invalid, candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=True))
+
+    def test_mvg_selection_cannot_choose_blocked_candidate(self):
+        result = {
+            "schema_version": plan_mvg.MVG_SELECTION_SCHEMA,
+            "selected": "A", "status": "selected",
+            "candidate_reviews": [
+                {"label": "A", "verdict": "blocked", "rationale": "Missing handoff evidence."},
+                {"label": "B", "verdict": "viable", "rationale": "Complete."},
+                {"label": "C", "verdict": "viable", "rationale": "Complete."},
+            ],
+            "tradeoffs": ["B and C remain viable."],
+            "evidence_refs": ["analysis-input/capabilities.v1.json"],
+            "rationale": "The evaluator selected A despite its blocked verdict.",
+        }
+        self.assertIn("mvg_selection_blocked_winner", validate_mvg_selection(
+            result, candidate_labels={"candidate-1", "candidate-2", "candidate-3"}, incumbent_present=False))
+
+    def test_incumbent_projection_keeps_current_capability_membership(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            manifest_path = root / "docs/testing/mvg/current.json"
+            manifest_path.parent.mkdir(parents=True)
+            manifest_path.write_text(json.dumps(self.manifest()), encoding="utf-8")
+            run_dir = root / "logs/ci/mvg-planning/incumbent"
+            prepared = run_dir / "analysis-input"
+            prepared.mkdir(parents=True)
+            for name in ("capabilities.v1.json", "semantic-requirements.v1.json"):
+                source = (root / "docs/planning/semantic-topology/capabilities.v1.json"
+                          if name.startswith("capabilities")
+                          else root / "logs/ci/task-generation/semantic-requirements.v1.json")
+                (prepared / name).write_bytes(source.read_bytes())
+            atomic_json(prepared / "existing-manifest.json", self.manifest())
+            atomic_json(prepared / "entrypoint-skeleton.json", {"rows": []})
+            state = {"analysis_identity_sha256": "sha256:test"}
+            incumbent = plan_mvg._build_incumbent_proposal(
+                root, run_dir, state, self.manifest(),
+            )
+            self.assertTrue(all(
+                row.get("capability_ref") in {"CAP-A"}
+                for row in incumbent["coverage_table"]
+                if row.get("disposition") == "flow"
+            ))
+            self.assertIn("no Capability membership was inferred", " ".join(incumbent["notes"]))
 
     def test_restricted_patch_preserves_existing_flow_and_adds_coverage(self):
         base = {"coverage_table": [{"requirement_id": "FR-1", "flow_id": "flow-a"}],
@@ -483,6 +549,70 @@ class MvgPlanningContractTests(unittest.TestCase):
         ids = [rid for scope in scopes for rid in scope["requirement_ids"]]
         self.assertEqual([f"RQ-{index}" for index in range(5)], ids)
         self.assertEqual(3, len(scopes))
+
+    def test_existing_manifest_scope_is_explicit_and_rejects_widening(self):
+        manifest = self.manifest()
+        scope = plan_mvg._manifest_planning_scope(manifest)
+        self.assertEqual(["flow-a"], scope["flow_ids"])
+        self.assertEqual(["RQ-1"], scope["requirement_ids"])
+        self.assertEqual([1, 2], scope["task_ids"])
+        self.assertEqual(["test-a"], scope["test_ids"])
+        legacy_manifest = json.loads(json.dumps(manifest))
+        legacy_manifest["flows"][0].pop("requirement_ids")
+        legacy_manifest["flows"][0].pop("capability_refs")
+        legacy_scope = plan_mvg._manifest_planning_scope(
+            legacy_manifest,
+            [{"taskmaster_id": 1, "semantic_refs": ["RQ-1"], "capability_refs": ["CAP-A"]}],
+        )
+        self.assertEqual(["RQ-1"], legacy_scope["requirement_ids"])
+        self.assertEqual(["CAP-A"], legacy_scope["capability_refs"])
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            state = {
+                "run_id": "contract",
+                "analysis_identity_sha256": "sha256:x",
+                "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json",
+                "planning_scope": scope,
+            }
+            proposal = {
+                "schema_version": "newrouge.mvg-planning-proposal.v1",
+                "analysis_identity_sha256": "sha256:x",
+                "planning_status": "ready_for_validation",
+                "manifest_candidate": json.loads(json.dumps(manifest)),
+                "coverage_table": self.accounting()["coverage_table"],
+                "entrypoints": self.accounting()["entrypoints"],
+                "gaps": [],
+            }
+            proposal["manifest_candidate"]["flows"][0]["requirement_ids"].append("RQ-OUTSIDE")
+            result = validate_proposal(root, state, proposal)
+            self.assertIn("manifest_scope_violation:requirement:RQ-OUTSIDE", result["errors"])
+
+    def test_frozen_flow_route_accepts_incumbent_id_without_generated_prefix(self):
+        flow = {
+            "schema_version": SEGMENT_SCHEMA,
+            "analysis_identity_sha256": "sha256:x",
+            "section": "flows",
+            "scope_id": "reward-claim-and-return",
+            "flows": [{
+                "id": "reward-claim-and-return",
+                "outcome": "return",
+                "requirement_ids": ["RQ-1"],
+                "capability_refs": ["CAP-A"],
+                "task_ids": [1],
+                "source_paths": ["Game.Core/Services/Reward.cs"],
+                "handoffs": [],
+                "test_ids": ["reward-core"],
+            }],
+        }
+        request = {
+            "scope_id": "reward-claim-and-return",
+            "requirement_ids": ["RQ-1"],
+            "task_ids": [1],
+            "capabilities": [{"capability_id": "CAP-A"}],
+            "allow_exact_flow_id": True,
+        }
+        self.assertNotIn("segment_flow_id_outside_scope",
+                         validate_segment_routing(flow, section="flows", request=request))
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"
@@ -644,6 +774,27 @@ class MvgPlanningContractTests(unittest.TestCase):
             }
             result = validate_proposal(root, state, proposal)
             self.assertIn("unknown_capability_ref:CAP-MISSING", result["errors"])
+
+    def test_proposal_does_not_fallback_to_live_capability_when_snapshot_is_frozen(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            state = {
+                "run_id": "contract",
+                "analysis_identity_sha256": "sha256:x",
+                "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json",
+                "capabilities_sha256": "sha256:frozen",
+            }
+            proposal = {
+                "schema_version": "newrouge.mvg-planning-proposal.v1",
+                "analysis_identity_sha256": "sha256:x",
+                "planning_status": "ready_for_validation",
+                "manifest_candidate": self.manifest(),
+                "coverage_table": [],
+                "entrypoints": [],
+                "gaps": [],
+            }
+            result = validate_proposal(root, state, proposal)
+            self.assertIn("prepared_capability_snapshot_missing", result["errors"])
 
     def test_handoff_rebind_requires_applied_manifest_and_reuses_existing_contract(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

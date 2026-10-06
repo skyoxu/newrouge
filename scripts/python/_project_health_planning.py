@@ -11,10 +11,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from _planning_skill_common import atomic_json, file_sha, load_json, repo_path
+from _planning_skill_common import atomic_json, file_sha, load_json, normalized_file_sha, repo_path
 from _project_health_planning_inputs import (
-    MainCheckout, TOPOLOGY_ROOT, committed_text, git, main_revision, prepare_checkout,
-    require_main, task_scope, validate_checkout,
+    MainCheckout, TOPOLOGY_ROOT, git, prepare_checkout, task_scope, validate_checkout,
+    workspace_revision,
 )
 
 JOB_ROOT = Path('logs/ci/knowledge-planning')
@@ -58,12 +58,74 @@ def read_job(root: Path, job_id: str) -> dict:
     return result
 
 
+def _planning_input_fresh(root: Path, job: dict) -> bool:
+    """Check a result against local authoritative inputs, not a branch commit.
+
+    Planning checkouts may be based on an older commit after a harmless local
+    commit advances. The prepared input bundle records the exact source hashes;
+    only changes to those inputs invalidate the result. Derived planning files
+    needed by an MVG job are resolved from its owned checkout when they are not
+    present in the local worktree.
+    """
+    checkout = execution_root(root, job)
+    family = 'capability-planning' if job.get('action') == 'capability' else 'mvg-planning'
+    index_path = checkout / 'logs/ci' / family / job['job_id'] / 'analysis-input' / 'analysis-index.json'
+    index = load_json(index_path, {}) if index_path.is_file() else {}
+    authority = index.get('authority_inputs')
+    if not isinstance(authority, dict) or not authority:
+        return False
+    authority_root = root
+    checkout_job_id = job.get('checkout_job_id')
+    if checkout_job_id:
+        try:
+            parent = read_job(root, checkout_job_id)
+            authority_root = execution_root(root, parent)
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+    for relative, expected in authority.items():
+        relative = str(relative).replace('\\', '/')
+        if expected is None:
+            # An initial MVG run may intentionally plan a manifest that is not
+            # yet present in the local repository. Its absence is part of the
+            # prepared identity until the generated result is promoted.
+            continue
+        # A dependent MVG job intentionally consumes the selected local
+        # Capability checkout's complete input projection, including its
+        # capability-only Chapter 5 rebind artifacts.
+        path = repo_path(authority_root, relative)
+        if not path.is_file():
+            path = repo_path(checkout, relative)
+        if not path.is_file() and authority_root != root:
+            path = repo_path(root, relative)
+        if not path.is_file() or (normalized_file_sha(path) != expected and file_sha(path) != expected):
+            return False
+    return True
+
+
+def _derived_output_is_current(root: Path, job: dict, relative: str) -> bool:
+    """Allow a dependent local planning job to advance shared derived files."""
+    for action in ('mvg', 'capability'):
+        pointer = load_json(root / JOB_ROOT / f'{action}-latest.json', {})
+        if not pointer.get('job_id'):
+            continue
+        try:
+            child = read_job(root, pointer['job_id'])
+        except ValueError:
+            continue
+        if child.get('checkout_job_id') != job.get('job_id'):
+            continue
+        expected = (child.get('output_hashes') or {}).get(relative)
+        if expected and file_sha(execution_root(root, child) / relative) == expected:
+            return True
+    return False
+
+
 def selected_result(root: Path, action: str) -> dict | None:
     pointer = load_json(root / JOB_ROOT / f'{action}-latest.json', {})
     if not pointer.get('job_id'):
         return None
     job = read_job(root, pointer['job_id'])
-    if job['status'] != 'completed' or job['revision'] != main_revision(root):
+    if job['status'] != 'completed' or not _planning_input_fresh(root, job):
         return None
     if file_sha(job_path(root, job['job_id']).parent / 'result.json') != job.get('result_sha256'):
         raise ValueError('Generated planning result identity changed')
@@ -86,22 +148,23 @@ def execution_root(root: Path, job: dict) -> Path:
 def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
     if action not in ('capability', 'mvg'):
         raise ValueError('Unknown planning action')
-    revision = main_revision(root)
+    revision = workspace_revision(root)
     if action == 'mvg':
         manifest = manifest or 'docs/testing/mvg/m1-full.json'
         if not re.fullmatch(r'docs/testing/mvg/[A-Za-z0-9][A-Za-z0-9_.-]*\.json', manifest):
             raise ValueError('Choose a repository MVG manifest')
-        existing = set(git(root, 'ls-tree', '-r', '--name-only', revision).splitlines())
+        existing = set(git(root, 'ls-files').splitlines())
         if manifest not in existing and manifest != 'docs/testing/mvg/m1-full.json':
             prior = selected_result(root, 'mvg')
             if not prior or prior.get('manifest') != manifest:
-                raise ValueError('Selected manifest is not in committed main or an owned generated result')
+                raise ValueError('Selected manifest is not in the local workspace or an owned generated result')
     # Continue the same persisted attempt after a disconnect/restart. Reusing a
     # terminal result also avoids silently paying for another identical review.
     pointer = load_json(root / JOB_ROOT / f'{action}-attempt.json', {})
     if pointer.get('job_id'):
         prior = read_job(root, pointer['job_id'])
-        if prior['revision'] == revision and prior.get('manifest') == manifest:
+        if prior.get('manifest') == manifest and (
+                prior.get('revision') == revision or _planning_input_fresh(root, prior)):
             # Resume interrupted planner stages, but never keep retrying a
             # prepare failure that happened before the planner created its
             # durable run state (for example, Git could not create the worktree).
@@ -132,7 +195,7 @@ def create_job(root: Path, action: str, manifest: str | None = None) -> dict:
     job = {'schema_version': 'newrouge.knowledge-planning-job.v1', 'job_id': job_id,
            'action': action, 'revision': revision, 'manifest': manifest, 'stage': 'prepare',
            'status': 'queued', 'created_at': datetime.now(timezone.utc).isoformat(),
-           'message': f'Queued {action} generation from main {revision[:12]}'}
+           'message': f'Queued {action} generation from local workspace {revision[:12]}'}
     if action == 'mvg':
         capability = selected_result(root, 'capability')
         if capability:
@@ -201,14 +264,17 @@ def build_result(checkout: Path, job: dict) -> dict:
     documents = [load_json(checkout / TOPOLOGY_ROOT / name, {}) for name in (
         'topology-manifest.v1.json', 'source-blocks.v1.json', 'semantic-requirements.v1.json',
         'capabilities.v1.json', 'topology-edges.v1.json')]
-    topology = build_topology_view({'kind': 'main', 'revision': job['revision'],
-        'authority_ref': 'refs/heads/main'}, *documents, details, [])
+    topology = build_topology_view({'kind': 'workspace', 'revision': job['revision'],
+        'authority_ref': 'local-workspace'}, *documents, details, [])
     provenance = {'planning_result': True, 'planning_job_id': job['job_id'],
                   'publication_state': 'local_generated', 'runtime_verified': False}
     topology.update(provenance)
-    topology['status'] = 'generated_from_main'
+    topology['input_identity_sha256'] = job.get('input_identity_sha256')
+    topology['status'] = 'generated_from_local_inputs'
     overview = build_overview(reader, details, topology, {'nodes': {}})
     overview.update(provenance)
+    overview['revision'] = topology.get('identity', {}).get('revision')
+    overview['input_identity_sha256'] = job.get('input_identity_sha256')
     for manifest in overview['manifests']:
         if manifest['path'] == job.get('manifest'):
             manifest.update(provenance)
@@ -275,7 +341,10 @@ def _capability_recovery_stage(root: Path, checkout: Path, job: dict, failed_sta
     if job.get('action') != 'capability':
         return None
     try:
-        if main_revision(root) != job.get('revision'):
+        # Recovery is bound to the prepared authoritative input hashes. A new
+        # local commit with unchanged inputs is safe and must not discard the
+        # durable candidate/review prefix.
+        if not _planning_input_fresh(root, job):
             return None
     except (OSError, ValueError):
         return None
@@ -325,7 +394,7 @@ def run_job(root: Path, job: dict) -> dict:
     stage, action = job['stage'], job['action']
     invoked_stage: str | None = None
     try:
-        job.update(status='running', message=f'Generating {action} from main {job["revision"][:12]}')
+        job.update(status='running', message=f'Generating {action} from local workspace {job["revision"][:12]}')
         atomic_json(directory / 'job.json', job)
         prepare_checkout(root, checkout, job['revision'])
         validate_checkout(root, checkout, job['revision'])
@@ -377,16 +446,36 @@ def run_job(root: Path, job: dict) -> dict:
         validate_checkout(root, checkout, job['revision'])
         result = build_result(checkout, job)
         atomic_json(directory / 'result.json', result)
-        owned = {path: file_sha(checkout / path) for path in git(checkout, 'diff', '--name-only', 'HEAD').splitlines()}
+        owned_paths = set(git(checkout, 'diff', '--name-only', 'HEAD').splitlines())
+        # Formal planning outputs are intentionally ignored by Git. Keep their
+        # hashes in the local job record so a tampered generated result is still
+        # rejected without making the files repository authority.
+        if action == 'capability':
+            owned_paths.update({
+                'docs/planning/semantic-topology/capabilities.v1.json',
+                'docs/planning/semantic-topology/capability-selection.v1.json',
+                'docs/planning/semantic-topology/topology-edges.v1.json',
+                'docs/planning/semantic-topology/topology-manifest.v1.json',
+            })
+        elif job.get('manifest'):
+            owned_paths.add(str(job['manifest']).replace('\\', '/'))
+        owned = {
+            path: file_sha(checkout / path) for path in sorted(owned_paths)
+            if (checkout / path).is_file()
+        }
+        job['input_identity_sha256'] = load_json(
+            checkout / 'logs/ci' / ('capability-planning' if action == 'capability' else 'mvg-planning') /
+            job['job_id'] / 'analysis-input/analysis-index.json', {}
+        ).get('analysis_identity_sha256')
         job['output_hashes'] = owned
         job['result_sha256'] = file_sha(directory / 'result.json')
         job['count'] = len(result['topology']['nodes']['capabilities']) if action == 'capability' else len(next(
             row['flows'] for row in result['overview']['manifests'] if row['path'] == job['manifest']))
         job.pop('recoverable_stage', None)
         job.update(status='completed', stage='complete', message=f'{action.title()} generated: {job["count"]} '
-                   + ('capabilities' if action == 'capability' else 'flows') + f' · main {job["revision"][:12]} · local planning result')
+                   + ('capabilities' if action == 'capability' else 'flows') +
+                   f' · local workspace {job["revision"][:12]} · local planning result')
         atomic_json(directory / 'job.json', job)
-        require_main(root, job['revision'])
         atomic_json(root / JOB_ROOT / f'{action}-latest.json', {'job_id': job['job_id']})
     except Exception as exc:
         error = compact_error(str(exc))
@@ -419,7 +508,7 @@ def generated_view(root: Path, action: str) -> dict | None:
     checkout = execution_root(root, job)
     validate_checkout(root, checkout, job['revision'])
     for path, expected in job.get('output_hashes', {}).items():
-        if file_sha(repo_path(checkout, path)) != expected:
+        if file_sha(repo_path(checkout, path)) != expected and not _derived_output_is_current(root, job, path):
             raise ValueError('Generated planning output changed; retained main data is preserved')
     result = load_json(job_path(root, job['job_id']).parent / 'result.json')
     return result['topology' if action == 'capability' else 'overview']
@@ -427,9 +516,14 @@ def generated_view(root: Path, action: str) -> dict | None:
 
 def planning_source(root: Path, job_id: str, path: str) -> dict:
     job = read_job(root, job_id)
-    if job['action'] != 'capability' or selected_result(root, 'capability') != job:
+    selected = selected_result(root, 'capability')
+    if job['action'] != 'capability' or not selected or selected.get('job_id') != job_id:
         raise ValueError('Generated topology changed; refresh before reading source')
     topology = generated_view(root, 'capability')
     if path not in {row['source_path'] for row in topology['nodes']['source_blocks']}:
         raise ValueError('Source is not in the generated topology')
-    return committed_text(root, job['revision'], path)
+    checkout = execution_root(root, job)
+    source = repo_path(checkout, path)
+    if not source.is_file():
+        raise ValueError('Source is not present in the generated local planning checkout')
+    return {'path': path, 'revision': job['revision'], 'content': source.read_text(encoding='utf-8-sig')}

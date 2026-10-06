@@ -1193,7 +1193,10 @@ def _read_valid_review(run_dir: Path, state: dict[str, Any]) -> tuple[dict[str, 
     errors = validate_review_report(result, run_dir, allow_incumbent=state.get("incumbent_present") is True)
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     declared = index.get("analysis_identity_sha256")
-    content = {key: value for key, value in index.items() if key != "analysis_identity_sha256"}
+    content = {
+        key: value for key, value in index.items()
+        if key not in {"analysis_identity_sha256", "repository_identity"}
+    }
     if declared != state["analysis_identity_sha256"] or canonical_sha(content) != declared:
         errors.append("review_analysis_index_identity_invalid")
     for rel, expected in index.get("files", {}).items():
@@ -1456,8 +1459,9 @@ def _validate_snapshot_freshness(root: Path, run_dir: Path) -> dict[str, Any]:
     drift: list[dict[str, Any]] = []
     for rel_path, expected in sorted(authority.items()):
         path = repo_path(root, str(rel_path))
-        actual = file_sha(path) if path.is_file() else None
-        if actual != expected:
+        actual = normalized_file_sha(path) if path.is_file() else None
+        raw_actual = file_sha(path) if path.is_file() else None
+        if actual != expected and raw_actual != expected:
             drift.append({
                 "path": str(rel_path),
                 "expected_sha256": expected,
@@ -2015,14 +2019,14 @@ def apply(root: Path, *, run_id: str, alignment_override: Path | None, confirm: 
     authority = dict(load_json(run_dir / "analysis-input/analysis-index.json", {})["authority_inputs"])
     from chapter5_semantic_reconciliation import DEFAULT_EXTRACTION_SNAPSHOT
     extraction = root / DEFAULT_EXTRACTION_SNAPSHOT
-    authority[relative(root, extraction)] = file_sha(extraction)
+    authority[relative(root, extraction)] = normalized_file_sha(extraction)
     for task_id in changed_tasks:
         from chapter5_semantic_reconciliation import reconciliation_path_for_task
         reconciliation = load_json(reconciliation_path_for_task(root, task_id), {})
         for kind in ("contracts", "adrs"):
             for row in (reconciliation.get("authority_scope") or {}).get(kind, []):
                 path = repo_path(root, row["path"])
-                authority[relative(root, path)] = file_sha(path)
+                authority[relative(root, path)] = normalized_file_sha(path)
     create_journal(root, journal_path, targets, authority, result)
     atomic_json(pending_path, {"run_id": run_id, "journal_path": relative(root, journal_path)})
     return apply(root, run_id=run_id, alignment_override=alignment_override, confirm=True)

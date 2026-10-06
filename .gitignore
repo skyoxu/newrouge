@@ -97,6 +97,15 @@ docs/workflows/generated/**
 docs/knowledge/catalog/godot-elements.json
 docs/planning/semantic-topology/capability-definitions.md
 
+# Local planning projections. These are regenerated from the local authoritative
+# inputs on each device; Chapter 3 source blocks and semantic requirements remain
+# tracked upstream evidence.
+docs/planning/semantic-topology/capabilities.v1.json
+docs/planning/semantic-topology/capability-review.v1.json
+docs/planning/semantic-topology/capability-selection.v1.json
+docs/planning/semantic-topology/topology-edges.v1.json
+docs/planning/semantic-topology/topology-manifest.v1.json
+
 # Logs
 logs
 *.log

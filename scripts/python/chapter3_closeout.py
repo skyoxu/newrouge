@@ -92,9 +92,15 @@ def input_manifest(root: Path) -> dict[str, str]:
     config = read(source_set)
     paths = TASKS + ["docs/workflows/chapter3-source-set.json", "docs/workflows/chapter7-profile.json"]
     paths += config["active_sources"]
-    paths += [f"{TOPOLOGY}/{name}.v1.json" for name in (
-        "source-blocks", "semantic-requirements", "capabilities", "topology-edges", "topology-manifest")]
-    paths += [path.relative_to(root).as_posix() for path in (root / TOPOLOGY).rglob("*.json")]
+    # Source blocks and semantic Requirements are tracked Chapter 3 evidence.
+    # Capability/topology projections are local derived outputs and are only
+    # included in a closeout fingerprint when present on this device.
+    paths += [f"{TOPOLOGY}/{name}.v1.json" for name in ("source-blocks", "semantic-requirements")]
+    derived = {"capabilities.v1.json", "capability-review.v1.json",
+               "capability-selection.v1.json", "topology-edges.v1.json",
+               "topology-manifest.v1.json"}
+    paths += [path.relative_to(root).as_posix() for path in (root / TOPOLOGY).rglob("*.json")
+              if path.name not in derived]
     paths += [path.relative_to(root).as_posix() for path in (root / "scripts/python").rglob("*.py")]
     knowledge_config = "scripts/python/project_health_knowledge_config.json"
     if (root / knowledge_config).is_file():

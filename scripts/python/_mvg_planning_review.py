@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any
 
-from _planning_skill_common import canonical_sha, file_sha, load_json, repo_path
+from _planning_skill_common import canonical_sha, file_sha, load_json, normalized_file_sha, repo_path
 
 
 def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Path) -> list[str]:
@@ -54,16 +54,21 @@ def prepared_evidence_errors(root: Path, proposal: dict[str, Any], prepared: Pat
         expected = authority.get(rel)
         if not expected or not matched:
             errors.append(f"verification_dependency_not_prepared:{rel}")
-        elif (not path.is_file() or file_sha(path) != expected
-              or any(file_sha(prepared / key) != files[key] or files[key] != expected for key in matched)):
+        elif (not path.is_file() or (normalized_file_sha(path) != expected
+              and file_sha(path) != expected)
+              or any(file_sha(prepared / key) != files[key] for key in matched)):
             errors.append(f"verification_dependency_drift:{rel}")
     return errors
 
 
 def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, Any],
-                    capabilities: dict[str, Any], task_rows: list[dict[str, Any]]) -> list[str]:
+                    capabilities: dict[str, Any], task_rows: list[dict[str, Any]],
+                    allowed_requirement_ids: set[str] | None = None) -> list[str]:
     requirements = {str(r["requirement_id"]): r for r in semantics.get("requirements", [])
         if isinstance(r, dict) and r.get("status", "active") == "active" and r.get("delivery_relevant", True)}
+    if allowed_requirement_ids is not None:
+        requirements = {key: value for key, value in requirements.items()
+                        if key in allowed_requirement_ids}
     cap_members = {str(c["capability_id"]): set(map(str, c.get("requirement_ids", [])))
         for c in capabilities.get("capabilities", []) if isinstance(c, dict)}
     task_members: dict[int, set[str]] = {}
@@ -135,7 +140,8 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
 
 
 def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], review: dict[str, Any],
-                           semantics: dict[str, Any]) -> list[str]:
+                           semantics: dict[str, Any],
+                           allowed_requirement_ids: set[str] | None = None) -> list[str]:
     errors = []
     if review.get("schema_version") != "newrouge.mvg-semantic-review.v1":
         return ["independent_semantic_review_missing"]
@@ -147,6 +153,8 @@ def semantic_review_errors(state: dict[str, Any], proposal: dict[str, Any], revi
         errors.append("semantic_review_not_approved")
     required = {str(r["requirement_id"]) for r in semantics.get("requirements", [])
         if isinstance(r, dict) and r.get("status", "active") == "active" and r.get("delivery_relevant", True)}
+    if allowed_requirement_ids is not None:
+        required &= allowed_requirement_ids
     manifest = proposal.get("manifest_candidate")
     flows = {str(f["id"]) for f in (manifest if isinstance(manifest, dict) else {}).get("flows", [])}
     for key, id_key, expected, verdicts in (

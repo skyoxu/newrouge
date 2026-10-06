@@ -86,6 +86,7 @@ Generated from source scan on `2026-03-25`. This document inventories recurring 
 - `scripts/python/plan_capabilities.py`: post-Chapter-5 Capability stage machine (prepare, isolated three-candidate generation, anonymous review, identity alignment, controlled apply). Prefer `dev_cli.py plan-capabilities`.
 - `scripts/python/openai_isolated_model_runner.py`: default text-only OpenAI API isolation runner for formal Capability candidate/review sessions; model-visible input is limited to the prepared workspace snapshot.
 - `scripts/python/plan_mvg.py`: independent post-Capability MVG planning stage machine for initial manifests or guarded cumulative deltas. Prefer `dev_cli.py plan-mvg`.
+  `prepare` freezes one explicit Capability file as the only Capability SSoT. `generate` creates three fresh isolated MVG candidates, evaluates A/B/C plus the current incumbent D when available, and persists the selected proposal before semantic review.
 
 ### Taskmaster / semantics / overlay
 
@@ -1744,6 +1745,7 @@ Helper modules below are referenced directly by at least two included entry scri
 - `scripts/python/update_mvg_baseline.py`: previews or applies a hash-bound cumulative MVG manifest delta; retirement and deterministic weakening require reviewed repository authority.
 - `scripts/python/plan_capabilities.py`: owns the formal derived Capability lifecycle after Chapter 5; formal three-candidate generation requires a verifiable isolated runner.
 - `scripts/python/plan_mvg.py`: consumes one explicit Capability version and plans initial/cumulative MVG obligations without invoking Capability generation.
+  GDD, task views, contracts and tests are supporting evidence only; they cannot introduce Capability IDs or remap Requirement membership across the selected Capability.
 - `scripts/python/build_source_ledger.py`: add mode also consumes `docs/workflows/chapter3-source-set.json`; source retirement is explicit.
 - `scripts/python/compile_task_triplet.py`: emits v2 explicit task operations and an affected-id export file for lossless Taskmaster export.
 

@@ -40,7 +40,7 @@ window.knowledgePlanning = async function ({action, manifest, button, status, re
     status.dataset.result = state;
   };
   button.disabled = true;
-  message(`Generating ${action === 'capability' ? 'Capability' : 'MVG'} from committed main...`, 'running');
+  message(`Generating ${action === 'capability' ? 'Capability' : 'MVG'} from local inputs...`, 'running');
   try {
     const sessionResponse = await fetch('/api/knowledge/session', {cache: 'no-store'});
     if (!sessionResponse.ok) throw new Error('Unable to start a verified session');
@@ -53,7 +53,7 @@ window.knowledgePlanning = async function ({action, manifest, button, status, re
     if (response.status === 404) throw new Error('Planning API unavailable. Restart the Project Health service and reload this page.');
     if (!response.ok) throw new Error(result.reason || result.message || 'Unable to start planning');
     while (result.status === 'queued' || result.status === 'running') {
-      message(`${action === 'capability' ? 'Capability' : 'MVG'} · ${result.stage || 'prepare'} · main ${(result.revision || '').slice(0, 12)}`, 'running');
+      message(`${action === 'capability' ? 'Capability' : 'MVG'} · ${result.stage || 'prepare'} · local ${(result.revision || '').slice(0, 12)}`, 'running');
       await new Promise(resolve => setTimeout(resolve, 2000));
       const poll = await fetch('/api/knowledge/planning?job_id=' + encodeURIComponent(result.job_id), {cache: 'no-store'});
       result = await poll.json();

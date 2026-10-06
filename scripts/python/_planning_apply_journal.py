@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, relative, repo_path, text_sha
+from _planning_skill_common import atomic_json, canonical_sha, file_sha, load_json, normalized_file_sha, relative, repo_path, text_sha
 
 
 def create_journal(root: Path, path: Path, targets: dict[Path, Any], authority: dict[str, Any],
@@ -34,8 +34,9 @@ def resume_journal(root: Path, path: Path, writer: Callable) -> dict[str, Any]:
         if rel in owned:
             continue
         target = repo_path(root, rel)
-        actual = file_sha(target) if target.is_file() else None
-        if actual != expected:
+        actual = normalized_file_sha(target) if target.is_file() else None
+        raw_actual = file_sha(target) if target.is_file() else None
+        if actual != expected and raw_actual != expected:
             raise ValueError(f"planning recovery input drift:{rel}")
     for row in entries:
         if text_sha(json.dumps(row["payload"], ensure_ascii=False, indent=2) + "\n") != row["after_sha256"]:

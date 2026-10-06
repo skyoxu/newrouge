@@ -294,7 +294,7 @@ def build_blinded_analysis_bundle(
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
         files[f"sources/{value}"] = file_sha(target)
-        authority_inputs[value] = file_sha(source)
+        authority_inputs[value] = normalized_file_sha(source)
         classification[value] = source_classification_signal(
             source.read_text(encoding="utf-8", errors="replace")
         )
@@ -308,7 +308,7 @@ def build_blinded_analysis_bundle(
         scrubbed, removed = scrub_capability_answers_with_paths(payload)
         atomic_json(target, scrubbed)
         files[name] = file_sha(target)
-        authority_inputs[relative(root, source)] = file_sha(source)
+        authority_inputs[relative(root, source)] = normalized_file_sha(source)
         transformations.append({
             "source_path": relative(root, source),
             "analysis_path": name,
@@ -326,7 +326,7 @@ def build_blinded_analysis_bundle(
         atomic_json(target, scrubbed)
         analysis_name = f"task-views/{source.name}"
         files[analysis_name] = file_sha(target)
-        authority_inputs[relative(root, source)] = file_sha(source)
+        authority_inputs[relative(root, source)] = normalized_file_sha(source)
         transformations.append({
             "source_path": relative(root, source),
             "analysis_path": analysis_name,
@@ -373,7 +373,7 @@ def build_blinded_analysis_bundle(
         }
         atomic_json(target, compact)
         files["capability-reference.v1.json"] = file_sha(target)
-        authority_inputs[relative(root, capability_reference_path)] = file_sha(capability_reference_path)
+        authority_inputs[relative(root, capability_reference_path)] = normalized_file_sha(capability_reference_path)
     for row in readiness_summary.get("tasks", []):
         if not isinstance(row, dict):
             continue
@@ -382,10 +382,13 @@ def build_blinded_analysis_bundle(
             continue
         path = repo_path(root, rel_path)
         if path.is_file():
-            authority_inputs[rel_path] = file_sha(path)
+            authority_inputs[rel_path] = normalized_file_sha(path)
     index = {
         "schema_version": "newrouge.planning-analysis-input.v1",
         "source_revision": ledger.get("source_revision") or manifest.get("source_revision"),
+        # Commit/dirty-worktree metadata is provenance only. It is deliberately
+        # excluded from the content identity below so advancing local main does
+        # not invalidate an otherwise identical planning input bundle.
         "repository_identity": dict(repository_identity or {}),
         "source_manifest_sha256": ledger.get("source_manifest_sha256") or manifest.get("manifest_sha256"),
         "files": files,
@@ -395,7 +398,9 @@ def build_blinded_analysis_bundle(
         "model_batch_index": batch_index,
         "source_declared_classification": classification,
     }
-    index["analysis_identity_sha256"] = canonical_sha(index)
+    identity_content = dict(index)
+    identity_content.pop("repository_identity", None)
+    index["analysis_identity_sha256"] = canonical_sha(identity_content)
     atomic_json(out_dir / "analysis-index.json", index)
     return index
 

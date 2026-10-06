@@ -543,7 +543,8 @@ def build_topology_view(identity: dict[str, Any], manifest: dict[str, Any],
     repository_revision = manifest.get("repository_revision")
     revision = identity.get("revision")
     fresh = True
-    if repository_revision and revision and repository_revision != revision:
+    if (identity.get("kind") == "main" and identity.get("authority_ref") == "refs/heads/main"
+            and repository_revision and revision and repository_revision != revision):
         fresh = False
         problems.append({"kind": "repository_revision_mismatch",
                          "manifest_revision": repository_revision,

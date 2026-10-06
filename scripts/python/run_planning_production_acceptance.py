@@ -171,7 +171,7 @@ def execute(
         evidence_dir, "07-mvg-generate",
         [*mvg_base, "generate", "--run-id", mvg_run,
          "--llm-backend", mvg_backend, "--timeout-sec", str(timeout_sec)],
-        env=env, timeout_sec=timeout_sec * 3 + 120,
+        env=env, timeout_sec=timeout_sec * 9 + 180,
     ))
     stages.append(_run(
         evidence_dir, "08-mvg-independent-review",
@@ -225,6 +225,17 @@ def execute(
         raise RuntimeError("Capability application/readiness rebind is incomplete")
 
     mvg_state = _read_mvg_run(fixture_root, mvg_run)
+    mvg_candidates = mvg_state.get("candidate_attempts") or {}
+    if sorted(mvg_candidates) != ["candidate-1", "candidate-2", "candidate-3"]:
+        raise RuntimeError("MVG acceptance did not retain exactly three independent candidate records")
+    if mvg_state.get("selection_status") != "selected":
+        raise RuntimeError("MVG acceptance did not persist a comparative selection")
+    selection = load_json(fixture_root / f"logs/ci/mvg-planning/{mvg_run}/selection-review.json", {})
+    selection_labels = sorted(str(row.get("label")) for row in selection.get("candidate_reviews", [])
+                              if isinstance(row, dict))
+    expected_selection_labels = ["A", "B", "C"] + (["D"] if mvg_state.get("incumbent_present") else [])
+    if selection_labels != expected_selection_labels:
+        raise RuntimeError("MVG acceptance selection did not review A/B/C exactly once")
     mvg_review_execution = load_json(fixture_root / f"logs/ci/mvg-planning/{mvg_run}/semantic-review-execution.json", {})
     mvg_validation = load_json(
         fixture_root / f"logs/ci/mvg-planning/{mvg_run}/validation.json", {}
@@ -268,6 +279,9 @@ def execute(
         "mvg": {
             "run_id": mvg_run,
             "backend": mvg_state.get("model_backend"),
+            "candidate_count": len(mvg_candidates),
+            "selected_candidate": mvg_state.get("selected_candidate"),
+            "selection_status": mvg_state.get("selection_status"),
             "proposal_sha256": file_sha(proposal_path),
             "validation": mvg_validation,
             "model_request_count": mvg_request_count,
@@ -277,8 +291,9 @@ def execute(
             "runtime_verified": False,
         },
         "acceptance_retry_policy": {
-            "candidate_retry_limit": 5,
-            "reason": "Copilot auto routing may expose multiple internal models; mismatched-model attempts are discarded so the three accepted candidates still use one actual model.",
+            "candidate_context_count": 3,
+            "selection_attempt_limit": 3,
+            "reason": "MVG evaluates three fresh isolated candidate contexts and the current incumbent when present; schema/transport selection retries are bounded separately.",
         },
         "cost": {
             "amount_available": False,

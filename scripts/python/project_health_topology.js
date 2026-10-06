@@ -244,6 +244,8 @@ function render() {
 }
 
 async function load() {
+  const generateButton = byId('capability-generate');
+  if (generateButton) generateButton.textContent = 'Generate Capability from local inputs';
   const params = new URLSearchParams(window.location.search);
   const requestedMode = params.get('mode');
   if (requestedMode === 'main' || requestedMode === 'workspace') byId('topology-identity').value = requestedMode;

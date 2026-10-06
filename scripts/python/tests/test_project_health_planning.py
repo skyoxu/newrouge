@@ -75,12 +75,12 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
         prepare_checkout(self.root, self.root / 'logs/ci/logical-hash-checkout', self.revision)
 
-    def test_no_git_or_main_has_no_snapshot_fallback(self):
+    def test_no_git_has_no_snapshot_fallback_but_branch_name_is_irrelevant(self):
         with self.assertRaisesRegex(ValueError, 'committed main'):
             main_revision(Path(self.temp.name))
         git(self.root, 'branch', '-m', 'other')
-        with self.assertRaisesRegex(ValueError, 'committed main'):
-            planning.create_job(self.root, 'capability')
+        job = planning.create_job(self.root, 'capability')
+        self.assertEqual('queued', job['status'])
 
     def test_uncommitted_chapter3_semantics_are_rejected(self):
         path = self.root / 'logs/ci/task-generation/semantic-requirements.v1.json'
@@ -280,7 +280,21 @@ class ProjectHealthPlanningTests(unittest.TestCase):
                 atomic_json(kwargs['output_path'], envelope)
                 return {'model': RUNNER['model'], 'model_tools': []}
             index = load_json(workspace / 'analysis-input/analysis-index.json')
-            if (workspace / 'candidates/A.json').exists():
+            if (workspace / 'selection-output-schema.json').exists() or (workspace / 'A.json').exists():
+                labels = ['A', 'B', 'C'] + (['D'] if (workspace / 'D.json').exists() else [])
+                payload = {
+                    'schema_version': mvg.MVG_SELECTION_SCHEMA,
+                    'selected': 'A',
+                    'status': 'selected',
+                    'candidate_reviews': [
+                        {'label': label, 'verdict': 'viable', 'rationale': 'Fixture candidate is structurally valid.'}
+                        for label in labels
+                    ],
+                    'tradeoffs': ['Candidate A is selected by the fixture evaluator.'],
+                    'evidence_refs': ['analysis-input/capabilities.v1.json'],
+                    'rationale': 'Fixture selection keeps one complete candidate without merging proposals.',
+                }
+            elif (workspace / 'candidates/A.json').exists():
                 payload = review_report(workspace)
             elif (workspace / 'proposal.json').exists():
                 proposal = load_json(workspace / 'proposal.json')
@@ -377,19 +391,20 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertEqual(cap_job['job_id'], mvg_job['checkout_job_id'])
             result = planning.run_job(self.root, mvg_job)
             self.assertEqual('completed', result['status'], result)
-            # Capability uses five model calls; segmented MVG generation uses
-            # five section calls plus one independent review.
-            self.assertEqual(11, len(invocations))
+            # Capability uses five model calls; MVG generation uses three
+            # independent five-section candidates plus one selection review.
+            self.assertEqual(22, len(invocations))
             overview = planning.generated_view(self.root, 'mvg')
             self.assertEqual(1, len(overview['manifests']))
             self.assertEqual('docs/testing/mvg/m1-full.json', overview['manifests'][0]['path'])
             self.assertFalse(overview['runtime_verified'])
             self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
             (self.root / GDD_PATH).write_text('Dirty source must not appear in preview', encoding='utf-8')
-            preview = planning.planning_source(self.root, cap_job['job_id'], GDD_PATH.as_posix())
-            self.assertNotIn('Dirty source', preview['content'])
-            self.assertEqual(self.revision, preview['revision'])
+            self.assertIsNone(planning.generated_view(self.root, 'capability'))
+            with self.assertRaisesRegex(ValueError, 'Generated topology changed'):
+                planning.planning_source(self.root, cap_job['job_id'], GDD_PATH.as_posix())
             git(self.root, 'restore', GDD_PATH.as_posix())
+            self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
             with self.assertRaisesRegex(ValueError, 'not in the generated topology'):
                 planning.planning_source(self.root, cap_job['job_id'], '.git/config')
             self.assertEqual(before, git(self.root, 'status', '--porcelain'))
@@ -398,10 +413,10 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             reused = planning.create_job(self.root, 'capability')
             self.assertEqual('completed', reused['status'])
             self.assertEqual(cap_job['job_id'], reused['job_id'])
-            self.assertEqual(11, len(invocations))
+            self.assertEqual(22, len(invocations))
         git(self.root, 'commit', '--allow-empty', '-m', 'fixture: later main')
-        self.assertIsNone(planning.generated_view(self.root, 'capability'))
-        self.assertIsNone(planning.generated_view(self.root, 'mvg'))
+        self.assertIsNotNone(planning.generated_view(self.root, 'capability'))
+        self.assertIsNotNone(planning.generated_view(self.root, 'mvg'))
 
     def test_mvg_consumes_capabilities_already_committed_in_main(self):
         prepared_mvg(self.root)
@@ -415,7 +430,7 @@ class ProjectHealthPlanningTests(unittest.TestCase):
             self.assertNotIn('checkout_job_id', job)
             result = planning.run_job(self.root, job)
         self.assertEqual('completed', result['status'], result)
-        self.assertEqual(6, len(invocations))
+        self.assertEqual(17, len(invocations))
         self.assertEqual(main_revision(self.root), planning.generated_view(self.root, 'mvg')['revision'])
 
     def test_resume_reuses_generated_candidates_and_original_attempt(self):

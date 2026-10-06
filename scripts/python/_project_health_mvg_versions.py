@@ -19,7 +19,14 @@ def build_overview(snapshot, details: list[dict], topology: dict, graph: dict) -
         registered.update(path for path in ('_bmad-output/gdd.md',) if path in paths)
     gdds = sorted(path for path in registered if path in paths and
                   (path.startswith('docs/gdd/') or path == '_bmad-output/gdd.md'))
-    trustworthy = topology.get('available') is True and topology.get('fresh') is True and topology.get('identity', {}).get('revision') == snapshot.commit
+    identity = topology.get('identity') if isinstance(topology.get('identity'), dict) else {}
+    trustworthy = (
+        topology.get('available') is True and topology.get('fresh') is True
+        and (
+            (identity.get('kind') == 'workspace' and identity.get('authority_ref') == 'local-workspace')
+            or identity.get('revision') == snapshot.commit
+        )
+    )
     blocks = {}
     if trustworthy:
         for block in topology.get('nodes', {}).get('source_blocks', []):

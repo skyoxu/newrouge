@@ -1,4 +1,4 @@
-"""Committed-main Git checkouts and validated Chapter 3/5 planning evidence."""
+"""Local-workspace Git checkouts and validated Chapter 3/5 planning evidence."""
 from __future__ import annotations
 
 import hashlib
@@ -12,6 +12,11 @@ from _planning_skill_common import file_sha, load_json, repo_path
 
 SOURCE_ROOT = 'logs/ci/task-generation'
 TOPOLOGY_ROOT = 'docs/planning/semantic-topology'
+LOCAL_DERIVED_TOPOLOGY = (
+    'capabilities.v1.json', 'capability-review.v1.json',
+    'capability-selection.v1.json', 'topology-edges.v1.json',
+    'topology-manifest.v1.json',
+)
 
 
 def git(root: Path, *args: str) -> str:
@@ -33,6 +38,22 @@ def main_revision(root: Path) -> str:
     return revision
 
 
+def workspace_revision(root: Path) -> str:
+    """Return the current local checkout identity without requiring a main ref.
+
+    The commit is retained as provenance for the temporary planning checkout,
+    but planning result freshness is checked against authoritative input hashes,
+    not against this value.
+    """
+    try:
+        revision = git(root, 'rev-parse', '--verify', 'HEAD^{commit}')
+    except ValueError as exc:
+        raise ValueError('A local committed checkout is required for planning') from exc
+    if not re.fullmatch(r'[0-9a-f]{40,64}', revision):
+        raise ValueError('Invalid local checkout identity')
+    return revision
+
+
 def require_main(root: Path, revision: str) -> None:
     if main_revision(root) != revision:
         raise ValueError('Main changed during planning; regenerate against the latest main commit')
@@ -42,11 +63,20 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
     """Evidence is a gate, never a replacement for committed design/task inputs."""
     # repo_path resolves directories, including Windows short-name aliases.
     source = source.resolve()
+    # These projections are intentionally ignored by Git. Carry the current
+    # device's local result into the isolated checkout when it exists; a clean
+    # device simply proceeds without a derived baseline.
+    for name in LOCAL_DERIVED_TOPOLOGY:
+        local = repo_path(source, f'{TOPOLOGY_ROOT}/{name}')
+        target = repo_path(checkout, f'{TOPOLOGY_ROOT}/{name}')
+        if local.is_file() and not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(local, target)
     for name in ('source-blocks.v1.json', 'semantic-requirements.v1.json'):
         evidence = repo_path(source, f'{SOURCE_ROOT}/{name}')
         committed = repo_path(checkout, f'{TOPOLOGY_ROOT}/{name}')
         if not evidence.is_file() or load_json(evidence) != load_json(committed):
-            raise ValueError(f'Chapter 3 evidence does not match committed main: {name}')
+            raise ValueError(f'Chapter 3 evidence does not match the local authoritative inputs: {name}')
     manifest = repo_path(source, f'{SOURCE_ROOT}/source-manifest.v1.json')
     payload = load_json(manifest, {})
     if payload.get('schema_version') != 'chapter3.source-manifest.v1' or not payload.get('sources'):
@@ -59,12 +89,9 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
         digest = hashlib.sha256(repo_path(checkout, path).read_text(encoding='utf-8').encode()).hexdigest() if path in tracked else None
         if digest != str(row.get('sha256', '')).removeprefix('sha256:'):
             raise ValueError(f'Chapter 3 source evidence is stale or uncommitted: {path}')
-    top_manifest = load_json(checkout / TOPOLOGY_ROOT / 'topology-manifest.v1.json', {})
-    source_manifest = load_json(manifest, {})
-    bound_hash = top_manifest.get('source_manifest_sha256')
-    valid_hashes = {file_sha(manifest), source_manifest.get('manifest_sha256')}
-    if bound_hash not in valid_hashes:
-        raise ValueError('Chapter 3 source manifest is not bound to committed main topology')
+    # A stale local projection is disposable derived state. The Chapter 3
+    # source manifest remains authoritative; Capability/MVG generation will
+    # replace invalid local topology projections after validating source hashes.
     paths = [f'{SOURCE_ROOT}/{name}' for name in (
         'source-manifest.v1.json', 'source-blocks.v1.json', 'semantic-requirements.v1.json')]
     paths.append('logs/ci/chapter5/extraction-b.snapshot.json')
@@ -81,12 +108,11 @@ def hydrate_evidence(source: Path, checkout: Path) -> None:
 
 
 def prepare_checkout(root: Path, checkout: Path, revision: str) -> None:
-    require_main(root, revision)
     if not checkout.exists():
         checkout.parent.mkdir(parents=True, exist_ok=True)
         git(root, 'worktree', 'add', '--detach', str(checkout), revision)
     if git(checkout, 'rev-parse', 'HEAD') != revision:
-        raise ValueError('Planning checkout is not the selected main commit')
+        raise ValueError('Planning checkout is not the selected local workspace commit')
     hydrate_evidence(root, checkout)
 
 
@@ -113,13 +139,13 @@ def journal_targets(checkout: Path) -> dict[str, str]:
 
 
 def validate_checkout(root: Path, checkout: Path, revision: str) -> None:
-    require_main(root, revision)
     if git(checkout, 'rev-parse', 'HEAD') != revision:
         raise ValueError('Planning checkout commit changed')
     owned = journal_targets(checkout)
     changed = set(git(checkout, 'diff', '--name-only', 'HEAD').splitlines())
     changed.update(git(checkout, 'ls-files', '--others', '--exclude-standard').splitlines())
-    if changed - set(owned):
+    allowed_local = {f'{TOPOLOGY_ROOT}/{name}' for name in LOCAL_DERIVED_TOPOLOGY}
+    if changed - set(owned) - allowed_local:
         raise ValueError('Uncommitted input changes in planning checkout: ' + ', '.join(sorted(changed - set(owned))[:3]))
 
 
@@ -128,7 +154,7 @@ def committed_text(root: Path, revision: str, path: str) -> dict:
     repo_path(root, path)
     entry = git(root, 'ls-tree', revision, '--', path)
     if not entry.startswith(('100644 blob ', '100755 blob ')):
-        raise ValueError('Source is not a regular committed main file')
+        raise ValueError('Source is not a regular committed local workspace file')
     blob = entry.split()[2]
     if int(git(root, 'cat-file', '-s', blob)) > 2 * 1024 * 1024:
         raise ValueError('Source exceeds the 2 MiB preview limit')
@@ -139,14 +165,14 @@ def committed_text(root: Path, revision: str, path: str) -> dict:
 
 
 class MainCheckout:
-    """Read a live Git checkout; no scan, catalog, archive or directory fallback."""
+    """Read a live local Git checkout; no scan, catalog or archive fallback."""
     def __init__(self, root: Path, revision: str, extra_paths=()):
-        self.root, self.commit, self.authority_ref = root, revision, 'refs/heads/main'
+        self.root, self.commit, self.authority_ref = root, revision, 'local-workspace'
         self.paths = tuple(sorted(set(git(root, 'ls-files').splitlines()) | set(extra_paths)))
 
     def read_bytes(self, path: str) -> bytes:
         if path not in self.paths:
-            raise ValueError('File is not a committed main input or owned planning output')
+            raise ValueError('File is not a committed local input or owned planning output')
         return repo_path(self.root, path).read_bytes()
 
     def read_text(self, path: str) -> str:

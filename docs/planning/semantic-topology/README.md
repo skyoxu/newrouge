@@ -6,14 +6,18 @@ Repository authority remains in the original GDD/PRD, ADR/architecture, Taskmast
 
 ## Registered artifacts
 
-Chapter 3 will eventually produce these files:
+Chapter 3 produces the following inputs and projections:
 
-- `topology-manifest.v1.json`
 - `source-blocks.v1.json`
 - `semantic-requirements.v1.json`
+- `topology-manifest.v1.json`
 - `capabilities.v1.json`
 - `topology-edges.v1.json`
 - optional `topology-overrides.v1.json`
+
+`source-blocks.v1.json` and `semantic-requirements.v1.json` are tracked Chapter 3
+evidence. Capability selection/review and topology projection files are local
+derived outputs, ignored by Git and regenerated from the current local inputs.
 
 Until the producer exists, the absence of these artifacts is valid migration state. Consumers must report `legacy_unmapped` / `topology unavailable`; they must not fabricate nodes.
 
@@ -29,8 +33,12 @@ Machine-readable minimum contracts live under `docs/planning/semantic-topology/s
 - Acceptance remains governed by the Chapter 5/task acceptance system.
 - Project Health may project current task-view `acceptance[]` entries as read-only Acceptance nodes using stable `task_id + statement hash` ids. These nodes remain task-view authority; only explicit topology edges may mark semantic origin as mapped.
 - Scene/script/resource/test links are evidence and navigation, not proof that a semantic requirement is accepted.
-- Main topology is bound to `refs/heads/main` and canonical KCP publication identity.
-- Workspace/Chapter-run topology is preview-only and must use an explicit `workspace:<digest>` or run identity. It never updates KCP `current` / `last-known-good`.
+- Chapter 3 source blocks and semantic Requirements remain tracked upstream evidence.
+- Capability and topology projections are local derived planning artifacts. They
+  are regenerated from the current local authoritative inputs and are not Git
+  authority; a local commit hash is provenance only.
+- Workspace/Chapter-run topology is preview-only and must use an explicit local
+  workspace or run identity. It never updates KCP `current` / `last-known-good`.
 
 ## Typed edge minimum
 

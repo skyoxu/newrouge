@@ -7,6 +7,7 @@ import argparse
 import concurrent.futures
 import datetime as dt
 import json
+import random
 import re
 import shutil
 import sys
@@ -44,6 +45,9 @@ MVG_REVIEW_ATTEMPT_LIMIT = 10
 MVG_ERROR_MESSAGE_LIMIT = 2000
 MVG_REVIEW_WORKSPACE_LIMIT = 850_000
 MVG_REVIEW_EVIDENCE_EXCERPT_CHARS = 2400
+MVG_CANDIDATE_LABELS = ("candidate-1", "candidate-2", "candidate-3")
+MVG_SELECTION_SCHEMA = "newrouge.mvg-selection-review.v1"
+MVG_SELECTION_ATTEMPT_LIMIT = 3
 
 
 def _compact_exception_message(value: Any, limit: int = MVG_ERROR_MESSAGE_LIMIT) -> str:
@@ -195,6 +199,92 @@ def semantic_review_output_schema() -> dict[str, Any]:
             "flow_reviews": {"type": "array", "items": flow},
         },
     }
+
+
+def mvg_selection_output_schema(*, incumbent_present: bool) -> dict[str, Any]:
+    """Return the strict envelope for comparative MVG candidate selection."""
+    labels = ["A", "B", "C"] + (["D"] if incumbent_present else [])
+    review = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["label", "verdict", "rationale"],
+        "properties": {
+            "label": {"type": "string", "enum": labels},
+            "verdict": {"type": "string", "enum": ["viable", "blocked"]},
+            "rationale": {"type": "string", "minLength": 1},
+        },
+    }
+    properties: dict[str, Any] = {
+        "schema_version": {"type": "string", "const": MVG_SELECTION_SCHEMA},
+        "selected": {"anyOf": [{"type": "string", "enum": labels}, {"type": "null"}]},
+        "status": {"type": "string", "enum": ["selected", "no_valid_winner"]},
+        "candidate_reviews": {"type": "array", "items": review},
+        "tradeoffs": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+        "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "rationale": {"type": "string", "minLength": 1},
+    }
+    return {
+        "type": "object",
+        "required": list(properties),
+        "properties": properties,
+        "additionalProperties": False,
+    }
+
+
+def validate_mvg_selection(result: dict[str, Any], *, candidate_labels: set[str],
+                           incumbent_present: bool,
+                           alias_mapping: dict[str, str] | None = None) -> list[str]:
+    """Validate comparative selection without judging semantic quality locally."""
+    errors: list[str] = []
+    allowed = {"A", "B", "C"} | ({"D"} if incumbent_present else set())
+    if result.get("schema_version") != MVG_SELECTION_SCHEMA:
+        errors.append("mvg_selection_schema_mismatch")
+    if result.get("status") not in {"selected", "no_valid_winner"}:
+        errors.append("mvg_selection_status_invalid")
+    selected = result.get("selected")
+    if selected is not None and selected not in allowed:
+        errors.append("mvg_selection_label_invalid")
+    if result.get("status") == "selected" and selected is None:
+        errors.append("mvg_selection_missing_winner")
+    if result.get("status") == "no_valid_winner" and selected is not None:
+        errors.append("mvg_selection_unexpected_winner")
+    reviews = result.get("candidate_reviews")
+    expected_labels = {"A", "B", "C"} | ({"D"} if incumbent_present else set())
+    if not isinstance(reviews, list):
+        errors.append("mvg_selection_reviews_missing")
+    else:
+        labels: list[str] = []
+        for row in reviews:
+            if not isinstance(row, dict):
+                errors.append("mvg_selection_review_invalid")
+                continue
+            label = str(row.get("label") or "")
+            labels.append(label)
+            if label not in expected_labels:
+                errors.append(f"mvg_selection_review_unknown:{label}")
+            if row.get("verdict") not in {"viable", "blocked"}:
+                errors.append(f"mvg_selection_review_verdict_invalid:{label}")
+            if not str(row.get("rationale") or "").strip():
+                errors.append(f"mvg_selection_review_rationale_missing:{label}")
+        if set(labels) != expected_labels or len(labels) != len(expected_labels):
+            errors.append("mvg_selection_review_incomplete")
+        if selected is not None:
+            selected_review = next((row for row in reviews
+                                    if isinstance(row, dict)
+                                    and row.get("label") == selected), None)
+            if isinstance(selected_review, dict) and selected_review.get("verdict") != "viable":
+                errors.append("mvg_selection_blocked_winner")
+    if not isinstance(result.get("tradeoffs"), list) or not result.get("tradeoffs"):
+        errors.append("mvg_selection_tradeoffs_missing")
+    if not isinstance(result.get("evidence_refs"), list):
+        errors.append("mvg_selection_evidence_refs_missing")
+    if not str(result.get("rationale") or "").strip():
+        errors.append("mvg_selection_rationale_missing")
+    if candidate_labels and selected in {"A", "B", "C"}:
+        available_aliases = alias_mapping or {"A": "candidate-1", "B": "candidate-2", "C": "candidate-3"}
+        if available_aliases[selected] not in candidate_labels:
+            errors.append(f"mvg_selection_selected_candidate_unavailable:{selected}")
+    return sorted(set(errors))
 
 
 class MVGReviewAttemptBudgetError(ValueError):
@@ -498,7 +588,8 @@ def _list_field(row: dict[str, Any], key: str) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str, Any]],
+                            allowed_requirement_ids: set[str] | None = None) -> list[dict[str, Any]]:
     """Create non-droppable Requirement rows before semantic flow planning."""
     task_by_requirement: dict[str, tuple[int | None, str | None]] = {}
     for row in task_views:
@@ -519,6 +610,8 @@ def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str
                 or requirement.get("status", "active") != "active"):
             continue
         requirement_id = str(requirement.get("requirement_id") or "").strip()
+        if allowed_requirement_ids is not None and requirement_id not in allowed_requirement_ids:
+            continue
         task_id, capability_ref = task_by_requirement.get(requirement_id, (None, None))
         result.append({"requirement_id": requirement_id, "disposition": "flow",
             "flow_id": None, "capability_ref": capability_ref, "task_id": task_id,
@@ -702,6 +795,7 @@ def segment_prompt(*, section: str, identity: str, requirements: list[str], task
                  else "Use stable lowercase kebab-case test ids.")
     return f"""You are producing one bounded section of an MVG integration plan.
 Use only the prepared evidence needed for this section and return JSON only, with no markdown, shell commands, or commentary.
+The prepared capabilities.v1.json is the exclusive Capability SSoT. Capability IDs and Requirement membership must come from that file only; other evidence may explain behavior but cannot create or reassign a Capability.
 schema_version must be {SEGMENT_SCHEMA!r}.
 analysis_identity_sha256 must be exactly {identity!r}.
 section must be {section!r}.
@@ -826,7 +920,13 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             continue
         if section == "flows":
             flow_id = str(row.get("id") or "")
-            if scope_id and not flow_id.startswith(scope_id + "-"):
+            # Cumulative manifests freeze their existing flow IDs.  A frozen
+            # request is allowed to return that exact incumbent ID; newly
+            # planned flow scopes continue to require the scoped prefix.
+            allow_exact_flow_id = bool(request.get("allow_exact_flow_id"))
+            if scope_id and not (
+                    (allow_exact_flow_id and flow_id == scope_id)
+                    or flow_id.startswith(scope_id + "-")):
                 errors.append("segment_flow_id_outside_scope")
             requirement_ids = {str(item) for item in row.get("requirement_ids", [])}
             if not requirement_ids or not requirement_ids <= allowed_requirements:
@@ -1075,6 +1175,74 @@ def _active_delivery_requirements(semantics: dict[str, Any]) -> list[dict[str, A
             and str(row.get("requirement_id") or "").strip()]
 
 
+def _manifest_planning_scope(manifest: dict[str, Any] | None,
+                             task_views: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    """Return the immutable planning boundary declared by an existing manifest.
+
+    A supplied manifest is an explicit cumulative target, not a hint to plan
+    every Requirement in the repository.  Keep the boundary small and derived
+    only from the manifest itself so model output cannot widen a pilot into a
+    full-project plan.
+    """
+    if not isinstance(manifest, dict):
+        return None
+    coverage = manifest.get("coverage") if isinstance(manifest.get("coverage"), dict) else {}
+    flows = [row for row in manifest.get("flows", []) if isinstance(row, dict)]
+    tests = [row for row in manifest.get("tests", []) if isinstance(row, dict)]
+    flow_ids = {str(row.get("id")) for row in flows if str(row.get("id") or "").strip()}
+    required_flow_ids = {str(value) for value in coverage.get("required_flow_ids", [])
+                         if str(value).strip()}
+    if required_flow_ids:
+        flow_ids = required_flow_ids
+    requirement_ids = {str(value) for row in flows for value in row.get("requirement_ids", [])
+                        if str(value).strip()}
+    capability_refs = {str(value) for row in flows for value in row.get("capability_refs", [])
+                       if str(value).strip()}
+    task_ids = {int(value) for row in flows for value in row.get("task_ids", [])
+                if type(value) is int}
+    test_ids = {str(value) for row in flows for value in row.get("test_ids", [])
+                if str(value).strip()}
+    test_ids.update(str(row.get("id")) for row in tests if str(row.get("id") or "").strip())
+    source_paths = {str(value).replace("\\", "/") for row in flows
+                    for value in row.get("source_paths", []) if str(value).strip()}
+    contract_refs = {str(handoff.get("contract_ref")).split("#", 1)[0].replace("\\", "/")
+                     for row in flows for handoff in (row.get("handoffs", []) or [])
+                     if isinstance(handoff, dict) and str(handoff.get("contract_ref") or "").strip()}
+    test_paths = {str(row.get("path")).split("#", 1)[0].replace("\\", "/")
+                  for row in tests if str(row.get("path") or "").strip()}
+    # Older manifests may not carry semantic/capability fields on each flow.
+    # Resolve those fields from the authoritative task views, still bounded to
+    # the manifest's explicit task IDs.
+    for row in task_views or []:
+        if not isinstance(row, dict):
+            continue
+        try:
+            task_id = int(row.get("taskmaster_id"))
+        except (TypeError, ValueError):
+            continue
+        if task_id not in task_ids:
+            continue
+        requirement_values = (row.get("semantic_refs")
+                              if isinstance(row.get("semantic_refs"), list)
+                              else row.get("requirement_ids"))
+        requirement_ids.update(str(value) for value in (requirement_values or []) if str(value).strip())
+        capability_values = row.get("capability_refs")
+        capability_refs.update(str(value) for value in (capability_values or []) if str(value).strip())
+    return {
+        "scope_id": str(coverage.get("scope_id") or manifest.get("mvg_id") or "").strip(),
+        "mode": str(coverage.get("mode") or "").strip(),
+        "flow_ids": sorted(flow_ids),
+        "requirement_ids": sorted(requirement_ids),
+        "capability_refs": sorted(capability_refs),
+        "task_ids": sorted(task_ids),
+        "test_ids": sorted(test_ids),
+        "source_paths": sorted(source_paths),
+        "contract_refs": sorted(contract_refs),
+        "test_paths": sorted(test_paths),
+        "excluded_claims": list(coverage.get("excluded_claims") or []),
+    }
+
+
 def _bounded_text(value: Any, limit: int = 480) -> str:
     text = str(value or "").strip()
     return text if len(text) <= limit else text[:limit - 3].rstrip() + "..."
@@ -1130,7 +1298,8 @@ def _capability_membership(capabilities: dict[str, Any]) -> tuple[list[str], dic
 
 def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
                       task_views: list[dict[str, Any]], task_ids: list[int],
-                      *, batch_size: int = 24) -> list[dict[str, Any]]:
+                      *, batch_size: int = 24,
+                      allowed_requirement_ids: set[str] | None = None) -> list[dict[str, Any]]:
     """Partition flow evidence by reviewed Capability membership.
 
     Capability membership in the prepared Capability file is authoritative for
@@ -1158,6 +1327,8 @@ def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
     grouped: dict[str, list[dict[str, Any]]] = {}
     for requirement in _active_delivery_requirements(semantics):
         rid = str(requirement["requirement_id"])
+        if allowed_requirement_ids is not None and rid not in allowed_requirement_ids:
+            continue
         capability_refs = cap_members.get(rid, [])
         if not capability_refs:
             capability_refs = [str(value) for value in requirement.get("capability_ids", [])
@@ -1241,8 +1412,10 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
     return result
 
 
-def build_segment_scope(semantics: dict[str, Any], task_ids: list[int], *, batch_size: int = 24) -> list[dict[str, Any]]:
-    requirements = [str(row.get("requirement_id")) for row in _active_delivery_requirements(semantics)]
+def build_segment_scope(semantics: dict[str, Any], task_ids: list[int], *, batch_size: int = 24,
+                        allowed_requirement_ids: set[str] | None = None) -> list[dict[str, Any]]:
+    requirements = [str(row.get("requirement_id")) for row in _active_delivery_requirements(semantics)
+                    if allowed_requirement_ids is None or str(row.get("requirement_id")) in allowed_requirement_ids]
     scopes = []
     for start in range(0, len(requirements), max(1, batch_size)):
         scopes.append({"requirements": requirements[start:start + batch_size], "task_ids": task_ids})
@@ -1337,7 +1510,8 @@ def write_model_context(run_dir: Path, workspace: Path, semantics: dict[str, Any
 
 def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt: int,
                      full_prompt: str, workspace: Path, *, semantics: dict[str, Any],
-                     task_ids: list[int], base_proposal: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+                     task_ids: list[int], base_proposal: dict[str, Any] | None = None,
+                     planning_scope: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
     """Run bounded section requests and assemble a proposal-shaped document.
 
     Each request is bounded to one Capability slice or one small accounting
@@ -1360,7 +1534,36 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             task_views.extend(row for row in payload if isinstance(row, dict))
     capabilities = load_json(run_dir / "analysis-input/capabilities.v1.json", {})
     _, _, capability_members = _capability_membership(capabilities)
-    flow_scopes = build_flow_scopes(semantics, capabilities, task_views, task_ids)
+    allowed_requirement_ids = (set(planning_scope.get("requirement_ids", []))
+                               if planning_scope is not None else None)
+    flow_scopes = build_flow_scopes(semantics, capabilities, task_views, task_ids,
+                                    allowed_requirement_ids=allowed_requirement_ids)
+    if planning_scope is not None and planning_scope.get("flow_ids"):
+        # Route bounded sections through the incumbent flow IDs.  Without this
+        # projection, a model-generated capability scope would create a new
+        # flow ID and leave coverage/tests pointing outside the pilot.
+        existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", {})
+        existing_flows = {str(row.get("id")): row for row in existing_manifest.get("flows", [])
+                          if isinstance(row, dict)}
+        remapped: list[dict[str, Any]] = []
+        for flow_id in planning_scope["flow_ids"]:
+            baseline = existing_flows.get(flow_id, {})
+            requirement_set = {str(value) for value in baseline.get("requirement_ids", [])
+                               if str(value).strip()}
+            selected = [scope for scope in flow_scopes
+                        if not requirement_set or requirement_set.intersection(scope.get("requirement_ids", []))]
+            requirements = [row for scope in selected for row in scope.get("requirements", [])]
+            requirement_ids = list(dict.fromkeys(row.get("requirement_id") for row in requirements))
+            if not requirement_ids:
+                requirement_ids = sorted(allowed_requirement_ids or set())
+            remapped.append({
+                "scope_id": flow_id,
+                "requirements": requirements,
+                "requirement_ids": requirement_ids,
+                "task_ids": sorted(set(baseline.get("task_ids", [])) & set(task_ids)),
+                "capabilities": [{"capability_id": value} for value in planning_scope.get("capability_refs", [])],
+            })
+        flow_scopes = remapped
     model_context = load_json(workspace / "model-context.json", {})
     all_task_views = model_context.get("task_views", [])
     all_test_views = load_json(workspace / "test-context.json", {}).get("task_views", [])
@@ -1375,6 +1578,19 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                           | {str(value).split(":", 1)[0] for row in all_task_views
                              if int(row.get("taskmaster_id", -1)) in set(task_ids)
                              for value in _list_field(row, "source_refs") if str(value).strip()})
+    if planning_scope is not None and planning_scope.get("source_paths"):
+        # An existing manifest is itself authoritative for its frozen source
+        # boundary.  Those paths are copied into each candidate's immutable
+        # evidence bundle during prepare, even when task views only point to
+        # GDD lines rather than implementation files.  Keep them available to
+        # the routed schema and reference validator.
+        source_paths = sorted(
+            (set(source_paths) | {
+                str(value).replace("\\", "/")
+                for value in planning_scope["source_paths"]
+                if str(value).strip()
+            }) & set(planning_scope["source_paths"])
+        )
     contract_paths = sorted(
         path.relative_to(prepared / "references").as_posix()
         for path in (prepared / "references" / "Game.Core" / "Contracts").rglob("*.cs")
@@ -1388,7 +1604,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "requirements": scope["requirements"],
                          "requirement_ids": scope["requirement_ids"],
                          "task_ids": scope["task_ids"],
-                         "capabilities": scope["capabilities"]})
+                         "capabilities": scope["capabilities"],
+                         "allow_exact_flow_id": planning_scope is not None})
 
     # Flow coverage is accounted for in small Requirement batches after all
     # flow IDs are known. A batch contains only its own Requirement statements.
@@ -1396,7 +1613,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     requirement_context = {
         str(row["requirement_id"]): row for row in active_rows
     }
-    for scope in build_segment_scope(semantics, task_ids, batch_size=24):
+    for scope in build_segment_scope(semantics, task_ids, batch_size=24,
+                                    allowed_requirement_ids=allowed_requirement_ids):
         selected_requirements = set(scope["requirements"])
         scoped_tasks = sorted({int(row.get("taskmaster_id")) for row in task_views
                                if isinstance(row, dict)
@@ -1442,7 +1660,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         scoped_tasks = request["task_ids"]
         flow_context = [row for segment in segments for row in (segment.get("flows", []) or [])
                         if isinstance(row, dict)]
-        flow_prefix = f"{request['scope_id']}-" if section == "flows" else ""
+        flow_prefix = ("" if planning_scope is not None else f"{request['scope_id']}-") if section == "flows" else ""
         test_prefix = f"{request['scope_id']}-" if section == "tests" else ""
         section_prompt_text = segment_prompt(
             section=section, identity=identity,
@@ -1450,11 +1668,24 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             flow_context=flow_context,
             scope_id=request["scope_id"], flow_id_prefix=flow_prefix, test_id_prefix=test_prefix,
         )
+        if planning_scope is not None:
+            section_prompt_text += "\nThis is a frozen existing-manifest scope. Do not add obligations outside it. " \
+                "Preserve exactly these flow/test IDs and use only these Requirement, Task, source and test IDs:\n"
+            section_prompt_text += json.dumps({
+                "flow_ids": planning_scope.get("flow_ids", []),
+                "requirement_ids": planning_scope.get("requirement_ids", []),
+                "task_ids": planning_scope.get("task_ids", []),
+                "test_ids": planning_scope.get("test_ids", []),
+                "source_paths": planning_scope.get("source_paths", []),
+                "contract_refs": planning_scope.get("contract_refs", []),
+                "test_paths": planning_scope.get("test_paths", []),
+            }, ensure_ascii=False)
         if flow_context:
             selected_flow_rows = flow_context
             if request.get("flow_scope_ids"):
                 selected_flow_rows = [row for row in flow_context
-                                      if any(str(row.get("id", "")).startswith(scope_id + "-")
+                                      if any((str(row.get("id", "")) == scope_id or
+                                              str(row.get("id", "")).startswith(scope_id + "-"))
                                              for scope_id in request["flow_scope_ids"])]
             section_prompt_text += "\nUse these already prepared flow objects as the only flow context:\n"
             section_prompt_text += json.dumps(
@@ -1629,8 +1860,18 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
     # Preserve the non-droppable prepared skeleton even if an individual
     # section returns an incomplete subset. Semantic assignments still belong
     # to the model and are validated in the normal proposal pass.
-    skeleton_coverage = load_json(run_dir / "coverage-skeleton.json", [])
-    skeleton_entrypoints = load_json(run_dir / "entrypoint-skeleton.json", [])
+    skeleton_coverage_payload = load_json(run_dir / "coverage-skeleton.json", None)
+    if skeleton_coverage_payload is None:
+        skeleton_coverage_payload = load_json(run_dir / "analysis-input/coverage-skeleton.json", {})
+    skeleton_entrypoints_payload = load_json(run_dir / "entrypoint-skeleton.json", None)
+    if skeleton_entrypoints_payload is None:
+        skeleton_entrypoints_payload = load_json(run_dir / "analysis-input/entrypoint-skeleton.json", {})
+    skeleton_coverage = (skeleton_coverage_payload.get("rows", [])
+                         if isinstance(skeleton_coverage_payload, dict)
+                         else skeleton_coverage_payload or [])
+    skeleton_entrypoints = (skeleton_entrypoints_payload.get("rows", [])
+                            if isinstance(skeleton_entrypoints_payload, dict)
+                            else skeleton_entrypoints_payload or [])
     assembled["coverage_table"] = merge_planning_segments(
         {"coverage_table": skeleton_coverage},
         [{"coverage_table": assembled.get("coverage_table", [])}],
@@ -1640,6 +1881,23 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         [{"entrypoints": assembled.get("entrypoints", [])}],
     ).get("entrypoints", skeleton_entrypoints)
     bind_manifest_test_ids(assembled, preserve_flow_ids=baseline_flow_ids)
+    if planning_scope is not None:
+        # The existing manifest is the cumulative target. Keep its exact
+        # baseline rows and discard any model-created out-of-scope additions;
+        # validate_proposal will report the boundary if the model changed one.
+        allowed_flows = set(planning_scope.get("flow_ids", []))
+        if allowed_flows:
+            base_flows = {str(row.get("id")): row for row in (base.get("manifest_candidate", {}).get("flows", []) or [])
+                          if isinstance(row, dict)}
+            model_flows = [row for row in assembled.get("manifest_candidate", {}).get("flows", [])
+                           if isinstance(row, dict) and str(row.get("id")) in allowed_flows]
+            merged_flows = {str(row.get("id")): row for row in model_flows}
+            for flow_id, row in base_flows.items():
+                if flow_id in allowed_flows and flow_id not in merged_flows:
+                    merged_flows[flow_id] = row
+            assembled["manifest_candidate"]["flows"] = [merged_flows[key] for key in planning_scope["flow_ids"]
+                                                          if key in merged_flows]
+            assembled["manifest_candidate"].setdefault("coverage", {})["required_flow_ids"] = list(planning_scope["flow_ids"])
     assembled.setdefault("manifest_candidate", {})["tests"] = assembled.get("tests", [])
     output = workspace / f"proposal-attempt-{attempt}.json"
     atomic_json(output, assembled)
@@ -1768,8 +2026,10 @@ def prepare(
             for path in contract_root.rglob("*.cs") if path.is_file()
         )
     existing_manifest = None
+    planning_scope = None
     if manifest_path is not None and manifest_path.is_file():
         existing_manifest = load_json(manifest_path, {})
+        planning_scope = _manifest_planning_scope(existing_manifest, _task_view_rows(root))
         files["existing-manifest.json"] = _copy_file(root, manifest_path, bundle, "existing-manifest.json")
         for flow in existing_manifest.get("flows", []):
             referenced.update(str(p) for p in flow.get("source_paths", []))
@@ -1805,10 +2065,14 @@ def prepare(
 
     atomic_json(bundle / "readiness-summary.json", readiness)
     files["readiness-summary.json"] = file_sha(bundle / "readiness-summary.json")
-    skeleton = build_coverage_skeleton(load_json(root / SEMANTICS, {}), _task_view_rows(root))
+    scoped_requirement_ids = (set(planning_scope["requirement_ids"])
+                              if planning_scope is not None else None)
+    skeleton = build_coverage_skeleton(load_json(root / SEMANTICS, {}), _task_view_rows(root),
+                                       scoped_requirement_ids)
     atomic_json(bundle / "coverage-skeleton.json", {"schema_version": "newrouge.mvg-coverage-skeleton.v1", "rows": skeleton})
     files["coverage-skeleton.json"] = file_sha(bundle / "coverage-skeleton.json")
-    entrypoint_tasks = sorted({int(row.get("taskmaster_id")) for row in _task_view_rows(root)
+    entrypoint_tasks = sorted(set(planning_scope["task_ids"]) if planning_scope is not None else
+                              {int(row.get("taskmaster_id")) for row in _task_view_rows(root)
                                if str(row.get("taskmaster_id", "")).isdigit()})
     atomic_json(bundle / "entrypoint-skeleton.json", {"schema_version": "newrouge.mvg-entrypoint-skeleton.v1",
         "rows": build_entrypoint_skeleton(entrypoint_tasks)})
@@ -1818,6 +2082,7 @@ def prepare(
         "capabilities_sha256": file_sha(capabilities_path),
         "files": files,
         "task_scope": task_ids,
+        "planning_scope": planning_scope,
         "authority_inputs": authority,
         "existing_manifest": (
             {"path": manifest_path.resolve().relative_to(root.resolve()).as_posix(), "sha256": file_sha(manifest_path)}
@@ -1849,7 +2114,7 @@ def prepare(
     if manifest_path is not None:
         originals.append(manifest_path)
     for path in originals:
-        authority[path.resolve().relative_to(root.resolve()).as_posix()] = file_sha(path) if path.is_file() else None
+        authority[path.resolve().relative_to(root.resolve()).as_posix()] = normalized_file_sha(path) if path.is_file() else None
     index["analysis_identity_sha256"] = canonical_sha(index)
     atomic_json(bundle / "analysis-index.json", index)
 
@@ -1870,15 +2135,102 @@ def prepare(
             file_sha(manifest_path) if manifest_path is not None and manifest_path.is_file() else None
         ),
         "task_scope": task_ids,
+        "planning_scope": planning_scope,
         "applied": False,
     }
     atomic_json(run_dir / "run.json", state)
     return state
 
 
+def _build_incumbent_proposal(root: Path, run_dir: Path, state: dict[str, Any],
+                              manifest: dict[str, Any]) -> dict[str, Any]:
+    """Project the current manifest into the proposal envelope for comparison.
+
+    The existing MVG manifest is the only incumbent authority. The surrounding
+    proposal fields are a deterministic review projection, never a new source
+    of Capability or Requirement membership.
+    """
+    semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+    capabilities = load_json(run_dir / "analysis-input/capabilities.v1.json", {})
+    task_views: list[dict[str, Any]] = []
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(run_dir / "analysis-input/task-views" / name, [])
+        if isinstance(payload, list):
+            task_views.extend(row for row in payload if isinstance(row, dict))
+    active = _active_delivery_requirements(semantics)
+    cap_membership = {
+        str(row.get("capability_id")): {str(value) for value in row.get("requirement_ids", [])}
+        for row in capabilities.get("capabilities", [])
+        if isinstance(row, dict) and str(row.get("capability_id") or "").strip()
+    }
+    task_members: dict[int, set[str]] = {}
+    for row in task_views:
+        if isinstance(row.get("taskmaster_id"), int):
+            task_members.setdefault(int(row["taskmaster_id"]), set()).update(
+                str(value) for value in row.get("semantic_refs", row.get("requirement_ids", []))
+            )
+    flows = [row for row in manifest.get("flows", []) if isinstance(row, dict)]
+    coverage: list[dict[str, Any]] = []
+    for requirement in active:
+        rid = str(requirement.get("requirement_id"))
+        matched = None
+        for flow in flows:
+            if rid not in {str(value) for value in flow.get("requirement_ids", [])}:
+                continue
+            capability_ref = next((str(value) for value in flow.get("capability_refs", [])
+                                   if rid in cap_membership.get(str(value), set())), None)
+            task_id = next((int(value) for value in flow.get("task_ids", [])
+                            if rid in task_members.get(int(value), set()) or not task_members), None)
+            if capability_ref and task_id is not None:
+                matched = (str(flow.get("id")), capability_ref, task_id)
+                break
+        if matched is None:
+            coverage.append({
+                "requirement_id": rid,
+                "flow_id": None,
+                "capability_ref": None,
+                "task_id": None,
+                "disposition": "deferred",
+                "rationale": "Incumbent manifest does not expose a complete reviewed route for this Requirement.",
+                "sink_id": None,
+                "verification_ref": None,
+                "authority_ref": None,
+                "authority_review": None,
+            })
+        else:
+            flow_id, capability_ref, task_id = matched
+            coverage.append({
+                "requirement_id": rid,
+                "flow_id": flow_id,
+                "capability_ref": capability_ref,
+                "task_id": task_id,
+                "disposition": "flow",
+                "rationale": "Retained from the current MVG incumbent manifest.",
+                "sink_id": None,
+                "verification_ref": None,
+                "authority_ref": None,
+                "authority_review": None,
+            })
+    entrypoints = load_json(run_dir / "analysis-input/entrypoint-skeleton.json", {})
+    return {
+        "schema_version": PROPOSAL_SCHEMA,
+        "analysis_identity_sha256": state["analysis_identity_sha256"],
+        "planning_status": "ready_for_validation",
+        "manifest_candidate": deepcopy(manifest),
+        "coverage_table": coverage,
+        "entrypoints": entrypoints.get("rows", []) if isinstance(entrypoints, dict) else [],
+        "gaps": [],
+        "manual_obligations": [],
+        "change_reviews": [],
+        "retirement_reviews": [],
+        "coverage_review": {},
+        "notes": ["Current MVG incumbent projected for comparative evaluation; no Capability membership was inferred."],
+    }
+
+
 PROMPT = """You are planning cumulative MVG integration scope after Capability planning.
 
-Read every file under analysis-input/. The exact Capability file is an explicit input and must not be modified. `coverage-skeleton.json` is a non-droppable ledger: every active delivery Requirement must remain represented; you must not delete or silently omit its rows. Authoritative design semantics remain the GDD/source and reviewed Requirements. Existing task/Acceptance/contracts/tests and an existing manifest, when present, are evidence.
+Read every file under analysis-input/. `capabilities.v1.json` is the explicit and exclusive Capability SSoT for this run: use only its Capability IDs, titles, boundaries, and Requirement membership. Do not create, rename, merge, split, or infer Capabilities from the GDD, task views, tests, contracts, or an existing MVG manifest. Those other files are auxiliary evidence for journey semantics, ownership, implementation, and verification only. The exact Capability file must not be modified. `coverage-skeleton.json` is a non-droppable ledger: every active delivery Requirement must remain represented; you must not delete or silently omit its rows. Authoritative design semantics remain the GDD/source and reviewed Requirements, but they cannot override the selected Capability version's membership. Existing task/Acceptance/contracts/tests and an existing manifest, when present, are evidence.
 
 Return JSON only with schema_version = "newrouge.mvg-planning-proposal.v1".
 Required fields:
@@ -1914,21 +2266,24 @@ coverage_table must account for EVERY active delivery-relevant Requirement. Star
 
 
 def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, segmented: bool = True) -> dict[str, Any]:
+    """Generate three isolated MVG proposals, then have an isolated reviewer select one."""
+    # Legacy correction runs still use apply_restricted_patch; new candidates
+    # are complete independent proposals and never patch another candidate.
     run_path, state = _load_run(root, run_id)
     _validate_input_freshness(root, run_path.parent, state)
     if state.get("formal_ready") is not True:
         raise ValueError("formal MVG planning is blocked until the explicit Chapter 5 scope is ready")
     if llm_backend not in SUPPORTED_LLM_BACKENDS:
-        raise ValueError(
-            "MVG planning requires one of: " + ", ".join(sorted(SUPPORTED_LLM_BACKENDS))
-        )
+        raise ValueError("MVG planning requires one of: " + ", ".join(sorted(SUPPORTED_LLM_BACKENDS)))
     run_dir = run_path.parent
     existing_proposal = load_json(run_dir / "proposal.json", {})
-    if state.get("model_execution") and validate_proposal(root, state, existing_proposal)["status"] == "passed":
-        return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
-                "attempt_count": state["model_execution"]["attempt_count"]}
-    workspace_base = run_dir / "model-workspace"
-    workspace = workspace_base
+    if state.get("selection_status") == "selected" and isinstance(existing_proposal, dict):
+        validation = validate_proposal(root, state, existing_proposal)
+        if validation.get("status") == "passed":
+            return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
+                    "selected": state.get("selected_candidate"),
+                    "candidate_count": len(state.get("candidate_attempts") or {})}
+    workspace_base = run_dir / "candidates"
     workspace_base.mkdir(parents=True, exist_ok=True)
     tool_sc_dir = Path(__file__).resolve().parents[1] / "sc"
     if str(tool_sc_dir) not in sys.path:
@@ -1936,14 +2291,11 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
     from _llm_backend import inspect_llm_backend, run_llm_exec
 
     runner: Path | None = None
-    backend_info: dict[str, Any]
     if llm_backend in {"openai-api", "copilot-cli"}:
-        runner_name = (
-            "openai_isolated_model_runner.py"
-            if llm_backend == "openai-api"
+        runner = Path(__file__).resolve().with_name(
+            "openai_isolated_model_runner.py" if llm_backend == "openai-api"
             else "copilot_isolated_model_runner.py"
         )
-        runner = Path(__file__).resolve().with_name(runner_name)
         backend_info = inspect_isolated_runner(runner)
     else:
         backend_info = inspect_llm_backend(llm_backend)
@@ -1951,94 +2303,18 @@ def generate(root: Path, *, run_id: str, timeout_sec: int, llm_backend: str, seg
             reasons = "; ".join(str(value) for value in backend_info.get("blocking_errors", []))
             raise ValueError(f"{llm_backend} backend is unavailable: {reasons}")
 
-    def invoke(prompt: str, attempt: int, *, output_name: str | None = None,
-               output_schema_path: Path | None = None,
-               output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
-        relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
-        prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
-        # Keep the model's cwd empty and segment-local. The prepared evidence
-        # remains immutable under attempt/analysis-input, but is supplied only
-        # through the bounded inline prompt. This prevents Codex from spending
-        # its budget recursively scanning the entire evidence bundle.
-        llm_workspace = workspace / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
-        llm_workspace.mkdir(parents=True, exist_ok=True)
-        output = llm_workspace / relative_output.name
-        if output_schema_path is not None and output_schema is not None:
-            atomic_json(output_schema_path, output_schema)
-        if runner is not None:
-            prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
-            prompt_path.write_text(prompt, encoding="utf-8", newline="\n")
-            receipt = run_isolated_model(
-                runner,
-                workspace=llm_workspace,
-                prompt_path=prompt_path,
-                output_path=output,
-                timeout_sec=timeout_sec,
-            )
-            return output, {
-                "attempt": attempt,
-                "backend": llm_backend,
-                "backend_info": backend_info,
-                "runner": runner.as_posix(),
-                "returncode": 0,
-                "receipt": receipt,
-            }
-        rc, stdout, cmd = run_llm_exec(
-            backend=llm_backend,
-            root=llm_workspace,
-            prompt=prompt,
-            output_last_message=output,
-            timeout_sec=timeout_sec,
-            # Let Codex use the environment-default model and reasoning policy.
-            # MVG segmentation controls scope; it should not hard-code a model
-            # or override the user's CLI defaults.
-            codex_configs=[],
-            output_schema=output_schema_path,
-        )
-        execution: dict[str, Any] = {
-            "attempt": attempt,
-            "backend": llm_backend,
-            "backend_info": backend_info,
-            "command": cmd,
-            "returncode": rc,
-        }
-        try:
-            trace = json.loads(stdout)
-        except json.JSONDecodeError:
-            trace = None
-        if isinstance(trace, dict):
-            execution["trace"] = trace
-        else:
-            execution["stdout_tail"] = stdout[-4000:]
-        if rc != 0:
-            raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
-        return output, execution
-
     known_task_ids = sorted(_task_ids(root))
     task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
-    task_statuses = {
-        str(row["id"]): str(row.get("status", "")).lower()
-        for row in task_master.get("master", {}).get("tasks", [])
-    }
+    task_statuses = {str(row["id"]): str(row.get("status", "")).lower()
+                     for row in task_master.get("master", {}).get("tasks", [])}
     known_non_done_ids = sorted(int(task_id) for task_id, status in task_statuses.items() if status != "done")
     source_manifest = load_json(root / SOURCE_MANIFEST, {})
-    known_source_paths = sorted({
-        str(row.get("path"))
-        for row in source_manifest.get("sources", [])
-        if isinstance(row, dict) and str(row.get("path") or "").strip()
-    })
-    known_contract_refs = sorted({
-        str(value)
-        for row in _task_view_rows(root)
-        for value in _list_field(row, "contractRefs")
-        if str(value).strip()
-    })
-    known_test_refs = sorted({
-        str(value)
-        for row in _task_view_rows(root)
-        for value in _list_field(row, "test_refs")
-        if str(value).strip()
-    })
+    known_source_paths = sorted(str(row.get("path")) for row in source_manifest.get("sources", [])
+                                if isinstance(row, dict) and str(row.get("path") or "").strip())
+    known_contract_refs = sorted({str(value) for row in _task_view_rows(root)
+                                  for value in _list_field(row, "contractRefs") if str(value).strip()})
+    known_test_refs = sorted({str(value) for row in _task_view_rows(root)
+                              for value in _list_field(row, "test_refs") if str(value).strip()})
     strict_contract = f"""
 Deterministic validation reminders for the FULL replacement proposal:
 - manifest_candidate.schema_version must be exactly newrouge.mvg-integration.v1.
@@ -2051,129 +2327,373 @@ Deterministic validation reminders for the FULL replacement proposal:
 - Every handoff requires producer_task, consumer_task, owner_task, contract_ref, non-empty behavior, and non-empty test_ids.
 - Every test requires id, kind, state, path, selector, evidence_level, min_tests.
 - dotnet tests require evidence_level=domain-integration and a Game.Core.Tests/... .cs path.
-- Every dotnet selector must be a class name (for example RelayTests or Game.Core.Tests.Tasks.RelayTests), never a test filter expression, method selector, wildcard, or comparison.
+- Every dotnet selector must be a class name, never a test filter expression, method selector, wildcard, or comparison.
 - gdunit tests require evidence_level=scene-method or engine-input and a Tests.Godot/tests/... .gd path.
 - source_paths and contract_ref values in the formal manifest are original repository-relative paths, never analysis-input/... paths.
 - Every planned entrypoint requires integer owner_task plus non-empty path, symbol, inputs, state, assertions, implementation_acceptance.
-- coverage_table rows require a nonempty "rationale" string. Write that exact JSON key. The validator error coverage_rationale_missing means rationale is missing; coverage_rationale is an error label, not the required output field.
-- Do not omit a required field merely because it can be inferred from prose.
-Known Taskmaster IDs for this planning input: {known_task_ids}
-Authoritative Taskmaster statuses (task ID to status): {json.dumps(task_statuses, sort_keys=True)}
-The only known non-done Taskmaster IDs are: {known_non_done_ids}. If this list is empty, coverage.blocking_task_ids MUST be [] in every replacement proposal, even when tests and entrypoints are planned.
+- coverage_table rows require a nonempty "rationale" string.
+- The explicit capabilities.v1.json is the only Capability SSoT. Do not create or reassign Capability IDs from auxiliary evidence.
+    Known Taskmaster IDs for this planning input: {known_task_ids}
+Authoritative Taskmaster statuses: {json.dumps(task_statuses, sort_keys=True)}
+The only known non-done Taskmaster IDs are: {known_non_done_ids}.
+{"coverage.blocking_task_ids MUST be [] when this list is empty." if not known_non_done_ids else "Do not add a blocking task ID unless its Taskmaster status is non-done."}
 Declared authoritative source paths: {known_source_paths}
-Existing reviewed contract refs from task views: {known_contract_refs}
-Existing test refs from task views: {known_test_refs}
+Existing reviewed contract refs: {known_contract_refs}
+Existing test refs: {known_test_refs}
 Prefer these real refs instead of inventing alternatives. If a required real object does not exist, record a gap and use planning_status=draft.
 """
-
+    planning_scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+    if planning_scope is not None:
+        strict_contract += """
+This run has an immutable existing-manifest planning scope. The supplied manifest is the
+cumulative target and must not be widened. Preserve exactly its flow IDs and test IDs;
+do not add any Requirement, Capability, Task, source path, contract route or test outside
+the listed scope. Requirements outside this scope are intentionally excluded by the
+manifest's excluded_claims and must not be added to coverage_table.
+Frozen manifest scope:
+""" + json.dumps({key: planning_scope.get(key) for key in (
+            "scope_id", "mode", "flow_ids", "requirement_ids", "capability_refs",
+            "task_ids", "test_ids", "source_paths", "excluded_claims")}, ensure_ascii=False)
     prompt = PROMPT + "\n" + strict_contract
-    state["generation_strategy"] = "segmented" if segmented else "single-proposal"
+    state["generation_strategy"] = "independent-candidates-segmented" if segmented else "independent-candidates-single"
+    state.setdefault("candidate_attempts", {})
     atomic_json(run_path, state)
-    attempts: list[dict[str, Any]] = state.setdefault("generation_attempts", [])
-    proposal: dict[str, Any] | None = None
-    validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
-    for attempt in (1, 2, 3):
-        if attempt <= len(attempts):
-            continue
-        workspace = workspace_base / f"attempt-{attempt}"
-        workspace.mkdir(parents=True, exist_ok=False)
-        shutil.copytree(run_dir / "analysis-input", workspace / "analysis-input")
-        record = {"attempt": attempt, "status": "running", "backend": llm_backend}
-        attempts.append(record)
-        atomic_json(run_path, state)
-        try:
-            # Keep each model response bounded. The final proposal is assembled
-            # locally from section outputs and then subjected to the existing
-            # full deterministic validator.
-            if segmented:
-                output, execution = invoke_segmented(
-                    invoke, run_dir, state, attempt, prompt, workspace,
-                    semantics=load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
-                    task_ids=[int(value) for value in state.get("task_scope", [])],
-                    base_proposal=proposal,
-                )
-            else:
-                output, execution = invoke(prompt, attempt)
-        except (RuntimeError, TimeoutError, OSError, ValueError) as exc:
-            record.update(status="execution-failed", error=str(exc))
-            state["phase"] = "generation-execution-blocked"
-            atomic_json(run_path, state)
-            atomic_json(run_dir / "model-execution.json", {"backend": llm_backend, "attempts": attempts})
-            continue
-        text_value = output.read_text(encoding="utf-8").strip()
-        if text_value.startswith("```"):
-            lines = text_value.splitlines()[1:]
-            if lines and lines[-1].strip().startswith("```"):
-                lines = lines[:-1]
-            text_value = "\n".join(lines)
-        try:
-            parsed = json.loads(text_value)
-        except (TypeError, ValueError) as exc:
-            record.update(status="execution-failed", error=f"model output is not valid JSON: {exc}")
-            state["phase"] = "generation-execution-blocked"
-            atomic_json(run_path, state)
-            atomic_json(run_dir / "model-execution.json", {"backend": llm_backend, "attempts": attempts})
-            continue
-        if not isinstance(parsed, dict):
-            raise ValueError("MVG proposal must be an object")
-        if attempt > 1 and not segmented:
-            patch_errors = [] if is_restricted_patch(parsed) else ["restricted_patch_required"]
-            patch_errors.extend(validate_restricted_patch_identity(parsed, state))
-            if patch_errors:
-                execution["proposal_sha256"] = canonical_sha(parsed)
-                execution["deterministic_validation"] = {"status": "blocked", "errors": patch_errors}
-                record.update(execution, status="completed")
-                atomic_json(run_path, state)
-                atomic_json(run_dir / f"proposal-attempt-{attempt}.json", parsed)
-                validation = execution["deterministic_validation"]
-                prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(patch_errors)
-                continue
-            base = proposal or load_json(run_dir / "proposal.json", {})
-            parsed = apply_restricted_patch(base, parsed)
-        proposal = parsed
-        normalize_proposal_format(proposal)
-        normalize_dotnet_selectors(root, proposal)
-        validation = validate_proposal(root, state, proposal)
-        execution["proposal_sha256"] = canonical_sha(proposal)
-        execution["deterministic_validation"] = validation
-        record.update(execution, status="completed")
-        atomic_json(run_path, state)
-        atomic_json(run_dir / f"proposal-attempt-{attempt}.json", proposal)
-        ready_with_gaps = validation.get("planning_status") == "ready_for_validation" and validation.get("unresolved_gap_count", 0) > 0
-        if validation.get("status") == "passed" and not ready_with_gaps:
-            break
-        errors = validation.get("errors") or []
-        if ready_with_gaps:
-            errors = errors + ["unresolved_gaps contradict ready_for_validation. Preserve true upstream gaps as draft. Correctly specified planned implementation/tests and absent runtime evidence belong in notes/manual_obligations, not gaps. Return a full consistent proposal; do not hide genuine upstream uncertainty."]
-        prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(errors)
 
-    if proposal is None:
-        raise ValueError("MVG proposal execution attempt budget exhausted; prepared inputs are preserved")
-    atomic_json(run_dir / "proposal.json", proposal)
+    def invoke_for(candidate_root: Path, attempt_root: Path):
+        def invoke(prompt_text: str, attempt: int, *, output_name: str | None = None,
+                   output_schema_path: Path | None = None,
+                   output_schema: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
+            relative_output = Path(output_name or f"proposal-attempt-{attempt}.json")
+            prompt_stem = relative_output.with_suffix("").as_posix().replace("/", "-")
+            # Equivalent to the former `llm_workspace = workspace / "llm-sandbox"`
+            # layout, with the candidate and section identities made explicit.
+            llm_workspace = attempt_root / "llm-sandbox" / f"attempt-{attempt}" / prompt_stem
+            llm_workspace.mkdir(parents=True, exist_ok=True)
+            output = llm_workspace / relative_output.name
+            if output_schema_path is not None and output_schema is not None:
+                atomic_json(output_schema_path, output_schema)
+            if runner is not None:
+                prompt_path = llm_workspace / f"prompt-{attempt}-{prompt_stem}.txt"
+                prompt_path.write_text(prompt_text, encoding="utf-8", newline="\n")
+                receipt = run_isolated_model(
+                    runner, workspace=llm_workspace, prompt_path=prompt_path,
+                    output_path=output, timeout_sec=timeout_sec,
+                    output_schema=output_schema_path,
+                )
+                return output, {"attempt": attempt, "backend": llm_backend,
+                                "backend_info": backend_info, "runner": runner.as_posix(),
+                                "returncode": 0, "receipt": receipt}
+            rc, stdout, cmd = run_llm_exec(
+                backend=llm_backend, root=llm_workspace, prompt=prompt_text,
+                output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
+                output_schema=output_schema_path,
+            )
+            execution: dict[str, Any] = {"attempt": attempt, "backend": llm_backend,
+                                          "backend_info": backend_info, "command": cmd,
+                                          "returncode": rc}
+            try:
+                trace = json.loads(stdout)
+            except json.JSONDecodeError:
+                trace = None
+            if isinstance(trace, dict):
+                execution["trace"] = trace
+            else:
+                execution["stdout_tail"] = stdout[-4000:]
+            if rc != 0:
+                raise RuntimeError(f"MVG planning model failed: {stdout[-2000:]}")
+            return output, execution
+        return invoke
+
+    def generate_candidate(label: str) -> dict[str, Any]:
+        candidate_root = workspace_base / label
+        candidate_root.mkdir(parents=True, exist_ok=True)
+        prepared = candidate_root / "analysis-input"
+        if prepared.exists():
+            shutil.rmtree(prepared)
+        shutil.copytree(run_dir / "analysis-input", prepared)
+        for name in ("coverage-skeleton.json", "entrypoint-skeleton.json"):
+            source = prepared / name
+            if source.is_file():
+                shutil.copyfile(source, candidate_root / name)
+        candidate_state = deepcopy(state)
+        records = list((state.get("candidate_attempts", {}).get(label) or {}).get("attempts", []))
+        proposal: dict[str, Any] | None = None
+        validation: dict[str, Any] = {"status": "blocked", "errors": ["model_not_run"]}
+        candidate_prompt = prompt
+        # The old single-proposal path used `for attempt in (1, 2, 3)` and is
+        # retained only for explicit segmented=False compatibility. The new
+        # default spends exactly one fresh context per candidate label.
+        attempt_numbers = (1, 2, 3) if not segmented else (1,)
+        for attempt in attempt_numbers:
+            if attempt <= len(records):
+                # A process can terminate after the candidate output is
+                # durable but before the shared run journal is updated. On
+                # resume, recover and revalidate that output instead of
+                # treating the already completed candidate as missing.
+                prior = records[attempt - 1]
+                if isinstance(prior, dict) and prior.get("status") == "completed":
+                    prior_output = candidate_root / "proposal.json"
+                    if not prior_output.is_file():
+                        prior_output = candidate_root / f"proposal-attempt-{attempt}.json"
+                    if prior_output.is_file():
+                        try:
+                            recovered = json.loads(prior_output.read_text(encoding="utf-8"))
+                            if isinstance(recovered, dict):
+                                normalize_proposal_format(recovered)
+                                normalize_dotnet_selectors(root, recovered)
+                                recovered_validation = validate_proposal(root, state, recovered)
+                                if recovered_validation.get("status") == "passed":
+                                    proposal = recovered
+                                    validation = recovered_validation
+                                    break
+                                validation = recovered_validation
+                        except (OSError, ValueError, json.JSONDecodeError) as exc:
+                            validation = {"status": "blocked", "errors": [str(exc)]}
+                continue
+            attempt_root = candidate_root / "model-workspace" / f"attempt-{attempt}"
+            attempt_root.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(prepared, attempt_root / "analysis-input")
+            record: dict[str, Any] = {"candidate": label, "attempt": attempt,
+                                      "status": "running", "backend": llm_backend}
+            records.append(record)
+            state["candidate_attempts"][label] = {"attempts": records}
+            state["generation_attempts"] = [
+                {"candidate": name, "attempt_count": len((state["candidate_attempts"].get(name) or {}).get("attempts", [])),
+                 "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
+                for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
+            ]
+            atomic_json(run_path, state)
+            try:
+                invoke = invoke_for(candidate_root, attempt_root)
+                if segmented:
+                    output, execution = invoke_segmented(
+                        invoke, candidate_root, candidate_state, attempt, candidate_prompt, attempt_root,
+                        semantics=load_json(prepared / "semantic-requirements.v1.json", {}),
+                        task_ids=[int(value) for value in state.get("task_scope", [])],
+                        base_proposal=proposal,
+                        planning_scope=state.get("planning_scope"),
+                    )
+                else:
+                    output, execution = invoke(candidate_prompt, attempt)
+                parsed = json.loads(output.read_text(encoding="utf-8").strip())
+                if not isinstance(parsed, dict):
+                    raise ValueError("MVG proposal must be an object")
+                if not segmented and attempt > 1:
+                    patch_errors = [] if is_restricted_patch(parsed) else ["restricted_patch_required"]
+                    patch_errors.extend(validate_restricted_patch_identity(parsed, state))
+                    if patch_errors:
+                        raise ValueError("restricted patch invalid: " + ";".join(patch_errors))
+                    proposal = apply_restricted_patch(proposal or {}, parsed)
+                else:
+                    proposal = parsed
+                normalize_proposal_format(proposal)
+                normalize_dotnet_selectors(root, proposal)
+                validation = validate_proposal(root, state, proposal)
+                execution["proposal_sha256"] = canonical_sha(proposal)
+                execution["deterministic_validation"] = validation
+                record.update(execution, status="completed")
+                atomic_json(candidate_root / f"proposal-attempt-{attempt}.json", proposal)
+            except (RuntimeError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+                record.update(status="execution-failed", error=_compact_exception_message(exc))
+                validation = {"status": "blocked", "errors": [str(exc)]}
+                state["phase"] = "generation-execution-blocked"
+            atomic_json(run_path, state)
+            ready_with_gaps = (validation.get("planning_status") == "ready_for_validation"
+                               and validation.get("unresolved_gap_count", 0) > 0)
+            if validation.get("status") == "passed" and not ready_with_gaps:
+                break
+            errors = validation.get("errors") or []
+            if ready_with_gaps:
+                errors = errors + ["ready_for_validation cannot contain unresolved gaps"]
+            candidate_prompt = PROMPT + "\n" + strict_contract + "\n" + correction_prompt(errors)
+        valid = bool(proposal and validation.get("status") == "passed")
+        summary = {"status": "valid" if valid else "failed", "attempts": records,
+                   "attempt_count": len(records), "validation": validation}
+        state["candidate_attempts"][label] = summary
+        state["generation_attempts"] = [
+            {"candidate": name, "attempt_count": int((state["candidate_attempts"].get(name) or {}).get("attempt_count", 0)),
+             "status": (state["candidate_attempts"].get(name) or {}).get("status", "pending")}
+            for name in MVG_CANDIDATE_LABELS if name in state["candidate_attempts"]
+        ]
+        if valid:
+            atomic_json(candidate_root / "proposal.json", proposal)
+            state["candidate_attempts"][label]["proposal_sha256"] = file_sha(candidate_root / "proposal.json")
+        atomic_json(run_path, state)
+        return {"label": label, "valid": valid, "proposal": proposal,
+                "summary": state["candidate_attempts"][label]}
+
+    if not segmented:
+        # Explicit legacy callers retain the old single-proposal correction
+        # contract. The production/default path below is always A/B/C plus D.
+        legacy = generate_candidate("candidate-1")
+        # Preserve the legacy durable attempt list shape for explicit
+        # segmented=False callers and their recovery diagnostics.
+        state["generation_attempts"] = legacy["summary"]["attempts"]
+        atomic_json(run_path, state)
+        if not legacy["valid"]:
+            raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: candidate-1")
+        atomic_json(run_dir / "proposal.json", legacy["proposal"])
+        state.update(
+            phase="generated", selection_status="legacy-single", selected_candidate="candidate-1",
+            model_backend=llm_backend,
+            model_execution={"path": (run_dir / "model-execution.json").relative_to(root).as_posix(),
+                              "backend": llm_backend,
+                              "candidate_count": 1,
+                              "attempt_count": legacy["summary"]["attempt_count"]},
+        )
+        atomic_json(run_dir / "model-execution.json", {
+            "schema_version": "newrouge.mvg-planning-model-execution.v1",
+            "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
+            "selection_status": "legacy-single", "selected_candidate": "candidate-1",
+        })
+        atomic_json(run_path, state)
+        return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
+                "selected": "candidate-1", "candidate_count": 1,
+                "attempt_count": legacy["summary"]["attempt_count"]}
+
+    results = [generate_candidate(label) for label in MVG_CANDIDATE_LABELS]
+    valid_results = [row for row in results if row["valid"]]
+    if len(valid_results) != len(MVG_CANDIDATE_LABELS):
+        atomic_json(run_dir / "model-execution.json", {
+            "schema_version": "newrouge.mvg-planning-model-execution.v1",
+            "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
+            "selection_status": "blocked", "selection_error": "all three independent candidates must be valid",
+        })
+        raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: "
+                         + ",".join(row["label"] for row in results if not row["valid"]))
+
+    existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
+    incumbent_present = isinstance(existing_manifest, dict) and existing_manifest.get("schema_version") == "newrouge.mvg-integration.v1"
+    incumbent_valid = incumbent_present
+    incumbent_proposal = None
+    if incumbent_present:
+        incumbent_proposal = _build_incumbent_proposal(root, run_dir, state, existing_manifest)
+        incumbent_errors = validate_proposal(root, state, incumbent_proposal)["errors"]
+        if incumbent_errors:
+            # Keep an invalid incumbent in the comparative review as D so the
+            # evaluator sees the real baseline; deterministic selection below
+            # forbids retaining it until its defects are resolved.
+            incumbent_valid = False
+            state["incumbent_rejected"] = incumbent_errors
+    state["incumbent_present"] = incumbent_present
+    state["incumbent_valid"] = incumbent_valid
+    selection_dir = run_dir / "selection-workspace"
+    selection_dir.mkdir(parents=True, exist_ok=True)
+    shuffled_labels = list(MVG_CANDIDATE_LABELS)
+    shuffle_seed = int(canonical_sha({
+        "analysis_identity_sha256": state["analysis_identity_sha256"],
+        "run_id": run_id,
+    }).split(":", 1)[-1][:16], 16)
+    random.Random(shuffle_seed).shuffle(shuffled_labels)
+    aliases = dict(zip(("A", "B", "C"), shuffled_labels))
+    state["selection_anonymous_mapping"] = {alias: label for alias, label in aliases.items()}
+    for alias, label in aliases.items():
+        shutil.copyfile(workspace_base / label / "proposal.json", selection_dir / f"{alias}.json")
+    if incumbent_present and incumbent_proposal is not None:
+        atomic_json(selection_dir / "D.json", incumbent_proposal)
+    selection_prompt = f"""You are the independent MVG proposal evaluator.
+Read the prepared analysis-input and anonymous proposal files A.json, B.json, C.json
+under this isolated workspace.{" Also read D.json, which is the current published MVG incumbent and may be retained." if incumbent_present else ""}
+Select one complete proposal; never merge proposals. The exact capabilities.v1.json is
+the only Capability SSoT. GDD, task views, contracts and tests are auxiliary evidence.
+Evaluate in order: Capability membership fidelity, complete Requirement coverage,
+coherent player journeys and handoffs, ownership/test feasibility, and cumulative
+baseline preservation. A new candidate is not automatically better than the incumbent.
+Return JSON only with schema_version={MVG_SELECTION_SCHEMA!r}, selected={"A|B|C|D|null" if incumbent_present else "A|B|C|null"},
+status=selected|no_valid_winner, candidate_reviews with exactly one row for each available label,
+tradeoffs (non-empty), evidence_refs (paths or Requirement IDs), and rationale (non-empty).
+"""
+    selection_attempts = state.setdefault("selection_attempts", [])
+    selection_result: dict[str, Any] | None = None
+    selection_errors: list[str] = []
+    for attempt in range(len(selection_attempts) + 1, MVG_SELECTION_ATTEMPT_LIMIT + 1):
+        attempt_dir = selection_dir / f"attempt-{attempt}"
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+        selection_input = attempt_dir / "analysis-input"
+        if selection_input.exists():
+            shutil.rmtree(selection_input)
+        shutil.copytree(run_dir / "analysis-input", selection_input)
+        for alias in ("A", "B", "C", "D"):
+            source = selection_dir / f"{alias}.json"
+            if source.is_file():
+                shutil.copyfile(source, attempt_dir / f"{alias}.json")
+        output = attempt_dir / "selection.json"
+        schema_path = attempt_dir / "selection-output-schema.json"
+        atomic_json(schema_path, mvg_selection_output_schema(incumbent_present=incumbent_present))
+        prompt_path = attempt_dir / "prompt.txt"
+        prompt_path.write_text(selection_prompt, encoding="utf-8", newline="\n")
+        record: dict[str, Any] = {"attempt": attempt, "status": "running", "backend": llm_backend}
+        selection_attempts.append(record)
+        atomic_json(run_path, state)
+        try:
+            if runner is not None:
+                receipt = run_isolated_model(runner, workspace=attempt_dir, prompt_path=prompt_path,
+                                             output_path=output, timeout_sec=timeout_sec,
+                                             output_schema=schema_path)
+                record["receipt"] = receipt
+            else:
+                rc, stdout, command = run_llm_exec(
+                    backend=llm_backend, root=attempt_dir, prompt=selection_prompt,
+                    output_last_message=output, timeout_sec=timeout_sec, codex_configs=[],
+                    output_schema=schema_path,
+                )
+                record.update(returncode=rc, command=command, stdout_tail=stdout[-2000:])
+                if rc != 0:
+                    raise RuntimeError(f"MVG selection model failed: {stdout[-2000:]}")
+            selection_result = parse_model_json(output)
+            selection_errors = validate_mvg_selection(
+                selection_result, candidate_labels=set(MVG_CANDIDATE_LABELS),
+                incumbent_present=incumbent_present, alias_mapping=aliases,
+            )
+            if selection_errors:
+                raise ValueError("MVG selection output invalid: " + ";".join(selection_errors))
+            record.update(status="completed", output_sha256=file_sha(output))
+            break
+        except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            selection_result = None
+            selection_errors = [str(exc)]
+            record.update(status="execution-failed", error=_compact_exception_message(exc))
+        finally:
+            atomic_json(run_path, state)
+    if selection_result is None:
+        state["phase"] = "selection-blocked"
+        atomic_json(run_path, state)
+        raise ValueError("MVG comparative selection failed after bounded attempts: " + ";".join(selection_errors))
+    atomic_json(run_dir / "selection-review.json", selection_result)
+    selected_alias = selection_result.get("selected")
+    if selected_alias in aliases:
+        selected_label = aliases[selected_alias]
+        selected_proposal = load_json(workspace_base / selected_label / "proposal.json", {})
+    elif selected_alias == "D" and incumbent_proposal is not None and incumbent_valid:
+        selected_label = "incumbent"
+        selected_proposal = incumbent_proposal
+    else:
+        raise ValueError("MVG comparative selection returned no usable winner")
+    atomic_json(run_dir / "proposal.json", selected_proposal)
+    state.update(
+        phase="generated", selection_status="selected", selected_candidate=selected_label,
+        selection_alias=selected_alias, selection_path="selection-review.json",
+        selection_schema=MVG_SELECTION_SCHEMA, model_backend=llm_backend,
+        model_execution={"path": (run_dir / "model-execution.json").relative_to(root).as_posix(),
+                          "backend": llm_backend,
+                          "candidate_count": len(valid_results),
+                          "attempt_count": sum(int(row["summary"].get("attempt_count", 0)) for row in results),
+                          "selection_attempt_count": len(selection_attempts),
+                          "incumbent_present": incumbent_present,
+                          "incumbent_valid": incumbent_valid},
+    )
     atomic_json(run_dir / "model-execution.json", {
         "schema_version": "newrouge.mvg-planning-model-execution.v1",
-        "backend": llm_backend,
-        "attempts": attempts,
-        "final_attempt": len(attempts),
+        "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
+        "selection_attempts": selection_attempts, "selected_alias": selected_alias,
+        "selected_candidate": selected_label,
+        "incumbent_present": incumbent_present, "incumbent_valid": incumbent_valid,
     })
-    if validation.get("status") != "passed":
-        raise ValueError(
-            "MVG model output remains structurally invalid after bounded correction attempts: "
-            + "; ".join(str(value) for value in validation.get("errors", []))
-        )
-    state["phase"] = "generated"
-    state["model_backend"] = llm_backend
-    state["model_execution"] = {
-        "path": (run_dir / "model-execution.json").relative_to(root).as_posix(),
-        "backend": llm_backend,
-        "attempt_count": len(attempts),
-    }
     atomic_json(run_path, state)
-    return {
-        "run_id": run_id,
-        "proposal_sha256": file_sha(run_dir / "proposal.json"),
-        "attempt_count": len(attempts),
-    }
+    return {"run_id": run_id, "proposal_sha256": file_sha(run_dir / "proposal.json"),
+            "selected": selected_label, "selection_alias": selected_alias,
+            "candidate_count": len(valid_results),
+            "attempt_count": state["model_execution"]["attempt_count"]}
 
 def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
@@ -2193,23 +2713,57 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         return {"status": "blocked", "errors": errors + ["manifest_candidate_missing"]}
 
     errors.extend(validate_manifest(root, manifest, executable=False))
-    capabilities = load_json(root / str(state["capabilities_path"]), {})
+    prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
+    # Validate against the byte-bound prepared snapshot. The selected local
+    # Capability is the planning SSoT; live auxiliary files cannot drift into
+    # a candidate after prepare.
+    capabilities = load_json(prepared / "capabilities.v1.json", None)
+    if not isinstance(capabilities, dict) or capabilities.get("schema_version") != "newrouge.capabilities.v1":
+        # Production runs always carry a frozen Capability fingerprint. Never
+        # replace a missing/corrupt snapshot with the live workspace file: that
+        # would let auxiliary edits or another Capability version cross the
+        # prepared run boundary. Minimal legacy fixtures predate this state
+        # field and retain the compatibility fallback only for their tests.
+        if state.get("capabilities_sha256"):
+            errors.append("prepared_capability_snapshot_missing")
+            capabilities = {}
+        else:
+            capabilities = load_json(root / str(state["capabilities_path"]), {})
     known_caps = {
         str(row.get("capability_id"))
         for row in capabilities.get("capabilities", [])
         if isinstance(row, dict)
     }
-    semantics = load_json(root / SEMANTICS, {})
+    semantics = load_json(prepared / "semantic-requirements.v1.json", None)
+    if not isinstance(semantics, dict) or not isinstance(semantics.get("requirements"), list):
+        semantics = load_json(root / SEMANTICS, {})
     known_requirements = {
         str(row.get("requirement_id"))
         for row in semantics.get("requirements", [])
         if isinstance(row, dict)
     }
-    known_tasks = _task_ids(root)
+    task_master = load_json(prepared / "task-master.json", None)
+    if not isinstance(task_master, dict):
+        task_master = load_json(root / ".taskmaster/tasks/tasks.json", {})
+    known_tasks = {
+        int(row["id"])
+        for row in (task_master.get("master", {}) or {}).get("tasks", [])
+        if isinstance(row, dict) and type(row.get("id")) is int
+    }
+    prepared_task_views: list[dict[str, Any]] = []
+    for name in ("tasks_back.json", "tasks_gameplay.json"):
+        payload = load_json(prepared / "task-views" / name, None)
+        if not isinstance(payload, list):
+            payload = load_json(root / ".taskmaster/tasks" / name, [])
+        if isinstance(payload, list):
+            prepared_task_views.extend(row for row in payload if isinstance(row, dict))
     from _mvg_planning_review import coverage_errors, prepared_evidence_errors
-    errors.extend(coverage_errors(root, proposal, semantics, capabilities, _task_view_rows(root)))
-    errors.extend(prepared_evidence_errors(root, proposal,
-        _run_dir(root, str(state.get("run_id"))) / "analysis-input"))
+    planning_scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+    scoped_requirement_ids = (set(planning_scope.get("requirement_ids", []))
+                              if planning_scope is not None else None)
+    errors.extend(coverage_errors(root, proposal, semantics, capabilities, prepared_task_views,
+                                  scoped_requirement_ids))
+    errors.extend(prepared_evidence_errors(root, proposal, prepared))
     for flow in manifest.get("flows", []):
         if not isinstance(flow, dict):
             continue
@@ -2222,6 +2776,63 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         for tid in flow.get("task_ids", []):
             if type(tid) is not int or tid not in known_tasks:
                 errors.append(f"unknown_task_id:{tid}")
+    if planning_scope is not None:
+        def scope_error(kind: str, value: Any) -> None:
+            errors.append(f"manifest_scope_violation:{kind}:{value}")
+        allowed = planning_scope
+        allowed_flows = set(allowed.get("flow_ids", []))
+        allowed_requirements = set(allowed.get("requirement_ids", []))
+        allowed_capabilities = set(allowed.get("capability_refs", []))
+        allowed_tasks = set(allowed.get("task_ids", []))
+        allowed_tests = set(allowed.get("test_ids", []))
+        allowed_sources = set(allowed.get("source_paths", []))
+        allowed_contracts = set(allowed.get("contract_refs", []))
+        allowed_test_paths = set(allowed.get("test_paths", []))
+        actual_flows = {str(row.get("id")) for row in manifest.get("flows", []) if isinstance(row, dict)}
+        for flow_id in sorted(actual_flows - allowed_flows):
+            scope_error("flow", flow_id)
+        for required in sorted(allowed_flows - actual_flows):
+            scope_error("missing_flow", required)
+        for flow in manifest.get("flows", []):
+            if not isinstance(flow, dict):
+                continue
+            for value in flow.get("requirement_ids", []):
+                if str(value) not in allowed_requirements:
+                    scope_error("requirement", value)
+            for value in flow.get("capability_refs", []):
+                if str(value) not in allowed_capabilities:
+                    scope_error("capability", value)
+            for value in flow.get("task_ids", []):
+                if type(value) is not int or value not in allowed_tasks:
+                    scope_error("task", value)
+            for value in flow.get("test_ids", []):
+                if str(value) not in allowed_tests:
+                    scope_error("test", value)
+            for value in flow.get("source_paths", []):
+                if str(value).replace("\\", "/") not in allowed_sources:
+                    scope_error("source", value)
+            for handoff in flow.get("handoffs", []):
+                if isinstance(handoff, dict):
+                    contract = str(handoff.get("contract_ref") or "").split("#", 1)[0].replace("\\", "/")
+                    if contract not in allowed_contracts:
+                        scope_error("contract", contract)
+                    for extra in handoff.get("contract_refs", []) or []:
+                        extra_ref = str(extra).split("#", 1)[0].replace("\\", "/")
+                        if extra_ref not in allowed_contracts:
+                            scope_error("contract", extra_ref)
+        for test in manifest.get("tests", []):
+            if isinstance(test, dict):
+                if str(test.get("id")) not in allowed_tests:
+                    scope_error("test", test.get("id"))
+                test_path = str(test.get("path") or "").split("#", 1)[0].replace("\\", "/")
+                if test_path not in allowed_test_paths:
+                    scope_error("test_path", test_path)
+        for row in proposal.get("coverage_table", []):
+            if isinstance(row, dict) and str(row.get("requirement_id")) not in allowed_requirements:
+                scope_error("coverage_requirement", row.get("requirement_id"))
+        for row in proposal.get("entrypoints", []):
+            if isinstance(row, dict) and row.get("owner_task") not in allowed_tasks:
+                scope_error("entrypoint_task", row.get("owner_task"))
 
     for row in proposal.get("entrypoints", []):
         if not isinstance(row, dict):
@@ -2244,7 +2855,6 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
                     if not resolved.is_file():
                         errors.append(f"verified_entrypoint_missing:{path}")
                     else:
-                        prepared = _run_dir(root, str(state.get("run_id"))) / "analysis-input"
                         if not any((prepared / prefix / path).is_file() for prefix in ("references", "sources")):
                             errors.append(f"verified_entrypoint_not_prepared:{path}")
                         symbol = str(row.get("symbol") or "").strip()
@@ -2306,8 +2916,10 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     existing = load_json(run_dir / "semantic-review.json", {})
     if published or (existing.get("proposal_sha256") == proposal_sha
             and existing.get("analysis_identity_sha256") == state["analysis_identity_sha256"]):
+        scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+        allowed_requirements = set(scope.get("requirement_ids", [])) if scope else None
         errors = semantic_review_errors(state, proposal, existing,
-            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+            load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}), allowed_requirements)
         errors.extend(review_execution_errors(state, proposal,
             load_json(run_dir / "semantic-review-execution.json", {})))
         if state.get("phase") != "applied":
@@ -2318,7 +2930,8 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
                 + ";".join(errors))
         return {"status": "approved", "proposal_sha256": proposal_sha, "runtime_verified": False}
     prompt = f'''Independently review proposal.json against the prepared source text and bounded review evidence,
-Capability membership, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
+the exact Capability membership in analysis-input/capabilities.v1.json, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
+Treat analysis-input/capabilities.v1.json as the only Capability SSoT; other evidence can support behavior and ownership but cannot create or remap Capability membership.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
 cross-system handoffs, every Requirement's flow/other-verification/deferred accounting, entrypoint inputs/state/assertions,
 test evidence levels and feasibility. Planned entrypoints/tests are legitimate future obligations, not runtime proof.
@@ -2326,6 +2939,9 @@ Do not require their implementation or claim runtime_verified. The review-eviden
 excerpts of proposal-referenced contracts/tests; deterministic validation still uses the complete immutable bundle.
 Do not approve invented refs, missing obligations,
 mechanical one-flow-per-Capability grouping, unsupported deferral or baseline weakening.
+If this run includes a frozen existing-manifest scope, review only that scope. Requirements
+outside its listed flow IDs are intentionally excluded claims, not missing coverage. Reject
+any flow, test, task, source or Requirement that crosses the frozen boundary.
 Return JSON only: schema_version="newrouge.mvg-semantic-review.v1",
 analysis_identity_sha256="{state['analysis_identity_sha256']}", proposal_sha256="{canonical_sha(proposal)}",
 Copy both identity values verbatim from this prompt; do not compute, shorten, or edit their sha256 strings.
@@ -2336,12 +2952,20 @@ with exactly one explicit non-empty rationale per active delivery-relevant Requi
 flow_reviews=[{{"flow_id":"...","verdict":"sound|blocked","rationale":"..."}}] with exactly one row per flow.
 Use one actual verdict value, not the pipe-separated enumeration above. Do not rewrite the proposal.
 '''
+    review_scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+    if review_scope is not None:
+        prompt += "\nFrozen existing-manifest scope for this review:\n" + json.dumps({key: review_scope.get(key) for key in (
+            "scope_id", "flow_ids", "requirement_ids", "capability_refs", "task_ids",
+            "test_ids", "source_paths", "contract_refs", "test_paths", "excluded_claims")}, ensure_ascii=False)
     semantics = load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {})
+    scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
+    scoped_requirements = set(scope.get("requirement_ids", [])) if scope else None
     required_requirement_ids = {
         str(row.get("requirement_id"))
         for row in semantics.get("requirements", [])
         if isinstance(row, dict) and row.get("status", "active") == "active"
         and row.get("delivery_relevant", True)
+        and (scoped_requirements is None or str(row.get("requirement_id")) in scoped_requirements)
     }
     manifest = proposal.get("manifest_candidate") or {}
     required_flow_ids = {
@@ -2452,8 +3076,10 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
     prepare_publication(publication, publication_identity,
         {"semantic-review.json": result, "semantic-review-execution.json": execution}, atomic_json)
     resume_publication(publication, publication_identity, atomic_json)
+    scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     errors = semantic_review_errors(state, proposal, result,
-        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
+        set(scope.get("requirement_ids", [])) if scope else None)
     state["phase"] = "reviewed" if not errors else "review-blocked"
     atomic_json(run_path, state)
     if errors:
@@ -2547,8 +3173,10 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
     proposal = load_json(run_dir / "proposal.json", {})
     result = validate_proposal(root, state, proposal)
     from _mvg_planning_review import semantic_review_errors, review_execution_errors
+    scope = state.get("planning_scope") if isinstance(state.get("planning_scope"), dict) else None
     review_errors = semantic_review_errors(state, proposal, load_json(run_dir / "semantic-review.json", {}),
-        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}))
+        load_json(run_dir / "analysis-input/semantic-requirements.v1.json", {}),
+        set(scope.get("requirement_ids", [])) if scope else None)
     review_errors.extend(review_execution_errors(state, proposal,
         load_json(run_dir / "semantic-review-execution.json", {})))
     if review_errors:
@@ -2579,6 +3207,9 @@ def validate(root: Path, *, run_id: str) -> dict[str, Any]:
 def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) -> None:
     index = load_json(run_dir / "analysis-input/analysis-index.json", {})
     identity = index.pop("analysis_identity_sha256", None)
+    # Repository revision/dirty state is provenance, not the planning input
+    # identity. Local commits may advance without invalidating unchanged inputs.
+    index.pop("repository_identity", None)
     if canonical_sha(index) != identity or identity != state.get("analysis_identity_sha256"):
         raise ValueError("MVG prepared analysis identity changed")
     authority = index.get("authority_inputs")
@@ -2587,7 +3218,8 @@ def _validate_input_freshness(root: Path, run_dir: Path, state: dict[str, Any]) 
     drift = []
     for rel, expected in authority.items():
         path = repo_path(root, rel)
-        if (file_sha(path) if path.is_file() else None) != expected:
+        if ((normalized_file_sha(path) if path.is_file() else None) != expected
+                and (file_sha(path) if path.is_file() else None) != expected):
             drift.append(rel)
     for rel, expected in index["files"].items():
         path = repo_path(run_dir / "analysis-input", rel)
