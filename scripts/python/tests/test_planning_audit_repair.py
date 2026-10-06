@@ -526,6 +526,60 @@ class PlanningAuditRepairTests(unittest.TestCase):
         self.assertEqual(2, len(calls))
         self.assertTrue(all(path is not None for path in calls))
 
+    def test_mvg_review_projection_keeps_only_proposal_task_views(self):
+        _state, proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        for name in ("tasks_back.json", "tasks_gameplay.json"):
+            path = run / "analysis-input/task-views" / name
+            rows = load_json(path)
+            rows.extend({"taskmaster_id": index, "id": index, "title": "unused"}
+                        for index in range(9000, 9050))
+            atomic_json(path, rows)
+        workspace = run / "semantic-review-workspace/projection-test"
+        mvg._prepare_review_workspace(run, workspace, proposal)
+        projected = load_json(workspace / "analysis-input/task-views/tasks_gameplay.json")
+        self.assertTrue(projected)
+        self.assertTrue(all(row.get("taskmaster_id") in {7, 42} for row in projected))
+        self.assertFalse(any(row.get("taskmaster_id") == 9000 for row in projected))
+
+    def test_mvg_review_input_size_failure_does_not_burn_ten_model_attempts(self):
+        _state, _proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        (run / "semantic-review.json").unlink()
+        (run / "semantic-review-execution.json").unlink()
+        info = {
+            "schema_version": "newrouge.isolated-model-runner.v1", "model": "fixture-reviewer",
+            "fresh_session_per_invocation": True, "filesystem_scope": "workspace_only",
+            "can_read_outside_workspace": False, "model_tools": [],
+        }
+        with patch.object(mvg, "inspect_isolated_runner", return_value=info), \
+             patch.object(mvg, "run_isolated_model") as invoke, \
+             patch.object(mvg, "_prepare_review_workspace",
+                          side_effect=ValueError("bounded MVG review workspace exceeds 850000 bytes: 912461")):
+            with self.assertRaisesRegex(ValueError, "runner_input_too_large"):
+                mvg.review(self.root, run_id="repair", runner=Path("fixture-runner"), timeout_sec=1)
+        invoke.assert_not_called()
+        attempts = load_json(run / "run.json").get("semantic_review_attempts", [])
+        self.assertEqual(0, len(attempts))
+
+    def test_mvg_review_projection_adapts_large_evidence_excerpts(self):
+        _state, proposal, _dest = prepared_mvg(self.root)
+        run = self.root / "logs/ci/mvg-planning/repair"
+        references = run / "analysis-input/references"
+        names = [f"large-evidence-{index}.txt" for index in range(8)]
+        for name in names:
+            (references / name).parent.mkdir(parents=True, exist_ok=True)
+            (references / name).write_text("evidence-line\n" * 12000, encoding="utf-8")
+        with patch.object(mvg, "_review_reference_paths", return_value=set(names)):
+            workspace = run / "semantic-review-workspace/adaptive-test"
+            mvg._prepare_review_workspace(run, workspace, proposal)
+        size = sum(path.stat().st_size for path in workspace.rglob("*") if path.is_file())
+        self.assertLess(size, mvg.MVG_REVIEW_WORKSPACE_LIMIT)
+        evidence = load_json(workspace / "analysis-input/review-evidence.json")
+        self.assertEqual(names, [row["path"] for row in evidence["files"]])
+        self.assertTrue(all(row["sha256"] for row in evidence["files"]))
+        self.assertTrue(all(row["excerpt_truncated"] for row in evidence["files"]))
+
     def test_mvg_generation_normalizes_dotnet_selector_from_test_class(self):
         _state, proposal, _dest = prepared_mvg(self.root)
         proposal["manifest_candidate"]["tests"][0]["selector"] = "RelayTests*"

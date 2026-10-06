@@ -212,6 +212,21 @@ class MVGReviewAttemptBudgetError(ValueError):
         )
 
 
+class MVGReviewPreparationError(ValueError):
+    """Terminal deterministic review-input failure; no model attempt was made."""
+
+    def __init__(self, *, error_type: str, last_error: str, attempt_limit: int):
+        self.error_type = error_type
+        self.attempts_used = 0
+        self.attempt_limit = attempt_limit
+        self.last_error = last_error
+        super().__init__(
+            "MVG independent review preparation blocked; upstream proposal is preserved; "
+            f"error_type={error_type}; attempts=0/{attempt_limit}; "
+            f"last_error={_compact_exception_message(last_error)}"
+        )
+
+
 def _review_reference_paths(proposal: dict[str, Any]) -> set[str]:
     """Collect repository-relative evidence paths explicitly claimed by a proposal."""
     refs: set[str] = set()
@@ -243,6 +258,30 @@ def _review_reference_paths(proposal: dict[str, Any]) -> set[str]:
     return {value for value in refs if value}
 
 
+def _review_task_ids(proposal: dict[str, Any]) -> set[int]:
+    """Return only Taskmaster IDs actually claimed by the fixed proposal."""
+    result: set[int] = set()
+    manifest = proposal.get("manifest_candidate") or {}
+    if isinstance(manifest, dict):
+        for flow in manifest.get("flows", []):
+            if not isinstance(flow, dict):
+                continue
+            values = list(flow.get("task_ids") or [])
+            for handoff in flow.get("handoffs", []) if isinstance(flow.get("handoffs"), list) else []:
+                if isinstance(handoff, dict):
+                    values.extend(handoff.get(key) for key in ("producer_task", "consumer_task", "owner_task"))
+            for value in values:
+                if type(value) is int:
+                    result.add(value)
+    for row in proposal.get("coverage_table", []) if isinstance(proposal.get("coverage_table"), list) else []:
+        if isinstance(row, dict) and type(row.get("task_id")) is int:
+            result.add(row["task_id"])
+    for row in proposal.get("entrypoints", []) if isinstance(proposal.get("entrypoints"), list) else []:
+        if isinstance(row, dict) and type(row.get("owner_task")) is int:
+            result.add(row["owner_task"])
+    return result
+
+
 def _review_excerpt(path: Path, limit: int = MVG_REVIEW_EVIDENCE_EXCERPT_CHARS) -> tuple[str, bool]:
     try:
         text = path.read_text(encoding="utf-8")
@@ -259,6 +298,29 @@ def _write_review_projection(path: Path, payload: Any) -> None:
     """Write ephemeral model context without touching the durable run journal."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def _write_review_evidence_projection(target: Path, evidence: list[dict[str, Any]], excerpt_limit: int) -> None:
+    """Write evidence excerpts at the requested bounded size."""
+    projected: list[dict[str, Any]] = []
+    for item in evidence:
+        # Missing references have no excerpt to shrink and must remain visible.
+        if "path" not in item or "source_path" not in item:
+            projected.append(dict(item))
+            continue
+        source_path = Path(str(item["source_path"]))
+        excerpt, truncated = _review_excerpt(source_path, excerpt_limit)
+        projected.append({
+            "path": item["path"],
+            "sha256": item["sha256"],
+            "excerpt": excerpt,
+            "excerpt_truncated": truncated,
+        })
+    _write_review_projection(target / "review-evidence.json", {
+        "schema_version": "newrouge.mvg-review-evidence.v1",
+        "note": "Bounded excerpts are for semantic review context; deterministic validation uses the complete immutable bundle.",
+        "files": projected,
+    })
 
 
 def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str, Any]) -> None:
@@ -281,10 +343,13 @@ def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str
         "taskmaster_id", "id", "status", "priority", "semantic_refs",
         "requirement_ids", "capability_refs",
     )
+    proposal_task_ids = _review_task_ids(proposal)
+    proposal_task_labels = {str(value) for value in proposal_task_ids}
     for name in ("tasks_back.json", "tasks_gameplay.json"):
         payload = load_json(source / "task-views" / name, [])
         compact = [{key: row.get(key) for key in compact_fields if key in row}
-                   for row in payload if isinstance(row, dict)]
+                   for row in payload if isinstance(row, dict)
+                   and (not proposal_task_ids or str(row.get("taskmaster_id")) in proposal_task_labels)]
         _write_review_projection(target / "task-views" / name, compact)
 
     master = load_json(source / "task-master.json", {})
@@ -292,6 +357,7 @@ def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str
     _write_review_projection(target / "task-master.json", {"master": {"tasks": [
         {key: row.get(key) for key in ("id", "status", "priority") if key in row}
         for row in tasks if isinstance(row, dict)
+        and (not proposal_task_ids or str(row.get("id")) in proposal_task_labels)
     ]}})
 
     index = load_json(source / "analysis-index.json", {})
@@ -304,7 +370,7 @@ def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str
         "prepared_file_count": len(index.get("files") or {}),
     })
 
-    evidence = []
+    evidence: list[dict[str, Any]] = []
     references = source / "references"
     for rel in sorted(_review_reference_paths(proposal)):
         candidate = references / rel
@@ -313,20 +379,23 @@ def _prepare_review_workspace(run_dir: Path, workspace: Path, proposal: dict[str
         if not candidate.is_file():
             evidence.append({"path": rel, "status": "not_in_prepared_bundle"})
             continue
-        excerpt, truncated = _review_excerpt(candidate)
-        evidence.append({"path": rel, "sha256": file_sha(candidate),
-                         "excerpt": excerpt, "excerpt_truncated": truncated})
-    _write_review_projection(target / "review-evidence.json", {
-        "schema_version": "newrouge.mvg-review-evidence.v1",
-        "note": "Bounded excerpts are for semantic review context; deterministic validation uses the complete immutable bundle.",
-        "files": evidence,
-    })
+        evidence.append({"path": rel, "source_path": str(candidate),
+                         "sha256": file_sha(candidate)})
 
-    size = sum(path.stat().st_size for path in workspace.rglob("*") if path.is_file())
-    if size >= MVG_REVIEW_WORKSPACE_LIMIT:
-        raise ValueError(
-            f"bounded MVG review workspace exceeds {MVG_REVIEW_WORKSPACE_LIMIT} bytes: {size}"
-        )
+    # Keep the complete immutable prepared bundle untouched, while shrinking only
+    # semantic-review excerpts until the projection fits the transport budget.
+    # This makes a large-but-reviewable proposal recoverable without spending a
+    # fresh independent-review attempt for each deterministic size failure.
+    excerpt_limits = (MVG_REVIEW_EVIDENCE_EXCERPT_CHARS, 1200, 600, 240, 80, 0)
+    last_size = 0
+    for excerpt_limit in excerpt_limits:
+        _write_review_evidence_projection(target, evidence, excerpt_limit)
+        last_size = sum(path.stat().st_size for path in workspace.rglob("*") if path.is_file())
+        if last_size < MVG_REVIEW_WORKSPACE_LIMIT:
+            return
+    raise ValueError(
+        f"bounded MVG review workspace exceeds {MVG_REVIEW_WORKSPACE_LIMIT} bytes: {last_size}"
+    )
 
 
 def normalize_dotnet_selectors(root: Path, proposal: dict[str, Any]) -> int:
@@ -2279,6 +2348,25 @@ Use one actual verdict value, not the pipe-separated enumeration above. Do not r
         str(row.get("id")) for row in manifest.get("flows", [])
         if isinstance(row, dict) and str(row.get("id") or "").strip()
     }
+    # Validate the bounded projection before reserving any model attempt. A
+    # deterministic input-size failure is not a transient runner failure and
+    # must never burn the ten-attempt semantic review budget.
+    preflight = run_dir / "semantic-review-workspace" / "_preflight"
+    try:
+        _prepare_review_workspace(run_dir, preflight, proposal)
+    except (OSError, ValueError, RuntimeError) as exc:
+        error_type = classify_review_error(exc)
+        if error_type == "runner_input_too_large":
+            state["phase"] = "review-input-blocked"
+            atomic_json(run_path, state)
+            raise MVGReviewPreparationError(
+                error_type=error_type, attempt_limit=MVG_REVIEW_ATTEMPT_LIMIT,
+                last_error=str(exc),
+            ) from exc
+        raise
+    finally:
+        if preflight.exists():
+            shutil.rmtree(preflight, ignore_errors=True)
     import time
     attempts = state.setdefault("semantic_review_attempts", [])
     state["semantic_review_attempt_limit"] = MVG_REVIEW_ATTEMPT_LIMIT
@@ -2759,7 +2847,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
         payload = {"status": "blocked", "reason": str(exc)}
-        if isinstance(exc, MVGReviewAttemptBudgetError):
+        if isinstance(exc, (MVGReviewAttemptBudgetError, MVGReviewPreparationError)):
             payload.update({"stage": "review", "error_type": exc.error_type,
                 "attempts_used": exc.attempts_used, "attempt_limit": exc.attempt_limit,
                 "last_error": exc.last_error, "proposal_preserved": True})
