@@ -997,7 +997,10 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                 errors.append("segment_entrypoint_owner_outside_scope")
         elif section == "tests":
             flow_id = str(row.get("flow_id") or "")
-            if flow_scope_ids and not any(flow_id.startswith(scope + "-") for scope in flow_scope_ids):
+            exact_flow_ids = set(flow_scope_ids) if request.get("allow_exact_flow_id") else set()
+            if flow_scope_ids and not (
+                    flow_id in exact_flow_ids
+                    or any(flow_id.startswith(scope + "-") for scope in flow_scope_ids)):
                 errors.append("segment_test_flow_outside_scope")
             if known_flow_ids and flow_id not in known_flow_ids:
                 errors.append("segment_test_flow_unknown")
@@ -1652,7 +1655,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         requests.append({"section": "tests", "scope_id": f"tests-{start // 3 + 1:02d}",
                          "requirements": [], "requirement_ids": [],
                          "task_ids": sorted({task_id for scope in scoped_scopes for task_id in scope["task_ids"]}),
-                         "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes]})
+                         "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
+                         "allow_exact_flow_id": planning_scope is not None})
 
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
@@ -1680,6 +1684,12 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 "contract_refs": planning_scope.get("contract_refs", []),
                 "test_paths": planning_scope.get("test_paths", []),
             }, ensure_ascii=False)
+            if section in ("coverage", "tests"):
+                section_prompt_text += (
+                    "\nFor this frozen scope, every flow_id must be copied exactly from the listed "
+                    "existing flow_ids. Never prefix or rename an existing flow ID; only test IDs "
+                    "may use the segment prefix.\n"
+                )
         if flow_context:
             selected_flow_rows = flow_context
             if request.get("flow_scope_ids"):
