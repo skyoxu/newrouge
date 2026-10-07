@@ -5,11 +5,63 @@ import re
 import shutil
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
 from _overlay_generator_model import parse_existing_page_markdown
 from _overlay_generator_scaffold import build_scaffold_base_page
 from _overlay_generator_support import parse_prd_docs_csv
+
+
+def reserve_output_dir(base: Path) -> Path:
+    """Keep named runs immutable; reused labels receive another directory."""
+    target = base
+    while True:
+        target.mkdir(parents=True, exist_ok=True)
+        if not any(target.iterdir()):
+            try:
+                with (target / "run_id.txt").open("x", encoding="utf-8") as marker:
+                    marker.write(uuid.uuid4().hex + "\n")
+                return target
+            except FileExistsError:
+                pass
+        target = base.with_name(base.name + "--" + uuid.uuid4().hex[:12])
+
+
+def write_verified_pages(target_dir: Path, contents: dict[str, bytes], expected: dict[str, bytes | None]) -> None:
+    target_dir.mkdir(parents=True, exist_ok=True)
+    staged: list[tuple[Path, Path]] = []
+    replaced: list[Path] = []
+    try:
+        for name, content in contents.items():
+            target = target_dir / name
+            current = target.read_bytes() if target.exists() else None
+            if current != expected[name]:
+                raise ValueError(f"Overlay source changed before apply: {name}")
+            if current == content:
+                continue
+            fd, name_tmp = tempfile.mkstemp(prefix=name + ".", suffix=".tmp", dir=target_dir)
+            os.close(fd)
+            temporary = Path(name_tmp)
+            staged.append((target, temporary))
+            temporary.write_bytes(content)
+        for target, temporary in staged:
+            current = target.read_bytes() if target.exists() else None
+            if current != expected[target.name]:
+                raise ValueError(f"Overlay source changed before apply: {target.name}")
+            os.replace(temporary, target)
+            replaced.append(target)
+    except Exception:
+        for target in reversed(replaced):
+            original = expected[target.name]
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_bytes(original)
+        raise
+    finally:
+        for _, temporary in staged:
+            temporary.unlink(missing_ok=True)
 
 
 def copy_generated_to_target(generated_dir: Path, target_dir: Path, expected_texts: dict[str, str] | None = None) -> None:

@@ -306,6 +306,7 @@ class ScTestOrchestrationTests(unittest.TestCase):
             with mock.patch.object(sys, "argv", argv), \
                 mock.patch.object(sc_test, "ci_dir", return_value=out_dir), \
                 mock.patch.object(sc_test, "run_unit", return_value=unit_step), \
+                mock.patch.object(sc_test, "_task_scoped_cs_refs", return_value=["Game.Core.Tests/Tasks/Task21FlowTests.cs"]), \
                 mock.patch.object(sc_test, "_task_scoped_gdunit_refs", return_value=["Tests.Godot/tests/Integration/test_task_21_flow.gd"]), \
                 mock.patch.object(sc_test, "run_gdunit_hard") as gdunit_mock, \
                 mock.patch.object(sc_test, "run_smoke") as smoke_mock:

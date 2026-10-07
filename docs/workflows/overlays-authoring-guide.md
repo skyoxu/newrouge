@@ -229,6 +229,8 @@ Stop-loss rules:
 - Every path listed in `--prd-docs` is treated as required input; a missing file hard-fails the run.
 - If `docs/architecture/overlays/<PRD-ID>/08/` already exists, the generator reuses the current page profile instead of forcing a rewrite.
 - First pass should be `dry-run -> simulate`; do not start with full `--apply`.
+- Apply promotes the saved simulation without another model call. Bind the inspected run through `--candidate-from`; missing/stale candidates require a fresh simulate and inspection.
+- Similarity is diagnostic only. Check requirements and contract/task/ADR refs rather than imposing a text similarity threshold.
 
 ## 7. 推荐的确定性校验（Windows）
 

@@ -444,6 +444,10 @@ MVG 集成补充：清单中的交接必须有生产方、消费方、归属任�
 3. 对 outlier 做 single-page repair
 4. limited apply
 
+Simulate 保存候选及 PRD/配套文档/任务三联、原页面和候选内容的哈希。Apply 直接落盘该候选，不再次调用模型。Skill 从本次 `summary.json` 的 `candidate_bundle_path`（批量）或 `candidate_manifest_path`（单页）绑定已检查的 run，并通过 `--candidate-from` 传给 apply；使用者不需要管理这个参数。直接调用时可省略，脚本使用同一输入路径、PRD-ID、page mode 下记录的逐页候选指针，不按日志时间猜测。
+
+若来源或候选漂移、没有成功 simulate，apply 返回 `candidate_apply_blocked`，不生成替代内容、不写目标页面。批量 apply 先校验全部选中页面再写入。只更新本次受影响的页面；成熟页面仍采用 scaffold 的稀疏合并。
+
 Batch dry-run：
 
 ```powershell
@@ -465,7 +469,7 @@ py -3 scripts/sc/llm_generate_overlays_from_prd.py --prd <prd-main.md> --prd-id 
 Limited apply：
 
 ```powershell
-py -3 scripts/sc/llm_generate_overlays_batch.py --prd <prd-main.md> --prd-id <PRD-ID> --prd-docs <prd-extra-a.md>,<prd-extra-b.md> --pages _index.md,ACCEPTANCE_CHECKLIST.md,08-rules-freeze-and-assertion-routing.md --page-mode scaffold --timeout-sec 1200 --apply --batch-suffix apply-core
+py -3 scripts/sc/llm_generate_overlays_batch.py --prd <prd-main.md> --prd-id <PRD-ID> --prd-docs <prd-extra-a.md>,<prd-extra-b.md> --pages _index.md,ACCEPTANCE_CHECKLIST.md --page-mode scaffold --apply --candidate-from <reviewed-simulate-run-dir> --batch-suffix apply-core
 ```
 
 止损规则：
@@ -473,6 +477,8 @@ py -3 scripts/sc/llm_generate_overlays_batch.py --prd <prd-main.md> --prd-id <PR
 - 第一轮不要全量 apply
 - 不要在同一步里直接改 acceptance
 - 这一阶段只处理 overlay，不混入别的语义修复
+- `similarity_ratio` 只是文本差异提示，不是语义放行门。新增页面相似度为 0；应检查需求、回链和契约，不按高相似度自动 apply。
+- 批量超时默认 1200 秒；suffix 省略时自动唯一命名。按实际存在的页面/影响范围选择 family，不必固定遍历全部 family。
 
 ### 4.2 Apply 后冻结 overlay refs
 

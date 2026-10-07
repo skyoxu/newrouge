@@ -16,7 +16,7 @@ if str(REPO_ROOT / "scripts" / "sc") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts" / "sc"))
 
 from inspect_run import inspect_run_artifacts  # noqa: E402
-from validate_recovery_docs import extract_repo_paths, is_readme, is_template, parse_fields  # noqa: E402
+from _recovery_doc_binding import find_related_docs as _find_related_docs  # noqa: E402
 from _active_task_sidecar import write_active_task_sidecar  # noqa: E402
 from _chapter6_recovery_common import (  # noqa: E402
     compact_recommendation_fields,
@@ -60,49 +60,6 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"JSON payload must be an object: {path}")
     return payload
-
-
-def _extract_scalar_tokens(value: str) -> list[str]:
-    text = str(value or "").strip()
-    if not text or text.lower().startswith("n/a"):
-        return []
-    tokens: list[str] = []
-    for chunk in text.split(","):
-        item = chunk.strip().strip("`").strip()
-        if item:
-            tokens.append(item)
-    return tokens
-
-
-def _doc_match_score(*, fields: dict[str, str], task_id: str, run_id: str, latest_rel: str) -> int:
-    score = 0
-    task_tokens = _extract_scalar_tokens(fields.get("Related task id(s)", ""))
-    run_tokens = _extract_scalar_tokens(fields.get("Related run id", ""))
-    latest_tokens = [item.replace("\\", "/").lstrip("./") for item in extract_repo_paths(fields.get("Related latest.json", ""))]
-    if task_id and task_id in task_tokens:
-        score += 100
-    if run_id and run_id in run_tokens:
-        score += 10
-    if latest_rel and latest_rel in latest_tokens:
-        score += 1
-    return score
-
-
-def _find_related_docs(root: Path, dir_name: str, *, task_id: str, run_id: str, latest_rel: str) -> list[str]:
-    doc_dir = root / dir_name
-    if not doc_dir.exists():
-        return []
-    matches: list[tuple[int, float, str]] = []
-    for path in doc_dir.glob("*.md"):
-        if is_readme(path) or is_template(path):
-            continue
-        fields = parse_fields(path)
-        score = _doc_match_score(fields=fields, task_id=task_id, run_id=run_id, latest_rel=latest_rel)
-        if score <= 0:
-            continue
-        matches.append((score, path.stat().st_mtime, _repo_rel(root, path)))
-    matches.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
-    return [item[2] for item in matches]
 
 
 def _load_optional_agent_review(root: Path, out_dir_rel: str) -> dict[str, Any]:

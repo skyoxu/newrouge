@@ -42,6 +42,34 @@ def _triplet(
 
 
 class LlmReviewTierPlanTests(unittest.TestCase):
+    def test_reference_metadata_alone_should_not_escalate_an_auto_task(self) -> None:
+        triplet = _triplet(back={
+            "adr_refs": ["ADR-0005"],
+            "overlay_refs": ["docs/architecture/overlays/PRD/08/08-Contracts-M1.md"],
+            "chapter_refs": ["architecture"],
+        })
+        plan = resolve_llm_review_tier_plan(delivery_profile="fast-ship", triplet=triplet, profile_defaults={})
+        self.assertEqual("targeted", plan["effective_tier"])
+        self.assertEqual([], plan["escalation_reasons"])
+
+    def test_actual_adr_change_description_should_still_require_full(self) -> None:
+        plan = resolve_llm_review_tier_plan(
+            delivery_profile="playable-ea", triplet=_triplet(master_details="Change ADR-0030 thread ownership"), profile_defaults={},
+        )
+        self.assertEqual("full", plan["effective_tier"])
+
+    def test_explicit_full_should_remain_full_for_reference_only_tasks(self) -> None:
+        plan = resolve_llm_review_tier_plan(
+            delivery_profile="fast-ship", triplet=_triplet(back={"semantic_review_tier": "full", "adr_refs": ["ADR-0005"]}), profile_defaults={},
+        )
+        self.assertEqual("full", plan["effective_tier"])
+
+    def test_priority_p0_should_still_require_full_without_reference_metadata(self) -> None:
+        plan = resolve_llm_review_tier_plan(
+            delivery_profile="playable-ea", triplet=_triplet(priority="P0"), profile_defaults={},
+        )
+        self.assertEqual("full", plan["effective_tier"])
+
     def test_playable_ea_auto_should_resolve_to_minimal_for_low_risk_task(self) -> None:
         plan = resolve_llm_review_tier_plan(
             delivery_profile="playable-ea",

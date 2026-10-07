@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
+PYTHON_DIR = Path(__file__).resolve().parents[1] / 'python'
+if str(PYTHON_DIR) not in sys.path:
+    sys.path.insert(0, str(PYTHON_DIR))
+
+from _recovery_doc_binding import find_related_docs
 from _failure_taxonomy import derive_producer_failure_kind
+from _repair_evidence import build_evidence_recommendations
 from _repair_approval import apply_approval_to_recommendations
 from _repair_recommendations import (
     build_runtime_recommendations,
@@ -32,16 +39,6 @@ def _run_git(args: list[str]) -> str:
     return (proc.stdout or "").strip()
 
 
-def _latest_markdown_file(root: Path) -> str:
-    if not root.exists():
-        return ""
-    candidates = [path for path in root.rglob("*.md") if path.is_file()]
-    if not candidates:
-        return ""
-    candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
-    return str(candidates[0])
-
-
 def build_execution_context(
     *,
     task_id: str,
@@ -64,6 +61,10 @@ def build_execution_context(
     diagnostics = (marathon_state or {}).get("diagnostics")
     candidate_commands = summary.get("candidate_commands") if isinstance(summary.get("candidate_commands"), dict) else {}
     failure_kind = derive_producer_failure_kind(summary_payload=summary, repair_payload=repair_guide)
+    root = repo_root()
+    latest_rel = f"logs/ci/{today_str()}/sc-review-pipeline-task-{task_id}/latest.json"
+    plans = find_related_docs(root, 'execution-plans', task_id=task_id, run_id=run_id, latest_rel=latest_rel)
+    decisions = find_related_docs(root, 'decision-logs', task_id=task_id, run_id=run_id, latest_rel=latest_rel)
     payload = {
         "schema_version": "1.0.0",
         "cmd": "sc-review-pipeline",
@@ -92,8 +93,8 @@ def build_execution_context(
             "approval_response_json": str(out_dir / "approval-response.json"),
             "execution_plans_dir": str(repo_root() / "execution-plans"),
             "decision_logs_dir": str(repo_root() / "decision-logs"),
-            "latest_execution_plan": _latest_markdown_file(repo_root() / "execution-plans"),
-            "latest_decision_log": _latest_markdown_file(repo_root() / "decision-logs"),
+            "latest_execution_plan": str(root / plans[0]) if plans else "",
+            "latest_decision_log": str(root / decisions[0]) if decisions else "",
             "agents_index": str(repo_root() / "docs" / "agents" / "00-index.md"),
             "agents_recovery": str(repo_root() / "docs" / "agents" / "01-session-recovery.md"),
             "technical_debt_register": str(repo_root() / "docs" / "technical-debt.md"),
@@ -189,6 +190,14 @@ def build_repair_guide(
     failed_step = next((step for step in summary.get("steps", []) if step.get("status") == "fail"), None)
     if not isinstance(failed_step, dict):
         recommendations = build_runtime_recommendations(task_id=task_id, out_dir=out_dir, runtime_state=runtime_state)
+        review = (runtime_state or {}).get('agent_review')
+        if isinstance(review, dict) and review.get('review_verdict') in {'needs-fix', 'block'}:
+            llm_step = next((step for step in summary.get('steps', []) if step.get('name') == 'sc-llm-review'), None)
+            if isinstance(llm_step, dict):
+                recommendations = build_evidence_recommendations(
+                    root=repo_root(), task_id=task_id, run_id=str(summary.get('run_id') or '').strip(),
+                    step_name='sc-llm-review', step=llm_step,
+                ) + recommendations
         recommendations, resolved_approval = apply_approval_to_recommendations(
             task_id=task_id,
             out_dir=out_dir,
@@ -215,6 +224,11 @@ def build_repair_guide(
             log_text = ""
     step_name = str(failed_step.get("name") or "")
     recommendations = build_step_recommendations(task_id=task_id, step_name=step_name, step=failed_step, log_text=log_text)
+    evidence_recommendations = build_evidence_recommendations(
+        root=repo_root(), task_id=task_id, run_id=str(summary.get('run_id') or '').strip(),
+        step_name=step_name, step=failed_step,
+    )
+    recommendations = evidence_recommendations + recommendations
     recommendations = extend_with_runtime_recommendations(
         task_id=task_id,
         step=failed_step,
@@ -287,6 +301,9 @@ def render_repair_guide_markdown(payload: dict[str, Any]) -> str:
         why = str(item.get("why") or "").strip()
         if why:
             lines.append(f"  Why: {why}")
+        for action in item.get("actions") or []:
+            if str(action).strip():
+                lines.append(f"  Action: {action}")
         for command in item.get("commands") or []:
             lines.append(f"  Command: `{command}`")
         for file_path in item.get("files") or []:

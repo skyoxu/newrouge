@@ -95,7 +95,7 @@ def _entry_errors(
         )
         return errors
 
-    if current != expected_tier:
+    if current != expected_tier and expected_tier != "auto":
         errors.append(
             {
                 "file": file_key,
