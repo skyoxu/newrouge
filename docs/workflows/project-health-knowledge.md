@@ -37,6 +37,8 @@ The registered structural source is `docs/planning/semantic-topology/**`.
 
 MVG generation uses the Capability file selected by the current local planning run as its sole Capability SSoT. It produces three fresh isolated candidate proposals, evaluates them with the current MVG incumbent when one is valid, and only then proceeds to the independent semantic review. GDD, task views, contracts, and tests provide supporting evidence; they cannot create or remap Capability membership.
 
+Runtime entrypoints follow the selected Capability journeys and their actual system boundaries, not the number of Task IDs. Task references can represent test/review provenance without imposing runtime APIs. The planner passes flow handoffs and implementation paths to the entrypoint stage, rejects test/contract files as runtime entrypoints, and preserves multiple boundaries owned by one Task. Independent semantic review still checks actual boundary completeness.
+
 Capability review incumbent rule: the topology entrypoint freezes a valid committed
 `docs/planning/semantic-topology/capabilities.v1.json` during `prepare` and exposes it
 to the independent reviewer as `D`. It is not included in the three new candidate

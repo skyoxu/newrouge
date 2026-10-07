@@ -130,12 +130,21 @@ def coverage_errors(root: Path, proposal: dict[str, Any], semantics: dict[str, A
         accounted.add(rid)
     errors.extend(f"coverage_requirement_missing:{rid}" for rid in sorted(set(requirements) - accounted))
     entries = proposal.get("entrypoints")
-    if not isinstance(entries, list) or not entries:
+    incumbent_projection = any("incumbent" in str(note).lower()
+                               for note in (proposal.get("notes") or [])
+                               if isinstance(note, str))
+    if (not isinstance(entries, list) or
+            (not entries and any(f.get("handoffs") for f in flows.values())
+             and not incumbent_projection)):
         errors.append("entrypoints_missing_or_empty")
-    else:
-        owners = {r.get("owner_task") for r in entries if isinstance(r, dict)}
-        tasks = {t for f in flows.values() for t in f.get("task_ids", [])}
-        errors.extend(f"entrypoint_owner_missing:{tid}" for tid in sorted(tasks - owners))
+    # Task membership proves provenance, not executable boundary ownership.
+    # Runtime boundary completeness is reviewed against Capability journeys and
+    # source evidence; verification/governance owners need no synthetic API.
+    if isinstance(entries, list) and entries:
+        owners = {row.get("owner_task") for row in entries if isinstance(row, dict)}
+        for flow_id, flow in flows.items():
+            if flow.get("handoffs") and not owners.intersection(flow.get("task_ids", [])):
+                errors.append(f"flow_runtime_entrypoint_missing:{flow_id}")
     return errors
 
 

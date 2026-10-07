@@ -668,12 +668,12 @@ def build_coverage_skeleton(semantics: dict[str, Any], task_views: list[dict[str
 
 
 def build_entrypoint_skeleton(task_ids: list[int]) -> list[dict[str, Any]]:
-    return [{"status": "planned", "owner_task": int(task_id),
-        "path": f"Game.Godot/Planned/Task{int(task_id)}Entry.cs",
-        "symbol": f"Task{int(task_id)}Entry", "inputs": "planned flow inputs",
-        "state": "planned transition", "assertions": "observable result",
-        "implementation_acceptance": "implement the planned integration entrypoint"}
-        for task_id in sorted(set(task_ids))]
+    """Reserve an empty section: task identity cannot establish a runtime API.
+
+    Entrypoints are populated after Capability journeys identify real system
+    boundaries. Evidence-only task owners must never acquire invented APIs.
+    """
+    return []
 
 
 def correction_prompt(errors: list[str]) -> str:
@@ -872,11 +872,12 @@ The section is one patch to a deterministic proposal skeleton. Do not emit the f
 Return only fields needed for this section:
 - flows: for section=flows, one or two complete player-journey flow objects for this scope only. Prefer one coherent journey when the evidence supports it; split only when the slice contains distinct observable outcomes. Each flow must include id, outcome, requirement_ids, capability_refs, task_ids, source_paths, handoffs, and test_ids. {flow_rule}
 - coverage_table: for section=coverage, rows for the supplied requirements only;
-- entrypoints: for section=entrypoints, planned/existing entrypoint rows for supplied task IDs;
+- entrypoints: for section=entrypoints, planned/existing entrypoint rows for the real runtime boundaries in the supplied Capability flow context, with supplied task IDs used only to verify ownership;
 - tests: for section=tests, test objects only. Every supplied flow must receive at least one test id, and each test id must be used by exactly one supplied flow. {test_rule}
 For coverage rows with disposition=flow, assign flow_id to an actual flow id from the supplied flow context; other_verification and deferred rows must leave flow_id null. The only valid disposition values are exactly flow, other_verification, or deferred; every row needs a non-empty rationale string.
 Coverage routing is strict: use only the supplied requirement_ids/task_ids/capability refs. A flow row must have verification_ref, authority_ref, and authority_review set to null; an other_verification row must have flow_id/authority_ref/authority_review null and a sink_id from that Requirement's non_task_sinks; a Requirement with an empty non_task_sinks list cannot use other_verification and must be routed to a flow or a reviewed deferred row; a deferred row must have flow_id/verification_ref null and a reviewed authority_ref/authority_review.
 For entrypoints, status is exactly planned or existing_verified; use planned unless the prepared evidence proves a real existing entrypoint. Never use gap, existing, or unlisted. Planned rows require non-empty path, symbol, inputs, state, assertions, and implementation_acceptance.
+Task IDs are evidence owners, not runtime API obligations. Never create an entrypoint merely because a Task appears in task_ids, coverage or a legacy handoff. A test or governance task supplies verification/review evidence, not a runtime API. Derive runtime boundaries from the selected Capability journey and prepared implementation/Acceptance evidence; return no row for evidence-only owners. Data-only contracts are not executable entrypoints. Multiple real boundaries may share an owner, and not every owner needs an entrypoint. If the supplied flows have no runtime boundary, entrypoints may be empty.
 For tests, kind is exactly dotnet or gdunit, state is exactly planned or implemented, path is a repository-relative Game.Core.Tests/*.cs or Tests.Godot/tests/*.gd path, selector is non-empty, and evidence_level is domain-integration for dotnet or scene-method/engine-input for gdunit. Do not use acceptance, unit, integration, direct, or null for these fields.
 For flows, every handoff must be an object with integer producer_task, consumer_task, and owner_task, a real non-empty contract_ref from available_contract_paths, non-empty behavior, and a non-empty test_ids array.
 Do not use task IDs, flow IDs, or test IDs from another scope. For section=flows, every new flow id must start with the requested scope_id plus '-', while a frozen request must copy the exact incumbent flow ID. For coverage/tests, route only to the supplied flow context. Every flow task and every handoff role must be in this request's task_ids.
@@ -1377,7 +1378,8 @@ def _contract_candidates(contract_refs: set[str], paths: list[str], *, limit: in
 
 def _flow_summaries(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{key: row.get(key) for key in (
-        "id", "outcome", "requirement_ids", "capability_refs", "task_ids", "test_ids")}
+        "id", "outcome", "requirement_ids", "capability_refs", "task_ids", "test_ids",
+        "handoffs", "source_paths")}
             for row in rows if isinstance(row, dict)]
 
 
@@ -1435,9 +1437,8 @@ def build_flow_scopes(semantics: dict[str, Any], capabilities: dict[str, Any],
             continue
         capability_refs = cap_members.get(rid, [])
         if not capability_refs:
-            capability_refs = [str(value) for value in requirement.get("capability_ids", [])
-                               if str(value).strip()]
-        anchor = capability_refs[0] if capability_refs else "unassigned"
+            raise ValueError(f"Requirement {rid} has no membership in the selected Capability version")
+        anchor = capability_refs[0]
         grouped.setdefault(anchor, []).append({
             "requirement_id": rid,
             "statement": str(requirement.get("statement") or "").strip(),
@@ -1493,12 +1494,21 @@ def merge_planning_segments(base: dict[str, Any], segments: list[dict[str, Any]]
                 existing.update(row)
         for key in ("coverage_table", "entrypoints", "tests"):
             target = result.setdefault(key, [])
-            identity_key = "requirement_id" if key == "coverage_table" else "id" if key == "tests" else "owner_task"
-            by_identity = {str(row.get(identity_key)): row for row in target if isinstance(row, dict)}
+            identity_key = "requirement_id" if key == "coverage_table" else "id" if key == "tests" else None
+            if key == "entrypoints":
+                # One Task may own multiple real runtime boundaries.  Path and
+                # symbol, rather than owner_task alone, define identity.
+                by_identity = {
+                    (row.get("owner_task"), str(row.get("path") or ""), str(row.get("symbol") or "")): row
+                    for row in target if isinstance(row, dict)
+                }
+            else:
+                by_identity = {str(row.get(identity_key)): row for row in target if isinstance(row, dict)}
             for row in segment.get(key, []) or []:
                 if not isinstance(row, dict):
                     continue
-                value = str(row.get(identity_key) or "")
+                value = ((row.get("owner_task"), str(row.get("path") or ""), str(row.get("symbol") or ""))
+                         if key == "entrypoints" else str(row.get(identity_key) or ""))
                 if value and value in by_identity:
                     by_identity[value].update(row)
                 elif value:
@@ -1736,7 +1746,10 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                 "requirements": requirements,
                 "requirement_ids": requirement_ids,
                 "task_ids": sorted(set(baseline.get("task_ids", [])) & set(task_ids)),
-                "capabilities": [{"capability_id": value} for value in planning_scope.get("capability_refs", [])],
+                "capabilities": [row for row in capabilities.get("capabilities", [])
+                                 if row.get("capability_id") in {
+                                     cid for scope in selected for cap in scope.get("capabilities", [])
+                                     for cid in [cap.get("capability_id")]}],
             })
         flow_scopes = remapped
     model_context = load_json(workspace / "model-context.json", {})
@@ -1819,13 +1832,15 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "requirement_ids": scope["requirements"],
                          "task_ids": scoped_tasks})
 
-    # Only tasks actually referenced by a flow need an LLM-owned entrypoint
-    # refinement. The deterministic skeleton still retains all prepared owners.
-    flow_task_ids = sorted({task_id for scope in flow_scopes for task_id in scope["task_ids"]})
-    for start in range(0, len(flow_task_ids), 32):
-        scoped_tasks = flow_task_ids[start:start + 32]
-        requests.append({"section": "entrypoints", "scope_id": f"entrypoints-{start // 32 + 1:02d}",
-                         "requirements": [], "requirement_ids": [], "task_ids": scoped_tasks})
+    # Entrypoints follow Capability journeys, not one placeholder per task.
+    # The flow barrier below supplies the actual runtime boundary context.
+    for start in range(0, len(flow_scopes), 3):
+        scoped_scopes = flow_scopes[start:start + 3]
+        requests.append({"section": "entrypoints", "scope_id": f"entrypoints-{start // 3 + 1:02d}",
+                         "requirements": [], "requirement_ids": [],
+                         "task_ids": sorted({tid for scope in scoped_scopes for tid in scope["task_ids"]}),
+                         "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
+                         "capabilities": [cap for scope in scoped_scopes for cap in scope["capabilities"]]})
 
     for start in range(0, len(flow_scopes), 3):
         scoped_scopes = flow_scopes[start:start + 3]
@@ -1905,6 +1920,7 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             }, ensure_ascii=False)
         elif section == "entrypoints":
             section_prompt_text += "\nInline bounded evidence context:\n" + json.dumps({
+                "capabilities": request.get("capabilities", []),
                 "task_master": [row for row in model_context.get("task_master", [])
                                 if int(row.get("id", -1)) in set(scoped_tasks)],
                 "task_views": [row for row in all_task_views
@@ -2474,7 +2490,7 @@ Tests may be planned or implemented using the existing MVG schema. implemented m
 Reserve gaps for unresolved upstream design, Requirement, ownership, Acceptance or required real-contract evidence. A correctly specified planned entrypoint/test is a future implementation obligation, not an upstream gap. Missing runtime execution is expected at this planning stage, not a gap. Record those boundaries in notes/manual_obligations and keep the entrypoint/test state planned. Use planning_status=ready_for_validation with gaps=[] when all upstream evidence and planning obligations are complete; use draft for a genuine unresolved upstream gap. Never erase or disguise a genuine gap just to make validation pass.
 When an existing manifest is present, preserve old flow/test IDs and obligations unless an explicit reviewed specification supports update/retire/coverage weakening. Provide those reviews in change_reviews / retirement_reviews / coverage_review.
 
-coverage_table must account for EVERY active delivery-relevant Requirement. Start from coverage-skeleton.json and preserve every row; assign flow_id and rationale without deleting rows. Every flow row requires requirement_id, capability_ref, integer task_id, flow_id, and a nonempty string field named rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Use the literal JSON key rationale, not coverage_rationale or reason. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Start entrypoints from entrypoint-skeleton.json; every flow task needs a planned or existing_verified entrypoint. Never leave coverage_table or entrypoints empty.
+coverage_table must account for EVERY active delivery-relevant Requirement. Start from coverage-skeleton.json and preserve every row; assign flow_id and rationale without deleting rows. Every flow row requires requirement_id, capability_ref, integer task_id, flow_id, and a nonempty string field named rationale, consistent with both the flow's requirement_ids/capability_refs/task_ids and the actual Requirement-to-Capability and Requirement-to-Task membership. Use the literal JSON key rationale, not coverage_rationale or reason. Other verification rows require disposition=other_verification, sink_id from the Requirement's non_task_sinks, verification_ref to an existing prepared file and rationale. Deferred rows require disposition=deferred and the same resolvable authority_ref/authority_review contract used for baseline weakening. Never leave coverage_table empty. entrypoint-skeleton.json is intentionally empty: derive executable entrypoints from real Capability journey boundaries, not Task enumeration. Task IDs are evidence owners, not runtime API obligations. A test or governance task remains verification/review evidence even when referenced by a legacy handoff. Do not convert data-only contracts into executable APIs. Evidence-only owners do not need entrypoints; a flow with runtime handoffs still needs real executable boundary evidence, checked by independent semantic review.
 """
 
 
@@ -3057,6 +3073,9 @@ def validate_proposal(root: Path, state: dict[str, Any], proposal: dict[str, Any
         status = str(row.get("status") or "")
         owner = row.get("owner_task")
         path = str(row.get("path") or "").strip()
+        normalized_path = path.replace("\\", "/").lower()
+        if normalized_path.startswith(("game.core/contracts/", "game.core.tests/", "tests.godot/")):
+            errors.append(f"entrypoint_non_executable_evidence:{path}")
         if type(owner) is not int or owner not in known_tasks:
             errors.append(f"entrypoint_unknown_owner:{owner}")
         if status == "existing_verified":
@@ -3148,6 +3167,7 @@ def review(root: Path, *, run_id: str, runner: Path, timeout_sec: int) -> dict[s
     prompt = f'''Independently review proposal.json against the prepared source text and bounded review evidence,
 the exact Capability membership in analysis-input/capabilities.v1.json, real Task/Acceptance/contracts/tests and the existing manifest under analysis-input.
 Treat analysis-input/capabilities.v1.json as the only Capability SSoT; other evidence can support behavior and ownership but cannot create or remap Capability membership.
+Task IDs are provenance/evidence owners, not a checklist of runtime APIs. Test and governance Tasks do not need runtime entrypoints, even if retained in legacy handoffs. Review each actual executable boundary against the Capability journey and prepared implementation/Acceptance evidence instead. Do not approve invented APIs assigned to evidence-only owners or data-only contracts. Check runtime boundary completeness across the whole flow, not one entrypoint per Task.
 You did not generate this proposal. Evaluate semantic conservation, player journey and failure/recovery,
 cross-system handoffs, every Requirement's flow/other-verification/deferred accounting, entrypoint inputs/state/assertions,
 test evidence levels and feasibility. Planned entrypoints/tests are legitimate future obligations, not runtime proof.

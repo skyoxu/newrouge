@@ -95,10 +95,69 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["FR-1", "NFR-1"], [row["requirement_id"] for row in result])
         self.assertTrue(all(row["disposition"] == "flow" for row in result))
 
-    def test_entrypoint_skeleton_has_one_owner_per_flow_task(self):
+    def test_entrypoint_skeleton_does_not_invent_runtime_apis_from_task_ids(self):
         result = build_entrypoint_skeleton([7, 42])
-        self.assertEqual([7, 42], [row["owner_task"] for row in result])
-        self.assertTrue(all(row["status"] == "planned" for row in result))
+        self.assertEqual([], result)
+
+    def test_flow_evidence_tasks_do_not_require_runtime_entrypoints(self):
+        from _mvg_planning_review import coverage_errors
+        proposal = {"manifest_candidate": self.manifest(), **self.accounting()}
+        proposal["manifest_candidate"]["flows"][0]["task_ids"].extend([44, 103])
+        with tempfile.TemporaryDirectory() as folder:
+            errors = coverage_errors(Path(folder), proposal,
+                {"requirements": [{"requirement_id": "RQ-1"}]},
+                {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
+        self.assertEqual([], errors)
+
+    def test_entrypoint_prompt_is_driven_by_flow_boundaries_not_task_count(self):
+        prompt = segment_prompt(section="entrypoints", identity="sha256:x",
+            requirements=[], task_ids=[44, 103], flow_context=[])
+        self.assertIn("Task IDs are evidence owners, not runtime API obligations", prompt)
+        self.assertIn("test or governance task", prompt)
+
+    def test_flow_scope_rejects_requirement_membership_outside_selected_capability(self):
+        with self.assertRaisesRegex(ValueError, "selected Capability"):
+            build_flow_scopes({"requirements": [{"requirement_id": "RQ-1",
+                "capability_ids": ["CAP-STALE"]}]}, {"capabilities": []}, [], [])
+
+    def test_entrypoint_flow_context_preserves_handoffs_and_implementation_paths(self):
+        flow = self.manifest()["flows"][0]
+        summary = plan_mvg._flow_summaries([flow])[0]
+        self.assertEqual(flow["handoffs"], summary.get("handoffs"))
+        self.assertEqual(flow["source_paths"], summary.get("source_paths"))
+
+    def test_data_contract_cannot_be_used_as_runtime_entrypoint(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._root(folder)
+            proposal = {"schema_version": plan_mvg.PROPOSAL_SCHEMA,
+                "analysis_identity_sha256": "sha256:x", "planning_status": "ready_for_validation",
+                "manifest_candidate": self.manifest(), "gaps": [], **self.accounting()}
+            proposal["entrypoints"][0]["path"] = "Game.Core/Contracts/Save/ContinueMetadata.cs"
+            result = validate_proposal(root, {"run_id": "contract",
+                "analysis_identity_sha256": "sha256:x",
+                "capabilities_path": "docs/planning/semantic-topology/capabilities.v1.json"}, proposal)
+        self.assertIn("entrypoint_non_executable_evidence:Game.Core/Contracts/Save/ContinueMetadata.cs",
+            result["errors"])
+
+    def test_runtime_flow_cannot_borrow_an_unrelated_flow_entrypoint(self):
+        from _mvg_planning_review import coverage_errors
+        proposal = {"manifest_candidate": self.manifest(), **self.accounting()}
+        proposal["entrypoints"] = [{"owner_task": 99}]
+        with tempfile.TemporaryDirectory() as folder:
+            errors = coverage_errors(Path(folder), proposal,
+                {"requirements": [{"requirement_id": "RQ-1"}]},
+                {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
+        self.assertIn("flow_runtime_entrypoint_missing:flow-a", errors)
+
+    def test_incumbent_without_legacy_entrypoints_remains_comparable(self):
+        from _mvg_planning_review import coverage_errors
+        proposal = {"manifest_candidate": self.manifest(), **self.accounting(),
+                    "entrypoints": [], "notes": ["Current MVG incumbent projected for comparative evaluation."]}
+        with tempfile.TemporaryDirectory() as folder:
+            errors = coverage_errors(Path(folder), proposal,
+                {"requirements": [{"requirement_id": "RQ-1"}]},
+                {"capabilities": [{"capability_id": "CAP-A", "requirement_ids": ["RQ-1"]}]}, [])
+        self.assertEqual([], errors)
 
     def test_correction_prompt_requests_restricted_patch(self):
         prompt = correction_prompt(["coverage_requirement_missing:FR-1"])
@@ -522,6 +581,12 @@ class MvgPlanningContractTests(unittest.TestCase):
         self.assertEqual(["flow-a", "flow-b"], [row["id"] for row in merged["manifest_candidate"]["flows"]])
         self.assertEqual(["FR-1", "FR-2"], [row["requirement_id"] for row in merged["coverage_table"]])
         self.assertEqual([7, 8], [row["owner_task"] for row in merged["entrypoints"]])
+
+    def test_segment_merge_preserves_multiple_runtime_boundaries_for_one_owner(self):
+        base = {"entrypoints": [{"owner_task": 7, "path": "Game.Core/Services/Start.cs", "symbol": "Start"}]}
+        merged = merge_planning_segments(base, [{"entrypoints": [
+            {"owner_task": 7, "path": "Game.Core/Services/Resume.cs", "symbol": "Resume"}]}])
+        self.assertEqual(["Start", "Resume"], [row["symbol"] for row in merged["entrypoints"]])
 
     def test_segment_merge_updates_skeleton_placeholders(self):
         merged = merge_planning_segments(
