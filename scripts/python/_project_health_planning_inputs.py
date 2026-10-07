@@ -124,6 +124,25 @@ def prepare_checkout(
     *,
     derived_source: Path | None = None,
 ) -> None:
+    if checkout.exists():
+        try:
+            current = git(checkout, 'rev-parse', 'HEAD')
+        except ValueError:
+            current = None
+        if current != revision:
+            # A checkout can survive a prior process crash or an older
+            # planner version may have placed another job's worktree at this
+            # path. It is a disposable, job-owned temporary directory, so
+            # rebuild it instead of surfacing a misleading revision error.
+            try:
+                git(root, 'worktree', 'remove', '--force', str(checkout))
+            except ValueError:
+                # Only the generated temp checkout namespace may be removed
+                # when Git no longer has a worktree record for the path.
+                if checkout.parent.name != 'nrp' or not re.fullmatch(r'[0-9a-f]{12}', checkout.name):
+                    raise ValueError('Planning checkout exists but is not a valid job-owned worktree')
+            if checkout.exists():
+                shutil.rmtree(checkout)
     if not checkout.exists():
         checkout.parent.mkdir(parents=True, exist_ok=True)
         git(root, 'worktree', 'add', '--detach', str(checkout), revision)

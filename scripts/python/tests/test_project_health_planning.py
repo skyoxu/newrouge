@@ -75,6 +75,15 @@ class ProjectHealthPlanningTests(unittest.TestCase):
 
         prepare_checkout(self.root, self.root / 'logs/ci/logical-hash-checkout', self.revision)
 
+    def test_mismatched_existing_checkout_is_rebuilt_for_selected_revision(self):
+        checkout = self.root / 'logs/ci/test-checkout'
+        prepare_checkout(self.root, checkout, self.revision)
+        git(self.root, 'commit', '--allow-empty', '-m', 'fixture: checkout revision advance')
+        revision = main_revision(self.root)
+        prepare_checkout(self.root, checkout, revision)
+        self.assertEqual(revision, git(checkout, 'rev-parse', 'HEAD'))
+        validate_checkout(self.root, checkout, revision)
+
     def test_no_git_has_no_snapshot_fallback_but_branch_name_is_irrelevant(self):
         with self.assertRaisesRegex(ValueError, 'committed main'):
             main_revision(Path(self.temp.name))
