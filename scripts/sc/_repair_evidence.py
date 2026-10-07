@@ -7,6 +7,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
+from _unit_test_evidence import emitted_trx_path
 
 
 _SOURCE_REF = re.compile(
@@ -75,13 +76,19 @@ def _trx_recommendations(check: dict[str, Any], *, root: Path, summary_path: Pat
     directory = Path(raw_dir)
     if not directory.is_absolute():
         directory = root / directory
+    saved = summary_path.parent / 'unit-artifacts' / directory.name
+    if directory.parent.name == 'unit-artifacts' and saved.is_dir():
+        directory = saved
     try:
         if (directory / 'run_id.txt').read_text(encoding='utf-8').strip() != run_id:
             return []
         unit_summary = _json(directory / 'summary.json')
         if unit_summary.get('restore_rc') != 0 or 'test_rc' not in unit_summary:
             return []
-        trx = directory / 'tests.trx'
+        current_trx = emitted_trx_path(unit_summary)
+        if current_trx is None:
+            return []
+        trx = directory / 'tests.trx' if directory.parent.name == 'unit-artifacts' else current_trx
         if trx.stat().st_size > 8 * 1024 * 1024:
             return []
         report = ET.parse(trx).getroot()

@@ -177,7 +177,7 @@ def resolve_candidate_pages(
         if digest(content) != record.get("generated_sha256"):
             raise ValueError(f"Candidate content changed: {name}")
         original = (target / name).read_bytes() if (target / name).exists() else None
-        if (digest(original) if original is not None else None) != record.get("base_sha256"):
+        if original != content and (digest(original) if original is not None else None) != record.get("base_sha256"):
             raise ValueError(f"Overlay source changed since simulate: {name}")
         resolved[name] = {"content": content, "original": original, **pointer}
     return resolved

@@ -7,7 +7,10 @@
   - Task view ADR/Overlay/Chapter references are evidence routing metadata. Treating their filenames as risk keywords escalates ordinary implementation work even when it changes no architectural policy.
 - Decision:
   - Simulate records input hashes, original page hashes/existence, generated page hashes and a candidate manifest under `logs/ci/**`.
+  - Every invocation reserves its own output directory. Reusing a suffix creates another run; it never replaces the inspected candidate or batch bundle. Batch child runs are scoped to the reserved batch run id.
   - Apply promotes those exact candidate bytes without invoking the model. It validates every selected page before the first write and restores originals if replacement fails.
+  - A valid candidate already matching the target is an idempotent success. Unrelated target changes still block. This also permits recovery after a receipt-write failure without generating another candidate.
+  - Receipt persistence failures are reported as `apply_receipt_failed` with the actual successful page count. They must not be reported as candidate preflight failures or trigger a new simulation.
   - Missing, stale or modified candidates stop apply. There is no generate-and-apply fallback.
   - The Chapter 4 Skill binds the inspected run/batch through `--candidate-from`. Existing direct commands may consume the recorded per-page pointers for the same source paths, PRD-ID and page mode; they do not scan for the newest log directory.
   - A failed simulate clears its selected default candidate pointers. Explicit prior runs remain usable only when all their hashes still match.

@@ -23,6 +23,7 @@ from _overlay_generator_support import infer_prd_id, load_task_payloads, normali
 from _overlay_generator_support import discover_companion_docs, parse_prd_docs_csv, validate_required_prd_docs
 from _overlay_candidate_store import build_candidate_inputs, write_candidate_bundle
 from _overlay_candidate_apply import run_candidate_apply
+from _overlay_generator_runtime import reserve_output_dir
 from _util import ci_dir, repo_root
 
 
@@ -80,7 +81,8 @@ def main() -> int:
     tasks_json, tasks_back, tasks_gameplay = load_task_payloads(root)
     prd_id = infer_prd_id(args.prd_id, tasks_json, tasks_back, tasks_gameplay)
     batch_suffix = args.batch_suffix or default_batch_suffix()
-    batch_out_dir = ci_dir(build_batch_run_name(prd_id, batch_suffix))
+    batch_out_dir = reserve_output_dir(ci_dir(build_batch_run_name(prd_id, batch_suffix)))
+    batch_run_id = (batch_out_dir / "run_id.txt").read_text(encoding="utf-8").strip()
     pages = resolve_target_pages(repo_root=root, prd_id=prd_id, page_family=args.page_family, pages_csv=args.pages)
     if not pages:
         write_json(
@@ -109,7 +111,7 @@ def main() -> int:
     failure_count = 0
 
     for page in pages:
-        child_suffix = build_page_run_suffix(batch_suffix, page)
+        child_suffix = build_page_run_suffix(f"{batch_suffix}--{batch_run_id[:12]}", page)
         child_out_dir = ci_dir(single_run._build_output_dir_name(prd_id, child_suffix))
         cmd = [
             "py",
@@ -143,6 +145,13 @@ def main() -> int:
             errors="ignore",
         )
         write_text(page_logs_dir / f"{page.replace('/', '_').replace(':', '_')}.log", proc.stdout or "")
+
+        for line in reversed((proc.stdout or "").splitlines()):
+            if line.startswith("SC_LLM_OVERLAY_GEN ") and " out=" in line:
+                actual = Path(line.rsplit(" out=", 1)[1].strip()).resolve()
+                if actual.is_relative_to((root / "logs/ci").resolve()) and actual.is_dir():
+                    child_out_dir = actual
+                break
 
         child_summary_path = child_out_dir / "summary.json"
         child_summary = _read_json(child_summary_path) if child_summary_path.exists() else {}

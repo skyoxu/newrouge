@@ -258,6 +258,9 @@ Copy this bundle together:
 20. `scripts/sc/tests/test_acceptance_testgen_red.py`
 21. `docs/testing-framework.md`
 22. `docs/migration/Phase-10-Unit-Tests.md`
+23. `scripts/sc/_unit_test_evidence.py`
+24. `scripts/sc/tests/test_unit_evidence_recovery.py`
+25. `scripts/sc/_unit_metrics.py`
 
 Also copy this mirror-runtime hardening bundle when the business repo uses `Tests.Godot` + `Game.Godot`:
 
@@ -272,6 +275,7 @@ Reason:
 
 - `llm_generate_tests_from_acceptance_refs.py` is no longer a loose scaffold helper. It enforces red-first behavior, anchor placement, task-scoped verification, and deterministic C# naming/content rules.
 - `scripts/sc/test.py` now depends on helper modules and task-view resolution logic, including template fallback.
+- Copy `_unit_test_evidence.py` with `_sc_test_steps.py`, `_repair_evidence.py` and `_unit_metrics.py`. Each dotnet attempt uses a fresh output directory; saved unit evidence excludes retained TRX files not emitted by that attempt and remains available in pipeline child snapshots. Metrics read the archived TRX rather than a live `TestResults` path.
 
 ### Phase 5: Overlay Generation Toolchain
 
@@ -280,6 +284,8 @@ Copy this bundle together:
 Simulate records hash-bound candidates; apply reuses the inspected run through `--candidate-from` and never invokes the model again. Copy the candidate helpers together with both entrypoints and the Chapter 4 Skill. Similarity remains diagnostic, not a semantic promotion gate. See ADR-0039 for source drift and review risk boundaries.
 
 Include `scripts/sc/_overlay_generator_execution.py`, `scripts/sc/_overlay_candidate_store.py` and `scripts/sc/_overlay_candidate_apply.py` with this bundle.
+
+The generator runtime reserves immutable run directories even for repeated suffixes. Apply accepts already-promoted candidate bytes and distinguishes `apply_receipt_failed` from preflight failure, so recovery can retry without generating again. Copy `scripts/sc/tests/test_overlay_candidate_recovery.py` with the candidate helpers to verify these boundaries.
 
 1. `scripts/sc/llm_generate_overlays_batch.py`
 2. `scripts/sc/llm_generate_overlays_from_prd.py`

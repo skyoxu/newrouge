@@ -50,7 +50,7 @@ class ScTestStepsUnitFallbackTests(unittest.TestCase):
                 mock.patch.object(sc_steps, "today_str", return_value="2026-03-30"),
                 mock.patch.object(sc_steps, "task_scoped_cs_refs", return_value=["Game.Core.Tests/Tasks/Task0056AcceptanceTests.cs"]),
                 mock.patch.object(sc_steps, "build_dotnet_filter_from_cs_refs", return_value="FullyQualifiedName~Task0056AcceptanceTests"),
-                mock.patch.object(sc_steps, "run_cmd", side_effect=[(2, first_out), (0, second_out)]),
+                mock.patch.object(sc_steps, "run_cmd", side_effect=[(2, first_out), (0, second_out)]) as run_cmd_mock,
             ):
                 step = sc_steps.run_unit(
                     out_dir,
@@ -65,8 +65,13 @@ class ScTestStepsUnitFallbackTests(unittest.TestCase):
             self.assertEqual("ok", step["status"])
             self.assertEqual(
                 ["py", "-3", "scripts/python/run_dotnet.py", "--solution", "Game.sln", "--configuration", "Debug"],
-                step["cmd"],
+                step["cmd"][:7],
             )
+            self.assertEqual("--out-dir", step["cmd"][7])
+            first_cmd, fallback_cmd = [call.args[0] for call in run_cmd_mock.call_args_list]
+            self.assertNotEqual(first_cmd[8], fallback_cmd[8])
+            self.assertNotIn("--filter", fallback_cmd)
+            self.assertTrue(Path(step["artifacts_dir"]).is_relative_to(out_dir))
             log_text = (out_dir / "unit.log").read_text(encoding="utf-8")
             self.assertIn("retrying unit without task filter", log_text)
             self.assertIn("fallback_rc: 0", log_text)

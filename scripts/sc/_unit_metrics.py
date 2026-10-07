@@ -16,6 +16,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from _unit_test_evidence import emitted_trx_path
+
 
 SC_TEST_OUT_RE = re.compile(r"^SC_TEST\s+status=\w+\s+out=(.+)\s*$", re.MULTILINE)
 
@@ -57,6 +59,9 @@ def _collect_unit_metrics_from_dir(unit_dir: Path) -> dict[str, Any] | None:
     if isinstance(sel, dict):
         trx_path_str = sel.get("trx")
     trx_path = Path(trx_path_str) if trx_path_str else None
+    if unit_dir.parent.name == "unit-artifacts":
+        # Archived runs must not follow a live TestResults path overwritten by a later run.
+        trx_path = unit_dir / "tests.trx" if emitted_trx_path(summary) is not None else None
 
     counters = _parse_trx_counters(trx_path) if (trx_path and trx_path.exists()) else None
 
@@ -108,4 +113,3 @@ def collect_unit_metrics(*, tests_all_log: Path | None, fallback_unit_dir: Path)
         unit_dir = fallback_unit_dir
 
     return _collect_unit_metrics_from_dir(unit_dir) if unit_dir.exists() else None
-

@@ -140,7 +140,9 @@ Use the single-page path when:
 
 Only apply pages after simulate results are reviewed. Apply promotes exact saved candidate bytes without another model call. Pass the inspected run directory through `--candidate-from`; the Skill manages this binding. When omitted, the scripts use recorded per-page pointers for the same input paths, PRD-ID and page mode, never the newest directory in `logs/`.
 
-Source/task/companion changes, original page changes and candidate edits stop apply before any selected page is written. Batch apply validates all selected pages first and restores originals on a replacement failure. After outlier repair, bind that single-page run for the repaired page and the inspected batch for other pages.
+Source/task/companion changes, unrelated original page changes and candidate edits stop apply before any selected page is written. Batch apply validates all selected pages first and restores originals on a replacement failure. After outlier repair, bind that single-page run for the repaired page and the inspected batch for other pages.
+
+Repeating apply with the same valid candidate succeeds without rewriting pages already matching it. `apply_receipt_failed` means the pages were promoted but a result artifact could not be persisted; the error preserves the actual successful page count. Retry apply with that same candidate to reconcile and save the receipt, without another simulate/model call.
 
 ```powershell
 py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --prd-id PRD-<PRODUCT>-V1 --prd-docs docs/prd/<prd-doc-a>.md,docs/prd/<prd-doc-b>.md,docs/prd/<prd-doc-c>.md --pages _index.md,ACCEPTANCE_CHECKLIST.md --page-mode scaffold --apply --candidate-from <reviewed-simulate-run-dir> --batch-suffix <wave>-apply-core
@@ -180,6 +182,8 @@ Unique suffixes are automatic when omitted. For easier lookup, optionally use me
 - `<wave>-core-sim`
 - `<wave>-contracts-fix1`
 - `<wave>-routing-apply`
+
+Output directories are reserved per invocation, including when a suffix is reused. Read the actual `out` path or summary pointer from the inspected run; a repeated label never overwrites that run or its batch children.
 
 Reason:
 

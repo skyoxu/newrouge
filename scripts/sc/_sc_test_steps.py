@@ -7,6 +7,7 @@ from typing import Any
 
 from _sc_test_refs import build_dotnet_filter_from_cs_refs, task_scoped_cs_refs, task_scoped_gdunit_refs
 from _util import repo_root, run_cmd, today_str, write_text
+from _unit_test_evidence import reserve_unit_output_dir, save_unit_artifacts
 
 
 def run_unit(
@@ -18,7 +19,9 @@ def run_unit(
     task_id: str | None = None,
     allow_full_unit_fallback: bool = False,
 ) -> dict[str, Any]:
-    cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
+    unit_parent = repo_root() / "logs" / "unit" / today_str()
+    unit_artifacts_dir = reserve_unit_output_dir(unit_parent)
+    cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration, "--out-dir", str(unit_artifacts_dir)]
     task_cs_refs = task_scoped_cs_refs(task_id=task_id)
     task_filter = build_dotnet_filter_from_cs_refs(task_cs_refs)
     prev_gate_mode = os.environ.get("COVERAGE_GATE_MODE")
@@ -41,7 +44,8 @@ def run_unit(
         and "branch=0.0" in str(out)
     )
     if allow_full_unit_fallback and zero_coverage_failure:
-        fallback_cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration]
+        unit_artifacts_dir = reserve_unit_output_dir(unit_parent)
+        fallback_cmd = ["py", "-3", "scripts/python/run_dotnet.py", "--solution", solution, "--configuration", configuration, "--out-dir", str(unit_artifacts_dir)]
         fallback_rc, fallback_out = run_cmd(fallback_cmd, cwd=repo_root(), timeout_sec=1_800)
         out = (
             f"{str(out).rstrip()}\n\n"
@@ -62,14 +66,14 @@ def run_unit(
         ).rstrip() + "\n"
     log_path = out_dir / "unit.log"
     write_text(log_path, out)
-    unit_artifacts_dir = repo_root() / "logs" / "unit" / today_str()
     write_text(unit_artifacts_dir / "run_id.txt", run_id + "\n")
+    saved_artifacts = save_unit_artifacts(source_dir=unit_artifacts_dir, out_dir=out_dir, run_id=run_id)
     return {
         "name": "unit",
         "cmd": cmd,
         "rc": rc,
         "log": str(log_path),
-        "artifacts_dir": str(unit_artifacts_dir),
+        "artifacts_dir": str(saved_artifacts),
         "status": "ok" if rc == 0 else "fail",
     }
 

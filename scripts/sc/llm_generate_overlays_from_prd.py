@@ -19,6 +19,7 @@ from _overlay_generator_runtime import (
     prepare_page_runtime_state as _prepare_page_runtime_state,
     reset_dir as _reset_dir,
     select_pages as _select_pages,
+    reserve_output_dir,
 )
 from _overlay_generator_scaffold import select_pages_by_family
 from _overlay_generator_scaffold_prompting import (
@@ -103,7 +104,7 @@ def main() -> int:
 
     tasks_json, tasks_back, tasks_gameplay = load_task_payloads(root)
     prd_id = infer_prd_id(args.prd_id, tasks_json, tasks_back, tasks_gameplay)
-    out_dir = ci_dir(_build_output_dir_name(prd_id, args.run_suffix))
+    out_dir = reserve_output_dir(ci_dir(_build_output_dir_name(prd_id, args.run_suffix)))
 
     companion_paths = discover_companion_docs(
         prd_path,
@@ -273,8 +274,6 @@ def main() -> int:
         return 0
 
     invalidate_default_candidate(root, candidate_context, [str(page['filename']) for page in selected_pages])
-    for artifact in ('candidate.json', 'candidate-pointer.json'):
-        (out_dir / artifact).unlink(missing_ok=True)
     generated = generate_pages(
         root=root, out_dir=out_dir, prd_id=prd_id, selected_pages=selected_pages,
         page_state=page_state, prompts_dir=prompts_dir, page_mode=args.page_mode, timeout_sec=int(args.timeout_sec),

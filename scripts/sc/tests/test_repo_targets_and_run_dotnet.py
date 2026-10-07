@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -15,17 +16,18 @@ from _repo_targets import resolve_acceptance_checklist, resolve_build_target, re
 
 class RepoTargetsAndRunDotnetTests(unittest.TestCase):
     def test_should_resolve_repo_targets_for_template_repo(self) -> None:
-        root = REPO_ROOT
-        solution = resolve_solution_file(root)
-        build_target = resolve_build_target(root)
-        checklist = resolve_acceptance_checklist(root)
-
-        self.assertIsNotNone(solution)
-        self.assertEqual("Game.sln", solution.name)
-        self.assertIsNotNone(build_target)
-        self.assertEqual("GodotGame.csproj", build_target.name)
-        self.assertIsNotNone(checklist)
-        self.assertEqual("ACCEPTANCE_CHECKLIST.md", checklist.name)
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Game.sln").touch()
+            (root / "GodotGame.csproj").touch()
+            expected_checklist = root / "docs/architecture/overlays/PRD-TEMPLATE/08/ACCEPTANCE_CHECKLIST.md"
+            expected_checklist.parent.mkdir(parents=True)
+            expected_checklist.touch()
+            self.assertEqual(root / "Game.sln", resolve_solution_file(root))
+            self.assertEqual(root / "GodotGame.csproj", resolve_build_target(root))
+            self.assertEqual(expected_checklist, resolve_acceptance_checklist(root))
+            (root / "NewRouge.sln").touch()
+            self.assertEqual(root / "NewRouge.sln", resolve_solution_file(root))
 
     def test_run_dotnet_help_should_expose_filter_argument(self) -> None:
         proc = subprocess.run(

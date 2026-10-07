@@ -13,6 +13,7 @@ Rules:
 - Default timeout: `--timeout-sec 1200`
 - Retry timeout for routing or dense contracts pages: `--timeout-sec 1800`
 - Suffixes are generated uniquely when omitted; meaningful names are optional for easier lookup
+- Reusing a suffix allocates a fresh run directory and preserves earlier candidates; use the inspected run's actual `out` path
 - Every file listed in `--prd-docs` is treated as required input; a missing file is a hard failure
 
 ## 1. Core Dry-Run
@@ -76,3 +77,5 @@ py -3 scripts/sc/llm_generate_overlays_batch.py --prd docs/prd/<prd-main>.md --p
 - Similarity describes text changes, not requirement correctness; inspect refs, contracts and semantic coverage before apply
 - A new page has similarity 0; a legitimate large update may also have low similarity and does not require repair solely for its score
 - `candidate_apply_blocked`: simulate and inspect affected pages again; do not bypass source/candidate drift checks
+- Repeating apply with the same valid candidate succeeds and leaves pages already matching it in place
+- `apply_receipt_failed`: pages were promoted but a result artifact could not be saved; retry the same candidate without another model call

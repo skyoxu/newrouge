@@ -40,7 +40,11 @@ class RepairEvidenceTests(unittest.TestCase):
             artifacts = root / 'logs' / 'unit' / 'day'
             artifacts.mkdir(parents=True)
             (artifacts / 'run_id.txt').write_text('run-7\n', encoding='utf-8')
-            write_json(artifacts / 'summary.json', {'restore_rc': 0, 'test_rc': 1})
+            write_json(artifacts / 'summary.json', {
+                'restore_rc': 0, 'test_rc': 1,
+                'artifacts_selected': {'trx': str(artifacts / 'tests.trx')},
+                'artifacts_detected': {'trx_paths': [str(artifacts / 'tests.trx')]},
+            })
             (artifacts / 'tests.trx').write_text('''<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
 <TestDefinitions><UnitTest id="u1"><TestMethod className="Game.Tests.RulesTests" name="RejectInvalid" /></UnitTest></TestDefinitions>
 <Results><UnitTestResult testId="u1" testName="RejectInvalid" outcome="Failed"><Output><ErrorInfo><Message>Expected rejection.</Message><StackTrace>at Rules in C:\\work\\newrouge\\Game.Core\\Rules.cs:line 9

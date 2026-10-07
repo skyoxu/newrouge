@@ -9,6 +9,15 @@ from _overlay_generator_runtime import write_verified_pages
 from _overlay_generator_support import compare_overlay_dirs, normalize_relpath, write_json, write_text
 
 
+class CandidateReceiptError(OSError):
+    def __init__(self, summary: dict[str, Any], error: Exception) -> None:
+        super().__init__(str(error))
+        self.summary = {
+            **summary, "status": "fail", "error": "apply_receipt_failed", "detail": str(error),
+            "next_action": "Retry apply with the same saved candidate to reconcile the pages and persist the receipt.",
+        }
+
+
 def apply_candidate_pages(
     *, repo_root: Path, out_dir: Path, context: dict[str, Any], pages: list[str], candidate_from: str = "",
 ) -> dict[str, Any]:
@@ -26,9 +35,6 @@ def apply_candidate_pages(
     comparison = compare_overlay_dirs(generated, target, include_filenames=scope)
     write_json(out_dir / "diff-summary.json", diff_summary)
     write_text(out_dir / "diff-summary.md", render_diff_summary_markdown(diff_summary))
-    verify_inputs(repo_root, context)
-    write_verified_pages(target, {name: item["content"] for name, item in resolved.items()},
-                         {name: item["original"] for name, item in resolved.items()})
     diff_files = {item["filename"]: item for item in diff_summary["files"]}
     results = [{
         "page": name, "filename": name, "rc": 0, "child_status": "ok", "child_mode": "apply",
@@ -47,8 +53,14 @@ def apply_candidate_pages(
         "diff_markdown_path": normalize_relpath(out_dir / "diff-summary.md", root=repo_root),
         "diff_counts": {key: diff_summary[key] for key in ("unchanged_count", "modified_count", "added_count", "removed_count")},
     }
-    write_json(out_dir / "summary.json", summary)
-    write_text(out_dir / "report.md", render_diff_summary_markdown(diff_summary))
+    verify_inputs(repo_root, context)
+    write_verified_pages(target, {name: item["content"] for name, item in resolved.items()},
+                         {name: item["original"] for name, item in resolved.items()})
+    try:
+        write_json(out_dir / "summary.json", summary)
+        write_text(out_dir / "report.md", render_diff_summary_markdown(diff_summary))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise CandidateReceiptError(summary, exc) from exc
     return summary
 
 
@@ -57,13 +69,24 @@ def run_candidate_apply(
 ) -> int:
     try:
         apply_candidate_pages(repo_root=repo_root, out_dir=out_dir, context=context, pages=pages, candidate_from=candidate_from)
+    except CandidateReceiptError as exc:
+        try:
+            write_json(out_dir / "summary.json", exc.summary)
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        print(f"{label} status=fail error=apply_receipt_failed success_count={exc.summary['success_count']} failure_count=0 detail={exc} out={out_dir}")
+        return 1
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        write_json(out_dir / "summary.json", {
+        failure = {
             "status": "fail", "mode": "apply", "error": "candidate_apply_blocked", "detail": str(exc),
             "prd_id": context["prd_id"], "selected_pages": pages, "model_executed": False,
             "page_count": len(pages), "success_count": 0, "failure_count": len(pages),
             "next_action": "Run simulate for the affected pages, review the saved candidates, then apply that run.",
-        })
+        }
+        try:
+            write_json(out_dir / "summary.json", failure)
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
         print(f"{label} status=fail error=candidate_apply_blocked detail={exc} out={out_dir}")
         return 1
     print(f"{label} status=ok mode=apply pages={len(pages)} model_executed=false out={out_dir}")
