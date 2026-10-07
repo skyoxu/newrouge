@@ -508,8 +508,20 @@ def normalize_dotnet_selectors(root: Path, proposal: dict[str, Any]) -> int:
                 continue
             if target.is_file():
                 classes.update(re.findall(r"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\b", target.read_text(encoding="utf-8")))
-        pattern = selector.replace("*", "")
-        matching = sorted(name for name in classes if name.startswith(pattern)) if "*" in selector else []
+        # dotnet test accepts filter expressions, but the MVG manifest deliberately
+        # stores only the declared class name.  Reduce a FullyQualifiedName~Class
+        # expression (and the older wildcard form) only when the referenced
+        # evidence makes the result deterministic.
+        tail = re.search(r"([A-Za-z_][A-Za-z0-9_]*)$", selector)
+        tail_name = tail.group(1) if tail else ""
+        matching = []
+        if tail_name in classes and ("~" in selector or selector != tail_name):
+            matching = [tail_name]
+        elif "*" in selector:
+            pattern = selector.replace("*", "")
+            matching = sorted(name for name in classes if name.startswith(pattern))
+        elif len(classes) == 1 and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]+", selector):
+            matching = sorted(classes)
         if len(matching) != 1:
             continue
         test["selector"] = matching[0]
@@ -686,7 +698,10 @@ SEGMENT_SCHEMA = "newrouge.mvg-planning-segment.v1"
 
 def segment_output_schema(*, section: str, identity: str, scope_id: str,
                           available_source_paths: list[str] | None = None,
-                          available_contract_paths: list[str] | None = None) -> dict[str, Any]:
+                          available_contract_paths: list[str] | None = None,
+                          allowed_flow_ids: list[str] | None = None,
+                          allowed_test_ids: list[str] | None = None,
+                          allowed_test_paths: list[str] | None = None) -> dict[str, Any]:
     """Build the CLI-enforced envelope for one routed segment request."""
     payload_key = {
         "flows": "flows",
@@ -715,6 +730,16 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
 
     source_path = bounded_path(available_source_paths)
     contract_path = bounded_path(available_contract_paths)
+    flow_id = bounded_path(allowed_flow_ids)
+    test_id = bounded_path(allowed_test_ids)
+
+    def bounded_test_path(prefix: str, suffix: str) -> dict[str, Any]:
+        values = sorted({str(path).replace("\\", "/") for path in (allowed_test_paths or [])
+                         if str(path).replace("\\", "/").startswith(prefix)
+                         and str(path).replace("\\", "/").endswith(suffix)})
+        if values:
+            return {"type": "string", "enum": values}
+        return {"type": "string", "pattern": rf"^{re.escape(prefix)}.+{re.escape(suffix)}$"}
     integer = {"type": "integer"}
     handoff = strict_object({
         "producer_task": integer, "consumer_task": integer, "owner_task": integer,
@@ -723,16 +748,16 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         "from": nullable(nonempty_string), "to": nullable(nonempty_string),
     })
     flow = strict_object({
-        "id": nonempty_string, "outcome": nonempty_string,
+        "id": flow_id, "outcome": nonempty_string,
         "requirement_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
         "capability_refs": {"type": "array", "items": nonempty_string, "minItems": 1},
         "task_ids": {"type": "array", "items": integer, "minItems": 1},
         "source_paths": {"type": "array", "items": source_path, "minItems": 1},
         "handoffs": {"type": "array", "items": handoff, "minItems": 1},
-        "test_ids": {"type": "array", "items": nonempty_string, "minItems": 1},
+        "test_ids": {"type": "array", "items": test_id, "minItems": 1},
     })
     coverage = strict_object({
-        "requirement_id": nonempty_string, "flow_id": nullable(nonempty_string),
+        "requirement_id": nonempty_string, "flow_id": nullable(flow_id),
         "capability_ref": nullable(nonempty_string), "task_id": nullable(integer),
         "disposition": {"type": "string", "enum": ["flow", "other_verification", "deferred"]},
         "rationale": nonempty_string,
@@ -750,16 +775,16 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
         "implementation_acceptance": flexible_text,
     })
     test_common = {
-        "id": nonempty_string, "flow_id": nonempty_string, "test_refs": array(nonempty_string),
+        "id": test_id, "flow_id": flow_id, "test_refs": array(nonempty_string),
         "state": {"type": "string", "enum": ["planned", "implemented"]},
         "selector": nonempty_string, "min_tests": {"type": "integer", "minimum": 1},
     }
     test = {"anyOf": [
         strict_object({**test_common, "kind": {"type": "string", "const": "dotnet"},
-                       "path": {"type": "string", "pattern": r"^Game\.Core\.Tests/.+\.cs$"},
+                       "path": bounded_test_path("Game.Core.Tests/", ".cs"),
                        "evidence_level": {"type": "string", "const": "domain-integration"}}),
         strict_object({**test_common, "kind": {"type": "string", "const": "gdunit"},
-                       "path": {"type": "string", "pattern": r"^Tests\.Godot/tests/.+\.gd$"},
+                       "path": bounded_test_path("Tests.Godot/tests/", ".gd"),
                        "evidence_level": {"type": "string", "enum": ["scene-method", "engine-input"]}}),
     ]}
     item_schema = {"flows": flow, "coverage_table": coverage,
@@ -780,7 +805,9 @@ def segment_output_schema(*, section: str, identity: str, scope_id: str,
 
 def segment_prompt(*, section: str, identity: str, requirements: list[str], task_ids: list[int],
                    flow_context: list[dict[str, Any]] | None = None,
-                   scope_id: str = "", flow_id_prefix: str = "", test_id_prefix: str = "") -> str:
+                   scope_id: str = "", flow_id_prefix: str = "", test_id_prefix: str = "",
+                   allow_exact_flow_id: bool = False,
+                   allow_exact_test_id: bool = False) -> str:
     """Build a bounded LLM request for one MVG planning section.
 
     The model returns only the requested section. Deterministic code owns the
@@ -789,10 +816,14 @@ def segment_prompt(*, section: str, identity: str, requirements: list[str], task
     scope = json.dumps({"requirement_ids": requirements, "task_ids": task_ids,
                         "flow_ids": [str(row.get("id")) for row in (flow_context or [])]}, ensure_ascii=False)
     scope_label = scope_id or "unscoped"
-    flow_rule = (f"Every new flow id must start with {flow_id_prefix!r}." if flow_id_prefix
-                 else "Use stable lowercase kebab-case flow ids.")
-    test_rule = (f"Every new test id must start with {test_id_prefix!r}." if test_id_prefix
-                 else "Use stable lowercase kebab-case test ids.")
+    flow_rule = ("Copy the exact incumbent flow id supplied in this frozen request; do not add a suffix."
+                 if allow_exact_flow_id else
+                 (f"Every new flow id must start with {flow_id_prefix!r}." if flow_id_prefix
+                  else "Use stable lowercase kebab-case flow ids."))
+    test_rule = ("Copy the exact incumbent test ids supplied in this frozen request; do not add a prefix or suffix."
+                 if allow_exact_test_id else
+                 (f"Every new test id must start with {test_id_prefix!r}." if test_id_prefix
+                  else "Use stable lowercase kebab-case test ids."))
     return f"""You are producing one bounded section of an MVG integration plan.
 Use only the prepared evidence needed for this section and return JSON only, with no markdown, shell commands, or commentary.
 The prepared capabilities.v1.json is the exclusive Capability SSoT. Capability IDs and Requirement membership must come from that file only; other evidence may explain behavior but cannot create or reassign a Capability.
@@ -807,12 +838,12 @@ Return only fields needed for this section:
 - coverage_table: for section=coverage, rows for the supplied requirements only;
 - entrypoints: for section=entrypoints, planned/existing entrypoint rows for supplied task IDs;
 - tests: for section=tests, test objects only. Every supplied flow must receive at least one test id, and each test id must be used by exactly one supplied flow. {test_rule}
-For coverage rows, assign flow_id to an actual flow id from the supplied flow context; never leave it null. The only valid disposition values are exactly flow, other_verification, or deferred; every row needs a non-empty rationale string.
-Coverage routing is strict: use only the supplied requirement_ids/task_ids/capability refs. A flow row must have verification_ref, authority_ref, and authority_review set to null; an other_verification row must have flow_id/authority_ref/authority_review null; a deferred row must have flow_id/verification_ref null and a reviewed authority_ref/authority_review.
+For coverage rows with disposition=flow, assign flow_id to an actual flow id from the supplied flow context; other_verification and deferred rows must leave flow_id null. The only valid disposition values are exactly flow, other_verification, or deferred; every row needs a non-empty rationale string.
+Coverage routing is strict: use only the supplied requirement_ids/task_ids/capability refs. A flow row must have verification_ref, authority_ref, and authority_review set to null; an other_verification row must have flow_id/authority_ref/authority_review null and a sink_id from that Requirement's non_task_sinks; a Requirement with an empty non_task_sinks list cannot use other_verification and must be routed to a flow or a reviewed deferred row; a deferred row must have flow_id/verification_ref null and a reviewed authority_ref/authority_review.
 For entrypoints, status is exactly planned or existing_verified; use planned unless the prepared evidence proves a real existing entrypoint. Never use gap, existing, or unlisted. Planned rows require non-empty path, symbol, inputs, state, assertions, and implementation_acceptance.
 For tests, kind is exactly dotnet or gdunit, state is exactly planned or implemented, path is a repository-relative Game.Core.Tests/*.cs or Tests.Godot/tests/*.gd path, selector is non-empty, and evidence_level is domain-integration for dotnet or scene-method/engine-input for gdunit. Do not use acceptance, unit, integration, direct, or null for these fields.
 For flows, every handoff must be an object with integer producer_task, consumer_task, and owner_task, a real non-empty contract_ref from available_contract_paths, non-empty behavior, and a non-empty test_ids array.
-Do not use task IDs, flow IDs, or test IDs from another scope. Every flow id must start with the requested scope_id plus '-'; every flow task and every handoff role must be in this request's task_ids.
+Do not use task IDs, flow IDs, or test IDs from another scope. For section=flows, every new flow id must start with the requested scope_id plus '-', while a frozen request must copy the exact incumbent flow ID. For coverage/tests, route only to the supplied flow context. Every flow task and every handoff role must be in this request's task_ids.
 The required bounded context is included inline in this prompt. Do not call shell/tools or scan files.
 For section=tests, the inline context includes the prepared test refs; do not load full task views.
 For entrypoints and tests, use only the specific prepared references named by that context. Do not scan unrelated files.
@@ -879,6 +910,10 @@ def validate_segment_references(value: dict[str, Any], *, section: str, prepared
             if row.get("state") == "implemented" and (path not in test_paths
                     or _prepared_reference(prepared, path) is None):
                 errors.append("segment_test_implemented_unprepared")
+        elif section == "coverage" and row.get("disposition") == "other_verification":
+            verification = str(row.get("verification_ref") or "").split("#", 1)[0].replace("\\", "/")
+            if not verification or _prepared_reference(prepared, verification) is None:
+                errors.append("segment_coverage_verification_unprepared")
     return errors
 
 
@@ -921,12 +956,12 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
         if section == "flows":
             flow_id = str(row.get("id") or "")
             # Cumulative manifests freeze their existing flow IDs.  A frozen
-            # request is allowed to return that exact incumbent ID; newly
-            # planned flow scopes continue to require the scoped prefix.
+            # request must return the exact incumbent ID; accepting a suffixed
+            # variant would create a second route that cannot be merged safely.
             allow_exact_flow_id = bool(request.get("allow_exact_flow_id"))
             if scope_id and not (
                     (allow_exact_flow_id and flow_id == scope_id)
-                    or flow_id.startswith(scope_id + "-")):
+                    or (not allow_exact_flow_id and flow_id.startswith(scope_id + "-"))):
                 errors.append("segment_flow_id_outside_scope")
             requirement_ids = {str(item) for item in row.get("requirement_ids", [])}
             if not requirement_ids or not requirement_ids <= allowed_requirements:
@@ -938,6 +973,10 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             if (not isinstance(task_values, list)
                     or any(type(item) is not int or item not in allowed_tasks for item in task_values)):
                 errors.append("segment_flow_tasks_outside_scope")
+            allowed_test_ids = {str(value) for value in request.get("test_ids", []) if str(value).strip()}
+            if allowed_test_ids and any(str(value) not in allowed_test_ids
+                                        for value in (row.get("test_ids") or [])):
+                errors.append("segment_flow_tests_outside_scope")
             for handoff in row.get("handoffs", []) if isinstance(row.get("handoffs"), list) else []:
                 if not isinstance(handoff, dict):
                     continue
@@ -945,6 +984,10 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                        or handoff.get(key) not in set(task_values)
                        for key in ("producer_task", "consumer_task", "owner_task")):
                     errors.append("segment_handoff_tasks_outside_flow")
+                allowed_test_ids = {str(value) for value in request.get("test_ids", [])}
+                if allowed_test_ids and any(str(value) not in allowed_test_ids
+                                            for value in (handoff.get("test_ids") or [])):
+                    errors.append("segment_handoff_tests_outside_scope")
         elif section == "coverage":
             rid = str(row.get("requirement_id") or "")
             if rid not in allowed_requirements:
@@ -984,6 +1027,21 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
                     errors.append("segment_coverage_verification_ref_missing")
                 if authority_ref not in (None, ""):
                     errors.append("segment_coverage_other_verification_authority_forbidden")
+                requirement_row = next((item for item in request.get("requirements", [])
+                                        if isinstance(item, dict)
+                                        and str(item.get("requirement_id") or "") == rid), None)
+                allowed_sinks = set()
+                for item in (requirement_row or {}).get("non_task_sinks", []):
+                    if isinstance(item, dict):
+                        sink = item.get("sink_id") or item.get("id")
+                    else:
+                        sink = item
+                    if str(sink or "").strip():
+                        allowed_sinks.add(str(sink))
+                if not allowed_sinks:
+                    errors.append("segment_coverage_other_verification_sink_unavailable")
+                elif str(row.get("sink_id") or "") not in allowed_sinks:
+                    errors.append("segment_coverage_other_verification_sink_invalid")
             elif disposition == "deferred":
                 if flow_id not in (None, ""):
                     errors.append("segment_coverage_deferred_flow_forbidden")
@@ -999,16 +1057,20 @@ def validate_segment_routing(value: dict[str, Any], *, section: str,
             flow_id = str(row.get("flow_id") or "")
             exact_flow_ids = set(flow_scope_ids) if request.get("allow_exact_flow_id") else set()
             if flow_scope_ids and not (
-                    flow_id in exact_flow_ids
-                    or any(flow_id.startswith(scope + "-") for scope in flow_scope_ids)):
+                    (flow_id in exact_flow_ids if request.get("allow_exact_flow_id") else
+                     any(flow_id.startswith(scope + "-") for scope in flow_scope_ids))):
                 errors.append("segment_test_flow_outside_scope")
             if known_flow_ids and flow_id not in known_flow_ids:
                 errors.append("segment_test_flow_unknown")
+            allowed_test_paths = {str(value).replace("\\", "/")
+                                  for value in request.get("test_paths", []) if str(value).strip()}
+            if allowed_test_paths and str(row.get("path") or "").replace("\\", "/") not in allowed_test_paths:
+                errors.append("segment_test_path_outside_scope")
             test_id = str(row.get("id") or "")
             exact_test_ids = {str(value) for value in request.get("test_ids", [])}
             if scope_id and not (
                     (request.get("allow_exact_test_id") and test_id in exact_test_ids)
-                    or test_id.startswith(scope_id + "-")):
+                    or (not request.get("allow_exact_test_id") and test_id.startswith(scope_id + "-"))):
                 errors.append("segment_test_id_outside_scope")
     return sorted(set(errors))
 
@@ -1556,12 +1618,23 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             baseline = existing_flows.get(flow_id, {})
             requirement_set = {str(value) for value in baseline.get("requirement_ids", [])
                                if str(value).strip()}
+            baseline_tasks = {int(value) for value in baseline.get("task_ids", [])
+                              if type(value) is int}
+            # Older manifests may omit requirement_ids.  In that case derive the
+            # bounded requirements from the incumbent flow's real task owners;
+            # selecting every scope here lets one frozen flow consume the other
+            # flow's Requirements and makes coverage routing nondeterministic.
             selected = [scope for scope in flow_scopes
-                        if not requirement_set or requirement_set.intersection(scope.get("requirement_ids", []))]
+                        if (requirement_set.intersection(scope.get("requirement_ids", []))
+                            if requirement_set else
+                            baseline_tasks.intersection(set(scope.get("task_ids", []))))]
+            if not selected and requirement_set:
+                selected = [scope for scope in flow_scopes
+                            if requirement_set.intersection(scope.get("requirement_ids", []))]
             requirements = [row for scope in selected for row in scope.get("requirements", [])]
             requirement_ids = list(dict.fromkeys(row.get("requirement_id") for row in requirements))
             if not requirement_ids:
-                requirement_ids = sorted(allowed_requirement_ids or set())
+                requirement_ids = sorted(requirement_set or allowed_requirement_ids or set())
             remapped.append({
                 "scope_id": flow_id,
                 "requirements": requirements,
@@ -1615,7 +1688,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                          "requirement_ids": scope["requirement_ids"],
                          "task_ids": scope["task_ids"],
                          "capabilities": scope["capabilities"],
-                         "allow_exact_flow_id": planning_scope is not None})
+                         "allow_exact_flow_id": planning_scope is not None,
+                         "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else []})
 
     # Flow coverage is accounted for in small Requirement batches after all
     # flow IDs are known. A batch contains only its own Requirement statements.
@@ -1662,10 +1736,11 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
         requests.append({"section": "tests", "scope_id": f"tests-{start // 3 + 1:02d}",
                          "requirements": [], "requirement_ids": [],
                          "task_ids": sorted({task_id for scope in scoped_scopes for task_id in scope["task_ids"]}),
-                         "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
-                         "allow_exact_flow_id": planning_scope is not None,
-                         "allow_exact_test_id": planning_scope is not None,
-                         "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else []})
+                          "flow_scope_ids": [scope["scope_id"] for scope in scoped_scopes],
+                          "allow_exact_flow_id": planning_scope is not None,
+                          "allow_exact_test_id": planning_scope is not None,
+                          "test_ids": sorted(planning_scope.get("test_ids", [])) if planning_scope else [],
+                          "test_paths": sorted(planning_scope.get("test_paths", [])) if planning_scope else []})
 
     def execute_request(index: int, request: dict[str, Any], flow_context: list[dict[str, Any]]) -> tuple[int, dict[str, Any], dict[str, Any]]:
         section = request["section"]
@@ -1681,6 +1756,8 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
             requirements=requirements, task_ids=scoped_tasks,
             flow_context=flow_context,
             scope_id=request["scope_id"], flow_id_prefix=flow_prefix, test_id_prefix=test_prefix,
+            allow_exact_flow_id=bool(planning_scope is not None and section == "flows"),
+            allow_exact_test_id=bool(planning_scope is not None and section == "tests"),
         )
         if planning_scope is not None:
             section_prompt_text += "\nThis is a frozen existing-manifest scope. Do not add obligations outside it. " \
@@ -1754,12 +1831,27 @@ def invoke_segmented(invoke: Any, run_dir: Path, state: dict[str, Any], attempt:
                                          output_name=output_name,
                                          output_schema_path=workspace / "segment-schemas" / f"{index:03d}-{section}.json",
                                          output_schema=segment_output_schema(
-                                             section=section,
-                                             identity=identity,
-                                             scope_id=request["scope_id"],
-                                             available_source_paths=source_paths,
-                                             available_contract_paths=contract_paths,
-                                         ))
+                                              section=section,
+                                              identity=identity,
+                                              scope_id=request["scope_id"],
+                                              available_source_paths=source_paths,
+                                              available_contract_paths=contract_paths,
+                                              allowed_flow_ids=(
+                                                  [request["scope_id"]]
+                                                  if planning_scope is not None and section == "flows"
+                                                  else (planning_scope.get("flow_ids", [])
+                                                        if planning_scope is not None and section in ("coverage", "tests")
+                                                        else None)
+                                              ),
+                                              allowed_test_ids=(
+                                                  planning_scope.get("test_ids", [])
+                                                  if planning_scope is not None and section in ("flows", "tests") else None
+                                              ),
+                                              allowed_test_paths=(
+                                                  planning_scope.get("test_paths", [])
+                                                  if planning_scope is not None and section == "tests" else None
+                                              ),
+                                          ))
                 parsed = json.loads(output.read_text(encoding="utf-8"))
                 if not isinstance(parsed, dict):
                     raise ValueError(f"MVG segment {section} must be a JSON object")
@@ -2579,8 +2671,19 @@ Frozen manifest scope:
             "backend": llm_backend, "candidate_attempts": state["candidate_attempts"],
             "selection_status": "blocked", "selection_error": "all three independent candidates must be valid",
         })
+        reasons = []
+        for row in results:
+            if row["valid"]:
+                continue
+            summary = row.get("summary") or {}
+            validation_errors = (summary.get("validation") or {}).get("errors") or []
+            attempt_errors = [str(item.get("error") or "") for item in (summary.get("attempts") or [])
+                              if isinstance(item, dict) and item.get("error")]
+            detail = ";".join(str(value) for value in (validation_errors or attempt_errors)[:4])
+            reasons.append(f"{row['label']}={_compact_exception_message(detail or 'unknown_candidate_failure', 500)}")
         raise ValueError("MVG independent candidate generation attempt budget exhausted; incomplete: "
-                         + ",".join(row["label"] for row in results if not row["valid"]))
+                         + ",".join(row["label"] for row in results if not row["valid"])
+                         + ("; reasons: " + " | ".join(reasons) if reasons else ""))
 
     existing_manifest = load_json(run_dir / "analysis-input/existing-manifest.json", None)
     incumbent_present = isinstance(existing_manifest, dict) and existing_manifest.get("schema_version") == "newrouge.mvg-integration.v1"

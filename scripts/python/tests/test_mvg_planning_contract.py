@@ -214,7 +214,7 @@ class MvgPlanningContractTests(unittest.TestCase):
         prompt = segment_prompt(section="coverage", identity="sha256:x", requirements=["FR-1"],
                                 task_ids=[7], flow_context=[{"id": "run-entry"}])
         self.assertIn("run-entry", prompt)
-        self.assertIn("never leave it null", prompt)
+        self.assertIn("other_verification and deferred rows must leave flow_id null", prompt)
 
     def test_segment_identity_rejects_wrong_section_or_run(self):
         value = {"schema_version": SEGMENT_SCHEMA, "analysis_identity_sha256": "sha256:x", "section": "flows",
@@ -613,6 +613,42 @@ class MvgPlanningContractTests(unittest.TestCase):
         }
         self.assertNotIn("segment_flow_id_outside_scope",
                          validate_segment_routing(flow, section="flows", request=request))
+
+    def test_frozen_segment_routes_reject_noncanonical_flow_and_test_ids(self):
+        value = {
+            "flows": [{
+                "id": "reward-claim-and-return-journey",
+                "requirement_ids": ["RQ-1"], "capability_refs": ["CAP-A"],
+                "task_ids": [1], "source_paths": [], "handoffs": [], "test_ids": ["tests-01-reward-core"],
+            }],
+        }
+        errors = plan_mvg.validate_segment_routing(
+            value, section="flows", request={"scope_id": "reward-claim-and-return",
+                                               "allow_exact_flow_id": True},
+        )
+        self.assertIn("segment_flow_id_outside_scope", errors)
+
+        tests = {"tests": [{"id": "tests-01-reward-core", "flow_id": "reward-claim-and-return"}]}
+        errors = plan_mvg.validate_segment_routing(
+            tests, section="tests", request={"scope_id": "tests-01", "flow_scope_ids": ["reward-claim-and-return"],
+                                               "allow_exact_flow_id": True, "allow_exact_test_id": True,
+                                               "test_ids": ["reward-core"]},
+            flow_context=[{"id": "reward-claim-and-return"}],
+        )
+        self.assertIn("segment_test_id_outside_scope", errors)
+
+    def test_dotnet_selector_filter_is_reduced_to_declared_class_name(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "Game.Core.Tests/Services/CombatServiceTests.cs"
+            source.parent.mkdir(parents=True)
+            source.write_text("public sealed class CombatServiceTests {}", encoding="utf-8")
+            proposal = {"manifest_candidate": {"tests": [{
+                "kind": "dotnet", "path": "Game.Core.Tests/Services/CombatServiceTests.cs",
+                "selector": "FullyQualifiedName~CombatServiceTests", "test_refs": [],
+            }]}}
+            self.assertEqual(1, plan_mvg.normalize_dotnet_selectors(root, proposal))
+            self.assertEqual("CombatServiceTests", proposal["manifest_candidate"]["tests"][0]["selector"])
     def _root(self, folder: str) -> Path:
         root = Path(folder)
         tasks = root / ".taskmaster/tasks"

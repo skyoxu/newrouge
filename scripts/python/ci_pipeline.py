@@ -101,7 +101,7 @@ def extract_failed_tests(dotnet_test_output: str):
     return deduped
 
 
-def _env_timeout_ms(name: str, default_ms: int, min_ms: int = 60_000) -> int:
+def _resolve_timeout_ms(name: str, default_ms: int, min_ms: int = 60_000) -> int:
     raw = str(os.environ.get(name, "")).strip()
     if not raw:
         return default_ms
@@ -144,8 +144,8 @@ def main():
         'status': 'ok'
     }
     hard_fail = False
-    dotnet_stage_timeout_ms = _env_timeout_ms('CI_DOTNET_STAGE_TIMEOUT_MS', 900_000)
-    selfcheck_stage_timeout_ms = _env_timeout_ms('CI_SELFCHECK_STAGE_TIMEOUT_MS', 600_000)
+    dotnet_stage_timeout_ms = _resolve_timeout_ms('CI_DOTNET_STAGE_TIMEOUT_MS', 900_000)
+    selfcheck_stage_timeout_ms = _resolve_timeout_ms('CI_SELFCHECK_STAGE_TIMEOUT_MS', 600_000)
     summary['stage_timeouts_ms'] = {
         'dotnet_stage_timeout_ms': dotnet_stage_timeout_ms,
         'selfcheck_stage_timeout_ms': selfcheck_stage_timeout_ms,
